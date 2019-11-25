@@ -1,0 +1,27 @@
+{
+  "name": "integration-tests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint ./cypress --ext .js,.vue",
+    "lint:fix": "eslint ./cypress --fix --ext .js,.vue"
+  },
+  "dependencies": {
+    "cypress": "^3.6.1"
+  },
+  "devDependencies": {
+    "eslint": "^6.7.0",
+    "eslint-plugin-cypress": "^2.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheCacophonyProject/integration-tests.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TheCacophonyProject/integration-tests/issues"
+  },
+  "homepage": "https://github.com/TheCacophonyProject/integration-tests#readme"
+}

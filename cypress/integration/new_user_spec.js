@@ -1,14 +1,15 @@
-var crypto = require("crypto");
+
+const crypto = require("crypto");
 
 context('New User', () => {
-  var uniqueId =  crypto.randomBytes(2).toString('hex');
-  var username = "integrationtester"  +  uniqueId;
-  var password = 'p' + username;
-  var group = 'test' + uniqueId;
+  const uniqueId =  crypto.randomBytes(2).toString('hex');
+  const username = "integrationtester"  +  uniqueId;
+  const password = 'p' + username;
+  const group = 'test' + uniqueId;
 
   beforeEach(() => {
-    cy.visit('')
-  })
+    cy.visit('');
+  });
 
   it('A new user can create an account, and a group', () => {
     // create account
@@ -35,6 +36,6 @@ context('New User', () => {
   it('New user can sign in and create a group', () => {
     cy.signin(username, password);
   });
-})
+});
 
 

@@ -1,0 +1,32 @@
+env:
+  node: true
+  es6: true
+parserOptions:
+  ecmaVersion: 8
+plugins:
+  - 'cypress'
+extends:
+  - 'eslint:recommended'
+  - 'plugin:cypress/recommended'
+rules:
+  indent:
+    - error
+    - 2
+    - SwitchCase: 1
+  linebreak-style:
+    - error
+    - unix
+  quotes:
+    - off
+  curly:
+    - warn
+    - all
+  semi:
+    - error
+    - always
+  no-console:
+    - off
+  no-var:
+    - error
+  prefer-const:
+    - error

@@ -28,4 +28,4 @@ Cypress.Commands.add("signin", (username, password) => {
   cy.contains("Username or").parent().type(username);
   cy.contains("Password").parent().type(password);
   cy.contains("Sign in").click();
-})
+});
