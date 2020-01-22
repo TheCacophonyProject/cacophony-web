@@ -3,4 +3,13 @@ node_js:
 - 8.12.0
 
 script:
-- npm run lint && npm test
+- npm run lint
+# Create fake thermal camera server
+- git clone "https://github.com/clare/fake-thermal-camera"
+- git clone "https://github.com/TheCacophonyProject/device-register"
+- cd fake-thermal-camera
+- ./run --background
+- ./wait-for-camera-server
+# Run tests
+- cd ..
+- npm run release

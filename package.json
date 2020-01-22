@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "./node_modules/cypress/bin/cypress open",
+    "release": "./node_modules/cypress/bin/cypress run --record --key $CYPRESS_KEY",
     "lint": "eslint ./cypress --ext .js,.vue",
     "lint:fix": "eslint ./cypress --fix --ext .js,.vue"
   },
