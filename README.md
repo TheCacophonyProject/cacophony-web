@@ -18,12 +18,21 @@ To run the tests against browse-test/api-test go to [Integration tests on Travis
 To set up the tests on your own machine:
 1.  Install and start the server [`fake-thermal-camera`](https://github.com/TheCacophonyProject/fake-thermal-camera)
 2.  Clone your fork of this repository [`integration-tests`](https://github.com/TheCacophonyProject/integration-tests)
-3.  Run
+3.  Copy cypress.json.TEMPLATE to cypress.json.
+4.  Run
 ``` bash
 npm install
 npm run dev
 ```
-4.  Look for the [cypress](https://www.cypress.io/) interactive environment.
+5.  Look for the [cypress](https://www.cypress.io/) interactive environment.
+
+### Testing against your own code
+You can test against code running on any environment.
+
+* To change **Web Interface (cacophony-browse)** => edit _baseURL_ in cypress.json
+* To change **Thermal camera code (eg uploader, recorder)** => Change what code _fake-thermal-camera_ is running
+
+* **Api url (cacophony-api)** is automatically set as the same one used by cacophony-browse so does not need to be updated.
 
 ### Lint
 Before committing changes run eslint to check style

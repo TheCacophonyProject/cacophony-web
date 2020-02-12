@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "./node_modules/cypress/bin/cypress open",
-    "release": "./node_modules/cypress/bin/cypress run --record --key $CYPRESS_KEY",
+    "release": "./node_modules/cypress/bin/cypress run $CYPRESS_RECORD",
+    "release:browse": "./node_modules/cypress/bin/cypress run --spec 'cypress/integration/browse/**/*' $CYPRESS_RECORD",
     "lint": "eslint ./cypress --ext .js,.vue",
     "lint:fix": "eslint ./cypress --fix --ext .js,.vue"
   },
@@ -13,8 +14,9 @@
     "cypress": "^3.6.1"
   },
   "devDependencies": {
-    "eslint": "^6.7.0",
-    "eslint-plugin-cypress": "^2.7.0"
+    "eslint": "^6.8.0",
+    "eslint-plugin-cypress": "^2.7.0",
+    "eslint-plugin-no-only-tests": "^2.4.0"
   },
   "repository": {
     "type": "git",

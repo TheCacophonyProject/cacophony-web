@@ -5,6 +5,7 @@ parserOptions:
   ecmaVersion: 8
 plugins:
   - 'cypress'
+  - 'no-only-tests'
 extends:
   - 'eslint:recommended'
   - 'plugin:cypress/recommended'
@@ -29,4 +30,6 @@ rules:
   no-var:
     - error
   prefer-const:
+    - error
+  no-only-tests/no-only-tests:
     - error

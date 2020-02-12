@@ -1,3 +1,4 @@
 cypress/videos
 node_modules
 cypress/screenshots
+cypress.json
