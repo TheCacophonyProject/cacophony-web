@@ -26,10 +26,10 @@ context('New User', () => {
     cy.apiCheckEventUploaded(username,camera, eventType);
   });
 
-  it('A camera can upload a new recording', () => {
+  it('A camera can trigger and upload a new recording', () => {
     cy.apiSignInAs(username);
     cy.cameraRecording();
-    // for video to be
+    // for video to be uploaded
     cy.wait(3 * 1000);
     cy.apiCheckDeviceHasRecording(username,camera);
   });
