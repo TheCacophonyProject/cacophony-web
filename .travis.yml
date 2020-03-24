@@ -10,6 +10,7 @@ script:
 - git clone "https://github.com/TheCacophonyProject/device-register"
 - git clone "https://github.com/TheCacophonyProject/thermal-recorder"
 - git clone "https://github.com/TheCacophonyProject/thermal-uploader"
+- git clone "https://github.com/TheCacophonyProject/event-reporter"
 
 - cd fake-thermal-camera
 - ./run --background
