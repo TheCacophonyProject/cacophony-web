@@ -11,7 +11,7 @@
     "lint:fix": "eslint ./cypress --fix --ext .js,.vue"
   },
   "dependencies": {
-    "cypress": "^3.6.1"
+    "cypress": "^3.8.3"
   },
   "devDependencies": {
     "eslint": "^6.8.0",

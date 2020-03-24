@@ -12,3 +12,4 @@ Cypress.Commands.add("apiCreateCamera", (cameraName, group) => {
 
   cy.request('POST', devicesUrl, data);
 });
+

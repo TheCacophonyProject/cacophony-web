@@ -8,6 +8,9 @@ script:
 # Create fake thermal camera server
 - git clone "https://github.com/TheCacophonyProject/fake-thermal-camera"
 - git clone "https://github.com/TheCacophonyProject/device-register"
+- git clone "https://github.com/TheCacophonyProject/thermal-recorder"
+- git clone "https://github.com/TheCacophonyProject/thermal-uploader"
+
 - cd fake-thermal-camera
 - ./run --background
 - ./wait-for-camera-server
