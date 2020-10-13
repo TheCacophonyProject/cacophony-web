@@ -15,6 +15,7 @@ function initializeTestNames(uniqueId = "") {
     }
     Cypress.config(uniqueIdName, uniqueId);
     Cypress.config("apiClients", {});
+    Cypress.config("devices", {});
   }
 }
 

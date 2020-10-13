@@ -53,6 +53,10 @@ function getUserInfo(username) {
   return Cypress.config("apiClients")[username];
 }
 
+function getCameraInfo(cameraName) {
+  return Cypress.config("devices")[cameraName];
+}
+
 function saveUserInfo(response, username)  {
   Cypress.config("apiClients")[username] = {
     jwt : response.body.token,
@@ -62,3 +66,35 @@ function saveUserInfo(response, username)  {
     }
   };
 }
+
+Cypress.Commands.add("apiCheckEventUploaded", (username, deviceName, eventType) => {
+  const user = getUserInfo(username);
+  const camera = getCameraInfo(deviceName);
+  const eventURL = Cypress.config('cacophony-api-server') + '/api/v1/events?deviceId='+camera.id;
+  cy.request({
+    method: "GET",
+    url: eventURL,
+    headers: user.headers
+  }).then((request) => {
+    expect(request.body.rows[0].EventDetail.type).to.equal(eventType);
+  });
+});
+
+Cypress.Commands.add("apiCheckDeviceHasRecording", (username, deviceName) => {
+  const user = getUserInfo(username);
+  const camera = getCameraInfo(deviceName);
+  const fullUrl = Cypress.config('cacophony-api-server') + "/" + url.format({
+    pathname: 'api/v1/recordings',
+    query: {
+      'where': "{\"DeviceId\":"+camera.id+"}"
+    },
+    headers: user.headers
+  });
+
+  cy.request({
+    url: fullUrl,
+    headers: user.headers
+  }).then((request) => {
+    expect(request.body.count).to.equal(1);
+  });
+});
