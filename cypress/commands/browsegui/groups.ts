@@ -1,7 +1,8 @@
-const names = require("../names");
+//const names = require("../names");
+import { getTestName } from "../names";
 
 Cypress.Commands.add("createGroup", (group) => {
-  const fullGroupName = names.getTestName(group);
+  const fullGroupName = getTestName(group);
 
   cy.checkOnGroupPage();
   cy.contains("Your groups");
@@ -20,7 +21,7 @@ Cypress.Commands.add("checkOnGroupPage", () => {
 });
 
 Cypress.Commands.add("addUserToGroup", (userName, groupname, admin=false) => {
-  const fullUserName = names.getTestName(userName);
+  const fullUserName = getTestName(userName);
 
   goToGroupPage(groupname);
   cy.contains("Add user").click();
@@ -35,17 +36,17 @@ Cypress.Commands.add("addUserToGroup", (userName, groupname, admin=false) => {
   }
   cy.get('.modal-dialog button.btn-primary').should('have.text', 'Add').click();
 
-  cy.checkOnPage('/groups/' + names.getTestName(groupname));
+  cy.checkOnPage('/groups/' + getTestName(groupname));
 });
 
 function goToGroupPage(groupName) {
-  const fullGroupName = names.getTestName(groupName);
+  const fullGroupName = getTestName(groupName);
   cy.visit('/groups/' + fullGroupName);
   cy.get("h1").contains(fullGroupName);
 }
 
 Cypress.Commands.add('checkDeviceInGroup', (device, group) => {
   goToGroupPage(group);
-  cy.get('[data-cy="devices-table"]').should('contain', names.getTestName(device));
+  cy.get('[data-cy="devices-table"]').should('contain', getTestName(device));
 });
 

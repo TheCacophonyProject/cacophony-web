@@ -1,13 +1,14 @@
-require("url");
-const names = require("../names");
+//require("url");
+//const names = require("../names");
+import { getTestName } from "../names";
 
 const userMenu = '.dropdown.profile';
 
 Cypress.Commands.add("signInAs", (username) => {
-  const fullName = names.getTestName(username);
+  const fullName = getTestName(username);
   const password = 'p' + fullName;
 
-  cy.visit('');
+  cy.visit('/');
   cy.get("[placeholder='Username or Email Address']").type(fullName);
   cy.get("[placeholder='Password']").type(password);
   cy.contains("Sign in").click();
@@ -18,7 +19,7 @@ Cypress.Commands.add("signInAs", (username) => {
 });
 
 Cypress.Commands.add("registerNewUserAs", (username) => {
-  const fullName = names.getTestName(username);
+  const fullName = getTestName(username);
   const password = 'p' + fullName;
 
   cy.visit('');

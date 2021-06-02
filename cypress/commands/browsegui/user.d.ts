@@ -1,0 +1,26 @@
+// load the global Cypress types
+/// <reference types="cypress" />
+
+declare namespace Cypress {
+  interface Chainable {
+    /**
+     * Browser: Sign in using username and derived password
+     */
+    signInAs(userName: string): Chainable<Element>;
+
+    /**
+     * Browser: Register new user using supplied name & derived credentials
+     */
+    registerNewUserAs(userName: string): Chainable<Element>;
+
+    /**
+     * Browser: Register or sign in depending on whether cacophony-api-server has been set
+     */
+    onBeforeSignInAsOrRegister(userName: string): Chainable<Element>;
+
+    /**
+     * Browser: logout current user
+     */
+    logout(): Chainable<Element>;
+  }
+}

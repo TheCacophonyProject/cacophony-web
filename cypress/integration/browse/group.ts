@@ -1,4 +1,8 @@
-const names = require("../../commands/names");
+/// <reference path="../../support/index.d.ts" />
+
+//const names = require("../../commands/names");
+import { getTestName } from "../../commands/names";
+
 
 describe('Group Admin Pages', () => {
 
@@ -36,7 +40,7 @@ describe('Group Admin Pages', () => {
     ffcreated = true;
 
     // check what page looks like after groups are added
-    cy.get("h1").contains(names.getTestName(FriendsForever));
+    cy.get("h1").contains(getTestName(FriendsForever));
     cy.contains("Manage the users associated with this group and view ").should('be.visible');
 
     // check self is admin
@@ -53,7 +57,7 @@ describe('Group Admin Pages', () => {
     cy.contains('Create group').should('be.visible');
 
     // test navigation to group page
-    cy.get('[data-cy="groups-list"]').contains(names.getTestName(FriendsForever)).click();
+    cy.get('[data-cy="groups-list"]').contains(getTestName(FriendsForever)).click();
 
     cy.checkOnPage(getGroupPageUrl(FriendsForever));
     cy.get('h1').should('contain', FriendsForever);
@@ -115,7 +119,7 @@ describe('Group Admin Pages', () => {
   }
 
   function getGroupPageUrl(groupname) {
-    return '/groups/' + names.getTestName(groupname);
+    return '/groups/' + getTestName(groupname);
   }
 
   function ensureFriendsForeverGroupExists() {

@@ -1,5 +1,6 @@
 {
   "projectId": "dyez6t",
+  "integrationFolder": "cypress/performance",
   "env" : {
     "cacophony-api-server": "http://localhost:1080", 
     "testCreds" : {}
