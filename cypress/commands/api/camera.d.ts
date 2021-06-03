@@ -33,5 +33,12 @@ declare namespace Cypress {
       group: string,
       makeCameraNameTestName?: boolean
     ): Chainable<Element>;
+
+    /**
+     * upload a file from a camera. Recording_name is the path to the raw cptv file
+     *
+     */
+    Cypress.Commands.add("apiUploadRecording", (cameraName, recording_name) => {
+
   }
 }

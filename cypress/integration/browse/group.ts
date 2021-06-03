@@ -89,6 +89,7 @@ describe('Group Admin Pages', () => {
     cy.addUserToGroup(GoodFriend, FriendsForever, Admin);
     cy.addUserToGroup(Friend, FriendsForever);
 
+    cy.wait(2000);
     // wait until the table is updated
     cy.get(usersTable).contains(Friend);
 

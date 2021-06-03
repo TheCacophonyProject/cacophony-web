@@ -7,8 +7,8 @@ describe("Device names", () => {
   const KEEP_DEVICE_NAME = false;
 
   before(() => {
-    cy.apiCreateUserGroupAndCamera("Anna", camsGroup, "gotya");
-    cy.apiCreateGroup("Anna", otherCams, true);
+    cy.apiCreateUserGroupAndCamera("Anita", camsGroup, "gotya");
+    cy.apiCreateGroup("Anita", otherCams, true);
   });
 
   it("group can have multiple devices with a different names", () => {

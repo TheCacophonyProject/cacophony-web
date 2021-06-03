@@ -104,4 +104,34 @@ function expectRequestHasFailed(response) {
   ).to.be.false;
 }
 
+export const uploadFileRequest = (fileToUpload, uniqueName, aliasName, uploadUrl, fileData, credentials) => {
+  const data = new FormData();
+
+  data.append("data", '{"type":"thermalRaw"}');
+//  data.append("hasHeader", "true");
+ // data.append("name", uniqueName);
+
+  cy.server()
+    .route({
+      method: "POST",
+      url: uploadUrl
+    })
+    .as(aliasName)
+    .window()
+    .then((win) => {
+      cy.fixture(fileToUpload, "binary")
+        .then((binary) => Cypress.Blob.binaryStringToBlob(binary))
+        .then((blob) => {
+          const xhr = new win.XMLHttpRequest();
+
+          data.set("file", blob, fileToUpload);
+
+          xhr.open("POST", uploadUrl);
+
+          xhr.setRequestHeader("Authorization", credentials.headers.authorization),
+
+          xhr.send(data);
+        });
+    });
+};
 type IsoFormattedDateString = string;

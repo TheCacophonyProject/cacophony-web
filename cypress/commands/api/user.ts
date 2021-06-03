@@ -160,14 +160,10 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add("apiCheckUserCanSeeGroup", (username, groupname) => {
-  const user = getUserInfo(username);
-  const fullGroupname = names.getTestName(groupname);
-  const fullUrl = Cypress.config('cacophony-api-server') + "/" + url.format({
-    pathname: 'api/v1/groups',
-    query: {
-      'where': "{}"
-    }
-  });
+  const user = getCreds(username);
+  const fullGroupname = getTestName(groupname);
+  const fullUrl = v1ApiPath('')+encodeURI('groups?where={}');
+
 
   cy.request({
     url: fullUrl,
