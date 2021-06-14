@@ -1,4 +1,4 @@
-/// <reference path="../../support/index.d.ts" />
+/// <reference path="../../../support/index.d.ts" />
 
 describe("Visits : tracks and tags", () => {
     const Dee = "Donna_visits";

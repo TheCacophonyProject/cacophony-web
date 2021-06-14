@@ -3,6 +3,7 @@
 
 import "../commands/api/user";
 import "../commands/api/camera";
+import "../commands/api/alerts";
 import "../commands/api/events";
 import "../commands/api/recording";
 import "../commands/api/recordings";

@@ -1,6 +1,8 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
+export const AuthorizationError=402
+
 import { format as urlFormat } from "url";
 
 
@@ -71,6 +73,19 @@ export function saveCreds(response: Cypress.Response, name: string, id = 0) {
   Cypress.env("testCreds")[name] = creds;
 }
 
+export function makeAuthorizedRequestWithStatus( requestDetails: Partial<Cypress.RequestOptions>,
+  credName: string, statusCode: integer
+): Cypress.Chainable<Cypress.Response> {
+  if(statusCode && statusCode>200) {
+    // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
+    requestDetails.failOnStatusCode = false;
+    return makeAuthorizedRequest(requestDetails, credName).then(expectRequestHasFailed);
+  } else {
+    requestDetails.failOnStatusCode = true;
+    return makeAuthorizedRequest(requestDetails, credName);
+  }
+}
+
 export function checkAuthorizedRequestFails(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string
@@ -102,6 +117,7 @@ function expectRequestHasFailed(response) {
     response.isOkStatusCode,
     "Request should return a failure status code."
   ).to.be.false;
+  return response;
 }
 
 export const uploadFileRequest = (fileToUpload, uniqueName, aliasName, uploadUrl, fileData, credentials) => {
@@ -135,3 +151,9 @@ export const uploadFileRequest = (fileToUpload, uniqueName, aliasName, uploadUrl
     });
 };
 type IsoFormattedDateString = string;
+
+export function checkResponse (response: Cypress.Response, code: integer) {
+  expect(response.status, 'Expected specified status code').to.eq(code);
+  return(response);
+}
+
