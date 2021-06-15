@@ -74,7 +74,7 @@ export function saveCreds(response: Cypress.Response, name: string, id = 0) {
 }
 
 export function makeAuthorizedRequestWithStatus( requestDetails: Partial<Cypress.RequestOptions>,
-  credName: string, statusCode: integer
+  credName: string, statusCode: number
 ): Cypress.Chainable<Cypress.Response> {
   if(statusCode && statusCode>200) {
     // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
@@ -152,7 +152,7 @@ export const uploadFileRequest = (fileToUpload, uniqueName, aliasName, uploadUrl
 };
 type IsoFormattedDateString = string;
 
-export function checkResponse (response: Cypress.Response, code: integer) {
+export function checkResponse (response: Cypress.Response, code: number) {
   expect(response.status, 'Expected specified status code').to.eq(code);
   return(response);
 }

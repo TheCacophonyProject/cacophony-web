@@ -10,17 +10,17 @@ export const EventTypes = {
 };
 
 interface ComparableEvent {
-  id: integer,
+  id: number,
   dateTime: string,
   createdat: string,
-  DeviceId: integer,
+  DeviceId: number,
   EventDetail: {
 	  type: string,
 	  details: {
-		  recId: integer,
-		  alertId: integer,
+		  recId: number,
+		  alertId: number,
 		  success: boolean,
-		  trackId: integer
+		  trackId: number
 	  }
   },
   Device: {
@@ -47,7 +47,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiCheckEvents",
-  (user: string, camera: string, eventName: string, eventNumber: integer = 1) => {
+  (user: string, camera: string, eventName: string, eventNumber: number = 1) => {
     logTestDescription(
       `Check events for ${camera} `,
       {
@@ -91,7 +91,7 @@ function checkEvents(
   user: string,
   camera: string,
   eventName: string,
-  eventNumber: integer
+  eventNumber: number
 ) {
   const params = {
     deviceID: getCreds(camera).id
@@ -108,7 +108,7 @@ function checkEvents(
 function checkEventMatches(
   response: Cypress.Response,
   eventName: string,
-  eventNumber: integer
+  eventNumber: number
 ) {
   const expectedEvent=getExpectedEvent(eventName);
   expect(response.body.rows.length, `Expected ${eventNumber} event(s)`).to.eq(eventNumber);

@@ -39,14 +39,14 @@ describe("Devices alerts", () => {
     cy.apiAddAlert(user,alertName,bad_conditions,camera,null,BadRequest).then((response) => {checkResponse(response,BadRequest)});
   });
 
-  it("Can create alert and has no alerts by default", () => {
+  it("Can create alert and has no events by default", () => {
     // create alert
-    cy.apiAddAlert(user,alertName,conditions,camera,10,200).then((response)=> {
+    cy.apiAddAlert(user,alertName,conditions,camera,0,200).then((response)=> {
 
     // crete an example alert to compare against
     cy.createExpectedAlert("emptyAlert",{"id": getCreds(alertName).id,
         "name": "alert1",
-        "frequencySeconds": 10,
+        "frequencySeconds": 0,
         "conditions": [{"tag":"possum","automatic":true}],
         "lastAlert":false,
         "User":{"id":getCreds(user).id, "username":getTestName(getCreds(user).name), "email":getTestName(getCreds(user).name)+"@api.created.com"},
@@ -61,7 +61,7 @@ describe("Devices alerts", () => {
     //expected alert to compare against 
     cy.createExpectedAlert("alert1",{"id": getCreds(alertName).id,
     "name": "alert1",
-    "frequencySeconds": 10,
+    "frequencySeconds": 0,
     "conditions": [{"tag":"possum","automatic":true}],
     "lastAlert":true,
     "User":{"id":getCreds(user).id, "username":getTestName(getCreds(user).name), "email":getTestName(getCreds(user).name)+"@api.created.com"},

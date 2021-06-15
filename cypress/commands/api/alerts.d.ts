@@ -8,7 +8,7 @@ declare namespace Cypress {
      /**
      * Create an alert for a device. Optioanlly expect to fail with code: failCode
      */
-    apiAddAlert(user: string, alertName: string, tag: string, device: string, automatic: boolean, frequency: integer, failCode: integer): Chainable<Element>;
+    apiAddAlert(user: string, alertName: string, tag: string, device: string, automatic: boolean, frequency: number, failCode: number): Chainable<Element>;
 
      /**
      * Read alewrts for a device

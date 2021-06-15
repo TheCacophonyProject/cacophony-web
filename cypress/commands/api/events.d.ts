@@ -23,7 +23,7 @@ declare namespace Cypress {
       user: string,
       camera: string,
       eventName: string,
-      eventNumber: integer
+      eventNumber: number
     ): Chainable<Element>;
   }
 }

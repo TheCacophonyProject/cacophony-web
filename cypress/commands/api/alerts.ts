@@ -4,25 +4,25 @@ import { v1ApiPath, getCreds, saveIdOnly, makeAuthorizedRequest,makeAuthorizedRe
 import { logTestDescription, prettyLog } from "../descriptions";
 
 interface ComparableAlert {
-  id: integer,
+  id: number,
   name: string,
-  frequencySeconds: integer,
+  frequencySeconds: number,
   conditions: [{tag: string, automatic: boolean}],
   lastAlert: boolean,
   User: {
-	   id: integer,
+	   id: number,
 	   username: string,
 	   email: string
   },
   Device: {
-	  id: integer,
+	  id: number,
 	  devicename: string
   }
 };
 
 Cypress.Commands.add(
   "apiAddAlert",
-  (user: string, alertName: string, conditions: string, device: string, frequency: integer, failCode)=> {
+  (user: string, alertName: string, conditions: string, device: string, frequency: number=null, failCode)=> {
     apiAlertsPost(user,alertName,conditions,device,frequency,failCode);
   }
 );
@@ -49,8 +49,8 @@ function apiAlertsPost(
   alertName: string,
   conditions: string,
   device: string,
-  frequency: integer,
-  testFailure: ineteger
+  frequency: number,
+  testFailure: number
 ) {
   const deviceId = getCreds(device).id;
   const alert_json = {
@@ -59,7 +59,7 @@ function apiAlertsPost(
            deviceId: deviceId
         };
 
-  if(frequency) {
+  if(frequency!=null) {
 	  alert_json["frequencySeconds"]=frequency;
   };
 
