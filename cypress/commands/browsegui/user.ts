@@ -1,13 +1,12 @@
-require("url");
-const names = require("../names");
+import { getTestName } from "../names";
 
 const userMenu = '.dropdown.profile';
 
 Cypress.Commands.add("signInAs", (username) => {
-  const fullName = names.getTestName(username);
+  const fullName = getTestName(username);
   const password = 'p' + fullName;
 
-  cy.visit('');
+  cy.visit('/');
   cy.get("[placeholder='Username or Email Address']").type(fullName);
   cy.get("[placeholder='Password']").type(password);
   cy.contains("Sign in").click();
@@ -18,7 +17,7 @@ Cypress.Commands.add("signInAs", (username) => {
 });
 
 Cypress.Commands.add("registerNewUserAs", (username) => {
-  const fullName = names.getTestName(username);
+  const fullName = getTestName(username);
   const password = 'p' + fullName;
 
   cy.visit('');
@@ -32,16 +31,6 @@ Cypress.Commands.add("registerNewUserAs", (username) => {
   cy.location({timeout: 60000}).should((location) => {expect(location.pathname).to.equal('/');});
 
   cy.get('.dropdown.profile').should('contain', fullName);
-});
-
-Cypress.Commands.add("onBeforeSignInAsOrRegister", (username) => {
-  if (typeof Cypress.config('cacophony-api-server') === 'undefined') {
-    // first time for test.   Need to register user
-    cy.registerNewUserAs(username);
-  }
-  else {
-    cy.signInAs(username);
-  }
 });
 
 Cypress.Commands.add('logout', () => {

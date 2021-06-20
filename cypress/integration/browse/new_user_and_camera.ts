@@ -1,4 +1,4 @@
-context('New User', () => {
+context('Users can see footage from their cameras', () => {
   const username = "integration";
   const group = 'int-test';
   const camera = 'int-test';
@@ -9,18 +9,17 @@ context('New User', () => {
     cy.createGroup(group);
 
     // create a camera in the group
-    cy.createCamera(camera, group);
+    cy.apiCreateCamera(camera, group);
 
     // check that user can see camera
-    cy.visit('devices');
-    cy.contains(camera);
+    cy.checkDeviceInGroup(camera,group)
   });
 
 
   it('A camera event can be triggered', () => {
     const eventType = "throttle";
     cy.apiSignInAs(username);
-    cy.cameraEvent(eventType);
+    cy.apiUploadEvent(camera);
     // for event-uploader to upload
     cy.wait(3 * 1000);
     cy.apiCheckEventUploaded(username,camera, eventType);
@@ -28,9 +27,9 @@ context('New User', () => {
 
   it('A camera can trigger and upload a new recording', () => {
     cy.apiSignInAs(username);
-    cy.cameraRecording();
-    // for video to be uploaded
+    cy.apiUploadRecording(camera,1);
+  // for video to be uploaded
     cy.wait(3 * 1000);
-    cy.apiCheckDeviceHasRecording(username,camera);
+    cy.apiCheckDeviceHasRecordings(username,camera,1);
   });
 });
