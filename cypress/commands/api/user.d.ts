@@ -6,12 +6,12 @@ declare namespace Cypress {
     /**
      * create user and save api credentials further use
      */
-    apiCreateUser(userName: string, log?: boolean): Chainable<Element>;
+    apiCreateUser(userName: string, log?: boolean);
 
     /**
      * user sign in and stored with api credentials for further in the test
      */
-    apiSignInAs(userName: string): Chainable<Element>;
+    apiSignInAs(userName: string);
 
     /**
      * create a group for the given user (who has already been referenced in the test
@@ -20,7 +20,7 @@ declare namespace Cypress {
       userName: string,
       groupName: string,
       log?: boolean
-    ): Chainable<Element>;
+    );
 
     /**
      * create user group and camera at the same time
@@ -29,18 +29,18 @@ declare namespace Cypress {
       userName: string,
       group: string,
       camera: string
-    ): Chainable<Element>;
+    );
 
     /**
      * create user group and camera at the same time
      */
-    apiCreateUserGroup(userName: string, group: string): Chainable<Element>;
+    apiCreateUserGroup(userName: string, group: string);
 
 
     /**
      * create user group and camera at the same time
      */
-    apiCreateGroupAndCameras(userName: string, group: string, ...cameras : string[] ): Chainable<Element>;
+    apiCreateGroupAndCameras(userName: string, group: string, ...cameras : string[] );
 
     apiAddUserToGroup(
       groupAdminUser: string,
@@ -48,7 +48,7 @@ declare namespace Cypress {
       groupName: string,
       admin?: boolean,
       log?: boolean
-    ): Chainable<Element>;
+    );
 
     /**
      * Add a user to a device
@@ -57,6 +57,8 @@ declare namespace Cypress {
       deviceAdminUser: string,
       user: string,
       device: string
-    ): Chainable<Element>;
+    );
+
+    apiCheckUserCanSeeGroup(username: string, groupname:string);
   }
 }

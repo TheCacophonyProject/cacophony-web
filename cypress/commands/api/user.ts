@@ -23,7 +23,8 @@ Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
   const data = {
     username: fullName,
     password: password,
-    email: fullName + "@api.created.com"
+    email: fullName + "@api.created.com", 
+    endUserAgreement: 3
   };
 
   cy.request("POST", usersUrl, data).then((response) => {

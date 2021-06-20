@@ -1,4 +1,4 @@
-context('New User', () => {
+context('Users can see footage from their cameras', () => {
   const username = "integration";
   const group = 'int-test';
   const camera = 'int-test';

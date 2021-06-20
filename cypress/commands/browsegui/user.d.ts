@@ -14,11 +14,6 @@ declare namespace Cypress {
     registerNewUserAs(userName: string): Chainable<Element>;
 
     /**
-     * Browser: Register or sign in depending on whether cacophony-api-server has been set
-     */
-    onBeforeSignInAsOrRegister(userName: string): Chainable<Element>;
-
-    /**
      * Browser: logout current user
      */
     logout(): Chainable<Element>;
