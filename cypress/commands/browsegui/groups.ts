@@ -1,4 +1,3 @@
-//const names = require("../names");
 import { getTestName } from "../names";
 
 Cypress.Commands.add("createGroup", (group) => {

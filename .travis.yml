@@ -1,22 +1,24 @@
 language: node_js
+os: linux
 node_js:
-- 8.12.0
+  - "lts/*"
 
 script:
 - npm run lint
-- cp cypress.json.TEMPLATE cypress.json
+- cp cypress.json.test cypress.json
 # Create fake thermal camera server
-- git clone "https://github.com/TheCacophonyProject/fake-thermal-camera"
-- git clone "https://github.com/TheCacophonyProject/device-register"
-- git clone "https://github.com/TheCacophonyProject/thermal-recorder"
-- git clone "https://github.com/TheCacophonyProject/thermal-uploader"
-- git clone "https://github.com/TheCacophonyProject/event-reporter"
-- git clone "https://github.com/TheCacophonyProject/management-interface"
+# - git clone "https://github.com/TheCacophonyProject/fake-thermal-camera"
+# - git clone "https://github.com/TheCacophonyProject/device-register"
+# - git clone "https://github.com/TheCacophonyProject/thermal-recorder"
+# - git clone "https://github.com/TheCacophonyProject/thermal-uploader"
+# - git clone "https://github.com/TheCacophonyProject/event-reporter"
+# - git clone "https://github.com/TheCacophonyProject/management-interface"
+# - cd fake-thermal-camera
+# - ./run --background
+# - ./wait-for-camera-server
+# - cd ..
 
-- cd fake-thermal-camera
-- ./run --background
-- ./wait-for-camera-server
 # Run tests
-- cd ..
 - npm run release
-- docker logs cacophony-fake-thermal-camera
+
+# - docker logs cacophony-fake-thermal-camera

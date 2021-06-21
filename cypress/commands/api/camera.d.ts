@@ -12,7 +12,7 @@ declare namespace Cypress {
       details?: any,
       date?: Date,
       log?: boolean
-    ): Chainable<Element>;
+    );
 
     /**
      * create a group for the given user (who has already been referenced in the test
@@ -21,7 +21,7 @@ declare namespace Cypress {
       cameraName: string,
       group: string,
       log?: boolean
-    ): Chainable<Element>;
+    );
 
     /**
      * use to test when a camera should not be able to be created.
@@ -32,13 +32,12 @@ declare namespace Cypress {
       cameraName: string,
       group: string,
       makeCameraNameTestName?: boolean
-    ): Chainable<Element>;
+    );
 
     /**
      * upload a file from a camera. Recording_name is the path to the raw cptv file
      *
      */
-    Cypress.Commands.add("apiUploadRecording", (cameraName, recording_name) => {
-
+    apiUploadRecording(cameraName: string, recording_name: string);
   }
 }

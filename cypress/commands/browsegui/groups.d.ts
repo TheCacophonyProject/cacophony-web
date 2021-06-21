@@ -16,7 +16,7 @@ declare namespace Cypress {
     /**
      * Browser: Add user to group optioanlly as an admin
      */
-    addUserToGroup(userName: string, groupname: string, admin: boolean): Chainable<Element>;
+    addUserToGroup(userName: string, groupname: string, admin?: boolean): Chainable<Element>;
 
     /**
      * Browser: Navigate to specific group page

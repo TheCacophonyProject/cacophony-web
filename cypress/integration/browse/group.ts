@@ -17,6 +17,7 @@ describe('Group Admin Pages', () => {
 
   before(() => {
     cy.apiCreateUser(Anna);
+    cy.visit('/');
   });
 
   beforeEach(() => {

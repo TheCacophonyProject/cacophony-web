@@ -1,0 +1,8 @@
+{
+  "projectId": "dyez6t",
+  "baseUrl": "https://browse-test.cacophony.org.nz",
+  "env" : {
+    "cacophony-api-server": "https://api-test.cacophony.org.nz", 
+    "testCreds" : {}
+  }
+}
