@@ -3,7 +3,8 @@
 Project | integration-tests
 ---|--- |
 Platform | Ubuntu (Linux) |
-Requires | A running [`cacophony-api`](https://github.com/TheCacophonyProject/cacophony-api) server </br> A running [`cacophony-browse`](https://github.com/TheCacophonyProject/cacophony-browse) server Build (Test) Status | [![Build Status](https://api.travis-ci.com/TheCacophonyProject/integration-tests.svg?branch=master)](https://travis-ci.com/TheCacophonyProject/integration-tests) |
+Requires | A running [`cacophony-api`](https://github.com/TheCacophonyProject/cacophony-api) server </br> A running [`cacophony-browse`](https://github.com/TheCacophonyProject/cacophony-browse) server 
+Build (Test) Status | [![Build Status](https://api.travis-ci.com/TheCacophonyProject/integration-tests.svg?branch=master)](https://travis-ci.com/TheCacophonyProject/integration-tests) |
 Full test | [Cypress test results](https://dashboard.cypress.io/projects/dyez6t/runs)|
 Licence | GNU General Public License v3.0 |
 
@@ -33,7 +34,7 @@ Before you write your own tests please read the following:
 [Test architecture](/test-cypress/architecture.md)
 
 ## Test with the fake-thermal-camera.   
-Some of these tests used the fake thermal camera to check videos would record and upload.   It would be good to get this working in the future. 
+Some of these tests used to exercise the fake thermal camera to check videos would record and upload.   It would be good to get this working in the future. 
 
 ## Lint
 Before committing changes run eslint to check style
