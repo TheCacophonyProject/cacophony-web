@@ -59,6 +59,13 @@ declare namespace Cypress {
       device: string
     );
 
-    apiCheckUserCanSeeGroup(username: string, groupname:string);
+
+    /**
+     * Verify that user can see a group
+     * Optionally verify they can't see the group (set testForSuccess=false)
+     */
+     apiCheckUserCanSeeGroup(username: string, groupname: string, testForSuccess: boolean): Chainable<Element>;
+
+
   }
 }

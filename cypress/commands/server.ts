@@ -113,7 +113,7 @@ export function makeAuthorizedRequest(
   return cy.request(requestDetails);
 }
 
-function expectRequestHasFailed(response) {
+export function expectRequestHasFailed(response) {
   expect(
     response.isOkStatusCode,
     "Request should return a failure status code."

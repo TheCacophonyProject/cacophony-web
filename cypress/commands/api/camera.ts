@@ -5,7 +5,8 @@ import {
   getCreds,
   uploadFileRequest,
   checkRequestFails,
-  makeAuthorizedRequest
+  makeAuthorizedRequest,
+  makeAuthorizedRequestWithStatus
 } from "../server";
 import { logTestDescription } from "../descriptions";
 const url = require("url");
@@ -103,6 +104,67 @@ function createCameraDetails(
     body: data
   };
 }
+
+Cypress.Commands.add("apiCheckDevices", (userName: string, expectedDevices: [ComparableDevice], statusCode: number = 200) => {
+  const fullUrl = v1ApiPath('devices');
+
+  makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: fullUrl,
+        body: null
+      },
+      userName,
+      statusCode
+    ).then((response)=>{
+       if(statusCode==null || statusCode==200) {
+	  var devices=response.body.devices.rows;
+          expect(response.body.devices.count).to.equal(expectedDevices.length);
+          expect(devices.length).to.equal(expectedDevices.length);
+	  var dev_count;
+	  var user_count;
+          for (dev_count=0; dev_count < expectedDevices.length; dev_count++) {
+  	    expect(devices[dev_count].id).to.equal(expectedDevices[dev_count].id);
+    	    expect(devices[dev_count].devicename).to.equal(expectedDevices[dev_count].devicename);
+//	    expect(devices[dev_count].groupName).to.equal(expectedDevices[dev_count].groupName);
+//            expect(devices[dev_count].userIsAdmin).to.equal(expectedDevices[dev_count].userIsAdmin);
+            expect(devices[dev_count].Users.length).to.equal(expectedDevices[dev_count].Users.length);
+            for (user_count=0; user_count < expectedDevices[dev_count].Users.length; user_count++) {
+  		  expect(devices[dev_count].Users[user_count]).to.equal(expectedDevices[dev_count].Users[user_count]);
+  	    }
+	  }
+       };
+  });
+});
+
+Cypress.Commands.add("apiCheckDevice", (userName: string, cameraName: string, groupName: string, expectedDevice: ComparableDevice, statusCode: number = 200) => {
+  const fullUrl = v1ApiPath('devices/'+getTestName(cameraName)+'/in-group/'+getTestName(groupName));
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: fullUrl,
+        body: null
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+       if(statusCode==null || statusCode==200) {
+	  var device=response.body.device;
+	  expect(device.id).to.equal(getCreds(cameraName).id);
+	  expect(device.deviceName).to.equal(getTestName(cameraName));
+	  expect(device.groupName).to.equal(getTestName(groupName));
+          expect(device.userIsAdmin).to.equal(expectedDevice.userIsAdmin);
+          expect(device.users.length).to.equal(expectedDevice.users.length);
+	  var count;
+          for (count=0; count < expectedDevice.users.length; count++) {
+		  expect(device.users[count]).to.equal(expectedDevice.users[count]);
+	  }
+       };
+  });
+});
+
+
 
 Cypress.Commands.add("apiUploadRecording", (cameraName, id) => {
   const recordingsUrl = v1ApiPath('recordings');

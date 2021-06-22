@@ -32,22 +32,6 @@ Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
   });
 });
 
-Cypress.Commands.add("apiSignInAs", (userName: string) => {
-  const usersUrl = apiPath() + "/authenticate_user";
-
-  const fullName = getTestName(userName);
-  const password = "p" + fullName;
-
-  const data = {
-    username: fullName,
-    password: password
-  };
-
-  cy.request("POST", usersUrl, data).then((response) => {
-    saveCreds(response, userName);
-  });
-});
-
 Cypress.Commands.add(
   "apiCreateGroup",
   (userName: string, group: string, log = true) => {
@@ -160,7 +144,7 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add("apiCheckUserCanSeeGroup", (username, groupname) => {
+Cypress.Commands.add("apiCheckUserCanSeeGroup", (username: string, groupname: string, testForSuccess: boolean = true) => {
   const user = getCreds(username);
   const fullGroupname = getTestName(groupname);
   const fullUrl = v1ApiPath('')+encodeURI('groups?where={}');
@@ -171,7 +155,11 @@ Cypress.Commands.add("apiCheckUserCanSeeGroup", (username, groupname) => {
     headers: user.headers
   }).then((request) => {
     const allGroupNames = Object.keys(request.body.groups).map(key => request.body.groups[key].groupname);
-    expect(allGroupNames).to.contain(fullGroupname);
+    if (testForSuccess==true) {
+      expect(allGroupNames).to.contain(fullGroupname);
+    } else {
+      expect(allGroupNames).not.to.contain(fullGroupname);
+    }
   });
 });
 

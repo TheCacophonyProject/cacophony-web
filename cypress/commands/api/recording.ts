@@ -72,7 +72,6 @@ Cypress.Commands.add(
       { camera: cameraName, requestData: data },
       log
     );
-
     const fileName = "invalid.cptv";
     const deviceId = getCreds(cameraName).id;
     const url = v1ApiPath("recordings/device/"+deviceId);

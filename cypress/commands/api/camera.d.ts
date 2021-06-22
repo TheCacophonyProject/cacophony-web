@@ -35,6 +35,13 @@ declare namespace Cypress {
     );
 
     /**
+    * Retrieve device details using name and groupname
+    * compare with expected device details (JSON equivalent to that retunred by API)
+    * optioanlly check for a non-200 status code
+    */
+    apiCheckDevice(userName: string, cameraName: string, groupName: string, expectedDevice: ComparableDevice, statusCode: number): Chainable<Element>;
+
+    /**
      * upload a file from a camera. Recording_name is the path to the raw cptv file
      *
      */
