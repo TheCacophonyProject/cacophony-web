@@ -2,6 +2,8 @@
 /// <reference types="cypress" />
 import { v1ApiPath, getCreds, makeAuthorizedRequest } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
+import { getExpectedAlert } from "./alerts";
+import { getTestName, getUniq } from "../names";
 
 export const EventTypes = {
   POWERED_ON: "rpi-power-on",
@@ -49,23 +51,38 @@ Cypress.Commands.add(
   "apiCheckEvents",
   (user: string, camera: string, eventName: string, eventNumber: number = 1) => {
     logTestDescription(
-      `Check events for ${camera} `,
+      `Check for expected event ${getUniq(eventName)} for ${camera} `,
       {
         user,
         camera,
-        eventName,
 	eventNumber
       }
     );
 
-    checkEvents(user, camera, eventName, eventNumber);
+    checkEvents(user, camera, getUniq(eventName), eventNumber);
   }
 );
 
 Cypress.Commands.add(
    "createExpectedEvent",
-   (name: string, expectedEvent: ComparableEvent)=> {
-     Cypress.env("testCreds")[name] = expectedEvent;
+   (name: string, user: string, device: sting, recording: string, alertName: string)=> {
+    logTestDescription(
+      `Create expected event ${getUniq(name)} for ${getUniq(alertName)} `,
+      {
+        user,
+        name,
+        getUniq(alertName)
+      }
+    );
+     const expectedEvent={
+      "id":1,
+      "dateTime":"2021-05-19T01:39:41.376Z",
+      "createdAt":"2021-05-19T01:39:41.771Z",
+      "DeviceId":getCreds(device).id,
+      "EventDetail": {"type":"alert", "details":{"recId":getCreds(recording).id, "alertId":getCreds(getUniq(alertName)).id, "success":true, "trackId":1}},
+      "Device":{"devicename":getTestName(getCreds(device).name)}
+   };
+     Cypress.env("testCreds")[getUniq(name)] = expectedEvent;
    }
 );
 
@@ -112,37 +129,39 @@ function checkEventMatches(
 ) {
   const expectedEvent=getExpectedEvent(eventName);
   expect(response.body.rows.length, `Expected ${eventNumber} event(s)`).to.eq(eventNumber);
-  const event = response.body.rows[eventNumber-1];
-
-  expect(
-    event.DeviceId,
-    `DeviceId should be ${expectedEvent.DeviceId}`
-  ).to.eq(expectedEvent.DeviceId);
-  expect(
-    event.Device.devicename,
-    `devicename should be ${expectedEvent.Device.devicename}`
-  ).to.eq(expectedEvent.Device.devicename);
-  expect(
-    event.EventDetail.type,
-    `Type should be ${expectedEvent.EventDetail.type}`
-  ).to.eq(expectedEvent.EventDetail.type);
-  expect(
-    event.EventDetail.details.recId,
-    `Recid should be ${expectedEvent.EventDetail.details.recId}`
-  ).to.eq(expectedEvent.EventDetail.details.recId);
-  expect(
-    event.EventDetail.details.alertId,
+  if(eventNumber>0) {
+    const event = response.body.rows[eventNumber-1];
+  
+    expect(
+      event.DeviceId,
+      `DeviceId should be ${expectedEvent.DeviceId}`
+    ).to.eq(expectedEvent.DeviceId);
+    expect(
+      event.Device.devicename,
+      `devicename should be ${expectedEvent.Device.devicename}`
+      ).to.eq(expectedEvent.Device.devicename);
+    expect(
+      event.EventDetail.type,
+      `Type should be ${expectedEvent.EventDetail.type}`
+    ).to.eq(expectedEvent.EventDetail.type);
+    expect(
+      event.EventDetail.details.recId,
+        `Recid should be ${expectedEvent.EventDetail.details.recId}`
+    ).to.eq(expectedEvent.EventDetail.details.recId);
+    expect(
+      event.EventDetail.details.alertId,
     `alertId should be ${expectedEvent.EventDetail.details.alertId}`
-  ).to.eq(expectedEvent.EventDetail.details.alertId);
-// Disabled as 'false' in test evironment.  TODO: work out why and remedy
-//  expect(
-//    event.EventDetail.details.success,
-//    `success should be ${expectedEvent.EventDetail.details.success}`
-//  ).to.eq(expectedEvent.EventDetail.details.success);
-  expect(
-    event.EventDetail.details.trackId,
-    `trackid should be present`
-  ).not.to.be.undefined
+      ).to.eq(expectedEvent.EventDetail.details.alertId);
+    // Disabled as 'false' in test evironment.  TODO: work out why and remedy
+    //  expect(
+    //    event.EventDetail.details.success,
+    //    `success should be ${expectedEvent.EventDetail.details.success}`
+    //  ).to.eq(expectedEvent.EventDetail.details.success);
+    expect(
+      event.EventDetail.details.trackId,
+      `trackid should be present`
+    ).not.to.be.undefined
+  };
 };
 
 function checkPowerEventMatches(

@@ -2,6 +2,7 @@
 /// <reference types="cypress" />
 import { v1ApiPath, getCreds, saveIdOnly, makeAuthorizedRequest,makeAuthorizedRequestWithStatus } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
+import { getTestName, getUniq } from "../names";
 
 interface ComparableAlert {
   id: number,
@@ -23,6 +24,16 @@ interface ComparableAlert {
 Cypress.Commands.add(
   "apiAddAlert",
   (user: string, alertName: string, conditions: string, device: string, frequency: number=null, failCode)=> {
+    logTestDescription(
+      `Create alert ${getUniq(alertName)} for ${device} `,
+      {
+        user,
+        device,
+        conditions,
+        frequency,
+        getUniq(alertName)
+      }
+    );
     apiAlertsPost(user,alertName,conditions,device,frequency,failCode);
   }
 );
@@ -30,16 +41,46 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "apiCheckAlert",
   (user: string, device: string, alertName: string)=> {
+    logTestDescription(
+      `Check for expected alert ${getUniq(alertName)} for ${device} `,
+      {
+        user,
+        device,
+        getUniq(alertName)
+      }
+    );
+
     apiAlertsGet(user,device).then((response) => { 
-       checkExpectedAlerts(response,alertName);	    
+       checkExpectedAlerts(response,getUniq(alertName));	    
     });
   }
 );
 
 Cypress.Commands.add(
    "createExpectedAlert",
-   (name: string, expectedAlert: ComparableAlert)=> {
-     Cypress.env("testCreds")[name] = expectedAlert;
+   (name: string, alertName: string, frequencySeconds: number, conditions: any, lastAlert: boolean, user: string, device: string)=> {
+    logTestDescription(
+      `Create expected alert ${getUniq(name)} for ${device} `,
+      {
+        user,
+        device,
+        getUniq(name)
+      }
+    );
+     //alertId will have been daved when we created the alert
+     const alertId=getCreds(getUniq(alertName)).id;
+     const expectedAlert={
+       "id": alertId ,
+       "name": name,
+       "alertName": getUniq(alertName),
+       "frequencySeconds": frequencySeconds,
+       "conditions": conditions,
+       "lastAlert":lastAlert,
+       "User":{"id":getCreds(user).id, "username":getTestName(user), "email":getTestName(user)+"@api.created.com"},
+       "Device":{"id":getCreds(device).id, "devicename":getTestName(getCreds(device).name)}
+     };
+
+     Cypress.env("testCreds")[getUniq(name)] = expectedAlert;
    }
 );
 
@@ -54,7 +95,7 @@ function apiAlertsPost(
 ) {
   const deviceId = getCreds(device).id;
   const alert_json = {
-           name: alertName,
+           name: getUniq(alertName),
            conditions: conditions,
            deviceId: deviceId
         };
@@ -74,7 +115,7 @@ function apiAlertsPost(
       testFailure
     ).then((response)=>{
        if(testFailure==null || testFailure==200) {
-         saveIdOnly(alertName, response.body.id);
+         saveIdOnly(getUniq(alertName), response.body.id);
        };
     });
 }
@@ -104,8 +145,8 @@ function checkExpectedAlerts(
 
   expect(
     thealert.name,
-    `Name should be ${expectedAlert.name}`
-  ).to.eq(expectedAlert.name);
+    `Name should be ${expectedAlert.alertName}`
+  ).to.eq(expectedAlert.alertName);
   expect(
     thealert.frequencySeconds,
     `frequencySeconds should have been ${expectedAlert.frequencySeconds}`

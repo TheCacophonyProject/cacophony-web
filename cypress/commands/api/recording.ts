@@ -68,7 +68,7 @@ Cypress.Commands.add(
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
-      `Upload recording on behalf using device ${prettyLog(details)}  to '${cameraName}'`,
+      `Upload recording on behalf using device ${prettyLog(details)}  to '${cameraName}' using '${userName}'`,
       { camera: cameraName, requestData: data },
       log
     );

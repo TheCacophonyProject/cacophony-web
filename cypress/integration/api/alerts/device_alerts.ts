@@ -1,10 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
-import moment from "moment";
-import { EventTypes } from "../../../commands/api/events";
 import { checkResponse, getCreds } from "../../../commands/server";
-import { getTestName } from "../../../commands/names";
-import { ComparableAlert, getExpectedAlert } from "../../../commands/api/alerts";
-import { ComparableEvent, getExpectedEvent } from "../../../commands/api/events";
+import { getTestName, getNewIdentity } from "../../../commands/names";
 
 const AuthorizationError = 403;
 const BadRequest = 400;
@@ -13,124 +9,192 @@ const OK = null;
 
 
 describe("Devices alerts", () => {
-  const group = "colonelGroup";
-  const user = "colonel";
-  const helper = 'frank';
-  const camera = 'camera1';
-  const conditions = [{"tag":"possum","automatic":true}];
-  const alertName = "alert1";
-  var oneAlert;
-  var emptyAlert;
-  var expectedEvent;
-  var alertId;
-  var recId;
+  const POSSUM_ALERT = [{"tag":"possum","automatic":true}];
 
-  before(() => {
-    cy.apiCreateUser(helper);
-    cy.apiCreateUserGroupAndCamera(user, group, camera);
-  });
 
-  it("Cannot create alert without access permissions", () => {
-    cy.apiAddAlert(helper,alertName,conditions,camera,null,AuthorizationError).then((response) => {checkResponse(response,AuthorizationError)});
+  it("Cannot create alert without access permissions", () => {  
+    const usera=getNewIdentity('alice');
+    const userb=getNewIdentity('bob');
+
+    cy.apiCreateUser(userb.name);
+    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+
+    //attempt to create alert for camera that is not ours
+    cy.apiAddAlert(userb.name,'alert1',POSSUM_ALERT,usera.camera,null,AuthorizationError).then((response) => {checkResponse(response,AuthorizationError)});
   });
 
   it("Cannot create alert with invalid condition", () => { 
-    const bad_conditions = [{"tag": "any", "automaticF": true}]
-    cy.apiAddAlert(user,alertName,bad_conditions,camera,null,BadRequest).then((response) => {checkResponse(response,BadRequest)});
+    const BAD_POSSUM_ALERT = [{"tag": "any", "automaticF": true}]
+    const usera=getNewIdentity('anna');
+    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+
+    //attempt to create alert with invalid data
+    cy.apiAddAlert(usera.name,'alert1',BAD_POSSUM_ALERT,usera.camera,null,BadRequest).then((response) => {checkResponse(response,BadRequest)});
   });
 
   it("Can create alert and has no events by default", () => {
+    const usera=getNewIdentity('alfred');
+    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+
     // create alert
-    cy.apiAddAlert(user,alertName,conditions,camera,0,200).then((response)=> {
+    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,200);
 
     // crete an example alert to compare against
-    cy.createExpectedAlert("emptyAlert",{"id": getCreds(alertName).id,
-        "name": "alert1",
-        "frequencySeconds": 0,
-        "conditions": [{"tag":"possum","automatic":true}],
-        "lastAlert":false,
-        "User":{"id":getCreds(user).id, "username":getTestName(getCreds(user).name), "email":getTestName(getCreds(user).name)+"@api.created.com"},
-        "Device":{"id":getCreds(camera).id, "devicename":getTestName(getCreds(camera).name)}});
-    });
+    cy.createExpectedAlert("emptyExpectedAlert", "alert1", 0, POSSUM_ALERT, false, usera.name, usera.camera);
 
-    //check we created an alert wth no events yet
-    cy.apiCheckAlert(user,camera,"emptyAlert");
+    //check we created an alert wth no last alerted time
+    cy.apiCheckAlert(usera.name,usera.camera,"emptyExpectedAlert");
+
+    //check we have no events
+    cy.apiCheckEvents(usera.name,usera.camera,null,0);
   });
 
   it("Can receive an alert", () => {
-    //expected alert to compare against 
-    cy.createExpectedAlert("alert1",{"id": getCreds(alertName).id,
-    "name": "alert1",
-    "frequencySeconds": 0,
-    "conditions": [{"tag":"possum","automatic":true}],
-    "lastAlert":true,
-    "User":{"id":getCreds(user).id, "username":getTestName(getCreds(user).name), "email":getTestName(getCreds(user).name)+"@api.created.com"},
-    "Device":{"id":getCreds(camera).id, "devicename":getTestName(getCreds(camera).name)}});
-    
+    const usera=getNewIdentity('andrew');
+    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+
+    // create alert
+    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,200);
+
     //upload a recording tagged as possum and  build an expected event using the returned recording details
-    cy.uploadRecording(camera, { tags: ["possum"] }, null, "recording1").then((response)=>{
-      cy.createExpectedEvent("event1",{"id":1,
-      "dateTime":"2021-05-19T01:39:41.376Z",
-      "createdAt":"2021-05-19T01:39:41.771Z",
-      "DeviceId":getCreds(camera).id,
-      "EventDetail": {"type":"alert", "details":{"recId":getCreds("recording1").id, "alertId":getExpectedAlert(alertName).id, "success":true, "trackId":1}},
-      "Device":{"devicename":getTestName(getCreds(camera).name)}})
+    cy.uploadRecording(usera.camera, { tags: ["possum"] }, null, "recording1").then((response)=>{
+      cy.createExpectedAlert("expectedAlert1", "alert1", 0, POSSUM_ALERT, true, usera.name, usera.camera).then(()=>{
+        cy.createExpectedEvent("event1", usera.name, usera.camera, 'recording1', 'alert1');
+      });
     });
      
     //check that an alert is present and has a 'last alerted' 
-    cy.apiCheckAlert(user,camera,"alert1");
+    cy.apiCheckAlert(usera.name,usera.camera,"expectedAlert1");
 
     //check expected event is received
-    cy.apiCheckEvents(user,camera,"event1");
-
+    cy.apiCheckEvents(usera.name,usera.camera,"event1");
   });
 
   it("Does not alert on non-master tags", () => {
-   //upload a recording tagged as possum
-    cy.uploadRecording(camera, { model: "different",tags: ["possum"]} ,null, "recording2" );
+    const usera=getNewIdentity('alistair');
+    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
 
-    //check we still have just 1 event
-    cy.apiCheckAlert(user,camera,"alert1");
-    cy.apiCheckEvents(user,camera,"event1");
+    // create alert
+    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,200);
+
+    //expected alert to compare against (latestEvent is false)
+    cy.createExpectedAlert("emptyAlert", "alert1", 0, POSSUM_ALERT, false, usera.name, usera.camera);
+
+    //upload a recording tagged as possum
+    cy.uploadRecording(usera.camera, { model: "different",tags: ["possum"]} ,null, "recording2" );
+
+    //check we have an alert with no latestEvent
+    cy.apiCheckAlert(usera.name,usera.camera,"emptyAlert");
+
+    //check we have no events
+    cy.apiCheckEvents(usera.name,usera.camera,null,0);
   });
 
   it("Alerts for recording uploaded on behalf using deviceId", () => {
-    //add helper to camera's group
-    cy.apiAddUserToGroup(user,helper,group,false,true);
+    const usera=getNewIdentity('albert');
+    const userb=getNewIdentity('barbera');
+
+    cy.apiCreateUser(userb.name);
+    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+
+    // create alert
+    cy.apiAddAlert(usera.name,'alert3',POSSUM_ALERT,usera.camera,0,200);
+
+    //add userb to camera's group
+    cy.apiAddUserToGroup(usera.name,userb.name,usera.group,false,true);
 
    //upload a recording tagged as possum using device
-    cy.uploadRecordingOnBehalfUsingDevice(camera,  helper, { tags: ["possum"]} ,null, "recording3" ).then((response)=>{
-      cy.createExpectedEvent("event2",{"id":1,
-      "dateTime":"2021-05-19T01:39:41.376Z",
-      "createdAt":"2021-05-19T01:39:41.771Z",
-      "DeviceId":getCreds(camera).id,
-      "EventDetail": {"type":"alert", "details":{"recId":getCreds("recording3").id, "alertId":getExpectedAlert(alertName).id, "success":true, "trackId":1}},
-      "Device":{"devicename":getTestName(getCreds(camera).name)}})
+    cy.uploadRecordingOnBehalfUsingDevice(usera.camera,  userb.name, { tags: ["possum"]} ,null, "recording3" ).then((response)=>{
+      cy.createExpectedAlert("expectedAlert3", "alert3", 0, POSSUM_ALERT, true, usera.name, usera.camera).then(()=>{
+        cy.createExpectedEvent("expectedEvent3", usera.name, usera.camera, 'recording3', 'alert3');
+      });
     });
 
 
-    //check we have new event
-    cy.apiCheckAlert(user,camera,"alert1");
-    cy.apiCheckEvents(user,camera,"event2",2);
+    //check we have an alert with a latestEvent
+    cy.apiCheckAlert(usera.name,usera.camera,"expectedAlert3");
+
+    //check we have one event
+    cy.apiCheckEvents(usera.name,usera.camera,"expectedEvent3",1);
   });
 
-    it("Alerts for recording uploaded on behalf using devicename and groupname", () => {
+  it("Alerts for recording uploaded on behalf using devicename and groupname", () => {
+    const usera=getNewIdentity('andrea');
+    const userb=getNewIdentity('bruce');
+
+    cy.apiCreateUser(userb.name);
+    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+
+    // create alert
+    cy.apiAddAlert(usera.name,'alert4',POSSUM_ALERT,usera.camera,0,200);
+
+    //add userb to camera's group
+    cy.apiAddUserToGroup(usera.name,userb.name,usera.group,false,true);
 
    //upload a recording tagged as possum using group
-    cy.uploadRecordingOnBehalfUsingGroup(camera,  group, helper, { tags: ["possum"]} ,null, "recording4" ).then((response)=>{
-      cy.createExpectedEvent("event3",{"id":1,
-      "dateTime":"2021-05-19T01:39:41.376Z",
-      "createdAt":"2021-05-19T01:39:41.771Z",
-      "DeviceId":getCreds(camera).id,
-      "EventDetail": {"type":"alert", "details":{"recId":getCreds("recording4").id, "alertId":getExpectedAlert(alertName).id, "success":true, "trackId":1}},
-      "Device":{"devicename":getTestName(getCreds(camera).name)}})
+    cy.uploadRecordingOnBehalfUsingGroup(usera.camera,  usera.group, userb.name, { tags: ["possum"]} ,null, "recording4" ).then((response)=>{
+      cy.createExpectedAlert("expectedAlert4", "alert4", 0, POSSUM_ALERT, true, usera.name, usera.camera).then(()=>{
+        cy.createExpectedEvent("expectedEvent4", usera.name, usera.camera, 'recording4', 'alert4');
+      });
     });
 
 
+    //check alert is present and as expected shows latest event
+    cy.apiCheckAlert(usera.name,usera.camera,"expectedAlert4");
+
     //check we have new event
-    cy.apiCheckAlert(user,camera,"alert1");
-    cy.apiCheckEvents(user,camera,"event3",3);
+    cy.apiCheckEvents(usera.name,usera.camera,"expectedEvent4",1);
   });
+
+  it("Can generate and report multiple events", () => {
+   const usera=getNewIdentity('aida');
+   cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+
+   // create alert
+    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,200);
+
+   //upload a recording tagged as possum using group
+    cy.uploadRecordingOnBehalfUsingGroup(usera.camera,  usera.group, usera.name, { tags: ["possum"]} ,null, "recording1" ).then((response)=>{
+      cy.createExpectedAlert("expectedAlert1", "alert1", 0, POSSUM_ALERT, true, usera.name, usera.camera).then(()=>{
+        cy.createExpectedEvent("expectedEvent1", usera.name, usera.camera, 'recording1', 'alert1');
+      });
+    });
+
+    //check that an alert is present and has a 'last alerted' 
+    cy.apiCheckAlert(usera.name,usera.camera,"expectedAlert1");
+
+    //check there is now 1 event and that expected event has been received
+    cy.apiCheckEvents(usera.name,usera.camera,"expectedEvent1",1);
+
+    //upload a 2nd recording tagged as possum using device
+    cy.uploadRecordingOnBehalfUsingDevice(usera.camera,  usera.name, { tags: ["possum"]} ,null, "recording2" ).then((response)=>{
+      cy.createExpectedAlert("expectedAlert2", "alert1", 0, POSSUM_ALERT, true, usera.name, usera.camera).then(()=>{
+        cy.createExpectedEvent("expectedEvent2", usera.name, usera.camera, 'recording2', 'alert1');
+      });
+    });
+
+    //check that an alert is present and has a 'last alerted' 
+    cy.apiCheckAlert(usera.name,usera.camera,"expectedAlert2");
+
+    //check there are now 2 events and 2nd expected event has been received
+    cy.apiCheckEvents(usera.name,usera.camera,"expectedEvent2",2);
+
+    //upload a 3rd recording tagged as possum and  build an expected event using the returned recording details
+    cy.uploadRecording(usera.camera, { tags: ["possum"] }, null, "recording3").then((response)=>{
+      cy.createExpectedAlert("expectedAlert3", "alert1", 0, POSSUM_ALERT, true, usera.name, usera.camera).then(()=>{
+        cy.createExpectedEvent("expectedEvent3", usera.name, usera.camera, 'recording3', 'alert1');
+      });
+    });
+
+    //check that an alert is present and has a 'last alerted' 
+    cy.apiCheckAlert(usera.name,usera.camera,"expectedAlert3");
+
+
+    //check there are 3 events and 3rd expected event has been received
+    cy.apiCheckEvents(usera.name,usera.camera,"expectedEvent3",3);
+
+  });
+
 });
 
 
