@@ -2,7 +2,8 @@
 /// <reference types="cypress" />
 
 import { uploadFile } from "../fileUpload";
-import { v1ApiPath, DEFAULT_DATE, makeAuthorizedRequest } from "../server";
+import { getTestName } from "../names";
+import { v1ApiPath, getCreds, DEFAULT_DATE, makeAuthorizedRequest, saveIdOnly } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { convertToDate } from "../server";
 
@@ -10,7 +11,7 @@ let lastUsedTime = DEFAULT_DATE;
 
 Cypress.Commands.add(
   "uploadRecording",
-  (cameraName: string, details: ThermalRecordingInfo, log: boolean = true) => {
+  (cameraName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
@@ -26,6 +27,63 @@ Cypress.Commands.add(
     uploadFile(url, cameraName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
+	if (recordingName!=null) {
+	  saveIdOnly(recordingName, x.response.body.recordingId);
+	};
+      }
+    );
+  }
+);
+
+
+Cypress.Commands.add(
+  "uploadRecordingOnBehalfUsingGroup",
+  (cameraName: string, groupName: string, userName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+    const data = makeRecordingDataFromDetails(details);
+
+    logTestDescription(
+      `Upload recording on behalf using group${prettyLog(details)}  to '${cameraName}'`,
+      { camera: cameraName, requestData: data },
+      log
+    );
+
+    const fileName = "invalid.cptv";
+    const url = v1ApiPath("recordings/device/"+getTestName(cameraName)+"/group/"+getTestName(groupName));
+    const fileType = "application/cptv";
+
+    uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
+      (x) => {
+        cy.wrap(x.response.body.recordingId);
+        if (recordingName!=null) {
+          saveIdOnly(recordingName, x.response.body.recordingId);
+        };
+      }
+    );
+  }
+);
+
+Cypress.Commands.add(
+  "uploadRecordingOnBehalfUsingDevice",
+  (cameraName: string, userName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+    const data = makeRecordingDataFromDetails(details);
+
+    logTestDescription(
+      `Upload recording on behalf using device ${prettyLog(details)}  to '${cameraName}' using '${userName}'`,
+      { camera: cameraName, requestData: data },
+      log
+    );
+
+    const fileName = "invalid.cptv";
+    const deviceId = getCreds(cameraName).id;
+    const url = v1ApiPath("recordings/device/"+deviceId);
+    const fileType = "application/cptv";
+
+    uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
+      (x) => {
+        cy.wrap(x.response.body.recordingId);
+        if (recordingName!=null) {
+          saveIdOnly(recordingName, x.response.body.recordingId);
+        };
       }
     );
   }

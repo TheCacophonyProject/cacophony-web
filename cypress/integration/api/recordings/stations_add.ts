@@ -1,4 +1,4 @@
-/// <reference path="../../support/index.d.ts" />
+/// <reference path="../../../support/index.d.ts" />
 
 describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";

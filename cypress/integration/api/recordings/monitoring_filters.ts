@@ -1,4 +1,4 @@
-import { getCreds } from "../../commands/server";
+import { getCreds } from "../../../commands/server";
 
 describe("Monitoring : filters", () => {  
     const Poppy = "Poppy";

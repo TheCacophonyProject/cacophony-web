@@ -24,12 +24,37 @@ interface ThermalRecordingInfo {
 declare namespace Cypress {
   interface Chainable {
     /**
+     * upload a single recording to for a particular camera using deviceId and user credentials
+     * Optionally, save the id against provided recordingName
+     */
+    uploadRecordingOnBehalfUsingGroup(
+      cameraName: string,
+      userName: string,
+      details: ThermalRecordingInfo,
+      log?: boolean,
+      recordingName: string
+    ): Cypress.Chainable<Interception>;
+    /**
+     * upload a single recording to for a particular camera using devicename and groupname and user credentials
+     * Optionally, save the id against provided recordingName
+     */
+    uploadRecordingOnBehalfUsingGroup(
+      cameraName: string,
+      groupNmae: string,
+      userName: string,
+      details: ThermalRecordingInfo,
+      log?: boolean,
+      recordingName: string
+    ): Cypress.Chainable<Interception>;
+    /**
      * upload a single recording to for a particular camera
+     * Optionally, save the id against provided recordingName
      */
     uploadRecording(
       cameraName: string,
       details: ThermalRecordingInfo,
-      log?: boolean
+      log?: boolean,
+      recordingName: string
     ): Cypress.Chainable<Interception>;
 
     uploadRecordingThenUserTag(

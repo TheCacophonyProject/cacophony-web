@@ -1,10 +1,10 @@
-/// <reference path="../../support/index.d.ts" />
+/// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "../../commands/names";
+import { getTestName } from "../../../commands/names";
 import {
   v1ApiPath
-} from "../../commands/server";
-import { logTestDescription, NO_LOG_MESSAGE } from "../../commands/descriptions";
+} from "../../../commands/server";
+import { logTestDescription, NO_LOG_MESSAGE } from "../../../commands/descriptions";
 
 describe("Recording authorizations", () => {
   const admin = "Betty-group_admin";

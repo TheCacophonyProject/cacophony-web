@@ -1,12 +1,12 @@
-/// <reference path="../../support/index.d.ts" />
+/// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "../../commands/names";
+import { getTestName } from "../../../commands/names";
 import {
   makeAuthorizedRequest,
   checkAuthorizedRequestFails,
   v1ApiPath
-} from "../../commands/server";
-import { logTestDescription } from "../../commands/descriptions";
+} from "../../../commands/server";
+import { logTestDescription } from "../../../commands/descriptions";
 
 describe("Device authorization", () => {
   const admin = "George-group_admin";

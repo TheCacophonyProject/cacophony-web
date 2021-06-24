@@ -1,4 +1,4 @@
-/// <reference path="../../support/index.d.ts" />
+/// <reference path="../../../support/index.d.ts" />
 
 describe("Monitoring : evaluate ai model", () => {  
   const Claris = "Claris";

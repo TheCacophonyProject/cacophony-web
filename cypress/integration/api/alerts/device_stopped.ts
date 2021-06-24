@@ -1,6 +1,6 @@
-/// <reference path="../../support/index.d.ts" />
+/// <reference path="../../../support/index.d.ts" />
 import moment from "moment";
-import { EventTypes } from "../../commands/api/events";
+import { EventTypes } from "../../../commands/api/events";
 
 describe("Devices stopped alerts", () => {
   const group = "stoppers";
