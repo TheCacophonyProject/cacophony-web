@@ -70,5 +70,5 @@ describe("Monitoring : pagings", () => {
     cy.checkMonitoringWithFilter(Veronica, camera, 
       {"page-size": 3, page: 2, from: "21:10"}, 
       [{ start: "21:03", incomplete: "true"}, {start: "21:40"}]);
-    });
+  });
 });

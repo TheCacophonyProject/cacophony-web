@@ -4,7 +4,7 @@
 import { v1ApiPath, makeAuthorizedRequest } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getTestName } from "../names";
-import { checkRecording } from "./recordings";
+import { checkRecording } from "./recording";
 
 Cypress.Commands.add(
   "apiUploadStations",

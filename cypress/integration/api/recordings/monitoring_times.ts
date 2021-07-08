@@ -40,22 +40,22 @@ describe("Monitoring : times and recording groupings", () => {
     cy.checkMonitoring(Dexter, camera, [{ recordings: 2 }]);
   });
 
-//  This feature has been disabled by Clare
-//    it("recordings with no tracks are not visits", () => {
-//    const camera = "cam-notracks";
-//    cy.apiCreateCamera(camera, group);
-//    cy.uploadRecording(camera, { tracks:[]});
-//    cy.checkMonitoring(Dexter, camera, []);
-//  });
+  //  This feature has been disabled by Clare
+  //    it("recordings with no tracks are not visits", () => {
+  //    const camera = "cam-notracks";
+  //    cy.apiCreateCamera(camera, group);
+  //    cy.uploadRecording(camera, { tracks:[]});
+  //    cy.checkMonitoring(Dexter, camera, []);
+  //  });
 
-//    it("recordings with no tracks are not included in visits the fall within", () => {
-//    const camera = "cam-notracks-within-visit-timespan";
-//    cy.apiCreateCamera(camera, group);
-//    cy.uploadRecording(camera, { });
-//    cy.uploadRecording(camera, { minsLater: 5, tracks:[]});
-//    cy.uploadRecording(camera, { minsLater: 10});
-//    cy.checkMonitoring(Dexter, camera, [{ recordings: 2 }]);
-//  });
+  //    it("recordings with no tracks are not included in visits the fall within", () => {
+  //    const camera = "cam-notracks-within-visit-timespan";
+  //    cy.apiCreateCamera(camera, group);
+  //    cy.uploadRecording(camera, { });
+  //    cy.uploadRecording(camera, { minsLater: 5, tracks:[]});
+  //    cy.uploadRecording(camera, { minsLater: 10});
+  //    cy.checkMonitoring(Dexter, camera, [{ recordings: 2 }]);
+  //  });
 
   it("Visits where the first recording is before the start time, but overlap with search period are marked as incomplete", () => {
     const camera = "cam-start-before";
@@ -86,7 +86,7 @@ describe("Monitoring : times and recording groupings", () => {
 
   //bounday cases
 
-    it("Visits where the last recording starts on period start time boundary is not included.", () => {
+  it("Visits where the last recording starts on period start time boundary is not included.", () => {
     const camera = "cam-start-boundary-case";
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, { time: "20:40" });
@@ -101,7 +101,7 @@ describe("Monitoring : times and recording groupings", () => {
   });
 
 
-    it("Visits where the last recording ends on period end time boundary is included and complete.", () => {
+  it("Visits where the last recording ends on period end time boundary is included and complete.", () => {
     const camera = "cam-end-boundary-case";
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, { time: "20:40" });
@@ -149,7 +149,7 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "20:55", duration: 300 });
     for (let i = 0; i < 11; i++) {
       cy.uploadRecording(camera, { minsLater: 9 });
-    };
+    }
 
     const filter = {
       until: "21:00"

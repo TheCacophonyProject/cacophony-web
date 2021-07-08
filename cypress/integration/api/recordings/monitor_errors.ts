@@ -2,16 +2,16 @@
 
 describe("Monitoring : Errors and validation", () => {
   
-    before(() => {
-    });
+  before(() => {
+  });
   
-    it.skip("Caller must supply valid user JWT token", () => {
-    });
+  it.skip("Caller must supply valid user JWT token", () => {
+  });
 
-    it.skip("Error if user does not have right to see group", () => {
-    });
+  it.skip("Error if user does not have right to see group", () => {
+  });
 
-    it.skip("Error if user does not have right to see device", () => {
-    });
+  it.skip("Error if user does not have right to see device", () => {
+  });
 
 });

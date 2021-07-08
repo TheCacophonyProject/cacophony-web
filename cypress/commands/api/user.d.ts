@@ -9,11 +9,6 @@ declare namespace Cypress {
     apiCreateUser(userName: string, log?: boolean);
 
     /**
-     * user sign in and stored with api credentials for further in the test
-     */
-    apiSignInAs(userName: string);
-
-    /**
      * create a group for the given user (who has already been referenced in the test
      */
     apiCreateGroup(
@@ -64,7 +59,7 @@ declare namespace Cypress {
      * Verify that user can see a group
      * Optionally verify they can't see the group (set testForSuccess=false)
      */
-     apiCheckUserCanSeeGroup(username: string, groupname: string, testForSuccess: boolean): Chainable<Element>;
+     apiCheckUserCanSeeGroup(username: string, groupname: string, testForSuccess: boolean);
 
 
   }

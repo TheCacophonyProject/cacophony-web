@@ -20,10 +20,13 @@ By default the tests run against our test server interface but you can run the t
 1.  Go to the test-cypress folder
 2.  Copy cypress.json.TEMPLATE to cypress.json.
 3.  In cypress.json change the server address
-4.  Run
+4.  For browser and performance tests, repeat for cypress-browse.json and cypress-performance.json
+5.  Run (api, browser and performance tests)
 ``` bash
 npm install
 npm run dev
+npm run browse
+npm run performance
 ```
 5.  Look for the [cypress](https://www.cypress.io/) interactive environment.
 

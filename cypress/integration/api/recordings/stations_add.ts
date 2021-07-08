@@ -43,11 +43,11 @@ describe("Stations: add and remove", () => {
   });
 
   it ("recordings are not updated if before date specified", () => {
-    const Josie2 = "Josie2"
+    const Josie2 = "Josie2";
     const groupUpdate = "update-stations";
     const camera = "update-after";
     cy.apiCreateUserGroupAndCamera(Josie2, groupUpdate, camera);
-    cy.uploadRecording(camera, {time: date, lat: -43.6, lng: 172.8})
+    cy.uploadRecording(camera, {time: date, lat: -43.6, lng: 172.8});
     cy.checkRecordingsStationIs(Josie2, "");
 
     const stations = [
@@ -64,7 +64,7 @@ describe("Stations: add and remove", () => {
     const camera = "update-earlier";
     const groupNotUpdate = "not-update-stations";
     cy.apiCreateUserGroupAndCamera(Josie3, groupNotUpdate, camera);
-    cy.uploadRecording(camera, {time: date, lat: -43.6, lng: 172.8})
+    cy.uploadRecording(camera, {time: date, lat: -43.6, lng: 172.8});
     cy.checkRecordingsStationIs(Josie3, "");
 
     const stations = [
@@ -86,7 +86,7 @@ describe("Stations: add and remove", () => {
       { name: "waterfall", lat: -43.6, lng: 172.8}
     ];
     cy.apiUploadStations(Josie4, groupRemove, stations, earlier);
-    cy.uploadRecording(camera, {time: date, lat: -43.6, lng: 172.8})
+    cy.uploadRecording(camera, {time: date, lat: -43.6, lng: 172.8});
     cy.checkRecordingsStationIs(Josie4, "waterfall");
 
     const stations2 = [

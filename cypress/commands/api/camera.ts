@@ -164,6 +164,50 @@ Cypress.Commands.add("apiCheckDevice", (userName: string, cameraName: string, gr
   });
 });
 
+Cypress.Commands.add("apiCheckDevicesQuery", (userName: string, queryArray: any, operator: string='and', statusCode: number = 200) => {
+  const params = {
+	    devices: JSON.stringify(queryArray),
+	    operator: operator
+  };
+  const fullUrl = v1ApiPath('devices/query', params);
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: fullUrl,
+        body: null
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+       if(statusCode==null || statusCode==200) {
+	  // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
+          var devices=response.body.devices;
+	  expect(devices.length).to.equal(queryArray.length);
+
+	  // sort both arrays on devicename, groupnam
+	  devices.sort(function(a,b) { 
+		   if (a.devicename+a.groupname < b.devicename+b.groupname) return -1;
+                   if (a.devicename+a.groupname > b.devicename+b.groupname) return 1;
+                   return 0;
+	  });
+	  queryArray.sort(function(a,b) { 
+		   if (a.devicename+a.groupname < b.devicename+b.groupname) return -1;
+                   if (a.devicename+a.groupname > b.devicename+b.groupname) return 1;
+                   return 0;
+	  });
+
+          for (var index=0; index < queryArray.length; index++) {
+		  expect(devices[index].groupname).to.equal(queryArray[index].groupname);
+		  expect(devices[index].devicename).to.equal(queryArray[index].devicename);
+                  //TODO: consider adding check for salt id
+		  //TODO: consider removing the following from API - not a standard format of parameter
+		  expect(devices[index]['Group.groupname']).to.equal(queryArray[index].groupname);
+	  }
+       };
+  });
+});
+
 
 
 Cypress.Commands.add("apiUploadRecording", (cameraName, id) => {

@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "./node_modules/cypress/bin/cypress open",
     "performance": "./node_modules/cypress/bin/cypress open --config-file cypress-performance.json",
+    "browse": "./node_modules/cypress/bin/cypress open --config-file cypress-browse.json",
     "release": "./node_modules/cypress/bin/cypress run $CYPRESS_RECORD",
     "performance:release": "./node_modules/cypress/bin/cypress run $CYPRESS_RECORD --config-file cypress-performance.json",
-    "lint": "eslint ./cypress --ext .js,.vue",
-    "lint:fix": "eslint ./cypress --fix --ext .js,.vue"
+    "lint": "eslint ./cypress --ext .ts,.vue",
+    "lint:fix": "eslint ./cypress --fix --ext .ts,.vue"
   },
   "dependencies": {
     "@types/form-data": "^2.5.0",

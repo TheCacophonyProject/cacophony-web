@@ -212,7 +212,9 @@ function makeRecordingDataFromDetails(
   if (details.lat && details.lng) {
     data.location = [details.lat, details.lng];
   }
-
+  if (details.processingState) {
+    data.processingState = details.processingState;
+  }
   return data;
 }
 
@@ -279,6 +281,28 @@ function addTracksToRecording(
     });
   }
 }
+
+export function checkRecording(user: string, recordingId: number, checkFunction: any) {
+  cy.log(`recording id is ${recordingId}`)
+  makeAuthorizedRequest(
+    {
+      url: v1ApiPath(`recordings`)
+    },
+    user
+  ).then(response => {
+      let recordings = response.body.rows;
+      if (recordingId !== 0) {
+          recordings = recordings.filter(x => x.id == recordingId);
+      }
+      if (recordings.length > 0) {
+          checkFunction(recordings[0]);
+      }
+      else {
+          expect(recordings.length).equal(1);
+      }
+  })
+}
+
 
 export function addSeconds(initialTime: Date, secondsToAdd: number): Date {
   const AS_MILLISECONDS = 1000;

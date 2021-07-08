@@ -5,8 +5,8 @@ describe("Monitoring : evaluate ai model", () => {
   const group = "Visit-ai";
   
   before(() => {
-      cy.apiCreateUserGroup(Claris, group);
-    });
+    cy.apiCreateUserGroup(Claris, group);
+  });
     
   it("By default, AI-tag returns what the AI Master model produces.  ", () => {
     const camera = "ai-default";
