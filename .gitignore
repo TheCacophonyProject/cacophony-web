@@ -4,3 +4,4 @@ cypress/screenshots
 cypress.json
 cypress-performance.json
 cypress-browse.json
+cypress.json.local
