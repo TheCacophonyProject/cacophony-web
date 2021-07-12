@@ -81,13 +81,22 @@
             <span v-html="Number(data.value).toFixed(5)" />
           </template>
         </b-table>
-
-        <b-btn
-          v-if="!enableEditingStations && isGroupAdmin"
-          @click="enableEditingStations = true"
-        >
-          Edit stations
-        </b-btn>
+        <div class="bottom-buttons">
+          <b-btn
+            v-if="!enableEditingStations && isGroupAdmin"
+            @click="enableEditingStations = true"
+          >
+            Edit stations
+          </b-btn>
+          <!--          <b-btn-->
+          <!--            v-if="groupHasStations"-->
+          <!--            class="export-visits"-->
+          <!--            @click="exportVisits"-->
+          <!--          >-->
+          <!--            <font-awesome-icon icon="download" class="fa-1x" />-->
+          <!--            <span>Export TrapNZ Visits for stations</span>-->
+          <!--          </b-btn>-->
+        </div>
       </div>
       <p v-else-if="!groupHasStations">
         You currently have no stations associated with this group.
@@ -171,6 +180,8 @@ import {
   LCircle,
   LCircleMarker,
 } from "vue2-leaflet";
+
+// TODO(jon): Do we want to be able to view retired stations?
 
 const Marker = icon({
   iconUrl: "/marker-icon.png",
@@ -342,6 +353,10 @@ export default {
     },
   },
   methods: {
+    exportVisits() {
+      alert("To be implemented before release");
+      return;
+    },
     dragCsvFileOver(event: DragEvent) {
       this.draggingCsvOver = true;
       event.dataTransfer.dropEffect = "none";
@@ -455,6 +470,10 @@ export default {
 </script>
 
 <style lang="scss">
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
 .upload-region {
   width: 100%;
   min-height: 200px;
@@ -508,5 +527,22 @@ export default {
 }
 .back-date {
   margin-bottom: 20px;
+}
+
+@include media-breakpoint-up(md) {
+  .bottom-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+@include media-breakpoint-down(md) {
+  .bottom-buttons {
+    display: flex;
+    flex-direction: column;
+    > * {
+      margin-bottom: 10px;
+    }
+  }
 }
 </style>

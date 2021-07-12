@@ -17,23 +17,61 @@
       <div class="recording-details">
         <span class="recording-group">
           <font-awesome-icon icon="users" size="xs" />
-          <span class="label">{{ item.groupname }}</span>
+          <span class="label">
+            <b-link
+              :to="{
+                name: 'group',
+                params: {
+                  groupName: item.groupName,
+                  tabName: 'recordings',
+                },
+              }"
+            >
+              {{ item.groupName }}
+            </b-link>
+          </span>
         </span>
-        <span class="recording-station" v-if="item.stationname">
+        <span class="recording-station" v-if="item.stationName">
           <font-awesome-icon icon="map-marker-alt" size="xs" />
-          <span class="label">{{ item.stationname }}</span>
+          <span class="label">
+            <b-link
+              :to="{
+                name: 'station',
+                params: {
+                  groupName: item.groupName,
+                  stationName: item.stationName,
+                  tabName: 'recordings',
+                },
+              }"
+            >
+              {{ item.stationName }}
+            </b-link>
+          </span>
         </span>
-        <span class="recording-device" v-else>
+        <span class="recording-device">
           <font-awesome-icon icon="microchip" size="xs" />
-          <span class="label">{{ item.devicename }}</span>
+          <span class="label">
+            <b-link
+              :to="{
+                name: 'device',
+                params: {
+                  groupName: item.groupName,
+                  deviceName: item.deviceName,
+                  tabName: 'recordings',
+                },
+              }"
+            >
+              {{ item.deviceName }}
+            </b-link>
+          </span>
         </span>
         <span class="recording-tracks">
-          <font-awesome-icon icon="stream" size="xs" />
-          <span class="label" v-if="item.trackCount !== 0"
-            >{{ item.trackCount }} track<span v-if="item.trackCount > 1"
-              >s</span
-            ></span
-          >
+          <b-spinner small v-if="queuedForProcessing" />
+          <font-awesome-icon icon="stream" size="xs" v-else />
+          <span class="label" v-if="queuedForProcessing">Queued</span>
+          <span class="label" v-else-if="item.trackCount !== 0">
+            {{ item.trackCount }} track<span v-if="item.trackCount > 1">s</span>
+          </span>
           <span class="label" v-else>No tracks</span>
         </span>
       </div>
@@ -50,7 +88,7 @@
           <span class="label">{{ Math.round(item.duration) }} seconds</span>
         </div>
         <div v-if="hasBattery" class="recording-battery">
-          <BatteryLevel :battery-level="item.other.batteryLevel" />
+          <BatteryLevel :battery-level="item.batteryLevel" />
         </div>
       </div>
     </div>
@@ -62,11 +100,17 @@
           ''
         )},16z`"
         target="_blank"
+        title="View location"
+        class="location-link"
         @click.stop.prevent="
           ({ currentTarget: { href, target } }) => window.open(href, target)
         "
       >
-        View location
+        <font-awesome-icon
+          icon="map-marker-alt"
+          size="3x"
+          style="color: #bbb"
+        />
       </a>
     </div>
   </a>
@@ -81,24 +125,61 @@
       <font-awesome-icon :icon="['far', 'file-video']" size="2x" />
     </span>
 
-    <span>{{ item.devicename }}</span>
+    <span>
+      <b-link
+        :to="{
+          name: 'device',
+          params: {
+            groupName: item.groupName,
+            deviceName: item.deviceName,
+            tabName: 'recordings',
+          },
+        }"
+      >
+        {{ item.deviceName }}
+      </b-link>
+    </span>
     <span>{{ item.date }}</span>
     <span class="recording-time">{{ item.time }}</span>
     <span>{{ Math.round(item.duration) }}s</span>
     <span>
       <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag="tag" />
     </span>
-    <span>{{ item.groupname }}</span>
+    <span>
+      <b-link
+        :to="{
+          name: 'group',
+          params: {
+            groupName: item.groupName,
+            tabName: 'recordings',
+          },
+        }"
+      >
+        {{ item.groupName }}
+      </b-link>
+    </span>
+    <span>
+      <b-link
+        v-if="item.stationName"
+        :to="{
+          name: 'station',
+          params: {
+            groupName: item.groupName,
+            stationName: item.stationName,
+            tabName: 'recordings',
+          },
+        }"
+      >
+        {{ item.stationName }}
+      </b-link>
+    </span>
     <span>{{ item.location }}</span>
-    <BatteryLevel
-      v-if="item.other && item.other.batteryLevel"
-      :battery-level="item.other.batteryLevel"
-    />
+    <BatteryLevel v-if="item.batteryLevel" :battery-level="item.batteryLevel" />
     <span v-else />
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import BatteryLevel from "./BatteryLevel.vue";
 import TagBadge from "./TagBadge.vue";
 
@@ -121,28 +202,40 @@ export default {
   },
   computed: {
     hasBattery() {
-      return this.item.other && this.item.other.batteryLevel;
+      return this.item.batteryLevel;
     },
     window: {
       get() {
         return window;
       },
     },
+    queuedForProcessing(): boolean {
+      return this.item.processingState === "Analyse";
+    },
+    processing(): boolean {
+      return (
+        this.item.processingState === "Analyse" && this.item.processingStartTime
+      );
+    },
   },
   methods: {
     navigateToRecording(event, recordingId) {
+      if (event.target !== event.currentTarget && event.target.href) {
+        // Clicking a link inside the outer card link
+        return;
+      }
       if (!(event.metaKey || event.ctrlKey || event.shiftKey)) {
         // Don't change the route if we're ctrl-clicking
         event.preventDefault();
         this.$router.push({
-          path: `recording/${recordingId}`,
+          path: `/recording/${recordingId}`,
           query: this.futureSearchQuery,
         });
       }
     },
     getRecordingPath(recordingId) {
       return this.$router.resolve({
-        path: `recording/${recordingId}`,
+        path: `/recording/${recordingId}`,
         query: this.futureSearchQuery,
       }).href;
     },
@@ -157,7 +250,8 @@ export default {
 
 $recording-side-padding: 0.9rem;
 
-.svg-inline--fa {
+.svg-inline--fa,
+.spinner-border-sm {
   color: $gray-600;
 }
 
@@ -170,12 +264,21 @@ $recording-side-padding: 0.9rem;
   cursor: pointer;
   transition: box-shadow 0.2s;
   color: unset;
+  a:visited {
+    color: purple;
+  }
   div {
     color: inherit;
   }
   &:hover {
     box-shadow: 0 1px 3px $gray-400;
     text-decoration: unset;
+  }
+  &:visited {
+    border: 1px solid rgb(245, 245, 245);
+    a:visited {
+      color: #b314b3;
+    }
   }
 }
 
@@ -282,12 +385,18 @@ $recording-side-padding: 0.9rem;
 
 // map
 .recording-location {
+  display: flex;
   flex: 0 1 110px;
   min-width: 109px;
   text-align: center;
+  align-items: center;
+  justify-content: center;
   background: $gray-100;
   @include media-breakpoint-between(xs, sm) {
     display: none;
   }
+}
+.recording-tracks {
+  display: inline-block;
 }
 </style>

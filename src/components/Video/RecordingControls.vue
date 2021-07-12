@@ -28,8 +28,11 @@
               </b-dropdown-item>
 
               <b-dropdown-item
+                :disabled="!processingCompleted"
                 v-b-tooltip.hover.left="
-                  'One or more animals do not have a corresponding track in this recording'
+                  !processingCompleted
+                    ? 'Tracks are still being processed'
+                    : 'One or more animals do not have a corresponding track in this recording'
                 "
                 @click="addMissedTrackTag"
               >
@@ -152,6 +155,10 @@ export default {
     downloadRawUrl: {
       type: String,
       default: "",
+    },
+    processingCompleted: {
+      type: Boolean,
+      default: false,
     },
   },
   data() {
