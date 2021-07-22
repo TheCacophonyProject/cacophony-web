@@ -1,8 +1,8 @@
 import process from "process";
 const args = require("commander");
 const { Client } = require("pg");
-const config = require("./config");
-const modelsUtil = require("./models/util/util");
+const config = require("../config");
+const modelsUtil = require("../models/util/util");
 
 let Config;
 // Define the types of object keys that will be considered for pruning.

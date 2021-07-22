@@ -1,11 +1,11 @@
 /*
-This is a one-off script to migrate old recordings animal tags to track tags. 
+This is a one-off script to migrate old recordings animal tags to track tags.
 Only where there is 1 old manual tag and 1 new Track with no manual tags.
 */
 
 import process from "process";
 
-import config from "./config";
+import config from "../config";
 
 const args = require("commander");
 const { Client } = require("pg");

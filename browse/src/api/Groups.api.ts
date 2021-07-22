@@ -1,5 +1,5 @@
 import CacophonyApi from "./CacophonyApi";
-import { shouldViewAsSuperUser } from "@/utils";
+import { shouldViewAsSuperUser } from "../utils";
 
 function addNewGroup(groupName) {
   const suppressGlobalMessaging = true;

@@ -2,7 +2,7 @@
 This is a one-off script to add type prefixes to object keys that don't have one.
 */
 
-import config from "./config";
+import config from "../config";
 
 const process = require("process");
 const args = require("commander");
@@ -10,7 +10,7 @@ const { Client } = require("pg");
 const moment = require("moment");
 const uuidv4 = require("uuid/v4");
 const winston = require("winston");
-const modelsUtil = require("./models/util/util");
+const modelsUtil = require("../models/util/util");
 
 // Define the types of object keys that will be considered for pruning.
 const keyTypes = Object.freeze([

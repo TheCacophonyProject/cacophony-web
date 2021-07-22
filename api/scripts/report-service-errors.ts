@@ -1,8 +1,8 @@
-import config from "./config";
+import config from "../config";
 const winston = require("winston");
-import eventUtil from "./api/V1/eventUtil";
+import eventUtil from "../api/V1/eventUtil";
 import moment, { Moment } from "moment";
-import { ServiceErrorMap } from "./api/V1/systemError";
+import { ServiceErrorMap } from "../api/V1/systemError";
 import { sendEmail } from "./emailUtil";
 
 async function main() {

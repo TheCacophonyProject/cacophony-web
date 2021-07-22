@@ -1,4 +1,4 @@
-name: "cacophony-api"
+name: "cacophony-web"
 arch: "amd64"
 platform: "linux"
 version: "0.0.0"
@@ -13,7 +13,8 @@ depends:
   - gyp
 
 files:
-  "**/*": "/srv/cacophony/api/"
+  "../api/*": "/srv/cacophony/api/"
+  "../browse/dist/*": "/srv/cacophony/cacophony-browse/"
   "_release/cacophony-api.service": "/etc/systemd/system/cacophony-api.service"
   "_release/cacophony-api-report-errors": "/etc/cron.d/cacophony-api-report-errors"
   "_release/cacophony-api-report-stopped-devices": "/etc/cron.d/cacophony-api-report-stopped-devices"

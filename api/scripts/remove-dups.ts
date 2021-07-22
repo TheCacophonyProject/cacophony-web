@@ -1,4 +1,4 @@
-import config from "./config";
+import config from "../config";
 
 const args = require("commander");
 const process = require("process");

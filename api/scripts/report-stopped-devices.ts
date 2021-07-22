@@ -1,9 +1,9 @@
-import config from "./config";
+import config from "../config";
 const winston = require("winston");
-import eventUtil, { PowerEvents } from "./api/V1/eventUtil";
+import eventUtil, { PowerEvents } from "../api/V1/eventUtil";
 import moment, { Moment } from "moment";
 import { sendEmail } from "./emailUtil";
-import models from "./models";
+import models from "../models";
 
 const ADMIN_EMAILS = ["support@2040.co.nz"];
 

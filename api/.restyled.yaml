@@ -1,6 +1,0 @@
-restylers:
-  - prettier:
-      include:
-        - "**/*.js"
-request_review: null
-auto: true
