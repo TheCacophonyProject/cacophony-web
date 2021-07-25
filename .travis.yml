@@ -36,24 +36,20 @@ script:
   - cd ../api
   - npm run lint || travis_terminate 1;
   - python3 -m pip install -r test/requirements.txt
-  - black --diff --check ./test  || travis_terminate 1;
-  - find . -regextype posix-extended -regex '.*\.(ts|js)$' | egrep -v "(./node_modules/*|./apidoc*|package*.js)" | xargs npx prettier --check  || (echo "Please run './prettier-fix.sh' to clean up formatting of files."; false)
+  - black --diff --check ./test || travis_terminate 1;
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
   - cd ..
   - docker-compose build || travis_terminate 1;
   - docker-compose up --force-recreate &> dockerstart.log &
-  - ./wait-for-api || { docker ps; docker-compose logs; exit 1; }
+  - ./api/wait-for-api || { docker ps; docker-compose logs; exit 1; }
   # Apply migration undo and redo to test undo migration
   - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate:undo --config /app/config/app_test_default.js --migrations-path /app/migrations
   - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate --config /app/config/app_test_default.js --migrations-path /app/migrations
   # Run python tests
-  - cd api
-  - date
-  - cd test
+  - cd api/test
   - python3 -m pytest --log-api-on-fail || travis_terminate 1;
-  - cd ..
   # Run cypress tests
-  - cd test-cypress
+  - cd ../test-cypress
   - cp cypress.json.TEMPLATE cypress.json
   - npm install
   - npm run release
