@@ -2,7 +2,7 @@ version: "2.4"
 services:
   server:
     container_name: cacophony-api
-    build: ..
+    build: ""
     environment:
       POSTGRES_PASSWORD: test
       POSTGRES_USER: test
@@ -15,7 +15,7 @@ services:
       - 5432:5432
       - 9001:9001
     volumes:
-      - ./models:/app/models
-      - ./apidoc:/app/apidoc
-      - ./config:/app/config
-      - ./api/:/app/api
+      - ./api/models:/app/models
+      - ./api/apidoc:/app/apidoc
+      - ./api/config:/app/config
+      - ./api/api/:/app/api

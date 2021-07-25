@@ -27,6 +27,7 @@ install:
   - sudo apt-get install python3-setuptools
   - python3 -m pip install -r test/requirements.txt
   - pwd
+  - cd ..
   - docker-compose build
   - docker-compose up --force-recreate &> dockerstart.log &
 
