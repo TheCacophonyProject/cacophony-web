@@ -41,7 +41,7 @@ script:
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
   - cd ..
   - docker-compose build || travis_terminate 1;
-  - docker-compose up --force-recreate &> dockerstart.log & || travis_terminate 1;
+  - docker-compose up --force-recreate &> dockerstart.log &
   - ./wait-for-api || { docker ps; docker-compose logs; exit 1; }
   # Apply migration undo and redo to test undo migration
   - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate:undo --config /app/config/app_test_default.js --migrations-path /app/migrations
