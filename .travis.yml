@@ -20,21 +20,20 @@ install:
   - npm install -g apidoc@0.20.0
   - npm run apidoc
   - npm install -g eslint
-  # global eslint uses local plugins
-  - npm install eslint-plugin-cypress eslint-plugin-no-only-tests
   - sudo apt update
   - sudo apt install python3-pip
   - sudo apt-get install python3-setuptools
-  - pwd
 
 script:
   # Run browse checks
   - pwd
   - cd ../browse
+  - npm install @typescript-eslint/parser@^4.28.4
   - npm run lint || travis_terminate 1;
   # Run api checks
   - cd ../api
   - npm run lint || travis_terminate 1;
+  - python3 -m pip install black~=20.8b1
   - black --diff --check ./test  || travis_terminate 1;
   - find . -regextype posix-extended -regex '.*\.(ts|js)$' | egrep -v "(./node_modules/*|./apidoc*|package*.js)" | xargs npx prettier --check  || (echo "Please run './beautify.sh' to clean up formatting of files."; false)
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
@@ -48,11 +47,12 @@ script:
   # Run python tests
   - cd api
   - date
-  - python3 -m pip install -r api/test/requirements.txt
+  - python3 -m pip install -r test/requirements.txt
   - cd test
   - python3 -m pytest --log-api-on-fail || travis_terminate 1;
   - cd ..
   # Run cypress tests
+  # global eslint uses local plugins
   - npm install eslint-plugin-cypress eslint-plugin-no-only-tests
   - cd test-cypress
   - cp cypress.json.TEMPLATE cypress.json
