@@ -7,7 +7,7 @@ FROM cacophonyproject/server-base:4
 # FROM cacophony-api
 
 WORKDIR /app
-COPY package*.json ./
+COPY api/package*.json ./
 
 RUN npm install
 
