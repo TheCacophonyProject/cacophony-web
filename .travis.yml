@@ -30,17 +30,17 @@ install:
 script:
   # Run browse checks
   - pwd
-  - cd browse
-  - npm run lint
+  - cd ../browse
+  - npm run lint || travis_terminate 1;
   # Run api checks
   - cd ../api
-  - npm run lint
-  - black --diff --check ./test
+  - npm run lint || travis_terminate 1;
+  - black --diff --check ./test  || travis_terminate 1;
   - find . -regextype posix-extended -regex '.*\.(ts|js)$' | egrep -v "(./node_modules/*|./apidoc*|package*.js)" | xargs npx prettier --check  || (echo "Please run './beautify.sh' to clean up formatting of files."; false)
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
   - cd ..
-  - docker-compose build
-  - docker-compose up --force-recreate &> dockerstart.log &
+  - docker-compose build || travis_terminate 1;
+  - docker-compose up --force-recreate &> dockerstart.log & || travis_terminate 1;
   - ./wait-for-api || { docker ps; docker-compose logs; exit 1; }
   # Apply migration undo and redo to test undo migration
   - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate:undo --config /app/config/app_test_default.js --migrations-path /app/migrations
@@ -50,7 +50,7 @@ script:
   - date
   - python3 -m pip install -r api/test/requirements.txt
   - cd test
-  - python3 -m pytest --log-api-on-fail
+  - python3 -m pytest --log-api-on-fail || travis_terminate 1;
   - cd ..
   # Run cypress tests
   - npm install eslint-plugin-cypress eslint-plugin-no-only-tests
