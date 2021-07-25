@@ -1,4 +1,5 @@
 {
+    "extends": "../tsconfig.base.json",
     "compilerOptions": {
         "strictNullChecks": false,
         "target": "es2018",

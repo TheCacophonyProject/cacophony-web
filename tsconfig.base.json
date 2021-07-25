@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "composite": true,
+        "declaration": true,
+        "declarationMap": true,
+        "paths": {
+            "types": ["types"],
+            "@/*": ["browse/src/*"],
+            "api": ["api"]
+        }
+    }
+}
