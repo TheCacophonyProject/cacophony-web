@@ -26,11 +26,13 @@ install:
   - sudo apt install python3-pip
   - sudo apt-get install python3-setuptools
   - python3 -m pip install -r test/requirements.txt
+  - pwd
   - docker-compose build
   - docker-compose up --force-recreate &> dockerstart.log &
 
 script:
   # Run browse checks
+  - pwd
   - cd browse
   - npm run lint
   # Run api checks
