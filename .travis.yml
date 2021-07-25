@@ -35,7 +35,7 @@ script:
   # Run api checks
   - cd ../api
   - npm run lint || travis_terminate 1;
-  - python3 -m pip install black~=20.8b1
+  - python3 -m pip install -r test/requirements.txt
   - black --diff --check ./test  || travis_terminate 1;
   - find . -regextype posix-extended -regex '.*\.(ts|js)$' | egrep -v "(./node_modules/*|./apidoc*|package*.js)" | xargs npx prettier --check  || (echo "Please run './prettier-fix.sh' to clean up formatting of files."; false)
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
@@ -49,7 +49,6 @@ script:
   # Run python tests
   - cd api
   - date
-  - python3 -m pip install -r test/requirements.txt
   - cd test
   - python3 -m pytest --log-api-on-fail || travis_terminate 1;
   - cd ..
