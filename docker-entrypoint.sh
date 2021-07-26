@@ -10,6 +10,7 @@ echo "---- Starting Minio ----"
 echo "---- Starting PostgreSQL ----"
 service postgresql start
 
+
 sudo -i -u postgres psql -c "CREATE USER test with password 'test'"
 sudo -i -u postgres psql -c "CREATE DATABASE cacophonytest WITH OWNER test;"
 sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION postgis"

@@ -19,3 +19,4 @@ services:
       - ./api/apidoc:/app/apidoc
       - ./api/config:/app/config
       - ./api/api/:/app/api
+      - ./api/scripts:/app/scripts
