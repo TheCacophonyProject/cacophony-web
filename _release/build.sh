@@ -29,6 +29,7 @@ cp _release/* ${build_dir}/_release  # makes things easier while developing rele
 
 cd ${build_dir}
 
+cd api
 echo "Installing dependencies for build..."
 rm -rf node_modules
 npm install
@@ -41,6 +42,12 @@ rm -rf node_modules
 
 echo "Removing TypeScript files..."
 find -name '*.ts' -print0 | xargs -0 rm
+
+# BROWSE: Update files which need the right version number, build the packed
+# release
+cd ../browse
+npm version --no-git-tag-version ${version}
+npm run release
 
 # cron doesn't like it when cron.d files are writeable by anyone other than the
 # owner.
