@@ -22,7 +22,7 @@ files:
   "_release/cacophony-api-remove-dups": "/etc/cron.d/cacophony-api-remove-dups"
 
 config_files:
-  "config/app_TEMPLATE.js": "/etc/cacophony/api.js"
+  "api/config/app_TEMPLATE.js": "/etc/cacophony/api.js"
 
 scripts:
   postinstall: "_release/postinstall.sh"
