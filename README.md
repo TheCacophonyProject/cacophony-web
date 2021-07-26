@@ -1,3 +1,6 @@
+# cacophony-web
+This is a mono-repo pulling together three older repositories: cacophony-api, cacophony-browse, and integration-tests
+
 # cacophony-api
 
 `cacophony-api` is a node server that is accessed through a RESTful API.  This allows uploading, processing and retrieving media collected for The Cacophony
