@@ -9,7 +9,7 @@
 
 @media (min-width: 576px) { /* Show bg image only if the device is larger than a phone */
     .sign-wrapper {
-        background-image: url('src/assets/login-bg.jpg');
+        background-image: url('../assets/login-bg.jpg');
         background-position: center center;
         background-size: cover;
     }

@@ -112,7 +112,7 @@
 
 <script lang="ts">
 import config from "@/config";
-import CptvPlayer from "../../cptv-player-vue/src/CptvPlayer.vue";
+import CptvPlayer from "cptv-player-vue/src/CptvPlayer.vue";
 import AddCustomTrackTag from "../components/Video/AddCustomTrackTag.vue";
 import api from "@/api";
 import DefaultLabels, { TagColours } from "@/const";

@@ -6,7 +6,7 @@
 
 <style>
 .hero {
-  background-image: url("src/assets/hero/hero-theory.jpg");
+  background-image: url("../assets/hero/hero-theory.jpg");
   background-position: center;
   background-repeat: no-repeat;
   background-color: transparent;
