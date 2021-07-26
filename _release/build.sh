@@ -51,6 +51,7 @@ rm -rf node_modules
 npm install
 npm run release
 rm -rf node_modules
+cd ..
 
 # cron doesn't like it when cron.d files are writeable by anyone other than the
 # owner.
