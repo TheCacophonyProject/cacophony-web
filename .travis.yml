@@ -39,7 +39,7 @@ script:
   - black --diff --check ./test || travis_terminate 1;
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
   - cd ..
-  - docker-compose build || travis_terminate 1;
+  - docker-compose build
   - docker-compose up --force-recreate &> dockerstart.log &
   - ./api/wait-for-api || { docker ps; docker-compose logs; exit 1; }
   # Apply migration undo and redo to test undo migration
