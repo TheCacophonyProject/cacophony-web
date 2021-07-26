@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "webpack serve --config webpack/webpack.dev.js --progress",
     "release": "webpack --config webpack/webpack.release.js --progress",
-    "lint": "eslint src --ext .js,.vue,.ts && (../prettier-readonly.sh || (echo \"Please run '../prettier-fix.sh' to clean up formatting of files.\"; false))",
+    "lint": "eslint src --ext .js,.vue,.ts && (../prettier-check.sh || (echo \"Please run '../prettier-fix.sh' to clean up formatting of files.\"; false))",
     "lint:fix": "eslint src --fix --ext .js,.vue,.ts && ../prettier-fix.sh"
   },
   "dependencies": {
