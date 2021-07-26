@@ -63,7 +63,7 @@
           @deleteTag="deleteTag($event)"
           @addTag="addTag($event)"
           @updateComment="updateComment($event)"
-          @nextOrPreviousRecording="gotoNextRecording('either', 'any')"
+          @nextOrPreviousRecording="gotoNextRecording('either', 'any', false, false)"
           @requested-export="requestedMp4Export"
         />
       </b-col>
@@ -80,7 +80,7 @@ import { mapState } from "vuex";
 import PrevNext from "./PrevNext.vue";
 import RecordingControls from "./RecordingControls.vue";
 import TrackInfo from "./Track.vue";
-import CptvPlayer from "../../cptv-player-vue/src/CptvPlayer.vue";
+import CptvPlayer from "cptv-player-vue/src/CptvPlayer.vue";
 import RecordingProperties from "./RecordingProperties.vue";
 import { TagColours, WALLABY_GROUP } from "@/const";
 import api from "@/api";
