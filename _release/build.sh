@@ -60,7 +60,8 @@ chmod 644 _release/{cacophony-api-prune-objects,cacophony-api-remove-dups,cacoph
 
 echo "Setting versions..."
 perl -pi -e "s/^version:.+/version: \"${version}\"/" _release/nfpm.yaml
-json -I -f package.json -e "this.version=\"${version}\""
-json -I -f package-lock.json -e "this.version=\"${version}\""
+
+json -I -f api/package.json -e "this.version=\"${version}\""
+json -I -f api/package-lock.json -e "this.version=\"${version}\""
 
 nfpm -f _release/nfpm.yaml pkg -t ../cacophony-web_${version}.deb
