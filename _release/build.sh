@@ -47,7 +47,10 @@ find -name '*.ts' -print0 | xargs -0 rm
 # release
 cd ../browse
 npm version --no-git-tag-version ${version}
+rm -rf node_modules
+npm install
 npm run release
+rm -rf node_modules
 
 # cron doesn't like it when cron.d files are writeable by anyone other than the
 # owner.
