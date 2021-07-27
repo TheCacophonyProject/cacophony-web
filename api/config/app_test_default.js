@@ -27,6 +27,13 @@ exports.database = {
   dialect: "postgres"
 };
 
+exports.backblaze = {
+  publicKey: "", // REQUIRED, String:
+  privateKey: "", // REQUIRED, String
+  bucket: "CacophonyBackblazeTest", // REQUIRED, String
+  endpoint: "s3.us-west-002.backblazeb2.com" // REQUIRED, URL
+};
+
 exports.smtpDetails = {
   service: "gmail",
   auth: {
@@ -41,6 +48,7 @@ exports.default = {
   smtpDetails: exports.smtpDetails,
   server: exports.server,
   s3: exports.s3,
+  backblaze: exports.backblaze,
   fileProcessing: exports.fileProcessing,
   database: exports.database
 };

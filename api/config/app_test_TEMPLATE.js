@@ -18,6 +18,13 @@ const s3 = {
   endpoint: "http://localhost:9001"
 };
 
+const backblaze = {
+  publicKey: "REQUIRED", // REQUIRED, String:
+  privateKey: "REQUIRED", // REQUIRED, String
+  bucket: "CacophonyBackblazeTest", // REQUIRED, String
+  endpoint: "s3.us-west-002.backblazeb2.com" // REQUIRED, URL
+};
+
 const fileProcessing = {
   port: 2008
 };
@@ -42,6 +49,7 @@ const smtpDetails = {
 exports.smtpDetails = smtpDetails;
 exports.server = server;
 exports.s3 = s3;
+exports.backblaze = backblaze;
 exports.fileProcessing = fileProcessing;
 exports.database = database;
 
