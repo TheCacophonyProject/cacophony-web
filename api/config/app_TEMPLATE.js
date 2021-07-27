@@ -32,6 +32,13 @@ const s3 = {
   endpoint: "http://localhost:9000" // REQUIRED, URL
 };
 
+const backblaze = {
+  publicKey: "", // REQUIRED, String:
+  privateKey: "", // REQUIRED, String
+  bucket: "CacophonyBackblazeTest", // REQUIRED, String
+  endpoint: "s3.us-west-002.backblazeb2.com" // REQUIRED, URL
+};
+
 const smtpDetails = {
   host: "localhost",
   port: 25,
@@ -50,6 +57,7 @@ exports.server = server;
 exports.fileProcessing = fileProcessing;
 exports.database = database;
 exports.s3 = s3;
+exports.backblaze = backblaze;
 
 // This is needed because Sequelize looks for development by default when using db:migrate
 exports.development = database;

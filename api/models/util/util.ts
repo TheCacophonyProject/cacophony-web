@@ -213,12 +213,67 @@ export function userCanEdit(id, user) {
 }
 
 export function openS3() {
-  return new AWS.S3({
-    endpoint: config.s3.endpoint,
-    accessKeyId: config.s3.publicKey,
-    secretAccessKey: config.s3.privateKey,
-    s3ForcePathStyle: true // needed for minio
-  });
+  const providers = {
+    minio: null,
+    backblaze: null
+  };
+
+  const getProviderForParams = (params: { Key?: string, Bucket?: string }): AWS.S3 => {
+    if (!params.Key && !params.Bucket) {
+      throw new Error("s3 params must contain a 'Key' or a 'Bucket' field");
+    }
+    let chooseProvider = "minio";
+    if ((params.Key && params.Key.startsWith("bb_")) || (!params.Key && params.Bucket === config.backblaze.bucket)) {
+      chooseProvider = "backblaze";
+    }
+    if (chooseProvider === "backblaze") {
+      params.Bucket = config.backblaze.bucket;
+      if (!providers.backblaze) {
+        providers.backblaze = new AWS.S3({
+          endpoint: config.backblaze.endpoint,
+          accessKeyId: config.backblaze.publicKey,
+          secretAccessKey: config.backblaze.privateKey,
+          s3ForcePathStyle: true // needed for minio
+        })
+      }
+      return providers.backblaze as AWS.S3;
+    } else {
+      params.Bucket = config.s3.bucket;
+      if (!providers.minio) {
+        providers.minio = new AWS.S3({
+          endpoint: config.s3.endpoint,
+          accessKeyId: config.s3.publicKey,
+          secretAccessKey: config.s3.privateKey,
+          s3ForcePathStyle: true // needed for minio
+        });
+      }
+      return providers.minio as AWS.S3;
+    }
+  }
+
+  return {
+    getObject(params, callback?) {
+      return getProviderForParams(params).getObject(params, callback);
+    },
+    copyObject(params, callback?) {
+      return getProviderForParams(params).copyObject(params, callback);
+    },
+    deleteObject(params, callback?) {
+      return getProviderForParams(params).deleteObject(params, callback);
+    },
+    listObjects(params, callback?) {
+      return getProviderForParams(params).listObjects(params, callback);
+    },
+    headObject(params, callback?) {
+      return getProviderForParams(params).headObject(params, callback);
+    },
+    upload(params, callback?) {
+      return getProviderForParams(params).upload(params, callback);
+    },
+    headBucket(params, callback?) {
+      return getProviderForParams(params).headBucket(callback);
+    }
+  }
 }
 
 export function saveFile(file /* model.File */) {

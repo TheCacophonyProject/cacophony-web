@@ -733,7 +733,6 @@ from (
       const s3 = util.openS3();
       const s3Data = await s3
         .headObject({
-          Bucket: config.s3.bucket,
           Key: flattenedResult.fileKey
         })
         .promise();

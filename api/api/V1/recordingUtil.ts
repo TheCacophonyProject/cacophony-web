@@ -161,7 +161,6 @@ function makeUploadHandler(mungeData?: (any) => any) {
       const fileData = await modelsUtil
         .openS3()
         .getObject({
-          Bucket: config.s3.bucket,
           Key: key
         })
         .promise()

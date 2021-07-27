@@ -60,7 +60,6 @@ export default function (app: Application, baseUrl: string) {
 
       const s3 = modelsUtil.openS3();
       const params = {
-        Bucket: config.s3.bucket,
         Key: key
       };
 
