@@ -277,7 +277,7 @@ export function openS3() {
       return getProviderForParams(params).upload(params, callback);
     },
     headBucket(params, callback?) {
-      return getProviderForParams(params).headBucket(callback);
+      return getProviderForParams(params).headBucket(params, callback);
     }
   };
 }
