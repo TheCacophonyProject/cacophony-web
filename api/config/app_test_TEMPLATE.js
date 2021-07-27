@@ -56,3 +56,11 @@ exports.database = database;
 // This is needed because Sequelize looks for development by default
 // when using db:migrate
 exports.development = database;
+exports.default = {
+  smtpDetails: exports.smtpDetails,
+  server: exports.server,
+  s3: exports.s3,
+  backblaze: exports.backblaze,
+  fileProcessing: exports.fileProcessing,
+  database: exports.database
+};

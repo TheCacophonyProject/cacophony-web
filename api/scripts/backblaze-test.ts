@@ -1,4 +1,4 @@
-import AWS from "aws-sdk";
+import { openS3 } from "../models/util/util";
 
 console.log("Archive recordings to Backblaze");
 
@@ -8,4 +8,7 @@ console.log("Archive recordings to Backblaze");
   // download the recording from minio
   // upload the recording to backblaze with a bb_ prefix on the key.
   // update the db entry.
+  const s3 = openS3();
+  const buffer = "This is a test payload";
+  await s3.upload({ Key: "bb_test_object", Body: buffer }).promise();
 })();
