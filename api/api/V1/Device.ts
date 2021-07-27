@@ -95,7 +95,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {Boolean} [onlyActive] Only return active devices, defaults to `true`
    * If we want to return *all* devices this must be present and set to `false`
-   * @apiParam {string} [view-mode] `"user"` show only devices assigned to current user where 
+   * @apiParam {string} [view-mode] `"user"` show only devices assigned to current user where
    * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
    *
    * @apiDescription Returns all devices the user can access
@@ -185,8 +185,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccessExample {JSON} users:
    * [{
    * "userName"=>"user name",
-   * "admin"=>false, 
-   * "id"=>123 
+   * "admin"=>false,
+   * "id"=>123
    * }]
    * @apiUse V1ResponseError
    */
@@ -260,10 +260,10 @@ export default function (app: Application, baseUrl: string) {
    * device.  `relation` indicates whether the user is a `group` or `device` member.
    * @apiSuccessExample {JSON} rows:
    * [{
-   * "id":1564, 
-   * "username":"user name", 
-   * "email":"email@server.nz", 
-   * "relation":"device", 
+   * "id":1564,
+   * "username":"user name",
+   * "email":"email@server.nz",
+   * "relation":"device",
    * "admin":true
    * }]
    *
@@ -440,8 +440,8 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/v1/devices/query Query devices by groups or devices.
    * @apiName query
    * @apiGroup Device
-   * @apiDescription This call is to query all devices by groupname and/or groupname & devicename. 
-   * Both acitve and inactive devices are returned. 
+   * @apiDescription This call is to query all devices by groupname and/or groupname & devicename.
+   * Both acitve and inactive devices are returned.
    *
    * @apiUse V1DeviceAuthorizationHeader
    *
@@ -459,8 +459,8 @@ export default function (app: Application, baseUrl: string) {
    * [{
    *  "groupname":"group name",
    *  "devicename":"device name",
-   *  "id":2008, 
-   *  "saltId":1007, 
+   *  "id":2008,
+   *  "saltId":1007,
    *  "Group.groupname":"group name"
    * }]
    * @apiUse V1ResponseSuccess

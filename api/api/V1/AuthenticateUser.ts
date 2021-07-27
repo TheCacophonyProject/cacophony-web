@@ -119,7 +119,7 @@ export default function (app: Application) {
    * authentication token in a URL but it is not safe to provide a
    * user's primary JWT as it can easily leak into logs etc. This API
    * generates a short-lived token which can be used as part of URLs.
-   * 
+   *
    * @apiParam {String} [ttl] short,medium,long defining token expiry time
    * @apiParam {JSON} [access] dictionary of access to different entities
    *
@@ -127,7 +127,7 @@ export default function (app: Application) {
    * {"devices":"r"}
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiSuccess {JSON} token JWT that may be used to call the report endpoint. Token will require 
+   * @apiSuccess {JSON} token JWT that may be used to call the report endpoint. Token will require
    * prefixing with "JWT " before use in Authorization header fields.
    */
   app.post(

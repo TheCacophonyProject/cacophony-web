@@ -27,7 +27,7 @@ export default function (app: Application) {
    * @api {post} /authenticate_device/ Authenticate a device
    * @apiName AuthenticateDevice
    * @apiGroup Authentication
-   * @apiDescription Checks the devicename and groupname combination corresponds to an existing device 
+   * @apiDescription Checks the devicename and groupname combination corresponds to an existing device
    * account and the password matches the account. Returns a JWT authentication token to use for
    * further API requests
    *

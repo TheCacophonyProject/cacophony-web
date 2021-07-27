@@ -134,13 +134,13 @@ export default function (app: Application, baseUrl: string) {
    * }]
    * @apiSuccessExample {JSON} User:
    * {
-   *  "id":456, 
-   *  "username":"user name", 
+   *  "id":456,
+   *  "username":"user name",
    *  "email":"email@server.org.nz"
    * }
    * @apiSuccessExample {JSON} Device:
    * {
-   *   "id":1234, 
+   *   "id":1234,
    *   "devicename":"device name"
    * }
    */
