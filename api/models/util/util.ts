@@ -218,12 +218,18 @@ export function openS3() {
     backblaze: null
   };
 
-  const getProviderForParams = (params: { Key?: string, Bucket?: string }): AWS.S3 => {
+  const getProviderForParams = (params: {
+    Key?: string;
+    Bucket?: string;
+  }): AWS.S3 => {
     if (!params.Key && !params.Bucket) {
       throw new Error("s3 params must contain a 'Key' or a 'Bucket' field");
     }
     let chooseProvider = "minio";
-    if ((params.Key && params.Key.startsWith("bb_")) || (!params.Key && params.Bucket === config.backblaze.bucket)) {
+    if (
+      (params.Key && params.Key.startsWith("bb_")) ||
+      (!params.Key && params.Bucket === config.backblaze.bucket)
+    ) {
       chooseProvider = "backblaze";
     }
     if (chooseProvider === "backblaze") {
@@ -234,7 +240,7 @@ export function openS3() {
           accessKeyId: config.backblaze.publicKey,
           secretAccessKey: config.backblaze.privateKey,
           s3ForcePathStyle: true // needed for minio
-        })
+        });
       }
       return providers.backblaze as AWS.S3;
     } else {
@@ -249,7 +255,7 @@ export function openS3() {
       }
       return providers.minio as AWS.S3;
     }
-  }
+  };
 
   return {
     getObject(params, callback?) {
@@ -273,7 +279,7 @@ export function openS3() {
     headBucket(params, callback?) {
       return getProviderForParams(params).headBucket(callback);
     }
-  }
+  };
 }
 
 export function saveFile(file /* model.File */) {
