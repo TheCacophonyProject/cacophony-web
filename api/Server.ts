@@ -82,7 +82,7 @@ function openHttpServer(app): Promise<void> {
 function checkS3Connection(): Promise<void> {
   return new Promise(function (resolve, reject) {
     const s3 = modelsUtil.openS3();
-    const params = { Bucket: config.s3.bucket };
+    const params = { Bucket: config.s3Local.bucket };
     log.info("Connecting to S3.....");
     s3.headBucket(params, function (err) {
       if (err) {

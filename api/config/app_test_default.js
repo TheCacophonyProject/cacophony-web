@@ -9,7 +9,7 @@ exports.server = {
   },
   recording_url_base: "http://test.site/recording"
 };
-exports.s3 = {
+exports.s3Local = {
   publicKey: "minio",
   privateKey: "miniostorage",
   bucket: "cacophony",
@@ -27,7 +27,7 @@ exports.database = {
   dialect: "postgres"
 };
 
-exports.backblaze = {
+exports.s3Archive = {
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
   bucket: "CacophonyBackblazeTest", // REQUIRED, String
@@ -47,8 +47,8 @@ exports.development = exports.database;
 exports.default = {
   smtpDetails: exports.smtpDetails,
   server: exports.server,
-  s3: exports.s3,
-  backblaze: exports.backblaze,
+  s3Local: exports.s3Local,
+  s3Archive: exports.s3Archive,
   fileProcessing: exports.fileProcessing,
   database: exports.database
 };

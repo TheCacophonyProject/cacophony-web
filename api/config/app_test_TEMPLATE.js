@@ -10,7 +10,7 @@ const server = {
   }
 };
 
-const s3 = {
+const s3Local = {
   // Used for storing audio & video recordings.
   publicKey: "REQUIRED", // obtain from S3 server.
   privateKey: "REQUIRED", // obtain from S3 server
@@ -18,7 +18,7 @@ const s3 = {
   endpoint: "http://localhost:9001"
 };
 
-const backblaze = {
+const s3Archive = {
   publicKey: "REQUIRED", // REQUIRED, String:
   privateKey: "REQUIRED", // REQUIRED, String
   bucket: "CacophonyBackblazeTest", // REQUIRED, String
@@ -48,8 +48,8 @@ const smtpDetails = {
 
 exports.smtpDetails = smtpDetails;
 exports.server = server;
-exports.s3 = s3;
-exports.backblaze = backblaze;
+exports.s3Local = s3Local;
+exports.s3Archive = s3Archive;
 exports.fileProcessing = fileProcessing;
 exports.database = database;
 
@@ -59,8 +59,8 @@ exports.development = database;
 exports.default = {
   smtpDetails: exports.smtpDetails,
   server: exports.server,
-  s3: exports.s3,
-  backblaze: exports.backblaze,
+  s3Local: exports.s3Local,
+  s3Archive: exports.s3Archive,
   fileProcessing: exports.fileProcessing,
   database: exports.database
 };

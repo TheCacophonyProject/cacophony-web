@@ -49,7 +49,7 @@ async function main() {
   console.log(`${toDelete.size} keys to delete`);
 
   if (toDelete.size > 0 && args.delete) {
-    await deleteObjects(s3, Config.s3.bucket, toDelete);
+    await deleteObjects(s3, toDelete);
     console.log(`objects deleted`);
   }
 }
@@ -57,14 +57,13 @@ async function main() {
 async function loadAllBucketKeys(s3, prefixes) {
   const p = [];
   for (const prefix of prefixes) {
-    p.push(loadBucketKeys(s3, Config.s3.bucket, prefix));
+    p.push(loadBucketKeys(s3, prefix));
   }
   return collectKeys(p);
 }
 
-async function loadBucketKeys(s3, bucket, prefix) {
+async function loadBucketKeys(s3, prefix) {
   const params: any = {
-    Bucket: bucket,
     Prefix: prefix
   };
 
@@ -129,14 +128,9 @@ async function collectKeys(promises) {
   return allKeys;
 }
 
-async function deleteObjects(s3, bucket, keys) {
-  const params: any = {
-    Bucket: bucket
-  };
-
+async function deleteObjects(s3, keys) {
   for (const key of keys) {
-    params.Key = key;
-    await s3.deleteObject(params).promise();
+    await s3.deleteObject({ Key: key }).promise();
   }
 }
 

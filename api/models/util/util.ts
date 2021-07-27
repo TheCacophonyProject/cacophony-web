@@ -220,8 +220,8 @@ export function openS3() {
   // local minio storage.
 
   const providers = {
-    minio: null,
-    backblaze: null
+    s3Local: null,
+    s3Archive: null
   };
 
   const getProviderForParams = (params: {
@@ -231,35 +231,35 @@ export function openS3() {
     if (!params.Key && !params.Bucket) {
       throw new Error("s3 params must contain a 'Key' or a 'Bucket' field");
     }
-    let chooseProvider = "minio";
+    let chooseProvider = "s3Local";
     if (
-      (params.Key && params.Key.startsWith("bb_")) ||
-      (!params.Key && params.Bucket === config.backblaze.bucket)
+      (params.Key && params.Key.startsWith("a_")) ||
+      (!params.Key && params.Bucket === config.s3Archive.bucket)
     ) {
-      chooseProvider = "backblaze";
+      chooseProvider = "s3Archive";
     }
-    if (chooseProvider === "backblaze") {
-      params.Bucket = config.backblaze.bucket;
-      if (!providers.backblaze) {
-        providers.backblaze = new AWS.S3({
-          endpoint: config.backblaze.endpoint,
-          accessKeyId: config.backblaze.publicKey,
-          secretAccessKey: config.backblaze.privateKey,
+    if (chooseProvider === "s3Archive") {
+      params.Bucket = config.s3Archive.bucket;
+      if (!providers.s3Archive) {
+        providers.s3Archive = new AWS.S3({
+          endpoint: config.s3Archive.endpoint,
+          accessKeyId: config.s3Archive.publicKey,
+          secretAccessKey: config.s3Archive.privateKey,
           s3ForcePathStyle: true // needed for minio
         });
       }
-      return providers.backblaze as AWS.S3;
+      return providers.s3Archive as AWS.S3;
     } else {
-      params.Bucket = config.s3.bucket;
-      if (!providers.minio) {
-        providers.minio = new AWS.S3({
-          endpoint: config.s3.endpoint,
-          accessKeyId: config.s3.publicKey,
-          secretAccessKey: config.s3.privateKey,
+      params.Bucket = config.s3Local.bucket;
+      if (!providers.s3Local) {
+        providers.s3Local = new AWS.S3({
+          endpoint: config.s3Local.endpoint,
+          accessKeyId: config.s3Local.publicKey,
+          secretAccessKey: config.s3Local.privateKey,
           s3ForcePathStyle: true // needed for minio
         });
       }
-      return providers.minio as AWS.S3;
+      return providers.s3Local as AWS.S3;
     }
   };
 
@@ -306,7 +306,6 @@ export function saveFile(file /* model.File */) {
     const s3 = openS3();
     fs.readFile(file.path, function (err, data) {
       const params = {
-        Bucket: config.s3.bucket,
         Key: key,
         Body: data
       };
@@ -335,7 +334,6 @@ export function deleteFile(fileKey) {
   return new Promise((resolve, reject) => {
     const s3 = openS3();
     const params = {
-      Bucket: config.s3.bucket,
       Key: fileKey
     };
     s3.deleteObject(params, function (err, data) {

@@ -24,7 +24,7 @@ const database = {
   dialect: "postgres"
 };
 
-const s3 = {
+const s3Local = {
   // Used for storing audio & video recordings.
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
@@ -32,7 +32,7 @@ const s3 = {
   endpoint: "http://localhost:9000" // REQUIRED, URL
 };
 
-const backblaze = {
+const s3Achive = {
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
   bucket: "CacophonyBackblazeTest", // REQUIRED, String
@@ -56,8 +56,8 @@ exports.smtpDetails = smtpDetails;
 exports.server = server;
 exports.fileProcessing = fileProcessing;
 exports.database = database;
-exports.s3 = s3;
-exports.backblaze = backblaze;
+exports.s3Local = s3Local;
+exports.s3Archive = s3Achive;
 
 // This is needed because Sequelize looks for development by default when using db:migrate
 exports.development = database;
