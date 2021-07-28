@@ -47,7 +47,7 @@ Currently both sets of tests need to be run.
 
 #### Running the cypress tests
 
-See [Cypress Tests](api/test-cypress/README.md) for details on running the cypress tests.
+See [Cypress Tests](integreation-tests/README.md) for details on running the cypress tests.
 
 #### Running the python tests
 
