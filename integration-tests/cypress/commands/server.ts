@@ -118,6 +118,11 @@ export function expectRequestHasFailed(response) {
     response.isOkStatusCode,
     "Request should return a failure status code."
   ).to.be.false;
+  expect(
+    response.status,
+    "Error scenario should be caught and return custom 4xx error, should not cause 500 server error"
+  ).to.not.equal(500);
+
   return response;
 }
 
@@ -156,5 +161,23 @@ type IsoFormattedDateString = string;
 export function checkResponse (response: Cypress.Response, code: number) {
   expect(response.status, 'Expected specified status code').to.eq(code);
   return(response);
+}
+
+export function sortArrayOn(theArray,theKey) {
+  theArray.sort(function(a,b) {
+    if (a[theKey] < b[theKey]) return -1;
+    if (a[theKey] > b[theKey]) return 1;
+    return 0;
+  });
+  return(theArray);
+}
+
+export function sortArrayOnTwoKeys(theArray,key1, key2) {
+  theArray.sort(function(a,b) {
+    if (a[key1]+a[key2] < b[key1]+b[key2]) return -1;
+    if (a[key1]+a[key2] > b[key1]+b[key2]) return 1;
+    return 0;
+  });
+  return(theArray);
 }
 

@@ -37,30 +37,5 @@ declare namespace Cypress {
      */
     apiCreateGroupAndCameras(userName: string, group: string, ...cameras : string[] );
 
-    apiAddUserToGroup(
-      groupAdminUser: string,
-      userName: string,
-      groupName: string,
-      admin?: boolean,
-      log?: boolean
-    );
-
-    /**
-     * Add a user to a device
-     */
-    apiAddUserToDevice(
-      deviceAdminUser: string,
-      user: string,
-      device: string
-    );
-
-
-    /**
-     * Verify that user can see a group
-     * Optionally verify they can't see the group (set testForSuccess=false)
-     */
-     apiCheckUserCanSeeGroup(username: string, groupname: string, testForSuccess: boolean);
-
-
   }
 }
