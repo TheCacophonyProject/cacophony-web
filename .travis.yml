@@ -53,7 +53,7 @@ script:
   - cp cypress.json.TEMPLATE cypress.json
   - npm install
   - npm run release
-  - cd ../../api
+  - cd ../api
 
 before_deploy:
   - version=${TRAVIS_TAG/v/}
