@@ -1,5 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
 
 import { getTestName } from "../names";
 import {
@@ -34,7 +35,7 @@ Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
 });
 
 Cypress.Commands.add(
-  "apiCreateUserGroupAndCamera",
+  "apiCreateUserGroupAndDevice",
   (userName, group, camera) => {
     logTestDescription(
       `Create user '${userName}' with camera '${camera}' in group '${group}'`,
@@ -42,7 +43,7 @@ Cypress.Commands.add(
     );
     cy.apiCreateUser(userName, false);
     cy.apiCreateGroup(userName, group, false);
-    cy.apiCreateCamera(camera, group,  null, false);
+    cy.apiCreateDevice(camera, group,  null, null);
   }
 );
 
@@ -55,7 +56,7 @@ Cypress.Commands.add("apiCreateUserGroup", (userName, group) => {
   cy.apiCreateGroup(userName, group, false);
 });
 
-Cypress.Commands.add("apiCreateGroupAndCameras", (userName, group, ...cameras) => {
+Cypress.Commands.add("apiCreateGroupAndDevices", (userName, group, ...cameras) => {
   logTestDescription(`Create group '${group}' with cameras '${prettyLog(cameras)}'`, {
     user: userName,
     group, 
@@ -63,7 +64,7 @@ Cypress.Commands.add("apiCreateGroupAndCameras", (userName, group, ...cameras) =
   });
   cy.apiCreateGroup(userName, group, false);
   cameras.forEach(camera => {
-    cy.apiCreateCamera(camera, group);
+    cy.apiCreateDevice(camera, group);
   });
 });
 

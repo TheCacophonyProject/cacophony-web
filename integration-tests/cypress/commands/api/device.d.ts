@@ -1,78 +1,78 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
 
 declare namespace Cypress {
   interface Chainable {
     /**
-     * Record a event for this device
-     */
-    recordEvent(
-      cameraName: string,
-      type: string,
-      details?: any,
-      date?: Date,
-      log?: boolean
-    );
-
-    /**
      * create a device in the given group
+     * optionally check for non-200 statusCode
      */
-    apiCreateCamera(
-      cameraName: string,
-      group: string,
-      saltId: number,
-      log: boolean,
-      statusCode: number
-    );
+    apiCreateDevice( cameraName: string, group: string, saltId?: number, password?: string, generateUniqueNmae?: boolean, log?: boolean, statusCode?: number);
 
      /**
-     *register a device under a new group or name
-     *optionally check for an error response (statusCode!=200OK)
-     *optionally supply a password (autogenerat if not)
+     * register a device under a new group or name
+     * optionally check for an error response (statusCode!=200OK)
+     * optionally supply a password (autogenerate if not)
+     * optionally check for non-200 statusCode
      */
-    apiDeviceReregister(
-      oldName: string,
-      newName: string,
-      newGroup: string,
-      newPassword: string,
-      log: boolean,
-      statusCode: number
-    );
-
+    apiDeviceReregister( oldName: string, newName: string, newGroup: string, newPassword?: string, generateUniqueName?: boolean, statusCode?: number);
 
     /**
-     * use to test when a camera should not be able to be created.
-     *
-     * Use makeCameraNameTestName = false if you don't want cy_ etc added to the camera name
-     */
-    apiShouldFailToCreateCamera(
-      cameraName: string,
-      group: string,
-      makeCameraNameTestName?: boolean
-    );
-
-
-    /**
-    * Retrieve device details using name and groupname
-    * use groupId if provided, otherwise groupName
-    * compare with expected device details (JSON equivalent to that retunred by API)
-    * optioanlly check for a non-200 status code
-    */
-    apiCheckDeviceInGroup(userName: string, cameraName: string, groupName: string, groupId: number, expectedDevice: all, statusCode: number);
-
-
-    /**
-    * Retrieve devices list
+    * Retrieve devices list from /devices
     * compare with expected device details (JSON equivalent to that retunred by API)
     * pass optional params (params) to API call
-    * optionlly check for a non-200 status code
+    * optionally check for a non-200 status code
     */
-    apiCheckDevices(userName: string, expectedDevice: [ComparableDevice], params: string, statusCode: number);
+    apiCheckDevices(userName: string, expectedDevice: [ApiDevice], params?: any, statusCode?: number);
+
 
     /**
-     * upload a file from a camera. Recording_name is the path to the raw cptv file
-     *
-     */
-    apiUploadRecording(cameraName: string, recording_name: string);
+    * Same as apiCheckDevices but check the expected items are on the list, rather than the only things on the list
+    */
+    apiCheckDevicesContains(userName: string, expectedDevices: [ApiDevicesDevice], params?: string, statusCode?: number);
+
+    /**
+    * Retrieve device details using name and groupname from /device/XX/in-group/YY
+    * use groupId if provided, otherwise groupName - the unused parameter should be set to null
+    * compare with expected device details (JSON equivalent to that retunred by API)
+    * optionally check for a non-200 status code
+    */
+    apiCheckDeviceInGroup(userName: string, cameraName: string, groupName: string, groupId: number, expectedDevices: ApiDeviceInGroupDevice, params?: any, statusCode?: number);
+
+
+   /**
+    * Retrieve list of devices matching  name and groupname or just groupname from /devices/query
+    * compare with expected device details (JSON equivalent to that retunred by API)
+    * optionally use operator to specify whether to AND or OR the groups and devices conditions supplier (default=OR)
+    * optionally check for a non-200 status code
+    */
+    apiCheckDevicesQuery(userName: string, devicesArray: [TestDeviceAndGroup], groupsArray: [string], expectedDevice: [ApiDevicesQueryDevice], opertor?: string, statusCode?: number);
+
+
+   /**
+    * Retrieve list of users  who can access a device from /devices/users
+    * compare with expected list of users
+    * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
+    * optionally check for a non-200 status code
+    */
+    apiCheckDevicesUsers(userName: string, deviceName: string, expectedUsers: [ApiDeviceUsersUser], statusCode?: number);
+
+   /**
+    * Add user to a device using /device/users
+    * Specify admin or non admin user (defualt=non-admin)
+    * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
+    * optionally check for a non-200 status code
+    */
+    apiAddUserToDevice(deviceAdminUser: string, userName: string, deviceName: string, admin?: boolean, statusCode?: number);
+
+   /**
+    * Remove user from a device using /device/users
+    * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
+    * optionally check for a non-200 status code
+    */
+    apiRemoveUserFromDevice(deviceAdminUser: string, userName: string, deviceName: string, statusCode?: number);
+
+
   }
 }

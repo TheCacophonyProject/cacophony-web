@@ -13,7 +13,7 @@ describe("Monitoring : pagings", () => {
     const camera = "basic";
     const firstRecording = "10:03";
 
-    cy.apiCreateCamera(camera, group);
+    cy.apiCreateDevice(camera, group);
     cy.uploadRecordingsAtTimes(camera, ["21:03", "21:23", "21:43", "22:03", "22:23", "22:43", "23:03"]);
 
     cy.checkMonitoringWithFilter(Veronica, camera, {"page-size": 3, page: 1}, [{start: "22:23"}, {start: "22:43"}, {start: "23:03"}]);
@@ -28,8 +28,8 @@ describe("Monitoring : pagings", () => {
     cy.apiCreateUserGroup(Henry, group);
     const camera1 = "cam-1";
     const camera2 = "cam-2";
-    cy.apiCreateCamera(camera1, group);
-    cy.apiCreateCamera(camera2, group);
+    cy.apiCreateDevice(camera1, group);
+    cy.apiCreateDevice(camera2, group);
     cy.uploadRecordingsAtTimes(camera1, ["21:03", "21:14", "21:25"]);
     cy.uploadRecordingsAtTimes(camera2, ["21:13", "21:18", "21:27"]); // all one visit
 
@@ -46,7 +46,7 @@ describe("Monitoring : pagings", () => {
     const visitTime = "21:10";
     const nextVisitTime = "21:33";
     cy.apiCreateUser(Bobletta);
-    cy.apiCreateGroupAndCameras(Bobletta, group, camera1, camera2, camera3);
+    cy.apiCreateGroupAndDevices(Bobletta, group, camera1, camera2, camera3);
 
     cy.uploadRecording(camera1, { time: visitTime });
     cy.uploadRecording(camera2, { time: visitTime });
@@ -59,7 +59,7 @@ describe("Monitoring : pagings", () => {
 
   it("visits that start before search period but cross into search period are only shown on the last page", () => {
     const camera = "close recordings";
-    cy.apiCreateCamera(camera, group);
+    cy.apiCreateDevice(camera, group);
     cy.uploadRecordingsAtTimes(camera, ["21:03", "21:13", "21:40", "21:45", "22:10", "22:40", "23:10"]);
 
     cy.checkMonitoringWithFilter(Veronica, 

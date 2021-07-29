@@ -3,7 +3,7 @@
 const url = require("url");
 const names = require("./names");
 
-Cypress.Commands.add("createCamera", (cameraName, groupName) => {
+Cypress.Commands.add("createDevice", (cameraName, groupName) => {
   const urlParams = url.format({
     pathname: 'create/' + names.getTestName(cameraName),
     query: {

@@ -1,5 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
+
 
 declare namespace Cypress {
   interface Chainable {

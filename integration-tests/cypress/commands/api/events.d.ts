@@ -1,10 +1,18 @@
-interface ComparablePowerEvent {
-  hasStopped: boolean;
-  hasAlerted: boolean;
-}
+/// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
 
 declare namespace Cypress {
   interface Chainable {
+    /**
+     * Record a event for this device
+     */
+    recordEvent(
+      cameraName: string,
+      type: string,
+      details?: any,
+      date?: Date,
+      log?: boolean
+    );
     /**
      * check the this device is reported as stopped or not
      *
@@ -12,7 +20,7 @@ declare namespace Cypress {
     checkPowerEvents(
       user: string,
       camera: string,
-      expectedEvent: ComparablePowerEvent
+      expectedEvent: TestComparablePowerEvent
     ): Chainable<Element>;
     /**
      * check the this device has a matching event. 

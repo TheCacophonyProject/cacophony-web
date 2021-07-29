@@ -1,4 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
+const HTTP_AuthorizationError = 401;
+const HTTP_Forbidden = 403;
+const HTTP_Unprocessable = 422;
+const HTTP_OK = 200;
+
 
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
@@ -8,41 +13,44 @@ describe("Device register", () => {
   const otherCams = "other cams";
 
   const KEEP_DEVICE_NAME = false;
-  const GENERATE_PASSWORD = false;
+  const GENERATE_UNIQUE_NAME = true;
+  const GENERATE_PASSWORD = null;
+  const KEEP_SALT_ID = null;
+  const LOG = true;
 
   before(() => {
-    cy.apiCreateUserGroupAndCamera("Anita", camsGroup, "gotya");
-    cy.apiCreateCamera("defaultcam", camsGroup);
+    cy.apiCreateUserGroupAndDevice("Anita", camsGroup, "gotya");
+    cy.apiCreateDevice("defaultcam", camsGroup);
     cy.apiCreateGroup("Anita", otherCams, true);
   });
 
   it("group can have multiple devices with a different names", () => {
-    cy.apiCreateCamera("Smile", camsGroup);
+    cy.apiCreateDevice("Smile", camsGroup);
   });
 
   it("devices in different groups can have the same names", () => {
-    cy.apiCreateCamera("gotya", otherCams);
+    cy.apiCreateDevice("gotya", otherCams);
   });
 
   it("But cannot create device with same name (even with different case) in the same group", () => {
-    cy.apiShouldFailToCreateCamera("GotYa", camsGroup);
+    cy.apiCreateDevice("GotYa", camsGroup, KEEP_SALT_ID, GENERATE_PASSWORD, GENERATE_UNIQUE_NAME, LOG, HTTP_Unprocessable);
   });
 
   it("Should not be able to create a device name that doesn't have any letters", () => {
-    cy.apiShouldFailToCreateCamera("12345", camsGroup, GENERATE_PASSWORD, KEEP_DEVICE_NAME);
-    cy.apiShouldFailToCreateCamera("123-34", camsGroup, GENERATE_PASSWORD, KEEP_DEVICE_NAME);
+    cy.apiCreateDevice("12345", camsGroup, KEEP_SALT_ID, GENERATE_PASSWORD, KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
+    cy.apiCreateDevice("123-34", camsGroup, KEEP_SALT_ID, GENERATE_PASSWORD, KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
   });
 
   it("Should be able to create a device name that has -, _, and spaces in it", () => {
-    cy.apiCreateCamera("funny device1", camsGroup);
-    cy.apiCreateCamera("funny-device2", camsGroup);
-    cy.apiCreateCamera("funny_device3", camsGroup);
+    cy.apiCreateDevice("funny device1", camsGroup);
+    cy.apiCreateDevice("funny-device2", camsGroup);
+    cy.apiCreateDevice("funny_device3", camsGroup);
   });
 
   it("Shouldn't be able to create a device name that starts with -, _, and spaces in it", () => {
-    cy.apiShouldFailToCreateCamera(" device1", camsGroup, GENERATE_PASSWORD, KEEP_DEVICE_NAME);
-    cy.apiShouldFailToCreateCamera("-device2", camsGroup, GENERATE_PASSWORD, KEEP_DEVICE_NAME);
-    cy.apiShouldFailToCreateCamera("_device3", camsGroup, GENERATE_PASSWORD, KEEP_DEVICE_NAME);
+    cy.apiCreateDevice(" device1", camsGroup, KEEP_SALT_ID, GENERATE_PASSWORD, KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
+    cy.apiCreateDevice("-device2", camsGroup, KEEP_SALT_ID, GENERATE_PASSWORD, KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
+    cy.apiCreateDevice("_device3", camsGroup, KEEP_SALT_ID, GENERATE_PASSWORD, KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
   });
 
   it("If not specified on register saltId = deviceId", () => {
@@ -53,26 +61,26 @@ describe("Device register", () => {
   });
 
   it("Can register a device and specify salt id", () => {
-    cy.apiCreateCamera("specify salt", camsGroup, 9998);
+    cy.apiCreateDevice("specify salt", camsGroup, 9998);
     const expectedDevice={"devicename": getTestName("specify salt"), "groupname": getTestName(camsGroup), "saltId":9998};
     cy.apiCheckDevicesQuery("Anita", [expectedDevice], null, [expectedDevice]);
   });
 
   it("When registering a device must specify a valid password", () => {
     //not blank
-    cy.apiShouldFailToCreateCamera("device4", camsGroup, "", KEEP_DEVICE_NAME);
+    cy.apiCreateDevice("device4", camsGroup, KEEP_SALT_ID, "", KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
     //not space
-    cy.apiShouldFailToCreateCamera("device5", camsGroup, " ", KEEP_DEVICE_NAME);
+    cy.apiCreateDevice("device5", camsGroup, KEEP_SALT_ID, " ", KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
     //not less than 8 chars
-    cy.apiShouldFailToCreateCamera("device6", camsGroup, "1234567", KEEP_DEVICE_NAME);
+    cy.apiCreateDevice("device6", camsGroup, KEEP_SALT_ID, "1234567", KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
   });
 
   it("When registering a device must specify a group that exists", () => {
-    cy.apiShouldFailToCreateCamera("device4", "nonexitant group", GENERATE_PASSWORD, KEEP_DEVICE_NAME);
+    cy.apiCreateDevice("device4", "nonexitant group", KEEP_SALT_ID, GENERATE_PASSWORD, KEEP_DEVICE_NAME, LOG, HTTP_Unprocessable);
   });
 
   it.skip("Correctly handles missing parameters in register device", () => {
-    //TODO: write this (helper apiCreateCamera does not yet support missing params)
+    //TODO: write this (helper apiCreateDevice does not yet support missing params)
   });
 
 });

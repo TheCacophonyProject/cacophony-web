@@ -1,5 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
 
 declare namespace Cypress {
   interface Chainable {
@@ -20,7 +21,7 @@ declare namespace Cypress {
     /**
      * create user group and camera at the same time
      */
-    apiCreateUserGroupAndCamera(
+    apiCreateUserGroupAndDevice(
       userName: string,
       group: string,
       camera: string
@@ -35,7 +36,7 @@ declare namespace Cypress {
     /**
      * create user group and camera at the same time
      */
-    apiCreateGroupAndCameras(userName: string, group: string, ...cameras : string[] );
+    apiCreateGroupAndDevices(userName: string, group: string, ...cameras : string[] );
 
   }
 }

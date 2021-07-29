@@ -1,29 +1,14 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
+
 import { v1ApiPath, getCreds, saveIdOnly, makeAuthorizedRequest,makeAuthorizedRequestWithStatus } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getTestName, getUniq } from "../names";
 
-interface ComparableAlert {
-  id: number,
-  name: string,
-  frequencySeconds: number,
-  conditions: [{tag: string, automatic: boolean}],
-  lastAlert: boolean,
-  User: {
-	   id: number,
-	   username: string,
-	   email: string
-  },
-  Device: {
-	  id: number,
-	  devicename: string
-  }
-};
-
 Cypress.Commands.add(
   "apiAddAlert",
-  (user: string, alertName: string, conditions: string, device: string, frequency: number=null, failCode)=> {
+  (user: string, alertName: string, conditions: ApiAlertConditions, device: string, frequency?: number=null, statusCode?: number = 200)=> {
     logTestDescription(
       `Create alert ${getUniq(alertName)} for ${device} `,
       {
@@ -34,13 +19,13 @@ Cypress.Commands.add(
         getUniq(alertName)
       }
     );
-    apiAlertsPost(user,alertName,conditions,device,frequency,failCode);
+    apiAlertsPost(user,alertName,conditions,device,frequency,statusCode);
   }
 );
 
 Cypress.Commands.add(
   "apiCheckAlert",
-  (user: string, device: string, alertName: string)=> {
+  (user: string, device: string, alertName?: string, statusCode?: number = 200)=> {
     logTestDescription(
       `Check for expected alert ${getUniq(alertName)} for ${device} `,
       {
@@ -50,15 +35,17 @@ Cypress.Commands.add(
       }
     );
 
-    apiAlertsGet(user,device).then((response) => { 
-       checkExpectedAlerts(response,getUniq(alertName));	    
+    apiAlertsGet(user,device,statusCode).then((response) => { 
+       if(statusCode==200) {
+         checkExpectedAlerts(response,getUniq(alertName));	    
+       };
     });
   }
 );
 
 Cypress.Commands.add(
    "createExpectedAlert",
-   (name: string, alertName: string, frequencySeconds: number, conditions: any, lastAlert: boolean, user: string, device: string)=> {
+   (name: string, alertName: string, frequencySeconds: number, conditions: ApiAlertConditions, lastAlert: boolean, user: string, device: string)=> {
     logTestDescription(
       `Create expected alert ${getUniq(name)} for ${device} `,
       {
@@ -67,7 +54,7 @@ Cypress.Commands.add(
         getUniq(name)
       }
     );
-     //alertId will have been daved when we created the alert
+     //alertId will have been saved when we created the alert
      const alertId=getCreds(getUniq(alertName)).id;
      const expectedAlert={
        "id": alertId ,
@@ -88,20 +75,20 @@ Cypress.Commands.add(
 function apiAlertsPost(
   user: string,
   alertName: string,
-  conditions: string,
+  conditions: ApiAlertConditions,
   device: string,
   frequency: number,
   testFailure: number
 ) {
   const deviceId = getCreds(device).id;
-  const alert_json = {
+  const alertJson = {
            name: getUniq(alertName),
            conditions: conditions,
            deviceId: deviceId
         };
 
   if(frequency!=null) {
-	  alert_json["frequencySeconds"]=frequency;
+	  alertJson["frequencySeconds"]=frequency;
   };
 
 
@@ -109,7 +96,7 @@ function apiAlertsPost(
       {
         method: "POST",
         url: v1ApiPath("alerts"),
-        body: alert_json
+        body: alertJson
       },
       user,
       testFailure
@@ -122,14 +109,16 @@ function apiAlertsPost(
 
 function apiAlertsGet(
   user: string,
-  device: string
+  device: string,
+  statusCode: number
 ) {
    const deviceId= getCreds(device).id;
    const params = {};
 
-  return(makeAuthorizedRequest(
+  return(makeAuthorizedRequestWithStatus(
     { url: v1ApiPath(`alerts/device/${deviceId}`, params) },
-    user
+    user,
+    statusCode
   ));
 }
 
@@ -193,6 +182,6 @@ function checkExpectedAlerts(
   return(response);
 }
 
-export function getExpectedAlert(name: string): ComparableAlert {
+export function getExpectedAlert(name: string): ApiAlert {
      return(Cypress.env("testCreds")[name]);
 };

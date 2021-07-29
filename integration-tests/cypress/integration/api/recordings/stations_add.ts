@@ -18,18 +18,18 @@ describe("Stations: add and remove", () => {
   });
 
   it.skip("recordings are assigned to the correct stations", () => {
-    cy.apiCreateCamera("in-forest", group);
+    cy.apiCreateDevice("in-forest", group);
     cy.uploadRecording("in-forest", forestLatLong)
       .thenCheckStationIs(Josie, "forest");
 
-    cy.apiCreateCamera("in-stream", group);
+    cy.apiCreateDevice("in-stream", group);
     cy.uploadRecording("in-stream", { lat: -43.62367659983, lng: 172.62646754804})
       .thenCheckStationIs(Josie, "stream");
 
   });
   
   it("recording that is not close to any station is not assigned a station", () => {
-    cy.apiCreateCamera("neither", group);
+    cy.apiCreateDevice("neither", group);
     cy.uploadRecording("neither", { lat: -43.6, lng: 172.6}).thenCheckStationIs(Josie, "");
   });
 
@@ -37,7 +37,7 @@ describe("Stations: add and remove", () => {
     const otherGroup = "Josies-other";
     const camera = "other-group";
     cy.apiCreateGroup(Josie, otherGroup);
-    cy.apiCreateCamera(camera, otherGroup);
+    cy.apiCreateDevice(camera, otherGroup);
     cy.uploadRecording(camera, forestLatLong)
       .thenCheckStationIs(Josie, "");
   });
@@ -46,7 +46,7 @@ describe("Stations: add and remove", () => {
     const Josie2 = "Josie2";
     const groupUpdate = "update-stations";
     const camera = "update-after";
-    cy.apiCreateUserGroupAndCamera(Josie2, groupUpdate, camera);
+    cy.apiCreateUserGroupAndDevice(Josie2, groupUpdate, camera);
     cy.uploadRecording(camera, {time: date, lat: -43.6, lng: 172.8});
     cy.checkRecordingsStationIs(Josie2, "");
 
@@ -63,7 +63,7 @@ describe("Stations: add and remove", () => {
     const Josie3 = "Josie3";
     const camera = "update-earlier";
     const groupNotUpdate = "not-update-stations";
-    cy.apiCreateUserGroupAndCamera(Josie3, groupNotUpdate, camera);
+    cy.apiCreateUserGroupAndDevice(Josie3, groupNotUpdate, camera);
     cy.uploadRecording(camera, {time: date, lat: -43.6, lng: 172.8});
     cy.checkRecordingsStationIs(Josie3, "");
 
@@ -81,7 +81,7 @@ describe("Stations: add and remove", () => {
     const groupRemove = "remove-station";
     const date = new Date(2021, 3, 25, 21);
     const earlier = new Date(2021, 3, 25, 20);
-    cy.apiCreateUserGroupAndCamera(Josie4, groupRemove, camera);
+    cy.apiCreateUserGroupAndDevice(Josie4, groupRemove, camera);
     const stations = [
       { name: "waterfall", lat: -43.6, lng: 172.8}
     ];

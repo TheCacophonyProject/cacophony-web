@@ -1,5 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
+
 import { v1ApiPath, getCreds, makeAuthorizedRequest } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getExpectedAlert } from "./alerts";
@@ -11,28 +13,32 @@ export const EventTypes = {
   STOP_REPORTED: "stop-reported"
 };
 
-interface ComparableEvent {
-  id: number,
-  dateTime: string,
-  createdat: string,
-  DeviceId: number,
-  EventDetail: {
-	  type: string,
-	  details: {
-		  recId: number,
-		  alertId: number,
-		  success: boolean,
-		  trackId: number
-	  }
-  },
-  Device: {
-	  devicename: string
+Cypress.Commands.add(
+  "recordEvent",
+  (camera: string, type: string, details?: any = {}, date? = new Date(), log? = true) => {
+    const data = {
+      dateTimes: [date.toISOString()],
+      description: { type: type, details: details }
+    };
+    logTestDescription(
+      `Create ${type} event for ${camera} at ${date}`,
+      { data: data },
+      log
+    );
+    makeAuthorizedRequest(
+      {
+        method: "POST",
+        url: v1ApiPath("events"),
+        body: data
+      },
+      camera
+    );
   }
-};
+);
 
 Cypress.Commands.add(
   "checkPowerEvents",
-  (user: string, camera: string, expectedEvent: ComparablePowerEvent) => {
+  (user: string, camera: string, expectedEvent: TestComparablePowerEvent) => {
     logTestDescription(
       `Check power events for ${camera} is ${prettyLog(expectedEvent)}}`,
       {
@@ -90,7 +96,7 @@ Cypress.Commands.add(
 function checkPowerEvents(
   user: string,
   camera: string,
-  expectedEvent: ComparablePowerEvent
+  expectedEvent: TestComparablePowerEvent
 ) {
   const params = {
     deviceID: getCreds(camera).id
@@ -166,7 +172,7 @@ function checkEventMatches(
 
 function checkPowerEventMatches(
   response: Cypress.Response,
-  expectedEvent: ComparablePowerEvent
+  expectedEvent: TestComparablePowerEvent
 ) {
   expect(response.body.events.length, `Expected 1 event`).to.eq(1);
   const powerEvent = response.body.events[0];
@@ -183,7 +189,7 @@ function checkPowerEventMatches(
   ).to.eq(expectedEvent.hasAlerted);
 }
 
-export function getExpectedEvent(name: string): ComparableEvent {
+export function getExpectedEvent(name: string): TestComparableEvent {
      return(Cypress.env("testCreds")[name]);
 };
 

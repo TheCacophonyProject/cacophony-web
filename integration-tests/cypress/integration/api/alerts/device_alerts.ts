@@ -2,10 +2,11 @@
 import { checkResponse } from "../../../commands/server";
 import { getNewIdentity } from "../../../commands/names";
 
-const AuthorizationError = 403;
-const BadRequest = 400;
-
-const OK200 = 200;
+const HTTP_AuthorizationError = 401;
+const HTTP_Forbidden = 403;
+const HTTP_BadRequest = 400;
+const HTTP_Unprocessable = 422;
+const HTTP_OK200 = 200;
 
 
 describe("Devices alerts", () => {
@@ -17,29 +18,29 @@ describe("Devices alerts", () => {
     const userb=getNewIdentity('bob');
 
     cy.apiCreateUser(userb.name);
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     //attempt to create alert for camera that is not ours
-    cy.apiAddAlert(userb.name,'alert1',POSSUM_ALERT,usera.camera,null,AuthorizationError).then((response) => {checkResponse(response,AuthorizationError);
+    cy.apiAddAlert(userb.name,'alert1',POSSUM_ALERT,usera.camera,null,HTTP_Forbidden).then((response) => {checkResponse(response,HTTP_Forbidden);
     });
   });
 
   it("Cannot create alert with invalid condition", () => { 
     const BAD_POSSUM_ALERT = [{"bad_tag": "any", "automatic": true}];
     const usera=getNewIdentity('anna');
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     //attempt to create alert with invalid data
-    cy.apiAddAlert(usera.name,'alert1',BAD_POSSUM_ALERT,usera.camera,null,BadRequest).then((response) => {checkResponse(response,BadRequest);
+    cy.apiAddAlert(usera.name,'alert1',BAD_POSSUM_ALERT,usera.camera,null,HTTP_BadRequest).then((response) => {checkResponse(response,HTTP_BadRequest);
     });
   });
 
   it("Can create alert and has no events by default", () => {
     const usera=getNewIdentity('alfred');
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     // crete an example alert to compare against
     cy.createExpectedAlert("emptyExpectedAlert", "alert1", 0, POSSUM_ALERT, false, usera.name, usera.camera);
@@ -53,10 +54,10 @@ describe("Devices alerts", () => {
 
   it("Can receive an alert", () => {
     const usera=getNewIdentity('andrew');
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
     cy.uploadRecording(usera.camera, { processingState: "FINISHED", tags: ["possum"] }, null, "recording1").then(()=>{
@@ -74,10 +75,10 @@ describe("Devices alerts", () => {
 
   it("No possum alert is sent for a rat", () => {
     const usera=getNewIdentity('alfreda');
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert1b',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert1b',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //upload a recording tagged as rat and  build an expected event using the returned recording details
     cy.uploadRecording(usera.camera, { processingState: "FINISHED", tags: ["rat"] }, null, "recording1b").then(()=>{
@@ -94,11 +95,11 @@ describe("Devices alerts", () => {
   it("No possum alert is sent for a possum on a different device", () => {
     const usera=getNewIdentity('aine');
     const camera2="camera2";
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
-    cy.apiCreateCamera(camera2,usera.group);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
+    cy.apiCreateDevice(camera2,usera.group);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert1c',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert1c',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //upload a recording tagged as possum against another camera and  build an expected event using the returned recording details
     cy.uploadRecording(camera2, { processingState: "FINISHED", tags: ["possum"] }, null, "recording1c").then(()=>{
@@ -115,10 +116,10 @@ describe("Devices alerts", () => {
 
   it("Recording with multiple tags - majority tag alerts", () => {
     const usera=getNewIdentity('aaron');
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert1d',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert1d',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
     cy.uploadRecording(usera.camera, { processingState: "FINISHED", tags: ["rat", "possum", "possum", "possum", "rat"] }, null, "recording1d").then(()=>{
@@ -136,10 +137,10 @@ describe("Devices alerts", () => {
 
   it("Recording with multiple tags - minority tag does not alert", () => {
     const usera=getNewIdentity('aaron');
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert1d',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert1d',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
     cy.uploadRecording(usera.camera, { processingState: "FINISHED", tags: ["rat", "rat", "possum", "possum", "rat"] }, null, "recording1d").then(()=>{
@@ -155,10 +156,10 @@ describe("Devices alerts", () => {
 
   it("Does not alert on non-master tags", () => {
     const usera=getNewIdentity('alistair');
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //expected alert to compare against (latestEvent is false)
     cy.createExpectedAlert("emptyAlert", "alert1", 0, POSSUM_ALERT, false, usera.name, usera.camera);
@@ -178,10 +179,10 @@ describe("Devices alerts", () => {
     const userb=getNewIdentity('barbera');
 
     cy.apiCreateUser(userb.name);
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert3',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert3',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //add userb to camera's group
     cy.apiAddUserToGroup(usera.name,userb.name,usera.group,false,true);
@@ -206,10 +207,10 @@ describe("Devices alerts", () => {
     const userb=getNewIdentity('bruce');
 
     cy.apiCreateUser(userb.name);
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert4',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert4',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //add userb to camera's group
     cy.apiAddUserToGroup(usera.name,userb.name,usera.group,false,true);
@@ -231,10 +232,10 @@ describe("Devices alerts", () => {
 
   it("Can generate and report multiple events", () => {
     const usera=getNewIdentity('aida');
-    cy.apiCreateUserGroupAndCamera(usera.name, usera.group, usera.camera);
+    cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
     // create alert
-    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,OK200);
+    cy.apiAddAlert(usera.name,'alert1',POSSUM_ALERT,usera.camera,0,HTTP_OK200);
 
     //upload a recording tagged as possum using group
     cy.uploadRecordingOnBehalfUsingGroup(usera.camera,  usera.group, usera.name, { processingState: "FINISHED", tags: ["possum"]} ,null, "recording1" ).then(()=>{

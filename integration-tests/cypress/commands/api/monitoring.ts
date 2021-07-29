@@ -101,7 +101,7 @@ function checkResponseMatches(
 
   // pull out the bits we care about
   const responseVisitsToCompare: ComparableVisit[] = [];
-  for (var i = 0; i < expectedVisits.length; i++) {
+  for (let i = 0; i < expectedVisits.length; i++) {
     const expectedVisit = expectedVisits[i];
     const completeResponseVisit = increasingDateResponseVisits[i];
     const simplifiedResponseVisit: ComparableVisit = {};

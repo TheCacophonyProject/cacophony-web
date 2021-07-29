@@ -1,5 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
 
 interface TrackInfo {
   start_s?: number;
@@ -79,5 +80,11 @@ declare namespace Cypress {
 
     // to be run straight after an uploadRecording
     thenUserTagAs(tagger: string, tag: string);
+
+   /**
+    * Check recording count for device matches expected value 
+    */
+    apiCheckDeviceHasRecordings(username: string, , deviceName: string, ,count: number);
+
   }
 }

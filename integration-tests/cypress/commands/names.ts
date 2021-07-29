@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 
 //suffix to add to ids making them unique within each test run
-var userId=0
+let userId=0
 
 const uniqueIdName = "uniqueId";
 

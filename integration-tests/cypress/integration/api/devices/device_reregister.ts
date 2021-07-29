@@ -2,18 +2,19 @@
 
 const HTTP_AuthorizationError = 401;
 const HTTP_BadRequest = 400;
+const HTTP_Unprocessable = 422;
 const HTTP_OK = 200;
 
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 
 describe("Device reregister", () => {
-  const KEEP_DEVICE_NAME = true;
-  const GENERATE_UNIQUE_NAME = false;
+  const KEEP_DEVICE_NAME = false;
+  const GENERATE_UNIQUE_NAME = true;
   const GENERATE_PASSWORD = null;
 
   before(() => {
-    cy.apiCreateUserGroupAndCamera("Augustus", "RR_default_group","RR_default_camera");
+    cy.apiCreateUserGroupAndDevice("Augustus", "RR_default_group","RR_default_camera");
     cy.apiCreateGroup("Augustus", "RR_default_group_2", true);
   });
 
@@ -23,7 +24,7 @@ describe("Device reregister", () => {
 
     //register camera & store device details
     cy.apiCreateUserGroup("RR_user1", "RR_group1");
-    cy.apiCreateCamera("RR_cam1", "RR_group1").then(() => {  
+    cy.apiCreateDevice("RR_cam1", "RR_group1").then(() => {  
       expectedDevice1={id: getCreds("RR_cam1").id, devicename: getTestName("RR_cam1"), active: false, Users: []};
     });
 
@@ -43,7 +44,7 @@ describe("Device reregister", () => {
     let expectedDevice2b;
 
     //register camera & store device details
-    cy.apiCreateUserGroupAndCamera("RR_user2", "RR_group2", "RR_cam2").then(() => {
+    cy.apiCreateUserGroupAndDevice("RR_user2", "RR_group2", "RR_cam2").then(() => {
       expectedDevice2={id: getCreds("RR_cam2").id, devicename: getTestName("RR_cam2"), active: false, Users: []};
     });
 
@@ -66,7 +67,7 @@ describe("Device reregister", () => {
     let expectedDevice3b;
 
     //register camera & store device details
-    cy.apiCreateUserGroupAndCamera("RR_user3", "RR_group3", "RR_cam3").then(() => {
+    cy.apiCreateUserGroupAndDevice("RR_user3", "RR_group3", "RR_cam3").then(() => {
       expectedDevice3={id: getCreds("RR_cam3").id, devicename: getTestName("RR_cam3"), active: false, Users: []};
     });
 
@@ -87,42 +88,43 @@ describe("Device reregister", () => {
     let expectedDevice5a;
 
     //register camera & store device details
-    cy.apiCreateUserGroupAndCamera("RR_user5", "RR_group5", "RR_cam5a").then(() => {
+    cy.apiCreateUserGroupAndDevice("RR_user5", "RR_group5", "RR_cam5a").then(() => {
       expectedDevice5a={id: getCreds("RR_cam5a").id, devicename: getTestName("RR_cam5a"), active: true, Users: []};
     });
 
     //another pre-existing camera
-    cy.apiCreateCamera("RR_cam5", "RR_group5");
+    cy.apiCreateDevice("RR_cam5", "RR_group5");
 
     //attempt to rename camera with duplicate name rejected
+    //TODO: This should really return 422-Unprocessable.  It is not malformed - just  breaks our rules
     cy.apiDeviceReregister("RR_cam5a", "RR_cam5","RR_group5", GENERATE_PASSWORD, GENERATE_UNIQUE_NAME, HTTP_BadRequest).then(() => {
       //check old device unaltered
-      cy.apiCheckDevices_contains("RR_user5", [expectedDevice5a]);
+      cy.apiCheckDevicesContains("RR_user5", [expectedDevice5a]);
     });
 
   });
 
   it("Should not be able to create a device name that doesn't have any letters", () => {
-    cy.apiDeviceReregister("RR_default_camera","12345", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_BadRequest);
-    cy.apiDeviceReregister("RR_default_camera","1234-678", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_BadRequest);
+    cy.apiDeviceReregister("RR_default_camera","12345", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_Unprocessable);
+    cy.apiDeviceReregister("RR_default_camera","1234-678", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_Unprocessable);
   });
 
   it("Should be able to create a device name that has -, _, and spaces in it", () => {
-    cy.apiCreateUserGroupAndCamera("RR_user6", "RR_group6", "RR_cam6");
+    cy.apiCreateUserGroupAndDevice("RR_user6", "RR_group6", "RR_cam6");
     cy.apiDeviceReregister("RR_cam6","funny device1", "RR_default_group");
     cy.apiDeviceReregister("funny device1","funny-device1", "RR_default_group");
     cy.apiDeviceReregister("funny-device1", "funny_device1", "RR_default_group");
   });
 
   it("Shouldn't be able to create a device name that starts with -, _, and spaces in it", () => {
-    cy.apiDeviceReregister("RR_default_camera", " device1", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_BadRequest);
-    cy.apiDeviceReregister("RR_default_camera", "-device1", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_BadRequest);
-    cy.apiDeviceReregister("RR_default_camera", "_device1", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_BadRequest);
+    cy.apiDeviceReregister("RR_default_camera", " device1", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_Unprocessable);
+    cy.apiDeviceReregister("RR_default_camera", "-device1", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_Unprocessable);
+    cy.apiDeviceReregister("RR_default_camera", "_device1", "RR_default_group", GENERATE_PASSWORD, KEEP_DEVICE_NAME, HTTP_Unprocessable);
   });
 
   it("Reregistered device can keep default salt id", () => {
     cy.apiCreateUserGroup("RR_user7", "RR_group7");
-    cy.apiCreateCamera("RR_cam7", "RR_group7").then(() => {
+    cy.apiCreateDevice("RR_cam7", "RR_group7").then(() => {
 
       const expectedDevice1={"devicename": getTestName("RR_cam7"), "groupname": getTestName("RR_group7"), "saltId":getCreds("RR_cam7").id};
       cy.apiCheckDevicesQuery("RR_user7", [expectedDevice1], null, [expectedDevice1]);
@@ -137,7 +139,7 @@ describe("Device reregister", () => {
 
   it("Reregistered device can keep specified salt id", () => {
     cy.apiCreateUserGroup("RR_user8", "RR_group8"); 
-    cy.apiCreateCamera("specify salt", "RR_group8", 9997);
+    cy.apiCreateDevice("specify salt", "RR_group8", 9997);
     cy.apiDeviceReregister("specify salt", "specify salt2", "RR_group8");
 
     //Test with Salt Id = device id by default
@@ -147,15 +149,15 @@ describe("Device reregister", () => {
 
   it("When reregistering a device cannot specify an invalid password", () => {
     //not blank
-    cy.apiDeviceReregister("RR_default_camera", "valid_name", "", "RR_default_group", GENERATE_UNIQUE_NAME, HTTP_BadRequest);
+    cy.apiDeviceReregister("RR_default_camera", "valid_name", "", "RR_default_group", GENERATE_UNIQUE_NAME, HTTP_Unprocessable);
     //not space
-    cy.apiDeviceReregister("RR_default_camera", "valid_name2", " ", "RR_default_group", GENERATE_UNIQUE_NAME, HTTP_BadRequest);
+    cy.apiDeviceReregister("RR_default_camera", "valid_name2", " ", "RR_default_group", GENERATE_UNIQUE_NAME, HTTP_Unprocessable);
     //not less than 8 chars
-    cy.apiDeviceReregister("RR_default_camera", "valid_name3", "1234567", "RR_default_group", GENERATE_UNIQUE_NAME, HTTP_BadRequest);
+    cy.apiDeviceReregister("RR_default_camera", "valid_name3", "1234567", "RR_default_group", GENERATE_UNIQUE_NAME, HTTP_Unprocessable);
   });
 
   it("When reregistering a device must specify a group that exists", () => {
-    cy.apiDeviceReregister("RR_default_camera", "valid_name", GENERATE_PASSWORD, "invalid-group", GENERATE_UNIQUE_NAME, HTTP_BadRequest);
+    cy.apiDeviceReregister("RR_default_camera", "valid_name", GENERATE_PASSWORD, "invalid-group", GENERATE_UNIQUE_NAME, HTTP_Unprocessable);
   });
 
   // TODO. Write this. helper does not currently handle missing parameters

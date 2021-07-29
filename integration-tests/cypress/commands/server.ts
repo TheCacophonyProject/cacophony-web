@@ -80,7 +80,7 @@ export function makeAuthorizedRequestWithStatus( requestDetails: Partial<Cypress
   if(statusCode && statusCode>200) {
     // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
     requestDetails.failOnStatusCode = false;
-    return makeAuthorizedRequest(requestDetails, credName).then(expectRequestHasFailed);
+    return makeAuthorizedRequest(requestDetails, credName).then((response) => { expectRequestHasFailed(response,statusCode)});
   } else {
     requestDetails.failOnStatusCode = true;
     return makeAuthorizedRequest(requestDetails, credName);
@@ -89,19 +89,21 @@ export function makeAuthorizedRequestWithStatus( requestDetails: Partial<Cypress
 
 export function checkAuthorizedRequestFails(
   requestDetails: Partial<Cypress.RequestOptions>,
-  credName: string
+  credName: string,
+  statusCode: number
 ) {
   // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
   requestDetails.failOnStatusCode = false;
-  makeAuthorizedRequest(requestDetails, credName).then(expectRequestHasFailed);
+  makeAuthorizedRequest(requestDetails, credName).then((response) => {expectRequestHasFailed(response,statusCode)});
 }
 
 export function checkRequestFails(
-  requestDetails: Partial<Cypress.RequestOptions>
+  requestDetails: Partial<Cypress.RequestOptions>,
+  statusCode: number
 ) {
   // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
   requestDetails.failOnStatusCode = false;
-  cy.request(requestDetails).then(expectRequestHasFailed);
+  cy.request(requestDetails).then((response) => {expectRequestHasFailed(response,statusCode)});
 }
 
 export function makeAuthorizedRequest(
@@ -113,19 +115,20 @@ export function makeAuthorizedRequest(
   return cy.request(requestDetails);
 }
 
-export function expectRequestHasFailed(response) {
+export function expectRequestHasFailed(response,statusCode) {
   expect(
     response.isOkStatusCode,
     "Request should return a failure status code."
   ).to.be.false;
   expect(
     response.status,
-    "Error scenario should be caught and return custom 4xx error, should not cause 500 server error"
-  ).to.not.equal(500);
+    `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`
+  ).to.equal(statusCode);
 
   return response;
 }
 
+//TODO: This functionality duplicates fileUpload in fileUpload.ts. This one needs removing
 export const uploadFileRequest = (fileToUpload, uniqueName, aliasName, uploadUrl, fileData, credentials) => {
   const data = new FormData();
 

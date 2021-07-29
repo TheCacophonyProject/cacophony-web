@@ -1,5 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types.d.ts" />
 
 import { uploadFile } from "../fileUpload";
 import { getTestName } from "../names";
@@ -281,6 +282,22 @@ function addTracksToRecording(
     });
   }
 }
+
+Cypress.Commands.add("apiCheckDeviceHasRecordings", (username, deviceName,count) => {
+  const user = getCreds(username);
+  const camera = getCreds(deviceName);
+  const params = {
+    where: JSON.stringify({"DeviceId":camera.id})
+  };
+  const fullUrl = v1ApiPath('recordings',params);
+
+  cy.request({
+    url: fullUrl,
+    headers: user.headers
+  }).then((request) => {
+    expect(request.body.count).to.equal(count);
+  });
+});
 
 export function checkRecording(user: string, recordingId: number, checkFunction: any) {
   cy.log(`recording id is ${recordingId}`)
