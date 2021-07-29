@@ -5,13 +5,13 @@ let userId=0
 
 const uniqueIdName = "uniqueId";
 
-export function getTestName(baseName) {
+export function getTestName(baseName: string):string {
   initializeTestNames();
 
   return `cy_${baseName}_${Cypress.config("env")[uniqueIdName]}`;
 }
 
-export function initializeTestNames(uniqueId = "") {
+export function initializeTestNames(uniqueId: string = "") {
   if (
     typeof Cypress.config("env") === "undefined" ||
     typeof Cypress.config("env")[uniqueIdName] === "undefined"
@@ -28,13 +28,13 @@ export function initializeTestNames(uniqueId = "") {
   }
 }
 
-export function stripBackName(testName: string) {
+export function stripBackName(testName: string):string {
   const uniqueId = Cypress.config("env")[uniqueIdName];
   return testName.substring(3,  testName.length - uniqueId.length - 1);
 }
 
 
-export function getNewIdentity(userName: string) {
+export function getNewIdentity(userName: string):any {
   const user={
           name: userName+userId.toString(),
           group: userName+userId.toString()+"_group",
@@ -45,7 +45,7 @@ export function getNewIdentity(userName: string) {
 }
 
 //adds suffix of uniq id within test + uniq id for test run
-export function getUniq(name: string) {
+export function getUniq(name: string):string {
   const uniqueId = Cypress.config("env")[uniqueIdName];
   return(name+"_"+userId.toString()+"_"+uniqueId);
 }

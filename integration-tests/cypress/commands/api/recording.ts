@@ -1,6 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types.d.ts" />
+/// <reference types="../types" />
 
 import { uploadFile } from "../fileUpload";
 import { getTestName } from "../names";
@@ -187,6 +187,7 @@ interface ThermalRecordingData {
   additionalMetadata?: JSON;
   metadata?: ThermalRecordingMetaData;
   location?: number[];
+  processingState?: string;
 }
 
 function makeRecordingDataFromDetails(

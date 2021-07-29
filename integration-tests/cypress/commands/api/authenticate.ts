@@ -1,22 +1,17 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types.d.ts" />
+/// <reference types="../types" />
 
 import { getTestName } from "../names";
 import {
   apiPath,
-  getCreds,
-  makeAuthorizedRequest,
   makeAuthorizedRequestWithStatus,
   saveCreds,
-  saveIdOnly,
-  v1ApiPath,
   expectRequestHasFailed
 } from "../server";
-import { logTestDescription, prettyLog } from "../descriptions";
 
 
-Cypress.Commands.add("apiSignInAs", (userName?: string, email?: string, nameOrEmail?: string, password?: string = null, statusCode?: number = 200) => {
+Cypress.Commands.add("apiSignInAs", (userName: string = null, email: string = null, nameOrEmail: string = null, password: string = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/authenticate_user";
   let data = {};
   
@@ -36,7 +31,7 @@ Cypress.Commands.add("apiSignInAs", (userName?: string, email?: string, nameOrEm
   }
 });
 
-Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB?: string, statusCode?: number = 200) => {
+Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB: string = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/admin_authenticate_as_other_user";
   let data = {};
 
@@ -56,7 +51,7 @@ Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB?: string, status
 
 });
 
-Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: string, password?: string = null, statusCode?: number = 200) => {
+Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: string, password: string = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/authenticate_device";
   const fullDeviceName = getTestName(deviceName);
   const fullGroupName = getTestName(groupName);
@@ -79,9 +74,8 @@ Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: st
   }
 });
 
-Cypress.Commands.add("apiToken", (userName: string, ttl?: string = null, access?: ApiAuthenticateAccess = null, statusCode?: number = 200) => {
+Cypress.Commands.add("apiToken", (userName: string, ttl: string = null, access: ApiAuthenticateAccess = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/token";
-  const fullName = getTestName(userName);
 
   let data = {};
 

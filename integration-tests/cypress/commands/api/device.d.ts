@@ -1,6 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types.d.ts" />
+/// <reference types="../types" />
 
 declare namespace Cypress {
   interface Chainable {
@@ -24,13 +24,13 @@ declare namespace Cypress {
     * pass optional params (params) to API call
     * optionally check for a non-200 status code
     */
-    apiCheckDevices(userName: string, expectedDevice: [ApiDevice], params?: any, statusCode?: number);
+    apiCheckDevices(userName: string, expectedDevice: ApiDevicesDevice[], params?: any, statusCode?: number);
 
 
     /**
     * Same as apiCheckDevices but check the expected items are on the list, rather than the only things on the list
     */
-    apiCheckDevicesContains(userName: string, expectedDevices: [ApiDevicesDevice], params?: string, statusCode?: number);
+    apiCheckDevicesContains(userName: string, expectedDevices: ApiDevicesDevice[], params?: string, statusCode?: number);
 
     /**
     * Retrieve device details using name and groupname from /device/XX/in-group/YY
@@ -47,7 +47,7 @@ declare namespace Cypress {
     * optionally use operator to specify whether to AND or OR the groups and devices conditions supplier (default=OR)
     * optionally check for a non-200 status code
     */
-    apiCheckDevicesQuery(userName: string, devicesArray: [TestDeviceAndGroup], groupsArray: [string], expectedDevice: [ApiDevicesQueryDevice], opertor?: string, statusCode?: number);
+    apiCheckDevicesQuery(userName: string, devicesArray: TestDeviceAndGroup[], groupsArray: string[], expectedDevice: ApiDeviceQueryDevice[], opertor?: string, statusCode?: number);
 
 
    /**
@@ -56,7 +56,7 @@ declare namespace Cypress {
     * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
     * optionally check for a non-200 status code
     */
-    apiCheckDevicesUsers(userName: string, deviceName: string, expectedUsers: [ApiDeviceUsersUser], statusCode?: number);
+    apiCheckDevicesUsers(userName: string, deviceName: string, expectedUsers: ApiDeviceUsersUser[], statusCode?: number);
 
    /**
     * Add user to a device using /device/users

@@ -19,8 +19,8 @@ describe("Device in group", () => {
   const camera = "camera1";
   const NOT_ADMIN = false;
   const ADMIN = true;
-  let expectedDeviceInGroupAdminView;
-  let expectedDeviceInGroupUserView;
+  let expectedDeviceInGroupAdminView:ApiDeviceInGroupDevice;
+  let expectedDeviceInGroupUserView:ApiDeviceInGroupDevice;
 
   before(() => {
     cy.apiCreateUser(groupMember);
@@ -60,7 +60,7 @@ describe("Device in group", () => {
       `Check that ${hacker} is blocked from getting device`,
       {}
     );
-    cy.apiCheckDeviceInGroup(hacker, camera, group, null, {}, {}, HTTP_Forbidden);
+    cy.apiCheckDeviceInGroup(hacker, camera, group, null, null, {}, HTTP_Forbidden);
   });
 
   it("Can retrieve group by id instead of name", () => {
@@ -70,11 +70,11 @@ describe("Device in group", () => {
 
   // TODO: Fails - returns empty response instead of error message. Issue 60
   it.skip("Correctly handles invalid device", () => {
-    cy.apiCheckDeviceInGroup(groupAdmin, 'bad-camera', group, null, {}, {}, HTTP_Unprocessable);
+    cy.apiCheckDeviceInGroup(groupAdmin, 'bad-camera', group, null, null, {}, HTTP_Unprocessable);
   });
 
   it("Correctly handles invalid group", () => {
-    cy.apiCheckDeviceInGroup(groupAdmin, camera, 'bad-group', null, {}, {}, HTTP_Unprocessable);
+    cy.apiCheckDeviceInGroup(groupAdmin, camera, 'bad-group', null, null, {}, HTTP_Unprocessable);
   });
 
 });

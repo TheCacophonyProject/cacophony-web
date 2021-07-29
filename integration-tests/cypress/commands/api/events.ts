@@ -1,10 +1,9 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types.d.ts" />
+/// <reference types="../types.ts" />
 
 import { v1ApiPath, getCreds, makeAuthorizedRequest } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { getExpectedAlert } from "./alerts";
 import { getTestName, getUniq } from "../names";
 
 export const EventTypes = {
@@ -15,7 +14,7 @@ export const EventTypes = {
 
 Cypress.Commands.add(
   "recordEvent",
-  (camera: string, type: string, details?: any = {}, date? = new Date(), log? = true) => {
+  (camera: string, type: string, details: any = {}, date = new Date(), log = true) => {
     const data = {
       dateTimes: [date.toISOString()],
       description: { type: type, details: details }
@@ -71,7 +70,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
    "createExpectedEvent",
-   (name: string, user: string, device: sting, recording: string, alertName: string)=> {
+   (name: string, user: string, device: string, recording: string, alertName: string)=> {
     logTestDescription(
       `Create expected event ${getUniq(name)} for ${getUniq(alertName)} `,
       {

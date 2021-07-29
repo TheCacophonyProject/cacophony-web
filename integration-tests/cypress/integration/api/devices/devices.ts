@@ -30,11 +30,11 @@ describe("Devices list", () => {
   const camera4 = 'Debbie-camera';
   const superuser = 'admin_test';
   const suPassword = 'admin_test';
-  let expectedDeviceAdminView;
-  let expectedDeviceMemberView;
-  let expectedDevice2AdminView;
-  let expectedDevice3AdminView;
-  let expectedDevice4AdminView;
+  let expectedDeviceAdminView:ApiDevicesDevice;
+  let expectedDeviceMemberView:ApiDevicesDevice;
+  let expectedDevice2AdminView:ApiDevicesDevice;
+  let expectedDevice3AdminView:ApiDevicesDevice;
+  let expectedDevice4AdminView:ApiDevicesDevice;
 
   before(() => {
     cy.apiCreateUser(groupMember);

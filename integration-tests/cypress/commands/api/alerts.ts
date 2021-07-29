@@ -1,14 +1,12 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types.d.ts" />
+/// <reference types="../types" />
 
-import { v1ApiPath, getCreds, saveIdOnly, makeAuthorizedRequest,makeAuthorizedRequestWithStatus } from "../server";
-import { logTestDescription, prettyLog } from "../descriptions";
+import { v1ApiPath, getCreds, saveIdOnly, makeAuthorizedRequestWithStatus } from "../server";
+import { logTestDescription } from "../descriptions";
 import { getTestName, getUniq } from "../names";
 
-Cypress.Commands.add(
-  "apiAddAlert",
-  (user: string, alertName: string, conditions: ApiAlertConditions, device: string, frequency?: number=null, statusCode?: number = 200)=> {
+Cypress.Commands.add("apiAddAlert", (user: string, alertName: string, conditions: [ApiAlertConditions], device: string, frequency: number=null, statusCode: number = 200)=> {
     logTestDescription(
       `Create alert ${getUniq(alertName)} for ${device} `,
       {
@@ -25,7 +23,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiCheckAlert",
-  (user: string, device: string, alertName?: string, statusCode?: number = 200)=> {
+  (user: string, device: string, alertName: string, statusCode: number = 200)=> {
     logTestDescription(
       `Check for expected alert ${getUniq(alertName)} for ${device} `,
       {
@@ -45,7 +43,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
    "createExpectedAlert",
-   (name: string, alertName: string, frequencySeconds: number, conditions: ApiAlertConditions, lastAlert: boolean, user: string, device: string)=> {
+   (name: string, alertName: string, frequencySeconds: number, conditions: [ApiAlertConditions], lastAlert: boolean, user: string, device: string)=> {
     logTestDescription(
       `Create expected alert ${getUniq(name)} for ${device} `,
       {
@@ -58,7 +56,7 @@ Cypress.Commands.add(
      const alertId=getCreds(getUniq(alertName)).id;
      const expectedAlert={
        "id": alertId ,
-       "name": name,
+       "name": alertName,
        "alertName": getUniq(alertName),
        "frequencySeconds": frequencySeconds,
        "conditions": conditions,
@@ -75,7 +73,7 @@ Cypress.Commands.add(
 function apiAlertsPost(
   user: string,
   alertName: string,
-  conditions: ApiAlertConditions,
+  conditions: [ApiAlertConditions],
   device: string,
   frequency: number,
   testFailure: number

@@ -10,7 +10,7 @@ const HTTP_OK200 = 200;
 
 
 describe("Devices alerts", () => {
-  const POSSUM_ALERT = [{"tag":"possum","automatic":true}];
+  const POSSUM_ALERT:[ApiAlertConditions] = [{"tag":"possum","automatic":true}];
 
 
   it("Cannot create alert without access permissions", () => {  
@@ -26,7 +26,7 @@ describe("Devices alerts", () => {
   });
 
   it("Cannot create alert with invalid condition", () => { 
-    const BAD_POSSUM_ALERT = [{"bad_tag": "any", "automatic": true}];
+    const BAD_POSSUM_ALERT:[ApiAlertConditions] = [{"bad_tag": "any", "automatic": true}];
     const usera=getNewIdentity('anna');
     cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 

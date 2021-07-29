@@ -1,18 +1,12 @@
 /// <reference types="cypress" />
-/// <reference types="../types.d.ts" />
+/// <reference types="../types.ts" />
 
 declare namespace Cypress {
   interface Chainable {
     /**
      * Record a event for this device
      */
-    recordEvent(
-      cameraName: string,
-      type: string,
-      details?: any,
-      date?: Date,
-      log?: boolean
-    );
+    recordEvent( cameraName: string, type: string, details?: any, date?: Date, log?: boolean);
     /**
      * check the this device is reported as stopped or not
      *
@@ -31,12 +25,12 @@ declare namespace Cypress {
       user: string,
       camera: string,
       eventName: string,
-      eventNumber: number
+      eventNumber?: number
     ): Chainable<Element>;
     /**
      * Create a template event to compare received events against
      * eventName will be rendered unique _per test_
      */
-    createExpectedEvent(name: string, user: string, device: sting, recording: string, alertName: string);
+    createExpectedEvent(name: string, user: string, device: string, recording: string, alertName: string);
   }
 }

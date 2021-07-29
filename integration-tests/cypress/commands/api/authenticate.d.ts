@@ -1,4 +1,4 @@
-/// <reference types="../types.d.ts" />
+/// <reference types="../types" />
 declare namespace Cypress {
   interface Chainable {
      /**

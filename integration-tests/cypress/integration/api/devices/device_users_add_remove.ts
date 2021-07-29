@@ -25,14 +25,14 @@ describe("Devices add / view / remove users", () => {
   const camera2 = 'second_H_camera';
   const superuser = 'admin_test';
   const suPassword = 'admin_test';
-  let deviceMemberDetails;
-  let deviceAdminDetails;
-  let groupAdminDetails;
-  let groupMemberDetails;
-  let userBDetails;
-  let userCDetails;
-  let userDDetails;
-  let expectedDeviceInGroupUserView;
+  let deviceMemberDetails:ApiDeviceUsersUser;
+  let deviceAdminDetails:ApiDeviceUsersUser;
+  let groupAdminDetails:ApiDeviceUsersUser;
+  let groupMemberDetails:ApiDeviceUsersUser;
+  let userBDetails:ApiDeviceUsersUser;
+  let userCDetails:ApiDeviceUsersUser;
+  let userDDetails:ApiDeviceUsersUser;
+  let expectedDeviceInGroupUserView:ApiDeviceInGroupDevice;
 
   before(() => {
     cy.apiCreateUser(groupMember);

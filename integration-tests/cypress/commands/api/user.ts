@@ -1,15 +1,11 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types.d.ts" />
+/// <reference types="../types" />
 
 import { getTestName } from "../names";
 import {
   apiPath,
-  getCreds,
-  makeAuthorizedRequest,
   saveCreds,
-  saveIdOnly,
-  v1ApiPath
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 

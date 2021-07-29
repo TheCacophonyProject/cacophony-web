@@ -29,11 +29,11 @@ describe("Devices/query", () => {
   const ADMIN = true;
   const superuser = 'admin_test';
   const suPassword = 'admin_test';
-  let expectedDeviceA1;
-  let expectedDeviceA2;
-  let expectedDeviceB1;
-  let expectedDevice3;
-  let expectedDevice4;
+  let expectedDeviceA1:ApiDeviceQueryDevice;
+  let expectedDeviceA2:ApiDeviceQueryDevice;
+  let expectedDeviceB1:ApiDeviceQueryDevice;
+  let expectedDevice3:ApiDeviceQueryDevice;
+  let expectedDevice4:ApiDeviceQueryDevice;
 
   before(() => {
     //first group, users & devices

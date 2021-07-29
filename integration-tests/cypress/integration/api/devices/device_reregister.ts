@@ -19,8 +19,8 @@ describe("Device reregister", () => {
   });
 
   it("re-register a device in same group with different name", () => {
-    let expectedDevice1;
-    let expectedDevice1b;
+    let expectedDevice1:ApiDevicesDevice;
+    let expectedDevice1b:ApiDevicesDevice;
 
     //register camera & store device details
     cy.apiCreateUserGroup("RR_user1", "RR_group1");
@@ -40,8 +40,8 @@ describe("Device reregister", () => {
   });
 
   it("re-register a device in new group with same name", () => {
-    let expectedDevice2;
-    let expectedDevice2b;
+    let expectedDevice2:ApiDevicesDevice;
+    let expectedDevice2b:ApiDevicesDevice;
 
     //register camera & store device details
     cy.apiCreateUserGroupAndDevice("RR_user2", "RR_group2", "RR_cam2").then(() => {
@@ -63,8 +63,8 @@ describe("Device reregister", () => {
   });
 
   it("re-register a device in different group with different name", () => {
-    let expectedDevice3;
-    let expectedDevice3b;
+    let expectedDevice3:ApiDevicesDevice;
+    let expectedDevice3b:ApiDevicesDevice;
 
     //register camera & store device details
     cy.apiCreateUserGroupAndDevice("RR_user3", "RR_group3", "RR_cam3").then(() => {
@@ -85,7 +85,7 @@ describe("Device reregister", () => {
   });
 
   it("But cannot re-register a device in same group with same name as another device", () => {
-    let expectedDevice5a;
+    let expectedDevice5a:ApiDevicesDevice;
 
     //register camera & store device details
     cy.apiCreateUserGroupAndDevice("RR_user5", "RR_group5", "RR_cam5a").then(() => {
