@@ -739,7 +739,7 @@ from (
       ContentLength = s3Data.ContentLength;
     } catch (err) {
       log.warn(
-        "Error retrieving S3 Object for recording",
+        "Error retrieving S3 Object for recording: %s, %s",
         err.message,
         flattenedResult.fileKey
       );

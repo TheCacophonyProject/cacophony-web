@@ -1,8 +1,8 @@
 import process from "process";
-const args = require("commander");
-const { Client } = require("pg");
-const config = require("../config");
-const modelsUtil = require("../models/util/util");
+import { program } from "commander";
+import { Client } from "pg";
+import * as config from "../config";
+import * as modelsUtil from "../models/util/util";
 
 let Config;
 // Define the types of object keys that will be considered for pruning.
@@ -13,17 +13,18 @@ const keyTypes = Object.freeze([
 ]);
 
 async function main() {
-  args
+  program
     .option("--config <path>", "Configuration file", "./config/app.js")
     .option("--delete", "Actually delete objects (dry run by default)")
     .parse(process.argv);
+  const options = program.opts();
 
   Config = {
     ...config.default,
-    ...config.default.loadConfig(args.config)
+    ...config.default.loadConfig(options.config)
   };
 
-  if (!args.delete) {
+  if (!options.delete) {
     console.log("NOTE: no objects will be removed without --delete");
   }
 
@@ -48,7 +49,7 @@ async function main() {
   const toDelete = new Set([...bucketKeys].filter((x) => !dbKeys.has(x)));
   console.log(`${toDelete.size} keys to delete`);
 
-  if (toDelete.size > 0 && args.delete) {
+  if (toDelete.size > 0 && options.delete) {
     await deleteObjects(s3, toDelete);
     console.log(`objects deleted`);
   }

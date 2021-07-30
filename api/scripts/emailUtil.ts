@@ -2,7 +2,7 @@ import config from "../config";
 import { Recording } from "../models/Recording";
 import { TrackTag } from "../models/TrackTag";
 import log from "../logging";
-import moment, { Moment } from "moment";
+import moment from "moment";
 import { SMTPClient, Message } from "emailjs";
 
 function alertBody(

@@ -175,7 +175,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
       // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
       fileIsCorrupt = await decoder.hasStreamError();
       if (fileIsCorrupt) {
-        log.warn("CPTV Stream error", await decoder.getStreamError());
+        log.warn("CPTV Stream error: %s", await decoder.getStreamError());
       }
       decoder.close();
 
@@ -751,7 +751,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       "algorithm",
       metadata["algorithm"]
     );
-    let model = {
+    const model = {
       name: "unknown",
       algorithmId: algorithmDetail.id
     };
@@ -774,7 +774,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       }
     }
   } catch (err) {
-    log.error("Error creating recording tracks from metadata", err);
+    log.error("Error creating recording tracks from metadata: %s", err);
   }
 }
 
@@ -802,7 +802,7 @@ async function queryVisits(
       ? maxVisitQueryResults
       : (request.query.limit as number);
 
-  let queryMax = maxVisitQueryResults * 2;
+  const queryMax = maxVisitQueryResults * 2;
   let queryLimit = queryMax;
   if (request.query.limit) {
     queryLimit = Math.min(request.query.limit * 2, queryMax);

@@ -81,7 +81,7 @@ async function main() {
     try {
       await models.Event.bulkCreate(eventList);
     } catch (exception) {
-      log.error("Failed to record stop-reported events.", exception.message);
+      log.error("Failed to record stop-reported events. %s", exception.message);
     }
   }
 }
@@ -89,7 +89,7 @@ async function main() {
 function generateText(stoppedDevices: PowerEvents[]): string {
   let textBody = `Stopped Devices ${moment().format("MMM ddd Do ha")}\r\n`;
   for (const event of stoppedDevices) {
-    let deviceText = `${event.Device.Group.groupname}- ${
+    const deviceText = `${event.Device.Group.groupname}- ${
       event.Device.devicename
     } id: ${
       event.Device.id
@@ -106,7 +106,7 @@ function generateHtml(stoppedDevices: PowerEvents[]): string {
   let html = `<b>Stopped Devices ${moment().format("MMM ddd Do ha")} </b>`;
   html += "<ul>";
   for (const event of stoppedDevices) {
-    let deviceText = `<li>${event.Device.Group.groupname}-${
+    const deviceText = `<li>${event.Device.Group.groupname}-${
       event.Device.devicename
     } id: ${
       event.Device.id

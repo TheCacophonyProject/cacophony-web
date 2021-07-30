@@ -6,11 +6,12 @@ import process from "process";
 import http from "http";
 import config from "./config";
 import models from "./models";
-import log from "./logging";
+import log, { consoleTransport } from "./logging";
 import customErrors from "./api/customErrors";
 import modelsUtil from "./models/util/util";
 import api from "./api/V1";
 import fileProcessingApi from "./api/fileProcessing";
+import expressWinston from "express-winston";
 
 log.info("Starting Full Noise.");
 config.loadConfigFromArgs(true);
@@ -19,7 +20,13 @@ const app: Application = express();
 app.use(bodyParser.urlencoded({ extended: false, limit: "2Mb" }));
 app.use(bodyParser.json());
 app.use(passport.initialize());
-log.addExpressApp(app);
+app.use(
+  expressWinston.logger({
+    transports: [consoleTransport],
+    meta: false,
+    expressFormat: true
+  })
+);
 
 // Adding API documentation
 app.use(express.static(__dirname + "/apidoc"));
@@ -48,7 +55,7 @@ const fileProcessingApp = express();
 fileProcessingApp.use(bodyParser.urlencoded({ extended: false, limit: "2Mb" }));
 fileProcessingApi(fileProcessingApp);
 http.createServer(fileProcessingApp).listen(config.fileProcessing.port);
-log.info("Starting file processing on", config.fileProcessing.port);
+log.info("Starting file processing on %d", config.fileProcessing.port);
 fileProcessingApp.use(customErrors.errorHandler);
 
 log.info("Connecting to database.....");
@@ -68,7 +75,7 @@ function openHttpServer(app): Promise<void> {
       return resolve();
     }
     try {
-      log.info("Starting http server on ", config.server.http.port);
+      log.info("Starting http server on %d", config.server.http.port);
       http.createServer(app).listen(config.server.http.port);
       return resolve();
     } catch (err) {

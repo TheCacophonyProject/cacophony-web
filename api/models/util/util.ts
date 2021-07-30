@@ -227,14 +227,18 @@ export function openS3() {
   const getProviderForParams = (params: {
     Key?: string;
     Bucket?: string;
+    Prefix?: string;
   }): AWS.S3 => {
-    if (!params.Key && !params.Bucket) {
+    if (!params.Key && !params.Bucket && !params.Prefix) {
       throw new Error("s3 params must contain a 'Key' or a 'Bucket' field");
     }
     let chooseProvider = "s3Local";
     if (
       (params.Key && params.Key.startsWith("a_")) ||
-      (!params.Key && params.Bucket === config.s3Archive.bucket)
+      (params.Prefix && params.Prefix.startsWith("a_")) ||
+      (!params.Key &&
+        !params.Prefix &&
+        params.Bucket === config.s3Archive.bucket)
     ) {
       chooseProvider = "s3Archive";
     }
