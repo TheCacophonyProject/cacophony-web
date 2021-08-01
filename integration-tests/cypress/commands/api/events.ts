@@ -1,6 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types.ts" />
+/// <reference types="../types" />
 
 import { v1ApiPath, getCreds, makeAuthorizedRequest } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
@@ -76,7 +76,7 @@ Cypress.Commands.add(
       {
         user,
         name,
-        getUniq(alertName)
+        id: getUniq(alertName)
       }
     );
      const expectedEvent={

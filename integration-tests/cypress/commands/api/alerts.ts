@@ -6,7 +6,7 @@ import { v1ApiPath, getCreds, saveIdOnly, makeAuthorizedRequestWithStatus } from
 import { logTestDescription } from "../descriptions";
 import { getTestName, getUniq } from "../names";
 
-Cypress.Commands.add("apiAddAlert", (user: string, alertName: string, conditions: [ApiAlertConditions], device: string, frequency: number=null, statusCode: number = 200)=> {
+Cypress.Commands.add("apiAddAlert", (user: string, alertName: string, conditions: ApiAlertConditions[], device: string, frequency: number|null=null, statusCode: number = 200)=> {
     logTestDescription(
       `Create alert ${getUniq(alertName)} for ${device} `,
       {
@@ -14,7 +14,7 @@ Cypress.Commands.add("apiAddAlert", (user: string, alertName: string, conditions
         device,
         conditions,
         frequency,
-        getUniq(alertName)
+        id: getUniq(alertName)
       }
     );
     apiAlertsPost(user,alertName,conditions,device,frequency,statusCode);
@@ -29,7 +29,7 @@ Cypress.Commands.add(
       {
         user,
         device,
-        getUniq(alertName)
+        id: getUniq(alertName)
       }
     );
 
@@ -43,13 +43,13 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
    "createExpectedAlert",
-   (name: string, alertName: string, frequencySeconds: number, conditions: [ApiAlertConditions], lastAlert: boolean, user: string, device: string)=> {
+   (name: string, alertName: string, frequencySeconds: number, conditions: ApiAlertConditions[], lastAlert: boolean, user: string, device: string)=> {
     logTestDescription(
       `Create expected alert ${getUniq(name)} for ${device} `,
       {
         user,
         device,
-        getUniq(name)
+        id: getUniq(name)
       }
     );
      //alertId will have been saved when we created the alert
@@ -73,7 +73,7 @@ Cypress.Commands.add(
 function apiAlertsPost(
   user: string,
   alertName: string,
-  conditions: [ApiAlertConditions],
+  conditions: ApiAlertConditions[],
   device: string,
   frequency: number,
   testFailure: number
@@ -85,7 +85,7 @@ function apiAlertsPost(
            deviceId: deviceId
         };
 
-  if(frequency!=null) {
+  if(frequency!==null) {
 	  alertJson["frequencySeconds"]=frequency;
   };
 
@@ -99,7 +99,7 @@ function apiAlertsPost(
       user,
       testFailure
     ).then((response)=>{
-       if(testFailure==null || testFailure==200) {
+       if(testFailure===null || testFailure==200) {
          saveIdOnly(getUniq(alertName), response.body.id);
        };
     });

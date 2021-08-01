@@ -5,7 +5,7 @@ declare namespace Cypress {
      /**
      * Create an alert for a device. Optioanlly expect to fail with code: failCode
      */
-    apiAddAlert(user: string, alertName: string, tag: [ApiAlertConditions], device: string, frequency?: number, statusCode?: number);
+    apiAddAlert(user: string, alertName: string, tag: ApiAlertConditions[], device: string, frequency?: number, statusCode?: number);
 
      /**
      * Read alerts for a device
@@ -17,6 +17,6 @@ declare namespace Cypress {
      /**
      * create a template alert to compare with
      */
-    createExpectedAlert(name: string, alertName, frequencySeconds: number, conditions: [ApiAlertConditionsi], lastAlert: boolean, user: string, device: string);
+    createExpectedAlert(name: string, alertName, frequencySeconds: number, conditions: ApiAlertConditions[], lastAlert: boolean, user: string, device: string);
   }
 }

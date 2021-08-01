@@ -15,7 +15,7 @@ import { logTestDescription } from "../descriptions";
 
 Cypress.Commands.add(
   "apiCreateDevice",
-  (cameraName: string, group: string, saltId: number = null, password: string = null, generateUniqueName: boolean = true, log = true, statusCode: number = 200) => {
+  (cameraName: string, group: string, saltId: number|null = null, password: string|null = null, generateUniqueName: boolean = true, log = true, statusCode: number = 200) => {
     logTestDescription(
       `Create camera '${cameraName}' in group '${group}' with saltId '${saltId}'`,
       {
@@ -40,7 +40,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiDeviceReregister",
-  (oldName: string, newName: string, newGroup: string, password: string = null, generateUniqueName:boolean = true, statusCode: number = 200) => {
+  (oldName: string, newName: string, newGroup: string, password: string|null = null, generateUniqueName:boolean = true, statusCode: number = 200) => {
     let uniqueName: string;
     logTestDescription(
       `Reregister camera '${newName}' in group '${newGroup}'`,
@@ -57,7 +57,7 @@ Cypress.Commands.add(
       uniqueName=newName;
     };
 
-    if(password==null) {
+    if(password===null) {
       password="p"+getTestName(uniqueName);
     };
 
@@ -96,7 +96,7 @@ function createDevice(
     ? getTestName(cameraName)
     : cameraName;
 
-  if(password==null) {
+  if(password===null) {
     password = "p" + fullName;
   };
 
@@ -106,7 +106,7 @@ function createDevice(
     group: getTestName(group)
   };
 
-  if(saltId!=null) {
+  if(saltId!==null) {
     data.saltId=saltId;
   };
 
@@ -136,7 +136,7 @@ Cypress.Commands.add("apiCheckDevices", (userName: string, expectedDevices: ApiD
     userName,
     statusCode
   ).then((response)=>{
-    if(statusCode==null || statusCode==200) {
+    if(statusCode===null || statusCode==200) {
       let devices=response.body.devices.rows;
       //TODO: Issue 63.  Reenable this when devices count is correct
       //expect(response.body.devices.count).to.equal(expectedDevices.length);
@@ -156,7 +156,7 @@ function checkDeviceMatchesExpected(device:ApiDevicesDevice,expectedDevice:ApiDe
   expect(device.id).to.equal(expectedDevice.id);
   expect(device.devicename).to.equal(expectedDevice.devicename);
   expect(device.active).to.equal(expectedDevice.active);
-  if(expectedDevice.Users==null) {
+  if(expectedDevice.Users===null) {
     expect(device.Users).to.not.exist;
   } else {
     expect(device.Users.length).to.equal(expectedDevice.Users.length);
@@ -192,7 +192,7 @@ Cypress.Commands.add("apiCheckDevicesContains", (userName: string, expectedDevic
     userName,
     statusCode
   ).then((response)=>{
-    if(statusCode==null || statusCode==200) {
+    if(statusCode===null || statusCode==200) {
       let devices=response.body.devices.rows;
       expect(response.body.devices.count).to.be.at.least(expectedDevices.length);
       expect(devices.length).to.be.at.least(expectedDevices.length);
@@ -223,7 +223,7 @@ Cypress.Commands.add("apiCheckDeviceInGroup", (userName: string, cameraName: str
 
   // use group id if present, otherwise query by name
   let fullUrl = null;
-  if(groupId!=null) {
+  if(groupId!==null) {
     fullUrl = v1ApiPath('devices/'+getTestName(cameraName)+'/in-group/'+groupId, params);
   } else {
     fullUrl = v1ApiPath('devices/'+getTestName(cameraName)+'/in-group/'+getTestName(groupName), params);
@@ -240,13 +240,13 @@ Cypress.Commands.add("apiCheckDeviceInGroup", (userName: string, cameraName: str
       userName,
       statusCode
     ).then((response) => {
-       if(statusCode==null || statusCode==200) {
+       if(statusCode===null || statusCode==200) {
 	  let device=response.body.device;
 	  expect(device.id).to.equal(getCreds(cameraName).id);
 	  expect(device.deviceName).to.equal(getTestName(cameraName));
 	  expect(device.groupName).to.equal(getTestName(groupName));
           expect(device.userIsAdmin).to.equal(expectedDevice.userIsAdmin);
-          if(expectedDevice.users==null) {
+          if(expectedDevice.users===null) {
 	    expect(device.users).to.not.exist;
           } else {
             expect(device.users.length).to.equal(expectedDevice.users.length);
@@ -289,7 +289,7 @@ Cypress.Commands.add("apiCheckDevicesQuery", (userName: string, devicesArray: Te
       userName,
       statusCode
     ).then((response) => {
-       if(statusCode==null || statusCode==200) {
+       if(statusCode===null || statusCode==200) {
 	  // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
 	  // sort both devices and expected devices on devicename,groupname to ensure order is same
           let devices=sortArrayOnTwoKeys(response.body.devices,'devicename','groupname');
@@ -300,7 +300,7 @@ Cypress.Commands.add("apiCheckDevicesQuery", (userName: string, devicesArray: Te
           for (let index=0; index < expectedDevices.length; index++) {
 		  expect(devices[index].groupname).to.equal(expectedDevices[index].groupname);
 		  expect(devices[index].devicename).to.equal(expectedDevices[index].devicename);
-		  if(expectedDevices[index].saltId!=null) {	
+		  if(expectedDevices[index].saltId!==null && expectedDevices[index].saltId!==undefined) {	
                     expect(devices[index].saltId).to.equal(expectedDevices[index].saltId);
 		  };
 
@@ -331,7 +331,7 @@ Cypress.Commands.add("apiCheckDevicesUsers", (userName: string, deviceName: stri
       userName,
       statusCode
     ).then((response) => {
-       if(statusCode==null || statusCode==200) {
+       if(statusCode===null || statusCode==200) {
 	  // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
 	  // sort users and expected users to ensure order is the same
           let users=sortArrayOn(response.body.rows, 'username');

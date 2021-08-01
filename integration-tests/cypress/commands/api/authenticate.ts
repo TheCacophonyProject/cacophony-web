@@ -11,15 +11,15 @@ import {
 } from "../server";
 
 
-Cypress.Commands.add("apiSignInAs", (userName: string = null, email: string = null, nameOrEmail: string = null, password: string = null, statusCode: number = 200) => {
+Cypress.Commands.add("apiSignInAs", (userName: string|null = null, email: string|null = null, nameOrEmail: string|null = null, password: string|null = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/authenticate_user";
   let data = {};
   
-  if(userName!=null) {data['username'] = getTestName(userName)};
-  if(email!=null) {data['email'] = email; userName=email;};
-  if(nameOrEmail!=null) {data['nameOrEmail'] = nameOrEmail; userName=nameOrEmail;};
+  if(userName!==null) {data['username'] = getTestName(userName)};
+  if(email!==null) {data['email'] = email; userName=email;};
+  if(nameOrEmail!==null) {data['nameOrEmail'] = nameOrEmail; userName=nameOrEmail;};
   //calculate password if not specified
-  if(password==null) { password = "p" + getTestName(userName) };
+  if(password===null) { password = "p" + getTestName(userName) };
   data['password']=password;
 
     if(statusCode && statusCode>200) {
@@ -31,11 +31,11 @@ Cypress.Commands.add("apiSignInAs", (userName: string = null, email: string = nu
   }
 });
 
-Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB: string = null, statusCode: number = 200) => {
+Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB: string|null = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/admin_authenticate_as_other_user";
   let data = {};
 
-  if (userB!=null) { data['name']=getTestName(userB) };
+  if (userB!==null) { data['name']=getTestName(userB) };
 
   makeAuthorizedRequestWithStatus(
       {
@@ -51,11 +51,11 @@ Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB: string = null, 
 
 });
 
-Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: string, password: string = null, statusCode: number = 200) => {
+Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: string, password: string|null = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/authenticate_device";
   const fullDeviceName = getTestName(deviceName);
   const fullGroupName = getTestName(groupName);
-  if(password==null) {
+  if(password===null) {
 	  password = "p" + fullDeviceName;
   };
 
@@ -74,13 +74,13 @@ Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: st
   }
 });
 
-Cypress.Commands.add("apiToken", (userName: string, ttl: string = null, access: ApiAuthenticateAccess = null, statusCode: number = 200) => {
+Cypress.Commands.add("apiToken", (userName: string, ttl: string|null = null, access: ApiAuthenticateAccess|null = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/token";
 
   let data = {};
 
-  if(ttl != null) { data['ttl']=ttl };
-  if(access != null) { data['access']=access };
+  if(ttl !== null) { data['ttl']=ttl };
+  if(access !== null) { data['access']=access };
 
   makeAuthorizedRequestWithStatus(  {
         method: "POST",

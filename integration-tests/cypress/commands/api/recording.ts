@@ -28,7 +28,7 @@ Cypress.Commands.add(
     uploadFile(url, cameraName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-	if (recordingName!=null) {
+	if (recordingName!==null) {
 	  saveIdOnly(recordingName, x.response.body.recordingId);
 	};
       }
@@ -55,7 +55,7 @@ Cypress.Commands.add(
     uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-        if (recordingName!=null) {
+        if (recordingName!==null) {
           saveIdOnly(recordingName, x.response.body.recordingId);
         };
       }
@@ -81,7 +81,7 @@ Cypress.Commands.add(
     uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-        if (recordingName!=null) {
+        if (recordingName!==null) {
           saveIdOnly(recordingName, x.response.body.recordingId);
         };
       }

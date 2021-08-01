@@ -1,6 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types.d.ts" />
+/// <reference types="../types" />
 
 interface TrackInfo {
   start_s?: number;
