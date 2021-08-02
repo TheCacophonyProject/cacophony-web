@@ -14,7 +14,7 @@ describe("Monitoring : multiple cameras and stations", () => {
     cy.uploadRecording(cameraB, { tags: ["cat"] });
     cy.checkMonitoring(Penny, null, [
       { camera: cameraA, tag: "possum" },
-      { camera: cameraB, tag: "cat" }
+      { camera: cameraB, tag: "cat" },
     ]);
   });
 
@@ -25,7 +25,7 @@ describe("Monitoring : multiple cameras and stations", () => {
 
     const stations = [
       { name: "forest", lat: -44.0, lng: 172.7 },
-      { name: "waterfall", lat: -43.6, lng: 172.8 }
+      { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
     cy.apiUploadStations(Penny, group, stations);
     cy.uploadRecording(camera, { tags: ["possum"], lat: -44.0, lng: 172.7 });
@@ -40,14 +40,14 @@ describe("Monitoring : multiple cameras and stations", () => {
 
     const stations = [
       { name: "forest", lat: -44.0, lng: 172.7 },
-      { name: "waterfall", lat: -43.6, lng: 172.8 }
+      { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
     cy.apiUploadStations(Penny, group, stations);
     cy.uploadRecording(camera, { tags: ["possum"], lat: -44.0, lng: 172.7 });
     cy.uploadRecording(camera, { tags: ["cat"], lat: -43.6, lng: 172.8 });
     cy.checkMonitoring(Penny, camera, [
       { station: "forest" },
-      { station: "waterfall" }
+      { station: "waterfall" },
     ]);
   });
 });

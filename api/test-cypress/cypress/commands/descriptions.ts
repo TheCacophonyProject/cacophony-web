@@ -15,7 +15,7 @@ export function logTestDescription(
     name: "Test description",
     displayName: "TEST",
     message: `**${message}**`,
-    consoleProps: () => consoleObject
+    consoleProps: () => consoleObject,
   });
 }
 

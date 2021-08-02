@@ -52,13 +52,13 @@ Cypress.Commands.add(
       recordingId,
       trackIndex,
       tagger,
-      tag
+      tag,
     });
 
     makeAuthorizedRequest(
       {
         method: "GET",
-        url: v1ApiPath(`recordings/${recordingId}/tracks`)
+        url: v1ApiPath(`recordings/${recordingId}/tracks`),
       },
       tagger
     ).then((response) => {
@@ -68,7 +68,7 @@ Cypress.Commands.add(
           url: v1ApiPath(
             `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replaceTag`
           ),
-          body: { what: tag, confidence: 0.7, automatic: false }
+          body: { what: tag, confidence: 0.7, automatic: false },
         },
         tagger
       );
@@ -133,11 +133,11 @@ interface ThermalRecordingData {
 function makeRecordingDataFromDetails(
   details: ThermalRecordingInfo
 ): ThermalRecordingData {
-  let data: ThermalRecordingData = {
+  const data: ThermalRecordingData = {
     type: "thermalRaw",
     recordingDateTime: "",
     duration: 12,
-    comment: "uploaded by cypress"
+    comment: "uploaded by cypress",
   };
 
   if (details.duration) {
@@ -192,9 +192,9 @@ function addTracksToRecording(
 ): void {
   data.metadata = {
     algorithm: {
-      model_name: model
+      model_name: model,
     },
-    tracks: []
+    tracks: [],
   };
 
   if (tags && !trackDetails) {
@@ -204,12 +204,12 @@ function addTracksToRecording(
   if (trackDetails) {
     let count = 0;
     data.metadata.tracks = trackDetails.map((track) => {
-      let tag = track.tag ? track.tag : "possum";
+      const tag = track.tag ? track.tag : "possum";
       return {
         start_s: track.start_s || 2 + count * 10,
         end_s: track.end_s || 8 + count * 10,
         confident_tag: tag,
-        confidence: 0.9
+        confidence: 0.9,
       };
     });
     count++;
@@ -218,7 +218,7 @@ function addTracksToRecording(
       start_s: 2,
       end_s: 8,
       confident_tag: "possum",
-      confidence: 0.5
+      confidence: 0.5,
     });
   }
 }

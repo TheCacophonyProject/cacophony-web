@@ -61,7 +61,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getDeviceById(body),
-      auth.userCanAccessDevices
+      auth.userCanAccessDevices,
     ],
     body("name").isString(),
     middleware.parseJSON("conditions", body),
@@ -71,7 +71,7 @@ export default function (app: Application, baseUrl: string) {
       if (!Array.isArray(request.body.conditions)) {
         responseUtil.send(response, {
           statusCode: 400,
-          messages: ["Expecting array of conditions."]
+          messages: ["Expecting array of conditions."],
         });
         return;
       }
@@ -79,7 +79,7 @@ export default function (app: Application, baseUrl: string) {
         if (!isAlertCondition(condition)) {
           responseUtil.send(response, {
             statusCode: 400,
-            messages: ["Bad condition."]
+            messages: ["Bad condition."],
           });
           return;
         }
@@ -95,12 +95,12 @@ export default function (app: Application, baseUrl: string) {
         conditions: request.body.conditions,
         frequencySeconds: request.body.frequencySeconds,
         UserId: request.user.id,
-        DeviceId: request.body.device.id
+        DeviceId: request.body.device.id,
       });
       return responseUtil.send(response, {
         id: newAlert.id,
         statusCode: 200,
-        messages: ["Created new Alert."]
+        messages: ["Created new Alert."],
       });
     })
   );
@@ -149,7 +149,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getDeviceById(param),
-      auth.userCanAccessDevices
+      auth.userCanAccessDevices,
     ],
     middleware.requestWrapper(async (request, response) => {
       const Alerts = await models.Alert.query(
@@ -161,7 +161,7 @@ export default function (app: Application, baseUrl: string) {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        Alerts
+        Alerts,
       });
     })
   );

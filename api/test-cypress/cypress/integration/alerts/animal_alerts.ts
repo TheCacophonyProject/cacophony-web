@@ -17,7 +17,7 @@ describe("Alerts : recordings get alerted", () => {
     cy.apiCreateCamera(camera, AlertGroup);
     cy.uploadRecording(camera, {
       processingState: "FINISHED",
-      tags: ["possum", "rat"]
+      tags: ["possum", "rat"],
     });
     cy.checkAlerts(Tiny, camera, []);
   });
@@ -29,12 +29,12 @@ describe("Alerts : recordings get alerted", () => {
 
     cy.uploadRecording(camera, {
       processingState: "FINISHED",
-      tags: ["possum"]
+      tags: ["possum"],
     }).then((recID: number) => {
       cy.checkAlerts(Tiny, camera, [{ recId: recID }]);
       cy.uploadRecording(camera, {
         processingState: "FINISHED",
-        tags: ["rat"]
+        tags: ["rat"],
       });
       cy.checkAlerts(Tiny, camera, [{ recId: recID }]);
     });
@@ -58,7 +58,7 @@ describe("Alerts : recordings get alerted", () => {
 
     cy.uploadRecording(cameraTwo, {
       processingState: "FINISHED",
-      tags: ["possum"]
+      tags: ["possum"],
     });
     cy.checkAlerts(Tiny, camera, []);
   });
@@ -70,7 +70,7 @@ describe("Alerts : recordings get alerted", () => {
 
     cy.uploadRecording(camera, {
       processingState: "FINISHED",
-      tags: ["rat", "possum", "possum"]
+      tags: ["rat", "possum", "possum"],
     }).then((recID: number) => {
       cy.checkAlerts(Tiny, camera, [{ recId: recID }]);
     });

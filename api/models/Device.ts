@@ -115,42 +115,42 @@ export default function (
   const attributes = {
     devicename: {
       type: DataTypes.STRING,
-      unique: true
+      unique: true,
     },
     password: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
     },
     location: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
     },
     lastConnectionTime: {
-      type: DataTypes.DATE
+      type: DataTypes.DATE,
     },
     public: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false
+      defaultValue: false,
     },
     currentConfig: {
-      type: DataTypes.JSONB
+      type: DataTypes.JSONB,
     },
     newConfig: {
-      type: DataTypes.JSONB
+      type: DataTypes.JSONB,
     },
     saltId: {
-      type: DataTypes.INTEGER
+      type: DataTypes.INTEGER,
     },
     active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
-      allowNull: false
-    }
+      allowNull: false,
+    },
   };
 
   const options = {
     hooks: {
-      afterValidate: afterValidate
-    }
+      afterValidate: afterValidate,
+    },
   };
 
   const Device = sequelize.define(
@@ -192,8 +192,8 @@ export default function (
     const deviceUser = await models.DeviceUsers.findOne({
       where: {
         DeviceId: device.id,
-        UserId: userToAdd.id
-      }
+        UserId: userToAdd.id,
+      },
     });
     if (deviceUser != null) {
       deviceUser.admin = admin; // Update admin value.
@@ -227,8 +227,8 @@ export default function (
     const deviceUsers = await models.DeviceUsers.findAll({
       where: {
         DeviceId: device.id,
-        UserId: userToRemove.id
-      }
+        UserId: userToRemove.id,
+      },
     });
     for (const i in deviceUsers) {
       await deviceUsers[i].destroy();
@@ -248,7 +248,7 @@ export default function (
         where: conditions,
         attributes: ["devicename", "id", "GroupId", "active"],
         include: includeData,
-        order: ["devicename"]
+        order: ["devicename"],
       });
     }
 
@@ -262,7 +262,7 @@ export default function (
       where: whereQuery,
       attributes: ["devicename", "id", "active"],
       order: ["devicename"],
-      include: includeData
+      include: includeData,
     });
   };
 
@@ -274,12 +274,12 @@ export default function (
     const includeData = [
       {
         model: models.User,
-        attributes: ["id", "username"]
+        attributes: ["id", "username"],
       },
       {
         model: models.Group,
-        attributes: ["id", "groupname"]
-      }
+        attributes: ["id", "groupname"],
+      },
     ];
     const includeOnlyActiveDevices = onlyActive ? { active: true } : null;
 
@@ -293,7 +293,7 @@ export default function (
 
   Device.freeDevicename = async function (devicename, groupId) {
     const device = await this.findOne({
-      where: { devicename: devicename, GroupId: groupId }
+      where: { devicename: devicename, GroupId: groupId },
     });
     if (device != null) {
       return false;
@@ -378,9 +378,9 @@ export default function (
       include: [
         {
           model: models.Group,
-          where: { groupname: groupName }
-        }
-      ]
+          where: { groupname: groupName },
+        },
+      ],
     });
   };
 
@@ -450,7 +450,7 @@ order by hour;
     //  to get a reasonable index histogram?
     return results.map((item) => ({
       hour: Number(item.hour),
-      index: Number(item.index)
+      index: Number(item.index),
     }));
   };
 
@@ -494,7 +494,7 @@ order by hour;
       if (deviceNames.length > 0) {
         const names = deviceNames.map((device) => device.devicename);
         let nameQuery = Sequelize.where(Sequelize.col("devicename"), {
-          [Op.in]: names
+          [Op.in]: names,
         });
         nameQuery = await addUserAccessQuery(authUser, nameQuery);
         nameMatches = await this.findAll({
@@ -503,18 +503,18 @@ order by hour;
             {
               model: models.Group,
               as: "Group",
-              attributes: ["groupname"]
-            }
+              attributes: ["groupname"],
+            },
           ],
           raw: true,
-          attributes: ["Group.groupname", "devicename", "id", "saltId"]
+          attributes: ["Group.groupname", "devicename", "id", "saltId"],
         });
       }
     }
 
     if (groupNames) {
       const groupQuery = Sequelize.where(Sequelize.col("Group.groupname"), {
-        [Op.in]: groupNames
+        [Op.in]: groupNames,
       });
       if (devices) {
         whereQuery = { [operator]: [whereQuery, groupQuery] };
@@ -531,11 +531,11 @@ order by hour;
           {
             model: models.Group,
             as: "Group",
-            attributes: ["groupname"]
-          }
+            attributes: ["groupname"],
+          },
         ],
         raw: true,
-        attributes: ["Group.groupname", "devicename", "id", "saltId"]
+        attributes: ["Group.groupname", "devicename", "id", "saltId"],
       });
     }
     if (nameMatches) {
@@ -568,7 +568,7 @@ order by hour;
   Device.prototype.getJwtDataValues = function () {
     return {
       id: this.getDataValue("id"),
-      _type: "device"
+      _type: "device",
     };
   };
 
@@ -615,15 +615,15 @@ order by hour;
     let newDevice;
     await sequelize.transaction(
       {
-        isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE
+        isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE,
       },
       async (t) => {
         const conflictingDevice = await Device.findOne({
           where: {
             devicename: newName,
-            GroupId: newGroup.id
+            GroupId: newGroup.id,
           },
-          transaction: t
+          transaction: t,
         });
 
         if (conflictingDevice != null) {
@@ -634,11 +634,11 @@ order by hour;
 
         await Device.update(
           {
-            active: false
+            active: false,
           },
           {
             where: { saltId: this.saltId },
-            transaction: t
+            transaction: t,
           }
         );
 
@@ -647,10 +647,10 @@ order by hour;
             devicename: newName,
             GroupId: newGroup.id,
             password: newPassword,
-            saltId: this.saltId
+            saltId: this.saltId,
           },
           {
-            transaction: t
+            transaction: t,
           }
         );
       }
@@ -681,11 +681,11 @@ async function addUserAccessQuery(
       {
         [Op.or]: [
           { GroupId: { [Op.in]: userGroupIds } },
-          { id: { [Op.in]: deviceIds } }
-        ]
+          { id: { [Op.in]: deviceIds } },
+        ],
       },
-      whereQuery
-    ]
+      whereQuery,
+    ],
   };
 
   return accessQuery;

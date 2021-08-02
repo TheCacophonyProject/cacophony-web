@@ -82,8 +82,8 @@ const sequelize = new Sequelize(
       $and: Op.and,
       $or: Op.or,
       $any: Op.any,
-      $all: Op.all
-    }
+      $all: Op.all,
+    },
   }
 );
 
@@ -134,7 +134,7 @@ const AllModels = {
   Schedule: db.Schedule as ScheduleStatic,
   Alert: db.Alert as AlertStatic,
   sequelize,
-  Sequelize
+  Sequelize,
 };
 
 export default AllModels;

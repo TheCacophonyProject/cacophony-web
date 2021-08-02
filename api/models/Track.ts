@@ -52,7 +52,7 @@ export default function (
 
   const Track = sequelize.define("Track", {
     data: DataTypes.JSONB,
-    archivedAt: DataTypes.DATE
+    archivedAt: DataTypes.DATE,
   }) as unknown as TrackStatic;
 
   //---------------
@@ -62,7 +62,7 @@ export default function (
     models.Track.belongsTo(models.Recording);
     models.Track.belongsTo(models.DetailSnapshot, {
       as: "Algorithm",
-      foreignKey: "AlgorithmId"
+      foreignKey: "AlgorithmId",
     });
     models.Track.hasMany(models.TrackTag);
   };
@@ -87,9 +87,9 @@ export default function (
         where: {
           UserId: tag.UserId,
           automatic: tag.automatic,
-          TrackId: trackId
+          TrackId: trackId,
         },
-        transaction: t
+        transaction: t,
       });
 
       const existingTag = trackTags.find(function (uTag) {
@@ -124,7 +124,7 @@ export default function (
       confidence: confidence,
       automatic: automatic,
       data: data,
-      UserId: userId
+      UserId: userId,
     });
     return tag;
   };

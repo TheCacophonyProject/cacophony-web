@@ -73,7 +73,7 @@ export function checkRecording(
   cy.log(`recording id is ${recordingId}`);
   makeAuthorizedRequest(
     {
-      url: v1ApiPath(`recordings`)
+      url: v1ApiPath(`recordings`),
     },
     user
   ).then((response) => {

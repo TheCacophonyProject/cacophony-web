@@ -6,18 +6,18 @@ import { logTestDescription, prettyLog } from "../descriptions";
 export const EventTypes = {
   POWERED_ON: "rpi-power-on",
   POWERED_OFF: "daytime-power-off",
-  STOP_REPORTED: "stop-reported"
+  STOP_REPORTED: "stop-reported",
 };
 
 Cypress.Commands.add("apiGetEvents", (user, camera, eventType) => {
   logTestDescription(`Get events for ${camera} of type ${eventType}`, {
     user,
     camera,
-    eventType
+    eventType,
   });
   const params = {
     deviceId: getCreds(camera).id,
-    type: eventType
+    type: eventType,
   };
   makeAuthorizedRequest(
     { method: "GET", url: v1ApiPath("events", params) },
@@ -33,7 +33,7 @@ Cypress.Commands.add(
       {
         user,
         camera,
-        expectedEvent
+        expectedEvent,
       }
     );
 
@@ -47,7 +47,7 @@ function checkEvents(
   expectedEvent: ComparablePowerEvent
 ) {
   const params = {
-    deviceID: getCreds(camera).id
+    deviceID: getCreds(camera).id,
   };
 
   makeAuthorizedRequest(

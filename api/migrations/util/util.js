@@ -25,7 +25,7 @@ function migrationAddBelongsTo(queryInterface, childTable, parentTable, opts) {
   if (opts === "strict") {
     opts = {
       notNull: true,
-      cascade: true
+      cascade: true,
     };
   }
   let columnName = `${parentTable.substring(0, parentTable.length - 1)}Id`;
@@ -66,7 +66,7 @@ function renameTableAndIdSeq(queryInterface, oldName, newName) {
     ),
     queryInterface.sequelize.query(
       `ALTER TABLE "${oldName}_id_seq" RENAME TO "${newName}_id_seq";`
-    )
+    ),
   ]);
 }
 exports.renameTableAndIdSeq = renameTableAndIdSeq;
@@ -98,7 +98,7 @@ function belongsToMany(queryInterface, viaTable, table1, table2) {
       ),
       queryInterface.sequelize.query(
         `ALTER TABLE "${viaTable}" ADD COLUMN "${columnName2}" INTEGER;`
-      )
+      ),
     ])
       .then(() => {
         console.log("Adding belongs to many constraint.");
@@ -108,7 +108,7 @@ function belongsToMany(queryInterface, viaTable, table1, table2) {
           ),
           queryInterface.sequelize.query(
             `ALTER TABLE "${viaTable}" ADD CONSTRAINT "${constraintName2}" FOREIGN KEY ("${columnName2}") REFERENCES "${table2}" (id) ON DELETE CASCADE ON UPDATE CASCADE;`
-          )
+          ),
         ]);
       })
       .then(() => resolve())
@@ -127,5 +127,5 @@ exports.default = {
   migrationRemoveBelongsTo,
   belongsToMany,
   addSerial,
-  renameTableAndIdSeq
+  renameTableAndIdSeq,
 };

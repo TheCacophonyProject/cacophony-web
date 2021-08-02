@@ -6,14 +6,14 @@ const server = {
   loggerLevel: "debug", // REQUIRED, one of ('debug', 'warning', 'info', 'error')
   http: {
     active: true,
-    port: 80
+    port: 80,
   },
-  recording_url_base: "http://localhost/recording"
+  recording_url_base: "http://localhost/recording",
 };
 
 const fileProcessing = {
   // File processing API settings (runs on different port)
-  port: 2002
+  port: 2002,
 };
 
 const database = {
@@ -21,7 +21,7 @@ const database = {
   password: "",
   database: "cacophony",
   host: "localhost",
-  dialect: "postgres"
+  dialect: "postgres",
 };
 
 const s3Local = {
@@ -29,21 +29,21 @@ const s3Local = {
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
   bucket: "cacophony", // REQUIRED, String
-  endpoint: "http://localhost:9000" // REQUIRED, URL
+  endpoint: "http://localhost:9000", // REQUIRED, URL
 };
 
 const s3Achive = {
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
   bucket: "CacophonyBackblazeTest", // REQUIRED, String
-  endpoint: "s3.us-west-002.backblazeb2.com" // REQUIRED, URL
+  endpoint: "s3.us-west-002.backblazeb2.com", // REQUIRED, URL
 };
 
 const smtpDetails = {
   host: "localhost",
   port: 25,
   tls: true,
-  from_name: "Cacophony Reporting"
+  from_name: "Cacophony Reporting",
   //
   // service: "gmail",
   // auth: {

@@ -12,7 +12,7 @@ describe("Stations: add and remove", () => {
     cy.apiCreateUserGroup(Josie, group);
     const stations = [
       { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
-      { name: "stream", lat: -43.62367659983, lng: 172.62646754804 }
+      { name: "stream", lat: -43.62367659983, lng: 172.62646754804 },
     ];
     cy.apiUploadStations(Josie, group, stations);
   });
@@ -27,7 +27,7 @@ describe("Stations: add and remove", () => {
     cy.apiCreateCamera("in-stream", group);
     cy.uploadRecording("in-stream", {
       lat: -43.62367659983,
-      lng: 172.62646754804
+      lng: 172.62646754804,
     }).thenCheckStationIs(Josie, "stream");
   });
 
@@ -35,7 +35,7 @@ describe("Stations: add and remove", () => {
     cy.apiCreateCamera("neither", group);
     cy.uploadRecording("neither", {
       lat: -43.6,
-      lng: 172.6
+      lng: 172.6,
     }).thenCheckStationIs(Josie, "");
   });
 
@@ -57,7 +57,7 @@ describe("Stations: add and remove", () => {
 
     const stations = [
       { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
-      { name: "waterfall", lat: -43.6, lng: 172.8 }
+      { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
     cy.apiUploadStations(Josie2, groupUpdate, stations, later);
     cy.checkRecordingsStationIs(Josie2, "");
@@ -73,7 +73,7 @@ describe("Stations: add and remove", () => {
 
     const stations = [
       { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
-      { name: "waterfall", lat: -43.6, lng: 172.8 }
+      { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
     cy.apiUploadStations(Josie3, groupNotUpdate, stations, earlier);
     cy.checkRecordingsStationIs(Josie3, "waterfall");
@@ -92,7 +92,7 @@ describe("Stations: add and remove", () => {
     cy.checkRecordingsStationIs(Josie4, "waterfall");
 
     const stations2 = [
-      { name: "forest", lat: -43.62367659982, lng: 172.62646754804 }
+      { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
     ];
     cy.apiUploadStations(Josie4, groupRemove, stations2, earlier);
     cy.checkRecordingsStationIs(Josie4, "");

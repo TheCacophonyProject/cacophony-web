@@ -39,8 +39,8 @@ export default function (
   const attributes = {
     admin: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false
-    }
+      defaultValue: false,
+    },
   };
 
   const DeviceUsers = sequelize.define(
@@ -65,8 +65,8 @@ export default function (
     const deviceUser = await this.findOne({
       where: {
         DeviceId: deviceId,
-        UserId: userId
-      }
+        UserId: userId,
+      },
     });
 
     if (deviceUser == null) {

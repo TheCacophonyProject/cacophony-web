@@ -20,7 +20,7 @@ describe("Monitoring : pagings", () => {
       "22:03",
       "22:23",
       "22:43",
-      "23:03"
+      "23:03",
     ]);
 
     cy.checkMonitoringWithFilter(
@@ -57,10 +57,10 @@ describe("Monitoring : pagings", () => {
     cy.checkMonitoringWithFilter(Henry, null, { "page-size": 3, page: 1 }, [
       { recordings: 3, start: "21:13" },
       { recordings: 1, start: "21:14" },
-      { recordings: 1, start: "21:25" }
+      { recordings: 1, start: "21:25" },
     ]);
     cy.checkMonitoringWithFilter(Henry, null, { "page-size": 3, page: 2 }, [
-      { recordings: 1, start: "21:03" }
+      { recordings: 1, start: "21:03" },
     ]);
   });
 
@@ -83,10 +83,10 @@ describe("Monitoring : pagings", () => {
     cy.checkMonitoringWithFilter(Bobletta, null, { "page-size": 2, page: 2 }, [
       { start: visitTime },
       { start: visitTime },
-      { start: visitTime }
+      { start: visitTime },
     ]);
     cy.checkMonitoringWithFilter(Bobletta, null, { "page-size": 2, page: 1 }, [
-      { start: nextVisitTime }
+      { start: nextVisitTime },
     ]);
   });
 
@@ -100,7 +100,7 @@ describe("Monitoring : pagings", () => {
       "21:45",
       "22:10",
       "22:40",
-      "23:10"
+      "23:10",
     ]);
 
     cy.checkMonitoringWithFilter(
@@ -132,7 +132,7 @@ describe("Monitoring : pagings", () => {
       [
         { recordings: 2, start: "21:03" },
         { start: "21:50" },
-        { start: "22:20" }
+        { start: "22:20" },
       ]
     );
   });

@@ -37,7 +37,7 @@ async function sendEmail(
       from: config.smtpDetails.from_name,
       to: to,
       subject: subject,
-      attachment: [{ data: html, alternative: true }]
+      attachment: [{ data: html, alternative: true }],
     });
     await client.sendAsync(message);
   } catch (err) {

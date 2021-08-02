@@ -36,12 +36,12 @@ describe("Visits : times and recording groupings", () => {
       tracks: [
         {
           start_s: 3,
-          end_s: 14
-        }
-      ]
+          end_s: 14,
+        },
+      ],
     });
     cy.checkVisits(Dee, camera, [
-      { start: addSeconds(videoStart, 3), end: addSeconds(videoStart, 14) }
+      { start: addSeconds(videoStart, 3), end: addSeconds(videoStart, 14) },
     ]);
   });
 
@@ -54,16 +54,16 @@ describe("Visits : times and recording groupings", () => {
       tracks: [
         {
           start_s: 3,
-          end_s: 14
+          end_s: 14,
         },
         {
           start_s: 5,
-          end_s: 12
-        }
-      ]
+          end_s: 12,
+        },
+      ],
     });
     cy.checkVisits(Dee, camera, [
-      { start: addSeconds(videoStart, 3), end: addSeconds(videoStart, 14) }
+      { start: addSeconds(videoStart, 3), end: addSeconds(videoStart, 14) },
     ]);
   });
 
@@ -76,21 +76,24 @@ describe("Visits : times and recording groupings", () => {
       tracks: [
         {
           start_s: 3,
-          end_s: 14
-        }
-      ]
+          end_s: 14,
+        },
+      ],
     });
     cy.uploadRecording(camera, {
       secsLater: 66,
       tracks: [
         {
           start_s: 5,
-          end_s: 12
-        }
-      ]
+          end_s: 12,
+        },
+      ],
     });
     cy.checkVisits(Dee, camera, [
-      { start: addSeconds(videoStart, 3), end: addSeconds(videoStart, 66 + 12) }
+      {
+        start: addSeconds(videoStart, 3),
+        end: addSeconds(videoStart, 66 + 12),
+      },
     ]);
   });
 });

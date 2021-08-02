@@ -8,29 +8,29 @@ module.exports = {
         allowNull: false,
         autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
       },
       name: {
-        type: Sequelize.TEXT
+        type: Sequelize.TEXT,
       },
       frequencySeconds: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
       },
       lastAlert: {
         allowNull: true,
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       conditions: {
-        type: Sequelize.JSON
+        type: Sequelize.JSON,
       },
       createdAt: {
         allowNull: false,
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
       },
       updatedAt: {
         allowNull: false,
-        type: Sequelize.DATE
-      }
+        type: Sequelize.DATE,
+      },
     });
 
     await util.migrationAddBelongsTo(queryInterface, "Alerts", "Users");
@@ -39,5 +39,5 @@ module.exports = {
 
   down: async (queryInterface) => {
     await queryInterface.dropTable("Alerts");
-  }
+  },
 };

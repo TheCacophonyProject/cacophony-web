@@ -8,7 +8,7 @@ import { Application, Request, Response } from "express";
 import {
   Recording,
   RecordingProcessingState,
-  RecordingType
+  RecordingType,
 } from "../../models/Recording";
 
 export default function (app: Application) {
@@ -34,7 +34,7 @@ export default function (app: Application) {
       return response.status(200).json({
         // FIXME(jon): Test that dataValues is even a thing.  It's not a publicly
         //  documented sequelize property.
-        recording: (recording as any).dataValues
+        recording: (recording as any).dataValues,
       });
     }
   });
@@ -80,21 +80,21 @@ export default function (app: Application) {
 
     if (errorMessages.length > 0) {
       return response.status(400).json({
-        messages: errorMessages
+        messages: errorMessages,
       });
     }
 
     const recording = await models.Recording.findOne({ where: { id: id } });
     if (!recording) {
       return response.status(400).json({
-        messages: [`Recording ${id} not found for jobKey ${jobKey}`]
+        messages: [`Recording ${id} not found for jobKey ${jobKey}`],
       });
     }
 
     // Check that jobKey is correct.
     if (jobKey != recording.get("jobKey")) {
       return response.status(400).json({
-        messages: ["'jobKey' given did not match the database.."]
+        messages: ["'jobKey' given did not match the database.."],
       });
     }
 
@@ -133,7 +133,7 @@ export default function (app: Application) {
       recording.set("jobKey", null);
       await recording.save();
       return response.status(200).json({
-        messages: ["Processing failed."]
+        messages: ["Processing failed."],
       });
     }
   });
@@ -162,8 +162,8 @@ export default function (app: Application) {
     middleware.requestWrapper(async (request, response) => {
       const options = {
         include: [
-          { model: models.Device, where: {}, attributes: ["devicename", "id"] }
-        ]
+          { model: models.Device, where: {}, attributes: ["devicename", "id"] },
+        ],
       };
       const recording = await models.Recording.findByPk(
         request.body.recordingId,
@@ -219,25 +219,25 @@ export default function (app: Application) {
     [
       param("id").isInt().toInt(),
       middleware.parseJSON("data", body),
-      middleware.getDetailSnapshotById(body, "algorithmId")
+      middleware.getDetailSnapshotById(body, "algorithmId"),
     ],
     middleware.requestWrapper(async (request: Request, response) => {
       const recording = await models.Recording.findByPk(request.params.id);
       if (!recording) {
         responseUtil.send(response, {
           statusCode: 400,
-          messages: ["No such recording."]
+          messages: ["No such recording."],
         });
         return;
       }
       const track = await recording.createTrack({
         data: request.body.data,
-        AlgorithmId: request.body.algorithmId
+        AlgorithmId: request.body.algorithmId,
       });
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track added."],
-        trackId: track.id
+        trackId: track.id,
       });
     })
   );
@@ -260,7 +260,7 @@ export default function (app: Application) {
       if (!recording) {
         responseUtil.send(response, {
           statusCode: 400,
-          messages: ["No such recording."]
+          messages: ["No such recording."],
         });
         return;
       }
@@ -270,7 +270,7 @@ export default function (app: Application) {
 
       responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Tracks cleared."]
+        messages: ["Tracks cleared."],
       });
     })
   );
@@ -296,14 +296,14 @@ export default function (app: Application) {
       param("trackId").isInt().toInt(),
       body("what"),
       body("confidence").isFloat().toFloat(),
-      middleware.parseJSON("data", body).optional()
+      middleware.parseJSON("data", body).optional(),
     ],
     middleware.requestWrapper(async (request, response) => {
       const recording = await models.Recording.findByPk(request.params.id);
       if (!recording) {
         responseUtil.send(response, {
           statusCode: 400,
-          messages: ["No such recording."]
+          messages: ["No such recording."],
         });
         return;
       }
@@ -312,7 +312,7 @@ export default function (app: Application) {
       if (!track) {
         responseUtil.send(response, {
           statusCode: 400,
-          messages: ["No such track."]
+          messages: ["No such track."],
         });
         return;
       }
@@ -326,7 +326,7 @@ export default function (app: Application) {
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag added."],
-        trackTagId: tag.id
+        trackTagId: tag.id,
       });
     })
   );
@@ -355,7 +355,7 @@ export default function (app: Application) {
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Algorithm key retrieved."],
-        algorithmId: algorithm.id
+        algorithmId: algorithm.id,
       });
     })
   );

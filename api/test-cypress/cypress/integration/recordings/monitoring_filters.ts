@@ -35,7 +35,7 @@ describe("Monitoring : filters", () => {
     const groupHedgehogsId = getCreds(groupHedgehogs).id;
     cy.checkMonitoringWithFilter(Poppy, null, { groups: groupRabbitsId }, [
       { tag: "rabbit" },
-      { tag: "rabbit" }
+      { tag: "rabbit" },
     ]);
     cy.checkMonitoringWithFilter(
       Poppy,
@@ -49,7 +49,7 @@ describe("Monitoring : filters", () => {
     cy.checkMonitoringWithFilter(Poppy, null, { from: afterDate1 }, [
       { start: date2 },
       { start: date3 },
-      { start: date4 }
+      { start: date4 },
     ]);
   });
 
@@ -57,7 +57,7 @@ describe("Monitoring : filters", () => {
     cy.checkMonitoringWithFilter(Poppy, null, { until: beforeDate4 }, [
       { start: date1 },
       { start: date2 },
-      { start: date3 }
+      { start: date3 },
     ]);
   });
 

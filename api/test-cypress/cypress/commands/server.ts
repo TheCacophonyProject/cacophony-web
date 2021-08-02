@@ -10,7 +10,7 @@ export function apiPath(): string {
 export function v1ApiPath(page: string, queryParams: any = {}): string {
   const urlpage = urlFormat({
     pathname: `/api/v1/${page}`,
-    query: queryParams
+    query: queryParams,
   });
   return `${Cypress.env("cacophony-api-server")}${urlpage}`;
 }
@@ -46,10 +46,10 @@ export function saveIdOnly(name: string, id: number) {
   const creds = {
     name,
     headers: {
-      authorization: ""
+      authorization: "",
     },
     jwt: "",
-    id
+    id,
   };
   Cypress.env("testCreds")[name] = creds;
 }
@@ -62,10 +62,10 @@ export function saveCreds(response: Cypress.Response, name: string, id = 0) {
   const creds = {
     name,
     headers: {
-      authorization: response.body.token
+      authorization: response.body.token,
     },
     jwt: response.body.token,
-    id
+    id,
   };
   Cypress.env("testCreds")[name] = creds;
 }

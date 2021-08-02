@@ -9,7 +9,7 @@ let Config;
 const keyTypes = Object.freeze([
   { prefix: "f", table: "Files", column: "fileKey" },
   { prefix: "raw", table: "Recordings", column: "rawFileKey" },
-  { prefix: "rec", table: "Recordings", column: "fileKey" }
+  { prefix: "rec", table: "Recordings", column: "fileKey" },
 ]);
 
 async function main() {
@@ -21,7 +21,7 @@ async function main() {
 
   Config = {
     ...config.default,
-    ...config.default.loadConfig(options.config)
+    ...config.default.loadConfig(options.config),
   };
 
   if (!options.delete) {
@@ -65,7 +65,7 @@ async function loadAllBucketKeys(s3, prefixes) {
 
 async function loadBucketKeys(s3, prefix) {
   const params: any = {
-    Prefix: prefix
+    Prefix: prefix,
   };
 
   const keys = new Set();
@@ -92,7 +92,7 @@ async function pgConnect() {
     port: dbconf.port,
     user: dbconf.username,
     password: dbconf.password,
-    database: dbconf.database
+    database: dbconf.database,
   });
   await client.connect();
   return client;

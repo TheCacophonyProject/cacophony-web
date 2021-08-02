@@ -22,7 +22,7 @@ describe("Monitoring : evaluate ai model", () => {
     cy.uploadRecording(camera, { model: "Master", tags: ["possum"] });
     cy.uploadRecording(camera, { model: "Catter", tags: ["cat"] });
     cy.checkMonitoringWithFilter(Claris, camera, { ai: "Catter" }, [
-      { tag: "possum", aiTag: "cat" }
+      { tag: "possum", aiTag: "cat" },
     ]);
   });
 
@@ -33,7 +33,7 @@ describe("Monitoring : evaluate ai model", () => {
     cy.uploadRecording(camera, { model: "Catter", tags: ["cat"] });
     cy.uploadRecording(camera, { model: "Catter", tags: ["cat"] });
     cy.checkMonitoringWithFilter(Claris, camera, { ai: "Catter" }, [
-      { tag: "none", aiTag: "cat" }
+      { tag: "none", aiTag: "cat" },
     ]);
   });
 });

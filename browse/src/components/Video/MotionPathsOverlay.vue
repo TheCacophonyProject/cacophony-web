@@ -5,7 +5,7 @@
     :width="canvasWidth"
     :height="canvasHeight"
     :class="{ 'ended-playback': endedPlayback }"
-  />
+  ></canvas>
 </template>
 
 <script>

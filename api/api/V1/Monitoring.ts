@@ -21,7 +21,7 @@ import auth from "../auth";
 import e, { Application } from "express";
 import {
   calculateMonitoringPageCriteria,
-  MonitoringParams
+  MonitoringParams,
 } from "./monitoringPage";
 import { generateVisits } from "./monitoringVisit";
 import responseUtil from "./responseUtil";
@@ -139,7 +139,7 @@ export default function (app: Application, baseUrl: string) {
       toDate("until").optional(),
       isInteger("page", { min: 1, max: 10000 }),
       isInteger("page-size", { min: 1, max: 100 }),
-      middleware.isValidName(query, "ai").optional()
+      middleware.isValidName(query, "ai").optional(),
     ],
     middleware.viewMode(),
     middleware.requestWrapper(
@@ -150,7 +150,7 @@ export default function (app: Application, baseUrl: string) {
           devices: request.query.devices as unknown[] as number[],
           groups: request.query.groups as unknown[] as number[],
           page: Number(request.query.page),
-          pageSize: Number(request.query["page-size"])
+          pageSize: Number(request.query["page-size"]),
         };
 
         if (request.query.from) {
@@ -178,7 +178,7 @@ export default function (app: Application, baseUrl: string) {
           statusCode: 200,
           messages: ["Completed query."],
           params: searchDetails,
-          visits: visits
+          visits: visits,
         });
       }
     )

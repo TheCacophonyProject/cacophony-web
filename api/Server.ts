@@ -24,7 +24,7 @@ app.use(
   expressWinston.logger({
     transports: [consoleTransport],
     meta: false,
-    expressFormat: true
+    expressFormat: true,
   })
 );
 

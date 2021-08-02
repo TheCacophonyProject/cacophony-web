@@ -4,7 +4,7 @@ import { getTestName } from "../../commands/names";
 import {
   makeAuthorizedRequest,
   checkAuthorizedRequestFails,
-  v1ApiPath
+  v1ApiPath,
 } from "../../commands/server";
 import { logTestDescription } from "../../commands/descriptions";
 
@@ -74,6 +74,6 @@ function deviceRequest(group: string, camera: string) {
 
   return {
     method: "GET",
-    url: v1ApiPath(`devices/${deviceName}/in-group/${groupName}`)
+    url: v1ApiPath(`devices/${deviceName}/in-group/${groupName}`),
   };
 }

@@ -4,7 +4,7 @@ import { getTestName } from "../../commands/names";
 import { v1ApiPath } from "../../commands/server";
 import {
   logTestDescription,
-  NO_LOG_MESSAGE
+  NO_LOG_MESSAGE,
 } from "../../commands/descriptions";
 
 describe("Recording authorizations", () => {
@@ -69,6 +69,6 @@ function deviceRequest(group: string, camera: string) {
 
   return {
     method: "GET",
-    url: v1ApiPath(`devices/${deviceName}/in-group/${groupName}`)
+    url: v1ApiPath(`devices/${deviceName}/in-group/${groupName}`),
   };
 }

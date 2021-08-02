@@ -65,7 +65,7 @@ export function getTrackTag(trackTags: TrackTag[]): TrackTag | null {
       const conflict = {
         what: conflictTag,
         confidence: manualTags[0].confidence,
-        automatic: false
+        automatic: false,
       };
       return conflict as TrackTag;
     }
@@ -112,9 +112,9 @@ class DeviceSummary {
     }
   }
   earliestIncompleteOffset(): number | null {
-    var offset = null;
+    let offset = null;
     for (const device of Object.values(this.deviceMap)) {
-      for (var i = device.visits.length - 1; i >= 0; i--) {
+      for (let i = device.visits.length - 1; i >= 0; i--) {
         const visit = device.visits[i];
         if (visit.complete) {
           break;
@@ -135,7 +135,7 @@ class DeviceSummary {
   }
   markCompleted() {
     for (const device of Object.values(this.deviceMap)) {
-      for (var i = device.visits.length - 1; i >= 0; i--) {
+      for (let i = device.visits.length - 1; i >= 0; i--) {
         const visit = device.visits[i];
         if (visit.complete) {
           break;
@@ -145,7 +145,7 @@ class DeviceSummary {
     }
   }
   completeVisitsCount(): number {
-    var visits = 0;
+    let visits = 0;
     for (const device of Object.values(this.deviceMap)) {
       visits += device.visits.filter((v) => v.complete).length;
     }
@@ -169,7 +169,7 @@ class DeviceSummary {
     return audioFileIds;
   }
   completeVisits(): Visit[] {
-    var visits: Visit[] = [];
+    const visits: Visit[] = [];
     for (const device of Object.values(this.deviceMap)) {
       visits.push(...device.visits.filter((v) => v.complete));
     }
@@ -240,7 +240,7 @@ class DeviceVisits {
 
   checkForCompleteVisits(lastRecTime: Moment) {
     //complete any visits that start at least visit interval seconds after this time
-    for (var i = this.visits.length - 1; i >= 0; i--) {
+    for (let i = this.visits.length - 1; i >= 0; i--) {
       const visit = this.visits[i];
       if (visit.complete) {
         break;
@@ -253,8 +253,8 @@ class DeviceVisits {
   }
 
   removeIncompleteVisits() {
-    var delIndex = 0;
-    for (var i = this.visits.length - 1; i >= 0; i--) {
+    let delIndex = 0;
+    for (let i = this.visits.length - 1; i >= 0; i--) {
       const visit = this.visits[i];
       if (!visit.complete) {
         delIndex = i;
@@ -564,5 +564,5 @@ export {
   Visit,
   VisitEvent,
   TrackStartEnd,
-  isWithinVisitInterval
+  isWithinVisitInterval,
 };

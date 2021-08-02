@@ -48,7 +48,7 @@ describe("Visits : tracks and tags", () => {
     const camera = "has_unidentified";
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["possum", "unidentified", "unidentified", "unidentified"]
+      tags: ["possum", "unidentified", "unidentified", "unidentified"],
     });
     cy.checkVisitTags(Dee, camera, ["possum"]);
   });
@@ -78,7 +78,7 @@ describe("Visits : tracks and tags", () => {
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
       time: new Date(2021, 1, 20, 21),
-      tags: ["possum", "rat", "rat"]
+      tags: ["possum", "rat", "rat"],
     }).thenUserTagAs(Dee, "rabbit");
     cy.uploadRecording(camera, { tags: ["possum"] });
     cy.checkVisitTags(Dee, camera, ["rabbit"]);
@@ -88,7 +88,7 @@ describe("Visits : tracks and tags", () => {
     const camera = "userAnimalUnknown";
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["unidentified", "unidentified", "unidentified"]
+      tags: ["unidentified", "unidentified", "unidentified"],
     }).then((recID: number) => {
       cy.userTagRecording(recID, 0, Dee, "possum");
       cy.userTagRecording(recID, 1, Dee, "unknown");
@@ -103,7 +103,7 @@ describe("Visits : tracks and tags", () => {
     cy.apiCreateCamera(camera, group);
     const recording = cy.uploadRecording(camera, {
       time: new Date(2021, 1, 20, 21),
-      tags: ["possum"]
+      tags: ["possum"],
     });
     recording.then((recID: number) => {
       cy.userTagRecording(recID, 0, Dee, "possum");

@@ -9,20 +9,20 @@ Cypress.Commands.add("apiCreateAlert", (user, what, camera, alertName) => {
     `Creating alert on '${what}' for camera '${camera}' and user ${user}`,
     {
       what: what,
-      camera
+      camera,
     }
   );
   const data = {
     name: alertName,
     conditions: JSON.stringify([{ tag: what }]),
-    deviceId: getCreds(camera).id
+    deviceId: getCreds(camera).id,
   };
 
   cy.request({
     method: "POST",
     url: v1ApiPath("alerts"),
     body: data,
-    headers: getCreds(user).headers
+    headers: getCreds(user).headers,
   });
 });
 
@@ -36,7 +36,7 @@ Cypress.Commands.add(
       {
         user,
         camera,
-        expectedEvents
+        expectedEvents,
       }
     );
 

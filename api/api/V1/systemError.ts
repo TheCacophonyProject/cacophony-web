@@ -256,7 +256,7 @@ class Match {
   }
 
   score(stringLength: number): number {
-    var startSame = this.start[0] == this.start[1] ? 0.9 : 0;
+    const startSame = this.start[0] == this.start[1] ? 0.9 : 0;
 
     return Math.round((this.length / stringLength) * 100) + startSame;
   }
@@ -309,7 +309,7 @@ function findUniqueSubstrings(
   end: number[],
   minLength: number
 ): Match[] {
-  let patterns: Match[] = [];
+  const patterns: Match[] = [];
 
   if (
     substrings.length == 0 ||

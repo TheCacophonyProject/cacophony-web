@@ -50,7 +50,7 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "has_unidentified";
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["possum", "unidentified", "unidentified", "unidentified"]
+      tags: ["possum", "unidentified", "unidentified", "unidentified"],
     });
     cy.checkMonitoringTags(Damian, camera, ["possum"]);
   });
@@ -79,7 +79,7 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "userVsMultiple";
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["possum", "rat", "rat"]
+      tags: ["possum", "rat", "rat"],
     }).thenUserTagAs(Damian, "rabbit");
     cy.uploadRecording(camera, { tags: ["possum"] });
     cy.checkMonitoringTags(Damian, camera, ["rabbit"]);
@@ -89,7 +89,7 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "tagsagree";
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["possum", "rat", "rat"]
+      tags: ["possum", "rat", "rat"],
     }).thenUserTagAs(Damian, "possum");
     cy.uploadRecording(camera, { tags: ["possum"] });
     cy.checkMonitoringTags(Damian, camera, ["possum"]);
@@ -99,7 +99,7 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "userAnimalUnknown";
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["unidentified", "unidentified", "unidentified"]
+      tags: ["unidentified", "unidentified", "unidentified"],
     }).then((recID: number) => {
       cy.userTagRecording(recID, 0, Damian, "possum");
       cy.userTagRecording(recID, 1, Damian, "unknown");
@@ -113,7 +113,7 @@ describe("Monitoring : tracks and tags", () => {
     cy.apiAddUserToGroup(Damian, Gerry, group, true);
     cy.apiCreateCamera(camera, group);
     const recording = cy.uploadRecording(camera, {
-      tags: ["possum", "rabbit"]
+      tags: ["possum", "rabbit"],
     });
     recording.then((recID: number) => {
       cy.userTagRecording(recID, 0, Damian, "possum");
@@ -125,7 +125,7 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "conflicter-multiple";
     cy.apiCreateCamera(camera, group);
     const recording = cy.uploadRecording(camera, {
-      tags: ["possum", "rabbit"]
+      tags: ["possum", "rabbit"],
     });
     recording.then((recID: number) => {
       cy.userTagRecording(recID, 0, Damian, "possum");

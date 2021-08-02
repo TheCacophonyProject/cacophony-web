@@ -35,7 +35,7 @@ import {
   RecordingPermission,
   RecordingProcessingState,
   RecordingType,
-  TagMode
+  TagMode,
 } from "../../models/Recording";
 import { Event, QueryOptions } from "../../models/Event";
 import { User } from "../../models/User";
@@ -47,7 +47,7 @@ import {
   Visit,
   VisitEvent,
   VisitSummary,
-  getTrackTag
+  getTrackTag,
 } from "./Visits";
 import { Station } from "../../models/Station";
 import modelsUtil from "../../models/util/util";
@@ -161,7 +161,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
       const fileData = await modelsUtil
         .openS3()
         .getObject({
-          Key: key
+          Key: key,
         })
         .promise()
         .catch((err) => {
@@ -205,13 +205,13 @@ function makeUploadHandler(mungeData?: (any) => any) {
         // NOTE: Algorithm property gets filled in later by AI
         recording.additionalMetadata = {
           previewSecs: metadata.previewSecs,
-          totalFrames: metadata.totalFrames
+          totalFrames: metadata.totalFrames,
         };
       }
       if (data.hasOwnProperty("additionalMetadata")) {
         recording.additionalMetadata = {
           ...data.additionalMetadata,
-          ...recording.additionalMetadata
+          ...recording.additionalMetadata,
         };
       }
     }
@@ -325,7 +325,7 @@ async function reportRecordings(request: RecordingQuery) {
 
   builder.query.include.push({
     model: models.Station,
-    attributes: ["name"]
+    attributes: ["name"],
   });
 
   // NOTE: Not even going to try to attempt to add typing info to this bundle
@@ -354,7 +354,7 @@ async function reportRecordings(request: RecordingQuery) {
         audioEvents[r.id] = {
           timestamp: event.dateTime,
           volume: event.EventDetail.details.volume,
-          fileId
+          fileId,
         };
         audioFileIds.add(fileId);
       }
@@ -383,7 +383,7 @@ async function reportRecordings(request: RecordingQuery) {
     "Track Count",
     "Automatic Track Tags",
     "Human Track Tags",
-    "Recording Tags"
+    "Recording Tags",
   ];
 
   if (includeAudiobait) {
@@ -435,7 +435,7 @@ async function reportRecordings(request: RecordingQuery) {
       r.Tracks.length,
       formatTags(automatic_track_tags),
       formatTags(human_track_tags),
-      formatTags(recording_tags)
+      formatTags(recording_tags),
     ];
 
     if (includeAudiobait) {
@@ -519,7 +519,7 @@ async function get(request, type?: RecordingType) {
     RecordingPermission.VIEW,
     {
       type,
-      filterOptions: request.query.filterOptions
+      filterOptions: request.query.filterOptions,
     }
   );
   if (!recording) {
@@ -527,7 +527,7 @@ async function get(request, type?: RecordingType) {
   }
 
   const data: any = {
-    recording: handleLegacyTagFieldsForGetOnRecording(recording)
+    recording: handleLegacyTagFieldsForGetOnRecording(recording),
   };
 
   if (recording.fileKey) {
@@ -536,7 +536,7 @@ async function get(request, type?: RecordingType) {
         _type: "fileDownload",
         key: recording.fileKey,
         filename: recording.getFileName(),
-        mimeType: recording.fileMimeType
+        mimeType: recording.fileMimeType,
       },
       config.server.passportSecret,
       { expiresIn: 60 * 10 }
@@ -550,7 +550,7 @@ async function get(request, type?: RecordingType) {
         _type: "fileDownload",
         key: recording.rawFileKey,
         filename: recording.getRawFileName(),
-        mimeType: recording.rawMimeType
+        mimeType: recording.rawMimeType,
       },
       config.server.passportSecret,
       { expiresIn: 60 * 10 }
@@ -572,7 +572,7 @@ async function delete_(request, response) {
   if (deleted === null) {
     return responseUtil.send(response, {
       statusCode: 400,
-      messages: ["Failed to delete recording."]
+      messages: ["Failed to delete recording."],
     });
   }
   if (deleted.rawFileKey) {
@@ -587,7 +587,7 @@ async function delete_(request, response) {
   }
   responseUtil.send(response, {
     statusCode: 200,
-    messages: ["Deleted recording."]
+    messages: ["Deleted recording."],
   });
 }
 
@@ -624,7 +624,7 @@ async function addTag(user, recording, tag, response) {
   responseUtil.send(response, {
     statusCode: 200,
     messages: ["Added new tag."],
-    tagId: tagInstance.id
+    tagId: tagInstance.id,
   });
 }
 
@@ -662,7 +662,7 @@ function handleLegacyTagFieldsForGetOnRecording(recording) {
 const statusCode = {
   Success: 1,
   Fail: 2,
-  Both: 3
+  Both: 3,
 };
 
 // reprocessAll expects request.body.recordings to be a list of recording_ids
@@ -673,7 +673,7 @@ async function reprocessAll(request, response) {
     statusCode: 200,
     messages: [],
     reprocessed: [],
-    fail: []
+    fail: [],
   };
 
   let status = 0;
@@ -720,7 +720,7 @@ async function reprocessRecording(user, recording_id) {
     return {
       statusCode: 400,
       messages: ["No such recording: " + recording_id],
-      recordingId: recording_id
+      recordingId: recording_id,
     };
   }
 
@@ -729,7 +729,7 @@ async function reprocessRecording(user, recording_id) {
   return {
     statusCode: 200,
     messages: ["Recording scheduled for reprocessing"],
-    recordingId: recording_id
+    recordingId: recording_id,
   };
 }
 
@@ -753,7 +753,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
     );
     const model = {
       name: "unknown",
-      algorithmId: algorithmDetail.id
+      algorithmId: algorithmDetail.id,
     };
     if ("model_name" in metadata["algorithm"]) {
       model["name"] = metadata["algorithm"]["model_name"];
@@ -761,7 +761,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
     for (const trackMeta of metadata["tracks"]) {
       const track = await recording.createTrack({
         data: trackMeta,
-        AlgorithmId: algorithmDetail.id
+        AlgorithmId: algorithmDetail.id,
       });
       if ("confident_tag" in trackMeta) {
         model["all_class_confidences"] = trackMeta["all_class_confidences"];
@@ -922,7 +922,7 @@ async function queryVisits(
     totalRecordings: totalCount,
     queryOffset: queryOffset,
     numRecordings: numRecordings,
-    numVisits: visits.length
+    numVisits: visits.length,
   };
 }
 
@@ -941,8 +941,8 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
       "Using Audio Bait",
       "", //needed for visits columns to show
       "",
-      ""
-    ]
+      "",
+    ],
   ];
   const eventSum = (accumulator, visit) => accumulator + visit.events.length;
   for (const [deviceId, deviceVisits] of Object.entries(deviceMap)) {
@@ -963,7 +963,7 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
       Object.values(animalSummary)
         .map((summary: VisitSummary) => summary.visitCount)
         .join(";"),
-      deviceVisits.audioBait.toString()
+      deviceVisits.audioBait.toString(),
     ]);
 
     for (const animal in animalSummary) {
@@ -978,7 +978,7 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
         (summary.visitCount / summary.eventCount).toString(),
         animal,
         summary.visitCount.toString(),
-        deviceVisits.audioBait.toString()
+        deviceVisits.audioBait.toString(),
       ]);
     }
   }
@@ -1004,7 +1004,7 @@ async function reportVisits(request: RecordingQuery) {
     "Confidence",
     "# Events",
     "Audio Played",
-    "URL"
+    "URL",
   ]);
 
   for (const visit of results.visits) {
@@ -1059,7 +1059,7 @@ function addVisitRow(out: any, visit: Visit) {
     "",
     visit.events.length.toString(),
     visit.audioBaitVisit.toString(),
-    ""
+    "",
   ]);
 }
 
@@ -1079,7 +1079,7 @@ function addEventRow(out: any, event: VisitEvent, recordingUrlBase: string) {
     event.trackTag ? event.trackTag.confidence + "%" : "",
     "",
     "",
-    urljoin(recordingUrlBase, event.recID.toString(), event.trackID.toString())
+    urljoin(recordingUrlBase, event.recID.toString(), event.trackID.toString()),
   ]);
 }
 
@@ -1102,7 +1102,7 @@ function addAudioBaitRow(out: any, audioBait: Event) {
     "",
     "",
     audioPlayed,
-    ""
+    "",
   ]);
 }
 
@@ -1113,12 +1113,12 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
     include: [
       {
         model: models.Group,
-        attributes: ["groupname"]
+        attributes: ["groupname"],
       },
       {
         model: models.Track,
         where: {
-          archivedAt: null
+          archivedAt: null,
         },
         attributes: [
           "id",
@@ -1130,8 +1130,8 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
               "end_s",
               Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
             ),
-            "data"
-          ]
+            "data",
+          ],
         ],
         required: false,
         include: [
@@ -1142,17 +1142,17 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
               "automatic",
               "TrackId",
               "confidence",
-              [Sequelize.json("data.name"), "data"]
-            ]
-          }
-        ]
+              [Sequelize.json("data.name"), "data"],
+            ],
+          },
+        ],
       },
       {
         model: models.Device,
-        attributes: ["devicename", "id"]
-      }
+        attributes: ["devicename", "id"],
+      },
     ],
-    attributes: ["id", "recordingDateTime", "DeviceId", "GroupId"]
+    attributes: ["id", "recordingDateTime", "DeviceId", "GroupId"],
   };
   // @ts-ignore
   return await models.Recording.findByPk(id, query);
@@ -1200,5 +1200,5 @@ export default {
   tracksFromMeta,
   updateMetadata,
   queryVisits,
-  sendAlerts
+  sendAlerts,
 };

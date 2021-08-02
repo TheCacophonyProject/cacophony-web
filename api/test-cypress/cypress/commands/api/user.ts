@@ -8,7 +8,7 @@ import {
   makeAuthorizedRequest,
   saveCreds,
   saveIdOnly,
-  v1ApiPath
+  v1ApiPath,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 
@@ -23,7 +23,7 @@ Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
   const data = {
     username: fullName,
     password: password,
-    email: fullName + "@api.created.com"
+    email: fullName + "@api.created.com",
   };
 
   cy.request("POST", usersUrl, data).then((response) => {
@@ -39,7 +39,7 @@ Cypress.Commands.add("apiSignInAs", (userName: string) => {
 
   const data = {
     username: fullName,
-    password: password
+    password: password,
   };
 
   cy.request("POST", usersUrl, data).then((response) => {
@@ -60,7 +60,7 @@ Cypress.Commands.add(
       {
         method: "POST",
         url: v1ApiPath("groups"),
-        body: { groupname: getTestName(group) }
+        body: { groupname: getTestName(group) },
       },
       userName
     ).then((response) => {
@@ -85,7 +85,7 @@ Cypress.Commands.add(
 Cypress.Commands.add("apiCreateUserGroup", (userName, group) => {
   logTestDescription(`Create user '${userName}' with group '${group}'`, {
     user: userName,
-    group: group
+    group: group,
   });
   cy.apiCreateUser(userName, false);
   cy.apiCreateGroup(userName, group, false);
@@ -99,7 +99,7 @@ Cypress.Commands.add(
       {
         user: userName,
         group,
-        cameras
+        cameras,
       }
     );
     cy.apiCreateGroup(userName, group, false);
@@ -134,8 +134,8 @@ Cypress.Commands.add(
         body: {
           group: getTestName(group),
           admin: admin.toString(),
-          username: getTestName(userName)
-        }
+          username: getTestName(userName),
+        },
       },
       groupAdminUser
     );
@@ -157,8 +157,8 @@ Cypress.Commands.add(
         body: {
           deviceId: getCreds(device).id,
           admin: "false",
-          username: getTestName(userName)
-        }
+          username: getTestName(userName),
+        },
       },
       deviceAdminUser
     );

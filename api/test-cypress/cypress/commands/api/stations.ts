@@ -21,7 +21,7 @@ Cypress.Commands.add(
 
     const actualGroup = getTestName(group);
     const body: { [key: string]: string } = {
-      stations: JSON.stringify(stations)
+      stations: JSON.stringify(stations),
     };
     if (updateFrom) {
       body["fromDate"] = updateFrom.toISOString();
@@ -31,7 +31,7 @@ Cypress.Commands.add(
       {
         method: "POST",
         url: v1ApiPath(`groups/${actualGroup}/stations`),
-        body
+        body,
       },
       user
     );
@@ -46,7 +46,7 @@ Cypress.Commands.add("apiCheckStations", (user: string, group: string) => {
   makeAuthorizedRequest(
     {
       method: "GET",
-      url: v1ApiPath(`groups/${actualGroup}/stations`)
+      url: v1ApiPath(`groups/${actualGroup}/stations`),
     },
     user
   );
@@ -73,7 +73,7 @@ function checkStationIs(user: string, recId: number, station: string) {
       ? "not assigned to a station"
       : `assigned to station '${station}'`;
   logTestDescription(`and check recording is ${text}`, {
-    user
+    user,
   });
   checkRecording(user, recId, (recording) => {
     if (recording.Station) {

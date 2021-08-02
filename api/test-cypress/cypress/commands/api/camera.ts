@@ -3,7 +3,7 @@ import {
   v1ApiPath,
   saveCreds,
   checkRequestFails,
-  makeAuthorizedRequest
+  makeAuthorizedRequest,
 } from "../server";
 import { logTestDescription } from "../descriptions";
 
@@ -18,7 +18,7 @@ Cypress.Commands.add(
   ) => {
     const data = {
       dateTimes: [date.toISOString()],
-      description: { type: type, details: details }
+      description: { type: type, details: details },
     };
     logTestDescription(
       `Create ${type} event for ${camera} at ${date}`,
@@ -29,7 +29,7 @@ Cypress.Commands.add(
       {
         method: "POST",
         url: v1ApiPath("events"),
-        body: data
+        body: data,
       },
       camera
     );
@@ -44,7 +44,7 @@ Cypress.Commands.add(
       {
         camera: cameraName,
         group: group,
-        saltId: saltId
+        saltId: saltId,
       },
       log
     );
@@ -71,7 +71,7 @@ Cypress.Commands.add(
       {
         camera: cameraName,
         group: group,
-        saltId: saltId
+        saltId: saltId,
       },
       log
     );
@@ -99,7 +99,7 @@ function createCameraDetails(
   const data = {
     devicename: fullName,
     password: password,
-    group: getTestName(group)
+    group: getTestName(group),
   };
   if (saltId) {
     data["saltId"] = saltId;
@@ -108,6 +108,6 @@ function createCameraDetails(
   return {
     method: "POST",
     url: v1ApiPath("devices"),
-    body: data
+    body: data,
   };
 }

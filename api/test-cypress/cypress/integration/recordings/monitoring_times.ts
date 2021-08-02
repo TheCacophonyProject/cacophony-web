@@ -65,12 +65,12 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:22" });
 
     const filter = {
-      from: "21:00"
+      from: "21:00",
     };
 
     cy.checkMonitoringWithFilter(Dexter, camera, filter, [
       { start: "20:49", incomplete: "true" },
-      { start: "21:22" }
+      { start: "21:22" },
     ]);
   });
 
@@ -81,7 +81,7 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:22" });
 
     const filter = {
-      from: "21:00"
+      from: "21:00",
     };
 
     cy.checkMonitoringWithFilter(Dexter, camera, filter, [{ start: "21:22" }]);
@@ -97,7 +97,7 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:00" });
 
     const filter = {
-      from: "21:00"
+      from: "21:00",
     };
 
     cy.checkMonitoringWithFilter(Dexter, camera, filter, []);
@@ -111,11 +111,11 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:00" });
 
     const filter = {
-      until: "21:00"
+      until: "21:00",
     };
 
     cy.checkMonitoringWithFilter(Dexter, camera, filter, [
-      { recordings: 3, start: "20:40", incomplete: "false" }
+      { recordings: 3, start: "20:40", incomplete: "false" },
     ]);
   });
 
@@ -126,11 +126,11 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:05" });
 
     const filter = {
-      until: "21:00"
+      until: "21:00",
     };
 
     cy.checkMonitoringWithFilter(Dexter, camera, filter, [
-      { recordings: 2, start: "20:59", incomplete: "false" }
+      { recordings: 2, start: "20:59", incomplete: "false" },
     ]);
   });
 
@@ -141,7 +141,7 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:13" });
 
     const filter = {
-      until: "21:00"
+      until: "21:00",
     };
 
     cy.checkMonitoringWithFilter(Dexter, camera, filter, []);
@@ -157,12 +157,12 @@ describe("Monitoring : times and recording groupings", () => {
     }
 
     const filter = {
-      until: "21:00"
+      until: "21:00",
     };
 
     // only 9 recordings are collected from the database
     cy.checkMonitoringWithFilter(Dexter, camera, filter, [
-      { recordings: 9, incomplete: "true" }
+      { recordings: 9, incomplete: "true" },
     ]);
   });
 
@@ -172,10 +172,10 @@ describe("Monitoring : times and recording groupings", () => {
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
       time: videoStart,
-      duration: 15
+      duration: 15,
     });
     cy.checkMonitoring(Dexter, camera, [
-      { start: videoStart, end: addSeconds(videoStart, 15) }
+      { start: videoStart, end: addSeconds(videoStart, 15) },
     ]);
   });
 
@@ -185,14 +185,14 @@ describe("Monitoring : times and recording groupings", () => {
     cy.apiCreateCamera(camera, group);
     cy.uploadRecording(camera, {
       time: videoStart,
-      duration: 23
+      duration: 23,
     });
     cy.uploadRecording(camera, {
       secsLater: 66,
-      duration: 41
+      duration: 41,
     });
     cy.checkMonitoring(Dexter, camera, [
-      { start: videoStart, end: addSeconds(videoStart, 66 + 41) }
+      { start: videoStart, end: addSeconds(videoStart, 66 + 41) },
     ]);
   });
 });

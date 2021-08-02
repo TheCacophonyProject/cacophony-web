@@ -14,7 +14,7 @@ async function getUserEvents(powerEvents: PowerEvents[]) {
   for (const event of powerEvents) {
     if (!groupAdmins.hasOwnProperty(event.Device.GroupId)) {
       const adminUsers = await event.Device.Group.getUsers({
-        through: { where: { admin: true } }
+        through: { where: { admin: true } },
       });
       groupAdmins[event.Device.GroupId] = adminUsers;
     }
@@ -75,7 +75,7 @@ async function main() {
       eventList.push({
         DeviceId: powerEvent.Device.id,
         EventDetailId: detailsId,
-        dateTime: time
+        dateTime: time,
       });
     }
     try {
@@ -126,9 +126,9 @@ const log = new winston.Logger({
       timestamp: function () {
         return moment().format();
       },
-      colorize: true
-    })
-  ]
+      colorize: true,
+    }),
+  ],
 });
 
 main()

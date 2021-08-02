@@ -64,14 +64,14 @@ function validRecordingUpload(response, idOfRecording) {
   send(response, {
     statusCode: 200,
     messages: [VALID_DATAPOINT_UPLOAD_REQUEST],
-    recordingId: idOfRecording
+    recordingId: idOfRecording,
   });
 }
 
 function validDatapointUpdate(response) {
   send(response, {
     statusCode: 200,
-    messages: [VALID_DATAPOINT_UPDATE_REQUEST]
+    messages: [VALID_DATAPOINT_UPDATE_REQUEST],
   });
 }
 
@@ -79,7 +79,7 @@ function validDatapointGet(response, result) {
   send(response, {
     statusCode: 200,
     messages: [VALID_DATAPOINT_GET_REQUEST],
-    result: result
+    result: result,
   });
 }
 
@@ -87,7 +87,7 @@ function validFileRequest(response, data) {
   send(response, {
     statusCode: 200,
     messages: [VALID_FILE_REQUEST],
-    jwt: jwt.sign(data, config.server.passportSecret, { expiresIn: 60 * 10 })
+    jwt: jwt.sign(data, config.server.passportSecret, { expiresIn: 60 * 10 }),
   });
 }
 
@@ -98,7 +98,7 @@ function serverError(
 ) {
   log.error(err);
   return response.status(500).json({
-    messages: [message]
+    messages: [message],
   });
 }
 
@@ -110,5 +110,5 @@ export default {
   validDatapointUpdate,
   validRecordingUpload,
   validFileRequest,
-  serverError
+  serverError,
 };

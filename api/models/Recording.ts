@@ -33,7 +33,7 @@ import {
   Device,
   DeviceId,
   DeviceId as DeviceIdAlias,
-  DeviceStatic
+  DeviceStatic,
 } from "./Device";
 import { GroupId as GroupIdAlias, Group } from "./Group";
 import { Track, TrackId } from "./Track";
@@ -57,26 +57,26 @@ export enum TagMode {
   NoHuman = "no-human", // untagged or automatic only
   AutomaticOnly = "automatic-only",
   HumanOnly = "human-only",
-  AutomaticHuman = "automatic+human"
+  AutomaticHuman = "automatic+human",
 }
 
 type AllTagModes = TagMode | AcceptableTag;
 // local
 const validTagModes = new Set([
   ...Object.values(TagMode),
-  ...Object.values(AcceptableTag)
+  ...Object.values(AcceptableTag),
 ]);
 
 export enum RecordingType {
   ThermalRaw = "thermalRaw",
-  Audio = "audio"
+  Audio = "audio",
 }
 
 export enum RecordingPermission {
   DELETE = "delete",
   TAG = "tag",
   VIEW = "view",
-  UPDATE = "update"
+  UPDATE = "update",
 }
 
 export enum RecordingProcessingState {
@@ -85,7 +85,7 @@ export enum RecordingProcessingState {
   Finished = "FINISHED",
   ToMp3 = "toMp3",
   Analyse = "analyse",
-  Reprocess = "reprocess"
+  Reprocess = "reprocess",
 }
 export const RecordingPermissions = new Set(Object.values(RecordingPermission));
 
@@ -339,8 +339,8 @@ export default function (
       type: DataTypes.GEOMETRY,
       set: util.geometrySetter,
       validate: {
-        isLatLon: validation.isLatLon
-      }
+        isLatLon: validation.isLatLon,
+      },
     },
     relativeToDawn: DataTypes.INTEGER,
     relativeToDusk: DataTypes.INTEGER,
@@ -349,7 +349,7 @@ export default function (
     comment: DataTypes.STRING,
     public: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false
+      defaultValue: false,
     },
 
     // Raw file data.
@@ -369,7 +369,7 @@ export default function (
     // Battery relevant fields.
     batteryLevel: DataTypes.DOUBLE,
     batteryCharging: DataTypes.STRING,
-    airplaneModeOn: DataTypes.BOOLEAN
+    airplaneModeOn: DataTypes.BOOLEAN,
   };
 
   const Recording = sequelize.define(
@@ -412,7 +412,7 @@ export default function (
           where: {
             type: type,
             processingState: state,
-            processingStartTime: null
+            processingStartTime: null,
           },
           attributes: [
             ...(models.Recording as RecordingStatic).processingAttributes,
@@ -425,18 +425,18 @@ export default function (
           	where
           		"DeviceId" = "Recording"."DeviceId"
           	limit 1)`),
-              "hasAlert"
-            ]
+              "hasAlert",
+            ],
           ],
           order: [
             Sequelize.literal(`"hasAlert" DESC`),
             ["recordingDateTime", "asc"],
-            ["id", "asc"] // Adding another order is a "fix" for a bug in postgresql causing the query to be slow
+            ["id", "asc"], // Adding another order is a "fix" for a bug in postgresql causing the query to be slow
           ],
           // @ts-ignore
           skipLocked: true,
           lock: (transaction as any).LOCK.UPDATE,
-          transaction
+          transaction,
         }).then(async function (recording) {
           if (!recording) {
             return recording;
@@ -445,14 +445,14 @@ export default function (
           recording.set(
             {
               jobKey: uuidv4(),
-              processingStartTime: date.toISOString()
+              processingStartTime: date.toISOString(),
             },
             {
-              transaction
+              transaction,
             }
           );
           recording.save({
-            transaction
+            transaction,
           });
           return recording;
         });
@@ -505,17 +505,17 @@ export default function (
       where: {
         [Op.and]: [
           {
-            id: id
-          }
-        ]
+            id: id,
+          },
+        ],
       },
       include: getRecordingInclude(),
-      attributes: this.userGetAttributes.concat(["rawFileKey"])
+      attributes: this.userGetAttributes.concat(["rawFileKey"]),
     };
 
     if (options.type) {
       (query.where[Op.and] as any[]).push({
-        type: options.type
+        type: options.type,
       });
     }
 
@@ -548,17 +548,17 @@ export default function (
         [Op.and]: [
           {
             id: id,
-            DeviceId: device.id
-          }
-        ]
+            DeviceId: device.id,
+          },
+        ],
       },
       include: getRecordingInclude(),
-      attributes: this.userGetAttributes.concat(["rawFileKey"])
+      attributes: this.userGetAttributes.concat(["rawFileKey"]),
     };
 
     if (options.type) {
       (query.where[Op.and] as any[]).push({
-        type: options.type
+        type: options.type,
       });
     }
 
@@ -630,24 +630,24 @@ export default function (
     // FIXME(jon): Should really combine these into a single query?
     const [deviceIds, groupIds] = await Promise.all([
       user.getDeviceIds(),
-      user.getGroupsIds()
+      user.getGroupsIds(),
     ]);
     return {
       [Op.or]: [
         {
-          public: true
+          public: true,
         },
         {
           GroupId: {
-            [Op.in]: groupIds
-          }
+            [Op.in]: groupIds,
+          },
         },
         {
           DeviceId: {
-            [Op.in]: deviceIds
-          }
-        }
-      ]
+            [Op.in]: deviceIds,
+          },
+        },
+      ],
     };
   };
 
@@ -708,9 +708,9 @@ from (
             start_s: item.TrackData.start_s,
             end_s: item.TrackData.end_s,
             positions: item.TrackData.positions,
-            num_frames: item.TrackData.num_frames
+            num_frames: item.TrackData.num_frames,
           },
-          needsTagging: item.TaggedBy !== false
+          needsTagging: item.TaggedBy !== false,
         });
         return acc;
       },
@@ -721,7 +721,7 @@ from (
         duration: 0,
         fileKey: "",
         fileMimeType: "",
-        recordingDateTime: ""
+        recordingDateTime: "",
       }
     );
     // Sort tracks by time, so that the front-end doesn't have to.
@@ -733,7 +733,7 @@ from (
       const s3 = util.openS3();
       const s3Data = await s3
         .headObject({
-          Key: flattenedResult.fileKey
+          Key: flattenedResult.fileKey,
         })
         .promise();
       ContentLength = s3Data.ContentLength;
@@ -752,7 +752,7 @@ from (
       _type: "fileDownload",
       key: flattenedResult.fileKey,
       filename: `${fileName}.cptv`,
-      mimeType: flattenedResult.fileMimeType
+      mimeType: flattenedResult.fileMimeType,
     };
 
     const recordingJWT = jsonwebtoken.sign(
@@ -763,7 +763,7 @@ from (
     const tagJWT = jsonwebtoken.sign(
       {
         _type: "tagPermission",
-        recordingId: flattenedResult.RecordingId
+        recordingId: flattenedResult.RecordingId,
       },
       config.server.passportSecret,
       { expiresIn: 60 * 10 }
@@ -775,7 +775,7 @@ from (
       ...flattenedResult,
       recordingJWT,
       tagJWT,
-      fileSize: ContentLength
+      fileSize: ContentLength,
     };
   };
 
@@ -842,7 +842,7 @@ from (
     async function (): Promise<any> {
       return await this.getTracks({
         where: {
-          archivedAt: null
+          archivedAt: null,
         },
         include: [
           {
@@ -850,14 +850,14 @@ from (
             include: [
               {
                 model: models.User,
-                attributes: ["username"]
-              }
+                attributes: ["username"],
+              },
             ],
             attributes: {
-              exclude: ["UserId"]
-            }
-          }
-        ]
+              exclude: ["UserId"],
+            },
+          },
+        ],
       });
     };
   /* eslint-enable indent */
@@ -944,13 +944,13 @@ from (
   Recording.prototype.getActiveTracks = async function () {
     return await this.getTracks({
       where: {
-        archivedAt: null
+        archivedAt: null,
       },
       include: [
         {
-          model: models.TrackTag
-        }
-      ]
+          model: models.TrackTag,
+        },
+      ],
     });
   };
 
@@ -966,24 +966,24 @@ from (
 
     await models.Tag.destroy({
       where: {
-        RecordingId: this.id
-      }
+        RecordingId: this.id,
+      },
     });
 
     models.Track.update(
       {
-        archivedAt: Date.now()
+        archivedAt: Date.now(),
       },
       {
         where: {
           RecordingId: this.id,
-          archivedAt: null
-        }
+          archivedAt: null,
+        },
       }
     );
     await this.update({
       processingStartTime: null,
-      processingState: RecordingProcessingState.Reprocess
+      processingState: RecordingProcessingState.Reprocess,
     });
   };
 
@@ -1039,9 +1039,9 @@ from (
             Sequelize.col("recordingDateTime"),
             "1970-01-01"
           ),
-          "DESC"
+          "DESC",
         ],
-        ["id", "DESC"]
+        ["id", "DESC"],
       ];
     }
     this.query = {
@@ -1049,14 +1049,16 @@ from (
         [Op.and]: [
           where, // User query
           await recordingsFor(user, viewAsSuperAdmin),
-          Sequelize.literal(Recording.queryBuilder.handleTagMode(tagMode, tags))
-        ]
+          Sequelize.literal(
+            Recording.queryBuilder.handleTagMode(tagMode, tags)
+          ),
+        ],
       },
       order: order,
       include: getRecordingInclude(),
       limit: limit,
       offset: offset,
-      attributes: Recording.queryGetAttributes
+      attributes: Recording.queryGetAttributes,
     };
     return this;
   };
@@ -1065,11 +1067,11 @@ from (
     return [
       {
         model: models.Group,
-        attributes: ["groupname"]
+        attributes: ["groupname"],
       },
       {
         model: models.Station,
-        attributes: ["name", "location"]
+        attributes: ["name", "location"],
       },
       {
         model: models.Tag,
@@ -1077,14 +1079,14 @@ from (
         include: [
           {
             association: "tagger",
-            attributes: ["username", "id"]
-          }
-        ]
+            attributes: ["username", "id"],
+          },
+        ],
       },
       {
         model: models.Track,
         where: {
-          archivedAt: null
+          archivedAt: null,
         },
         attributes: [
           "id",
@@ -1096,8 +1098,8 @@ from (
               "end_s",
               Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
             ),
-            "data"
-          ]
+            "data",
+          ],
         ],
 
         required: false,
@@ -1110,23 +1112,23 @@ from (
               "TrackId",
               "confidence",
               "UserId",
-              [Sequelize.json("data.name"), "data"]
+              [Sequelize.json("data.name"), "data"],
             ],
             include: [
               {
                 model: models.User,
-                attributes: ["username", "id"]
-              }
+                attributes: ["username", "id"],
+              },
             ],
-            required: false
-          }
-        ]
+            required: false,
+          },
+        ],
       },
       {
         model: models.Device,
         where: {},
-        attributes: ["devicename", "id"]
-      }
+        attributes: ["devicename", "id"],
+      },
     ];
   }
 
@@ -1345,8 +1347,8 @@ from (
         required: false,
         where: {
           dateTime: {
-            [Op.between]: [Sequelize.literal(after), Sequelize.literal(before)]
-          }
+            [Op.between]: [Sequelize.literal(after), Sequelize.literal(before)],
+          },
         },
         include: [
           {
@@ -1354,12 +1356,12 @@ from (
             as: "EventDetail",
             required: false,
             where: {
-              type: "audioBait"
+              type: "audioBait",
             },
-            attributes: ["details"]
-          }
-        ]
-      }
+            attributes: ["details"],
+          },
+        ],
+      },
     ];
 
     return this;
@@ -1389,7 +1391,7 @@ from (
     "batteryLevel",
     "DeviceId",
     "GroupId",
-    "StationId"
+    "StationId",
   ];
 
   // Attributes returned when looking up a single recording.
@@ -1412,7 +1414,7 @@ from (
     "GroupId",
     "StationId",
     "fileKey",
-    "comment"
+    "comment",
   ];
 
   // Fields that can be provided when uploading new recordings.
@@ -1430,7 +1432,7 @@ from (
     "additionalMetadata",
     "processingMeta",
     "comment",
-    "StationId"
+    "StationId",
   ];
 
   // local
@@ -1439,13 +1441,13 @@ from (
   Recording.processingStates = {
     thermalRaw: [
       RecordingProcessingState.AnalyseThermal,
-      RecordingProcessingState.Finished
+      RecordingProcessingState.Finished,
     ],
     audio: [
       RecordingProcessingState.ToMp3,
       RecordingProcessingState.Analyse,
-      RecordingProcessingState.Finished
-    ]
+      RecordingProcessingState.Finished,
+    ],
   };
 
   Recording.uploadedState = function (type: RecordingType) {
@@ -1477,7 +1479,7 @@ from (
     "StationId",
     "recordingDateTime",
     "duration",
-    "location"
+    "location",
   ];
 
   return Recording;

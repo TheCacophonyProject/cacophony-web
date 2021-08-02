@@ -64,7 +64,7 @@ function multipartUpload(keyPrefix, buildRecord) {
         .openS3()
         .upload({
           Key: key,
-          Body: part
+          Body: part,
         })
         .promise()
         .catch((err) => {
@@ -120,7 +120,7 @@ function multipartUpload(keyPrefix, buildRecord) {
           const fileData = await modelsUtil
             .openS3()
             .getObject({
-              Key: key
+              Key: key,
             })
             .promise()
             .catch((err) => {
@@ -138,7 +138,7 @@ function multipartUpload(keyPrefix, buildRecord) {
             await modelsUtil
               .openS3()
               .deleteObject({
-                Key: key
+                Key: key,
               })
               .promise()
               .catch((err) => {
@@ -172,7 +172,7 @@ function multipartUpload(keyPrefix, buildRecord) {
 function getS3Object(fileKey) {
   const s3 = modelsUtil.openS3();
   const params = {
-    Key: fileKey
+    Key: fileKey,
   };
   return s3.headObject(params).promise();
 }
@@ -191,7 +191,7 @@ async function getS3ObjectFileSize(fileKey) {
 async function deleteS3Object(fileKey) {
   const s3 = modelsUtil.openS3();
   const params = {
-    Key: fileKey
+    Key: fileKey,
   };
   return s3.deleteObject(params).promise();
 }
@@ -200,5 +200,5 @@ export default {
   getS3Object,
   deleteS3Object,
   getS3ObjectFileSize,
-  multipartUpload
+  multipartUpload,
 };

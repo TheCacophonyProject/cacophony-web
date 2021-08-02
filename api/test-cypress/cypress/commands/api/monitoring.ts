@@ -15,7 +15,7 @@ Cypress.Commands.add(
     logTestDescription(`Check visit tags match ${prettyLog(expectedTags)}`, {
       user,
       camera,
-      expectedVisits
+      expectedVisits,
     });
 
     checkMonitoringMatches(user, camera, {}, expectedVisits);
@@ -35,7 +35,7 @@ Cypress.Commands.add(
       {
         user,
         camera,
-        expectedVisits
+        expectedVisits,
       },
       log
     );
@@ -60,7 +60,7 @@ Cypress.Commands.add(
         user,
         camera,
         expectedVisits,
-        searchParams
+        searchParams,
       }
     );
 
@@ -84,7 +84,7 @@ function checkMonitoringMatches(
 ) {
   const params: VisitSearchParams = {
     page: 1,
-    "page-size": 100
+    "page-size": 100,
   };
 
   Object.assign(params, specialParams);
@@ -96,7 +96,7 @@ function checkMonitoringMatches(
   cy.request({
     method: "GET",
     url: v1ApiPath("monitoring/page", params),
-    headers: getCreds(user).headers
+    headers: getCreds(user).headers,
   }).then((response) => {
     checkResponseMatches(response, expectedVisits);
   });
@@ -116,7 +116,7 @@ function checkResponseMatches(
 
   // pull out the bits we care about
   const responseVisitsToCompare: ComparableVisit[] = [];
-  for (var i = 0; i < expectedVisits.length; i++) {
+  for (let i = 0; i < expectedVisits.length; i++) {
     const expectedVisit = expectedVisits[i];
     const completeResponseVisit = increasingDateResponseVisits[i];
     const simplifiedResponseVisit: ComparableVisit = {};

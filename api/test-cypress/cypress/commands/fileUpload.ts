@@ -64,9 +64,9 @@ export function uploadFile(
             fileType,
             uploader: credName,
             data,
-            response: xhr.response
+            response: xhr.response,
           };
-        }
+        },
       });
 
       // Don't want the expect statement to show in the cypress UI unless it fails.
