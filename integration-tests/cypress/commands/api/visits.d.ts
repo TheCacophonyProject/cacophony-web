@@ -1,5 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types" />
 
   
 declare namespace Cypress {
@@ -13,7 +14,7 @@ declare namespace Cypress {
     checkVisits(
       user: string,
       camera: string,
-      expectedVisits: ComparableVisit[]
+      expectedVisits: TestComparableVisit[]
     ): Chainable<Element>;
 
     /**

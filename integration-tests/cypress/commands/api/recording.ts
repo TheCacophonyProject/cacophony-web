@@ -12,7 +12,7 @@ let lastUsedTime = DEFAULT_DATE;
 
 Cypress.Commands.add(
   "uploadRecording",
-  (cameraName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (cameraName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
@@ -39,7 +39,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "uploadRecordingOnBehalfUsingGroup",
-  (cameraName: string, groupName: string, userName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (cameraName: string, groupName: string, userName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
@@ -65,7 +65,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "uploadRecordingOnBehalfUsingDevice",
-  (cameraName: string, userName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (cameraName: string, userName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
@@ -147,7 +147,7 @@ Cypress.Commands.add(
   "uploadRecordingThenUserTag",
   (
     camera: string,
-    details: ThermalRecordingInfo,
+    details: ApiThermalRecordingInfo,
     tagger: string,
     tag: string
   ) => {
@@ -191,7 +191,7 @@ interface ThermalRecordingData {
 }
 
 function makeRecordingDataFromDetails(
-  details: ThermalRecordingInfo
+  details: ApiThermalRecordingInfo
 ): ThermalRecordingData {
   let data: ThermalRecordingData = {
     type: "thermalRaw",
@@ -220,7 +220,7 @@ function makeRecordingDataFromDetails(
   return data;
 }
 
-function getDateForRecordings(details: ThermalRecordingInfo): Date {
+function getDateForRecordings(details: ApiThermalRecordingInfo): Date {
   let date = lastUsedTime;
 
   if (details.time) {
@@ -248,7 +248,7 @@ function getDateForRecordings(details: ThermalRecordingInfo): Date {
 function addTracksToRecording(
   data: ThermalRecordingData,
   model: string,
-  trackDetails?: TrackInfo[],
+  trackDetails?: ApiTrackInfo[],
   tags?: string[]
 ): void {
   data.metadata = {

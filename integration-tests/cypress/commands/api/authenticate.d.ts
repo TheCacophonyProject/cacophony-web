@@ -27,7 +27,7 @@ declare namespace Cypress {
      * Optionally supply ttl and access conditions
      * Optionaly expect a non-200 statusCode
      */
-    apiToken(userName: string, ttl?: string, access?: ApiAuthenticateAccess, statusCode?: number);
+    apiToken(userName: string, ttl?: string, access?: ApiAuthenticateAccess, statusCode?: number):any;
 
   }
 }

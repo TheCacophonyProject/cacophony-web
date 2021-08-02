@@ -100,10 +100,17 @@ function createDevice(
     password = "p" + fullName;
   };
 
-  let data = {
+  interface DataType {
+    devicename: string;
+    password: string;
+    group: string;
+    saltId?: number;
+  };
+
+  let data:DataType = {
     devicename: fullName,
     password: password,
-    group: getTestName(group)
+    group: getTestName(group),
   };
 
   if(saltId!==null) {

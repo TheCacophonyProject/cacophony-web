@@ -8,7 +8,7 @@ declare namespace Cypress {
      * create a device in the given group
      * optionally check for non-200 statusCode
      */
-    apiCreateDevice( cameraName: string, group: string, saltId?: number, password?: string, generateUniqueNmae?: boolean, log?: boolean, statusCode?: number);
+    apiCreateDevice( cameraName: string, group: string, saltId?: number, password?: string, generateUniqueName?: boolean, log?: boolean, statusCode?: number):any;
 
      /**
      * register a device under a new group or name
@@ -16,7 +16,7 @@ declare namespace Cypress {
      * optionally supply a password (autogenerate if not)
      * optionally check for non-200 statusCode
      */
-    apiDeviceReregister( oldName: string, newName: string, newGroup: string, newPassword?: string, generateUniqueName?: boolean, statusCode?: number);
+    apiDeviceReregister( oldName: string, newName: string, newGroup: string, newPassword?: string, generateUniqueName?: boolean, statusCode?: number):any;
 
     /**
     * Retrieve devices list from /devices
@@ -24,13 +24,13 @@ declare namespace Cypress {
     * pass optional params (params) to API call
     * optionally check for a non-200 status code
     */
-    apiCheckDevices(userName: string, expectedDevice: ApiDevicesDevice[], params?: any, statusCode?: number);
+    apiCheckDevices(userName: string, expectedDevice: ApiDevicesDevice[], params?: any, statusCode?: number):any;
 
 
     /**
     * Same as apiCheckDevices but check the expected items are on the list, rather than the only things on the list
     */
-    apiCheckDevicesContains(userName: string, expectedDevices: ApiDevicesDevice[], params?: string, statusCode?: number);
+    apiCheckDevicesContains(userName: string, expectedDevices: ApiDevicesDevice[], params?: string, statusCode?: number):any;
 
     /**
     * Retrieve device details using name and groupname from /device/XX/in-group/YY
@@ -38,7 +38,7 @@ declare namespace Cypress {
     * compare with expected device details (JSON equivalent to that retunred by API)
     * optionally check for a non-200 status code
     */
-    apiCheckDeviceInGroup(userName: string, cameraName: string, groupName: string, groupId: number, expectedDevices: ApiDeviceInGroupDevice, params?: any, statusCode?: number);
+    apiCheckDeviceInGroup(userName: string, cameraName: string, groupName: string, groupId: number, expectedDevices: ApiDeviceInGroupDevice, params?: any, statusCode?: number):any;
 
 
    /**
@@ -47,7 +47,7 @@ declare namespace Cypress {
     * optionally use operator to specify whether to AND or OR the groups and devices conditions supplier (default=OR)
     * optionally check for a non-200 status code
     */
-    apiCheckDevicesQuery(userName: string, devicesArray: TestDeviceAndGroup[], groupsArray: string[], expectedDevice: ApiDeviceQueryDevice[], opertor?: string, statusCode?: number);
+    apiCheckDevicesQuery(userName: string, devicesArray: TestDeviceAndGroup[], groupsArray: string[], expectedDevice: ApiDeviceQueryDevice[], opertor?: string, statusCode?: number):any;
 
 
    /**
@@ -56,7 +56,7 @@ declare namespace Cypress {
     * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
     * optionally check for a non-200 status code
     */
-    apiCheckDevicesUsers(userName: string, deviceName: string, expectedUsers: ApiDeviceUsersUser[], statusCode?: number);
+    apiCheckDevicesUsers(userName: string, deviceName: string, expectedUsers: ApiDeviceUsersUser[], statusCode?: number):any;
 
    /**
     * Add user to a device using /device/users
@@ -64,14 +64,14 @@ declare namespace Cypress {
     * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
     * optionally check for a non-200 status code
     */
-    apiAddUserToDevice(deviceAdminUser: string, userName: string, deviceName: string, admin?: boolean, statusCode?: number);
+    apiAddUserToDevice(deviceAdminUser: string, userName: string, deviceName: string, admin?: boolean, statusCode?: number):any;
 
    /**
     * Remove user from a device using /device/users
     * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
     * optionally check for a non-200 status code
     */
-    apiRemoveUserFromDevice(deviceAdminUser: string, userName: string, deviceName: string, statusCode?: number);
+    apiRemoveUserFromDevice(deviceAdminUser: string, userName: string, deviceName: string, statusCode?: number):any;
 
 
   }
