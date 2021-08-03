@@ -110,7 +110,7 @@ function createDevice(
   let data:DataType = {
     devicename: fullName,
     password: password,
-    group: getTestName(group),
+    group: getTestName(group)
   };
 
   if(saltId!==null) {
