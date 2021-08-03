@@ -291,6 +291,12 @@ export function openS3() {
     headBucket(params, callback?) {
       return getProviderForParams(params).headBucket(params, callback);
     },
+    createBucket(params, callback?) {
+      return getProviderForParams(params).createBucket(params, callback);
+    },
+    listBuckets(params, callback?) {
+      return getProviderForParams(params).listBuckets(callback);
+    },
   };
 }
 

@@ -100,6 +100,18 @@ const usedBlocks = async (
   const s3 = openS3();
   let lastId = 0;
 
+  // Check if the target bucket exists, if not, create it
+  const bucket = await s3.listBuckets({Bucket: bucketToArchive}).promise();
+  const targetBucketExists = bucket.Buckets.find(item => item.Name === bucketToArchive) !== undefined;
+  if (!targetBucketExists) {
+    try {
+      await s3.createBucket({Bucket: bucketToArchive}).promise();
+    } catch (error) {
+      log.error("Failed to create target archive bucket");
+      process.exit(0);
+    }
+  }
+
   while (usedBytes / totalBytes > DISK_USAGE_RATIO_TARGET) {
     log.info(
       `${((usedBytes / totalBytes) * 100).toFixed(
