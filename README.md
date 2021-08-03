@@ -47,7 +47,7 @@ Currently both sets of tests need to be run.
 
 #### Running the cypress tests
 
-See [Cypress Tests](api/test-cypress/README.md) for details on running the cypress tests.
+See [Cypress Tests](integration-tests/README.md) for details on running the cypress tests.
 
 #### Running the python tests
 
@@ -168,3 +168,18 @@ http://localhost:9000 {
     }
 }
 ```
+Sample config for Nginx:
+```
+server {
+    root /srv/cacophony/cacophony-browse;
+    index index-prod.html;
+
+
+    server_name browse.cacophony.org.nz;
+
+    location / {
+            try_files $uri $uri/ /index-prod.html;
+    }
+}
+```
+Note: you may also need to add a correct mime-type for WebAssembly (*.wasm)
