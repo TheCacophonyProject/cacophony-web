@@ -1,28 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-
-interface ComparableVisit {
-  // either a date object or a string representing the time of day (enough for most tests)
-  start?: Date | string;
-  end?: Date | string;
-  tag?: string;
-  recordings?: number;
-  incomplete? : string;  
-  aiTag? : string;
-  camera? : string;
-  station? : string;
-}
-
-interface VisitSearchParams { 
-  from?: Date | string;
-  until?: Date | string;
-  devices?: number | number[], 
-  page?: number;
-  "page-size"? : number;
-  ai?: string;
-  groups?: number | number[],
-}
-
+/// <reference types="../types" />
 
 declare namespace Cypress {
   interface Chainable {
@@ -35,9 +13,9 @@ declare namespace Cypress {
     checkMonitoring(
       user: string,
       camera: string,
-      expectedVisits: ComparableVisit[],
+      expectedVisits: TestComparableVisit[],
       log?: boolean
-    );
+    ): any;
     
     /**
      * check the visits returned match the listed visits specified. Only the specified information will be checked.
@@ -48,9 +26,9 @@ declare namespace Cypress {
     checkMonitoringWithFilter(
       user: string,
       camera: string,
-      searchParams: VisitSearchParams ,
-      expectedVisits: ComparableVisit[]
-    );
+      searchParams: TestVisitSearchParams ,
+      expectedVisits: TestComparableVisit[]
+    ): any;
     /*
      * check the visits returned match the listed visits specified. Only the specified information will be checked.
      *
@@ -61,6 +39,6 @@ declare namespace Cypress {
       user: string,
       camera: string,
       expectedTags: string[]
-    );
+    ): any;
   }
 }

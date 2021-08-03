@@ -8,7 +8,7 @@ import { checkRecording } from "./recording";
 
 Cypress.Commands.add(
   "apiUploadStations",
-  (user: string, group: string, stations: CreateStationData[], updateFrom? : Date) => {
+  (user: string, group: string, stations: ApiCreateStationData[], updateFrom? : Date) => {
     logTestDescription(
       `Add stations ${prettyLog(stations)} to group '${group}' `,
       { user, group, stations, updateFrom }

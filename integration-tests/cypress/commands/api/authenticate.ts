@@ -1,37 +1,29 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types" />
 
 import { getTestName } from "../names";
 import {
   apiPath,
-  getCreds,
-  makeAuthorizedRequest,
   makeAuthorizedRequestWithStatus,
   saveCreds,
-  saveIdOnly,
-  v1ApiPath,
   expectRequestHasFailed
 } from "../server";
-import { logTestDescription, prettyLog } from "../descriptions";
-
-interface ComparableAccess  {
-	'devices': 'r'
-};
 
 
-Cypress.Commands.add("apiSignInAs", (userName: string, email: string, nameOrEmail: string, password: string = null, statusCode: number = 200) => {
+Cypress.Commands.add("apiSignInAs", (userName: string|null = null, email: string|null = null, nameOrEmail: string|null = null, password: string|null = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/authenticate_user";
-  var data = {};
-
-  if(userName!=null) {data['username'] = getTestName(userName)};
-  if(email!=null) {data['email'] = email; userName=email;};
-  if(nameOrEmail!=null) {data['nameOrEmail'] = nameOrEmail; userName=nameOrEmail;};
+  let data = {};
+  
+  if(userName!==null) {data['username'] = getTestName(userName)};
+  if(email!==null) {data['email'] = email; userName=email;};
+  if(nameOrEmail!==null) {data['nameOrEmail'] = nameOrEmail; userName=nameOrEmail;};
   //calculate password if not specified
-  if(password==null) { password = "p" + getTestName(userName) };
+  if(password===null) { password = "p" + getTestName(userName) };
   data['password']=password;
 
     if(statusCode && statusCode>200) {
-    cy.request({method: "POST", url: theUrl, body: data, failOnStatusCode: false}).then((response) => {expectRequestHasFailed(response)});
+    cy.request({method: "POST", url: theUrl, body: data, failOnStatusCode: false}).then((response) => {expectRequestHasFailed(response, statusCode)});
   } else {
     cy.request("POST", theUrl, data).then((response) => {
       if(statusCode==200) { saveCreds(response, userName,response.body.id) };
@@ -39,11 +31,11 @@ Cypress.Commands.add("apiSignInAs", (userName: string, email: string, nameOrEmai
   }
 });
 
-Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB: string, statusCode: number = 200) => {
+Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB: string|null = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/admin_authenticate_as_other_user";
-  var data = {};
+  let data = {};
 
-  if (userB!=null) { data['name']=getTestName(userB) };
+  if (userB!==null) { data['name']=getTestName(userB) };
 
   makeAuthorizedRequestWithStatus(
       {
@@ -59,11 +51,11 @@ Cypress.Commands.add("apiAuthenticateAs", (userA: string, userB: string, statusC
 
 });
 
-Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: string, password: string = null, statusCode: number = 200) => {
+Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: string, password: string|null = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/authenticate_device";
   const fullDeviceName = getTestName(deviceName);
   const fullGroupName = getTestName(groupName);
-  if(password==null) {
+  if(password===null) {
 	  password = "p" + fullDeviceName;
   };
 
@@ -74,7 +66,7 @@ Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: st
   };
 
   if(statusCode && statusCode>200) {    
-    cy.request({method: "POST", url: theUrl, body: data, failOnStatusCode: false}).then((response) => {expectRequestHasFailed(response)});
+    cy.request({method: "POST", url: theUrl, body: data, failOnStatusCode: false}).then((response) => {expectRequestHasFailed(response,statusCode)});
   } else {
     cy.request("POST", theUrl, data).then((response) => {
       saveCreds(response, deviceName,response.body.id);
@@ -82,14 +74,13 @@ Cypress.Commands.add("apiAuthenticateDevice", (deviceName: string, groupName: st
   }
 });
 
-Cypress.Commands.add("apiToken", (userName: string, ttl: string = null, access: ComparableAccess = null, statusCode: number = 200) => {
+Cypress.Commands.add("apiToken", (userName: string, ttl: string|null = null, access: ApiAuthenticateAccess|null = null, statusCode: number = 200) => {
   const theUrl = apiPath() + "/token";
-  const fullName = getTestName(userName);
 
-  var data = {};
+  let data = {};
 
-  if(ttl != null) { data['ttl']=ttl };
-  if(access != null) { data['access']=access };
+  if(ttl !== null) { data['ttl']=ttl };
+  if(access !== null) { data['access']=access };
 
   makeAuthorizedRequestWithStatus(  {
         method: "POST",

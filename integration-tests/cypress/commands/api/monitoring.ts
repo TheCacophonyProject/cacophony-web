@@ -1,5 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types" />
 
 import { v1ApiPath, getCreds, convertToDate } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
@@ -27,7 +28,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "checkMonitoring",
-  (user: string, camera: string, expectedVisits: ComparableVisit[], log = true) => {
+  (user: string, camera: string, expectedVisits: TestComparableVisit[], log = true) => {
     logTestDescription(`Check visits match ${prettyLog(expectedVisits)}`, {
       user,
       camera,
@@ -40,7 +41,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "checkMonitoringWithFilter",
-  (user: string, camera: string, searchParams: VisitSearchParams, expectedVisits: ComparableVisit[]) => {
+  (user: string, camera: string, searchParams: TestVisitSearchParams, expectedVisits: TestComparableVisit[]) => {
     logTestDescription(`Check monitoring visits with filter ${prettyLog(searchParams)} match ${prettyLog(expectedVisits)} `, {
       user,
       camera,
@@ -63,11 +64,11 @@ Cypress.Commands.add(
 function checkMonitoringMatches(
   user: string,
   camera: string,
-  specialParams: VisitSearchParams,
-  expectedVisits: ComparableVisit[]
+  specialParams: TestVisitSearchParams,
+  expectedVisits: TestComparableVisit[]
 ) {
   
-  const params : VisitSearchParams = {
+  const params : TestVisitSearchParams = {
     page: 1,
     "page-size": 100,
   };
@@ -89,7 +90,7 @@ function checkMonitoringMatches(
 
 function checkResponseMatches(
   response: Cypress.Response,
-  expectedVisits: ComparableVisit[]
+  expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;
 
@@ -100,11 +101,11 @@ function checkResponseMatches(
   const increasingDateResponseVisits = responseVisits.reverse();
 
   // pull out the bits we care about
-  const responseVisitsToCompare: ComparableVisit[] = [];
-  for (var i = 0; i < expectedVisits.length; i++) {
+  const responseVisitsToCompare: TestComparableVisit[] = [];
+  for (let i = 0; i < expectedVisits.length; i++) {
     const expectedVisit = expectedVisits[i];
     const completeResponseVisit = increasingDateResponseVisits[i];
-    const simplifiedResponseVisit: ComparableVisit = {};
+    const simplifiedResponseVisit: TestComparableVisit = {};
 
     if (expectedVisit.station) {
       simplifiedResponseVisit.station = completeResponseVisit.station;
@@ -151,8 +152,3 @@ function checkResponseMatches(
   );
 }
 
-interface VisitsWhere {
-  type: string;
-  duration?: any;
-  DeviceId?: number;
-}

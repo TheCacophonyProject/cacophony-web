@@ -19,15 +19,15 @@ context('Users can see footage from their cameras', () => {
   it('A camera event can be triggered', () => {
     const eventType = "throttle";
     cy.apiSignInAs(username);
-    cy.apiUploadEvent(camera);
+    cy.apiUploadEvent(camera, 'throttle');
     // for event-uploader to upload
     cy.wait(3 * 1000);
-    cy.apiCheckEventUploaded(username,camera, eventType);
+    cy.apiCheckEvents(username,camera, eventType);
   });
 
   it('A camera can trigger and upload a new recording', () => {
     cy.apiSignInAs(username);
-    cy.apiUploadRecording(camera,1);
+    cy.uploadRecording(camera,{});
     // for video to be uploaded
     cy.wait(3 * 1000);
     cy.apiCheckDeviceHasRecordings(username,camera,1);

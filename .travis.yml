@@ -49,11 +49,11 @@ script:
   - cd api/test
   - python3 -m pytest --log-api-on-fail || travis_terminate 1;
   # Run cypress tests
-  - cd ../test-cypress
+  - cd ../../integration-tests
   - cp cypress.json.TEMPLATE cypress.json
   - npm install
   - npm run release
-  - cd ..
+  - cd ../api
 
 before_deploy:
   - version=${TRAVIS_TAG/v/}

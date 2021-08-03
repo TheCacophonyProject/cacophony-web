@@ -26,7 +26,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "checkVisits",
-  (user: string, camera: string, expectedVisits: ComparableVisit[]) => {
+  (user: string, camera: string, expectedVisits: TestComparableVisit[]) => {
     logTestDescription(`Check visits match ${JSON.stringify(expectedVisits)}`, {
       user,
       camera,
@@ -40,7 +40,7 @@ Cypress.Commands.add(
 function checkVisitsMatch(
   user: string,
   camera: string,
-  expectedVisits: ComparableVisit[]
+  expectedVisits: TestComparableVisit[]
 ) {
   const where: VisitsWhere = {
     duration: { $gte: "0" },
@@ -67,7 +67,7 @@ function checkVisitsMatch(
 
 function checkResponseMatches(
   response: Cypress.Response,
-  expectedVisits: ComparableVisit[]
+  expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;
 
@@ -78,11 +78,11 @@ function checkResponseMatches(
   const increasingDateResponseVisits = responseVisits.reverse();
 
   // pull out the bits we care about
-  const responseVisitsToCompare: ComparableVisit[] = [];
-  for (var i = 0; i < expectedVisits.length; i++) {
+  const responseVisitsToCompare: TestComparableVisit[] = [];
+  for (let i = 0; i < expectedVisits.length; i++) {
     const expectedVisit = expectedVisits[i];
     const completeResponseVisit = increasingDateResponseVisits[i];
-    const simplifiedResponseVisit: ComparableVisit = {};
+    const simplifiedResponseVisit: TestComparableVisit = {};
 
     if (expectedVisit.tag) {
       simplifiedResponseVisit.tag = completeResponseVisit.what || "<null>";
@@ -109,10 +109,4 @@ function checkResponseMatches(
   expect(JSON.stringify(responseVisitsToCompare)).to.eq(
     JSON.stringify(expectedVisits)
   );
-}
-
-interface VisitsWhere {
-  type: string;
-  duration?: any;
-  DeviceId?: number;
 }

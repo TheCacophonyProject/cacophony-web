@@ -1,5 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types" />
 
 import { uploadFile } from "../fileUpload";
 import { getTestName } from "../names";
@@ -11,7 +12,7 @@ let lastUsedTime = DEFAULT_DATE;
 
 Cypress.Commands.add(
   "uploadRecording",
-  (cameraName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (cameraName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
@@ -27,7 +28,7 @@ Cypress.Commands.add(
     uploadFile(url, cameraName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-	if (recordingName!=null) {
+	if (recordingName!==null) {
 	  saveIdOnly(recordingName, x.response.body.recordingId);
 	};
       }
@@ -38,7 +39,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "uploadRecordingOnBehalfUsingGroup",
-  (cameraName: string, groupName: string, userName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (cameraName: string, groupName: string, userName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
@@ -54,7 +55,7 @@ Cypress.Commands.add(
     uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-        if (recordingName!=null) {
+        if (recordingName!==null) {
           saveIdOnly(recordingName, x.response.body.recordingId);
         };
       }
@@ -64,7 +65,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "uploadRecordingOnBehalfUsingDevice",
-  (cameraName: string, userName: string, details: ThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (cameraName: string, userName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
@@ -80,7 +81,7 @@ Cypress.Commands.add(
     uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-        if (recordingName!=null) {
+        if (recordingName!==null) {
           saveIdOnly(recordingName, x.response.body.recordingId);
         };
       }
@@ -146,7 +147,7 @@ Cypress.Commands.add(
   "uploadRecordingThenUserTag",
   (
     camera: string,
-    details: ThermalRecordingInfo,
+    details: ApiThermalRecordingInfo,
     tagger: string,
     tag: string
   ) => {
@@ -186,10 +187,11 @@ interface ThermalRecordingData {
   additionalMetadata?: JSON;
   metadata?: ThermalRecordingMetaData;
   location?: number[];
+  processingState?: string;
 }
 
 function makeRecordingDataFromDetails(
-  details: ThermalRecordingInfo
+  details: ApiThermalRecordingInfo
 ): ThermalRecordingData {
   let data: ThermalRecordingData = {
     type: "thermalRaw",
@@ -218,7 +220,7 @@ function makeRecordingDataFromDetails(
   return data;
 }
 
-function getDateForRecordings(details: ThermalRecordingInfo): Date {
+function getDateForRecordings(details: ApiThermalRecordingInfo): Date {
   let date = lastUsedTime;
 
   if (details.time) {
@@ -246,7 +248,7 @@ function getDateForRecordings(details: ThermalRecordingInfo): Date {
 function addTracksToRecording(
   data: ThermalRecordingData,
   model: string,
-  trackDetails?: TrackInfo[],
+  trackDetails?: ApiTrackInfo[],
   tags?: string[]
 ): void {
   data.metadata = {
@@ -281,6 +283,22 @@ function addTracksToRecording(
     });
   }
 }
+
+Cypress.Commands.add("apiCheckDeviceHasRecordings", (username, deviceName,count) => {
+  const user = getCreds(username);
+  const camera = getCreds(deviceName);
+  const params = {
+    where: JSON.stringify({"DeviceId":camera.id})
+  };
+  const fullUrl = v1ApiPath('recordings',params);
+
+  cy.request({
+    url: fullUrl,
+    headers: user.headers
+  }).then((request) => {
+    expect(request.body.count).to.equal(count);
+  });
+});
 
 export function checkRecording(user: string, recordingId: number, checkFunction: any) {
   cy.log(`recording id is ${recordingId}`)
