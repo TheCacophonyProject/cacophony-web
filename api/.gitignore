@@ -6,6 +6,7 @@ __pycache__
 /dist/
 ../.idea
 api/**/*.js
+scripts/**/*.js
 !api/**/apidoc.js
 models/**/*.js
 /*.js

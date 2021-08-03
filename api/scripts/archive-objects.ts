@@ -6,8 +6,17 @@ import { program } from "commander";
 import { Client } from "pg";
 import process from "process";
 import log from "../logging";
-
 const exec = util.promisify(cp_exec);
+
+const DISK_USAGE_RATIO_TARGET = 0.7; // Bring our disk usage down to 70%
+
+/**
+ * This script runs periodically to see if we need to bring our disk usage for our 'local' object store down
+ * to the set ratio of total disk usage.  It takes the oldest recordings in the database that haven't already
+ * been archived, downloads them from local object storage, uploads them to remote object storage, updates the object
+ * keys in the database entry and then deletes the local copy.
+ **/
+
 let Config;
 
 const pgConnect = async (): Promise<Client> => {
@@ -48,7 +57,6 @@ const usedBlocks = async (
   return stdout2.split("\t").map(Number)[0];
 };
 
-const PERCENT_THRESHOLD = 0.7; // Bring our disk usage down below 70%
 (async function main() {
   program
     .option("--config <path>", "Configuration file", "./config/app.js")
@@ -61,6 +69,13 @@ const PERCENT_THRESHOLD = 0.7; // Bring our disk usage down below 70%
     ...config.default.loadConfig(options.config),
   };
 
+  if (!Config.hasOwnProperty("s3Archive")) {
+    log.warn(
+      "An archive target and bucket needs to be configured in config/app.js in order to archive old recordings"
+    );
+    process.exit(0);
+  }
+
   const isDev =
     Config.server.recording_url_base !==
     "https://browse.cacophony.org.nz/recording";
@@ -72,7 +87,7 @@ const PERCENT_THRESHOLD = 0.7; // Bring our disk usage down below 70%
   let usedBytes = (await usedBlocks(bucketToArchive, isDev, isTest)) * 1024;
   const percentUsed = usedBytes / totalBytes;
   // Let's see if we need to do any work
-  if (percentUsed > PERCENT_THRESHOLD) {
+  if (percentUsed > DISK_USAGE_RATIO_TARGET) {
     log.info(
       "==== Archiving old recordings to external s3 object store provider ===="
     );
@@ -85,12 +100,12 @@ const PERCENT_THRESHOLD = 0.7; // Bring our disk usage down below 70%
   const s3 = openS3();
   let lastId = 0;
 
-  while (usedBytes / totalBytes > PERCENT_THRESHOLD) {
+  while (usedBytes / totalBytes > DISK_USAGE_RATIO_TARGET) {
     log.info(
       `${((usedBytes / totalBytes) * 100).toFixed(
         3
       )}% used of available disk space, archiving until ${(
-        PERCENT_THRESHOLD * 100
+        DISK_USAGE_RATIO_TARGET * 100
       ).toFixed(2)}% reached`
     );
     log.info(`select *

@@ -234,12 +234,14 @@ export function openS3() {
     }
     let chooseProvider = "s3Local";
     if (
-      (params.Key && params.Key.startsWith("a_")) ||
-      (params.Prefix && params.Prefix.startsWith("a_")) ||
-      (!params.Key &&
-        !params.Prefix &&
-        params.Bucket === config.s3Archive.bucket)
+      config.hasOwnProperty("s3Archive") &&
+      ((params.Key && params.Key.startsWith("a_")) ||
+        (params.Prefix && params.Prefix.startsWith("a_")) ||
+        (!params.Key &&
+          !params.Prefix &&
+          params.Bucket === config.s3Archive.bucket))
     ) {
+      // NOTE: If archive bucket is not configured, we fall back to just using local.
       chooseProvider = "s3Archive";
     }
     if (chooseProvider === "s3Archive") {
