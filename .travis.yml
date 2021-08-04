@@ -14,12 +14,8 @@ python:
   - "3.6.1"
 
 install:
-  - cd api
-  - pwd
-  - npm i -g npm
-  - npm install -g apidoc@0.20.0
+  - npm install -g npm apidoc@0.20.0 eslint prettier
   - npm run apidoc
-  - npm install -g eslint
   - sudo apt update
   - sudo apt install python3-pip
   - sudo apt-get install python3-setuptools
@@ -27,7 +23,7 @@ install:
 script:
   # Run browse checks
   - pwd
-  - cd ../browse
+  - cd browse
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
   - npm run lint || travis_terminate 1;
   # Run api checks

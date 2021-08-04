@@ -1,10 +1,9 @@
 module.exports = {
-  plugins: ["@typescript-eslint", "cypress", "no-only-tests"],
+  plugins: ["@typescript-eslint"],
   root: true,
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:cypress/recommended",
     "prettier",
   ],
   env: {
@@ -30,7 +29,5 @@ module.exports = {
     "@typescript-eslint/no-unused-vars": ["warn"],
     "brace-style": ["warn"],
     "prefer-const": ["error"],
-    "no-only-tests/no-only-tests": ["warn"],
-    "cypress/no-assigning-return-values": ["off"],
   },
 };
