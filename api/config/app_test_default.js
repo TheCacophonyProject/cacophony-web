@@ -14,6 +14,7 @@ exports.s3Local = {
   privateKey: "miniostorage",
   bucket: "cacophony",
   endpoint: "http://127.0.0.1:9001",
+  rootPath: "/.data/", // Root of the minio storage directory, so we can work out total and available disk space.
 };
 exports.fileProcessing = {
   port: 2008,

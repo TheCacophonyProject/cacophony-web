@@ -32,19 +32,10 @@ const pgConnect = async (): Promise<Client> => {
   return client;
 };
 
-const pathPrefix = (isTest: boolean, isDev: boolean) => {
-  return isTest
-    ? "/.data/"
-    : isDev
-    ? "/mnt/volume-sfo2-01/minio_data/"
-    : "/data/minio_storage/";
-};
-
 const totalDiskSpaceBlocks = async (
-  isTest: boolean,
-  isDev: boolean
+  objectStorageRootPath: string
 ): Promise<number> => {
-  const { stdout } = await exec(`df ${pathPrefix(isTest, isDev)}`);
+  const { stdout } = await exec(`df ${objectStorageRootPath}`);
   const lines = stdout.split("\n");
   const headings = lines[0].split(" ").filter((i) => i !== "");
   const blockIndex = headings.findIndex((i) => i.endsWith("-blocks"));
@@ -54,11 +45,13 @@ const totalDiskSpaceBlocks = async (
 
 const usedBlocks = async (
   bucketToArchive: string,
-  isTest: boolean,
-  isDev: boolean
+  objectStorageRootPath: string
 ): Promise<number> => {
+  if (!objectStorageRootPath.endsWith("/")) {
+    objectStorageRootPath += "/";
+  }
   const { stdout: stdout2 } = await exec(
-    `du -s ${pathPrefix(isTest, isDev)}${bucketToArchive}`
+    `du -s ${objectStorageRootPath}${bucketToArchive}`
   );
   return stdout2.split("\t").map(Number)[0];
 };
@@ -82,17 +75,17 @@ const usedBlocks = async (
     process.exit(0);
   }
 
-  diskUsageRatioTarget = Config.s3Archive.freeSpaceThresholdRatio || 0.7;
+  if (!Config.s3Local.hasOwnProperty("rootPath")) {
+    log.warn("No object storage 'rootPath' property found in s3Local config - this is a required field");
+    process.exit(0);
+  }
 
-  const isDev =
-    Config.server.recording_url_base !==
-    "https://browse.cacophony.org.nz/recording";
-  const isTest = !Config.server.recording_url_base.includes("cacophony.org.nz");
+  diskUsageRatioTarget = Config.s3Archive.freeSpaceThresholdRatio || 0.7;
 
   // If we're on dev/test, we can't rely on our total disk usage growing smaller as we archive recordings.
   const bucketToArchive = Config.s3Local.bucket;
-  const totalBytes = (await totalDiskSpaceBlocks(isTest, isDev)) * 1024;
-  let usedBytes = (await usedBlocks(bucketToArchive, isTest, isDev)) * 1024;
+  const totalBytes = (await totalDiskSpaceBlocks(Config.s3Local.rootPath)) * 1024;
+  let usedBytes = (await usedBlocks(bucketToArchive, Config.s3Local.rootPath)) * 1024;
   const percentUsed = usedBytes / totalBytes;
   // Let's see if we need to do any work
   if (percentUsed > diskUsageRatioTarget) {

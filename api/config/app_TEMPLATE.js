@@ -30,6 +30,7 @@ const s3Local = {
   privateKey: "", // REQUIRED, String
   bucket: "cacophony", // REQUIRED, String
   endpoint: "http://localhost:9000", // REQUIRED, URL
+  rootPath: "/.data/", // Root of the minio storage directory, so we can work out total and available disk space.
 };
 
 const s3Achive = {
