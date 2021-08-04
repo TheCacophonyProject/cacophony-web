@@ -126,6 +126,13 @@ export default function (app: Application) {
               recording,
               region
             );
+            if (!result.hasOwnProperty("Key")) {
+              log.warn(
+                "Failed to upload thumbnail for %s",
+                `${recording.rawFileKey}-thumb`
+              );
+              log.error("Reason: %s", (result as Error).message);
+            }
           }
         }
         if (prevState != RecordingProcessingState.Reprocess) {

@@ -145,9 +145,12 @@ export async function tryToMatchRecordingToStation(
 
 async function getThumbnail(rec: Recording) {
   const s3 = modelsUtil.openS3();
+  let Key = `${rec.rawFileKey}-thumb`;
+  if (Key.startsWith("a_")) {
+    Key = Key.substr(2);
+  }
   const params = {
-    Bucket: config.s3.bucket,
-    Key: `${rec.rawFileKey}-thumb`,
+    Key,
   };
   return s3.getObject(params).promise();
 }
@@ -161,7 +164,6 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
   const fileData = await modelsUtil
     .openS3()
     .getObject({
-      Bucket: config.s3.bucket,
       Key: recording.rawFileKey,
     })
     .promise()
@@ -171,6 +173,7 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
   //work around for error in cptv-decoder
   //best to use createReadStream() from s3 when cptv-decoder has support
   const data = new Uint8Array(fileData.Body);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const meta = await decoder.getBytesMetadata(data);
   const result = await decoder.initWithLocalCptvFile(data);
   if (!result) {
@@ -197,10 +200,9 @@ async function saveThumbnailInfo(recording: Recording, thumbnail) {
   const frame = await getCPTVFrame(recording, thumbnail.frame_number);
   const thumb = await createThumbnail(frame, thumbnail);
 
-  const upload = await modelsUtil
+  return await modelsUtil
     .openS3()
     .upload({
-      Bucket: config.s3.bucket,
       Key: `${recording.rawFileKey}-thumb`,
       Body: thumb.data,
       Metadata: thumb.meta,
@@ -209,7 +211,6 @@ async function saveThumbnailInfo(recording: Recording, thumbnail) {
     .catch((err) => {
       return err;
     });
-  return upload;
 }
 
 // Create a png thumbnail image  from this frame with thumbnail info
