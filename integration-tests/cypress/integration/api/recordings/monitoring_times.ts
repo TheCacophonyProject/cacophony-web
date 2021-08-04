@@ -65,10 +65,13 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:22" });
 
     const filter = {
-      from: "21:00"
+      from: "21:00",
     };
 
-    cy.checkMonitoringWithFilter(Dexter, camera, filter, [{start: "20:49", incomplete: "true"}, { start:"21:22" }]);
+    cy.checkMonitoringWithFilter(Dexter, camera, filter, [
+      { start: "20:49", incomplete: "true" },
+      { start: "21:22" },
+    ]);
   });
 
   it("Visits where the first recording is just before the search period, but don't overlap with the search period are ignored.", () => {
@@ -78,10 +81,10 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:22" });
 
     const filter = {
-      from: "21:00"
+      from: "21:00",
     };
 
-    cy.checkMonitoringWithFilter(Dexter, camera, filter, [{ start:"21:22" }]);
+    cy.checkMonitoringWithFilter(Dexter, camera, filter, [{ start: "21:22" }]);
   });
 
   //bounday cases
@@ -94,12 +97,11 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:00" });
 
     const filter = {
-      from: "21:00"
+      from: "21:00",
     };
 
     cy.checkMonitoringWithFilter(Dexter, camera, filter, []);
   });
-
 
   it("Visits where the last recording ends on period end time boundary is included and complete.", () => {
     const camera = "cam-end-boundary-case";
@@ -109,11 +111,12 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:00" });
 
     const filter = {
-      until: "21:00"
+      until: "21:00",
     };
 
-
-    cy.checkMonitoringWithFilter(Dexter, camera, filter, [{ recordings: 3, start:"20:40", incomplete: "false" }]);
+    cy.checkMonitoringWithFilter(Dexter, camera, filter, [
+      { recordings: 3, start: "20:40", incomplete: "false" },
+    ]);
   });
 
   it("Visits which span the end-time but fall withing the collection window are included and marked as complete", () => {
@@ -123,10 +126,12 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:05" });
 
     const filter = {
-      until: "21:00"
+      until: "21:00",
     };
 
-    cy.checkMonitoringWithFilter(Dexter, camera, filter, [{recordings: 2, start: "20:59", incomplete: "false"}]);
+    cy.checkMonitoringWithFilter(Dexter, camera, filter, [
+      { recordings: 2, start: "20:59", incomplete: "false" },
+    ]);
   });
 
   it("Visits where the first recording is after the end time are ignored", () => {
@@ -136,7 +141,7 @@ describe("Monitoring : times and recording groupings", () => {
     cy.uploadRecording(camera, { time: "21:13" });
 
     const filter = {
-      until: "21:00"
+      until: "21:00",
     };
 
     cy.checkMonitoringWithFilter(Dexter, camera, filter, []);
@@ -152,11 +157,13 @@ describe("Monitoring : times and recording groupings", () => {
     }
 
     const filter = {
-      until: "21:00"
+      until: "21:00",
     };
 
     // only 9 recordings are collected from the database
-    cy.checkMonitoringWithFilter(Dexter, camera, filter, [{ recordings: 9, incomplete: "true" }]);
+    cy.checkMonitoringWithFilter(Dexter, camera, filter, [
+      { recordings: 9, incomplete: "true" },
+    ]);
   });
 
   it("test start and end date of visits", () => {
@@ -168,7 +175,7 @@ describe("Monitoring : times and recording groupings", () => {
       duration: 15,
     });
     cy.checkMonitoring(Dexter, camera, [
-      { start: videoStart, end: addSeconds(videoStart, 15) }
+      { start: videoStart, end: addSeconds(videoStart, 15) },
     ]);
   });
 
@@ -182,10 +189,10 @@ describe("Monitoring : times and recording groupings", () => {
     });
     cy.uploadRecording(camera, {
       secsLater: 66,
-      duration:41
+      duration: 41,
     });
     cy.checkMonitoring(Dexter, camera, [
-      { start: videoStart, end: addSeconds(videoStart, 66 + 41) }
+      { start: videoStart, end: addSeconds(videoStart, 66 + 41) },
     ]);
   });
 });

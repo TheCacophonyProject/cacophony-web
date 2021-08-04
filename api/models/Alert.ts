@@ -15,15 +15,13 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import Sequelize, { BuildOptions } from "sequelize";
+import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
 import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
-import { EventStatic } from "./Event";
 import { alertBody, sendEmail } from "../scripts/emailUtil";
-const { AuthorizationError } = require("../api/customErrors");
 
 export type AlertId = number;
 const Op = Sequelize.Op;

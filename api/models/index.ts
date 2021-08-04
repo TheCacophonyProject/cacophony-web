@@ -104,6 +104,7 @@ Object.keys(db).forEach((modelName) => {
   }
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface ModelCommon<T> extends Sequelize.Model {
   getJwtDataValues: () => { _type: string; id: any };
 }

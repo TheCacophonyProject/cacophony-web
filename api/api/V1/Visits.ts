@@ -92,11 +92,7 @@ class DeviceSummary {
   }
 
   // generates visits from a list of recordings in descending date time order
-  generateVisits(
-    recordings: any[],
-    queryOffset: number,
-    complete: boolean = false
-  ) {
+  generateVisits(recordings: any[], queryOffset: number) {
     for (const [i, rec] of recordings.entries()) {
       this.lastRecTime = moment(rec.recordingDateTime);
       let devVisits = this.deviceMap[rec.DeviceId];
@@ -108,7 +104,7 @@ class DeviceSummary {
         );
         this.deviceMap[rec.DeviceId] = devVisits;
       }
-      devVisits.calculateNewVisits(rec, queryOffset + i, complete);
+      devVisits.calculateNewVisits(rec, queryOffset + i);
     }
   }
   earliestIncompleteOffset(): number | null {
@@ -214,8 +210,11 @@ class DeviceVisits {
   audioBait: boolean;
   visits: Visit[];
   constructor(
+    // eslint-disable-next-line no-unused-vars
     public deviceName: string,
+    // eslint-disable-next-line no-unused-vars
     public groupName: string,
+    // eslint-disable-next-line no-unused-vars
     public id: number
   ) {
     this.firstVisit = null;
@@ -301,11 +300,7 @@ class DeviceVisits {
     return currentVisit.isPartOfVisit(time);
   }
 
-  calculateNewVisits(
-    rec: any,
-    queryOffset: number,
-    complete: boolean = false
-  ): Visit[] {
+  calculateNewVisits(rec: any, queryOffset: number): Visit[] {
     sortTracks(rec.Tracks);
     if (rec.Tracks.length == 0) {
       return this.visits;

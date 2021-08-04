@@ -24,8 +24,8 @@ import responseUtil from "./responseUtil";
 import models from "../../models";
 // @ts-ignore
 import * as csv from "fast-csv";
-import { body, oneOf, param, query } from "express-validator/check";
-import { RecordingPermission, TagMode } from "../../models/Recording";
+import { body, param, query } from "express-validator/check";
+import { RecordingPermission } from "../../models/Recording";
 import { TrackTag } from "../../models/TrackTag";
 import { Track } from "../../models/Track";
 import { Op } from "sequelize";

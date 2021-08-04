@@ -1,7 +1,7 @@
 import config from "../config";
 const winston = require("winston");
 import eventUtil, { PowerEvents } from "../api/V1/eventUtil";
-import moment, { Moment } from "moment";
+import moment from "moment";
 import { sendEmail } from "./emailUtil";
 import models from "../models";
 

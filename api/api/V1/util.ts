@@ -21,7 +21,6 @@ import { v4 as uuidv4 } from "uuid";
 import multiparty from "multiparty";
 import log from "../../logging";
 import responseUtil from "./responseUtil";
-import config from "../../config";
 import modelsUtil from "../../models/util/util";
 import crypto from "crypto";
 

@@ -20,7 +20,7 @@ import Sequelize, { Op } from "sequelize";
 import AllModels, { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
 import { CreateStationData, Station, StationId } from "./Station";
-import { Recording, RecordingId, TagMode } from "./Recording";
+import { Recording } from "./Recording";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
@@ -426,7 +426,7 @@ export default function (sequelize, DataTypes): GroupStatic {
     } = {
       stationIdsAddedOrUpdated: addedOrUpdatedStations.map(({ id }) => id),
       updatedRecordingsPerStation: updatedRecordings
-        .map(({ station, recording }) => ({ stationId: station.id }))
+        .map(({ station }) => ({ stationId: station.id }))
         .reduce((acc, item) => {
           if (!acc.hasOwnProperty(item.stationId)) {
             acc[item.stationId] = 1;

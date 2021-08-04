@@ -47,7 +47,6 @@ import {
   Visit,
   VisitEvent,
   VisitSummary,
-  getTrackTag,
 } from "./Visits";
 import { Station } from "../../models/Station";
 import modelsUtil from "../../models/util/util";
@@ -778,16 +777,14 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function updateMetadata(recording: any, metadata: any) {
   throw new Error("recordingUtil.updateMetadata is unimplemented!");
 }
 
 // Returns a promise for the recordings visits query specified in the
 // request.
-async function queryVisits(
-  request: RecordingQuery,
-  type?
-): Promise<{
+async function queryVisits(request: RecordingQuery): Promise<{
   visits: Visit[];
   summary: DeviceSummary;
   hasMoreVisits: boolean;
@@ -844,14 +841,10 @@ async function queryVisits(
       break;
     }
 
-    for (const [i, rec] of recordings.entries()) {
+    for (const rec of recordings) {
       rec.filterData(filterOptions);
     }
-    devSummary.generateVisits(
-      recordings,
-      request.query.offset || 0,
-      gotAllRecordings
-    );
+    devSummary.generateVisits(recordings, request.query.offset || 0);
 
     if (!gotAllRecordings) {
       devSummary.checkForCompleteVisits();
@@ -944,7 +937,6 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
       "",
     ],
   ];
-  const eventSum = (accumulator, visit) => accumulator + visit.events.length;
   for (const [deviceId, deviceVisits] of Object.entries(deviceMap)) {
     const animalSummary = deviceVisits.animalSummary();
 

@@ -400,7 +400,8 @@ export default function (
     //  This happens to work when both the inserter and the DB are in the same timezone, but otherwise will
     //  lead to spurious values.  Need to standardize input time.
 
-    const [result, _extra] =
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [result, _] =
       await sequelize.query(`select round((avg(cacophony_index.scores))::numeric, 2) as cacophony_index from
 (select
 	(jsonb_array_elements("additionalMetadata"->'analysis'->'cacophony_index')->>'index_percent')::float as scores
@@ -429,7 +430,9 @@ where
     // Make sure the user can see the device:
     await authUser.checkUserControlsDevices([deviceId]);
     // Get a spread of 24 results with each result falling into an hour bucket.
-    const [results, extra] = await sequelize.query(`select
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [results, _] = await sequelize.query(`select
 	hour,
 	round((avg(scores))::numeric, 2) as index
 from

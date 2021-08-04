@@ -20,9 +20,9 @@ import middleware from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param, query } from "express-validator/check";
+import { body, param } from "express-validator/check";
 import { Application } from "express";
-import { Alert, AlertCondition, isAlertCondition } from "../../models/Alert";
+import { isAlertCondition } from "../../models/Alert";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
@@ -34,7 +34,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName PostAlert
    * @apiGroup Alert
    *
-   * @apiDescription Creates a new alert with the user associated with the supplied JWT authentication 
+   * @apiDescription Creates a new alert with the user associated with the supplied JWT authentication
    * token as the admin.
    *
    * @apiUse V1UserAuthorizationHeader

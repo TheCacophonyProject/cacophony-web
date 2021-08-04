@@ -1,11 +1,12 @@
+// @ts-ignore
 import { randomBytes } from "crypto";
 
 //suffix to add to ids making them unique within each test run
-let userId=0
+let userId = 0;
 
 const uniqueIdName = "uniqueId";
 
-export function getTestName(baseName: string):string {
+export function getTestName(baseName: string): string {
   initializeTestNames();
 
   return `cy_${baseName}_${Cypress.config("env")[uniqueIdName]}`;
@@ -28,26 +29,23 @@ export function initializeTestNames(uniqueId: string = "") {
   }
 }
 
-export function stripBackName(testName: string):string {
+export function stripBackName(testName: string): string {
   const uniqueId = Cypress.config("env")[uniqueIdName];
-  return testName.substring(3,  testName.length - uniqueId.length - 1);
+  return testName.substring(3, testName.length - uniqueId.length - 1);
 }
 
-
-export function getNewIdentity(userName: string):any {
-  const user={
-          name: userName+userId.toString(),
-          group: userName+userId.toString()+"_group",
-          camera: userName+userId.toString()+"_camera"
-  }
+export function getNewIdentity(userName: string): any {
+  const user = {
+    name: userName + userId.toString(),
+    group: userName + userId.toString() + "_group",
+    camera: userName + userId.toString() + "_camera",
+  };
   userId++;
-  return(user);
+  return user;
 }
 
 //adds suffix of uniq id within test + uniq id for test run
-export function getUniq(name: string):string {
+export function getUniq(name: string): string {
   const uniqueId = Cypress.config("env")[uniqueIdName];
-  return(name+"_"+userId.toString()+"_"+uniqueId);
+  return name + "_" + userId.toString() + "_" + uniqueId;
 }
-
-

@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "../logging";
 import { format } from "util";
 
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function errorHandler(err, request, response, next) {
   if (
     err instanceof SyntaxError &&

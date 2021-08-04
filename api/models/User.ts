@@ -20,13 +20,11 @@ import bcrypt from "bcrypt";
 import Sequelize, {
   BuildOptions,
   ModelAttributes,
-  ModelCtor,
   ModelOptions,
 } from "sequelize";
 import { AuthorizationError } from "../api/customErrors";
 import log from "../logging";
 import { bool } from "aws-sdk/clients/signer";
-import Model from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { Group } from "./Group";
 

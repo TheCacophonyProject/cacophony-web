@@ -3,10 +3,7 @@
 /// <reference types="../types" />
 
 import { getTestName } from "../names";
-import {
-  apiPath,
-  saveCreds,
-} from "../server";
+import { apiPath, saveCreds } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 
 Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
@@ -20,13 +17,13 @@ Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
   const data = {
     username: fullName,
     password: password,
-    email: fullName + "@api.created.com", 
-    endUserAgreement: 3
+    email: fullName + "@api.created.com",
+    endUserAgreement: 3,
   };
 
   cy.request("POST", usersUrl, data).then((response) => {
-    const id=response.body.userData.id;
-    saveCreds(response, userName,id);
+    const id = response.body.userData.id;
+    saveCreds(response, userName, id);
   });
 });
 
@@ -39,29 +36,33 @@ Cypress.Commands.add(
     );
     cy.apiCreateUser(userName, false);
     cy.apiCreateGroup(userName, group, false);
-    cy.apiCreateDevice(camera, group,  null, null);
+    cy.apiCreateDevice(camera, group, null, null);
   }
 );
 
 Cypress.Commands.add("apiCreateUserGroup", (userName, group) => {
   logTestDescription(`Create user '${userName}' with group '${group}'`, {
     user: userName,
-    group: group
+    group: group,
   });
   cy.apiCreateUser(userName, false);
   cy.apiCreateGroup(userName, group, false);
 });
 
-Cypress.Commands.add("apiCreateGroupAndDevices", (userName, group, ...cameras) => {
-  logTestDescription(`Create group '${group}' with cameras '${prettyLog(cameras)}'`, {
-    user: userName,
-    group, 
-    cameras
-  });
-  cy.apiCreateGroup(userName, group, false);
-  cameras.forEach(camera => {
-    cy.apiCreateDevice(camera, group);
-  });
-});
-
-
+Cypress.Commands.add(
+  "apiCreateGroupAndDevices",
+  (userName, group, ...cameras) => {
+    logTestDescription(
+      `Create group '${group}' with cameras '${prettyLog(cameras)}'`,
+      {
+        user: userName,
+        group,
+        cameras,
+      }
+    );
+    cy.apiCreateGroup(userName, group, false);
+    cameras.forEach((camera) => {
+      cy.apiCreateDevice(camera, group);
+    });
+  }
+);

@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import middleware from "../middleware";
 import auth from "../auth";
 import stream from "stream";
-import config from "../../config";
 import log from "../../logging";
 import modelsUtil from "../../models/util/util";
 import responseUtil from "./responseUtil";

@@ -22,7 +22,6 @@ import { body, param } from "express-validator/check";
 import models from "../../models";
 import responseUtil from "./responseUtil";
 import { Application, Response } from "express";
-import { Device } from "../../models/Device";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/schedules`;

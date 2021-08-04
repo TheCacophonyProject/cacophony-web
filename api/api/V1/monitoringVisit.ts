@@ -1,5 +1,5 @@
 import moment, { Moment } from "moment";
-import { MonitoringPageCriteria, MonitoringParams } from "./monitoringPage";
+import { MonitoringPageCriteria } from "./monitoringPage";
 import models from "../../models";
 import { Recording } from "../../models/Recording";
 import { getTrackTag, unidentifiedTags } from "./Visits";

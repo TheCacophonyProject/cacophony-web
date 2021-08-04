@@ -138,6 +138,7 @@ const usedBlocks = async (
       for (const [column, Key] of Object.entries({
         rawFileKey,
         fileKey,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       }).filter(([_, Key]) => Key !== null && !Key.startsWith("a_"))) {
         log.info("Archiving %s:%s for recording #%d", column, Key, id);
         let data;

@@ -23,7 +23,7 @@ describe("Devices stopped alerts", () => {
       camera,
       EventTypes.POWERED_ON,
       {},
-      moment().subtract(13, "hours")
+      moment().subtract(13, "hours").toDate()
     );
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: false });
   });
@@ -33,8 +33,8 @@ describe("Devices stopped alerts", () => {
     cy.apiCreateDevice(camera, group);
     const yesterdayStart = moment().subtract(40, "hours");
     const yesterdayStop = yesterdayStart.clone().add(28, "hours");
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, yesterdayStart);
-    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, yesterdayStop);
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, yesterdayStart.toDate());
+    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, yesterdayStop.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
@@ -42,7 +42,7 @@ describe("Devices stopped alerts", () => {
     const camera = "c3";
     cy.apiCreateDevice(camera, group);
     const yesterday = moment().subtract(13, "hours");
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, yesterday);
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, yesterday.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
@@ -50,7 +50,7 @@ describe("Devices stopped alerts", () => {
     const camera = "c4";
     cy.apiCreateDevice(camera, group);
     const yesterday = moment().subtract(13, "hours");
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, yesterday);
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, yesterday.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: false });
     cy.recordEvent(camera, EventTypes.STOP_REPORTED);
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: true });
@@ -63,9 +63,9 @@ describe("Devices stopped alerts", () => {
     const priorStop = priorOn.clone().add(12, "hours");
     const lastStart = priorOn.clone().add(24, "hours");
 
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, priorOn);
-    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, priorStop);
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, lastStart);
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, priorOn.toDate());
+    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, priorStop.toDate());
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, lastStart.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
@@ -76,9 +76,9 @@ describe("Devices stopped alerts", () => {
     const priorStop = moment().subtract(24, "hours");
     const lastStart = priorOn.clone().add(24, "hours");
 
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, priorOn);
-    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, priorStop);
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, lastStart);
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, priorOn.toDate());
+    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, priorStop.toDate());
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, lastStart.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: false, hasAlerted: false });
   });
 
@@ -87,8 +87,8 @@ describe("Devices stopped alerts", () => {
     cy.apiCreateDevice(camera, group);
     const priorOn = moment().subtract(20, "days");
     const priorStop = moment().subtract(20, "days").add(12, "hours");
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, priorOn);
-    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, priorStop);
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, priorOn.toDate());
+    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, priorStop.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
@@ -97,16 +97,16 @@ describe("Devices stopped alerts", () => {
     cy.apiCreateDevice(camera, group);
     const priorOn = moment().subtract(5, "days");
     const priorStop = moment().subtract(5, "days").add(12, "hours");
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, priorOn);
-    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, priorStop);
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, priorOn.toDate());
+    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, priorStop.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: false });
-    cy.recordEvent(camera, EventTypes.STOP_REPORTED, {}, priorStop);
+    cy.recordEvent(camera, EventTypes.STOP_REPORTED, {}, priorStop.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: true });
 
     const newOn = moment().subtract(3, "days");
     const newOff = moment().subtract(3, "days").add(12, "hours");
-    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, newOn);
-    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, newOff);
+    cy.recordEvent(camera, EventTypes.POWERED_ON, {}, newOn.toDate());
+    cy.recordEvent(camera, EventTypes.POWERED_OFF, {}, newOff.toDate());
     cy.checkPowerEvents(user, camera, { hasStopped: true, hasAlerted: false });
   });
 });

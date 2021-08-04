@@ -2,14 +2,13 @@
 /// <reference types="cypress" />
 /// <reference types="../types" />
 
-
 import { getTestName } from "../names";
 import {
   getCreds,
   makeAuthorizedRequest,
   makeAuthorizedRequestWithStatus,
   saveIdOnly,
-  v1ApiPath
+  v1ApiPath,
 } from "../server";
 import { logTestDescription } from "../descriptions";
 
@@ -39,8 +38,8 @@ Cypress.Commands.add(
         body: {
           group: getTestName(group),
           admin: admin.toString(),
-          username: getTestName(userName)
-        }
+          username: getTestName(userName),
+        },
       },
       groupAdminUser,
       statusCode
@@ -68,8 +67,8 @@ Cypress.Commands.add(
         url: v1ApiPath("groups/users"),
         body: {
           group: getTestName(group),
-          username: getTestName(userName)
-        }
+          username: getTestName(userName),
+        },
       },
       groupAdminUser,
       statusCode
@@ -77,29 +76,34 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add("apiCheckUserCanSeeGroup", (username: string, groupname: string, testForSuccess: boolean = true) => {
-  const user = getCreds(username);
-  const fullGroupname = getTestName(groupname);
-  const fullUrl = v1ApiPath('')+encodeURI('groups?where={}');
+Cypress.Commands.add(
+  "apiCheckUserCanSeeGroup",
+  (username: string, groupname: string, testForSuccess: boolean = true) => {
+    const user = getCreds(username);
+    const fullGroupname = getTestName(groupname);
+    const fullUrl = v1ApiPath("") + encodeURI("groups?where={}");
 
-  logTestDescription(
+    logTestDescription(
       `${username} Check user '${username}' can see group '${groupname}' `,
       { user: username, groupname },
       true
-  );
+    );
 
-  cy.request({
-    url: fullUrl,
-    headers: user.headers
-  }).then((request) => {
-    const allGroupNames = Object.keys(request.body.groups).map(key => request.body.groups[key].groupname);
-    if (testForSuccess==true) {
-      expect(allGroupNames).to.contain(fullGroupname);
-    } else {
-      expect(allGroupNames).not.to.contain(fullGroupname);
-    }
-  });
-});
+    cy.request({
+      url: fullUrl,
+      headers: user.headers,
+    }).then((request) => {
+      const allGroupNames = Object.keys(request.body.groups).map(
+        (key) => request.body.groups[key].groupname
+      );
+      if (testForSuccess == true) {
+        expect(allGroupNames).to.contain(fullGroupname);
+      } else {
+        expect(allGroupNames).not.to.contain(fullGroupname);
+      }
+    });
+  }
+);
 
 Cypress.Commands.add(
   "apiCreateGroup",
@@ -114,7 +118,7 @@ Cypress.Commands.add(
       {
         method: "POST",
         url: v1ApiPath("groups"),
-        body: { groupname: getTestName(group) }
+        body: { groupname: getTestName(group) },
       },
       userName
     ).then((response) => {
@@ -122,5 +126,3 @@ Cypress.Commands.add(
     });
   }
 );
-
-

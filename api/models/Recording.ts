@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "../logging";
 import mime from "mime";
 import moment from "moment-timezone";
-import Sequelize, { FindOptions, Includeable, Order } from "sequelize";
+import Sequelize, { FindOptions, Includeable } from "sequelize";
 import assert from "assert";
 import { v4 as uuidv4 } from "uuid";
 import config from "../config";
@@ -251,6 +251,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   Device?: Device;
 }
 type CptvFile = "string";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type JwtToken<T> = string;
 type Seconds = number;
 type Rectangle = [number, number, number, number];
@@ -656,7 +658,9 @@ export default function (
   ): Promise<TagLimitedRecording> => {
     // If a device id is supplied, try to bias the returned recording to that device.
     // If the requested device has no more recordings, pick another random recording.
-    const [result, extra] = await sequelize.query(`
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [result, _] = await sequelize.query(`
 select
   g."RId" as "RecordingId",
   g."DeviceId",

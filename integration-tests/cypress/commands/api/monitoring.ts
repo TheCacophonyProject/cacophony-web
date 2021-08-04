@@ -5,6 +5,7 @@
 import { v1ApiPath, getCreds, convertToDate } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { stripBackName } from "../names";
+import {TestComparableVisit, TestVisitSearchParams } from "../types";
 
 Cypress.Commands.add(
   "checkMonitoringTags",
@@ -13,14 +14,11 @@ Cypress.Commands.add(
       return { tag };
     });
 
-    logTestDescription(
-      `Check visit tags match ${prettyLog(expectedTags)}`,
-      {
-        user,
-        camera,
-        expectedVisits
-      }
-    );
+    logTestDescription(`Check visit tags match ${prettyLog(expectedTags)}`, {
+      user,
+      camera,
+      expectedVisits,
+    });
 
     checkMonitoringMatches(user, camera, {}, expectedVisits);
   }
@@ -28,12 +26,21 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "checkMonitoring",
-  (user: string, camera: string, expectedVisits: TestComparableVisit[], log = true) => {
-    logTestDescription(`Check visits match ${prettyLog(expectedVisits)}`, {
-      user,
-      camera,
-      expectedVisits
-    }, log);
+  (
+    user: string,
+    camera: string,
+    expectedVisits: TestComparableVisit[],
+    log = true
+  ) => {
+    logTestDescription(
+      `Check visits match ${prettyLog(expectedVisits)}`,
+      {
+        user,
+        camera,
+        expectedVisits,
+      },
+      log
+    );
 
     checkMonitoringMatches(user, camera, {}, expectedVisits);
   }
@@ -41,13 +48,23 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "checkMonitoringWithFilter",
-  (user: string, camera: string, searchParams: TestVisitSearchParams, expectedVisits: TestComparableVisit[]) => {
-    logTestDescription(`Check monitoring visits with filter ${prettyLog(searchParams)} match ${prettyLog(expectedVisits)} `, {
-      user,
-      camera,
-      expectedVisits, 
-      searchParams
-    });
+  (
+    user: string,
+    camera: string,
+    searchParams: TestVisitSearchParams,
+    expectedVisits: TestComparableVisit[]
+  ) => {
+    logTestDescription(
+      `Check monitoring visits with filter ${prettyLog(
+        searchParams
+      )} match ${prettyLog(expectedVisits)} `,
+      {
+        user,
+        camera,
+        expectedVisits,
+        searchParams,
+      }
+    );
 
     if (searchParams.from) {
       searchParams.from = convertToDate(searchParams.from).toISOString();
@@ -57,7 +74,7 @@ Cypress.Commands.add(
       searchParams.until = convertToDate(searchParams.until).toISOString();
     }
 
-    checkMonitoringMatches(user, camera , searchParams, expectedVisits);
+    checkMonitoringMatches(user, camera, searchParams, expectedVisits);
   }
 );
 
@@ -67,8 +84,7 @@ function checkMonitoringMatches(
   specialParams: TestVisitSearchParams,
   expectedVisits: TestComparableVisit[]
 ) {
-  
-  const params : TestVisitSearchParams = {
+  const params: TestVisitSearchParams = {
     page: 1,
     "page-size": 100,
   };
@@ -82,14 +98,14 @@ function checkMonitoringMatches(
   cy.request({
     method: "GET",
     url: v1ApiPath("monitoring/page", params),
-    headers: getCreds(user).headers
+    headers: getCreds(user).headers,
   }).then((response) => {
     checkResponseMatches(response, expectedVisits);
   });
 }
 
 function checkResponseMatches(
-  response: Cypress.Response,
+  response: Cypress.Response<any>,
   expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;
@@ -112,19 +128,24 @@ function checkResponseMatches(
     }
 
     if (expectedVisit.camera) {
-      simplifiedResponseVisit.camera = stripBackName(completeResponseVisit.device);
+      simplifiedResponseVisit.camera = stripBackName(
+        completeResponseVisit.device
+      );
     }
 
     if (expectedVisit.tag) {
-      simplifiedResponseVisit.tag = completeResponseVisit.classification || "<none>";
+      simplifiedResponseVisit.tag =
+        completeResponseVisit.classification || "<none>";
     }
 
     if (expectedVisit.aiTag) {
-      simplifiedResponseVisit.aiTag = completeResponseVisit.classificationAi || "<none>";
+      simplifiedResponseVisit.aiTag =
+        completeResponseVisit.classificationAi || "<none>";
     }
 
     if (expectedVisit.recordings) {
-      simplifiedResponseVisit.recordings =  completeResponseVisit.recordings.length;
+      simplifiedResponseVisit.recordings =
+        completeResponseVisit.recordings.length;
     }
 
     if (expectedVisit.start) {
@@ -133,7 +154,11 @@ function checkResponseMatches(
         simplifiedResponseVisit.start = completeResponseVisit.timeStart;
       } else {
         // just time
-        simplifiedResponseVisit.start = new Date(completeResponseVisit.timeStart).toTimeString().substring(0, 5);
+        simplifiedResponseVisit.start = new Date(
+          completeResponseVisit.timeStart
+        )
+          .toTimeString()
+          .substring(0, 5);
       }
     }
 
@@ -142,7 +167,8 @@ function checkResponseMatches(
     }
 
     if (expectedVisit.incomplete) {
-      simplifiedResponseVisit.incomplete = completeResponseVisit.incomplete.toString();
+      simplifiedResponseVisit.incomplete =
+        completeResponseVisit.incomplete.toString();
     }
 
     responseVisitsToCompare.push(simplifiedResponseVisit);
@@ -151,4 +177,3 @@ function checkResponseMatches(
     JSON.stringify(expectedVisits)
   );
 }
-

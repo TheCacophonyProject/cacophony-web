@@ -3,6 +3,7 @@
 /// <reference types="../types" />
 
 declare namespace Cypress {
+  type ApiCreateStationData = import("../types").ApiCreateStationData;
   interface Chainable {
     /**
      * upload stations data for a group
@@ -10,7 +11,7 @@ declare namespace Cypress {
     apiUploadStations(
       user: string,
       group: string,
-      stations: ApiCreateStationData[], 
+      stations: ApiCreateStationData[],
       updateFrom?: Date
     ): any;
 

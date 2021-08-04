@@ -156,9 +156,8 @@ function replaceInSQL(
   sql: string,
   replacements: { [key: string]: string }
 ): string {
-  for (const key in replacements) {
-    const regexp = new RegExp(`{${key}}`, "g");
-    sql = sql.replace(`{${key}}`, replacements[key]);
+  for (const [placeholder, replacement] of Object.entries(replacements)) {
+    sql = sql.replace(new RegExp(`{${placeholder}}`, "g"), replacement);
   }
   return sql;
 }

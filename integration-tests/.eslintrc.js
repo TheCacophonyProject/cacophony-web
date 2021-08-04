@@ -33,4 +33,12 @@ module.exports = {
     "no-only-tests/no-only-tests": ["warn"],
     "cypress/no-assigning-return-values": ["off"],
   },
+  "overrides": [
+    {
+      "files": ["*.d.ts"],
+      "rules": {
+        "no-undef": ["off"],
+      }
+    }
+  ]
 };

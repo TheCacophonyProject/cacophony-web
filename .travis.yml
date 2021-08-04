@@ -37,6 +37,9 @@ script:
   - npm run lint || travis_terminate 1;
   - python3 -m pip install -r test/requirements.txt
   - black --diff --check ./test || travis_terminate 1;
+  # Run integration checks
+  - cd ../integration-tests
+  - npm run lint || travis_terminate 1;
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
   - cd ..
   - docker-compose build

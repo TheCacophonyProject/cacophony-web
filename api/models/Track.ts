@@ -18,8 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { TrackTag, TrackTagId, AI_MASTER } from "./TrackTag";
-import { User } from "./User";
+import { TrackTag, TrackTagId } from "./TrackTag";
 import { Recording } from "./Recording";
 
 export type TrackId = number;

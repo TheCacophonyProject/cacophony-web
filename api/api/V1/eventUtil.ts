@@ -2,7 +2,6 @@ import middleware from "../middleware";
 import models from "../../models";
 import { Device } from "../../models/Device";
 import { Event } from "../../models/Event";
-import { User } from "../../models/User";
 
 import { QueryOptions } from "../../models/Event";
 
