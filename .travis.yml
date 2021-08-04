@@ -15,7 +15,6 @@ python:
 
 install:
   - npm install -g npm apidoc@0.20.0 eslint prettier
-  - npm run apidoc
   - sudo apt update
   - sudo apt install python3-pip
   - sudo apt-get install python3-setuptools
@@ -32,6 +31,7 @@ script:
   - npm run lint || travis_terminate 1;
   - python3 -m pip install -r test/requirements.txt
   - black --diff --check ./test || travis_terminate 1;
+  - npm run apidoc
   # Run integration checks
   - cd ../integration-tests
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests

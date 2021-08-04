@@ -31,6 +31,8 @@ import { Track } from "../../models/Track";
 import { Op } from "sequelize";
 import jwt from "jsonwebtoken";
 import config from "../../config";
+import { ClientError } from "../customErrors";
+import log from "../../logging";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
@@ -471,6 +473,57 @@ export default (app: Application, baseUrl: string) => {
     })
   );
 
+  /**
+   * @api {get} /api/v1/recordings/:id/thumbnail Gets a thumbnail png for this recording
+   * @apiName RecordingThumbnail
+   * @apiGroup Recordings
+   * @apiDescription Gets a thumbnail png for this recording in Viridis palette
+   *
+   * @apiSuccess {file} file Raw data stream of the png.
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/thumbnail`,
+    [param("id").isInt()],
+    middleware.requestWrapper(async (request, response) => {
+      const rec = await models.Recording.findByPk(request.params.id, {
+        attributes: ["rawFileKey", "id"],
+      });
+      if (!rec) {
+        return responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["Failed to get recording."],
+        });
+      }
+      const mimeType = "image/png";
+      const filename = `${rec.id}-thumb.png`;
+
+      if (!rec.rawFileKey) {
+        throw new ClientError("Rec has no raw file key.");
+      }
+
+      recordingUtil
+        .getThumbnail(rec)
+        .then((data) => {
+          response.setHeader(
+            "Content-disposition",
+            "attachment; filename=" + filename
+          );
+          response.setHeader("Content-type", mimeType);
+          response.setHeader("Content-Length", data.ContentLength);
+          response.write(data.Body, "binary");
+          return response.end(null, "binary");
+        })
+        .catch((err) => {
+          log.error("Error getting thumbnail from s3 %s", rec.id);
+          log.error(err.stack);
+          return responseUtil.send(response, {
+            statusCode: 400,
+            messages: ["No thumbnail exists"],
+          });
+        });
+    })
+  );
   /**
    * @api {delete} /api/v1/recordings/:id Delete an existing recording
    * @apiName DeleteRecording
