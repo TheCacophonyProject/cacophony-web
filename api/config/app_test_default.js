@@ -32,6 +32,7 @@ exports.s3Archive = {
   privateKey: "", // REQUIRED, String
   bucket: "CacophonyBackblazeTest", // REQUIRED, String
   endpoint: "s3.us-west-002.backblazeb2.com", // REQUIRED, URL
+  freeSpaceThresholdRatio: 0.7,
 };
 
 exports.smtpDetails = {

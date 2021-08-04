@@ -8,7 +8,7 @@ import process from "process";
 import log from "../logging";
 const exec = util.promisify(cp_exec);
 
-const DISK_USAGE_RATIO_TARGET = 0.7; // Bring our disk usage down to 70%
+let diskUsageRatioTarget = 0.7; // Bring our disk usage down to 70%, will be overwritten by config
 
 /**
  * This script runs periodically to see if we need to bring our disk usage for our 'local' object store down
@@ -76,6 +76,8 @@ const usedBlocks = async (
     process.exit(0);
   }
 
+  diskUsageRatioTarget = Config.s3Archive.freeSpaceThresholdRatio || 0.7;
+
   const isDev =
     Config.server.recording_url_base !==
     "https://browse.cacophony.org.nz/recording";
@@ -87,7 +89,7 @@ const usedBlocks = async (
   let usedBytes = (await usedBlocks(bucketToArchive, isDev, isTest)) * 1024;
   const percentUsed = usedBytes / totalBytes;
   // Let's see if we need to do any work
-  if (percentUsed > DISK_USAGE_RATIO_TARGET) {
+  if (percentUsed > diskUsageRatioTarget) {
     log.info(
       "==== Archiving old recordings to external s3 object store provider ===="
     );
@@ -113,12 +115,12 @@ const usedBlocks = async (
     }
   }
 
-  while (usedBytes / totalBytes > DISK_USAGE_RATIO_TARGET) {
+  while (usedBytes / totalBytes > diskUsageRatioTarget) {
     log.info(
       `${((usedBytes / totalBytes) * 100).toFixed(
         3
       )}% used of available disk space, archiving until ${(
-        DISK_USAGE_RATIO_TARGET * 100
+        diskUsageRatioTarget * 100
       ).toFixed(2)}% reached`
     );
     log.info(`select *
