@@ -6,7 +6,7 @@ import { v1ApiPath, getCreds, saveIdOnly, makeAuthorizedRequestWithStatus } from
 import { logTestDescription } from "../descriptions";
 import { getTestName, getUniq } from "../names";
 
-Cypress.Commands.add("apiAddAlert", (user: string, alertName: string, conditions: ApiAlertConditions[], device: string, frequency: number|null=null, statusCode: number = 200)=> {
+Cypress.Commands.add("apiAlertAdd", (user: string, alertName: string, conditions: ApiAlertConditions[], device: string, frequency: number|null=null, statusCode: number = 200)=> {
     logTestDescription(
       `Create alert ${getUniq(alertName)} for ${device} `,
       {
@@ -22,7 +22,7 @@ Cypress.Commands.add("apiAddAlert", (user: string, alertName: string, conditions
 );
 
 Cypress.Commands.add(
-  "apiCheckAlert",
+  "apiAlertCheck",
   (user: string, device: string, alertName: string, statusCode: number = 200)=> {
     logTestDescription(
       `Check for expected alert ${getUniq(alertName)} for ${device} `,

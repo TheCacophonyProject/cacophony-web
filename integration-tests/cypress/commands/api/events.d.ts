@@ -6,20 +6,30 @@ declare namespace Cypress {
     /**
      * Record a event for this device
      */
-    recordEvent( cameraName: string, type: string, details?: any, date?: Date, log?: boolean): any;
+    apiEventAdd(camera: string, description?: ApiEventDetail, dates?: string[], eventDetailId?: number, log?: boolean, statusCode?: number): any;
+    /**
+     * Query events and check against expected
+     * optionally exclude checks on values of specific keys (excludeCkeckOn)
+     */
+    apiEventsCheck(user: string, device: string, queryParams: any, expectedEventDetails: ApiEventReturned[], excludeCheckOn?: string[], statusCode?: number): any;
+
+    /**
+     * Record a event for this device
+     */
+    apiEventsDeviceAddOnBehalf(user: string, camera: string, description?: ApiEventDetail, dates?: string[], eventDetailId?: number, log?: boolean, statusCode?: number): any;
 
     /**
      * check the this device is reported as stopped or not
      *
      */
-    checkPowerEvents( user: string, camera: string, expectedEvent: TestComparablePowerEvent): Chainable<Element>;
+    apiPowerEventsCheck( user: string, camera: string, expectedEvent: TestComparablePowerEvent, statusCode?: number): Chainable<Element>;
 
     /**
      * check the this device has a matching event. 
      * if supplied then Nth event will be checked where N is taken from eventNumber
      * eventName will be rendered unique _per test_
      */
-    apiCheckEvents( user: string, camera: string, eventName: string, eventNumber?: number): Chainable<Element>;
+    apiEventsCheckAgainstExpected( user: string, camera: string, eventName: string, eventNumber?: number, statusCode?: number): Chainable<Element>;
 
     /**
      * Create a template event to compare received events against

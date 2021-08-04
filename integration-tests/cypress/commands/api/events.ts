@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 /// <reference types="../types" />
 
-import { v1ApiPath, getCreds, makeAuthorizedRequest } from "../server";
+import { v1ApiPath, getCreds, makeAuthorizedRequest, makeAuthorizedRequestWithStatus, sortArrayOn, checkFlatStructuresAreEqualExcept,removeUndefinedParams } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getTestName, getUniq } from "../names";
 
@@ -13,30 +13,85 @@ export const EventTypes = {
 };
 
 Cypress.Commands.add(
-  "recordEvent",
-  (camera: string, type: string, details: any = {}, date = new Date(), log = true) => {
-    const data = {
-      dateTimes: [date.toISOString()],
-      description: { type: type, details: details }
+  "apiEventAdd",
+  (camera: string, description: ApiEventDetail, dates:string[] = [(new Date()).toISOString()], eventDetailId: number, log: boolean = true, statusCode: number = 200) => {
+    const data:ApiEventSet={
+      dateTimes: dates,
+      description: description,
+      eventDetailId: eventDetailId
     };
     logTestDescription(
-      `Create ${type} event for ${camera} at ${date}`,
+      `Create event for ${camera} at ${dates}`,
       { data: data },
       log
     );
-    makeAuthorizedRequest(
+    makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: v1ApiPath("events"),
         body: data
       },
-      camera
+      camera,
+      statusCode
     );
   }
 );
 
 Cypress.Commands.add(
-  "checkPowerEvents",
+  "apiEventsDeviceAddOnBehalf",
+  (user: string, camera: string, description: ApiEventDetail, dates:string[] = [(new Date()).toISOString()], eventDetailId: number, log: boolean = true, statusCode: number = 200) => {
+    const data:ApiEventSet={
+      dateTimes: dates,
+      description: description,
+      eventDetailId: eventDetailId
+    };
+    const deviceId = getCreds(camera).id.toString();
+    logTestDescription(
+      `Create event for ${camera} at ${dates}`,
+      { data: data },
+      log
+    );
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(`events/device/${deviceId}`),
+        body: data
+      },
+      user,
+      statusCode
+    );
+  }
+);
+
+Cypress.Commands.add(
+  "apiEventsCheck",
+  (user: string, device: string, queryParams: any, expectedEventDetails: ApiEventReturned[], excludeCheckOn: string[] = [], statusCode: number = 200) => {
+    logTestDescription( `Check for expected event for ${device} `, { user, device });
+
+    // add deviceId to params unless already defined
+    if (queryParams.deviceId===undefined) { queryParams.deviceId=getCreds(device).id};
+
+    //drop any undefined parameters
+    let filteredParams=removeUndefinedParams(queryParams);
+  
+    makeAuthorizedRequestWithStatus( { url: v1ApiPath("events", filteredParams) }, user, statusCode).then((response) => {
+        if(statusCode===200) {
+     	  //sort expected and actual events into same order (means dateTime is mandatory in expectedEvents)
+          let sortEvents=sortArrayOn(response.body.rows,'dateTime');
+          let sortExpectedEvents=sortArrayOn(expectedEventDetails,'dateTime');
+          for (let eventCount=0; eventCount < sortExpectedEvents.length; eventCount++) {
+            //look up device id unless supplied
+            if (sortExpectedEvents[eventCount].DeviceId===undefined) { sortExpectedEvents[eventCount].DeviceId=getCreds(device).id};
+            //check each expected event is in the events list
+            checkEventMatchesExpected(sortEvents,sortExpectedEvents[eventCount],eventCount, excludeCheckOn);
+          };
+        };
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiPowerEventsCheck",
   (user: string, camera: string, expectedEvent: TestComparablePowerEvent) => {
     logTestDescription(
       `Check power events for ${camera} is ${prettyLog(expectedEvent)}}`,
@@ -53,8 +108,8 @@ Cypress.Commands.add(
 
 
 Cypress.Commands.add(
-  "apiCheckEvents",
-  (user: string, camera: string, eventName: string, eventNumber: number = 1) => {
+  "apiEventsCheckAgainstExpected",
+  (user: string, camera: string, eventName: string, eventNumber: number = 1, statusCode: number = 200) => {
     logTestDescription(
       `Check for expected event ${getUniq(eventName)} for ${camera} `,
       {
@@ -64,7 +119,7 @@ Cypress.Commands.add(
       }
     );
 
-    checkEvents(user, camera, getUniq(eventName), eventNumber);
+    checkEvents(user, camera, getUniq(eventName), eventNumber, ['success','trackId'], statusCode);
   }
 );
 
@@ -113,59 +168,34 @@ function checkEvents(
   user: string,
   camera: string,
   eventName: string,
-  eventNumber: number
+  eventNumber: number,
+  ignoreParams: string[],
+  statusCode: number
 ) {
   const params = {
     deviceID: getCreds(camera).id
   };
 
-  makeAuthorizedRequest(
+  makeAuthorizedRequestWithStatus(
     { url: v1ApiPath("events", params) },
-    user
+    user,
+    statusCode
   ).then((response) => {
-    checkEventMatches(response, eventName, eventNumber);
+    const expectedEvent=getExpectedEvent(eventName);
+    if(statusCode===200) { checkEventMatchesExpected(response.body.rows, expectedEvent, eventNumber, ignoreParams)};
   });
 }
 
-function checkEventMatches(
-  response: Cypress.Response,
-  eventName: string,
-  eventNumber: number
-) {
-  const expectedEvent=getExpectedEvent(eventName);
-  expect(response.body.rows.length, `Expected ${eventNumber} event(s)`).to.eq(eventNumber);
-  if(eventNumber>0) {
-    const event = response.body.rows[eventNumber-1];
+function checkEventMatchesExpected( events: any[], expectedEvent: TestComparableEvent, eventNumber: number, ignoreParams: string[]) {
+  const event = events[eventNumber];
   
-    expect(
-      event.DeviceId,
-      `DeviceId should be ${expectedEvent.DeviceId}`
-    ).to.eq(expectedEvent.DeviceId);
-    expect(
-      event.Device.devicename,
-      `devicename should be ${expectedEvent.Device.devicename}`
-      ).to.eq(expectedEvent.Device.devicename);
-    expect(
-      event.EventDetail.type,
-      `Type should be ${expectedEvent.EventDetail.type}`
-    ).to.eq(expectedEvent.EventDetail.type);
-    expect(
-      event.EventDetail.details.recId,
-        `Recid should be ${expectedEvent.EventDetail.details.recId}`
-    ).to.eq(expectedEvent.EventDetail.details.recId);
-    expect(
-      event.EventDetail.details.alertId,
-    `alertId should be ${expectedEvent.EventDetail.details.alertId}`
-      ).to.eq(expectedEvent.EventDetail.details.alertId);
-    // Disabled as 'false' in test evironment.  TODO: work out why and remedy
-    //  expect(
-    //    event.EventDetail.details.success,
-    //    `success should be ${expectedEvent.EventDetail.details.success}`
-    //  ).to.eq(expectedEvent.EventDetail.details.success);
-    expect(
-      event.EventDetail.details.trackId,
-      `trackid should be present`
-    ).not.to.be.undefined
+  expect( event.DeviceId, `DeviceId should be ${expectedEvent.DeviceId}`).to.eq(expectedEvent.DeviceId);
+  expect( event.Device.devicename, `devicename should be ${expectedEvent.Device.devicename}`).to.eq(expectedEvent.Device.devicename);
+  expect( event.EventDetail.type, `Type should be ${expectedEvent.EventDetail.type}`).to.eq(expectedEvent.EventDetail.type);
+
+  // check details except for success (email sent - not implemented on dev servers), and trackId - as we haven't stored this
+  if(expectedEvent.EventDetail.details!==undefined) {
+    checkFlatStructuresAreEqualExcept(expectedEvent.EventDetail.details,event.EventDetail.details,ignoreParams);
   };
 };
 

@@ -89,20 +89,38 @@ interface TestComparablePowerEvent {
   hasAlerted: boolean;
 }
 
+interface ApiEventDetail {
+  type?: string;
+  details?: {
+    recId?: number;
+    alertId?: number;
+    success?: boolean;
+    trackId?: number;
+  }
+}
+
+interface ApiEventSet {
+  deviceID?: string; 
+  description?: ApiEventDetail;
+  eventDetailId?: number;
+  dateTimes?: string[]; 
+}
+
+interface ApiEventReturned {
+  id?: number;
+  DeviceId?: string; 
+  EventDetail?: ApiEventDetail;
+  dateTime?: string; 
+  Device: {devicename: string};
+}
+
+
 interface TestComparableEvent {
   id: number,
   dateTime: string,
   createdat: string,
   DeviceId: number,
-  EventDetail: {
-          type: string,
-          details: {
-                  recId: number,
-                  alertId: number,
-                  success: boolean,
-                  trackId: number
-          }
-  },
+  EventDetail: ApiEventDetail;
   Device: {
           devicename: string
   }

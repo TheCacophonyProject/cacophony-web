@@ -4,6 +4,7 @@ export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 export const AuthorizationError=402
 
 import { format as urlFormat } from "url";
+import { logTestDescription } from "descriptions";
 
 
 export function apiPath(): string {
@@ -184,3 +185,33 @@ export function sortArrayOnTwoKeys(theArray,key1, key2) {
   return(theArray);
 }
 
+
+export function checkFlatStructuresAreEqualExcept(containedStruct:any, containingStruct:any,excludeKeys:any) {
+  let containedKeys:string[]=Object.keys(containedStruct).sort();
+  let containingKeys:string[]=Object.keys(containingStruct).sort();
+  for (let count = 0; count < containedKeys.length; count++) {
+    if (!(excludeKeys.includes(containedKeys[count]))) {
+      expect(containingKeys,`result includes parameter ${containedKeys[count]}`).includes(containedKeys[count]);
+      expect(containingStruct[containedKeys[count]],`${containedKeys[count]} should equal ${containedStruct[containedKeys[count]]}`).to.equal(containedStruct[containedKeys[count]]);
+    };
+  };
+}
+
+export function checkFlatStructuresAreEqual(jsStruct1:any, jsStruct2:any) {
+  let keys1=Object.keys(jsStruct1).sort();
+  let keys2=Object.keys(jsStruct2).sort();
+  expect(keys1.length).to.equal(keys2.length);
+  for(let count=0; count < keys1.length; count++) {
+
+    expect(keys1[count]).to.equal(keys2[count]);
+    expect(jsStruct1[keys1[count]], `Parameter ${keys2[count]} should equal ${jsStruct2[keys2[count]]}`).to.equal(jsStruct2[keys2[count]]);
+  };
+}
+
+export function removeUndefinedParams(jsStruct:any) {
+  let keys=Object.keys(jsStruct);
+  let resultStruct={};
+  for(let count=0; count < keys.length; count++) {
+    if(jsStruct[keys[count]]!==undefined) resultStruct[keys[count]]=jsStruct[keys[count]];
+  };
+};

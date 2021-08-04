@@ -88,10 +88,10 @@
 
 /**
  * @apiDefine EventParams
- * @apiParam {JSON} [description] JSON of the event. Must be used if the if you don't give the eventDetailId
- * @apiParam {String} [description.type] Name of the type of event.
+ * @apiParam {JSON} [description] JSON of the event. Either eventDetailId or description are required.
+ * @apiParam {String} [description.type] Name of the type of event (required if description is included).
  * @apiParam {JSON} [description.details] Metadata of the event.
- * @apiParam {JSON} [eventDetailId] ID of the event details if known.
+ * @apiParam {JSON} [eventDetailId] ID of existing event details entry if known. Either eventDetailId or description are required.
  * @apiParam {Array} dateTimes Array of event times in ISO standard format, eg ["2017-11-13T00:47:51.160Z"]
  */
 
