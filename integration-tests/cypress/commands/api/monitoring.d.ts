@@ -3,6 +3,7 @@
 /// <reference types="../types" />
 
 declare namespace Cypress {
+  type TestVisitSearchParams = import("../types").TestVisitSearchParams;
   interface Chainable {
     /**
      * check the visits returned match the listed visits specified. Only the specified information will be checked.
@@ -13,7 +14,7 @@ declare namespace Cypress {
     checkMonitoring(
       user: string,
       camera: string,
-      expectedVisits: TestComparableVisit[],
+      expectedVisits: import("../types").TestComparableVisit[],
       log?: boolean
     ): any;
 
@@ -27,7 +28,7 @@ declare namespace Cypress {
       user: string,
       camera: string,
       searchParams: TestVisitSearchParams,
-      expectedVisits: TestComparableVisit[]
+      expectedVisits: import("../types").TestComparableVisit[]
     ): any;
     /*
      * check the visits returned match the listed visits specified. Only the specified information will be checked.

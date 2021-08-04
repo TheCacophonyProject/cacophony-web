@@ -1,6 +1,7 @@
 /// <reference types="../types" />
 
 declare namespace Cypress {
+  type ApiAlertConditions = import("../types").ApiAlertConditions;
   interface Chainable {
     /**
      * Create an alert for a device. Optioanlly expect to fail with code: failCode
