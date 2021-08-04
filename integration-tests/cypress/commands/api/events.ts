@@ -155,11 +155,11 @@ function checkEventMatches(
   eventName: string,
   eventNumber: number
 ) {
-  const expectedEvent = getExpectedEvent(eventName);
   expect(response.body.rows.length, `Expected ${eventNumber} event(s)`).to.eq(
     eventNumber
   );
   if (eventNumber > 0) {
+    const expectedEvent = getExpectedEvent(eventName);
     const event = response.body.rows[eventNumber - 1];
 
     expect(

@@ -101,13 +101,6 @@ describe("Devices alerts", () => {
       HTTP_OK200
     );
 
-    cy.uploadRecordingThenUserTag(
-      usera.camera,
-      { processingState: "FINISHED", tags: ["possum"] },
-      usera.name,
-      "recording1"
-    );
-
     //upload a recording tagged as possum and  build an expected event using the returned recording details
     cy.uploadRecording(
       usera.camera,
