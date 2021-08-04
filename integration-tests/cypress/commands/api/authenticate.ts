@@ -9,7 +9,7 @@ import {
   saveCreds,
   expectRequestHasFailed,
 } from "../server";
-import {ApiAuthenticateAccess} from "../types";
+import { ApiAuthenticateAccess } from "../types";
 
 Cypress.Commands.add(
   "apiSignInAs",

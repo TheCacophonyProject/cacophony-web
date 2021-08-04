@@ -32,5 +32,5 @@ module.exports = {
     "prefer-const": ["error"],
     "no-only-tests/no-only-tests": ["warn"],
     "cypress/no-assigning-return-values": ["off"],
-  }
+  },
 };

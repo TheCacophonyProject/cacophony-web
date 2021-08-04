@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 import { getCreds } from "./server";
-import {Interception} from "cypress/types/net-stubbing";
+import { Interception } from "cypress/types/net-stubbing";
 
 export function sendMultipartMessage(
   url: string,

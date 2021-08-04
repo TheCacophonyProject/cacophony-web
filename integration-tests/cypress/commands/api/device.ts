@@ -12,7 +12,13 @@ import {
   sortArrayOnTwoKeys,
 } from "../server";
 import { logTestDescription } from "../descriptions";
-import {ApiDeviceInGroupDevice, ApiDeviceQueryDevice, ApiDevicesDevice, ApiDeviceUsersUser, TestDeviceAndGroup} from "../types";
+import {
+  ApiDeviceInGroupDevice,
+  ApiDeviceQueryDevice,
+  ApiDevicesDevice,
+  ApiDeviceUsersUser,
+  TestDeviceAndGroup,
+} from "../types";
 
 Cypress.Commands.add(
   "apiCreateDevice",

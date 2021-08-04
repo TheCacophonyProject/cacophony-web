@@ -2,7 +2,11 @@
 import { checkResponse } from "../../../commands/server";
 import { getNewIdentity } from "../../../commands/names";
 import { ApiAlertConditions } from "../../../commands/types";
-import {HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200 } from "../../../commands/constants";
+import {
+  HTTP_BadRequest,
+  HTTP_Forbidden,
+  HTTP_OK200,
+} from "../../../commands/constants";
 
 describe("Devices alerts", () => {
   const POSSUM_ALERT: ApiAlertConditions[] = [
@@ -98,10 +102,10 @@ describe("Devices alerts", () => {
     );
 
     cy.uploadRecordingThenUserTag(
-        usera.camera,
-        { processingState: "FINISHED", tags: ["possum"] },
-        usera.name,
-        "recording1"
+      usera.camera,
+      { processingState: "FINISHED", tags: ["possum"] },
+      usera.name,
+      "recording1"
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details

@@ -1,5 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
-import {HTTP_AuthorizationError, HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "../../../commands/constants";
+import {
+  HTTP_AuthorizationError,
+  HTTP_Forbidden,
+  HTTP_OK200,
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
 
 describe("Authentication", () => {

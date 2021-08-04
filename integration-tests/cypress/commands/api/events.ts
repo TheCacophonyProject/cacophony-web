@@ -5,7 +5,7 @@
 import { v1ApiPath, getCreds, makeAuthorizedRequest } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getTestName, getUniq } from "../names";
-import {TestComparableEvent, TestComparablePowerEvent } from "../types";
+import { TestComparableEvent, TestComparablePowerEvent } from "../types";
 
 export const EventTypes = {
   POWERED_ON: "rpi-power-on",

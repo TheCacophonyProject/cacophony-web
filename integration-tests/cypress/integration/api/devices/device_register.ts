@@ -2,7 +2,7 @@
 
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
-import {HTTP_Unprocessable} from "../../../commands/constants";
+import { HTTP_Unprocessable } from "../../../commands/constants";
 
 describe("Device register", () => {
   const camsGroup = "cams";

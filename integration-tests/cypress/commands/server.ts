@@ -60,7 +60,11 @@ export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
 
-export function saveCreds(response: Cypress.Response<any>, name: string, id = 0) {
+export function saveCreds(
+  response: Cypress.Response<any>,
+  name: string,
+  id = 0
+) {
   const creds = {
     name,
     headers: {

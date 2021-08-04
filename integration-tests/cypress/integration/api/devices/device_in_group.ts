@@ -4,7 +4,10 @@ import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 import { logTestDescription } from "../../../commands/descriptions";
 import { ApiDeviceInGroupDevice } from "../../../commands/types";
-import { HTTP_Forbidden, HTTP_Unprocessable } from "../../../commands/constants";
+import {
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 
 describe("Device in group", () => {
   const groupAdmin = "George-groupAdmin";
