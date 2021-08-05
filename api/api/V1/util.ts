@@ -47,7 +47,7 @@ function multipartUpload(keyPrefix, buildRecord) {
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
         // will fail the upload.
-        log.error("Invalid 'data' field: %s", err);
+        log.error("Invalid 'data' field: %s", err.toString());
       }
     });
 

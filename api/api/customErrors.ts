@@ -31,7 +31,7 @@ function errorHandler(err, request, response, next) {
     log.warning(err.toString());
     return response.status(err.statusCode).json(err.toJson());
   }
-  log.error(err);
+  log.error(err.toString());
   response.status(500).json({
     message: "Internal server error: " + err.name + ".",
     errorType: "server",

@@ -54,7 +54,7 @@ async function sendEmail(
     }
     await client.sendAsync(message);
   } catch (err) {
-    log.error(err);
+    log.error(err.toString());
     return false;
   }
   return true;

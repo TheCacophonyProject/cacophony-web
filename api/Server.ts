@@ -65,7 +65,7 @@ models.sequelize
   .then(() => checkS3Connection())
   .then(() => openHttpServer(app))
   .catch(function (error) {
-    log.error(error);
+    log.error(error.toString());
     process.exit(2);
   });
 

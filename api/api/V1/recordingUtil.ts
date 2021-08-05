@@ -954,7 +954,10 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       }
     }
   } catch (err) {
-    log.error("Error creating recording tracks from metadata: %s", err);
+    log.error(
+      "Error creating recording tracks from metadata: %s",
+      err.toString()
+    );
   }
 }
 

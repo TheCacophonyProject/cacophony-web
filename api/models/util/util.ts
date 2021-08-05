@@ -324,7 +324,7 @@ export function saveFile(file /* model.File */) {
       s3.upload(params, function (err) {
         if (err) {
           log.error("Error with saving to S3.");
-          log.error(err);
+          log.error(err.toString());
           return reject(err);
         } else {
           fs.unlinkSync(file.path); // Delete local file.
