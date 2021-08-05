@@ -76,7 +76,9 @@ const usedBlocks = async (
   }
 
   if (!Config.s3Local.hasOwnProperty("rootPath")) {
-    log.warn("No object storage 'rootPath' property found in s3Local config - this is a required field");
+    log.warn(
+      "No object storage 'rootPath' property found in s3Local config - this is a required field"
+    );
     process.exit(0);
   }
 
@@ -84,9 +86,20 @@ const usedBlocks = async (
 
   // If we're on dev/test, we can't rely on our total disk usage growing smaller as we archive recordings.
   const bucketToArchive = Config.s3Local.bucket;
-  const totalBytes = (await totalDiskSpaceBlocks(Config.s3Local.rootPath)) * 1024;
-  let usedBytes = (await usedBlocks(bucketToArchive, Config.s3Local.rootPath)) * 1024;
+  const totalBytes =
+    (await totalDiskSpaceBlocks(Config.s3Local.rootPath)) * 1024;
+  let usedBytes =
+    (await usedBlocks(bucketToArchive, Config.s3Local.rootPath)) * 1024;
   const percentUsed = usedBytes / totalBytes;
+
+  log.info(
+    `==== ${((usedBytes / totalBytes) * 100).toFixed(
+      3
+    )}% used of available disk space, threshold to start archiving old recordings is ${(
+      diskUsageRatioTarget * 100
+    ).toFixed(2)}% ====`
+  );
+
   // Let's see if we need to do any work
   if (percentUsed > diskUsageRatioTarget) {
     log.info(
