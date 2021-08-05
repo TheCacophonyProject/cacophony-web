@@ -127,7 +127,7 @@ export default function (app: Application) {
               region
             );
             if (!result.hasOwnProperty("Key")) {
-              log.warn(
+              log.warning(
                 "Failed to upload thumbnail for %s",
                 `${recording.rawFileKey}-thumb`
               );

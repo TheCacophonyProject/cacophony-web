@@ -69,14 +69,14 @@ const usedBlocks = async (
   };
 
   if (!Config.hasOwnProperty("s3Archive")) {
-    log.warn(
+    log.warning(
       "An archive target and bucket needs to be configured in config/app.js in order to archive old recordings"
     );
     process.exit(0);
   }
 
   if (!Config.s3Local.hasOwnProperty("rootPath")) {
-    log.warn(
+    log.warning(
       "No object storage 'rootPath' property found in s3Local config - this is a required field"
     );
     process.exit(0);
@@ -92,7 +92,7 @@ const usedBlocks = async (
     (await usedBlocks(bucketToArchive, Config.s3Local.rootPath)) * 1024;
   const percentUsed = usedBytes / totalBytes;
 
-  log.info(
+  log.notice(
     `==== ${((usedBytes / totalBytes) * 100).toFixed(
       3
     )}% used of available disk space, threshold to start archiving old recordings is ${(
@@ -102,11 +102,11 @@ const usedBlocks = async (
 
   // Let's see if we need to do any work
   if (percentUsed > diskUsageRatioTarget) {
-    log.info(
+    log.notice(
       "==== Archiving old recordings to external s3 object store provider ===="
     );
   } else {
-    log.info("==== Recording archive threshold not reached, exiting ====");
+    log.notice("==== Recording archive threshold not reached, exiting ====");
     process.exit(0);
   }
 
@@ -135,7 +135,7 @@ const usedBlocks = async (
         diskUsageRatioTarget * 100
       ).toFixed(2)}% reached`
     );
-    log.info(`select *
+    log.debug(`select *
              from "Recordings"
              where "rawFileKey" not like 'a_%' or "fileKey" is not null and "fileKey" not like 'a_%' and id > ${lastId} 
              order by id limit 1`);
@@ -211,7 +211,7 @@ const usedBlocks = async (
         usedBytes -= data.ContentLength;
       }
     } else {
-      log.info("No more archivable recordings");
+      log.notice("No more archivable recordings");
       break;
     }
   }

@@ -749,7 +749,7 @@ from (
         .promise();
       ContentLength = s3Data.ContentLength;
     } catch (err) {
-      log.warn(
+      log.warning(
         "Error retrieving S3 Object for recording: %s, %s",
         err.message,
         flattenedResult.fileKey

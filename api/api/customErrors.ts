@@ -28,7 +28,7 @@ function errorHandler(err, request, response, next) {
     err = new ClientError(err.message, 422); // Convert invalid JSON body error to UnprocessableEntity
   }
   if (err instanceof CustomError) {
-    log.warn(err.toString());
+    log.warning(err.toString());
     return response.status(err.statusCode).json(err.toJson());
   }
   log.error(err);

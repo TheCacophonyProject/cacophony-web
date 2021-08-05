@@ -13,7 +13,7 @@ import api from "./api/V1";
 import fileProcessingApi from "./api/fileProcessing";
 import expressWinston from "express-winston";
 
-log.info("Starting Full Noise.");
+log.notice("Starting Full Noise.");
 config.loadConfigFromArgs(true);
 
 const app: Application = express();

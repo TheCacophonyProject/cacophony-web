@@ -355,7 +355,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
       // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
       fileIsCorrupt = await decoder.hasStreamError();
       if (fileIsCorrupt) {
-        log.warn("CPTV Stream error: %s", await decoder.getStreamError());
+        log.warning("CPTV Stream error: %s", await decoder.getStreamError());
       }
       decoder.close();
 
@@ -431,7 +431,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
         );
       } else {
         // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
-        log.warn("File was corrupt, don't queue for processing");
+        log.warning("File was corrupt, don't queue for processing");
         recording.processingState = RecordingProcessingState.Corrupt;
       }
     }
@@ -757,12 +757,12 @@ async function delete_(request, response) {
   }
   if (deleted.rawFileKey) {
     util.deleteS3Object(deleted.rawFileKey).catch((err) => {
-      log.warn(err);
+      log.warning(err);
     });
   }
   if (deleted.fileKey) {
     util.deleteS3Object(deleted.fileKey).catch((err) => {
-      log.warn(err);
+      log.warning(err);
     });
   }
   responseUtil.send(response, {
@@ -1362,7 +1362,7 @@ async function sendAlerts(recID: number) {
   );
   if (alerts.length > 0) {
     const thumbnail = await getThumbnail(recording).catch(() => {
-      log.warn("Alerting without thumbnail for ", recID);
+      log.warning("Alerting without thumbnail for %d", recID);
     });
     for (const alert of alerts) {
       await alert.sendAlert(
