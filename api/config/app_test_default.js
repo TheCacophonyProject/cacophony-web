@@ -26,6 +26,7 @@ exports.database = {
   database: "cacophonytest",
   host: "localhost",
   dialect: "postgres",
+  slowQueryLogThresholdMs: 1000,
 };
 
 exports.s3Archive = {

@@ -22,6 +22,7 @@ const database = {
   database: "cacophony",
   host: "localhost",
   dialect: "postgres",
+  slowQueryLogThresholdMs: 1000,
 };
 
 const s3Local = {

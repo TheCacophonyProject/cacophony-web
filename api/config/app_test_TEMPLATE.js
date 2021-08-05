@@ -38,6 +38,7 @@ const database = {
   database: "cacophonytest",
   host: "localhost",
   dialect: "postgres",
+  slowQueryLogThresholdMs: 1000,
 };
 
 const smtpDetails = {
