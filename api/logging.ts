@@ -9,6 +9,7 @@ export const consoleTransport = new winston.transports.Console({
 });
 
 const logger = winston.createLogger({
+  levels: winston.config.syslog.levels,
   transports: [consoleTransport],
   exitOnError: false,
 });
