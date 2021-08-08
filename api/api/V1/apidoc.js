@@ -88,11 +88,32 @@
 
 /**
  * @apiDefine EventParams
- * @apiParam {JSON} [description] JSON of the event. Either eventDetailId or description are required.
+ * @apiParam {JSON} [description] Description of the event. Either eventDetailId or description are required.
  * @apiParam {String} [description.type] Name of the type of event (required if description is included).
  * @apiParam {JSON} [description.details] Metadata of the event.
  * @apiParam {JSON} [eventDetailId] ID of existing event details entry if known. Either eventDetailId or description are required.
  * @apiParam {Array} dateTimes Array of event times in ISO standard format, eg ["2017-11-13T00:47:51.160Z"]
+ */
+
+/**
+ * @apiDefine ApiEvent
+ * @apiSuccessExample {json} ApiEvent:
+ *  {
+ *    "id": 33090,
+ *    "dateTime": "2021-05-19T02:45:01.236Z",
+ *    "createdAt": "2021-05-19T02:45:02.379Z",
+ *    "DeviceId": 2008,
+ *    "EventDetail": {
+ *      "type": "alert", 
+ *      "details": {
+ *        "foo": "bar",
+ *        "foo2": "bar2"
+ *      }
+ *    },
+ *    "Device": {
+ *      "devicename": "test-camera"
+ *    }
+ *  }
  */
 
 /**

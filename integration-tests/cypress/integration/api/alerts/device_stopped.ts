@@ -12,16 +12,16 @@ describe("Devices stopped alerts", () => {
   it("New Device isn't marked as stopped", () => {
     const camera = "Active";
     cy.apiCreateDevice(camera, group);
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON});
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: false, hasAlerted: false });
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON});
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: false, hasAlerted: false });
   });
 
   it("Device that has been on for longer than 12 hours and hasn't stopped is marked as stopped", () => {
     const camera = "c1";
     const over12Hrs=moment().subtract(13, "hours");
     cy.apiCreateDevice(camera, group);
-    cy.apiEventAdd( camera, {type: EventTypes.POWERED_ON, details: {}}, [over12Hrs.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: false });
+    cy.apiEventsAdd( camera, {type: EventTypes.POWERED_ON, details: {}}, [over12Hrs.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
   it("Device started and stopped yesterday, and not today is marked as stopped", () => {
@@ -29,27 +29,27 @@ describe("Devices stopped alerts", () => {
     cy.apiCreateDevice(camera, group);
     const yesterdayStart = (moment().subtract(40, "hours"));
     const yesterdayStop = (yesterdayStart.clone().add(28, "hours"));
-    cy.apiEventAdd(camera, { type: EventTypes.POWERED_ON, details: {}}, [yesterdayStart.toISOString()]);
-    cy.apiEventAdd(camera, { type: EventTypes.POWERED_OFF, details: {}}, [yesterdayStop.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: false });
+    cy.apiEventsAdd(camera, { type: EventTypes.POWERED_ON, details: {}}, [yesterdayStart.toISOString()]);
+    cy.apiEventsAdd(camera, { type: EventTypes.POWERED_OFF, details: {}}, [yesterdayStop.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
   it("Device started over 12 hours ago but never stopped is marked as stopped", () => {
     const camera = "c3";
     cy.apiCreateDevice(camera, group);
     const yesterday = moment().subtract(13, "hours");
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [yesterday.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: false });
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [yesterday.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
   it("Once reported is not marked as stopped again, until powered on again", () => {
     const camera = "c4";
     cy.apiCreateDevice(camera, group);
     const yesterday = moment().subtract(13, "hours");
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [yesterday.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: false });
-    cy.apiEventAdd(camera, {type: EventTypes.STOP_REPORTED});
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: true });
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [yesterday.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: false });
+    cy.apiEventsAdd(camera, {type: EventTypes.STOP_REPORTED});
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: true });
   });
 
   it("Device powered on & off yesterday but only on last night is marked as stopped", () => {
@@ -59,10 +59,10 @@ describe("Devices stopped alerts", () => {
     const priorStop = priorOn.clone().add(12, "hours");
     const lastStart = priorOn.clone().add(24, "hours");
 
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [priorOn.toISOString()]);
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_OFF, details: {}}, [priorStop.toISOString()]);
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [lastStart.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: false });
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [priorOn.toISOString()]);
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_OFF, details: {}}, [priorStop.toISOString()]);
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [lastStart.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
   it("Device checked before it is expected to have powered down is not marked as stopped", () => {
@@ -72,10 +72,10 @@ describe("Devices stopped alerts", () => {
     const priorStop = moment().subtract(24, "hours");
     const lastStart = priorOn.clone().add(24, "hours");
 
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [priorOn.toISOString()]);
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_OFF, details: {}}, [priorStop.toISOString()]);
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [lastStart.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: false, hasAlerted: false });
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [priorOn.toISOString()]);
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_OFF, details: {}}, [priorStop.toISOString()]);
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [lastStart.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: false, hasAlerted: false });
   });
 
   it("Device hasn't been checked for a long time is marked as stopped", () => {
@@ -83,9 +83,9 @@ describe("Devices stopped alerts", () => {
     cy.apiCreateDevice(camera, group);
     const priorOn = moment().subtract(20, "days");
     const priorStop = moment().subtract(20, "days").add(12, "hours");
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [priorOn.toISOString()]);
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_OFF, details: {}}, [priorStop.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: false });
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [priorOn.toISOString()]);
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_OFF, details: {}}, [priorStop.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: false });
   });
 
   it("Device that has been reported, is marked as stopped again after new power cycles", () => {
@@ -93,16 +93,16 @@ describe("Devices stopped alerts", () => {
     cy.apiCreateDevice(camera, group);
     const priorOn = (moment().subtract(5, "days"));
     const priorStop = (moment().subtract(5, "days").add(12, "hours"));
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [priorOn.toISOString()]);
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_OFF, details: {}}, [priorStop.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: false });
-    cy.apiEventAdd(camera, {type: EventTypes.STOP_REPORTED, details: {}}, [priorStop.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: true });
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [priorOn.toISOString()]);
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_OFF, details: {}}, [priorStop.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: false });
+    cy.apiEventsAdd(camera, {type: EventTypes.STOP_REPORTED, details: {}}, [priorStop.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: true });
 
     const newOn = moment().subtract(3, "days");
     const newOff = moment().subtract(3, "days").add(12, "hours");
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [newOn.toISOString()]);
-    cy.apiEventAdd(camera, {type: EventTypes.POWERED_OFF, details:{}}, [newOff.toISOString()]);
-    cy.apiPowerEventsCheck(user, camera, { hasStopped: true, hasAlerted: false });
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_ON, details: {}}, [newOn.toISOString()]);
+    cy.apiEventsAdd(camera, {type: EventTypes.POWERED_OFF, details:{}}, [newOff.toISOString()]);
+    cy.apiPowerEventsCheckAgainstExpected(user, camera, { hasStopped: true, hasAlerted: false });
   });
 });

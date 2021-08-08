@@ -91,12 +91,7 @@ interface TestComparablePowerEvent {
 
 interface ApiEventDetail {
   type?: string;
-  details?: {
-    recId?: number;
-    alertId?: number;
-    success?: boolean;
-    trackId?: number;
-  }
+  details?: any;
 }
 
 interface ApiEventSet {
@@ -108,10 +103,53 @@ interface ApiEventSet {
 
 interface ApiEventReturned {
   id?: number;
-  DeviceId?: string; 
+  createdAt?: string;
+  DeviceId?: number; 
   EventDetail?: ApiEventDetail;
   dateTime?: string; 
   Device: {devicename: string};
+}
+
+interface ApiPowerEventReturned {
+  hasStopped: boolean;
+  lastStarted?: string;
+  lastReported?: string;
+  lastStopped?: string;
+  hasAlerted: boolean;
+  Device: {
+    id: number;
+    devicename: string;
+    GroupId: number;
+    Group:  {
+      groupname: string;
+      id: number;
+    }
+  }
+}
+
+interface ApiEventErrorSimilar{
+    device: string;
+    timestamp: string;
+    lines: string[]
+}
+
+interface ApiEventErrorPattern{
+    score?: number;
+    index?: number;
+    patterns?: string[];
+}
+
+interface ApiEventError {
+    devices: string[];
+    timestamps: string[];
+    similar: ApiEventErrorSimilar[];
+    patterns: ApiEventErrorPattern[];
+}
+
+interface ApiEventErrorCategory {
+    name: string,
+    devices: string[];
+    errors: ApiEventError[]
 }
 
 

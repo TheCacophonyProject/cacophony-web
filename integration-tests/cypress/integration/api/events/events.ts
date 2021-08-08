@@ -2,6 +2,7 @@
 
 import { EventTypes } from "../../../commands/api/events";
 import { getTestName } from "../../../commands/names";
+import { getCreds } from "../../../commands/server";
 
 
 const HTTP_AuthorizationError = 401;
@@ -10,9 +11,9 @@ const HTTP_BadRequest = 400;
 const HTTP_Unprocessable = 422;
 const HTTP_OK200 = 200;
 
+const EXCL_ID_CREATED = ["[].id","[].createdAt"];     //do not check eventId or createdAt time
 
-describe("Events - add event on behalf of device", () => {
-  const firstTime=(new Date()).toISOString();
+describe("Events - add event as a device", () => {
   let eventDetailsId1:number;
   let eventDetailsId2:number;
   const time1="2018-01-01T07:22:56.000Z";
@@ -21,96 +22,50 @@ describe("Events - add event on behalf of device", () => {
   const eventDetails2={type: "audioBait", details: {fileId: 8, volume:10 }};
 
   before(() => {
-      cy.apiCreateUserGroupAndDevice("groupAdmin", "group", "camera");
-      cy.apiCreateDevice("otherCamera","group");
-      cy.apiCreateUser("deviceAdmin");
-      cy.apiAddUserToDevice("groupAdmin","deviceAdmin","camera",true);
-      cy.apiCreateUserGroupAndDevice("otherGroupAdmin", "otherGroup", "otherGroupCamera");
+      cy.apiCreateUserGroupAndDevice("evGroupAdmin", "evGroup", "evCamera");
+      cy.apiCreateUserGroupAndDevice("evGroupAdmin2", "evGroup2", "evCamera2");
+      cy.apiCreateUserGroupAndDevice("evGroupAdmin8", "evGroup8", "evCamera8");
 
       //Create some events to reuse / query
-      cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera",  eventDetails1, [time1]).then((response:number) => {eventDetailsId1=response});
-      cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails2, [time2]).then((response:number) => {eventDetailsId2=response});
+      cy.apiEventsAdd("evCamera", eventDetails1, [time1]).then((response:number) => {eventDetailsId1=response});
+      cy.apiEventsAdd("evCamera", eventDetails2, [time2]).then((response:number) => {eventDetailsId2=response});
     });
 
-  it("Group admin can add event on behalf of device", () => {  
-      cy.apiCreateUserGroupAndDevice("groupAdmin1", "group1", "camera1");
-      const expectedEvent1={dateTime: firstTime, Device: {devicename: getTestName("camera1")}, EventDetail: {type: EventTypes.POWERED_ON, details: {}}};
-      cy.apiEventsDeviceAddOnBehalf("groupAdmin1", "camera1", {type: EventTypes.POWERED_ON, details: {}}, [firstTime]);
-      cy.apiEventsCheck("groupAdmin1","camera1",{}, [expectedEvent1]); 
-  });
 
-  it("Group member can add event on behalf of device", () => {  
-      cy.apiCreateUserGroupAndDevice("groupAdmin2", "group2", "camera2");
-      cy.apiCreateUser("groupMember2");
-      const expectedEvent2={dateTime: firstTime, Device: {devicename: getTestName("camera2")}, EventDetail: {type: EventTypes.POWERED_ON, details: {}}};
-      cy.apiAddUserToGroup("groupAdmin2","groupMember2", "group2", false);
-      cy.apiEventsDeviceAddOnBehalf("groupMember2", "camera2", {type: EventTypes.POWERED_ON, details: {}}, [firstTime]);
-      cy.apiEventsCheck("groupMember2","camera2",{}, [expectedEvent2]);
-  });
+  it("Can add a new event specifying description", () => {  
+      // add the event
+      const timeNow=(new Date()).toISOString();
+      const eventDetails1c={type: "newType", details: {message: "hello"}};
+      cy.apiEventsAdd("evCamera2", eventDetails1c, [timeNow]);
 
-  it("Device admin can add event on behalf of device", () => {  
-      cy.apiCreateUserGroupAndDevice("groupAdmin3", "group3", "camera3");
-      cy.apiCreateUser("deviceAdmin3");
-      cy.apiAddUserToDevice("groupAdmin3","deviceAdmin3","camera3",true);
-      const expectedEvent3={dateTime: firstTime, Device: {devicename: getTestName("camera3")}, EventDetail: {type: EventTypes.POWERED_ON, details: {}}};
-
-      cy.apiEventsDeviceAddOnBehalf("deviceAdmin3", "camera3", {type: EventTypes.POWERED_ON, details: {}}, [firstTime]);
-      cy.apiEventsCheck("deviceAdmin3","camera3",{}, [expectedEvent3]);
-  });
-
-  it("Device member can add event on behalf of device", () => {  
-      cy.apiCreateUserGroupAndDevice("groupAdmin4", "group4", "camera4");
-      cy.apiCreateUser("deviceMember4");
-      cy.apiAddUserToDevice("groupAdmin4","deviceMember4","camera4",true);
-      const expectedEvent4={dateTime: firstTime, Device: {devicename: getTestName("camera4")}, EventDetail: {type: EventTypes.POWERED_ON, details: {}}};
-
-      cy.apiEventsDeviceAddOnBehalf("deviceMember4", "camera4", {type: EventTypes.POWERED_ON, details: {}}, [firstTime]);
-      cy.apiEventsCheck("deviceMember4","camera4",{}, [expectedEvent4]);
-  });
-
-  it("Group admin cannot add event for a device in another group", () => {  
-      cy.apiEventsDeviceAddOnBehalf("groupAdmin", "otherGroupCamera", {type: EventTypes.POWERED_ON, details: {}}, [firstTime],undefined,true,HTTP_Forbidden);
-  });
-
-  it("Device admin cannot add event for another device in group", () => {  
-      cy.apiEventsDeviceAddOnBehalf("deviceAdmin", "otherCamera", {type: EventTypes.POWERED_ON, details: {}}, [firstTime],undefined,true,HTTP_Forbidden);
+      // check that it's there
+      const expectedEvent1c={id: null, createdAt: null, DeviceId: getCreds("evCamera2").id, dateTime: timeNow, Device: {devicename: getTestName("evCamera2")}, EventDetail: eventDetails1c};
+      cy.apiEventsCheck("evGroupAdmin2","evCamera2",{}, [expectedEvent1c], EXCL_ID_CREATED);
   });
 
   it("Can reuse eventDetails by either specifying a duplicate description or specifying the eventDetailsId", () => {
       const time3="2018-01-03T07:22:56.000Z";
       const time4="2018-01-04T07:22:56.000Z";
-      const time5="2018-01-05T07:22:56.000Z";
-      const time6="2018-01-06T07:22:56.000Z";
 
-      //check we can resue same eventDetailsIds by specifying same description
-      cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails1, [time3]).then((response:number) => {
-        expect(response,`event details ID should match previous identical event ${eventDetailsId1}`).to.equal(eventDetailsId1);
-      });
-      cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails2, [time4]).then((response:number) => {
+      cy.log("check we can resue same eventDetailsIds from past event by specifying same description");
+      cy.apiEventsAdd("evCamera", eventDetails2, [time3]).then((response:number) => {
         expect(response,`event details ID should match previous identical event ${eventDetailsId2}`).to.equal(eventDetailsId2);
       });
 
-
-      //check we can resue same eventDetailsIds by specifying same description
-      cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", undefined, [time5], eventDetailsId1).then((response:number) => {
+      cy.log("check we can resue same eventDetailsIds by specifying eventDetailsId");
+      cy.apiEventsAdd("evCamera", undefined, [time4], eventDetailsId1).then((response:number) => {
         expect(response,`event details ID should match previous identical event ${eventDetailsId1}`).to.equal(eventDetailsId1);
       });
-      cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", undefined, [time6], eventDetailsId2).then((response:number) => {
-        expect(response,`event details ID should match previous identical event ${eventDetailsId2}`).to.equal(eventDetailsId2);
-      });
 
-      //check all events are listed
-      const expectedEvent7a={dateTime: time1, Device: {devicename: getTestName("camera")}, EventDetail: eventDetails1}; 
-      const expectedEvent7b={dateTime: time2, Device: {devicename: getTestName("camera")}, EventDetail: eventDetails2};
-      const expectedEvent7c={dateTime: time3, Device: {devicename: getTestName("camera")}, EventDetail: eventDetails1}; 
-      const expectedEvent7d={dateTime: time4, Device: {devicename: getTestName("camera")}, EventDetail: eventDetails2};
-      const expectedEvent7e={dateTime: time5, Device: {devicename: getTestName("camera")}, EventDetail: eventDetails1};
-      const expectedEvent7f={dateTime: time6, Device: {devicename: getTestName("camera")}, EventDetail: eventDetails2};
-      cy.apiEventsCheck("groupAdmin","camera",{}, [expectedEvent7a, expectedEvent7b, expectedEvent7c, expectedEvent7d, expectedEvent7e, expectedEvent7f]);
+      cy.log("check all events are listed");
+      const expectedEvent7a={id: null, createdAt: null, DeviceId: getCreds("evCamera").id, dateTime: time1, Device: {devicename: getTestName("evCamera")}, EventDetail: eventDetails1}; 
+      const expectedEvent7b={id: null, createdAt: null, DeviceId: getCreds("evCamera").id, dateTime: time2, Device: {devicename: getTestName("evCamera")}, EventDetail: eventDetails2};
+      const expectedEvent7c={id: null, createdAt: null, DeviceId: getCreds("evCamera").id, dateTime: time3, Device: {devicename: getTestName("evCamera")}, EventDetail: eventDetails2}; 
+      const expectedEvent7d={id: null, createdAt: null, DeviceId: getCreds("evCamera").id, dateTime: time4, Device: {devicename: getTestName("evCamera")}, EventDetail: eventDetails1};
+      cy.apiEventsCheck("evGroupAdmin","evCamera",{}, [expectedEvent7a, expectedEvent7b, expectedEvent7c, expectedEvent7d],EXCL_ID_CREATED);
   });
 
   it("Can add multiple occurrences of an event", () => {
-    cy.apiCreateUserGroupAndDevice("groupAdmin8", "group8", "camera8");
 
     let time11="2019-01-01T07:22:56.000Z"
     let time12="2019-01-02T07:22:56.000Z"
@@ -118,54 +73,44 @@ describe("Events - add event on behalf of device", () => {
     let time14="2019-01-04T07:22:56.000Z"
 
     const eventDetail={type: "alert", details: {recId: 1, alertId: 2, success: true, trackId: 3}};
-    cy.apiEventsDeviceAddOnBehalf("groupAdmin8", "camera8", eventDetail, [time11, time12, time13, time14]);
+    cy.apiEventsAdd("evCamera8", eventDetail, [time11, time12, time13, time14]);
 
-    const expectedEvent8a={dateTime: time11, Device: {devicename: getTestName("camera8")}, EventDetail: eventDetail};
-    const expectedEvent8b={dateTime: time12, Device: {devicename: getTestName("camera8")}, EventDetail: eventDetail};
-    const expectedEvent8c={dateTime: time13, Device: {devicename: getTestName("camera8")}, EventDetail: eventDetail};
-    const expectedEvent8d={dateTime: time14, Device: {devicename: getTestName("camera8")}, EventDetail: eventDetail};
+    const expectedEvent8a={id: null, createdAt: null, DeviceId: getCreds("evCamera8").id, dateTime: time11, Device: {devicename: getTestName("evCamera8")}, EventDetail: eventDetail};
+    const expectedEvent8b={id: null, createdAt: null, DeviceId: getCreds("evCamera8").id, dateTime: time12, Device: {devicename: getTestName("evCamera8")}, EventDetail: eventDetail};
+    const expectedEvent8c={id: null, createdAt: null, DeviceId: getCreds("evCamera8").id, dateTime: time13, Device: {devicename: getTestName("evCamera8")}, EventDetail: eventDetail};
+    const expectedEvent8d={id: null, createdAt: null, DeviceId: getCreds("evCamera8").id, dateTime: time14, Device: {devicename: getTestName("evCamera8")}, EventDetail: eventDetail};
 
-    cy.apiEventsCheck("groupAdmin8","camera8",{}, [expectedEvent8a, expectedEvent8b, expectedEvent8c, expectedEvent8d]);
+    cy.apiEventsCheck("evGroupAdmin8","evCamera8",{}, [expectedEvent8a, expectedEvent8b, expectedEvent8c, expectedEvent8d],EXCL_ID_CREATED);
   });
 
   it("Cannot add an event with neither detailsId nor description", () => {
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", undefined, [time1],undefined,true,HTTP_Unprocessable);
+     cy.apiEventsAdd("evCamera", undefined, [time1],undefined,true,HTTP_Unprocessable);
   });
 
   it("Correct handling of missing/invalid mandatory details sub-parameters", () => {
-     //empty description
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", {}, [time1],undefined,true,HTTP_Unprocessable);
-     //description missing type
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", {details:{info: "hello"}}, [time1],undefined,true,HTTP_Unprocessable);
+     cy.log("empty description");
+     cy.apiEventsAdd("evCamera", {}, [time1],undefined,true,HTTP_Unprocessable);
+     cy.log("description missing type");
+     cy.apiEventsAdd("evCamera", {details:{info: "hello"}}, [time1],undefined,true,HTTP_Unprocessable);
   });
 
   it("Correct handling of missing/invalid eventDetailId", () => {
-     //ecentDetailsId=null
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", undefined, [time1],null,true,HTTP_Unprocessable);
-     //ecentDetailsId=non-existent event detail record
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", undefined, [time1],9999999,true,HTTP_Unprocessable);
-  });
-
-  it("Correct handling of invalid or missing deviceId", () => {
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "999999", eventDetails1, [time1],null,true,HTTP_Unprocessable);
-
+     cy.log("eventDetailsId=null (blank)");
+     cy.apiEventsAdd("evCamera", undefined, [time1],null,true,HTTP_Unprocessable);
+     cy.log("eventDetailsId=non-existent event detail record");
+     cy.apiEventsAdd("evCamera", undefined, [time1],9999999,true,HTTP_Unprocessable);
   });
 
   it("Correct handling of invalid dateTimes", () => {
-     //no time
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails1, [],null,true,HTTP_Unprocessable);
-     //blank time
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails1, [""],null,true,HTTP_Unprocessable);
-     //invalid time
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails1, ["bad time"],null,true,HTTP_Unprocessable);
-     //list containing invaid time
-     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails1, [time1,time2,"bad time"],null,true,HTTP_Unprocessable);
+     cy.log("no time");
+     cy.apiEventsAdd("evCamera", eventDetails1, [],null,true,HTTP_Unprocessable);
+     cy.log("blank time");
+     cy.apiEventsAdd("evCamera", eventDetails1, [""],null,true,HTTP_Unprocessable);
+     cy.log("invalid time");
+     cy.apiEventsAdd("evCamera", eventDetails1, ["bad time"],null,true,HTTP_Unprocessable);
+     cy.log("list containing invaid time");
+     cy.apiEventsAdd("evCamera", eventDetails1, [time1,time2,"bad time"],null,true,HTTP_Unprocessable);
   });
 
-
-
-
 });
-
-
 

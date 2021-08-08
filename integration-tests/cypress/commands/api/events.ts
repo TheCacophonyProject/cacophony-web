@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 /// <reference types="../types" />
 
-import { v1ApiPath, getCreds, makeAuthorizedRequest, makeAuthorizedRequestWithStatus, sortArrayOn, checkFlatStructuresAreEqualExcept,removeUndefinedParams } from "../server";
+import { v1ApiPath, getCreds, makeAuthorizedRequest, makeAuthorizedRequestWithStatus, sortArrayOn, checkTreeStructuresAreEqualExcept, checkFlatStructuresAreEqualExcept,removeUndefinedParams } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getTestName, getUniq } from "../names";
 
@@ -13,7 +13,7 @@ export const EventTypes = {
 };
 
 Cypress.Commands.add(
-  "apiEventAdd",
+  "apiEventsAdd",
   (camera: string, description: ApiEventDetail, dates:string[] = [(new Date()).toISOString()], eventDetailId: number, log: boolean = true, statusCode: number = 200) => {
     const data:ApiEventSet={
       dateTimes: dates,
@@ -33,19 +33,26 @@ Cypress.Commands.add(
       },
       camera,
       statusCode
-    );
+    ).then((response) => { cy.wrap(response.body.eventDetailId)});
   }
 );
 
 Cypress.Commands.add(
   "apiEventsDeviceAddOnBehalf",
   (user: string, camera: string, description: ApiEventDetail, dates:string[] = [(new Date()).toISOString()], eventDetailId: number, log: boolean = true, statusCode: number = 200) => {
+    let deviceId:string;
     const data:ApiEventSet={
       dateTimes: dates,
       description: description,
       eventDetailId: eventDetailId
     };
-    const deviceId = getCreds(camera).id.toString();
+    //look up device name in records, use raw value if not there
+    if(getCreds(camera)!==undefined) {
+      deviceId = getCreds(camera).id.toString();
+    } else {
+      deviceId=camera;
+    };
+
     logTestDescription(
       `Create event for ${camera} at ${dates}`,
       { data: data },
@@ -59,31 +66,76 @@ Cypress.Commands.add(
       },
       user,
       statusCode
-    );
+    ).then((response) => { cy.wrap(response.body.eventDetailId)});
   }
 );
 
 Cypress.Commands.add(
-  "apiEventsCheck",
-  (user: string, device: string, queryParams: any, expectedEventDetails: ApiEventReturned[], excludeCheckOn: string[] = [], statusCode: number = 200) => {
-    logTestDescription( `Check for expected event for ${device} `, { user, device });
+  "apiEventsErrorsCheck",
+  (user: string, device: string, queryParams: any, expectedErrors: ApiEventErrorCategory[], excludeCheckOn: string[] = [], statusCode: number = 200, additionalChecks:any = {}) => {
+    logTestDescription( `Check for expected errors for ${device} `, { user, device });
+
+    // by default count=expected event count, but can specify manually
+    let count=additionalChecks["count"];
+    if(count==undefined) { count=expectedErrors.length };
 
     // add deviceId to params unless already defined
-    if (queryParams.deviceId===undefined) { queryParams.deviceId=getCreds(device).id};
+    if (queryParams.deviceId===undefined && device!==undefined) { queryParams.deviceId=getCreds(device).id};
 
     //drop any undefined parameters
     let filteredParams=removeUndefinedParams(queryParams);
-  
-    makeAuthorizedRequestWithStatus( { url: v1ApiPath("events", filteredParams) }, user, statusCode).then((response) => {
+
+    //send the request
+    makeAuthorizedRequestWithStatus( { url: v1ApiPath('events/errors/', filteredParams) }, user, statusCode).then((response) => {
         if(statusCode===200) {
-     	  //sort expected and actual events into same order (means dateTime is mandatory in expectedEvents)
-          let sortEvents=sortArrayOn(response.body.rows,'dateTime');
-          let sortExpectedEvents=sortArrayOn(expectedEventDetails,'dateTime');
-          for (let eventCount=0; eventCount < sortExpectedEvents.length; eventCount++) {
-            //look up device id unless supplied
-            if (sortExpectedEvents[eventCount].DeviceId===undefined) { sortExpectedEvents[eventCount].DeviceId=getCreds(device).id};
-            //check each expected event is in the events list
-            checkEventMatchesExpected(sortEvents,sortExpectedEvents[eventCount],eventCount, excludeCheckOn);
+          let errors=response.body.rows;
+	  let errorCategories=Object.keys(errors);
+	  //check the right number of error categories is present
+	  expect(errorCategories.length,`Expect there to be ${expectedErrors.length} error categories`).to.equal(expectedErrors.length);
+
+	  //then check that each expected category is present
+          for (let catCount=0; catCount < expectedErrors.length; catCount++) {
+            let category=errors[errorCategories[catCount]];
+	    let expectedCategory=expectedErrors[catCount];
+            expect(errorCategories[catCount]).to.equal(expectedCategory.name);
+            expect(category.name).to.equal(expectedCategory.name);
+
+            //check list of devices
+            expect(JSON.stringify(category.devices),"devices in category").to.equal(JSON.stringify(expectedCategory.devices));
+            //check list of errors
+            expect(category.errors.length,"Number of errors in category should be as expected").to.equal(expectedCategory.errors.length);
+            //for each error in list
+            for (let errorCount=0; errorCount < expectedCategory.errors.length; errorCount++) {
+              let error=category.errors[errorCount];
+              let expectedError=expectedCategory.errors[errorCount];
+       
+              //check device list
+              expect(JSON.stringify(error.devices),"devices in error").to.equal(JSON.stringify(expectedError.devices));
+              //check timestamp
+              expect(JSON.stringify(error.timestamps),"timestamps in error").to.equal(JSON.stringify(expectedError.timestamps));
+              //check similar list
+              expect(error.similar.length,"Number of similar in error should be as expected").to.equal(expectedError.similar.length);
+              //for each similar error
+              for (let similarCount=0; similarCount < expectedError.similar.length; similarCount++) {
+                let similar=error.similar[similarCount];
+                let expectedSimilar=expectedError.similar[similarCount];
+                //check device 
+                expect(similar.device,`device for similar entry ${similarCount}`).to.equal(expectedSimilar.device);
+                //check timestamp
+                expect(similar.timestamp,`timestamp for similar entry ${similarCount}`).to.equal(expectedSimilar.timestamp);
+                //TODO: check lines
+              };
+              //check pattern list
+              if(expectedError.patterns!==undefined) {
+                expect(error.patterns, "Expect patterns in error").to.exist;
+              } else {
+                expect(error.patterns,"Expect no patterns in error").to.be.undefined;
+	      };
+              //TODO: for each pattern in list
+              //check score
+              //check index
+              //check patterns
+            };
           };
         };
     });
@@ -91,7 +143,65 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiEventsCheck",
+  (user: string, device: string, queryParams: any, expectedEvents: ApiEventReturned[], excludeCheckOn: string[] = [], statusCode: number = 200, additionalChecks:any = {}) => {
+    logTestDescription( `Check for expected events for ${device} `, { user, device });
+    let doNotSort=additionalChecks["doNotSort"];
+    let offset=additionalChecks["offset"]|0;
+    let sortEvents:ApiEventReturned[];
+    let sortExpectedEvents:ApiEventReturned[];
+
+    // by default count=expected event count, but can specify manually
+    let count=additionalChecks["count"];
+    if(count==undefined) { count=expectedEvents.length };
+
+    // add deviceId to params unless already defined
+    if (queryParams.deviceId===undefined && device!==undefined) { queryParams.deviceId=getCreds(device).id};
+
+    //drop any undefined parameters
+    let filteredParams=removeUndefinedParams(queryParams);
+
+    //send the request
+    makeAuthorizedRequestWithStatus( { url: v1ApiPath('events/', filteredParams) }, user, statusCode).then((response) => {
+        if(statusCode===200) {
+     	  //sort expected and actual events into same order (means dateTime is mandatory in expectedEvents)
+          if(doNotSort===true) {
+	    sortEvents=response.body.rows;
+            sortExpectedEvents=expectedEvents;
+	  } else {
+	    sortEvents=sortArrayOn(response.body.rows,'dateTime');
+            sortExpectedEvents=sortArrayOn(expectedEvents,'dateTime');
+	  };
+	  expect(response.body.offset,'Expect offset to be:').to.equal(offset);
+	  expect(response.body.count,'Expect count to be:').to.equal(count);
+          checkTreeStructuresAreEqualExcept(sortExpectedEvents, sortEvents,excludeCheckOn);
+        };
+    });
+  }
+);
+
+Cypress.Commands.add(
   "apiPowerEventsCheck",
+  (user: string, device: string, queryParams: any, expectedEvents: ApiPowerEventReturned[], excludeCheckOn: string[] = [], statusCode: number = 200, additionalChecks:any = {}) => {
+    logTestDescription( `Check for expected power events for ${device} `, { user, device });
+
+    // add deviceId to params unless already defined
+    if (queryParams.deviceID===undefined && device!==undefined) { queryParams.deviceID=getCreds(device).id};
+
+    //drop any undefined parameters
+    let filteredParams=removeUndefinedParams(queryParams);
+
+    //send the request
+    makeAuthorizedRequestWithStatus( { url: v1ApiPath('events/powerEvents', filteredParams) }, user, statusCode).then((response) => {
+        if(statusCode===200) {
+          checkTreeStructuresAreEqualExcept(expectedEvents, response.body.events, excludeCheckOn);
+        };
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiPowerEventsCheckAgainstExpected",
   (user: string, camera: string, expectedEvent: TestComparablePowerEvent) => {
     logTestDescription(
       `Check power events for ${camera} is ${prettyLog(expectedEvent)}}`,
@@ -119,7 +229,7 @@ Cypress.Commands.add(
       }
     );
 
-    checkEvents(user, camera, getUniq(eventName), eventNumber, ['success','trackId'], statusCode);
+    checkEvents(user, camera, getUniq(eventName), eventNumber, ['success','trackId','dateTime'], statusCode);
   }
 );
 
@@ -182,14 +292,23 @@ function checkEvents(
     statusCode
   ).then((response) => {
     const expectedEvent=getExpectedEvent(eventName);
-    if(statusCode===200) { checkEventMatchesExpected(response.body.rows, expectedEvent, eventNumber, ignoreParams)};
+    if(statusCode===200) { 
+      expect(response.body.rows.length).to.equal(eventNumber);
+      if(eventNumber>0) {
+	//check the event matches (note 0 index so no-1)
+        checkEventMatchesExpected(response.body.rows, expectedEvent, eventNumber-1, ignoreParams)
+      };
+    };
   });
 }
 
-function checkEventMatchesExpected( events: any[], expectedEvent: TestComparableEvent, eventNumber: number, ignoreParams: string[]) {
+function checkEventMatchesExpected( events: any[], expectedEvent: TestComparableEvent, eventNumber: number, ignoreParams: any) {
   const event = events[eventNumber];
   
-  expect( event.DeviceId, `DeviceId should be ${expectedEvent.DeviceId}`).to.eq(expectedEvent.DeviceId);
+  expect( event.DeviceId.toString(), `DeviceId should be ${expectedEvent.DeviceId}`).to.eq(expectedEvent.DeviceId.toString());
+  if (!(ignoreParams.includes('dateTime'))) {   
+    expect( event.dateTime, `dateTime should be ${expectedEvent.dateTime}`).to.eq(expectedEvent.dateTime);
+  };
   expect( event.Device.devicename, `devicename should be ${expectedEvent.Device.devicename}`).to.eq(expectedEvent.Device.devicename);
   expect( event.EventDetail.type, `Type should be ${expectedEvent.EventDetail.type}`).to.eq(expectedEvent.EventDetail.type);
 

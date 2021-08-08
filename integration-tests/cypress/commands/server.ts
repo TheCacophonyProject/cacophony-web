@@ -4,7 +4,6 @@ export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 export const AuthorizationError=402
 
 import { format as urlFormat } from "url";
-import { logTestDescription } from "descriptions";
 
 
 export function apiPath(): string {
@@ -196,16 +195,66 @@ export function checkFlatStructuresAreEqualExcept(containedStruct:any, containin
     };
   };
 }
+// recursively search a JSON tree or array and match values in containing with contained, except any keys in excludeKeys. 
+// excludeKeys should be in the form: ["a.b[].c", ...] where [] indicates and array and a,b and c are keys
+// treeSoFar is an internal varaible used to pass the current point in the tree when making recursive calls
+// prettyTreeSoFar is same as treeSoFar but includes array element numbers and is used for display purposes only
+export function checkTreeStructuresAreEqualExcept(containedStruct:any, containingStruct:any, excludeKeys:any = [], treeSoFar:string = "", prettyTreeSoFar: string = "") {
+  if(isArrayOrHash(containingStruct)) {
+    if(Array.isArray(containingStruct)) {
+      //check lengths are equal
+      expect(containingStruct.length,`Expect ${prettyTreeSoFar} number of elements should match`).to.equal(containedStruct.length);
 
-export function checkFlatStructuresAreEqual(jsStruct1:any, jsStruct2:any) {
-  let keys1=Object.keys(jsStruct1).sort();
-  let keys2=Object.keys(jsStruct2).sort();
-  expect(keys1.length).to.equal(keys2.length);
-  for(let count=0; count < keys1.length; count++) {
+      //itterate over array
+      for (let count = 0; count < containingStruct.length; count++) {
+        let prettyElementName=prettyTreeSoFar+"["+count+"]";
+        let elementName=treeSoFar+"[]";
 
-    expect(keys1[count]).to.equal(keys2[count]);
-    expect(jsStruct1[keys1[count]], `Parameter ${keys2[count]} should equal ${jsStruct2[keys2[count]]}`).to.equal(jsStruct2[keys2[count]]);
+	//if element is a nested object, recursively call this function again over the nested onject
+	if(isArrayOrHash(containingStruct[count])) {
+          checkTreeStructuresAreEqualExcept(containedStruct[count], containingStruct[count], excludeKeys, elementName, prettyElementName);
+        } else {    
+	  //otherwise, check the values are as expected
+          expect(containingStruct[count],`Expected ${prettyElementName} should equal ${JSON.stringify(containedStruct[count])}`).to.equal(containedStruct[count]);
+	};
+      };
+    } else { 
+      //Not an array so mush be a hash
+      //check lengths are equal
+      expect(Object.keys(containingStruct).length,
+         `Check ${prettyTreeSoFar} number of elements in [${Object.keys(containingStruct).toString()}]`).to.equal(Object.keys(containedStruct).length);
+
+      //push two hashes in same order
+      let containedKeys:string[]=Object.keys(containedStruct).sort();
+      let containingKeys:string[]=Object.keys(containingStruct).sort();
+
+      //itterate over hash
+      for (let count = 0; count < containedKeys.length; count++) {
+        let elementName=treeSoFar+"."+containedKeys[count];
+	let prettyElementName=prettyTreeSoFar+"."+containedKeys[count];
+
+	//check if we asked to ignore this parameter
+        if (!(excludeKeys.includes(elementName))) {
+          expect(containingKeys,`Expect result includes parameter ${prettyElementName} :::`).includes(containedKeys[count]);
+	  //if element is a nested object, recursively call this function again over the nested onject
+          if(isArrayOrHash(containingStruct[containedKeys[count]])) {
+            checkTreeStructuresAreEqualExcept(containedStruct[containedKeys[count]], containingStruct[containedKeys[count]], excludeKeys, elementName, prettyElementName);
+          } else {	
+            //otherwise, check the values are as expected
+            expect(containingStruct[containedKeys[count]],
+              `Expected ${prettyElementName} should equal ${JSON.stringify(containedStruct[containedKeys[count]])}`).to.equal(containedStruct[containedKeys[count]]);
+	  };
+	};
+      };
+    };
+  } else {
+    //not an array or hash - fallback to compare two variables as JSON string
+    expect(JSON.stringify(containingStruct),`Expect flat element ${prettyTreeSoFar} should equal ${JSON.stringify(containedStruct)}`).to.equal(JSON.stringify(containedStruct));
   };
+}
+
+function isArrayOrHash(theObject:any) {
+  return (typeof(theObject)=='object' && theObject!==undefined && theObject!==null);
 }
 
 export function removeUndefinedParams(jsStruct:any) {
@@ -214,4 +263,5 @@ export function removeUndefinedParams(jsStruct:any) {
   for(let count=0; count < keys.length; count++) {
     if(jsStruct[keys[count]]!==undefined) resultStruct[keys[count]]=jsStruct[keys[count]];
   };
+  return resultStruct;
 };
