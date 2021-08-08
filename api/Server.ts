@@ -55,10 +55,10 @@ const fileProcessingApp = express();
 fileProcessingApp.use(bodyParser.urlencoded({ extended: false, limit: "2Mb" }));
 fileProcessingApi(fileProcessingApp);
 http.createServer(fileProcessingApp).listen(config.fileProcessing.port);
-log.info("Starting file processing on %d", config.fileProcessing.port);
+log.notice("Starting file processing on %d", config.fileProcessing.port);
 fileProcessingApp.use(customErrors.errorHandler);
 
-log.info("Connecting to database.....");
+log.notice("Connecting to database.....");
 models.sequelize
   .authenticate()
   .then(() => log.info("Connected to database."))
@@ -75,7 +75,7 @@ function openHttpServer(app): Promise<void> {
       return resolve();
     }
     try {
-      log.info("Starting http server on %d", config.server.http.port);
+      log.notice("Starting http server on %d", config.server.http.port);
       http.createServer(app).listen(config.server.http.port);
       return resolve();
     } catch (err) {
@@ -90,13 +90,13 @@ function checkS3Connection(): Promise<void> {
   return new Promise(function (resolve, reject) {
     const s3 = modelsUtil.openS3();
     const params = { Bucket: config.s3Local.bucket };
-    log.info("Connecting to S3.....");
+    log.notice("Connecting to S3.....");
     s3.headBucket(params, function (err) {
       if (err) {
         log.error("Error with connecting to S3.");
         return reject(err);
       }
-      log.info("Connected to S3.");
+      log.notice("Connected to S3.");
       return resolve();
     });
   });
