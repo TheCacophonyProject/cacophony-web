@@ -286,7 +286,7 @@ export default {
   },
   watch: {
     showCards() {
-      this.$refs["list-container"].style.height = 'auto';
+      this.$refs["list-container"].style.height = "auto";
     },
     recordings() {
       let prevDate = null;

@@ -50,16 +50,16 @@
         </span>
         <span class="recording-device">
           <font-awesome-icon
-              v-if="item.type === 'thermalRaw'"
-              icon="video"
-              class="icon"
-              size="xs"
+            v-if="item.type === 'thermalRaw'"
+            icon="video"
+            class="icon"
+            size="xs"
           />
           <font-awesome-icon
-              v-else-if="item.type === 'audio'"
-              icon="music"
-              class="icon"
-              size="xs"
+            v-else-if="item.type === 'audio'"
+            icon="music"
+            class="icon"
+            size="xs"
           />
           <span class="label">
             <b-link
@@ -78,7 +78,11 @@
         </span>
         <span class="recording-tracks">
           <b-spinner small v-if="queuedForProcessing || processing" />
-          <font-awesome-icon icon="stream" size="xs" v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0" />
+          <font-awesome-icon
+            icon="stream"
+            size="xs"
+            v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
+          />
           <span class="label" v-if="queuedForProcessing">Queued</span>
           <span class="label" v-else-if="processing">Processing</span>
           <span
@@ -98,7 +102,10 @@
       <div class="recording-time-duration">
         <div class="recording-time">
           <font-awesome-icon :icon="['far', 'calendar']" size="xs" />
-          <span class="label"><span class="item-date">{{ item.date }}</span> {{ item.time }}</span>
+          <span class="label"
+            ><span class="item-date">{{ item.date }}</span>
+            {{ item.time }}</span
+          >
         </div>
         <div class="recording-duration">
           <font-awesome-icon :icon="['far', 'clock']" size="xs" />
@@ -241,12 +248,12 @@ export default {
       },
     },
     queuedForProcessing(): boolean {
-      return this.item.processingState === "Analyse" && this.item.processing === null;
+      return (
+        this.item.processingState === "Analyse" && this.item.processing === null
+      );
     },
     processing(): boolean {
-      return (
-        this.item.processing
-      );
+      return this.item.processing;
     },
     itemLocation(): { name: string; location: string }[] {
       return [
@@ -290,10 +297,8 @@ export default {
 @import "~bootstrap/scss/variables";
 @import "~bootstrap/scss/mixins";
 
-
 $recording-side-padding: 0.9rem;
 $recording-side-padding-small: 0.5rem;
-
 
 .svg-inline--fa,
 .spinner-border-sm {
@@ -425,7 +430,6 @@ $recording-side-padding-small: 0.5rem;
     flex-flow: row wrap;
     border-top: 1px solid $border-color;
     > div {
-
       padding: 0.5rem $recording-side-padding;
       font-size: 85%;
       @include media-breakpoint-down(xs) {
