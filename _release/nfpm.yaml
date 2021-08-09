@@ -20,6 +20,7 @@ files:
   "_release/cacophony-api-report-stopped-devices": "/etc/cron.d/cacophony-api-report-stopped-devices"
   "_release/cacophony-api-prune-objects": "/etc/cron.d/cacophony-api-prune-objects"
   "_release/cacophony-api-remove-dups": "/etc/cron.d/cacophony-api-remove-dups"
+  "_release/cacophony-api-archive-objects": "/etc/cron.d/cacophony-api-archive-objects"
 
 config_files:
   "api/config/app_TEMPLATE.js": "/etc/cacophony/api.js"

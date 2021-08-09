@@ -29,7 +29,7 @@ export default function (app: Application) {
     "eventUtil.js",
     "monitoringPage.js",
     "monitoringVisit.js",
-    "apidoc.js"
+    "apidoc.js",
   ];
   // Filter out files that are not added to app directly, and filter out typescript versions of files.
   const apiRoutes = fs

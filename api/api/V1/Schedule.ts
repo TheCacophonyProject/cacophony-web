@@ -22,7 +22,6 @@ import { body, param } from "express-validator/check";
 import models from "../../models";
 import responseUtil from "./responseUtil";
 import { Application, Response } from "express";
-import { Device } from "../../models/Device";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/schedules`;
@@ -49,7 +48,7 @@ export default (app: Application, baseUrl: string) => {
       auth.authenticateUser,
       middleware.parseArray("devices", body),
       middleware.parseJSON("schedule", body),
-      auth.userCanAccessDevices
+      auth.userCanAccessDevices,
     ],
     middleware.requestWrapper(async function (request, response) {
       const deviceIds = request.body.devices;
@@ -66,7 +65,7 @@ export default (app: Application, baseUrl: string) => {
 
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Added new schedule for the calling device(s)."]
+        messages: ["Added new schedule for the calling device(s)."],
       });
     })
   );
@@ -110,7 +109,7 @@ export default (app: Application, baseUrl: string) => {
     [
       auth.authenticateUser,
       middleware.getDeviceById(param),
-      auth.userCanAccessDevices
+      auth.userCanAccessDevices,
     ],
     middleware.requestWrapper(async (request, response) =>
       getSchedule(request.device, response, request.user)
@@ -127,7 +126,7 @@ async function getSchedule(device: any, response: Response, user = null) {
       return responseUtil.send(response, {
         statusCode: 400,
         devicename: device.devicename,
-        messages: ["Cannot find schedule."]
+        messages: ["Cannot find schedule."],
       });
     }
   }
@@ -135,16 +134,16 @@ async function getSchedule(device: any, response: Response, user = null) {
   const resData: any = {
     statusCode: 200,
     messages: [],
-    schedule: schedule.schedule
+    schedule: schedule.schedule,
   };
   // get all the users devices that are also associated with this same schedule
   if (user && device.ScheduleId) {
     resData.devices = await models.Device.onlyUsersDevicesMatching(user, {
-      ScheduleId: device.ScheduleId
+      ScheduleId: device.ScheduleId,
     });
   } else if (user) {
     resData.devices = await models.Device.onlyUsersDevicesMatching(user, {
-      id: device.id
+      id: device.id,
     });
   }
   return responseUtil.send(response, resData);

@@ -93,7 +93,7 @@ async function getDatesForSearch(
       viewAsSuperAdmin
     ),
     DATE_SELECTION: makeDatesCriteria(params),
-    PAGING: null
+    PAGING: null,
   };
 
   const countRet = await models.sequelize.query(
@@ -138,7 +138,7 @@ function createPageCriteria(
     pagesEstimate: Math.ceil(count / params.pageSize),
     searchFrom: params.from || BEFORE_CACOPHONY,
     searchUntil: params.until || new Date(),
-    compareAi: "Master"
+    compareAi: "Master",
   };
 
   if (params.devices) {
@@ -156,9 +156,8 @@ function replaceInSQL(
   sql: string,
   replacements: { [key: string]: string }
 ): string {
-  for (const key in replacements) {
-    const regexp = new RegExp(`\{${key}\}`, "g");
-    sql = sql.replace(`{${key}}`, replacements[key]);
+  for (const [placeholder, replacement] of Object.entries(replacements)) {
+    sql = sql.replace(new RegExp(`{${placeholder}}`, "g"), replacement);
   }
   return sql;
 }
@@ -211,7 +210,7 @@ async function makeGroupsAndDevicesPermissions(
 
   const [deviceIds, groupIds] = await Promise.all([
     user.getDeviceIds(),
-    user.getGroupsIds()
+    user.getGroupsIds(),
   ]);
   return makeGroupsAndDevicesCriteria(deviceIds, groupIds);
 }

@@ -24,8 +24,8 @@ import responseUtil from "./responseUtil";
 import models from "../../models";
 // @ts-ignore
 import * as csv from "fast-csv";
-import { body, oneOf, param, query } from "express-validator/check";
-import { RecordingPermission, TagMode } from "../../models/Recording";
+import { body, param, query } from "express-validator/check";
+import { RecordingPermission } from "../../models/Recording";
 import { TrackTag } from "../../models/TrackTag";
 import { Track } from "../../models/Track";
 import { Op } from "sequelize";
@@ -140,7 +140,7 @@ export default (app: Application, baseUrl: string) => {
       auth.authenticateUser,
       middleware.setGroupName(param),
       middleware.getDevice(param),
-      auth.userCanAccessDevices
+      auth.userCanAccessDevices,
     ],
     middleware.requestWrapper(recordingUtil.makeUploadHandler())
   );
@@ -170,7 +170,7 @@ export default (app: Application, baseUrl: string) => {
     [
       auth.authenticateUser,
       middleware.getDevice(param, "deviceID"),
-      auth.userCanAccessDevices
+      auth.userCanAccessDevices,
     ],
     middleware.requestWrapper(recordingUtil.makeUploadHandler())
   );
@@ -186,7 +186,7 @@ export default (app: Application, baseUrl: string) => {
       .custom((value) => {
         return models.Recording.isValidTagMode(value);
       }),
-    middleware.parseJSON("filterOptions", query).optional()
+    middleware.parseJSON("filterOptions", query).optional(),
   ]);
 
   /**
@@ -214,7 +214,7 @@ export default (app: Application, baseUrl: string) => {
     [
       auth.authenticateUser,
       middleware.getDevice(param),
-      auth.userCanAccessDevices
+      auth.userCanAccessDevices,
     ],
     middleware.requestWrapper(recordingUtil.makeUploadHandler())
   );
@@ -253,7 +253,7 @@ export default (app: Application, baseUrl: string) => {
           totalRecordings: result.totalRecordings,
           hasMoreVisits: result.hasMoreVisits,
           visits: result.visits,
-          summary: result.summary.generateAnimalSummary()
+          summary: result.summary.generateAnimalSummary(),
         });
       }
     )
@@ -288,7 +288,7 @@ export default (app: Application, baseUrl: string) => {
           limit: request.query.limit,
           offset: request.query.offset,
           count: result.count,
-          rows: result.rows
+          rows: result.rows,
         });
       }
     )
@@ -317,8 +317,8 @@ export default (app: Application, baseUrl: string) => {
         const countQuery = {
           where: {
             [Op.and]: [
-              request.query.where // User query
-            ]
+              request.query.where, // User query
+            ],
           },
           include: [
             {
@@ -327,13 +327,13 @@ export default (app: Application, baseUrl: string) => {
                 {
                   model: models.User,
                   where: {
-                    [Op.and]: [{ id: user.id }]
-                  }
-                }
+                    [Op.and]: [{ id: user.id }],
+                  },
+                },
               ],
-              required: true
-            }
-          ]
+              required: true,
+            },
+          ],
         };
         if (request.body.viewAsSuperAdmin && user.hasGlobalRead()) {
           // Dont' filter on user if the user has global read permissons.
@@ -343,7 +343,7 @@ export default (app: Application, baseUrl: string) => {
         responseUtil.send(response, {
           statusCode: 200,
           messages: ["Completed query."],
-          count
+          count,
         });
       }
     )
@@ -386,7 +386,7 @@ export default (app: Application, baseUrl: string) => {
         responseUtil.send(response, {
           statusCode: 200,
           messages: ["Completed query."],
-          rows: [result]
+          rows: [result],
         });
       }
     )
@@ -416,7 +416,7 @@ export default (app: Application, baseUrl: string) => {
       auth.paramOrHeader,
       query("type").isString().optional().isIn(["recordings", "visits"]),
       ...queryValidators,
-      query("audiobait").isBoolean().optional()
+      query("audiobait").isBoolean().optional(),
     ],
     middleware.requestWrapper(async (request, response) => {
       // 10 minute timeout because the query can take a while to run
@@ -424,7 +424,7 @@ export default (app: Application, baseUrl: string) => {
       const rows = await recordingUtil.report(request);
       response.status(200).set({
         "Content-Type": "text/csv",
-        "Content-Disposition": "attachment; filename=recordings.csv"
+        "Content-Disposition": "attachment; filename=recordings.csv",
       });
       csv.writeToStream(response, rows);
     })
@@ -455,7 +455,7 @@ export default (app: Application, baseUrl: string) => {
     [
       auth.authenticateUser,
       param("id").isInt(),
-      middleware.parseJSON("filterOptions", query).optional()
+      middleware.parseJSON("filterOptions", query).optional(),
     ],
     middleware.requestWrapper(async (request, response) => {
       const { recording, rawSize, rawJWT, cookedSize, cookedJWT } =
@@ -468,7 +468,7 @@ export default (app: Application, baseUrl: string) => {
         rawSize: rawSize,
         fileSize: cookedSize,
         downloadFileJWT: cookedJWT,
-        downloadRawJWT: rawJWT
+        downloadRawJWT: rawJWT,
       });
     })
   );
@@ -487,12 +487,12 @@ export default (app: Application, baseUrl: string) => {
     [param("id").isInt()],
     middleware.requestWrapper(async (request, response) => {
       const rec = await models.Recording.findByPk(request.params.id, {
-        attributes: ["rawFileKey", "id"]
+        attributes: ["rawFileKey", "id"],
       });
       if (!rec) {
         return responseUtil.send(response, {
           statusCode: 400,
-          messages: ["Failed to get recording."]
+          messages: ["Failed to get recording."],
         });
       }
       const mimeType = "image/png";
@@ -519,7 +519,7 @@ export default (app: Application, baseUrl: string) => {
           log.error(err.stack);
           return responseUtil.send(response, {
             statusCode: 400,
-            messages: ["No thumbnail exists"]
+            messages: ["No thumbnail exists"],
           });
         });
     })
@@ -569,7 +569,7 @@ export default (app: Application, baseUrl: string) => {
     [
       auth.authenticateUser,
       param("id").isInt(),
-      middleware.parseJSON("updates", body)
+      middleware.parseJSON("updates", body),
     ],
     middleware.requestWrapper(async (request, response) => {
       const updated = await models.Recording.updateOne(
@@ -581,12 +581,12 @@ export default (app: Application, baseUrl: string) => {
       if (updated) {
         return responseUtil.send(response, {
           statusCode: 200,
-          messages: ["Updated recording."]
+          messages: ["Updated recording."],
         });
       } else {
         return responseUtil.send(response, {
           statusCode: 400,
-          messages: ["Failed to update recordings."]
+          messages: ["Failed to update recordings."],
         });
       }
     })
@@ -615,7 +615,7 @@ export default (app: Application, baseUrl: string) => {
       auth.authenticateUser,
       param("id").isInt().toInt(),
       middleware.parseJSON("data", body),
-      middleware.parseJSON("algorithm", body).optional()
+      middleware.parseJSON("algorithm", body).optional(),
     ],
     middleware.requestWrapper(async (request, response) => {
       const recording = await models.Recording.get(
@@ -626,7 +626,7 @@ export default (app: Application, baseUrl: string) => {
       if (!recording) {
         responseUtil.send(response, {
           statusCode: 400,
-          messages: ["No such recording."]
+          messages: ["No such recording."],
         });
         return;
       }
@@ -642,14 +642,14 @@ export default (app: Application, baseUrl: string) => {
 
       const track = await recording.createTrack({
         data: request.body.data,
-        AlgorithmId: algorithmDetail.id
+        AlgorithmId: algorithmDetail.id,
       });
 
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track added."],
         trackId: track.id,
-        algorithmId: track.AlgorithmId
+        algorithmId: track.AlgorithmId,
       });
     })
   );
@@ -680,7 +680,7 @@ export default (app: Application, baseUrl: string) => {
       if (!recording) {
         responseUtil.send(response, {
           statusCode: 400,
-          messages: ["No such recording."]
+          messages: ["No such recording."],
         });
         return;
       }
@@ -692,7 +692,7 @@ export default (app: Application, baseUrl: string) => {
         tracks: tracks.map((t) => {
           delete t.dataValues.RecordingId;
           return t;
-        })
+        }),
       });
     })
   );
@@ -712,7 +712,7 @@ export default (app: Application, baseUrl: string) => {
     [
       auth.authenticateUser,
       param("id").isInt().toInt(),
-      param("trackId").isInt().toInt()
+      param("trackId").isInt().toInt(),
     ],
     middleware.requestWrapper(async (request, response) => {
       const track = await loadTrack(request, response);
@@ -722,7 +722,7 @@ export default (app: Application, baseUrl: string) => {
       await track.destroy();
       responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Track deleted."]
+        messages: ["Track deleted."],
       });
     })
   );
@@ -759,7 +759,7 @@ export default (app: Application, baseUrl: string) => {
       body("what"),
       body("confidence").isFloat().toFloat(),
       body("automatic").isBoolean().toBoolean(),
-      middleware.parseJSON("data", body).optional()
+      middleware.parseJSON("data", body).optional(),
     ],
     middleware.requestWrapper(async (request, response) => {
       const newTag = models.TrackTag.build({
@@ -768,14 +768,14 @@ export default (app: Application, baseUrl: string) => {
         automatic: request.body.automatic,
         data: request.body.data ? request.body.data : "",
         UserId: request.user.id,
-        TrackId: request.params.trackId
+        TrackId: request.params.trackId,
       }) as TrackTag;
 
       await models.Track.replaceTag(request.params.trackId, newTag);
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag added."],
-        trackTagId: newTag.id
+        trackTagId: newTag.id,
       });
     })
   );
@@ -808,7 +808,7 @@ export default (app: Application, baseUrl: string) => {
       body("confidence").isFloat().toFloat(),
       body("automatic").isBoolean().toBoolean(),
       body("tagJWT").optional().isString(),
-      middleware.parseJSON("data", body).optional()
+      middleware.parseJSON("data", body).optional(),
     ],
     middleware.requestWrapper(async (request, response) => {
       let track;
@@ -822,7 +822,7 @@ export default (app: Application, baseUrl: string) => {
         if (!track) {
           responseUtil.send(response, {
             statusCode: 401,
-            messages: ["Track not found"]
+            messages: ["Track not found"],
           });
           return;
         }
@@ -837,7 +837,7 @@ export default (app: Application, baseUrl: string) => {
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag added."],
-        trackTagId: tag.id
+        trackTagId: tag.id,
       });
     })
   );
@@ -859,7 +859,7 @@ export default (app: Application, baseUrl: string) => {
       param("id").isInt().toInt(),
       param("trackId").isInt().toInt(),
       param("trackTagId").isInt().toInt(),
-      query("tagJWT").isString().optional()
+      query("tagJWT").isString().optional(),
     ],
     middleware.requestWrapper(async (request, response) => {
       let track;
@@ -873,7 +873,7 @@ export default (app: Application, baseUrl: string) => {
         if (!track) {
           responseUtil.send(response, {
             statusCode: 401,
-            messages: ["Track not found"]
+            messages: ["Track not found"],
           });
           return;
         }
@@ -883,7 +883,7 @@ export default (app: Application, baseUrl: string) => {
       if (!tag) {
         responseUtil.send(response, {
           statusCode: 400,
-          messages: ["No such track tag."]
+          messages: ["No such track tag."],
         });
         return;
       }
@@ -892,7 +892,7 @@ export default (app: Application, baseUrl: string) => {
 
       responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Track tag deleted."]
+        messages: ["Track tag deleted."],
       });
     })
   );
@@ -910,7 +910,7 @@ export default (app: Application, baseUrl: string) => {
         if (!track) {
           responseUtil.send(response, {
             statusCode: 401,
-            messages: ["Track does not exist"]
+            messages: ["Track does not exist"],
           });
           return;
         }
@@ -918,7 +918,7 @@ export default (app: Application, baseUrl: string) => {
         if (track.RecordingId !== request.params.id) {
           responseUtil.send(response, {
             statusCode: 401,
-            messages: ["Track does not belong to recording"]
+            messages: ["Track does not belong to recording"],
           });
           return;
         }
@@ -926,14 +926,14 @@ export default (app: Application, baseUrl: string) => {
       } else {
         responseUtil.send(response, {
           statusCode: 401,
-          messages: ["JWT does not have permissions to tag this recording"]
+          messages: ["JWT does not have permissions to tag this recording"],
         });
         return;
       }
     } catch (e) {
       responseUtil.send(response, {
         statusCode: 401,
-        messages: ["Failed to verify JWT."]
+        messages: ["Failed to verify JWT."],
       });
       return;
     }
@@ -948,7 +948,7 @@ export default (app: Application, baseUrl: string) => {
     if (!recording) {
       responseUtil.send(response, {
         statusCode: 400,
-        messages: ["No such recording."]
+        messages: ["No such recording."],
       });
       return;
     }
@@ -957,7 +957,7 @@ export default (app: Application, baseUrl: string) => {
     if (!track) {
       responseUtil.send(response, {
         statusCode: 400,
-        messages: ["No such track."]
+        messages: ["No such track."],
       });
       return;
     }

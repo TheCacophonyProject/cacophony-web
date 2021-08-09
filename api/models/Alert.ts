@@ -15,15 +15,13 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import Sequelize, { BuildOptions } from "sequelize";
+import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
 import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
-import { EventStatic } from "./Event";
 import { alertBody, sendEmail } from "../scripts/emailUtil";
-const { AuthorizationError } = require("../api/customErrors");
 
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -64,11 +62,11 @@ export default function (sequelize, DataTypes): AlertStatic {
 
   const attributes = {
     name: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
     },
     frequencySeconds: DataTypes.INTEGER,
     lastAlert: DataTypes.DATE,
-    conditions: DataTypes.JSONB
+    conditions: DataTypes.JSONB,
   };
 
   const Alert = sequelize.define(name, attributes);
@@ -98,13 +96,13 @@ export default function (sequelize, DataTypes): AlertStatic {
         {
           model: models.User,
           attributes: ["id", "username"],
-          where: userWhere
+          where: userWhere,
         },
         {
           model: models.Device,
-          attributes: ["id", "devicename"]
-        }
-      ]
+          attributes: ["id", "devicename"],
+        },
+      ],
     });
   };
 
@@ -128,13 +126,13 @@ export default function (sequelize, DataTypes): AlertStatic {
         {
           model: models.User,
           attributes: ["id", "username", "email"],
-          where: userWhere
+          where: userWhere,
         },
         {
           model: models.Device,
-          attributes: ["id", "devicename"]
-        }
-      ]
+          attributes: ["id", "devicename"],
+        },
+      ],
     });
     if (trackTag) {
       return alerts.filter((alert) =>
@@ -163,9 +161,9 @@ export default function (sequelize, DataTypes): AlertStatic {
             [Op.eq]: null,
             [Op.lt]: Sequelize.literal(
               `now() - "frequencySeconds" * INTERVAL '1 second'`
-            )
-          }
-        }
+            ),
+          },
+        },
       },
       null,
       tag,
@@ -198,12 +196,12 @@ export default function (sequelize, DataTypes): AlertStatic {
       alertId: this.id,
       recId: recording.id,
       trackId: track.id,
-      success: result
+      success: result,
     });
     await models.Event.create({
       DeviceId: this.Device.id,
       EventDetailId: detail.id,
-      dateTime: alertTime
+      dateTime: alertTime,
     });
 
     await this.update({ lastAlert: alertTime });

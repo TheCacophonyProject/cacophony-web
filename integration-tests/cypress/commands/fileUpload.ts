@@ -1,8 +1,8 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+import { getCreds } from "./server";
 import { Interception } from "cypress/types/net-stubbing";
-import { v1ApiPath, getCreds } from "./server";
 
 export function sendMultipartMessage(
   url: string,
@@ -64,9 +64,9 @@ export function uploadFile(
             fileType,
             uploader: credName,
             data,
-            response: xhr.response
+            response: xhr.response,
           };
-        }
+        },
       });
 
       // Don't want the expect statement to show in the cypress UI unless it fails.

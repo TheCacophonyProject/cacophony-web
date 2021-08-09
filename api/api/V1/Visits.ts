@@ -65,7 +65,7 @@ export function getTrackTag(trackTags: TrackTag[]): TrackTag | null {
       const conflict = {
         what: conflictTag,
         confidence: manualTags[0].confidence,
-        automatic: false
+        automatic: false,
       };
       return conflict as TrackTag;
     }
@@ -92,11 +92,7 @@ class DeviceSummary {
   }
 
   // generates visits from a list of recordings in descending date time order
-  generateVisits(
-    recordings: any[],
-    queryOffset: number,
-    complete: boolean = false
-  ) {
+  generateVisits(recordings: any[], queryOffset: number) {
     for (const [i, rec] of recordings.entries()) {
       this.lastRecTime = moment(rec.recordingDateTime);
       let devVisits = this.deviceMap[rec.DeviceId];
@@ -108,13 +104,13 @@ class DeviceSummary {
         );
         this.deviceMap[rec.DeviceId] = devVisits;
       }
-      devVisits.calculateNewVisits(rec, queryOffset + i, complete);
+      devVisits.calculateNewVisits(rec, queryOffset + i);
     }
   }
   earliestIncompleteOffset(): number | null {
-    var offset = null;
+    let offset = null;
     for (const device of Object.values(this.deviceMap)) {
-      for (var i = device.visits.length - 1; i >= 0; i--) {
+      for (let i = device.visits.length - 1; i >= 0; i--) {
         const visit = device.visits[i];
         if (visit.complete) {
           break;
@@ -135,7 +131,7 @@ class DeviceSummary {
   }
   markCompleted() {
     for (const device of Object.values(this.deviceMap)) {
-      for (var i = device.visits.length - 1; i >= 0; i--) {
+      for (let i = device.visits.length - 1; i >= 0; i--) {
         const visit = device.visits[i];
         if (visit.complete) {
           break;
@@ -145,7 +141,7 @@ class DeviceSummary {
     }
   }
   completeVisitsCount(): number {
-    var visits = 0;
+    let visits = 0;
     for (const device of Object.values(this.deviceMap)) {
       visits += device.visits.filter((v) => v.complete).length;
     }
@@ -169,7 +165,7 @@ class DeviceSummary {
     return audioFileIds;
   }
   completeVisits(): Visit[] {
-    var visits: Visit[] = [];
+    const visits: Visit[] = [];
     for (const device of Object.values(this.deviceMap)) {
       visits.push(...device.visits.filter((v) => v.complete));
     }
@@ -214,8 +210,11 @@ class DeviceVisits {
   audioBait: boolean;
   visits: Visit[];
   constructor(
+    // eslint-disable-next-line no-unused-vars
     public deviceName: string,
+    // eslint-disable-next-line no-unused-vars
     public groupName: string,
+    // eslint-disable-next-line no-unused-vars
     public id: number
   ) {
     this.firstVisit = null;
@@ -240,7 +239,7 @@ class DeviceVisits {
 
   checkForCompleteVisits(lastRecTime: Moment) {
     //complete any visits that start at least visit interval seconds after this time
-    for (var i = this.visits.length - 1; i >= 0; i--) {
+    for (let i = this.visits.length - 1; i >= 0; i--) {
       const visit = this.visits[i];
       if (visit.complete) {
         break;
@@ -253,8 +252,8 @@ class DeviceVisits {
   }
 
   removeIncompleteVisits() {
-    var delIndex = 0;
-    for (var i = this.visits.length - 1; i >= 0; i--) {
+    let delIndex = 0;
+    for (let i = this.visits.length - 1; i >= 0; i--) {
       const visit = this.visits[i];
       if (!visit.complete) {
         delIndex = i;
@@ -301,11 +300,7 @@ class DeviceVisits {
     return currentVisit.isPartOfVisit(time);
   }
 
-  calculateNewVisits(
-    rec: any,
-    queryOffset: number,
-    complete: boolean = false
-  ): Visit[] {
+  calculateNewVisits(rec: any, queryOffset: number): Visit[] {
     sortTracks(rec.Tracks);
     if (rec.Tracks.length == 0) {
       return this.visits;
@@ -564,5 +559,5 @@ export {
   Visit,
   VisitEvent,
   TrackStartEnd,
-  isWithinVisitInterval
+  isWithinVisitInterval,
 };

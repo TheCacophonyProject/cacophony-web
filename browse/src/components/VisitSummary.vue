@@ -1,96 +1,102 @@
 <template>
-  <div
-    :class="[
-      'visit-item',
-      { 'small-gap': smallGapOfInactivity },
-      { 'big-gap': !smallGapOfInactivity },
-    ]"
-    v-if="item.kind === 'noActivity'"
-  />
-  <div
-    v-else-if="item.kind === 'powerEvent'"
-    :class="['visit-item', 'power-event']"
-  >
-    <span>
-      <font-awesome-icon
-        v-if="item.name === 'rpi-power-on'"
-        icon="bolt"
-        size="xs"
-      />
-      <font-awesome-icon v-else icon="power-off" size="xs" />
-    </span>
-    <span>&nbsp;{{ item.name }}</span>
-  </div>
-  <div
-    v-else-if="item.kind === 'duskDawn'"
-    :class="['visit-item', 'dusk-dawn']"
-  >
-    <div class="icon-name">
-      <div class="visit-badge">
-        <svg
-          viewBox="0 0 32 32"
-          width="48"
-          fill="currentColor"
-          v-if="name === 'Sunrise'"
-        >
-          <path
-            d="M 15 15 L 15 19.09375 C 13.816406 19.265625 12.726563 19.722656 11.8125 20.40625 L 8.9375 17.5 L 7.5 18.9375 L 10.40625 21.8125 C 9.722656 22.726563 9.265625 23.816406 9.09375 25 L 5 25 L 5 27 L 27 27 L 27 25 L 22.90625 25 C 22.734375 23.816406 22.277344 22.726563 21.59375 21.8125 L 24.5 18.9375 L 23.0625 17.5 L 20.1875 20.40625 C 19.273438 19.722656 18.183594 19.265625 17 19.09375 L 17 15 Z M 16 21 C 18.425781 21 20.441406 22.714844 20.90625 25 L 11.09375 25 C 11.558594 22.714844 13.574219 21 16 21 Z"
-          ></path>
-          <path
-            d="M 15 5 L 15 9 L 12 9 L 16 13 L 20 9 L 17 9 L 17 5 Z"
-            transform="rotate(180), translate(0, 15)"
-            transform-origin="center"
-          ></path>
-        </svg>
-        <svg viewBox="0 0 32 32" fill="currentColor" v-else width="48">
-          <path
-            d="M 15 15 L 15 19.09375 C 13.816406 19.265625 12.726563 19.722656 11.8125 20.40625 L 8.9375 17.5 L 7.5 18.9375 L 10.40625 21.8125 C 9.722656 22.726563 9.265625 23.816406 9.09375 25 L 5 25 L 5 27 L 27 27 L 27 25 L 22.90625 25 C 22.734375 23.816406 22.277344 22.726563 21.59375 21.8125 L 24.5 18.9375 L 23.0625 17.5 L 20.1875 20.40625 C 19.273438 19.722656 18.183594 19.265625 17 19.09375 L 17 15 Z M 16 21 C 18.425781 21 20.441406 22.714844 20.90625 25 L 11.09375 25 C 11.558594 22.714844 13.574219 21 16 21 Z"
-          ></path>
-          <path d="M 15 5 L 15 9 L 12 9 L 16 13 L 20 9 L 17 9 L 17 5 Z"></path>
-        </svg>
-      </div>
-      <div class="name-time">
-        <span>
-          {{ name }}
-        </span>
-        <span>
-          {{ startTime }}
-        </span>
-      </div>
-    </div>
-  </div>
-  <div v-else :class="['visit-item', 'visit', item.name]">
-    <div class="icon-name">
-      <div class="visit-badge">
-        <img
-          :src="imgSrc"
-          onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='"
-          width="48"
-          height="auto"
-          :alt="name"
+  <div>
+    <div
+      :class="[
+        'visit-item',
+        { 'small-gap': smallGapOfInactivity },
+        { 'big-gap': !smallGapOfInactivity },
+      ]"
+      v-if="item.kind === 'noActivity'"
+    />
+    <div
+      v-else-if="item.kind === 'powerEvent'"
+      :class="['visit-item', 'power-event']"
+    >
+      <span>
+        <font-awesome-icon
+          v-if="item.name === 'rpi-power-on'"
+          icon="bolt"
+          size="xs"
         />
-        <span class="recording-count">{{ item.item.recordings.length }}</span>
-      </div>
-      <div class="name-time">
-        <span>
-          {{ name }}
-        </span>
-        <span>
-          {{ startTime }}
-        </span>
+        <font-awesome-icon v-else icon="power-off" size="xs" />
+      </span>
+      <span>&nbsp;{{ item.name }}</span>
+    </div>
+    <div
+      v-else-if="item.kind === 'duskDawn'"
+      :class="['visit-item', 'dusk-dawn']"
+    >
+      <div class="icon-name">
+        <div class="visit-badge">
+          <svg
+            viewBox="0 0 32 32"
+            width="48"
+            fill="currentColor"
+            v-if="name === 'Sunrise'"
+          >
+            <path
+              d="M 15 15 L 15 19.09375 C 13.816406 19.265625 12.726563 19.722656 11.8125 20.40625 L 8.9375 17.5 L 7.5 18.9375 L 10.40625 21.8125 C 9.722656 22.726563 9.265625 23.816406 9.09375 25 L 5 25 L 5 27 L 27 27 L 27 25 L 22.90625 25 C 22.734375 23.816406 22.277344 22.726563 21.59375 21.8125 L 24.5 18.9375 L 23.0625 17.5 L 20.1875 20.40625 C 19.273438 19.722656 18.183594 19.265625 17 19.09375 L 17 15 Z M 16 21 C 18.425781 21 20.441406 22.714844 20.90625 25 L 11.09375 25 C 11.558594 22.714844 13.574219 21 16 21 Z"
+            ></path>
+            <path
+              d="M 15 5 L 15 9 L 12 9 L 16 13 L 20 9 L 17 9 L 17 5 Z"
+              transform="rotate(180), translate(0, 15)"
+              transform-origin="center"
+            ></path>
+          </svg>
+          <svg viewBox="0 0 32 32" fill="currentColor" v-else width="48">
+            <path
+              d="M 15 15 L 15 19.09375 C 13.816406 19.265625 12.726563 19.722656 11.8125 20.40625 L 8.9375 17.5 L 7.5 18.9375 L 10.40625 21.8125 C 9.722656 22.726563 9.265625 23.816406 9.09375 25 L 5 25 L 5 27 L 27 27 L 27 25 L 22.90625 25 C 22.734375 23.816406 22.277344 22.726563 21.59375 21.8125 L 24.5 18.9375 L 23.0625 17.5 L 20.1875 20.40625 C 19.273438 19.722656 18.183594 19.265625 17 19.09375 L 17 15 Z M 16 21 C 18.425781 21 20.441406 22.714844 20.90625 25 L 11.09375 25 C 11.558594 22.714844 13.574219 21 16 21 Z"
+            ></path>
+            <path
+              d="M 15 5 L 15 9 L 12 9 L 16 13 L 20 9 L 17 9 L 17 5 Z"
+            ></path>
+          </svg>
+        </div>
+        <div class="name-time">
+          <span>
+            {{ name }}
+          </span>
+          <span>
+            {{ startTime }}
+          </span>
+        </div>
       </div>
     </div>
-    <div class="duration-view">
-      <span class="duration">
-        <font-awesome-icon :icon="['far', 'clock']" size="xs" />
-        {{ visitLength }}
-      </span>
-      <a
-        class="recordings-link"
-        :href="recordingsListLink"
-        @click="gotoRecordingsForVisit"
-        >View recording<span v-if="item.item.recordings.length > 1">s</span></a
-      >
+    <div v-else :class="['visit-item', 'visit', item.name]">
+      <div class="icon-name">
+        <div class="visit-badge">
+          <img
+            :src="imgSrc"
+            onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='"
+            width="48"
+            height="auto"
+            :alt="name"
+          />
+          <span class="recording-count">{{ item.item.recordings.length }}</span>
+        </div>
+        <div class="name-time">
+          <span>
+            {{ name }}
+          </span>
+          <span>
+            {{ startTime }}
+          </span>
+        </div>
+      </div>
+      <div class="duration-view">
+        <span class="duration">
+          <font-awesome-icon :icon="['far', 'clock']" size="xs" />
+          {{ visitLength }}
+        </span>
+        <a
+          class="recordings-link"
+          :href="recordingsListLink"
+          @click="gotoRecordingsForVisit"
+          >View recording<span v-if="item.item.recordings.length > 1"
+            >s</span
+          ></a
+        >
+      </div>
     </div>
   </div>
 </template>

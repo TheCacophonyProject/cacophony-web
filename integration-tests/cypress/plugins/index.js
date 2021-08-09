@@ -16,8 +16,14 @@
 
 // eslint-disable-next-line no-unused-vars
 module.exports = (on, config) => {
-  // on('after:spec', (spec) => { 
+  // on('after:spec', (spec) => {
   //   const path = spec.relative + '.md';
   //   cy.writeFile(path, 'helloworld');
   // })
+  console.log(
+    "Cypress is running in CI env?",
+    !(process.env["IS_CI_ENV"] === undefined)
+  );
+  config.video = process.env["IS_CI_ENV"] === undefined;
+  return config;
 };

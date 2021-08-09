@@ -1,15 +1,9 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types" />
 
 import { getTestName } from "../names";
-import {
-  apiPath,
-  getCreds,
-  makeAuthorizedRequest,
-  saveCreds,
-  saveIdOnly,
-  v1ApiPath
-} from "../server";
+import { apiPath, saveCreds } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 
 Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
@@ -23,39 +17,18 @@ Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
   const data = {
     username: fullName,
     password: password,
-    email: fullName + "@api.created.com", 
-    endUserAgreement: 3
+    email: fullName + "@api.created.com",
+    endUserAgreement: 3,
   };
 
   cy.request("POST", usersUrl, data).then((response) => {
-    saveCreds(response, userName);
+    const id = response.body.userData.id;
+    saveCreds(response, userName, id);
   });
 });
 
 Cypress.Commands.add(
-  "apiCreateGroup",
-  (userName: string, group: string, log = true) => {
-    logTestDescription(
-      `Create group '${group}' for user '${userName}'`,
-      { user: userName, group: group },
-      log
-    );
-
-    makeAuthorizedRequest(
-      {
-        method: "POST",
-        url: v1ApiPath("groups"),
-        body: { groupname: getTestName(group) }
-      },
-      userName
-    ).then((response) => {
-      saveIdOnly(group, response.body.groupId);
-    });
-  }
-);
-
-Cypress.Commands.add(
-  "apiCreateUserGroupAndCamera",
+  "apiCreateUserGroupAndDevice",
   (userName, group, camera) => {
     logTestDescription(
       `Create user '${userName}' with camera '${camera}' in group '${group}'`,
@@ -63,103 +36,33 @@ Cypress.Commands.add(
     );
     cy.apiCreateUser(userName, false);
     cy.apiCreateGroup(userName, group, false);
-    cy.apiCreateCamera(camera, group, false);
+    cy.apiCreateDevice(camera, group, null, null);
   }
 );
 
 Cypress.Commands.add("apiCreateUserGroup", (userName, group) => {
   logTestDescription(`Create user '${userName}' with group '${group}'`, {
     user: userName,
-    group: group
+    group: group,
   });
   cy.apiCreateUser(userName, false);
   cy.apiCreateGroup(userName, group, false);
 });
 
-Cypress.Commands.add("apiCreateGroupAndCameras", (userName, group, ...cameras) => {
-  logTestDescription(`Create group '${group}' with cameras '${prettyLog(cameras)}'`, {
-    user: userName,
-    group, 
-    cameras
-  });
-  cy.apiCreateGroup(userName, group, false);
-  cameras.forEach(camera => {
-    cy.apiCreateCamera(camera, group);
-  });
-});
-
 Cypress.Commands.add(
-  "apiAddUserToGroup",
-  (
-    groupAdminUser: string,
-    userName: string,
-    group: string,
-    admin = false,
-    log = true
-  ) => {
-    const adminStr = admin ? " as admin " : "";
+  "apiCreateGroupAndDevices",
+  (userName, group, ...cameras) => {
     logTestDescription(
-      `${groupAdminUser} Adding user '${userName}' ${adminStr} to group '${group}' ${
-        admin ? "as admin" : ""
-      }`,
-      { user: userName, group, isAdmin: admin },
-      log
-    );
-
-    makeAuthorizedRequest(
+      `Create group '${group}' with cameras '${prettyLog(cameras)}'`,
       {
-        method: "POST",
-        url: v1ApiPath("groups/users"),
-        body: {
-          group: getTestName(group),
-          admin: admin.toString(),
-          username: getTestName(userName)
-        }
-      },
-      groupAdminUser
+        user: userName,
+        group,
+        cameras,
+      }
     );
+    cy.apiCreateGroup(userName, group, false);
+    cameras.forEach((camera) => {
+      cy.apiCreateDevice(camera, group);
+    });
   }
 );
-
-Cypress.Commands.add(
-  "apiAddUserToDevice",
-  (deviceAdminUser: string, userName: string, device: string) => {
-    logTestDescription(
-      `${deviceAdminUser} Adding user '${userName}' to device '${device}'`,
-      { user: userName, device }
-    );
-
-    makeAuthorizedRequest(
-      {
-        method: "POST",
-        url: v1ApiPath("devices/users"),
-        body: {
-          deviceId: getCreds(device).id,
-          admin: "false",
-          username: getTestName(userName)
-        }
-      },
-      deviceAdminUser
-    );
-  }
-);
-
-Cypress.Commands.add("apiCheckUserCanSeeGroup", (username: string, groupname: string, testForSuccess: boolean = true) => {
-  const user = getCreds(username);
-  const fullGroupname = getTestName(groupname);
-  const fullUrl = v1ApiPath('')+encodeURI('groups?where={}');
-
-
-  cy.request({
-    url: fullUrl,
-    headers: user.headers
-  }).then((request) => {
-    const allGroupNames = Object.keys(request.body.groups).map(key => request.body.groups[key].groupname);
-    if (testForSuccess==true) {
-      expect(allGroupNames).to.contain(fullGroupname);
-    } else {
-      expect(allGroupNames).not.to.contain(fullGroupname);
-    }
-  });
-});
-

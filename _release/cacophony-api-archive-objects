@@ -1,0 +1,5 @@
+#
+# cron.d/cacophony-api-archive-objects
+#
+# Every hour at 5 minutes past the hour
+5 * * * * root (cd /srv/cacophony/api/scripts/ && node archive-objects.js) 2>&1 | logger --tag archive-objects

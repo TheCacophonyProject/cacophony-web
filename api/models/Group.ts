@@ -20,11 +20,11 @@ import Sequelize, { Op } from "sequelize";
 import AllModels, { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
 import { CreateStationData, Station, StationId } from "./Station";
-import { Recording, RecordingId, TagMode } from "./Recording";
+import { Recording } from "./Recording";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
-  tryToMatchRecordingToStation
+  tryToMatchRecordingToStation,
 } from "../api/V1/recordingUtil";
 import { AuthorizationError } from "../api/customErrors";
 import { Device } from "./Device";
@@ -75,13 +75,13 @@ const checkThatStationsAreNotTooCloseTogether = (
         name: (s as CreateStationData).name,
         location: [
           (s as CreateStationData).lat,
-          (s as CreateStationData).lng
-        ] as [number, number]
+          (s as CreateStationData).lng,
+        ] as [number, number],
       };
     } else {
       return {
         name: (s as Station).name,
-        location: (s as Station).location.coordinates
+        location: (s as Station).location.coordinates,
       };
     }
   });
@@ -109,7 +109,7 @@ const checkThatStationsAreNotTooCloseTogether = (
     }
   }
   if (Object.values(tooClosePairs).length !== 0) {
-    let pairs = {};
+    const pairs = {};
     let warnings = "Stations too close together: ";
     for (const { station, others } of Object.values(tooClosePairs)) {
       for (const other of others) {
@@ -148,8 +148,8 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
     // Group id, and after date
     GroupId: group.id,
     recordingDateTime: {
-      [Op.gte]: fromDate.toISOString()
-    }
+      [Op.gte]: fromDate.toISOString(),
+    },
   });
   builder.query.distinct = true;
   delete builder.query.limit;
@@ -165,11 +165,12 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
     );
     if (matchingStation !== null) {
       recordingOpPromises.push(
-        new Promise(async (resolve) => {
-          await recording.setStation(matchingStation);
-          resolve({
-            station: matchingStation,
-            recording
+        new Promise((resolve) => {
+          recording.setStation(matchingStation).then(() => {
+            resolve({
+              station: matchingStation,
+              recording,
+            });
           });
         })
       );
@@ -240,8 +241,8 @@ export default function (sequelize, DataTypes): GroupStatic {
   const attributes = {
     groupname: {
       type: DataTypes.STRING,
-      unique: true
-    }
+      unique: true,
+    },
   };
 
   const Group = sequelize.define(name, attributes) as unknown as GroupStatic;
@@ -275,8 +276,8 @@ export default function (sequelize, DataTypes): GroupStatic {
     const groupUser = await models.GroupUsers.findOne({
       where: {
         GroupId: group.id,
-        UserId: userToAdd.id
-      }
+        UserId: userToAdd.id,
+      },
     });
     if (groupUser != null) {
       groupUser.admin = admin; // Update admin value.
@@ -301,8 +302,8 @@ export default function (sequelize, DataTypes): GroupStatic {
     const groupUsers = await models.GroupUsers.findAll({
       where: {
         GroupId: group.id,
-        UserId: userToRemove.id
-      }
+        UserId: userToRemove.id,
+      },
     });
     for (const groupUser of groupUsers) {
       await groupUser.destroy();
@@ -334,13 +335,13 @@ export default function (sequelize, DataTypes): GroupStatic {
     warnings?: string;
   }> {
     // Enforce name uniqueness to group here:
-    let existingStations: Station[] = await group.getStations({
+    const existingStations: Station[] = await group.getStations({
       where: {
         // Filter out retired stations.
         retiredAt: {
-          [Op.eq]: null
-        }
-      }
+          [Op.eq]: null,
+        },
+      },
     });
 
     const existingStationsByName: Record<string, Station> = {};
@@ -365,7 +366,7 @@ export default function (sequelize, DataTypes): GroupStatic {
     // Make sure no two stations are too close to each other:
     const tooCloseWarning = checkThatStationsAreNotTooCloseTogether([
       ...existingStations,
-      ...stationsToAdd
+      ...stationsToAdd,
     ]);
 
     // Add new stations, or update lat/lng if station with same name but different lat lng.
@@ -377,14 +378,16 @@ export default function (sequelize, DataTypes): GroupStatic {
         stationToAddOrUpdate = new models.Station({
           name: newStation.name,
           location: [newStation.lat, newStation.lng],
-          lastUpdatedById: authUser.id
+          lastUpdatedById: authUser.id,
         });
         addedOrUpdatedStations.push(stationToAddOrUpdate);
         stationOpsPromises.push(
-          new Promise(async (resolve) => {
-            await stationToAddOrUpdate.save();
-            await group.addStation(stationToAddOrUpdate);
-            resolve(null);
+          new Promise((resolve) => {
+            stationToAddOrUpdate.save().then(() => {
+              group.addStation(stationToAddOrUpdate).then(() => {
+                resolve(null);
+              });
+            });
           })
         );
       } else {
@@ -394,7 +397,7 @@ export default function (sequelize, DataTypes): GroupStatic {
           // NOTE - Casting this as "any" because station.location has a special setter function
           (stationToAddOrUpdate as any).location = [
             newStation.lat,
-            newStation.lng
+            newStation.lng,
           ];
           stationToAddOrUpdate.lastUpdatedById = authUser.id;
           addedOrUpdatedStations.push(stationToAddOrUpdate);
@@ -423,7 +426,7 @@ export default function (sequelize, DataTypes): GroupStatic {
     } = {
       stationIdsAddedOrUpdated: addedOrUpdatedStations.map(({ id }) => id),
       updatedRecordingsPerStation: updatedRecordings
-        .map(({ station, recording }) => ({ stationId: station.id }))
+        .map(({ station }) => ({ stationId: station.id }))
         .reduce((acc, item) => {
           if (!acc.hasOwnProperty(item.stationId)) {
             acc[item.stationId] = 1;
@@ -431,7 +434,7 @@ export default function (sequelize, DataTypes): GroupStatic {
             acc[item.stationId]++;
           }
           return acc;
-        }, {})
+        }, {}),
     };
     if (tooCloseWarning !== null) {
       result.warnings = tooCloseWarning;
@@ -459,7 +462,7 @@ export default function (sequelize, DataTypes): GroupStatic {
           // https://github.com/TheCacophonyProject/cacophony-api/issues/279
           // we'd like to split this out into separate requests probably.
           attributes: ["id", "username"],
-          where: userWhere
+          where: userWhere,
         },
         {
           model: models.Device,
@@ -470,9 +473,9 @@ export default function (sequelize, DataTypes): GroupStatic {
           //  past 24 hours.
           // TODO(jon): Remove this once we have updated the front-end to use
           //  QueryRecordingsCount for the devices home page.
-          attributes: ["id", "devicename"]
-        }
-      ]
+          attributes: ["id", "devicename"],
+        },
+      ],
     }).then((groups) => {
       // TODO: Review the following with a mind to combining with the groups.findAll query to improve efficiency
       const augmentGroupData = new Promise((resolve, reject) => {
@@ -484,11 +487,11 @@ export default function (sequelize, DataTypes): GroupStatic {
                 {
                   model: models.Group,
                   where: {
-                    id: group.id
+                    id: group.id,
                   },
-                  attributes: []
-                }
-              ]
+                  attributes: [],
+                },
+              ],
             }).then(async (groupUsers) => {
               const setAdminPromises = groupUsers.map((groupUser) => {
                 return models.GroupUsers.isAdmin(group.id, groupUser.id).then(
@@ -562,7 +565,7 @@ export default function (sequelize, DataTypes): GroupStatic {
   const newUserPermissions = function (enabled) {
     return {
       canAddUsers: enabled,
-      canRemoveUsers: enabled
+      canRemoveUsers: enabled,
     };
   };
 

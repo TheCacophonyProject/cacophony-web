@@ -2,7 +2,7 @@ import config from "../config";
 import { Recording } from "../models/Recording";
 import { TrackTag } from "../models/TrackTag";
 import log from "../logging";
-import moment, { Moment } from "moment";
+import moment from "moment";
 import { SMTPClient, Message } from "emailjs";
 import { Readable } from "stream";
 
@@ -43,18 +43,18 @@ async function sendEmail(
       from: config.smtpDetails.from_name,
       to: to,
       subject: subject,
-      attachment: [{ data: html, alternative: true }]
+      attachment: [{ data: html, alternative: true }],
     });
     if (thumbnail) {
       message.attach({
         stream: Readable.from(thumbnail),
         type: "image/png",
-        headers: { "Content-ID": "<thumbnail>" }
+        headers: { "Content-ID": "<thumbnail>" },
       });
     }
     await client.sendAsync(message);
   } catch (err) {
-    log.error(err);
+    log.error(err.toString());
     return false;
   }
   return true;

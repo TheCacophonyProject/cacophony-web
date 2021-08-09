@@ -9,14 +9,18 @@ declare namespace Cypress {
     createGroup(group: string): Chainable<Element>;
 
     /**
-     * Browser: Navigate to gorups page
+     * Browser: Navigate to groups page
      */
     checkOnGroupPage(): Chainable<Element>;
 
     /**
-     * Browser: Add user to group optioanlly as an admin
+     * Browser: Add user to group optionally as an admin
      */
-    addUserToGroup(userName: string, groupname: string, admin?: boolean): Chainable<Element>;
+    addUserToGroup(
+      userName: string,
+      groupname: string,
+      admin?: boolean
+    ): Chainable<Element>;
 
     /**
      * Browser: Navigate to specific group page
@@ -26,6 +30,6 @@ declare namespace Cypress {
     /**
      * Browser: Verify group contains specific device
      */
-    checkDeviceInGroup(device:string, group: string): Chainable<Element>;
+    checkDeviceInGroup(device: string, group: string): Chainable<Element>;
   }
 }

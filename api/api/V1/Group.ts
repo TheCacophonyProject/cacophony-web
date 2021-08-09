@@ -40,10 +40,10 @@ const validateStationsJson = (val, { req }) => {
         properties: {
           name: { type: "string" },
           lat: { type: "number" },
-          lng: { type: "number" }
+          lng: { type: "number" },
         },
-        required: ["name", "lat", "lng"]
-      }
+        required: ["name", "lat", "lng"],
+      },
     },
     { throwFirst: true }
   );
@@ -75,17 +75,17 @@ export default function (app: Application, baseUrl: string) {
       auth.authenticateUser,
       middleware.isValidName(body, "groupname").custom((value) => {
         return models.Group.freeGroupname(value);
-      })
+      }),
     ],
     middleware.requestWrapper(async (request, response) => {
       const newGroup = await models.Group.create({
-        groupname: request.body.groupname
+        groupname: request.body.groupname,
       });
       await newGroup.addUser(request.user.id, { through: { admin: true } });
       return responseUtil.send(response, {
         statusCode: 200,
         groupId: newGroup.id,
-        messages: ["Created new group."]
+        messages: ["Created new group."],
       });
     })
   );
@@ -109,7 +109,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.parseJSON("where", query).optional(),
-      middleware.viewMode()
+      middleware.viewMode(),
     ],
     middleware.requestWrapper(async (request, response) => {
       const groups = await models.Group.query(
@@ -120,7 +120,7 @@ export default function (app: Application, baseUrl: string) {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        groups
+        groups,
       });
     })
   );
@@ -142,7 +142,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      middleware.viewMode()
+      middleware.viewMode(),
     ],
     middleware.requestWrapper(async (request, response) => {
       const groups = await models.Group.query(
@@ -153,7 +153,7 @@ export default function (app: Application, baseUrl: string) {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        groups
+        groups,
       });
     })
   );
@@ -177,20 +177,20 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup
+      auth.userHasReadAccessToGroup,
     ],
     middleware.requestWrapper(async (request, response) => {
       const devices = await request.body.group.getDevices({
         where: { active: true },
-        attributes: ["id", "devicename"]
+        attributes: ["id", "devicename"],
       });
       return responseUtil.send(response, {
         statusCode: 200,
         devices: devices.map(({ id, devicename }) => ({
           id,
-          deviceName: devicename
+          deviceName: devicename,
         })),
-        messages: ["Got devices for group"]
+        messages: ["Got devices for group"],
       });
     })
   );
@@ -214,20 +214,20 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup
+      auth.userHasReadAccessToGroup,
     ],
     middleware.requestWrapper(async (request, response) => {
       const users = await request.body.group.getUsers({
-        attributes: ["id", "username"]
+        attributes: ["id", "username"],
       });
       return responseUtil.send(response, {
         statusCode: 200,
         users: users.map(({ username, id, GroupUsers }) => ({
           userName: username,
           id,
-          isGroupAdmin: GroupUsers.admin
+          isGroupAdmin: GroupUsers.admin,
         })),
-        messages: ["Got users for group"]
+        messages: ["Got users for group"],
       });
     })
   );
@@ -251,20 +251,20 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup
+      auth.userHasReadAccessToGroup,
     ],
     middleware.requestWrapper(async (request, response) => {
       const users = await request.body.group.getUsers({
-        attributes: ["id", "username"]
+        attributes: ["id", "username"],
       });
       return responseUtil.send(response, {
         statusCode: 200,
         users: users.map(({ username, id, GroupUsers }) => ({
           userName: username,
           id,
-          isGroupAdmin: GroupUsers.admin
+          isGroupAdmin: GroupUsers.admin,
         })),
-        messages: ["Got users for group"]
+        messages: ["Got users for group"],
       });
     })
   );
@@ -292,7 +292,7 @@ export default function (app: Application, baseUrl: string) {
       auth.authenticateUser,
       middleware.getGroupByNameOrId(body),
       middleware.getUserByNameOrId(body),
-      body("admin").isBoolean()
+      body("admin").isBoolean(),
     ],
     middleware.requestWrapper(async (request, response) => {
       await models.Group.addUserToGroup(
@@ -303,7 +303,7 @@ export default function (app: Application, baseUrl: string) {
       );
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Added user to group."]
+        messages: ["Added user to group."],
       });
     })
   );
@@ -327,7 +327,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getUserByNameOrId(body),
-      middleware.getGroupByNameOrId(body)
+      middleware.getGroupByNameOrId(body),
     ],
     middleware.requestWrapper(async (request, response) => {
       await models.Group.removeUserFromGroup(
@@ -337,7 +337,7 @@ export default function (app: Application, baseUrl: string) {
       );
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Removed user from the group."]
+        messages: ["Removed user from the group."],
       });
     })
   );
@@ -367,7 +367,7 @@ export default function (app: Application, baseUrl: string) {
         .isJSON()
         .withMessage("Expected JSON array")
         .custom(validateStationsJson),
-      body("fromDate").isISO8601().toDate().optional()
+      body("fromDate").isISO8601().toDate().optional(),
     ],
     middleware.requestWrapper(async (request, response) => {
       const stationsUpdated = await models.Group.addStationsToGroup(
@@ -379,7 +379,7 @@ export default function (app: Application, baseUrl: string) {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Added stations to group."],
-        ...stationsUpdated
+        ...stationsUpdated,
       });
     })
   );
@@ -403,14 +403,14 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup
+      auth.userHasReadAccessToGroup,
     ],
     middleware.requestWrapper(async (request, response) => {
       const stations = await request.body.group.getStations();
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got stations for group"],
-        stations
+        stations,
       });
     })
   );

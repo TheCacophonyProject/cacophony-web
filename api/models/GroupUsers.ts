@@ -24,7 +24,7 @@ import { UserId } from "./User";
 export enum AccessLevel {
   None = 0,
   Read = 1,
-  Admin = 2
+  Admin = 2,
 }
 
 export interface GroupUsers extends Sequelize.Model, ModelCommon<GroupUsers> {}
@@ -39,8 +39,8 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
   const attributes = {
     admin: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false
-    }
+      defaultValue: false,
+    },
   };
 
   const GroupUsers = sequelize.define(
@@ -66,8 +66,8 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
     const groupUsers = await this.findOne({
       where: {
         GroupId: groupId,
-        UserId: userId
-      }
+        UserId: userId,
+      },
     });
 
     if (groupUsers == null) {

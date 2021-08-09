@@ -11,6 +11,7 @@
     "include": [
         "./models/**/*.ts",
         "./api/**/*.ts",
+        "./scripts/**/*.ts",
         "./**/*.ts"
     ],
     "exclude": [

@@ -1,27 +1,16 @@
 import config from "./config";
-import winston from "winston";
-import expressWinston from "express-winston";
+import winston, { format } from "winston";
 
-const consoleTransport = new winston.transports.Console({
-  name: "console",
+export const consoleTransport = new winston.transports.Console({
   level: config.server.loggerLevel,
-  colorize: true,
+  format: format.combine(format.colorize(), format.splat(), format.simple()),
   handleExceptions: true,
-  humanReadableUnhandledException: true
 });
 
-const logger = new winston.Logger({
-  transports: [consoleTransport]
+const logger = winston.createLogger({
+  levels: winston.config.syslog.levels,
+  transports: [consoleTransport],
+  exitOnError: false,
 });
-
-logger.addExpressApp = function (app) {
-  app.use(
-    expressWinston.logger({
-      transports: [consoleTransport],
-      meta: false,
-      expressFormat: true
-    })
-  );
-};
 
 export default logger;

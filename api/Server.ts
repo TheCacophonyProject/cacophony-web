@@ -6,20 +6,27 @@ import process from "process";
 import http from "http";
 import config from "./config";
 import models from "./models";
-import log from "./logging";
+import log, { consoleTransport } from "./logging";
 import customErrors from "./api/customErrors";
 import modelsUtil from "./models/util/util";
 import api from "./api/V1";
 import fileProcessingApi from "./api/fileProcessing";
+import expressWinston from "express-winston";
 
-log.info("Starting Full Noise.");
+log.notice("Starting Full Noise.");
 config.loadConfigFromArgs(true);
 
 const app: Application = express();
 app.use(bodyParser.urlencoded({ extended: false, limit: "2Mb" }));
 app.use(bodyParser.json());
 app.use(passport.initialize());
-log.addExpressApp(app);
+app.use(
+  expressWinston.logger({
+    transports: [consoleTransport],
+    meta: false,
+    expressFormat: true,
+  })
+);
 
 // Adding API documentation
 app.use(express.static(__dirname + "/apidoc"));
@@ -48,17 +55,17 @@ const fileProcessingApp = express();
 fileProcessingApp.use(bodyParser.urlencoded({ extended: false, limit: "2Mb" }));
 fileProcessingApi(fileProcessingApp);
 http.createServer(fileProcessingApp).listen(config.fileProcessing.port);
-log.info("Starting file processing on", config.fileProcessing.port);
+log.notice("Starting file processing on %d", config.fileProcessing.port);
 fileProcessingApp.use(customErrors.errorHandler);
 
-log.info("Connecting to database.....");
+log.notice("Connecting to database.....");
 models.sequelize
   .authenticate()
   .then(() => log.info("Connected to database."))
   .then(() => checkS3Connection())
   .then(() => openHttpServer(app))
   .catch(function (error) {
-    log.error(error);
+    log.error(error.toString());
     process.exit(2);
   });
 
@@ -68,7 +75,7 @@ function openHttpServer(app): Promise<void> {
       return resolve();
     }
     try {
-      log.info("Starting http server on ", config.server.http.port);
+      log.notice("Starting http server on %d", config.server.http.port);
       http.createServer(app).listen(config.server.http.port);
       return resolve();
     } catch (err) {
@@ -82,14 +89,14 @@ function openHttpServer(app): Promise<void> {
 function checkS3Connection(): Promise<void> {
   return new Promise(function (resolve, reject) {
     const s3 = modelsUtil.openS3();
-    const params = { Bucket: config.s3.bucket };
-    log.info("Connecting to S3.....");
+    const params = { Bucket: config.s3Local.bucket };
+    log.notice("Connecting to S3.....");
     s3.headBucket(params, function (err) {
       if (err) {
         log.error("Error with connecting to S3.");
         return reject(err);
       }
-      log.info("Connected to S3.");
+      log.notice("Connected to S3.");
       return resolve();
     });
   });

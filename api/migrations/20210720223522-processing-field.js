@@ -7,14 +7,14 @@ module.exports = {
         "Recordings",
         "processingEndTime",
         Sequelize.DATE
-      )
+      ),
     ]);
   },
 
   down: async function (queryInterface) {
     await Promise.all([
       queryInterface.removeColumn("Recordings", "processing"),
-      queryInterface.removeColumn("Recordings", "processingEndTime")
+      queryInterface.removeColumn("Recordings", "processingEndTime"),
     ]);
-  }
+  },
 };

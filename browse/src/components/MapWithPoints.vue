@@ -6,7 +6,7 @@
       pointerEvents: isInteractive ? 'auto' : 'none',
     }"
     :bounds="mapBounds"
-    :options="{ zoomControl: zoom, dragging: isInteractive }"
+    :options="{ zoomControl: zoom, dragging: isInteractive, maxZoom: 17 }"
     @ready="onReady"
   >
     <l-control-layers v-if="canChangeBaseMap && mapLayers.length > 1" />
@@ -107,6 +107,14 @@ export default {
   },
   computed: {
     mapLayers() {
+      const OpenTopoMapFallbackLayer = {
+        name: "OpenTopoMap Basemap",
+        visible: false,
+        url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        maxZoom: 17,
+        attribution:
+          'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+      };
       const OpenStreetMapFallbackLayer = {
         name: "OpenStreetMap Basemap",
         visible: false,
@@ -130,10 +138,14 @@ export default {
               '<a href="//www.linz.govt.nz/data/linz-data/linz-basemaps/data-attribution">LINZ CC BY 4.0 © Imagery Basemap contributors</a>',
             url: `http://tiles-a.data-cdn.linz.govt.nz/services;key=${linzBasemapApiKey}/tiles/v4/layer=767/EPSG:3857/{z}/{x}/{y}.png`,
           },
+          OpenTopoMapFallbackLayer,
           OpenStreetMapFallbackLayer,
         ];
       }
-      return [{ ...OpenStreetMapFallbackLayer, visible: true }];
+      return [
+        { ...OpenTopoMapFallbackLayer, visible: true },
+        { ...OpenStreetMapFallbackLayer },
+      ];
     },
     mapBounds() {
       // Calculate the initial map bounds and zoom level from the set of lat/lng points

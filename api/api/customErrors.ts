@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "../logging";
 import { format } from "util";
 
-// eslint-disable-next-line no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function errorHandler(err, request, response, next) {
   if (
     err instanceof SyntaxError &&
@@ -28,13 +28,13 @@ function errorHandler(err, request, response, next) {
     err = new ClientError(err.message, 422); // Convert invalid JSON body error to UnprocessableEntity
   }
   if (err instanceof CustomError) {
-    log.warn(err.toString());
+    log.warning(err.toString());
     return response.status(err.statusCode).json(err.toJson());
   }
-  log.error(err);
+  log.error(err.toString());
   response.status(500).json({
     message: "Internal server error: " + err.name + ".",
-    errorType: "server"
+    errorType: "server",
   });
 }
 
@@ -64,7 +64,7 @@ class CustomError extends Error {
   toJson() {
     return {
       message: this.message,
-      errorType: this.getErrorType()
+      errorType: this.getErrorType(),
     };
   }
 }
@@ -85,7 +85,7 @@ class ValidationError extends CustomError {
     return {
       errorType: this.getErrorType(),
       message: this.message,
-      errors: this.errors.mapped()
+      errors: this.errors.mapped(),
     };
   }
 }
@@ -113,5 +113,5 @@ export default {
   AuthenticationError,
   AuthorizationError,
   ClientError,
-  errorHandler
+  errorHandler,
 };

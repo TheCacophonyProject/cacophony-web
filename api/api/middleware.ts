@@ -23,7 +23,7 @@ import {
   ValidationChain,
   ValidationChainBuilder,
   validationResult,
-  ValidatorOptions
+  ValidatorOptions,
 } from "express-validator/check";
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
@@ -103,7 +103,9 @@ const convertToIdArray = function (idsAsString: string): number[] {
       } else {
         return [val];
       }
-    } catch (error) {}
+    } catch (error) {
+      return [];
+    }
   }
   return [];
 };
@@ -129,8 +131,9 @@ const getAsDate = function (dateAsString: string): number {
   try {
     console.log("date is " + dateAsString);
     return Date.parse(dateAsString);
-  } catch (error) {}
-  return NaN;
+  } catch (error) {
+    return NaN;
+  }
 };
 
 const DATE_ERROR =
@@ -201,7 +204,7 @@ function getGroupByNameOrIdDynamic(
   return oneOf(
     [
       getModelById(models.Group, fieldName, checkFunc),
-      getModelByName(models.Group, fieldName, checkFunc)
+      getModelByName(models.Group, fieldName, checkFunc),
     ],
     "Group doesn't exist or hasn't been specified."
   );
@@ -271,7 +274,7 @@ const isValidName = function (
 
 const checkNewPassword = function (field: string): ValidationChain {
   return body(field, "Password must be at least 8 characters long").isLength({
-    min: 8
+    min: 8,
   });
 };
 
@@ -406,5 +409,5 @@ export default {
   isDateArray,
   getUserByEmail,
   setGroupName,
-  viewMode
+  viewMode,
 };

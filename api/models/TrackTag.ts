@@ -44,7 +44,7 @@ export default function (
     what: DataTypes.STRING,
     confidence: DataTypes.FLOAT,
     automatic: DataTypes.BOOLEAN,
-    data: DataTypes.JSONB
+    data: DataTypes.JSONB,
   }) as unknown as TrackTagStatic;
 
   //---------------
