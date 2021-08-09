@@ -256,6 +256,7 @@ interface ItemData {
   batteryLevel: number | null;
   trackCount: number;
   processingState: string;
+  processing: boolean;
 }
 
 export default {
@@ -284,6 +285,9 @@ export default {
     },
   },
   watch: {
+    showCards() {
+      this.$refs["list-container"].style.height = 'auto';
+    },
     recordings() {
       let prevDate = null;
       const recordings = this.recordings as RecordingInfo[];
@@ -338,6 +342,7 @@ export default {
           batteryLevel: recording.batteryLevel,
           trackCount: recording.Tracks.length,
           processingState: parseProcessingState(recording.processingState),
+          processing: recording.processing !== null,
         };
         if (recording.Station) {
           itemData.stationName = recording.Station.name;
@@ -428,7 +433,9 @@ export default {
     }
     if (maxY.length) {
       const observerTrigger = maxY[maxY.length - 1][1];
-      this.$refs["list-container"].style.height = `${maxY[0][0]}px`;
+      if (this.showCards) {
+        this.$refs["list-container"].style.height = `${maxY[0][0]}px`;
+      }
       this.observer && this.observer.observe(observerTrigger);
     }
   },

@@ -1,5 +1,5 @@
 <template>
-  <div class="container" v-if="!loading">
+  <div class="container" v-if="!loading" style="padding: 0">
     <h2>
       Devices
       <help>

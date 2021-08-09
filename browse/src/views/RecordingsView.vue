@@ -25,6 +25,7 @@
           <div class="results-summary">
             <div class="float-right">
               <b-button
+                v-if="screenWidth > 500"
                 variant="light"
                 class="display-toggle btn-sm"
                 @click="toggleResultsDisplayStyle"
@@ -81,11 +82,12 @@ export default {
       recordings: [],
       count: null,
       countMessage: null,
+      showCardsInternal: this.getPreferredResultsDisplayStyle(),
       currentPage: 1,
+      screenWidth: window.innerWidth,
       perPage: this.getPreferredResultsDisplayStyle()
         ? LOAD_PER_PAGE_CARDS
         : LOAD_PER_PAGE_ROWS,
-      showCards: this.getPreferredResultsDisplayStyle(),
     };
   },
   watch: {
@@ -99,6 +101,7 @@ export default {
     },
   },
   mounted() {
+    window.addEventListener("resize", this.onResize);
     if (this.$route.query.limit) {
       this.perPage = Number(this.$route.query.limit);
     }
@@ -108,6 +111,18 @@ export default {
     }
   },
   computed: {
+    showCards: {
+      get() {
+        if (this.screenWidth < 500) {
+          return true;
+        }
+        return this.showCardsInternal;
+      },
+      set(val) {
+        this.showCardsInternal = val;
+        localStorage.setItem("results-display-style", val ? "card" : "row");
+      },
+    },
     viewRecordingQuery() {
       const queryCopy = JSON.parse(JSON.stringify(this.serialisedQuery));
 
@@ -136,6 +151,9 @@ export default {
     },
   },
   methods: {
+    onResize() {
+      this.screenWidth = window.innerWidth;
+    },
     async requestMoreRecordings() {
       const nextQuery = this.makePaginatedQuery(
         this.serialisedQuery,
@@ -170,10 +188,6 @@ export default {
     },
     toggleResultsDisplayStyle() {
       this.showCards = !this.showCards;
-      localStorage.setItem(
-        "results-display-style",
-        this.showCards ? "card" : "row"
-      );
     },
     makePaginatedQuery(origQuery, page, perPage) {
       const query = { ...origQuery };

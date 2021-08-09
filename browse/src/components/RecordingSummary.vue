@@ -49,7 +49,18 @@
           </span>
         </span>
         <span class="recording-device">
-          <font-awesome-icon icon="microchip" size="xs" />
+          <font-awesome-icon
+              v-if="item.type === 'thermalRaw'"
+              icon="video"
+              class="icon"
+              size="xs"
+          />
+          <font-awesome-icon
+              v-else-if="item.type === 'audio'"
+              icon="music"
+              class="icon"
+              size="xs"
+          />
           <span class="label">
             <b-link
               :to="{
@@ -66,9 +77,10 @@
           </span>
         </span>
         <span class="recording-tracks">
-          <b-spinner small v-if="queuedForProcessing" />
-          <font-awesome-icon icon="stream" size="xs" v-else />
+          <b-spinner small v-if="queuedForProcessing || processing" />
+          <font-awesome-icon icon="stream" size="xs" v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0" />
           <span class="label" v-if="queuedForProcessing">Queued</span>
+          <span class="label" v-else-if="processing">Processing</span>
           <span
             class="label"
             v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
@@ -86,7 +98,7 @@
       <div class="recording-time-duration">
         <div class="recording-time">
           <font-awesome-icon :icon="['far', 'calendar']" size="xs" />
-          <span class="label">{{ item.date }} {{ item.time }}</span>
+          <span class="label"><span class="item-date">{{ item.date }}</span> {{ item.time }}</span>
         </div>
         <div class="recording-duration">
           <font-awesome-icon :icon="['far', 'clock']" size="xs" />
@@ -184,7 +196,7 @@
       :title="`${item.deviceName}: #${item.id}`"
       lazy
     >
-      <MapWithPoints :points="[itemLocation]" />
+      <MapWithPoints :points="itemLocation" />
     </b-modal>
     <span @click="showLocation">{{ item.location }}</span>
     <BatteryLevel v-if="item.batteryLevel" :battery-level="item.batteryLevel" />
@@ -229,11 +241,11 @@ export default {
       },
     },
     queuedForProcessing(): boolean {
-      return this.item.processingState === "Analyse";
+      return this.item.processingState === "Analyse" && this.item.processing === null;
     },
     processing(): boolean {
       return (
-        this.item.processingState === "Analyse" && this.item.processingStartTime
+        this.item.processing
       );
     },
     itemLocation(): { name: string; location: string }[] {
@@ -278,7 +290,10 @@ export default {
 @import "~bootstrap/scss/variables";
 @import "~bootstrap/scss/mixins";
 
+
 $recording-side-padding: 0.9rem;
+$recording-side-padding-small: 0.5rem;
+
 
 .svg-inline--fa,
 .spinner-border-sm {
@@ -291,6 +306,12 @@ $recording-side-padding: 0.9rem;
   flex-flow: row nowrap;
   border: 1px solid $border-color;
   margin-bottom: 1rem;
+  @include media-breakpoint-up(xs) {
+    margin-bottom: 0.5rem;
+  }
+  @include media-breakpoint-down(xs) {
+    font-size: 90%;
+  }
   cursor: pointer;
   transition: box-shadow 0.2s;
   color: unset;
@@ -347,6 +368,9 @@ $recording-side-padding: 0.9rem;
   @include media-breakpoint-up(sm) {
     padding: 1rem 1.1rem;
   }
+  @include media-breakpoint-up(xs) {
+    display: none;
+  }
   flex: 0 1 auto;
   .fa-2x {
     font-size: 1.5em;
@@ -359,6 +383,9 @@ $recording-side-padding: 0.9rem;
   display: flex;
   flex-flow: column nowrap;
   min-height: 110px;
+  @include media-breakpoint-up(xs) {
+    min-height: unset;
+  }
   .svg-inline--fa {
     // set a fixed width on fontawesome icons so they align neatly when stacked
     width: 16px;
@@ -366,6 +393,9 @@ $recording-side-padding: 0.9rem;
   .recording-details {
     flex: 1 1 auto;
     padding: 0.7rem $recording-side-padding;
+    @include media-breakpoint-down(xs) {
+      padding: 0.25rem $recording-side-padding-small;
+    }
     .recording-station,
     .recording-group,
     .recording-device {
@@ -374,7 +404,7 @@ $recording-side-padding: 0.9rem;
       word-break: break-word;
       margin-right: 0.5rem;
       @include media-breakpoint-down(xs) {
-        display: block;
+        //display: block;
       }
     }
   }
@@ -383,7 +413,11 @@ $recording-side-padding: 0.9rem;
   }
 
   .recording-tags {
+    display: flex;
     padding: 0 $recording-side-padding 0.9rem;
+    @include media-breakpoint-down(xs) {
+      padding: 0.25rem $recording-side-padding-small;
+    }
     margin-top: -0.4rem;
   }
   .recording-time-duration {
@@ -391,8 +425,12 @@ $recording-side-padding: 0.9rem;
     flex-flow: row wrap;
     border-top: 1px solid $border-color;
     > div {
+
       padding: 0.5rem $recording-side-padding;
       font-size: 85%;
+      @include media-breakpoint-down(xs) {
+        padding: 0.25rem $recording-side-padding-small;
+      }
     }
     .recording-duration,
     .recording-battery {
@@ -400,15 +438,6 @@ $recording-side-padding: 0.9rem;
     }
     .recording-duration {
       margin-right: auto;
-    }
-    @include media-breakpoint-down(xs) {
-      .recording-time {
-        width: 100%;
-        border-bottom: 1px solid $border-color;
-      }
-      .recording-duration {
-        border-left: none;
-      }
     }
   }
 }
