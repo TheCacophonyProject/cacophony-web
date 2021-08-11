@@ -27,6 +27,8 @@ export default function (app: Application) {
     const type = request.query.type as RecordingType;
     const state = request.query.state as RecordingProcessingState;
     const recording = await models.Recording.getOneForProcessing(type, state);
+    const rawJWT = recordingUtil.signedToken(recording.rawFileKey, recording.getRawFileName(), recording.rawMimeType);
+
     if (recording == null) {
       log.debug("No file to be processed.");
       return response.status(204).json();
@@ -35,6 +37,7 @@ export default function (app: Application) {
         // FIXME(jon): Test that dataValues is even a thing.  It's not a publicly
         //  documented sequelize property.
         recording: (recording as any).dataValues,
+        rawJWT: rawJWT
       });
     }
   });
