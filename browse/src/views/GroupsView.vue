@@ -221,9 +221,9 @@ export default {
               };
               groups[entry.GroupId].Devices.push(device);
               groups[entry.GroupId].initialDeviceCount =
-                  groups[entry.GroupId].Devices.length;
+                groups[entry.GroupId].Devices.length;
               groups[entry.GroupId].deviceCount =
-                  groups[entry.GroupId].Devices.length;
+                groups[entry.GroupId].Devices.length;
               // Now we should be able to show the groups for those devices.
             }
           }
@@ -247,7 +247,7 @@ export default {
           for (const group of Object.values(groups)) {
             if (
               !tempGroups.find(
-                (tempGroup) => tempGroup.groupName === group.groupName
+                (tempGroup) => tempGroup.groupName === (group as any).groupName
               )
             ) {
               tempGroups.push(group);
