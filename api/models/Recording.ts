@@ -823,7 +823,10 @@ from (
   };
 
   Recording.prototype.getRawFileName = function () {
-    return this.getFileBaseName() + this.getRawFileExt();
+    console.log("getting raw filename")
+  let   res =  this.getFileBaseName() + this.getRawFileExt();
+    console.log("got raw filename")
+    return res
   };
 
   Recording.prototype.getFileName = function () {

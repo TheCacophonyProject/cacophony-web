@@ -27,12 +27,14 @@ export default function (app: Application) {
     const type = request.query.type as RecordingType;
     const state = request.query.state as RecordingProcessingState;
     const recording = await models.Recording.getOneForProcessing(type, state);
-    const rawJWT = recordingUtil.signedToken(recording.rawFileKey, recording.getRawFileName(), recording.rawMimeType);
 
     if (recording == null) {
       log.debug("No file to be processed.");
       return response.status(204).json();
     } else {
+      console.log("getting jwt", recording);
+      const rawJWT = recordingUtil.signedToken(recording.rawFileKey, recording.getRawFileName(), recording.rawMimeType);
+      console.log("cant get jwt")
       return response.status(200).json({
         // FIXME(jon): Test that dataValues is even a thing.  It's not a publicly
         //  documented sequelize property.
@@ -41,6 +43,17 @@ export default function (app: Application) {
       });
     }
   });
+
+    /**
+     * @api {put} /api/fileProcessing/processed Finished a file processing job
+     * @apiName PostProcessedFile
+     * @apiGroup FileProcessing
+     *
+     * @apiParam {Integer} id ID of the recording.
+     */
+    app.put(apiUrl, async (request: Request, response: Response) => {
+      middleware.requestWrapper(recordingUtil.makeProcessedUploadHandler())
+    });
 
   /**
    * @api {put} /api/fileProcessing Finished a file processing job
