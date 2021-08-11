@@ -209,21 +209,23 @@ export default {
           //  get the latest recording for a device, and that contains it.  Will fail if device has no recordings.
           for (const device of myDevices) {
             const rec = await api.recording.latestForDevice(device.id);
-            const entry = rec.result.rows[0];
-            groups[entry.GroupId] = groups[entry.GroupId] || {
-              Devices: [],
-              groupName: entry.Group.groupname,
-              userCount: 1,
-              initialDeviceCount: 0,
-              deviceCount: 0,
-              deviceOnly: true,
-            };
-            groups[entry.GroupId].Devices.push(device);
-            groups[entry.GroupId].initialDeviceCount =
-              groups[entry.GroupId].Devices.length;
-            groups[entry.GroupId].deviceCount =
-              groups[entry.GroupId].Devices.length;
-            // Now we should be able to show the groups for those devices.
+            if (rec.result.rows.length) {
+              const entry = rec.result.rows[0];
+              groups[entry.GroupId] = groups[entry.GroupId] || {
+                Devices: [],
+                groupName: entry.Group.groupname,
+                userCount: 1,
+                initialDeviceCount: 0,
+                deviceCount: 0,
+                deviceOnly: true,
+              };
+              groups[entry.GroupId].Devices.push(device);
+              groups[entry.GroupId].initialDeviceCount =
+                  groups[entry.GroupId].Devices.length;
+              groups[entry.GroupId].deviceCount =
+                  groups[entry.GroupId].Devices.length;
+              // Now we should be able to show the groups for those devices.
+            }
           }
         } catch (e) {
           // ....
