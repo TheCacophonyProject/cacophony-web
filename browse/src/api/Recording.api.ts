@@ -79,6 +79,7 @@ export interface RecordingInfo {
   relativeToDawn?: null;
   relativeToDusk?: null;
   version?: null;
+  processing: boolean | null;
   batteryCharging?: null;
   airplaneModeOn?: null;
   additionalMetadata?: {

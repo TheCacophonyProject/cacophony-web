@@ -342,7 +342,7 @@ export default {
           batteryLevel: recording.batteryLevel,
           trackCount: recording.Tracks.length,
           processingState: parseProcessingState(recording.processingState),
-          processing: recording.processing !== null,
+          processing: recording.processing === true,
         };
         if (recording.Station) {
           itemData.stationName = recording.Station.name;
