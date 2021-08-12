@@ -33,12 +33,16 @@ export default function (app: Application) {
       log.debug("No file to be processed.");
       return response.status(204).json();
     } else {
-      const rawJWT = recordingUtil.signedToken(recording.rawFileKey, recording.getRawFileName(), recording.rawMimeType);
+      const rawJWT = recordingUtil.signedToken(
+        recording.rawFileKey,
+        recording.getRawFileName(),
+        recording.rawMimeType
+      );
       return response.status(200).json({
         // FIXME(jon): Test that dataValues is even a thing.  It's not a publicly
         //  documented sequelize property.
         recording: (recording as any).dataValues,
-        rawJWT: rawJWT
+        rawJWT: rawJWT,
       });
     }
   });
@@ -50,14 +54,15 @@ export default function (app: Application) {
    *
    * @apiParam {String} [fileKey] of the uploaded file in db
    */
-    app.post(    `${apiUrl}/processed`,
-      middleware.requestWrapper(
-        util.multipartUpload("file", async (request,response, data, key) => {
-          responseUtil.validFileUpload(response, key);
-          return key
-        })
-      )
-    );
+  app.post(
+    `${apiUrl}/processed`,
+    middleware.requestWrapper(
+      util.multipartUpload("file", async (request, response, data, key) => {
+        responseUtil.validFileUpload(response, key);
+        return key;
+      })
+    )
+  );
 
   /**
    * @api {put} /api/fileProcessing Finished a file processing job

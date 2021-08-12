@@ -151,7 +151,7 @@ function multipartUpload(keyPrefix, onSaved) {
         }
 
         data.filename = filename;
-        await onSaved(request, response,data, key);
+        await onSaved(request, response, data, key);
       } catch (err) {
         responseUtil.serverError(response, err);
         return;

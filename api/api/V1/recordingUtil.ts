@@ -324,7 +324,7 @@ async function createThumbnail(
 }
 
 function makeUploadHandler(mungeData?: (any) => any) {
-  return util.multipartUpload("raw", async (request,response, data, key) => {
+  return util.multipartUpload("raw", async (request, response, data, key) => {
     if (mungeData) {
       data = mungeData(data);
     }
@@ -409,7 +409,6 @@ function makeUploadHandler(mungeData?: (any) => any) {
       recording.public = request.device.public;
     }
 
-
     if (data.metadata) {
       await tracksFromMeta(recording, data.metadata);
     }
@@ -438,7 +437,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
     await recording.save();
 
     responseUtil.validRecordingUpload(response, recording.id);
-    return recording
+    return recording;
   });
 }
 
@@ -714,12 +713,20 @@ async function get(request, type?: RecordingType) {
   };
 
   if (recording.fileKey) {
-    data.cookedJWT =    signedToken(recording.fileKey, recording.getFileName(), recording.fileMimeType)
+    data.cookedJWT = signedToken(
+      recording.fileKey,
+      recording.getFileName(),
+      recording.fileMimeType
+    );
     data.cookedSize = await util.getS3ObjectFileSize(recording.fileKey);
   }
 
   if (recording.rawFileKey) {
-    data.rawJWT = signedToken(recording.rawFileKey, recording.getRawFileName(), recording.rawMimeType)
+    data.rawJWT = signedToken(
+      recording.rawFileKey,
+      recording.getRawFileName(),
+      recording.rawMimeType
+    );
     data.rawSize = await util.getS3ObjectFileSize(recording.rawFileKey);
   }
 
@@ -729,7 +736,7 @@ async function get(request, type?: RecordingType) {
   return data;
 }
 
-function signedToken(key, file, mimeType){
+function signedToken(key, file, mimeType) {
   return jsonwebtoken.sign(
     {
       _type: "fileDownload",
@@ -1392,5 +1399,5 @@ export default {
   saveThumbnailInfo,
   sendAlerts,
   getThumbnail,
-  signedToken
+  signedToken,
 };

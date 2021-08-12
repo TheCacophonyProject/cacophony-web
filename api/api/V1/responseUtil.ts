@@ -76,8 +76,6 @@ function validFileUpload(response, key) {
   });
 }
 
-
-
 function validDatapointUpdate(response) {
   send(response, {
     statusCode: 200,
