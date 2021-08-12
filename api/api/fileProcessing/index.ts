@@ -22,6 +22,9 @@ export default function (app: Application) {
    *
    * @apiParam {String} type Type of recording.
    * @apiParam {String} state Processing state.
+   * @apiSuccess {recording} requested
+   * @apiSuccess {String} signed url to download the raw file
+
    */
   app.get(apiUrl, async (request: Request, response: Response) => {
     log.info(`${request.method} Request: ${request.url}`);
@@ -51,8 +54,11 @@ export default function (app: Application) {
    * @api {put} /api/fileProcessing/processed Upload a processed file to the db
    * @apiName PostProcessedFile
    * @apiGroup FileProcessing
+
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {String} fileKey of uploaded file
    *
-   * @apiParam {String} [fileKey] of the uploaded file in db
+   * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/processed`,
