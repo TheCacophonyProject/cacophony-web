@@ -45,6 +45,7 @@ class TestFileProcessing:
     def test_thermal_video_with_meta(self, helper, file_processing):
         self.process_all_recordings(file_processing)
         user = helper.admin_user()
+
         track_meta = {
             "start_s": 10,
             "end_s": 22.2,
