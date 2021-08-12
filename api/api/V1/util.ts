@@ -97,7 +97,6 @@ function multipartUpload(keyPrefix, onSaved) {
         return;
       }
 
-      let dbRecord;
       try {
         // Wait for the upload to complete.
         const uploadResult = await upload;
@@ -152,7 +151,7 @@ function multipartUpload(keyPrefix, onSaved) {
         }
 
         data.filename = filename;
-        dbRecord = await onSaved(request, response,data, key);
+        await onSaved(request, response,data, key);
       } catch (err) {
         responseUtil.serverError(response, err);
         return;
