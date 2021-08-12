@@ -409,7 +409,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
       recording.public = request.device.public;
     }
 
-    await recording.save()
+    await recording.save();
     if (data.metadata) {
       await tracksFromMeta(recording, data.metadata);
     }
