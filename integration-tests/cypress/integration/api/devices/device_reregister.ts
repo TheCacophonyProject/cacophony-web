@@ -1,12 +1,11 @@
 /// <reference path="../../../support/index.d.ts" />
 
-const HTTP_AuthorizationError = 401;
-const HTTP_BadRequest = 400;
-const HTTP_Unprocessable = 422;
-const HTTP_OK = 200;
-
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
+import {
+  HTTP_BadRequest,
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 
 describe("Device reregister", () => {
   const KEEP_DEVICE_NAME = false;

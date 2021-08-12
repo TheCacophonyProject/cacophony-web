@@ -1,3 +1,5 @@
+// load the global Cypress types
+/// <reference types="cypress" />
 /// <reference types="../types" />
 declare namespace Cypress {
   type ApiAuthenticateAccess = import("../types").ApiAuthenticateAccess;

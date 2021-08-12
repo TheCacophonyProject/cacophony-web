@@ -7,11 +7,6 @@ import {
 } from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
 
-const HTTP_AuthorizationError = 401;
-const HTTP_Unprocessable = 422;
-const HTTP_Forbidden = 403;
-const HTTP_OK200 = 200;
-
 describe("Authentication", () => {
   const group1 = "first_group";
   const group2 = "second_group";

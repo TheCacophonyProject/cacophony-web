@@ -1,11 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
-const HTTP_AuthorizationError = 401;
-const HTTP_Forbidden = 403;
-const HTTP_Unprocessable = 422;
-const HTTP_OK = 200;
 
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
+import {
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 
 describe("Device register", () => {
   const camsGroup = "cams";

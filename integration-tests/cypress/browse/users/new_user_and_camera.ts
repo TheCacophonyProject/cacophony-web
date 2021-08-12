@@ -1,3 +1,5 @@
+/// <reference path="../../support/index.d.ts" />
+	
 context("Users can see footage from their cameras", () => {
   const username = "integration";
   const group = "int-test";

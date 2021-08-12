@@ -2,11 +2,13 @@
 import { checkResponse } from "../../../commands/server";
 import { getNewIdentity } from "../../../commands/names";
 
-const HTTP_AuthorizationError = 401;
-const HTTP_Forbidden = 403;
-const HTTP_BadRequest = 400;
-const HTTP_Unprocessable = 422;
-const HTTP_OK200 = 200;
+import {
+  HTTP_AuthorizationError,
+  HTTP_Forbidden,
+  HTTP_BadRequest,
+  HTTP_Unprocessable,
+  HTTP_OK200
+} from "../../../commands/constants";
 
 describe("Devices alerts", () => {
   const POSSUM_ALERT: [ApiAlertConditions] = [
@@ -34,9 +36,9 @@ describe("Devices alerts", () => {
   });
 
   it("Cannot create alert with invalid condition", () => {
-    const BAD_POSSUM_ALERT: [ApiAlertConditions] = [
+    const BAD_POSSUM_ALERT: ApiAlertConditions[] = [
       { bad_tag: "any", automatic: true },
-    ];
+    ] as unknown as ApiAlertConditions[];
     const usera = getNewIdentity("anna");
     cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 

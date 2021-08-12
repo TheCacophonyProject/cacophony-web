@@ -68,11 +68,7 @@ function checkVisitsMatch(
 }
 
 function checkResponseMatches(
-<<<<<<< HEAD
   response: Cypress.Response,
-=======
-  response: Cypress.Response<any>,
->>>>>>> main
   expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;

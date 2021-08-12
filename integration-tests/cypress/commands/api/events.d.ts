@@ -5,7 +5,6 @@ declare namespace Cypress {
   type TestComparablePowerEvent = import("../types").TestComparablePowerEvent;
   interface Chainable {
     /**
-<<<<<<< HEAD
      * Record a event for this device using device's credentials
      * optionally, check for a non-200 status code returned
      */
@@ -90,39 +89,17 @@ declare namespace Cypress {
     // *************************************************************************************************************************************
     /**
      * Legacy test  function to check the this device is reported as stopped or not
-=======
-     * Record a event for this device
-     */
-    recordEvent(
-      cameraName: string,
-      type: string,
-      details?: any,
-      date?: Date,
-      log?: boolean
-    ): any;
-
-    /**
-     * check the this device is reported as stopped or not
->>>>>>> main
      *
      */
     apiPowerEventsCheckAgainstExpected(
       user: string,
       camera: string,
-<<<<<<< HEAD
       expectedEvent: TestComparablePowerEvent,
       statusCode?: number
     ): Chainable<Element>;
 
     /**
      * Legacy test function to check the this device has a matching event.
-=======
-      expectedEvent: TestComparablePowerEvent
-    ): Chainable<Element>;
-
-    /**
-     * check the this device has a matching event.
->>>>>>> main
      * if supplied then Nth event will be checked where N is taken from eventNumber
      * eventName will be rendered unique _per test_
      */
@@ -130,12 +107,8 @@ declare namespace Cypress {
       user: string,
       camera: string,
       eventName: string,
-<<<<<<< HEAD
       eventNumber?: number,
       statusCode?: number
-=======
-      eventNumber?: number
->>>>>>> main
     ): Chainable<Element>;
 
     /**

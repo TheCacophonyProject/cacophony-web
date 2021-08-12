@@ -2,7 +2,6 @@
 /// <reference types="cypress" />
 /// <reference types="../types" />
 
-<<<<<<< HEAD
 import {
   v1ApiPath,
   getCreds,
@@ -13,9 +12,6 @@ import {
   checkFlatStructuresAreEqualExcept,
   removeUndefinedParams,
 } from "../server";
-=======
-import { v1ApiPath, getCreds, makeAuthorizedRequest } from "../server";
->>>>>>> main
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getTestName, getUniq } from "../names";
 import { TestComparableEvent, TestComparablePowerEvent } from "../types";
@@ -27,7 +23,6 @@ export const EventTypes = {
 };
 
 Cypress.Commands.add(
-<<<<<<< HEAD
   "apiEventsAdd",
   (
     camera: string,
@@ -48,32 +43,11 @@ Cypress.Commands.add(
       log
     );
     makeAuthorizedRequestWithStatus(
-=======
-  "recordEvent",
-  (
-    camera: string,
-    type: string,
-    details: any = {},
-    date = new Date(),
-    log = true
-  ) => {
-    const data = {
-      dateTimes: [date.toISOString()],
-      description: { type: type, details: details },
-    };
-    logTestDescription(
-      `Create ${type} event for ${camera} at ${date}`,
-      { data: data },
-      log
-    );
-    makeAuthorizedRequest(
->>>>>>> main
       {
         method: "POST",
         url: v1ApiPath("events"),
         body: data,
       },
-<<<<<<< HEAD
       camera,
       statusCode
     ).then((response) => {
@@ -352,15 +326,6 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiPowerEventsCheckAgainstExpected",
-=======
-      camera
-    );
-  }
-);
-
-Cypress.Commands.add(
-  "checkPowerEvents",
->>>>>>> main
   (user: string, camera: string, expectedEvent: TestComparablePowerEvent) => {
     logTestDescription(
       `Check power events for ${camera} is ${prettyLog(expectedEvent)}}`,
@@ -376,21 +341,13 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-<<<<<<< HEAD
   "apiEventsCheckAgainstExpected",
-=======
-  "apiCheckEvents",
->>>>>>> main
   (
     user: string,
     camera: string,
     eventName: string,
-<<<<<<< HEAD
     eventNumber: number = 1,
     statusCode: number = 200
-=======
-    eventNumber: number = 1
->>>>>>> main
   ) => {
     logTestDescription(
       `Check for expected event ${getUniq(eventName)} for ${camera} `,
@@ -478,7 +435,6 @@ function checkEvents(
     deviceID: getCreds(camera).id,
   };
 
-<<<<<<< HEAD
   makeAuthorizedRequestWithStatus(
     { url: v1ApiPath("events", params) },
     user,
@@ -534,63 +490,11 @@ function checkEventMatchesExpected(
       event.EventDetail.details,
       ignoreParams
     );
-=======
-  makeAuthorizedRequest({ url: v1ApiPath("events", params) }, user).then(
-    (response) => {
-      checkEventMatches(response, eventName, eventNumber);
-    }
-  );
-}
-
-function checkEventMatches(
-  response: Cypress.Response<any>,
-  eventName: string,
-  eventNumber: number
-) {
-  expect(response.body.rows.length, `Expected ${eventNumber} event(s)`).to.eq(
-    eventNumber
-  );
-  if (eventNumber > 0) {
-    const expectedEvent = getExpectedEvent(eventName);
-    const event = response.body.rows[eventNumber - 1];
-
-    expect(
-      event.DeviceId,
-      `DeviceId should be ${expectedEvent.DeviceId}`
-    ).to.eq(expectedEvent.DeviceId);
-    expect(
-      event.Device.devicename,
-      `devicename should be ${expectedEvent.Device.devicename}`
-    ).to.eq(expectedEvent.Device.devicename);
-    expect(
-      event.EventDetail.type,
-      `Type should be ${expectedEvent.EventDetail.type}`
-    ).to.eq(expectedEvent.EventDetail.type);
-    expect(
-      event.EventDetail.details.recId,
-      `Recid should be ${expectedEvent.EventDetail.details.recId}`
-    ).to.eq(expectedEvent.EventDetail.details.recId);
-    expect(
-      event.EventDetail.details.alertId,
-      `alertId should be ${expectedEvent.EventDetail.details.alertId}`
-    ).to.eq(expectedEvent.EventDetail.details.alertId);
-    // Disabled as 'false' in test evironment.  TODO: work out why and remedy
-    //  expect(
-    //    event.EventDetail.details.success,
-    //    `success should be ${expectedEvent.EventDetail.details.success}`
-    //  ).to.eq(expectedEvent.EventDetail.details.success);
-    expect(event.EventDetail.details.trackId, `trackid should be present`).not
-      .to.be.undefined;
->>>>>>> main
   }
 }
 
 function checkPowerEventMatches(
-<<<<<<< HEAD
   response: Cypress.Response,
-=======
-  response: Cypress.Response<any>,
->>>>>>> main
   expectedEvent: TestComparablePowerEvent
 ) {
   expect(response.body.events.length, `Expected 1 event`).to.eq(1);

@@ -104,8 +104,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {Boolean} [latest] Set to true to see the most recent events recorded listed first
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Number} offset Offset of returned poage of results from 1st result matched by query.
-   * @apiSuccess {Number} count Number of results retuned on this page.
+   * @apiSuccess {Number} offset Offset of returned page of results from 1st result matched by query.
+   * @apiSuccess {Number} count Total number of results matchig the query.
    * @apiSuccess {JSON} rows Array of `ApiEvent` containing details of events matching the criteria given.
    * @apiUse ApiEvent
    * @apiUse V1ResponseError

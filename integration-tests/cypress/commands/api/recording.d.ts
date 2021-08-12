@@ -3,7 +3,6 @@
 /// <reference types="../types" />
 
 declare namespace Cypress {
-  type ApiThermalRecordingInfo = import("../types").ApiThermalRecordingInfo;
   type Interception = import("cypress/types/net-stubbing").Interception;
   type RecordingId = number;
 
@@ -18,7 +17,7 @@ declare namespace Cypress {
       details: ApiThermalRecordingInfo,
       log?: boolean,
       recordingName?: string
-    ): Cypress.Chainable<Element>; //<Interception>;
+    ): Cypress.Chainable<RecordingId>; 
 
     /**
      * upload a single recording to for a particular camera using devicename and groupname and user credentials
@@ -31,11 +30,7 @@ declare namespace Cypress {
       details: ApiThermalRecordingInfo,
       log?: boolean,
       recordingName?: string
-<<<<<<< HEAD
-    ): Cypress.Chainable<Element>; //<Interception>;
-=======
     ): Cypress.Chainable<RecordingId>;
->>>>>>> main
     /**
      * upload a single recording to for a particular camera
      * Optionally, save the id against provided recordingName
@@ -45,11 +40,7 @@ declare namespace Cypress {
       details: ApiThermalRecordingInfo,
       log?: boolean,
       recordingName?: string
-<<<<<<< HEAD
-    ): Cypress.Chainable<Element>; //<Interception>;
-=======
     ): Cypress.Chainable<RecordingId>;
->>>>>>> main
 
     uploadRecordingThenUserTag(
       cameraName: string,

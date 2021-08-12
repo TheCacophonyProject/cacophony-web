@@ -7,11 +7,6 @@ import { EventTypes } from "../../../commands/api/events";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 
-const HTTP_AuthorizationError = 401;
-const HTTP_Forbidden = 403;
-const HTTP_BadRequest = 400;
-const HTTP_Unprocessable = 422;
-const HTTP_OK200 = 200;
 
 describe("Events - query power events", () => {
   const time1 = "2018-01-01T07:22:56.000Z";

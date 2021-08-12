@@ -1,8 +1,8 @@
 /// <reference path="../../../support/index.d.ts" />
 
-const HTTP_AuthorizationError = 401;
-const HTTP_Unprocessable = 422;
-const HTTP_OK = 200;
+import {
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
@@ -259,11 +259,7 @@ describe("Devices/query", () => {
     //devices not  JSON array
     cy.apiCheckDevicesQuery(
       groupMember,
-<<<<<<< HEAD
-      "bad value",
-=======
       "bad value" as unknown as [],
->>>>>>> main
       null,
       [],
       "or",
@@ -274,11 +270,7 @@ describe("Devices/query", () => {
     cy.apiCheckDevicesQuery(
       groupMember,
       null,
-<<<<<<< HEAD
-      "bad value",
-=======
       "bad value" as unknown as [],
->>>>>>> main
       [],
       "or",
       HTTP_Unprocessable

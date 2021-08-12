@@ -4,11 +4,10 @@ import { EventTypes } from "../../../commands/api/events";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 
-const HTTP_AuthorizationError = 401;
-const HTTP_Forbidden = 403;
-const HTTP_BadRequest = 400;
-const HTTP_Unprocessable = 422;
-const HTTP_OK200 = 200;
+import {
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; // do not check claues of event id or createdAt time
 
