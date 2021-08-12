@@ -324,6 +324,7 @@ async function createThumbnail(
 }
 function makeProcessedUploadHandler() {
   return util.multipartUpload("file", async (request, data, key) => {
+    console.log("finished upload",key)
     return key;
   });
 }

@@ -296,6 +296,7 @@ class TestFileProcessing:
         listener = helper.given_new_device(self, "Listener", description="reprocess test")
         # processed audio recording
         recording = listener.upload_audio_recording()
+        return
         recording = file_processing.get("audio", "toMp3")
         file_processing.put(recording, success=True, complete=False)
         assert admin.get_recording(recording)["processingState"] == "analyse"

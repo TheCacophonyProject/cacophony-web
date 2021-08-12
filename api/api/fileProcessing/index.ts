@@ -32,9 +32,7 @@ export default function (app: Application) {
       log.debug("No file to be processed.");
       return response.status(204).json();
     } else {
-      console.log("getting jwt", recording);
       const rawJWT = recordingUtil.signedToken(recording.rawFileKey, recording.getRawFileName(), recording.rawMimeType);
-      console.log("cant get jwt")
       return response.status(200).json({
         // FIXME(jon): Test that dataValues is even a thing.  It's not a publicly
         //  documented sequelize property.
@@ -51,7 +49,7 @@ export default function (app: Application) {
      *
      * @apiParam {Integer} id ID of the recording.
      */
-    app.put(apiUrl, async (request: Request, response: Response) => {
+    app.post(    `${apiUrl}/processed`, async (request: Request, response: Response) => {
       middleware.requestWrapper(recordingUtil.makeProcessedUploadHandler())
     });
 

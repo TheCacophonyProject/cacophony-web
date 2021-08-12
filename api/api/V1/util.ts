@@ -26,6 +26,7 @@ import crypto from "crypto";
 
 function multipartUpload(keyPrefix, buildRecord) {
   return (request, response) => {
+    console.log("got upload req mukti")
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;
@@ -58,6 +59,7 @@ function multipartUpload(keyPrefix, buildRecord) {
         return;
       }
       filename = part.filename;
+      console.log("got upload req mukti", part.filename)
 
       upload = modelsUtil
         .openS3()
