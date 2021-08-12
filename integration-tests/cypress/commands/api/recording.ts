@@ -4,7 +4,13 @@
 
 import { uploadFile } from "../fileUpload";
 import { getTestName } from "../names";
-import { v1ApiPath, getCreds, DEFAULT_DATE, makeAuthorizedRequest, saveIdOnly } from "../server";
+import {
+  v1ApiPath,
+  getCreds,
+  DEFAULT_DATE,
+  makeAuthorizedRequest,
+  saveIdOnly,
+} from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { convertToDate } from "../server";
 
@@ -12,12 +18,17 @@ let lastUsedTime = DEFAULT_DATE;
 
 Cypress.Commands.add(
   "uploadRecording",
-  (cameraName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (
+    cameraName: string,
+    details: ApiThermalRecordingInfo,
+    log: boolean = true,
+    recordingName: string = "recording1"
+  ) => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
       `Upload recording ${prettyLog(details)}  to '${cameraName}'`,
-      { camera: cameraName, requestData: data }, 
+      { camera: cameraName, requestData: data },
       log
     );
 
@@ -28,36 +39,49 @@ Cypress.Commands.add(
     uploadFile(url, cameraName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-	if (recordingName!==null) {
-	  saveIdOnly(recordingName, x.response.body.recordingId);
-	};
+        if (recordingName !== null) {
+          saveIdOnly(recordingName, x.response.body.recordingId);
+        }
       }
     );
   }
 );
 
-
 Cypress.Commands.add(
   "uploadRecordingOnBehalfUsingGroup",
-  (cameraName: string, groupName: string, userName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (
+    cameraName: string,
+    groupName: string,
+    userName: string,
+    details: ApiThermalRecordingInfo,
+    log: boolean = true,
+    recordingName: string = "recording1"
+  ) => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
-      `Upload recording on behalf using group${prettyLog(details)}  to '${cameraName}'`,
+      `Upload recording on behalf using group${prettyLog(
+        details
+      )}  to '${cameraName}'`,
       { camera: cameraName, requestData: data },
       log
     );
 
     const fileName = "invalid.cptv";
-    const url = v1ApiPath("recordings/device/"+getTestName(cameraName)+"/group/"+getTestName(groupName));
+    const url = v1ApiPath(
+      "recordings/device/" +
+        getTestName(cameraName) +
+        "/group/" +
+        getTestName(groupName)
+    );
     const fileType = "application/cptv";
 
     uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-        if (recordingName!==null) {
+        if (recordingName !== null) {
           saveIdOnly(recordingName, x.response.body.recordingId);
-        };
+        }
       }
     );
   }
@@ -65,25 +89,33 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "uploadRecordingOnBehalfUsingDevice",
-  (cameraName: string, userName: string, details: ApiThermalRecordingInfo, log: boolean = true, recordingName: string = "recording1") => {
+  (
+    cameraName: string,
+    userName: string,
+    details: ApiThermalRecordingInfo,
+    log: boolean = true,
+    recordingName: string = "recording1"
+  ) => {
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
-      `Upload recording on behalf using device ${prettyLog(details)}  to '${cameraName}' using '${userName}'`,
+      `Upload recording on behalf using device ${prettyLog(
+        details
+      )}  to '${cameraName}' using '${userName}'`,
       { camera: cameraName, requestData: data },
       log
     );
     const fileName = "invalid.cptv";
     const deviceId = getCreds(cameraName).id;
-    const url = v1ApiPath("recordings/device/"+deviceId);
+    const url = v1ApiPath("recordings/device/" + deviceId);
     const fileType = "application/cptv";
 
     uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
-        if (recordingName!==null) {
+        if (recordingName !== null) {
           saveIdOnly(recordingName, x.response.body.recordingId);
-        };
+        }
       }
     );
   }
@@ -92,13 +124,12 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "uploadRecordingsAtTimes",
   (cameraName: string, times: string[]) => {
-
     logTestDescription(
       `Upload recordings   at ${prettyLog(times)}  to '${cameraName}'`,
       { camera: cameraName, times }
     );
 
-    times.forEach(time => {
+    times.forEach((time) => {
       cy.uploadRecording(cameraName, { time }, false);
     });
   }
@@ -111,13 +142,13 @@ Cypress.Commands.add(
       recordingId,
       trackIndex,
       tagger,
-      tag
+      tag,
     });
 
     makeAuthorizedRequest(
       {
         method: "GET",
-        url: v1ApiPath(`recordings/${recordingId}/tracks`)
+        url: v1ApiPath(`recordings/${recordingId}/tracks`),
       },
       tagger
     ).then((response) => {
@@ -127,7 +158,7 @@ Cypress.Commands.add(
           url: v1ApiPath(
             `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replaceTag`
           ),
-          body: { what: tag, confidence: 0.7, automatic: false }
+          body: { what: tag, confidence: 0.7, automatic: false },
         },
         tagger
       );
@@ -197,7 +228,7 @@ function makeRecordingDataFromDetails(
     type: "thermalRaw",
     recordingDateTime: "",
     duration: 12,
-    comment: "uploaded by cypress"
+    comment: "uploaded by cypress",
   };
 
   if (details.duration) {
@@ -225,8 +256,7 @@ function getDateForRecordings(details: ApiThermalRecordingInfo): Date {
 
   if (details.time) {
     date = convertToDate(details.time);
-  }
-  else if (details.minsLater || details.secsLater) {
+  } else if (details.minsLater || details.secsLater) {
     let secs = 0;
     if (details.minsLater) {
       secs += details.minsLater * 60;
@@ -253,9 +283,9 @@ function addTracksToRecording(
 ): void {
   data.metadata = {
     algorithm: {
-      model_name: model
+      model_name: model,
     },
-    tracks: []
+    tracks: [],
   };
 
   if (tags && !trackDetails) {
@@ -270,7 +300,7 @@ function addTracksToRecording(
         start_s: track.start_s || 2 + count * 10,
         end_s: track.end_s || 8 + count * 10,
         confident_tag: tag,
-        confidence: 0.9
+        confidence: 0.9,
       };
     });
     count++;
@@ -279,48 +309,53 @@ function addTracksToRecording(
       start_s: 2,
       end_s: 8,
       confident_tag: "possum",
-      confidence: 0.5
+      confidence: 0.5,
     });
   }
 }
 
-Cypress.Commands.add("apiCheckDeviceHasRecordings", (username, deviceName,count) => {
-  const user = getCreds(username);
-  const camera = getCreds(deviceName);
-  const params = {
-    where: JSON.stringify({"DeviceId":camera.id})
-  };
-  const fullUrl = v1ApiPath('recordings',params);
+Cypress.Commands.add(
+  "apiCheckDeviceHasRecordings",
+  (username, deviceName, count) => {
+    const user = getCreds(username);
+    const camera = getCreds(deviceName);
+    const params = {
+      where: JSON.stringify({ DeviceId: camera.id }),
+    };
+    const fullUrl = v1ApiPath("recordings", params);
 
-  cy.request({
-    url: fullUrl,
-    headers: user.headers
-  }).then((request) => {
-    expect(request.body.count).to.equal(count);
-  });
-});
+    cy.request({
+      url: fullUrl,
+      headers: user.headers,
+    }).then((request) => {
+      expect(request.body.count).to.equal(count);
+    });
+  }
+);
 
-export function checkRecording(user: string, recordingId: number, checkFunction: any) {
-  cy.log(`recording id is ${recordingId}`)
+export function checkRecording(
+  user: string,
+  recordingId: number,
+  checkFunction: any
+) {
+  cy.log(`recording id is ${recordingId}`);
   makeAuthorizedRequest(
     {
-      url: v1ApiPath(`recordings`)
+      url: v1ApiPath(`recordings`),
     },
     user
-  ).then(response => {
-      let recordings = response.body.rows;
-      if (recordingId !== 0) {
-          recordings = recordings.filter(x => x.id == recordingId);
-      }
-      if (recordings.length > 0) {
-          checkFunction(recordings[0]);
-      }
-      else {
-          expect(recordings.length).equal(1);
-      }
-  })
+  ).then((response) => {
+    let recordings = response.body.rows;
+    if (recordingId !== 0) {
+      recordings = recordings.filter((x) => x.id == recordingId);
+    }
+    if (recordings.length > 0) {
+      checkFunction(recordings[0]);
+    } else {
+      expect(recordings.length).equal(1);
+    }
+  });
 }
-
 
 export function addSeconds(initialTime: Date, secondsToAdd: number): Date {
   const AS_MILLISECONDS = 1000;

@@ -10,9 +10,9 @@ describe("Monitoring : tracks and tags", () => {
     cy.apiCreateUserGroup(Damian, group);
   });
 
-  // at the moment many tracks are being missed so we can't do this.  
+  // at the moment many tracks are being missed so we can't do this.
   // it is also a bit confusing for users - where did my recording go?
-  it.skip ("recordings with no tracks do not create a visit", () => {
+  it.skip("recordings with no tracks do not create a visit", () => {
     const camera = "no_tracks";
     const notracks = [];
     const noVisits = [];
@@ -50,7 +50,7 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "has_unidentified";
     cy.apiCreateDevice(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["possum", "unidentified", "unidentified", "unidentified"]
+      tags: ["possum", "unidentified", "unidentified", "unidentified"],
     });
     cy.checkMonitoringTags(Damian, camera, ["possum"]);
   });
@@ -79,28 +79,27 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "userVsMultiple";
     cy.apiCreateDevice(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["possum", "rat", "rat"]
+      tags: ["possum", "rat", "rat"],
     }).thenUserTagAs(Damian, "rabbit");
     cy.uploadRecording(camera, { tags: ["possum"] });
     cy.checkMonitoringTags(Damian, camera, ["rabbit"]);
   });
 
-
   it("When user tag and AI tag aggree", () => {
     const camera = "tagsagree";
     cy.apiCreateDevice(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["possum", "rat", "rat"]
+      tags: ["possum", "rat", "rat"],
     }).thenUserTagAs(Damian, "possum");
     cy.uploadRecording(camera, { tags: ["possum"] });
     cy.checkMonitoringTags(Damian, camera, ["possum"]);
   });
-  
+
   it("User animal tag is preferred over user unknown tag", () => {
     const camera = "userAnimalUnknown";
     cy.apiCreateDevice(camera, group);
     cy.uploadRecording(camera, {
-      tags: ["unidentified", "unidentified", "unidentified"]
+      tags: ["unidentified", "unidentified", "unidentified"],
     }).then((recID: number) => {
       cy.userTagRecording(recID, 0, Damian, "possum");
       cy.userTagRecording(recID, 1, Damian, "unknown");
@@ -114,7 +113,7 @@ describe("Monitoring : tracks and tags", () => {
     cy.apiAddUserToGroup(Damian, Gerry, group, true);
     cy.apiCreateDevice(camera, group);
     const recording = cy.uploadRecording(camera, {
-      tags: ["possum", "rabbit"]
+      tags: ["possum", "rabbit"],
     });
     recording.then((recID: number) => {
       cy.userTagRecording(recID, 0, Damian, "possum");
@@ -126,16 +125,21 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "conflicter-multiple";
     cy.apiCreateDevice(camera, group);
     const recording = cy.uploadRecording(camera, {
-      tags: ["possum", "rabbit"]
+      tags: ["possum", "rabbit"],
     });
     recording.then((recID: number) => {
       cy.userTagRecording(recID, 0, Damian, "possum");
       cy.userTagRecording(recID, 0, Gerry, "rat");
     });
-    cy.uploadRecording(camera, { tags: ["possum", "rat"] }).thenUserTagAs(Damian, "possum");
-    cy.uploadRecording(camera, { tags: ["cat"] }).thenUserTagAs(Damian, "possum");
+    cy.uploadRecording(camera, { tags: ["possum", "rat"] }).thenUserTagAs(
+      Damian,
+      "possum"
+    );
+    cy.uploadRecording(camera, { tags: ["cat"] }).thenUserTagAs(
+      Damian,
+      "possum"
+    );
 
     cy.checkMonitoringTags(Damian, camera, ["possum"]);
   });
-
 });

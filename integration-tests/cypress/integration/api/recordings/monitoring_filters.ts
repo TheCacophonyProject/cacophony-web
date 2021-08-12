@@ -1,6 +1,6 @@
 import { getCreds } from "../../../commands/server";
 
-describe("Monitoring : filters", () => {  
+describe("Monitoring : filters", () => {
   const Poppy = "Poppy";
   const groupRabbits = "rabbits";
   const groupHedgehogs = "hedgehogs";
@@ -14,7 +14,7 @@ describe("Monitoring : filters", () => {
   const date3 = new Date(2021, 2, 4, 9);
   const beforeDate4 = new Date(2021, 2, 6, 9, 40);
   const date4 = new Date(2021, 2, 6, 10);
-  
+
   before(() => {
     cy.apiCreateUser(Poppy);
     cy.apiCreateGroupAndDevices(Poppy, groupRabbits, cameraRabbits);
@@ -23,29 +23,50 @@ describe("Monitoring : filters", () => {
 
   beforeEach(() => {
     if (!recordingsUploaded) {
-      cy.uploadRecording(cameraRabbits, { time: date1, tags: ["rabbit"] });        
+      cy.uploadRecording(cameraRabbits, { time: date1, tags: ["rabbit"] });
       cy.uploadRecording(cameraHedgehogs, { time: date2, tags: ["hedgehog"] });
-      cy.uploadRecording(cameraHedgehogs, { time: date3, tags: ["hedgehog"] });  
-      cy.uploadRecording(cameraRabbits, { time: date4, tags: ["rabbit"] });        
+      cy.uploadRecording(cameraHedgehogs, { time: date3, tags: ["hedgehog"] });
+      cy.uploadRecording(cameraRabbits, { time: date4, tags: ["rabbit"] });
     }
   });
-      
+
   it("Check that the group filter works", () => {
     const groupRabbitsId = getCreds(groupRabbits).id;
     const groupHedgehogsId = getCreds(groupHedgehogs).id;
-    cy.checkMonitoringWithFilter(Poppy, null, {groups: groupRabbitsId}, [{tag: "rabbit"}, {tag: "rabbit"}]);
-    cy.checkMonitoringWithFilter(Poppy, null, {groups: [groupRabbitsId, groupHedgehogsId]}, [{}, {}, {}, {}]);
+    cy.checkMonitoringWithFilter(Poppy, null, { groups: groupRabbitsId }, [
+      { tag: "rabbit" },
+      { tag: "rabbit" },
+    ]);
+    cy.checkMonitoringWithFilter(
+      Poppy,
+      null,
+      { groups: [groupRabbitsId, groupHedgehogsId] },
+      [{}, {}, {}, {}]
+    );
   });
-    
+
   it("Check from date works", () => {
-    cy.checkMonitoringWithFilter(Poppy, null, {from: afterDate1}, [{start: date2},{start: date3},{start: date4}]);
+    cy.checkMonitoringWithFilter(Poppy, null, { from: afterDate1 }, [
+      { start: date2 },
+      { start: date3 },
+      { start: date4 },
+    ]);
   });
 
   it("Check until date works", () => {
-    cy.checkMonitoringWithFilter(Poppy, null, {until: beforeDate4}, [{start: date1},{start: date2},{start: date3}]);
+    cy.checkMonitoringWithFilter(Poppy, null, { until: beforeDate4 }, [
+      { start: date1 },
+      { start: date2 },
+      { start: date3 },
+    ]);
   });
 
   it("Check that between two dates works", () => {
-    cy.checkMonitoringWithFilter(Poppy, null, {from: afterDate1, until: beforeDate4}, [{start: date2},{start: date3}]);
+    cy.checkMonitoringWithFilter(
+      Poppy,
+      null,
+      { from: afterDate1, until: beforeDate4 },
+      [{ start: date2 }, { start: date3 }]
+    );
   });
-});         
+});

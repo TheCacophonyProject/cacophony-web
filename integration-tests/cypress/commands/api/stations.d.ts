@@ -10,7 +10,7 @@ declare namespace Cypress {
     apiUploadStations(
       user: string,
       group: string,
-      stations: ApiCreateStationData[], 
+      stations: ApiCreateStationData[],
       updateFrom?: Date
     ): any;
 

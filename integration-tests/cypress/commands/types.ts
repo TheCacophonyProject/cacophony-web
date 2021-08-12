@@ -1,19 +1,19 @@
 interface ApiAlertConditions {
   tag: string;
   automatic: boolean;
-};
+}
 
 interface ApiAlertUser {
-           id: number;
-           username: string;
-           email: string;
-	   name: string;
-};
+  id: number;
+  username: string;
+  email: string;
+  name: string;
+}
 
 interface ApiAlertDevice {
-          id: number;
-          devicename: string;
-};
+  id: number;
+  devicename: string;
+}
 
 interface ApiAlert {
   id: number;
@@ -24,64 +24,62 @@ interface ApiAlert {
   lastAlert: boolean;
   User: ApiAlertUser;
   Device: ApiAlertDevice;
-};
+}
 
-
-interface ApiAuthenticateAccess  {
-        devices: string;
-};
+interface ApiAuthenticateAccess {
+  devices: string;
+}
 
 interface ApiDevicesDevice {
-        id: number;
-       	devicename: string;
-        active: boolean;
-        Users: ApiDevicesDeviceUser[];
-};
+  id: number;
+  devicename: string;
+  active: boolean;
+  Users: ApiDevicesDeviceUser[];
+}
 
 interface ApiDeviceInGroupDevice {
-	id: number;
-	devicename: string;
-	groupName: string;
-	userIsAdmin: boolean;
-	users: ApiDeviceInGroupUser[];
+  id: number;
+  devicename: string;
+  groupName: string;
+  userIsAdmin: boolean;
+  users: ApiDeviceInGroupUser[];
 }
 
 interface ApiDeviceQueryDevice {
-	devicename: string;
-        groupname: string;
-	saltId?: number;
+  devicename: string;
+  groupname: string;
+  saltId?: number;
 }
 
 interface TestDeviceAndGroup {
-	devicename: string;
-        groupname: string;
+  devicename: string;
+  groupname: string;
 }
 
-
 interface ApiDevicesDeviceUser {
-        id: number;
-        username: string;
-        DeviceUsers: ApiDeviceUserRelationship;
+  id: number;
+  username: string;
+  DeviceUsers: ApiDeviceUserRelationship;
 }
 
 interface ApiDeviceUserRelationship {
-        admin: boolean;
-        DeviceId: number;
-	UserId: number;
+  admin: boolean;
+  DeviceId: number;
+  UserId: number;
 }
 
 interface ApiDeviceInGroupUser {
-        userName: string;
-	admin: boolean;
-	id: number;
+  userName: string;
+  admin: boolean;
+  id: number;
 }
 
 interface ApiDeviceUsersUser {
-        id: number;
-	username: string;
-	email: string;
-	relation: string;
-	admin: boolean;
+  id: number;
+  username: string;
+  email: string;
+  relation: string;
+  admin: boolean;
 }
 
 interface TestComparablePowerEvent {
@@ -95,19 +93,19 @@ interface ApiEventDetail {
 }
 
 interface ApiEventSet {
-  deviceID?: string; 
+  deviceID?: string;
   description?: ApiEventDetail;
   eventDetailId?: number;
-  dateTimes?: string[]; 
+  dateTimes?: string[];
 }
 
 interface ApiEventReturned {
   id?: number;
   createdAt?: string;
-  DeviceId?: number; 
+  DeviceId?: number;
   EventDetail?: ApiEventDetail;
-  dateTime?: string; 
-  Device: {devicename: string};
+  dateTime?: string;
+  Device: { devicename: string };
 }
 
 interface ApiPowerEventReturned {
@@ -120,49 +118,48 @@ interface ApiPowerEventReturned {
     id: number;
     devicename: string;
     GroupId: number;
-    Group:  {
+    Group: {
       groupname: string;
       id: number;
-    }
-  }
+    };
+  };
 }
 
-interface ApiEventErrorSimilar{
-    device: string;
-    timestamp: string;
-    lines: string[]
+interface ApiEventErrorSimilar {
+  device: string;
+  timestamp: string;
+  lines: string[];
 }
 
-interface ApiEventErrorPattern{
-    score?: number;
-    index?: number;
-    patterns?: string[];
+interface ApiEventErrorPattern {
+  score?: number;
+  index?: number;
+  patterns?: string[];
 }
 
 interface ApiEventError {
-    devices: string[];
-    timestamps: string[];
-    similar: ApiEventErrorSimilar[];
-    patterns: ApiEventErrorPattern[];
+  devices: string[];
+  timestamps: string[];
+  similar: ApiEventErrorSimilar[];
+  patterns: ApiEventErrorPattern[];
 }
 
 interface ApiEventErrorCategory {
-    name: string,
-    devices: string[];
-    errors: ApiEventError[]
+  name: string;
+  devices: string[];
+  errors: ApiEventError[];
 }
 
-
 interface TestComparableEvent {
-  id: number,
-  dateTime: string,
-  createdat: string,
-  DeviceId: number,
+  id: number;
+  dateTime: string;
+  createdat: string;
+  DeviceId: number;
   EventDetail: ApiEventDetail;
   Device: {
-          devicename: string
-  }
-};
+    devicename: string;
+  };
+}
 
 interface TestComparableVisit {
   // either a date object or a string representing the time of day (enough for most tests)
@@ -170,10 +167,10 @@ interface TestComparableVisit {
   end?: Date | string;
   tag?: string;
   recordings?: number;
-  incomplete? : string;
-  aiTag? : string;
-  camera? : string;
-  station? : string;
+  incomplete?: string;
+  aiTag?: string;
+  camera?: string;
+  station?: string;
 }
 
 interface TestVisitSearchParams {
@@ -181,7 +178,7 @@ interface TestVisitSearchParams {
   until?: Date | string;
   devices?: number | number[];
   page?: number;
-  "page-size"? : number;
+  "page-size"?: number;
   ai?: string;
   groups?: number | number[];
 }
@@ -208,7 +205,7 @@ interface ApiTrackInfo {
 
 interface ApiThermalRecordingInfo {
   processingState: string;
-  time? : Date | string;
+  time?: Date | string;
   duration?: number;
   model?: string;
   tracks?: ApiTrackInfo[];
@@ -219,4 +216,3 @@ interface ApiThermalRecordingInfo {
   lat?: number; // Latitude position for the recording
   lng?: number; // Longitude position for the recording
 }
-

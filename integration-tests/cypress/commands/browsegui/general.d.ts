@@ -7,6 +7,5 @@ declare namespace Cypress {
      * Browser: Load a page, verify loads
      */
     checkOnPage(upageAddress: string): Chainable<Element>;
-
   }
 }

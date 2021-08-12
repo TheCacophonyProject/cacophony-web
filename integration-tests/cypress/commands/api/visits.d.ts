@@ -2,7 +2,6 @@
 /// <reference types="cypress" />
 /// <reference types="../types" />
 
-  
 declare namespace Cypress {
   interface Chainable {
     /**

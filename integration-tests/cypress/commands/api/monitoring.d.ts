@@ -16,7 +16,7 @@ declare namespace Cypress {
       expectedVisits: TestComparableVisit[],
       log?: boolean
     ): any;
-    
+
     /**
      * check the visits returned match the listed visits specified. Only the specified information will be checked.
      *
@@ -26,7 +26,7 @@ declare namespace Cypress {
     checkMonitoringWithFilter(
       user: string,
       camera: string,
-      searchParams: TestVisitSearchParams ,
+      searchParams: TestVisitSearchParams,
       expectedVisits: TestComparableVisit[]
     ): any;
     /*
