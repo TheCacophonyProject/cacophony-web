@@ -49,10 +49,13 @@ export default (app: Application, baseUrl: string) => {
     apiUrl,
     [auth.authenticateUser],
     middleware.requestWrapper(
-      util.multipartUpload("f", async (request, data, key) => {
+      util.multipartUpload("f", async (request, response, data, key) => {
         const dbRecord = models.File.buildSafely(data);
         dbRecord.UserId = request.user.id;
         dbRecord.fileKey = key;
+        await dbRecord.validate();
+        await dbRecord.save();
+        responseUtil.validRecordingUpload(response, dbRecord.id);
         return dbRecord;
       })
     )

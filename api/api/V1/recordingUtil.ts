@@ -322,12 +322,6 @@ async function createThumbnail(
     .toBuffer();
   return { data: img, meta: thumbMeta };
 }
-function makeProcessedUploadHandler() {
-  return util.multipartUpload("file", async (request,response, data, key) => {
-    responseUtil.validFileUpload(response, key);
-    return key
-  });
-}
 
 function makeUploadHandler(mungeData?: (any) => any) {
   return util.multipartUpload("raw", async (request,response, data, key) => {
@@ -736,7 +730,6 @@ async function get(request, type?: RecordingType) {
 }
 
 function signedToken(key, file, mimeType){
-  console.log("getting token", key, file, mimeType)
   return jsonwebtoken.sign(
     {
       _type: "fileDownload",
@@ -1399,6 +1392,5 @@ export default {
   saveThumbnailInfo,
   sendAlerts,
   getThumbnail,
-  signedToken,
-  makeProcessedUploadHandler
+  signedToken
 };

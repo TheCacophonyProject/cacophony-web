@@ -3,6 +3,7 @@ import middleware from "../middleware";
 import log from "../../logging";
 import { body, param } from "express-validator/check";
 import models from "../../models";
+import util from "../V1/util";
 import recordingUtil from "../V1/recordingUtil";
 import { Application, Request, Response } from "express";
 import {
@@ -50,7 +51,12 @@ export default function (app: Application) {
    * @apiParam {String} [fileKey] of the uploaded file in db
    */
     app.post(    `${apiUrl}/processed`,
-      middleware.requestWrapper(recordingUtil.makeProcessedUploadHandler())
+      middleware.requestWrapper(
+        util.multipartUpload("file", async (request,response, data, key) => {
+          responseUtil.validFileUpload(response, key);
+          return key
+        })
+      )
     );
 
   /**
