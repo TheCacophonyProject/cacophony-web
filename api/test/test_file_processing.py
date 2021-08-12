@@ -298,9 +298,9 @@ class TestFileProcessing:
         recording = listener.upload_audio_recording()
         return
         recording = file_processing.get("audio", "toMp3")
-        file_processing.put(recording, success=True, complete=False)
-        assert admin.get_recording(recording)["processingState"] == "analyse"
 
+        file_processing.put(recording, success=True, complete=True)
+        assert admin.get_recording(recording)["processingState"] == "analyse"
         recording = file_processing.get("audio", "analyse")
         file_processing.put(recording, success=True, complete=True)
         assert admin.get_recording(recording)["processingState"] == "FINISHED"

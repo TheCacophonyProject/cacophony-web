@@ -365,7 +365,7 @@ export default function (
     fileMimeType: DataTypes.STRING,
     processingStartTime: DataTypes.DATE,
     processingEndTime: DataTypes.DATE,
-
+    processing: DataTypes.BOOLEAN,
     processingMeta: DataTypes.JSONB,
     processingState: DataTypes.STRING,
     passedFilter: DataTypes.BOOLEAN,
