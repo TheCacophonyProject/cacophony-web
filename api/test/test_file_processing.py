@@ -34,10 +34,8 @@ class TestFileProcessing:
         # Ensure there's a recording to work with (the file processing
         # API may return a different one though).
         helper.given_a_recording(self)
-        return
         # Get a recording to process.
         recording = file_processing.get("thermalRaw", "analyse")
-        return
         assert recording["processingState"] == "analyse"
 
         # Now finalise processing.
@@ -296,7 +294,6 @@ class TestFileProcessing:
         listener = helper.given_new_device(self, "Listener", description="reprocess test")
         # processed audio recording
         recording = listener.upload_audio_recording()
-        return
         recording = file_processing.get("audio", "toMp3")
 
         file_processing.put(recording, success=True, complete=True)
