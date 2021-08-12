@@ -28,7 +28,7 @@ class TestFileProcessing:
         recordings = [record for record in results if record]
         assert len(set(recordings)) == len(recordings)
 
-    def test_thermal_video_upload(self, helper, file_processing):
+    def test_thermal_video(self, helper, file_processing):
         user = helper.admin_user()
 
         # Ensure there's a recording to work with (the file processing
@@ -43,8 +43,8 @@ class TestFileProcessing:
         check_recording(user, recording, processingState="FINISHED")
 
     def test_thermal_video_with_meta(self, helper, file_processing):
+        self.process_all_recordings(file_processing)
         user = helper.admin_user()
-
         track_meta = {
             "start_s": 10,
             "end_s": 22.2,
