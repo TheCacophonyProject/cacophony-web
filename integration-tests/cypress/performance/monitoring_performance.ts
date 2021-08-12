@@ -13,7 +13,7 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "visits-per-page";
     const visits = [];
     // add 1000 recordings
-    cy.apiCreateCamera(camera, group);
+    cy.apiCreateDevice(camera, group);
     cy.uploadRecording(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < max_page_length * 10 - 1; i++) {
       cy.uploadRecording(camera, { minsLater: 11 });
@@ -45,7 +45,7 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "default_page_size";
     const visits = [];
     // add 1 page plus 1 worth of recordings
-    cy.apiCreateCamera(camera, group);
+    cy.apiCreateDevice(camera, group);
     cy.uploadRecording(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < max_page_length; i++) {
       cy.uploadRecording(camera, { minsLater: 11 });
@@ -69,7 +69,7 @@ describe("Monitoring : times and recording groupings", () => {
   it("can handle large number of recordings per visit", () => {
     const camera = "recordings-per-visit";
     // add 1000 recordings
-    cy.apiCreateCamera(camera, group);
+    cy.apiCreateDevice(camera, group);
     cy.uploadRecording(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < 999; i++) {
       cy.uploadRecording(camera, { minsLater: 9 });
@@ -88,7 +88,7 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "pages";
 
     // add 1000 recordings
-    cy.apiCreateCamera(camera, group);
+    cy.apiCreateDevice(camera, group);
     cy.uploadRecording(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < 999; i++) {
       cy.uploadRecording(camera, { minsLater: 11 });

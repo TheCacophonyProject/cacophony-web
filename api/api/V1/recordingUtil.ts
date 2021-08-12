@@ -15,6 +15,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+import sharp from "sharp";
 import { AlertStatic } from "../../models/Alert";
 import { AI_MASTER } from "../../models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
@@ -35,7 +36,7 @@ import {
   RecordingPermission,
   RecordingProcessingState,
   RecordingType,
-  TagMode
+  TagMode,
 } from "../../models/Recording";
 import { Event, QueryOptions } from "../../models/Event";
 import { User } from "../../models/User";
@@ -47,7 +48,6 @@ import {
   Visit,
   VisitEvent,
   VisitSummary,
-  getTrackTag
 } from "./Visits";
 import { Station } from "../../models/Station";
 import modelsUtil from "../../models/util/util";
@@ -143,6 +143,186 @@ export async function tryToMatchRecordingToStation(
   return null;
 }
 
+async function getThumbnail(rec: Recording) {
+  const s3 = modelsUtil.openS3();
+  let Key = `${rec.rawFileKey}-thumb`;
+  if (Key.startsWith("a_")) {
+    Key = Key.substr(2);
+  }
+  const params = {
+    Key,
+  };
+  return s3.getObject(params).promise();
+}
+
+const THUMBNAIL_MIN_SIZE = 64;
+const THUMBNAIL_PALETTE = "Viridis";
+// Gets a raw cptv frame from a recording
+async function getCPTVFrame(recording: Recording, frameNumber: number) {
+  const { CptvDecoder } = await dynamicImportESM("cptv-decoder");
+  const decoder = new CptvDecoder();
+  const fileData = await modelsUtil
+    .openS3()
+    .getObject({
+      Key: recording.rawFileKey,
+    })
+    .promise()
+    .catch((err) => {
+      return err;
+    });
+  //work around for error in cptv-decoder
+  //best to use createReadStream() from s3 when cptv-decoder has support
+  const data = new Uint8Array(fileData.Body);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const meta = await decoder.getBytesMetadata(data);
+  const result = await decoder.initWithLocalCptvFile(data);
+  if (!result) {
+    decoder.close();
+    return;
+  }
+  let finished = false;
+  let currentFrame = 0;
+  let frame;
+  while (!finished) {
+    currentFrame++;
+    frame = await decoder.getNextFrame();
+    finished = frame == null;
+    if (currentFrame == frameNumber) {
+      break;
+    }
+  }
+  decoder.close();
+  return frame;
+}
+
+// Creates and saves a thumbnail for a recording using specified thumbnail info
+async function saveThumbnailInfo(recording: Recording, thumbnail) {
+  const frame = await getCPTVFrame(recording, thumbnail.frame_number);
+  const thumb = await createThumbnail(frame, thumbnail);
+
+  return await modelsUtil
+    .openS3()
+    .upload({
+      Key: `${recording.rawFileKey}-thumb`,
+      Body: thumb.data,
+      Metadata: thumb.meta,
+    })
+    .promise()
+    .catch((err) => {
+      return err;
+    });
+}
+
+// Create a png thumbnail image  from this frame with thumbnail info
+// Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
+// width and height
+//render the png in THUMBNAIL_PALETTE
+//returns {data: buffer, meta: metadata about image}
+async function createThumbnail(
+  frame,
+  thumbnail
+): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
+  const frameMeta = frame.meta.imageData;
+  const res_x = frameMeta.width;
+  const res_y = frameMeta.height;
+
+  const size = Math.max(THUMBNAIL_MIN_SIZE, thumbnail.height, thumbnail.width);
+  const thumbnail_data = new Uint8Array(size * size);
+
+  //dimensions to it is a square with a minimum size of THUMBNAIL_MIN_SIZE
+  const extra_width = (size - thumbnail.width) / 2;
+  thumbnail.x -= Math.ceil(extra_width);
+  thumbnail.x = Math.max(0, thumbnail.x);
+  thumbnail.width = size;
+  if (thumbnail.x + thumbnail.width > res_x) {
+    thumbnail.x = res_x - thumbnail.width;
+  }
+
+  const extra_height = (size - thumbnail.height) / 2;
+  thumbnail.y -= Math.ceil(extra_height);
+  thumbnail.y = Math.max(0, thumbnail.y);
+  thumbnail.height = size;
+  if (thumbnail.y + thumbnail.height > res_y) {
+    thumbnail.y = res_y - thumbnail.height;
+  }
+
+  // get min max for normalizsation
+  let min;
+  let max;
+  let frame_start;
+  for (let i = 0; i < size; i++) {
+    frame_start = (i + thumbnail.y) * res_x + thumbnail.x;
+    for (let offset = 0; offset < thumbnail.width; offset++) {
+      const pixel = frame.data[frame_start + offset];
+      if (!min) {
+        min = pixel;
+        max = pixel;
+      } else {
+        if (pixel < min) {
+          min = pixel;
+        }
+        if (pixel > max) {
+          max = pixel;
+        }
+      }
+    }
+  }
+
+  let thumb_index = 0;
+  for (let i = 0; i < size; i++) {
+    frame_start = (i + thumbnail.y) * res_x + thumbnail.x;
+    for (let offset = 0; offset < thumbnail.width; offset++) {
+      let pixel = frame.data[frame_start + offset];
+      pixel = (255 * (pixel - min)) / (max - min);
+      thumbnail_data[thumb_index] = pixel;
+      thumb_index++;
+    }
+  }
+  let greyScaleData;
+  if (thumbnail.width != size || thumbnail.height != size) {
+    const resized_thumb = await sharp(thumbnail_data, {
+      raw: { width: thumbnail.width, height: thumbnail.height, channels: 1 },
+    })
+      .greyscale()
+      .resize(size, size, { fit: "contain" });
+    greyScaleData = await resized_thumb.toBuffer();
+    const meta = await resized_thumb.metadata();
+    thumbnail.width = meta.width;
+    thumbnail.height = meta.height;
+  } else {
+    greyScaleData = thumbnail_data;
+  }
+  const frameBuffer = new Uint8ClampedArray(4 * greyScaleData.length);
+  const { renderFrameIntoFrameBuffer, ColourMaps } = await dynamicImportESM(
+    "cptv-decoder"
+  );
+  let palette = ColourMaps[0];
+  for (const colourMap of ColourMaps) {
+    if (colourMap[0] == THUMBNAIL_PALETTE) {
+      palette = colourMap;
+    }
+  }
+  renderFrameIntoFrameBuffer(frameBuffer, greyScaleData, palette[1], 0, 255);
+
+  const thumbMeta = {
+    region: JSON.stringify(thumbnail),
+    palette: palette[0],
+  };
+  const img = await sharp(frameBuffer, {
+    raw: {
+      width: thumbnail.width,
+      height: thumbnail.height,
+      channels: 4,
+    },
+  })
+    .png({
+      palette: true,
+      compressionLevel: 9,
+    })
+    .toBuffer();
+  return { data: img, meta: thumbMeta };
+}
+
 function makeUploadHandler(mungeData?: (any) => any) {
   return util.multipartUpload("raw", async (request, data, key) => {
     if (mungeData) {
@@ -161,8 +341,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
       const fileData = await modelsUtil
         .openS3()
         .getObject({
-          Bucket: config.s3.bucket,
-          Key: key
+          Key: key,
         })
         .promise()
         .catch((err) => {
@@ -176,7 +355,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
       // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
       fileIsCorrupt = await decoder.hasStreamError();
       if (fileIsCorrupt) {
-        log.warn("CPTV Stream error", await decoder.getStreamError());
+        log.warning("CPTV Stream error: %s", await decoder.getStreamError());
       }
       decoder.close();
 
@@ -206,13 +385,13 @@ function makeUploadHandler(mungeData?: (any) => any) {
         // NOTE: Algorithm property gets filled in later by AI
         recording.additionalMetadata = {
           previewSecs: metadata.previewSecs,
-          totalFrames: metadata.totalFrames
+          totalFrames: metadata.totalFrames,
         };
       }
       if (data.hasOwnProperty("additionalMetadata")) {
         recording.additionalMetadata = {
           ...data.additionalMetadata,
-          ...recording.additionalMetadata
+          ...recording.additionalMetadata,
         };
       }
     }
@@ -252,7 +431,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
         );
       } else {
         // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
-        log.warn("File was corrupt, don't queue for processing");
+        log.warning("File was corrupt, don't queue for processing");
         recording.processingState = RecordingProcessingState.Corrupt;
       }
     }
@@ -326,7 +505,7 @@ async function reportRecordings(request: RecordingQuery) {
 
   builder.query.include.push({
     model: models.Station,
-    attributes: ["name"]
+    attributes: ["name"],
   });
 
   // NOTE: Not even going to try to attempt to add typing info to this bundle
@@ -355,7 +534,7 @@ async function reportRecordings(request: RecordingQuery) {
         audioEvents[r.id] = {
           timestamp: event.dateTime,
           volume: event.EventDetail.details.volume,
-          fileId
+          fileId,
         };
         audioFileIds.add(fileId);
       }
@@ -384,7 +563,7 @@ async function reportRecordings(request: RecordingQuery) {
     "Track Count",
     "Automatic Track Tags",
     "Human Track Tags",
-    "Recording Tags"
+    "Recording Tags",
   ];
 
   if (includeAudiobait) {
@@ -436,7 +615,7 @@ async function reportRecordings(request: RecordingQuery) {
       r.Tracks.length,
       formatTags(automatic_track_tags),
       formatTags(human_track_tags),
-      formatTags(recording_tags)
+      formatTags(recording_tags),
     ];
 
     if (includeAudiobait) {
@@ -520,7 +699,7 @@ async function get(request, type?: RecordingType) {
     RecordingPermission.VIEW,
     {
       type,
-      filterOptions: request.query.filterOptions
+      filterOptions: request.query.filterOptions,
     }
   );
   if (!recording) {
@@ -528,7 +707,7 @@ async function get(request, type?: RecordingType) {
   }
 
   const data: any = {
-    recording: handleLegacyTagFieldsForGetOnRecording(recording)
+    recording: handleLegacyTagFieldsForGetOnRecording(recording),
   };
 
   if (recording.fileKey) {
@@ -537,7 +716,7 @@ async function get(request, type?: RecordingType) {
         _type: "fileDownload",
         key: recording.fileKey,
         filename: recording.getFileName(),
-        mimeType: recording.fileMimeType
+        mimeType: recording.fileMimeType,
       },
       config.server.passportSecret,
       { expiresIn: 60 * 10 }
@@ -551,7 +730,7 @@ async function get(request, type?: RecordingType) {
         _type: "fileDownload",
         key: recording.rawFileKey,
         filename: recording.getRawFileName(),
-        mimeType: recording.rawMimeType
+        mimeType: recording.rawMimeType,
       },
       config.server.passportSecret,
       { expiresIn: 60 * 10 }
@@ -573,22 +752,22 @@ async function delete_(request, response) {
   if (deleted === null) {
     return responseUtil.send(response, {
       statusCode: 400,
-      messages: ["Failed to delete recording."]
+      messages: ["Failed to delete recording."],
     });
   }
   if (deleted.rawFileKey) {
     util.deleteS3Object(deleted.rawFileKey).catch((err) => {
-      log.warn(err);
+      log.warning(err);
     });
   }
   if (deleted.fileKey) {
     util.deleteS3Object(deleted.fileKey).catch((err) => {
-      log.warn(err);
+      log.warning(err);
     });
   }
   responseUtil.send(response, {
     statusCode: 200,
-    messages: ["Deleted recording."]
+    messages: ["Deleted recording."],
   });
 }
 
@@ -625,7 +804,7 @@ async function addTag(user, recording, tag, response) {
   responseUtil.send(response, {
     statusCode: 200,
     messages: ["Added new tag."],
-    tagId: tagInstance.id
+    tagId: tagInstance.id,
   });
 }
 
@@ -663,7 +842,7 @@ function handleLegacyTagFieldsForGetOnRecording(recording) {
 const statusCode = {
   Success: 1,
   Fail: 2,
-  Both: 3
+  Both: 3,
 };
 
 // reprocessAll expects request.body.recordings to be a list of recording_ids
@@ -674,7 +853,7 @@ async function reprocessAll(request, response) {
     statusCode: 200,
     messages: [],
     reprocessed: [],
-    fail: []
+    fail: [],
   };
 
   let status = 0;
@@ -721,7 +900,7 @@ async function reprocessRecording(user, recording_id) {
     return {
       statusCode: 400,
       messages: ["No such recording: " + recording_id],
-      recordingId: recording_id
+      recordingId: recording_id,
     };
   }
 
@@ -730,7 +909,7 @@ async function reprocessRecording(user, recording_id) {
   return {
     statusCode: 200,
     messages: ["Recording scheduled for reprocessing"],
-    recordingId: recording_id
+    recordingId: recording_id,
   };
 }
 
@@ -752,9 +931,9 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       "algorithm",
       metadata["algorithm"]
     );
-    let model = {
+    const model = {
       name: "unknown",
-      algorithmId: algorithmDetail.id
+      algorithmId: algorithmDetail.id,
     };
     if ("model_name" in metadata["algorithm"]) {
       model["name"] = metadata["algorithm"]["model_name"];
@@ -762,7 +941,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
     for (const trackMeta of metadata["tracks"]) {
       const track = await recording.createTrack({
         data: trackMeta,
-        AlgorithmId: algorithmDetail.id
+        AlgorithmId: algorithmDetail.id,
       });
       if ("confident_tag" in trackMeta) {
         model["all_class_confidences"] = trackMeta["all_class_confidences"];
@@ -775,20 +954,21 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       }
     }
   } catch (err) {
-    log.error("Error creating recording tracks from metadata", err);
+    log.error(
+      "Error creating recording tracks from metadata: %s",
+      err.toString()
+    );
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function updateMetadata(recording: any, metadata: any) {
   throw new Error("recordingUtil.updateMetadata is unimplemented!");
 }
 
 // Returns a promise for the recordings visits query specified in the
 // request.
-async function queryVisits(
-  request: RecordingQuery,
-  type?
-): Promise<{
+async function queryVisits(request: RecordingQuery): Promise<{
   visits: Visit[];
   summary: DeviceSummary;
   hasMoreVisits: boolean;
@@ -803,7 +983,7 @@ async function queryVisits(
       ? maxVisitQueryResults
       : (request.query.limit as number);
 
-  let queryMax = maxVisitQueryResults * 2;
+  const queryMax = maxVisitQueryResults * 2;
   let queryLimit = queryMax;
   if (request.query.limit) {
     queryLimit = Math.min(request.query.limit * 2, queryMax);
@@ -845,14 +1025,10 @@ async function queryVisits(
       break;
     }
 
-    for (const [i, rec] of recordings.entries()) {
+    for (const rec of recordings) {
       rec.filterData(filterOptions);
     }
-    devSummary.generateVisits(
-      recordings,
-      request.query.offset || 0,
-      gotAllRecordings
-    );
+    devSummary.generateVisits(recordings, request.query.offset || 0);
 
     if (!gotAllRecordings) {
       devSummary.checkForCompleteVisits();
@@ -923,7 +1099,7 @@ async function queryVisits(
     totalRecordings: totalCount,
     queryOffset: queryOffset,
     numRecordings: numRecordings,
-    numVisits: visits.length
+    numVisits: visits.length,
   };
 }
 
@@ -942,10 +1118,9 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
       "Using Audio Bait",
       "", //needed for visits columns to show
       "",
-      ""
-    ]
+      "",
+    ],
   ];
-  const eventSum = (accumulator, visit) => accumulator + visit.events.length;
   for (const [deviceId, deviceVisits] of Object.entries(deviceMap)) {
     const animalSummary = deviceVisits.animalSummary();
 
@@ -964,7 +1139,7 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
       Object.values(animalSummary)
         .map((summary: VisitSummary) => summary.visitCount)
         .join(";"),
-      deviceVisits.audioBait.toString()
+      deviceVisits.audioBait.toString(),
     ]);
 
     for (const animal in animalSummary) {
@@ -979,7 +1154,7 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
         (summary.visitCount / summary.eventCount).toString(),
         animal,
         summary.visitCount.toString(),
-        deviceVisits.audioBait.toString()
+        deviceVisits.audioBait.toString(),
       ]);
     }
   }
@@ -1005,7 +1180,7 @@ async function reportVisits(request: RecordingQuery) {
     "Confidence",
     "# Events",
     "Audio Played",
-    "URL"
+    "URL",
   ]);
 
   for (const visit of results.visits) {
@@ -1060,7 +1235,7 @@ function addVisitRow(out: any, visit: Visit) {
     "",
     visit.events.length.toString(),
     visit.audioBaitVisit.toString(),
-    ""
+    "",
   ]);
 }
 
@@ -1080,7 +1255,7 @@ function addEventRow(out: any, event: VisitEvent, recordingUrlBase: string) {
     event.trackTag ? event.trackTag.confidence + "%" : "",
     "",
     "",
-    urljoin(recordingUrlBase, event.recID.toString(), event.trackID.toString())
+    urljoin(recordingUrlBase, event.recID.toString(), event.trackID.toString()),
   ]);
 }
 
@@ -1103,7 +1278,7 @@ function addAudioBaitRow(out: any, audioBait: Event) {
     "",
     "",
     audioPlayed,
-    ""
+    "",
   ]);
 }
 
@@ -1114,12 +1289,12 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
     include: [
       {
         model: models.Group,
-        attributes: ["groupname"]
+        attributes: ["groupname"],
       },
       {
         model: models.Track,
         where: {
-          archivedAt: null
+          archivedAt: null,
         },
         attributes: [
           "id",
@@ -1131,8 +1306,8 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
               "end_s",
               Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
             ),
-            "data"
-          ]
+            "data",
+          ],
         ],
         required: false,
         include: [
@@ -1143,17 +1318,23 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
               "automatic",
               "TrackId",
               "confidence",
-              [Sequelize.json("data.name"), "data"]
-            ]
-          }
-        ]
+              [Sequelize.json("data.name"), "data"],
+            ],
+          },
+        ],
       },
       {
         model: models.Device,
-        attributes: ["devicename", "id"]
-      }
+        attributes: ["devicename", "id"],
+      },
     ],
-    attributes: ["id", "recordingDateTime", "DeviceId", "GroupId"]
+    attributes: [
+      "id",
+      "recordingDateTime",
+      "DeviceId",
+      "GroupId",
+      "rawFileKey",
+    ],
   };
   // @ts-ignore
   return await models.Recording.findByPk(id, query);
@@ -1182,9 +1363,18 @@ async function sendAlerts(recID: number) {
     recording.DeviceId,
     matchedTag
   );
-
-  for (const alert of alerts) {
-    await alert.sendAlert(recording, matchedTrack, matchedTag);
+  if (alerts.length > 0) {
+    const thumbnail = await getThumbnail(recording).catch(() => {
+      log.warning("Alerting without thumbnail for %d", recID);
+    });
+    for (const alert of alerts) {
+      await alert.sendAlert(
+        recording,
+        matchedTrack,
+        matchedTag,
+        thumbnail ? thumbnail.Body : thumbnail
+      );
+    }
   }
   return alerts;
 }
@@ -1201,5 +1391,7 @@ export default {
   tracksFromMeta,
   updateMetadata,
   queryVisits,
-  sendAlerts
+  saveThumbnailInfo,
+  sendAlerts,
+  getThumbnail,
 };

@@ -1,6 +1,4 @@
 /// <reference path="../../support/index.d.ts" />
-
-//const names = require("../../commands/names");
 import { getTestName } from "../../commands/names";
 
 describe("Group Admin Pages", () => {
@@ -91,11 +89,9 @@ describe("Group Admin Pages", () => {
     cy.apiCreateUser(GoodFriend);
 
     cy.addUserToGroup(GoodFriend, FriendsForever, Admin);
-    cy.addUserToGroup(Friend, FriendsForever);
-
-    cy.wait(2000);
-    // wait until the table is updated
-    cy.get(usersTable).contains(Friend);
+    cy.addUserToGroup(Friend, FriendsForever).then(() => {
+      cy.get(usersTable).contains(Friend);
+    });
 
     cy.apiCheckUserCanSeeGroup(Friend, FriendsForever);
 
@@ -111,8 +107,7 @@ describe("Group Admin Pages", () => {
   it("Can see camera added to group", () => {
     const Camera = "camera";
     ensureFriendsForeverGroupExists();
-
-    cy.apiCreateCamera(Camera, FriendsForever);
+    cy.apiCreateDevice(Camera, FriendsForever);
     cy.checkDeviceInGroup(Camera, FriendsForever);
   });
 

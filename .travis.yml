@@ -14,14 +14,7 @@ python:
   - "3.6.1"
 
 install:
-  - cd api
-  - pwd
-  - npm i -g npm
-  - npm install -g apidoc@0.20.0
-  - npm run apidoc
-  - npm install -g eslint
-  # global eslint uses local plugins
-  - npm install eslint-plugin-cypress eslint-plugin-no-only-tests
+  - npm install -g npm apidoc@0.20.0 eslint prettier
   - sudo apt update
   - sudo apt install python3-pip
   - sudo apt-get install python3-setuptools
@@ -29,14 +22,20 @@ install:
 script:
   # Run browse checks
   - pwd
-  - cd ../browse
-  - npm install @typescript-eslint/parser@^4.28.4
+  - cd browse
+  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
   - npm run lint || travis_terminate 1;
   # Run api checks
   - cd ../api
+  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
   - npm run lint || travis_terminate 1;
   - python3 -m pip install -r test/requirements.txt
   - black --diff --check ./test || travis_terminate 1;
+  - npm run apidoc
+  # Run integration checks
+  - cd ../integration-tests
+  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests
+  - npm run lint || travis_terminate 1;
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
   - cd ..
   - docker-compose build

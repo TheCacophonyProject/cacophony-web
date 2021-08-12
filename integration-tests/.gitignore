@@ -5,3 +5,4 @@ cypress.json
 cypress-performance.json
 cypress-browse.json
 cypress.json.local
+*.iml

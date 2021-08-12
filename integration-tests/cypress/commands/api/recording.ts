@@ -13,6 +13,7 @@ import {
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { convertToDate } from "../server";
+import { ApiThermalRecordingInfo, ApiTrackInfo } from "../types";
 
 let lastUsedTime = DEFAULT_DATE;
 
@@ -182,8 +183,8 @@ Cypress.Commands.add(
     tagger: string,
     tag: string
   ) => {
-    cy.uploadRecording(camera, details).then((inter) => {
-      cy.userTagRecording(inter.response.body.recordingId, 0, tagger, tag);
+    cy.uploadRecording(camera, details).then((recordingId) => {
+      cy.userTagRecording(recordingId, 0, tagger, tag);
     });
   }
 );
@@ -224,7 +225,7 @@ interface ThermalRecordingData {
 function makeRecordingDataFromDetails(
   details: ApiThermalRecordingInfo
 ): ThermalRecordingData {
-  let data: ThermalRecordingData = {
+  const data: ThermalRecordingData = {
     type: "thermalRaw",
     recordingDateTime: "",
     duration: 12,
@@ -295,7 +296,7 @@ function addTracksToRecording(
   if (trackDetails) {
     let count = 0;
     data.metadata.tracks = trackDetails.map((track) => {
-      let tag = track.tag ? track.tag : "possum";
+      const tag = track.tag ? track.tag : "possum";
       return {
         start_s: track.start_s || 2 + count * 10,
         end_s: track.end_s || 8 + count * 10,

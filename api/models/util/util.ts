@@ -55,7 +55,7 @@ export function findAllWithUser<T extends ModelStaticCommon<T>>(
           where: { [Op.and]: [queryParams.where, { public: true }] },
           include: [models.Group],
           limit: queryParams.limit,
-          offset: queryParams.offset
+          offset: queryParams.offset,
         })
         .then(function (result: QueryResult<T>) {
           result.limit = queryParams.limit;
@@ -70,12 +70,12 @@ export function findAllWithUser<T extends ModelStaticCommon<T>>(
           queryParams.where = {
             [Op.and]: [
               queryParams.where,
-              { [Op.or]: [{ public: true }, { GroupId: { [Op.in]: ids } }] }
-            ]
+              { [Op.or]: [{ public: true }, { GroupId: { [Op.in]: ids } }] },
+            ],
           };
           queryParams.include = [
             { model: models.Group },
-            { model: models.Tag }
+            { model: models.Tag },
           ];
           return model.findAndCountAll(queryParams);
         })
@@ -102,7 +102,7 @@ export function getFileData<T extends ModelStaticCommon<T>>(
           const fileData = {
             key: model.getDataValue("fileKey"),
             name: getFileName(model),
-            mimeType: model.getDataValue("mimeType")
+            mimeType: model.getDataValue("mimeType"),
           };
           return resolve(fileData);
         } else {
@@ -162,9 +162,9 @@ export function getFromId(id: number, user: User, attributes) {
         const condition = {
           where: {
             id: id,
-            [Op.or]: [{ GroupId: { [Op.in]: ids } }, { public: true }]
+            [Op.or]: [{ GroupId: { [Op.in]: ids } }, { public: true }],
           },
-          attributes
+          attributes,
         };
         return modelClass.findOne(condition);
       })
@@ -213,12 +213,91 @@ export function userCanEdit(id, user) {
 }
 
 export function openS3() {
-  return new AWS.S3({
-    endpoint: config.s3.endpoint,
-    accessKeyId: config.s3.publicKey,
-    secretAccessKey: config.s3.privateKey,
-    s3ForcePathStyle: true // needed for minio
-  });
+  // This is a shim around the s3 compatible object store provider.
+  // Based on the bucket passed in the params if there is no object key provided,
+  // pick the correct s3 provider.  If there is a key provided, pick the provider
+  // based on the prefix of the key `bb_` prefix for backblaze, otherwise use the
+  // local minio storage.
+
+  const providers = {
+    s3Local: null,
+    s3Archive: null,
+  };
+
+  const getProviderForParams = (params: {
+    Key?: string;
+    Bucket?: string;
+    Prefix?: string;
+  }): AWS.S3 => {
+    if (!params.Key && !params.Bucket && !params.Prefix) {
+      throw new Error("s3 params must contain a 'Key' or a 'Bucket' field");
+    }
+    let chooseProvider = "s3Local";
+    if (
+      config.hasOwnProperty("s3Archive") &&
+      ((params.Key && params.Key.startsWith("a_")) ||
+        (params.Prefix && params.Prefix.startsWith("a_")) ||
+        (!params.Key &&
+          !params.Prefix &&
+          params.Bucket === config.s3Archive.bucket))
+    ) {
+      // NOTE: If archive bucket is not configured, we fall back to just using local.
+      chooseProvider = "s3Archive";
+    }
+    if (chooseProvider === "s3Archive") {
+      params.Bucket = config.s3Archive.bucket;
+      if (!providers.s3Archive) {
+        providers.s3Archive = new AWS.S3({
+          endpoint: config.s3Archive.endpoint,
+          accessKeyId: config.s3Archive.publicKey,
+          secretAccessKey: config.s3Archive.privateKey,
+          s3ForcePathStyle: true, // needed for minio
+        });
+      }
+      return providers.s3Archive as AWS.S3;
+    } else {
+      params.Bucket = config.s3Local.bucket;
+      if (!providers.s3Local) {
+        providers.s3Local = new AWS.S3({
+          endpoint: config.s3Local.endpoint,
+          accessKeyId: config.s3Local.publicKey,
+          secretAccessKey: config.s3Local.privateKey,
+          s3ForcePathStyle: true, // needed for minio
+        });
+      }
+      return providers.s3Local as AWS.S3;
+    }
+  };
+
+  return {
+    getObject(params, callback?) {
+      return getProviderForParams(params).getObject(params, callback);
+    },
+    copyObject(params, callback?) {
+      return getProviderForParams(params).copyObject(params, callback);
+    },
+    deleteObject(params, callback?) {
+      return getProviderForParams(params).deleteObject(params, callback);
+    },
+    listObjects(params, callback?) {
+      return getProviderForParams(params).listObjects(params, callback);
+    },
+    headObject(params, callback?) {
+      return getProviderForParams(params).headObject(params, callback);
+    },
+    upload(params, callback?) {
+      return getProviderForParams(params).upload(params, callback);
+    },
+    headBucket(params, callback?) {
+      return getProviderForParams(params).headBucket(params, callback);
+    },
+    createBucket(params, callback?) {
+      return getProviderForParams(params).createBucket(params, callback);
+    },
+    listBuckets(params, callback?) {
+      return getProviderForParams(params).listBuckets(callback);
+    },
+  };
 }
 
 export function saveFile(file /* model.File */) {
@@ -239,14 +318,13 @@ export function saveFile(file /* model.File */) {
     const s3 = openS3();
     fs.readFile(file.path, function (err, data) {
       const params = {
-        Bucket: config.s3.bucket,
         Key: key,
-        Body: data
+        Body: data,
       };
       s3.upload(params, function (err) {
         if (err) {
           log.error("Error with saving to S3.");
-          log.error(err);
+          log.error(err.toString());
           return reject(err);
         } else {
           fs.unlinkSync(file.path); // Delete local file.
@@ -268,8 +346,7 @@ export function deleteFile(fileKey) {
   return new Promise((resolve, reject) => {
     const s3 = openS3();
     const params = {
-      Bucket: config.s3.bucket,
-      Key: fileKey
+      Key: fileKey,
     };
     s3.deleteObject(params, function (err, data) {
       if (err) {
@@ -289,5 +366,5 @@ export default {
   deleteModelInstance,
   userCanEdit,
   openS3,
-  saveFile
+  saveFile,
 };

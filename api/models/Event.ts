@@ -36,7 +36,7 @@ export interface Event extends Sequelize.Model, ModelCommon<Event> {
   create: ({
     deviceId,
     eventDetailId,
-    dateTime
+    dateTime,
   }: {
     deviceId: number;
     eventDetailId: number;
@@ -72,7 +72,7 @@ export default function (sequelize, DataTypes) {
   const name = "Event";
 
   const attributes = {
-    dateTime: DataTypes.DATE
+    dateTime: DataTypes.DATE,
   };
 
   const Event = sequelize.define(name, attributes) as unknown as EventStatic;
@@ -85,7 +85,7 @@ export default function (sequelize, DataTypes) {
   Event.addAssociations = function (models) {
     models.Event.belongsTo(models.DetailSnapshot, {
       as: "EventDetail",
-      foreignKey: "EventDetailId"
+      foreignKey: "EventDetailId",
     });
     models.Event.belongsTo(models.Device);
   };
@@ -145,8 +145,8 @@ export default function (sequelize, DataTypes) {
       where: {
         [Op.and]: [
           where, // User query
-          options && options.admin ? "" : await user.getWhereDeviceVisible() // can only see devices they should
-        ]
+          options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
+        ],
       },
       order: order,
       include: [
@@ -154,16 +154,16 @@ export default function (sequelize, DataTypes) {
           model: models.DetailSnapshot,
           as: "EventDetail",
           attributes: ["type", "details"],
-          where: eventWhere
+          where: eventWhere,
         },
         {
           model: models.Device,
-          attributes: ["devicename"]
-        }
+          attributes: ["devicename"],
+        },
       ],
       attributes: { exclude: ["updatedAt", "EventDetailId"] },
       limit: limit,
-      offset: offset
+      offset: offset,
     });
   };
 
@@ -186,18 +186,18 @@ export default function (sequelize, DataTypes) {
       }
     }
 
-    let order: any[] = [
+    const order: any[] = [
       ["EventDetail", "type", "DESC"],
       ["DeviceId", "DESC"],
-      ["dateTime", "DESC"]
+      ["dateTime", "DESC"],
     ];
 
     return this.findAll({
       where: {
         [Op.and]: [
           where, // User query
-          options && options.admin ? "" : await user.getWhereDeviceVisible() // can only see devices they should
-        ]
+          options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
+        ],
       },
       order: order,
       include: [
@@ -205,7 +205,7 @@ export default function (sequelize, DataTypes) {
           model: models.DetailSnapshot,
           as: "EventDetail",
           attributes: ["type", "details"],
-          where: eventWhere
+          where: eventWhere,
         },
         {
           model: models.Device,
@@ -213,10 +213,10 @@ export default function (sequelize, DataTypes) {
           include: [
             {
               model: models.Group,
-              attributes: ["groupname", "id"]
-            }
-          ]
-        }
+              attributes: ["groupname", "id"],
+            },
+          ],
+        },
       ],
       attributes: [
         Sequelize.literal(
@@ -224,8 +224,8 @@ export default function (sequelize, DataTypes) {
         ), // the 1 is some kind of hack that makes this work in sequelize
         "id",
         "dateTime",
-        "DeviceId"
-      ]
+        "DeviceId",
+      ],
     });
   };
   return Event;

@@ -1,5 +1,5 @@
 <template>
-  <b-container class="users">
+  <b-container class="users" style="padding: 0">
     <h2>
       Users <help>{{ usersHelpTip }}</help>
     </h2>

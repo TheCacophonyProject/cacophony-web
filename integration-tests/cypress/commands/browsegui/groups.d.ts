@@ -9,12 +9,12 @@ declare namespace Cypress {
     createGroup(group: string): Chainable<Element>;
 
     /**
-     * Browser: Navigate to gorups page
+     * Browser: Navigate to groups page
      */
     checkOnGroupPage(): Chainable<Element>;
 
     /**
-     * Browser: Add user to group optioanlly as an admin
+     * Browser: Add user to group optionally as an admin
      */
     addUserToGroup(
       userName: string,

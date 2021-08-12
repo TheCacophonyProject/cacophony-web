@@ -45,6 +45,9 @@ dbConfig.benchmark = true;
 // Send logs via winston
 (dbConfig as any).logging = function (msg, timeMs) {
   log.debug("%s [%d ms]", msg, timeMs);
+  if (timeMs > (config.database.slowQueryLogThresholdMs || 1000)) {
+    log.warning("Slow query: %s [%d]ms");
+  }
 };
 
 // String-based operators are deprecated in sequelize v4 as a security concern.
@@ -82,8 +85,8 @@ const sequelize = new Sequelize(
       $and: Op.and,
       $or: Op.or,
       $any: Op.any,
-      $all: Op.all
-    }
+      $all: Op.all,
+    },
   }
 );
 
@@ -104,6 +107,7 @@ Object.keys(db).forEach((modelName) => {
   }
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface ModelCommon<T> extends Sequelize.Model {
   getJwtDataValues: () => { _type: string; id: any };
 }
@@ -134,7 +138,7 @@ const AllModels = {
   Schedule: db.Schedule as ScheduleStatic,
   Alert: db.Alert as AlertStatic,
   sequelize,
-  Sequelize
+  Sequelize,
 };
 
 export default AllModels;

@@ -3,7 +3,7 @@ import fs from "fs";
 import process from "process";
 // Set some default configuration
 const server = {
-  loggerLevel: "info"
+  loggerLevel: "info",
 };
 
 const timeZone = "Pacific/Auckland";
@@ -31,7 +31,7 @@ function getConfigPathFromArgs(strict: boolean = false): string {
 }
 
 function loadConfig(configPath) {
-  configPath = path.resolve(configPath);
+  configPath = path.resolve(__dirname, configPath);
   checkConfigFileExists(configPath);
   const config = require(configPath).default;
   checkDatabaseConfigAvailable(config);
@@ -62,5 +62,5 @@ export default {
   timeZone,
   server,
   euaVersion: 3,
-  ...loadConfigFromArgs()
+  ...loadConfigFromArgs(),
 };

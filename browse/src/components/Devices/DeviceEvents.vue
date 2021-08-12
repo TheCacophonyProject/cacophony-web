@@ -1,6 +1,6 @@
 ~
 <template>
-  <b-container class="latest-events">
+  <b-container class="latest-events" style="padding: 0">
     <h2>
       Latest events for this device
       <b-button

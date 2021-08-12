@@ -23,7 +23,7 @@ import Sequelize from "sequelize";
 import util from "./util/util";
 import {
   RecordingId as RecordingIdAlias,
-  RecordingPermission
+  RecordingPermission,
 } from "./Recording";
 
 export type TagId = number;
@@ -48,7 +48,7 @@ export enum AcceptableTag {
   MissedTrack = "missed track",
   MultipleAnimals = "multiple animals",
   TrappedInTrap = "trapped in trap",
-  MissedRecording = "missed recording"
+  MissedRecording = "missed recording",
 }
 
 export const AcceptableTags = new Set(Object.values(AcceptableTag));
@@ -57,34 +57,34 @@ export default function (sequelize, DataTypes): TagStatic {
   const name = "Tag";
   const attributes = {
     what: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
     },
     detail: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
     },
     confidence: {
       // 0: Not sure at all; 1: 100% positive
-      type: DataTypes.FLOAT
+      type: DataTypes.FLOAT,
     },
     startTime: {
       // Start time of the tag in the linked recording in seconds
-      type: DataTypes.FLOAT
+      type: DataTypes.FLOAT,
     },
     duration: {
       // duration of the tag
-      type: DataTypes.FLOAT
+      type: DataTypes.FLOAT,
     },
     automatic: {
       // True if the tag was automatically generated.
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: false
+      defaultValue: false,
     },
     version: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 0x0100
-    }
+      defaultValue: 0x0100,
+    },
   };
 
   const Tag = sequelize.define(name, attributes);
@@ -142,7 +142,7 @@ export default function (sequelize, DataTypes): TagStatic {
     "automatic",
     "version",
     "createdAt",
-    "taggerId"
+    "taggerId",
   ]);
 
   Tag.apiSettableFields = Object.freeze([
@@ -152,7 +152,7 @@ export default function (sequelize, DataTypes): TagStatic {
     "startTime",
     "duration",
     "automatic",
-    "version"
+    "version",
   ]);
 
   return Tag;

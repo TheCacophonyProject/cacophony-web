@@ -259,7 +259,11 @@ describe("Devices/query", () => {
     //devices not  JSON array
     cy.apiCheckDevicesQuery(
       groupMember,
+<<<<<<< HEAD
       "bad value",
+=======
+      "bad value" as unknown as [],
+>>>>>>> main
       null,
       [],
       "or",
@@ -270,7 +274,11 @@ describe("Devices/query", () => {
     cy.apiCheckDevicesQuery(
       groupMember,
       null,
+<<<<<<< HEAD
       "bad value",
+=======
+      "bad value" as unknown as [],
+>>>>>>> main
       [],
       "or",
       HTTP_Unprocessable

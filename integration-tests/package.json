@@ -9,22 +9,26 @@
     "browse": "./node_modules/cypress/bin/cypress open --config-file cypress-browse.json",
     "release": "./node_modules/cypress/bin/cypress run $CYPRESS_RECORD",
     "performance:release": "./node_modules/cypress/bin/cypress run $CYPRESS_RECORD --config-file cypress-performance.json",
-    "lint": "eslint ./cypress --ext .ts,.vue",
-    "lint:fix": "eslint ./cypress --fix --ext .ts,.vue"
+    "lint": "eslint ./cypress --ext .ts && (../prettier-check.sh || (echo \"Please run '../prettier-fix.sh' to clean up formatting of files.\"; false))",
+    "lint:fix": "eslint ./cypress --fix --ext .ts && ../prettier-fix.sh"
   },
   "dependencies": {
     "@types/form-data": "^2.5.0",
     "@types/node": "^14.14.25",
     "form-data": "^4.0.0",
-    "moment": "^2.29.1",
-    "typescript": "^4.1.3"
+    "moment": "^2.29.1"
   },
   "devDependencies": {
-    "cypress": "^7.3.0",
-    "eslint": "^6.8.0",
-    "eslint-plugin-cypress": "^2.7.0",
-    "eslint-plugin-no-only-tests": "^2.4.0",
-    "prettier": "^2.2.1"
+    "cypress": "^8.2.0",
+    "eslint": "^7.32.0",
+    "eslint-plugin-cypress": "^2.11.3",
+    "eslint-plugin-no-only-tests": "^2.6.0",
+    "@typescript-eslint/eslint-plugin": "^4.29.0",
+    "@typescript-eslint/parser": "^4.29.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-utils": "^3.0.0",
+    "prettier": "^2.3.2",
+    "typescript": "^4.3.5"
   },
   "author": "",
   "license": "ISC",

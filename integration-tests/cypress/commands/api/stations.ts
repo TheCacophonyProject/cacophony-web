@@ -1,10 +1,12 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types" />
 
 import { v1ApiPath, makeAuthorizedRequest } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getTestName } from "../names";
 import { checkRecording } from "./recording";
+import { ApiCreateStationData } from "../types";
 
 Cypress.Commands.add(
   "apiUploadStations",

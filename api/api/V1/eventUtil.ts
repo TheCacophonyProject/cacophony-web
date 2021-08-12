@@ -2,7 +2,6 @@ import middleware from "../middleware";
 import models from "../../models";
 import { Device } from "../../models/Device";
 import { Event } from "../../models/Event";
-import { User } from "../../models/User";
 
 import { QueryOptions } from "../../models/Event";
 
@@ -15,7 +14,7 @@ const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
 async function errors(request: any, admin?: boolean) {
   const query = request.query;
-  let options = {} as QueryOptions;
+  const options = {} as QueryOptions;
   options.eventType = "systemError";
   options.admin = admin;
   options.useCreatedDate = true;
@@ -52,7 +51,7 @@ async function uploadEvent(request, response) {
     eventList.push({
       DeviceId: request.device.id,
       EventDetailId: detailsId,
-      dateTime: time
+      dateTime: time,
     });
     count++;
   });
@@ -62,7 +61,7 @@ async function uploadEvent(request, response) {
   } catch (exception) {
     return responseUtil.send(response, {
       statusCode: 500,
-      messages: ["Failed to record events.", exception.message]
+      messages: ["Failed to record events.", exception.message],
     });
   }
 
@@ -70,7 +69,7 @@ async function uploadEvent(request, response) {
     statusCode: 200,
     messages: ["Added events."],
     eventsAdded: count,
-    eventDetailId: detailsId
+    eventDetailId: detailsId,
   });
 }
 
@@ -79,7 +78,7 @@ async function powerEventsPerDevice(
   admin?: boolean
 ): Promise<PowerEvents[]> {
   const query = request.query;
-  let options = {} as QueryOptions;
+  const options = {} as QueryOptions;
   options.eventType = ["rpi-power-on", "daytime-power-off", "stop-reported"];
   options.admin = admin;
   options.useCreatedDate = false;
@@ -113,7 +112,7 @@ const eventAuth = [
   oneOf(
     [body("eventDetailId").exists(), body("description.type").exists()],
     "Either 'eventDetailId' or 'description.type' must be specified.  Description"
-  )
+  ),
 ];
 
 export class PowerEvents {
@@ -186,5 +185,5 @@ export default {
   uploadEvent,
   errors,
   powerEventsPerDevice,
-  EVENT_TYPE_REGEXP
+  EVENT_TYPE_REGEXP,
 };

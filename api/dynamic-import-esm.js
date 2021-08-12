@@ -4,5 +4,5 @@ module.exports = {
   // fails to load modules that are ES module dependencies.
   dynamicImportESM(moduleIdentifier) {
     return import(moduleIdentifier);
-  }
+  },
 };

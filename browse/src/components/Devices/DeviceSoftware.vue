@@ -1,5 +1,5 @@
 <template>
-  <b-container class="versions">
+  <b-container class="versions" style="padding: 0">
     <h2>Current software versions</h2>
     <div v-if="!software.result">{{ software.message }}</div>
     <div

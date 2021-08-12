@@ -6,7 +6,7 @@ This is a mono-repo pulling together three older repositories: cacophony-api, ca
 `cacophony-api` is a node server that is accessed through a RESTful API.  This allows uploading, processing and retrieving media collected for The Cacophony
 Project.
 
-Project | cacophony-api [![Status](https://api.travis-ci.org/TheCacophonyProject/cacophony-api.svg)](https://travis-ci.org/TheCacophonyProject/cacophony-api)
+Project | cacophony-web [![Status](https://api.travis-ci.org/TheCacophonyProject/cacophony-web.svg)](https://travis-ci.org/TheCacophonyProject/cacophony-web)
 ---|---
 Platform | Linux
 Requires | <none>
@@ -15,7 +15,7 @@ Licence | [Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.
 
 ## Instructions
 
-Download and install the latest release from [Github](https://github.com/TheCacophonyProject/cacophony-api/releases). We recommend you use our web application, [cacophony-browse](https://github.com/TheCacophonyProject/cacophony-browse/releases), to connect to this server.
+Download and install the latest release from [Github](https://github.com/TheCacophonyProject/cacophony-web/releases).
 
 
 ## Development instructions
@@ -90,7 +90,7 @@ To create a new database migration file: `npm run new-migration <name>`
 To make the project build fast on our build servers (and your computer) we use a base docker image that contains nodejs, postgis, minio and most of our js dependencies.   The code for building this server is in the folder `docker-base`
 
 ### Releases
-Releases are created using travis and git and saved [on Github](https://github.com/TheCacophonyProject/cacophony-api/releases).   Follow our [release instructions](https://docs.cacophony.org.nz/home/creating-releases) to create a new release.
+Releases are created using travis and git and saved [on Github](https://github.com/TheCacophonyProject/cacophony-web/releases).   Follow our [release instructions](https://docs.cacophony.org.nz/home/creating-releases) to create a new release.
 
 
 # cacophony-browse
@@ -101,6 +101,9 @@ This is a web interface for querying with and interacting with Cacophony Project
 ## Build Setup
 
 ``` bash
+# enter browse package
+cd browse
+
 # install dependencies
 npm install
 
@@ -144,7 +147,7 @@ npm run lint:fix
 * Tag the release (starting with a "v"), e.g.: `git tag -a v1.2.3 -m "1.2.3 release"`
 * Push the tag to Github, e.g.: `git push origin v1.2.3`
 * TravisCI will run the tests, create a release package and create a
-  [Github Release](https://github.com/TheCacophonyProject/cacophony-browse/releases)
+  [Github Release](https://github.com/TheCacophonyProject/cacophony-web/releases)
 
 ## Web Server Configuration
 
@@ -165,3 +168,18 @@ http://localhost:9000 {
     }
 }
 ```
+Sample config for Nginx:
+```
+server {
+    root /srv/cacophony/cacophony-browse;
+    index index-prod.html;
+
+
+    server_name browse.cacophony.org.nz;
+
+    location / {
+            try_files $uri $uri/ /index-prod.html;
+    }
+}
+```
+Note: you may also need to add a correct mime-type for WebAssembly (*.wasm)

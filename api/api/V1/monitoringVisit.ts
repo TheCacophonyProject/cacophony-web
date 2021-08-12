@@ -1,5 +1,5 @@
 import moment, { Moment } from "moment";
-import { MonitoringPageCriteria, MonitoringParams } from "./monitoringPage";
+import { MonitoringPageCriteria } from "./monitoringPage";
 import models from "../../models";
 import { Recording } from "../../models/Recording";
 import { getTrackTag, unidentifiedTags } from "./Visits";
@@ -102,7 +102,7 @@ class Visit {
     const newVisitRecording: VisitRecording = {
       recId: recording.id,
       start: recording.recordingDateTime,
-      tracks: []
+      tracks: [],
     };
     for (const track of (recording as any).Tracks) {
       const bestTag = getTrackTag(track.TrackTags);
@@ -116,7 +116,7 @@ class Visit {
         isAITagged: bestTag ? bestTag.automatic : false,
         aiTag: aiTag.length > 0 ? aiTag[0].what : null,
         start: track.data ? track.data.start_s : "",
-        end: track.data ? track.data.end_s : ""
+        end: track.data ? track.data.end_s : "",
       });
     }
     return newVisitRecording;
@@ -260,7 +260,7 @@ async function getRecordings(
   const where: any = {
     duration: { $gte: "0" },
     type: "thermalRaw",
-    recordingDateTime: { $gte: from, $lt: until }
+    recordingDateTime: { $gte: from, $lt: until },
   };
   if (params.devices) {
     where.DeviceId = params.devices;

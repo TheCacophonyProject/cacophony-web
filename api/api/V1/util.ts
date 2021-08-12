@@ -21,7 +21,6 @@ import { v4 as uuidv4 } from "uuid";
 import multiparty from "multiparty";
 import log from "../../logging";
 import responseUtil from "./responseUtil";
-import config from "../../config";
 import modelsUtil from "../../models/util/util";
 import crypto from "crypto";
 
@@ -48,7 +47,7 @@ function multipartUpload(keyPrefix, buildRecord) {
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
         // will fail the upload.
-        log.error("Invalid 'data' field: ", err);
+        log.error("Invalid 'data' field: %s", err.toString());
       }
     });
 
@@ -63,9 +62,8 @@ function multipartUpload(keyPrefix, buildRecord) {
       upload = modelsUtil
         .openS3()
         .upload({
-          Bucket: config.s3.bucket,
           Key: key,
-          Body: part
+          Body: part,
         })
         .promise()
         .catch((err) => {
@@ -107,7 +105,7 @@ function multipartUpload(keyPrefix, buildRecord) {
           responseUtil.serverError(response, uploadResult);
           return;
         }
-        log.info("Finished streaming upload to object store. Key:", key);
+        log.info("Finished streaming upload to object store. Key: %s", key);
 
         // Optional file integrity check, opt-in to be backward compatible with existing clients.
         if (data.fileHash) {
@@ -116,13 +114,12 @@ function multipartUpload(keyPrefix, buildRecord) {
           //  references the same data (fileKey, tracks etc) as the existing recording?  Then we just want to make sure
           //  we stop running our script to prune duplicates.
 
-          log.info("Checking file hash. Key:", key);
+          log.info("Checking file hash. Key: %s", key);
           // Read the full file back from s3 and hash it
           const fileData = await modelsUtil
             .openS3()
             .getObject({
-              Bucket: config.s3.bucket,
-              Key: key
+              Key: key,
             })
             .promise()
             .catch((err) => {
@@ -134,14 +131,13 @@ function multipartUpload(keyPrefix, buildRecord) {
             .update(new Uint8Array(fileData.Body), "binary")
             .digest("hex");
           if (data.fileHash !== checkHash) {
-            log.error("File hash check failed, deleting key:", key);
+            log.error("File hash check failed, deleting key: %s", key);
             // Hash check failed, delete the file from s3, and return an error which the client can respond to to decide
             // whether or not to retry immediately.
             await modelsUtil
               .openS3()
               .deleteObject({
-                Bucket: config.s3.bucket,
-                Key: key
+                Key: key,
               })
               .promise()
               .catch((err) => {
@@ -175,8 +171,7 @@ function multipartUpload(keyPrefix, buildRecord) {
 function getS3Object(fileKey) {
   const s3 = modelsUtil.openS3();
   const params = {
-    Bucket: config.s3.bucket,
-    Key: fileKey
+    Key: fileKey,
   };
   return s3.headObject(params).promise();
 }
@@ -186,7 +181,7 @@ async function getS3ObjectFileSize(fileKey) {
     const s3Ojb = await getS3Object(fileKey);
     return s3Ojb.ContentLength;
   } catch (err) {
-    log.warn(
+    log.warning(
       `Error retrieving S3 Object for with fileKey: ${fileKey}. Error was: ${err.message}`
     );
   }
@@ -195,8 +190,7 @@ async function getS3ObjectFileSize(fileKey) {
 async function deleteS3Object(fileKey) {
   const s3 = modelsUtil.openS3();
   const params = {
-    Bucket: config.s3.bucket,
-    Key: fileKey
+    Key: fileKey,
   };
   return s3.deleteObject(params).promise();
 }
@@ -205,5 +199,5 @@ export default {
   getS3Object,
   deleteS3Object,
   getS3ObjectFileSize,
-  multipartUpload
+  multipartUpload,
 };

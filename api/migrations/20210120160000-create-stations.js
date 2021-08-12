@@ -9,34 +9,34 @@ module.exports = {
         type: Sequelize.INTEGER,
         primaryKey: true,
         autoIncrement: true,
-        allowNull: false
+        allowNull: false,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       location: {
         type: Sequelize.GEOMETRY,
-        allowNull: false
+        allowNull: false,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowedNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowedNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       retiredAt: {
         type: Sequelize.DATE,
         allowedNull: true,
-        defaultValue: Sequelize.NULL
-      }
+        defaultValue: Sequelize.NULL,
+      },
     });
     await util.migrationAddBelongsTo(queryInterface, "Stations", "Users", {
-      name: "lastUpdatedBy"
+      name: "lastUpdatedBy",
     });
     await util.migrationAddBelongsTo(queryInterface, "Stations", "Groups");
     await util.migrationAddBelongsTo(queryInterface, "Recordings", "Stations");
@@ -44,7 +44,7 @@ module.exports = {
 
   down: async function (queryInterface) {
     await util.migrationRemoveBelongsTo(queryInterface, "Stations", "Users", {
-      name: "lastUpdatedBy"
+      name: "lastUpdatedBy",
     });
     await util.migrationRemoveBelongsTo(queryInterface, "Stations", "Groups");
     await util.migrationRemoveBelongsTo(
@@ -53,5 +53,5 @@ module.exports = {
       "Stations"
     );
     await queryInterface.dropTable("Stations");
-  }
+  },
 };

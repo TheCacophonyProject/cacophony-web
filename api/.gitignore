@@ -6,10 +6,13 @@ __pycache__
 /dist/
 ../.idea
 api/**/*.js
+scripts/**/*.js
 !api/**/apidoc.js
 models/**/*.js
 /*.js
 dockerstart.log
 test-cypress/cypress.json
 !dynamic-import-esm.js
+!.eslintrc.js
 test-cypress/cypress-performance.json
+*.iml

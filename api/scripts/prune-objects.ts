@@ -1,29 +1,30 @@
 import process from "process";
-const args = require("commander");
-const { Client } = require("pg");
-const config = require("../config");
-const modelsUtil = require("../models/util/util");
+import { program } from "commander";
+import { Client } from "pg";
+import * as config from "../config";
+import * as modelsUtil from "../models/util/util";
 
 let Config;
 // Define the types of object keys that will be considered for pruning.
 const keyTypes = Object.freeze([
   { prefix: "f", table: "Files", column: "fileKey" },
   { prefix: "raw", table: "Recordings", column: "rawFileKey" },
-  { prefix: "rec", table: "Recordings", column: "fileKey" }
+  { prefix: "rec", table: "Recordings", column: "fileKey" },
 ]);
 
 async function main() {
-  args
+  program
     .option("--config <path>", "Configuration file", "./config/app.js")
     .option("--delete", "Actually delete objects (dry run by default)")
     .parse(process.argv);
+  const options = program.opts();
 
   Config = {
     ...config.default,
-    ...config.default.loadConfig(args.config)
+    ...config.default.loadConfig(options.config),
   };
 
-  if (!args.delete) {
+  if (!options.delete) {
     console.log("NOTE: no objects will be removed without --delete");
   }
 
@@ -48,8 +49,8 @@ async function main() {
   const toDelete = new Set([...bucketKeys].filter((x) => !dbKeys.has(x)));
   console.log(`${toDelete.size} keys to delete`);
 
-  if (toDelete.size > 0 && args.delete) {
-    await deleteObjects(s3, Config.s3.bucket, toDelete);
+  if (toDelete.size > 0 && options.delete) {
+    await deleteObjects(s3, toDelete);
     console.log(`objects deleted`);
   }
 }
@@ -57,15 +58,14 @@ async function main() {
 async function loadAllBucketKeys(s3, prefixes) {
   const p = [];
   for (const prefix of prefixes) {
-    p.push(loadBucketKeys(s3, Config.s3.bucket, prefix));
+    p.push(loadBucketKeys(s3, prefix));
   }
   return collectKeys(p);
 }
 
-async function loadBucketKeys(s3, bucket, prefix) {
+async function loadBucketKeys(s3, prefix) {
   const params: any = {
-    Bucket: bucket,
-    Prefix: prefix
+    Prefix: prefix,
   };
 
   const keys = new Set();
@@ -92,7 +92,7 @@ async function pgConnect() {
     port: dbconf.port,
     user: dbconf.username,
     password: dbconf.password,
-    database: dbconf.database
+    database: dbconf.database,
   });
   await client.connect();
   return client;
@@ -129,14 +129,9 @@ async function collectKeys(promises) {
   return allKeys;
 }
 
-async function deleteObjects(s3, bucket, keys) {
-  const params: any = {
-    Bucket: bucket
-  };
-
+async function deleteObjects(s3, keys) {
   for (const key of keys) {
-    params.Key = key;
-    await s3.deleteObject(params).promise();
+    await s3.deleteObject({ Key: key }).promise();
   }
 }
 

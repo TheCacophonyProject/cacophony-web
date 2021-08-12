@@ -1,10 +1,16 @@
 /// <reference path="../../../support/index.d.ts" />
+import {
+  HTTP_AuthorizationError,
+  HTTP_Forbidden,
+  HTTP_OK200,
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
 
 const HTTP_AuthorizationError = 401;
 const HTTP_Unprocessable = 422;
 const HTTP_Forbidden = 403;
-const HTTP_OK = 200;
+const HTTP_OK200 = 200;
 
 describe("Authentication", () => {
   const group1 = "first_group";
@@ -145,7 +151,7 @@ describe("Authentication", () => {
       null,
       [{ devicename: getTestName(camera1), groupname: getTestName(group1) }],
       "or",
-      HTTP_OK
+      HTTP_OK200
     );
 
     //TODO: enable the remainder of the checks once issue 57 is fixed, or remove the remaining checks if we do not implement.

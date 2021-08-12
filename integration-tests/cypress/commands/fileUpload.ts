@@ -1,8 +1,8 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+import { getCreds } from "./server";
 import { Interception } from "cypress/types/net-stubbing";
-import { v1ApiPath, getCreds } from "./server";
 
 export function sendMultipartMessage(
   url: string,

@@ -76,7 +76,7 @@ export function makeAuthorizedRequestWithStatus(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string,
   statusCode: number
-): Cypress.Chainable<Cypress.Response> {
+): Cypress.Chainable<Cypress.Response<any>> {
   if (statusCode && statusCode > 200) {
     // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
     requestDetails.failOnStatusCode = false;
@@ -115,7 +115,7 @@ export function checkRequestFails(
 export function makeAuthorizedRequest(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string
-): Cypress.Chainable<Cypress.Response> {
+): Cypress.Chainable<Cypress.Response<any>> {
   const creds = getCreds(credName);
   requestDetails.headers = creds.headers;
   return cy.request(requestDetails);
@@ -174,7 +174,6 @@ export const uploadFileRequest = (
         });
     });
 };
-type IsoFormattedDateString = string;
 
 export function checkResponse(response: Cypress.Response, code: number) {
   expect(response.status, "Expected specified status code").to.eq(code);

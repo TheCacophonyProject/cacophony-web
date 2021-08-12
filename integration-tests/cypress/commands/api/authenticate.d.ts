@@ -1,5 +1,6 @@
 /// <reference types="../types" />
 declare namespace Cypress {
+  type ApiAuthenticateAccess = import("../types").ApiAuthenticateAccess;
   interface Chainable {
     /**
      * Sign is as user using supplied username and session-unique suffixi.

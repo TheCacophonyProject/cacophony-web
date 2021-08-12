@@ -54,25 +54,25 @@ export default function (
   const name = "Station";
   const attributes: ModelAttributes = {
     name: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
     },
     location: {
       type: DataTypes.GEOMETRY,
       set: util.geometrySetter,
       validate: {
-        isLatLon: validation.isLatLon
-      }
+        isLatLon: validation.isLatLon,
+      },
     },
     lastUpdatedById: {
-      type: DataTypes.INTEGER
+      type: DataTypes.INTEGER,
     },
     createdAt: {
-      type: DataTypes.DATE
+      type: DataTypes.DATE,
     },
     retiredAt: {
       type: DataTypes.DATE,
-      allowNull: true
-    }
+      allowNull: true,
+    },
   };
 
   // Define table

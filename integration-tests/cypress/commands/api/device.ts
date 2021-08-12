@@ -12,6 +12,16 @@ import {
   sortArrayOnTwoKeys,
 } from "../server";
 import { logTestDescription } from "../descriptions";
+<<<<<<< HEAD
+=======
+import {
+  ApiDeviceInGroupDevice,
+  ApiDeviceQueryDevice,
+  ApiDevicesDevice,
+  ApiDeviceUsersUser,
+  TestDeviceAndGroup,
+} from "../types";
+>>>>>>> main
 
 Cypress.Commands.add(
   "apiCreateDevice",
@@ -126,7 +136,11 @@ function createDevice(
     saltId?: number;
   }
 
+<<<<<<< HEAD
   let data: DataType = {
+=======
+  const data: DataType = {
+>>>>>>> main
     devicename: fullName,
     password: password,
     group: getTestName(group),
@@ -169,13 +183,22 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
+<<<<<<< HEAD
         let devices = response.body.devices.rows;
+=======
+        const devices = response.body.devices.rows;
+>>>>>>> main
         //TODO: Issue 63.  Reenable this when devices count is correct
         //expect(response.body.devices.count).to.equal(expectedDevices.length);
         expect(devices.length).to.equal(expectedDevices.length);
         let devCount: number;
+<<<<<<< HEAD
         let sortDevices = sortArrayOn(devices, "devicename");
         let sortExpectedDevices = sortArrayOn(expectedDevices, "devicename");
+=======
+        const sortDevices = sortArrayOn(devices, "devicename");
+        const sortExpectedDevices = sortArrayOn(expectedDevices, "devicename");
+>>>>>>> main
         for (devCount = 0; devCount < expectedDevices.length; devCount++) {
           checkDeviceMatchesExpected(
             sortDevices[devCount],
@@ -199,8 +222,13 @@ function checkDeviceMatchesExpected(
   } else {
     expect(device.Users.length).to.equal(expectedDevice.Users.length);
     // sort users and expected users to ensure order is the same
+<<<<<<< HEAD
     let users = sortArrayOn(device.Users, "username");
     let expectedUsers = sortArrayOn(expectedDevice.Users, "username");
+=======
+    const users = sortArrayOn(device.Users, "username");
+    const expectedUsers = sortArrayOn(expectedDevice.Users, "username");
+>>>>>>> main
 
     // compare user list
     let count: number;
@@ -242,7 +270,11 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
+<<<<<<< HEAD
         let devices = response.body.devices.rows;
+=======
+        const devices = response.body.devices.rows;
+>>>>>>> main
         expect(response.body.devices.count).to.be.at.least(
           expectedDevices.length
         );
@@ -315,7 +347,11 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
+<<<<<<< HEAD
         let device = response.body.device;
+=======
+        const device = response.body.device;
+>>>>>>> main
         expect(device.id).to.equal(getCreds(cameraName).id);
         expect(device.deviceName).to.equal(getTestName(cameraName));
         expect(device.groupName).to.equal(getTestName(groupName));
@@ -325,8 +361,13 @@ Cypress.Commands.add(
         } else {
           expect(device.users.length).to.equal(expectedDevice.users.length);
           // sort users and expected users to ensure order is the same
+<<<<<<< HEAD
           let users = sortArrayOn(device.users, "userName");
           let expectedUsers = sortArrayOn(expectedDevice.users, "userName");
+=======
+          const users = sortArrayOn(device.users, "userName");
+          const expectedUsers = sortArrayOn(expectedDevice.users, "userName");
+>>>>>>> main
 
           // compare user list
           let count: number;
@@ -380,7 +421,11 @@ Cypress.Commands.add(
       if (statusCode === null || statusCode == 200) {
         // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
         // sort both devices and expected devices on devicename,groupname to ensure order is same
+<<<<<<< HEAD
         let devices = sortArrayOnTwoKeys(
+=======
+        const devices = sortArrayOnTwoKeys(
+>>>>>>> main
           response.body.devices,
           "devicename",
           "groupname"
@@ -449,7 +494,11 @@ Cypress.Commands.add(
       if (statusCode === null || statusCode == 200) {
         // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
         // sort users and expected users to ensure order is the same
+<<<<<<< HEAD
         let users = sortArrayOn(response.body.rows, "username");
+=======
+        const users = sortArrayOn(response.body.rows, "username");
+>>>>>>> main
         expectedUsers = sortArrayOn(expectedUsers, "username");
         expect(users.length).to.equal(expectedUsers.length);
 

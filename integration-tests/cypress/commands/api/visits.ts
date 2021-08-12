@@ -1,8 +1,10 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+/// <reference types="../types" />
 
 import { v1ApiPath, getCreds } from "../server";
 import { logTestDescription } from "../descriptions";
+import { TestComparableVisit, TestVisitsWhere } from "../types";
 
 Cypress.Commands.add(
   "checkVisitTags",
@@ -42,7 +44,7 @@ function checkVisitsMatch(
   camera: string,
   expectedVisits: TestComparableVisit[]
 ) {
-  const where: VisitsWhere = {
+  const where: TestVisitsWhere = {
     duration: { $gte: "0" },
     type: "thermalRaw",
   };
@@ -66,7 +68,11 @@ function checkVisitsMatch(
 }
 
 function checkResponseMatches(
+<<<<<<< HEAD
   response: Cypress.Response,
+=======
+  response: Cypress.Response<any>,
+>>>>>>> main
   expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;

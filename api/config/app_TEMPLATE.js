@@ -6,14 +6,14 @@ const server = {
   loggerLevel: "debug", // REQUIRED, one of ('debug', 'warning', 'info', 'error')
   http: {
     active: true,
-    port: 80
+    port: 80,
   },
-  recording_url_base: "http://localhost/recording"
+  recording_url_base: "http://localhost/recording",
 };
 
 const fileProcessing = {
   // File processing API settings (runs on different port)
-  port: 2002
+  port: 2002,
 };
 
 const database = {
@@ -21,22 +21,32 @@ const database = {
   password: "",
   database: "cacophony",
   host: "localhost",
-  dialect: "postgres"
+  dialect: "postgres",
+  slowQueryLogThresholdMs: 1000,
 };
 
-const s3 = {
+const s3Local = {
   // Used for storing audio & video recordings.
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
   bucket: "cacophony", // REQUIRED, String
-  endpoint: "http://localhost:9000" // REQUIRED, URL
+  endpoint: "http://localhost:9000", // REQUIRED, URL
+  rootPath: "/.data/", // Root of the minio storage directory, so we can work out total and available disk space.
+};
+
+const s3Achive = {
+  publicKey: "", // REQUIRED, String:
+  privateKey: "", // REQUIRED, String
+  bucket: "CacophonyBackblazeTest", // REQUIRED, String
+  endpoint: "s3.us-west-002.backblazeb2.com", // REQUIRED, URL
+  freeSpaceThresholdRatio: 0.7,
 };
 
 const smtpDetails = {
   host: "localhost",
   port: 25,
   tls: true,
-  from_name: "Cacophony Reporting"
+  from_name: "Cacophony Reporting",
   //
   // service: "gmail",
   // auth: {
@@ -49,7 +59,8 @@ exports.smtpDetails = smtpDetails;
 exports.server = server;
 exports.fileProcessing = fileProcessing;
 exports.database = database;
-exports.s3 = s3;
+exports.s3Local = s3Local;
+exports.s3Archive = s3Achive;
 
 // This is needed because Sequelize looks for development by default when using db:migrate
 exports.development = database;

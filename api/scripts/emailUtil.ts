@@ -2,19 +2,25 @@ import config from "../config";
 import { Recording } from "../models/Recording";
 import { TrackTag } from "../models/TrackTag";
 import log from "../logging";
-import moment, { Moment } from "moment";
+import moment from "moment";
 import { SMTPClient, Message } from "emailjs";
+import { Readable } from "stream";
 
 function alertBody(
   recording: Recording,
   tag: TrackTag,
-  camera: String
+  camera: String,
+  hasThumbnail: boolean
 ): string[] {
   const dateTime = moment(recording.recordingDateTime)
     .tz(config.timeZone)
     .format("h:mma Do MMM");
   let html = `<b>${camera} has detected a ${tag.what} - ${dateTime}</b>`;
-  html += `<a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId}">View Recording</a>`;
+  if (hasThumbnail) {
+    html += `<br> <a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId}">`;
+    html += `<img width="200" height ="200" src="cid:thumbnail" alt="recording thumbnail"></a><br>`;
+  }
+  html += `<br><a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId}">View Recording</a>`;
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
 
   let text = `${camera} has detected a ${tag.what} - ${dateTime}\r\n`;
@@ -27,7 +33,8 @@ async function sendEmail(
   html: string,
   text: string,
   to: string,
-  subject: string
+  subject: string,
+  thumbnail?: Buffer
 ): Promise<boolean> {
   const client = new SMTPClient(config.smtpDetails);
   log.info(`Sending  email with subject ${subject} to ${to}`);
@@ -37,11 +44,18 @@ async function sendEmail(
       from: config.smtpDetails.from_name,
       to: to,
       subject: subject,
-      attachment: [{ data: html, alternative: true }]
+      attachment: [{ data: html, alternative: true }],
     });
+    if (thumbnail) {
+      message.attach({
+        stream: Readable.from(thumbnail),
+        type: "image/png",
+        headers: { "Content-ID": "<thumbnail>" },
+      });
+    }
     await client.sendAsync(message);
   } catch (err) {
-    log.error(err);
+    log.error(err.toString());
     return false;
   }
   return true;

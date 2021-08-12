@@ -1,7 +1,8 @@
 # Ignore everything in this directory
-.gitignore
+*
 # Except
 !.gitignore
 !app_TEMPLATE.js
 !app_test_TEMPLATE.js
 !app_test_default.js
+

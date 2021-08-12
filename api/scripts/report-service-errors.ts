@@ -15,7 +15,7 @@ async function main() {
     endTime: endDate.toDate(),
     startTime: startDate.toDate(),
     offset: null,
-    limit: null
+    limit: null,
   };
   const serviceErrors = await eventUtil.errors({ query: query }, true);
   if (Object.keys(serviceErrors).length == 0) {
@@ -116,9 +116,9 @@ const log = new winston.Logger({
       timestamp: function () {
         return moment().format();
       },
-      colorize: true
-    })
-  ]
+      colorize: true,
+    }),
+  ],
 });
 
 main()
