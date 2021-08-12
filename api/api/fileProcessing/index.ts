@@ -42,16 +42,16 @@ export default function (app: Application) {
     }
   });
 
-    /**
-     * @api {put} /api/fileProcessing/processed Finished a file processing job
-     * @apiName PostProcessedFile
-     * @apiGroup FileProcessing
-     *
-     * @apiParam {Integer} id ID of the recording.
-     */
-    app.post(    `${apiUrl}/processed`, async (request: Request, response: Response) => {
+  /**
+   * @api {put} /api/fileProcessing/processed Upload a processed file to the db
+   * @apiName PostProcessedFile
+   * @apiGroup FileProcessing
+   *
+   * @apiParam {String} [fileKey] of the uploaded file in db
+   */
+    app.post(    `${apiUrl}/processed`,
       middleware.requestWrapper(recordingUtil.makeProcessedUploadHandler())
-    });
+    );
 
   /**
    * @api {put} /api/fileProcessing Finished a file processing job

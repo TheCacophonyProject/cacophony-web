@@ -68,6 +68,16 @@ function validRecordingUpload(response, idOfRecording) {
   });
 }
 
+function validFileUpload(response, key) {
+  send(response, {
+    statusCode: 200,
+    messages: [VALID_DATAPOINT_UPLOAD_REQUEST],
+    fileKey: key,
+  });
+}
+
+
+
 function validDatapointUpdate(response) {
   send(response, {
     statusCode: 200,
@@ -105,6 +115,7 @@ function serverError(
 export default {
   send,
   invalidDatapointUpdate,
+  validFileUpload,
   invalidDatapointUpload,
   validDatapointGet,
   validDatapointUpdate,

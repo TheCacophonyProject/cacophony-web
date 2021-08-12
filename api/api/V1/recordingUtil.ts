@@ -323,14 +323,14 @@ async function createThumbnail(
   return { data: img, meta: thumbMeta };
 }
 function makeProcessedUploadHandler() {
-  return util.multipartUpload("file", async (request, data, key) => {
-    console.log("finished upload",key)
-    return key;
+  return util.multipartUpload("file", async (request,response, data, key) => {
+    responseUtil.validFileUpload(response, key);
+    return key
   });
 }
 
 function makeUploadHandler(mungeData?: (any) => any) {
-  return util.multipartUpload("raw", async (request, data, key) => {
+  return util.multipartUpload("raw", async (request,response, data, key) => {
     if (mungeData) {
       data = mungeData(data);
     }
@@ -415,10 +415,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
       recording.public = request.device.public;
     }
 
-    await recording.validate();
-    // NOTE: The documentation for save() claims that it also does validation,
-    //  so not sure if we really need the call to validate() here.
-    await recording.save();
+
     if (data.metadata) {
       await tracksFromMeta(recording, data.metadata);
     }
@@ -441,7 +438,13 @@ function makeUploadHandler(mungeData?: (any) => any) {
         recording.processingState = RecordingProcessingState.Corrupt;
       }
     }
-    return recording;
+    await recording.validate();
+    // NOTE: The documentation for save() claims that it also does validation,
+    //  so not sure if we really need the call to validate() here.
+    await recording.save();
+
+    responseUtil.validRecordingUpload(response, recording.id);
+    return recording
   });
 }
 

@@ -24,9 +24,8 @@ import responseUtil from "./responseUtil";
 import modelsUtil from "../../models/util/util";
 import crypto from "crypto";
 
-function multipartUpload(keyPrefix, buildRecord) {
+function multipartUpload(keyPrefix, onSaved) {
   return (request, response) => {
-    console.log("got upload req mukti")
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;
@@ -59,7 +58,6 @@ function multipartUpload(keyPrefix, buildRecord) {
         return;
       }
       filename = part.filename;
-      console.log("got upload req mukti", part.filename)
 
       upload = modelsUtil
         .openS3()
@@ -154,16 +152,11 @@ function multipartUpload(keyPrefix, buildRecord) {
         }
 
         data.filename = filename;
-
-        // Store a record for the upload.
-        dbRecord = await buildRecord(request, data, key);
-        await dbRecord.validate();
-        await dbRecord.save();
+        dbRecord = await onSaved(request, response,data, key);
       } catch (err) {
         responseUtil.serverError(response, err);
         return;
       }
-      responseUtil.validRecordingUpload(response, dbRecord.id);
     });
 
     form.parse(request);
