@@ -1,8 +1,6 @@
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 declare namespace Cypress {
-  type TestComparablePowerEvent = import("../types").TestComparablePowerEvent;
   interface Chainable {
     /**
      * Record a event for this device using device's credentials

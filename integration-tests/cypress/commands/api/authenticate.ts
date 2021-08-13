@@ -1,6 +1,5 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 import { getTestName } from "../names";
 import {

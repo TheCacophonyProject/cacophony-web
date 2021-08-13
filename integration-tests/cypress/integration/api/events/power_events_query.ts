@@ -41,7 +41,7 @@ describe("Events - query power events", () => {
   let peOtherGroupCameraDevice: any;
   let expectedCamera: ApiPowerEventReturned;
   let expectedOtherCamera: ApiPowerEventReturned;
-  let expectedOtherGroupCamera: ApiPowerEventReturned;
+//  let expectedOtherGroupCamera: ApiPowerEventReturned;
 
   before(() => {
     // group with 2 devices, admin and member users
@@ -149,14 +149,14 @@ describe("Events - query power events", () => {
       hasAlerted: true,
       Device: peOtherCameraDevice,
     };
-    expectedOtherGroupCamera = {
-      hasStopped: true,
-      lastStarted: time1,
-      lastReported: time5,
-      lastStopped: null,
-      hasAlerted: true,
-      Device: peOtherGroupCameraDevice,
-    };
+//    expectedOtherGroupCamera = {
+//      hasStopped: true,
+//      lastStarted: time1,
+//      lastReported: time5,
+//      lastStopped: null,
+//      hasAlerted: true,
+//      Device: peOtherGroupCameraDevice,
+//    };
   });
 
   it("Group admin can view all power events on all devices their group", () => {

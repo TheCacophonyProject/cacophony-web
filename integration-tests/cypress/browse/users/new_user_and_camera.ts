@@ -1,5 +1,5 @@
 /// <reference path="../../support/index.d.ts" />
-	
+
 context("Users can see footage from their cameras", () => {
   const username = "integration";
   const group = "int-test";
@@ -18,12 +18,11 @@ context("Users can see footage from their cameras", () => {
   });
 
   it("A camera event can be triggered", () => {
-    const eventType = "throttle";
     cy.apiSignInAs(username);
-    cy.apiUploadEvent(camera, "throttle");
+    cy.apiEventsAdd(camera, {type: "throttle"});
     // for event-uploader to upload
     cy.wait(3 * 1000);
-    cy.apiCheckEvents(username, camera, eventType);
+    cy.apiEventsCheck(username, camera, {}, [{EventDetail: {type: "throttle"}}]);
   });
 
   it("A camera can trigger and upload a new recording", () => {

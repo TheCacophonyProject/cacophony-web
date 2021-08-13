@@ -1,18 +1,17 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 declare namespace Cypress {
   interface Chainable {
     /**
      * create a group for the given user (who has already been referenced in the test
      */
-    apiCreateGroup(userName: string, groupName: string, log?: boolean);
+    apiCreateGroup(userName: string, groupName: string, log?: boolean):any;
 
     /**
      * create a group for the given user (who has already been referenced in the test
      */
-    apiCreateGroup(userName: string, groupName: string, log?: boolean);
+    apiCreateGroup(userName: string, groupName: string, log?: boolean):any;
 
     /**
      * Verify that user can see a group
@@ -22,7 +21,7 @@ declare namespace Cypress {
       username: string,
       groupname: string,
       testForSuccess?: boolean
-    );
+    ):any;
 
     /**
      * Add user to group
@@ -35,7 +34,7 @@ declare namespace Cypress {
       admin?: boolean,
       log?: boolean,
       statusCode?: number
-    );
+    ):any;
 
     /**
      * Remove user from group
@@ -46,6 +45,6 @@ declare namespace Cypress {
       userName: string,
       groupName: string,
       statusCode?: number
-    );
+    ):any;
   }
 }

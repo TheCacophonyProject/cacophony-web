@@ -76,7 +76,7 @@ export function makeAuthorizedRequestWithStatus(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string,
   statusCode: number
-): Cypress.Chainable<Cypress.Response<any>> {
+): Cypress.Chainable<Cypress.Response> {
   if (statusCode && statusCode > 200) {
     // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
     requestDetails.failOnStatusCode = false;
@@ -115,13 +115,13 @@ export function checkRequestFails(
 export function makeAuthorizedRequest(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string
-): Cypress.Chainable<Cypress.Response<any>> {
+): Cypress.Chainable<Cypress.Response> {
   const creds = getCreds(credName);
   requestDetails.headers = creds.headers;
   return cy.request(requestDetails);
 }
 
-export function expectRequestHasFailed(response, statusCode) {
+export function expectRequestHasFailed(response:any, statusCode:number) {
   expect(
     response.isOkStatusCode,
     "Request should return a failure status code."

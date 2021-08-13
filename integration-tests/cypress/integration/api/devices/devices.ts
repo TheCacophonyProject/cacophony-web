@@ -1,9 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 
-const HTTP_AuthorizationError = 401;
-const HTTP_Unprocessable = 422;
-const HTTP_OK = 200;
-
 import { getTestName } from "../../../commands/names";
 import {
   makeAuthorizedRequest,

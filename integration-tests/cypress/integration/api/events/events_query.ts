@@ -32,7 +32,7 @@ describe("Events - query events", () => {
   let expectedEvent1: ApiEventReturned;
   let expectedEvent2: ApiEventReturned;
   let expectedEvent3: ApiEventReturned;
-  let expectedEvent4: ApiEventReturned;
+//  let expectedEvent4: ApiEventReturned;
 
   before(() => {
     // group with 2 devices, admin and member users
@@ -100,14 +100,14 @@ describe("Events - query events", () => {
       Device: { devicename: getTestName("eqOtherCamera") },
       EventDetail: eventDetails3,
     };
-    expectedEvent4 = {
-      id: null,
-      createdAt: null,
-      dateTime: time4,
-      DeviceId: getCreds("eqOtherGroupCamera").id,
-      Device: { devicename: getTestName("eqOtherGroupCamera") },
-      EventDetail: eventDetails4,
-    };
+ //   expectedEvent4 = {
+ //     id: null,
+ //     createdAt: null,
+ //     dateTime: time4,
+ //     DeviceId: getCreds("eqOtherGroupCamera").id,
+ //     Device: { devicename: getTestName("eqOtherGroupCamera") },
+ //     EventDetail: eventDetails4,
+ //   };
   });
 
   it("Group admin can view all events on all devices their group", () => {

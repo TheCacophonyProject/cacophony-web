@@ -3,10 +3,8 @@ import { checkResponse } from "../../../commands/server";
 import { getNewIdentity } from "../../../commands/names";
 
 import {
-  HTTP_AuthorizationError,
   HTTP_Forbidden,
   HTTP_BadRequest,
-  HTTP_Unprocessable,
   HTTP_OK200
 } from "../../../commands/constants";
 
@@ -30,7 +28,7 @@ describe("Devices alerts", () => {
       usera.camera,
       null,
       HTTP_Forbidden
-    ).then((response) => {
+    ).then((response:any) => {
       checkResponse(response, HTTP_Forbidden);
     });
   });
@@ -50,7 +48,7 @@ describe("Devices alerts", () => {
       usera.camera,
       null,
       HTTP_BadRequest
-    ).then((response) => {
+    ).then((response:any) => {
       checkResponse(response, HTTP_BadRequest);
     });
   });

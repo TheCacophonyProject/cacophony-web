@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "../../../commands/names";
-import { v1ApiPath } from "../../../commands/server";
 import {
   logTestDescription,
   NO_LOG_MESSAGE,
@@ -63,12 +61,3 @@ function checkMonitoringRequestReturnsNoResults(
   cy.checkMonitoring(username, camera, [], NO_LOG_MESSAGE);
 }
 
-function deviceRequest(group: string, camera: string) {
-  const groupName = getTestName(group);
-  const deviceName = getTestName(camera);
-
-  return {
-    method: "GET",
-    url: v1ApiPath(`devices/${deviceName}/in-group/${groupName}`),
-  };
-}

@@ -5,7 +5,6 @@
 import { v1ApiPath, getCreds, convertToDate } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { stripBackName } from "../names";
-import { TestComparableVisit, TestVisitSearchParams } from "../types";
 
 Cypress.Commands.add(
   "checkMonitoringTags",
@@ -105,7 +104,7 @@ function checkMonitoringMatches(
 }
 
 function checkResponseMatches(
-  response: Cypress.Response<any>,
+  response: Cypress.Response,
   expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;

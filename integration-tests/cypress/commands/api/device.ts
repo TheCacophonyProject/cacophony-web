@@ -1,5 +1,4 @@
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 import { getTestName } from "../names";
 import {

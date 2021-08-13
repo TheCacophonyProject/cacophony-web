@@ -4,7 +4,6 @@
 
 import { v1ApiPath, getCreds } from "../server";
 import { logTestDescription } from "../descriptions";
-import { TestComparableVisit, TestVisitsWhere } from "../types";
 
 Cypress.Commands.add(
   "checkVisitTags",

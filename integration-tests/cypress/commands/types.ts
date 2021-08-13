@@ -105,7 +105,7 @@ interface ApiEventReturned {
   DeviceId?: number;
   EventDetail?: ApiEventDetail;
   dateTime?: string;
-  Device: { devicename: string };
+  Device?: { devicename: string };
 }
 
 interface ApiPowerEventReturned {
@@ -113,8 +113,8 @@ interface ApiPowerEventReturned {
   lastStarted?: string;
   lastReported?: string;
   lastStopped?: string;
-  hasAlerted: boolean;
-  Device: {
+  hasAlerted?: boolean;
+  Device?: {
     id: number;
     devicename: string;
     GroupId: number;
@@ -204,7 +204,7 @@ interface ApiTrackInfo {
 }
 
 interface ApiThermalRecordingInfo {
-  processingState: string;
+  processingState?: string;
   time?: Date | string;
   duration?: number;
   model?: string;
