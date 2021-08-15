@@ -1,6 +1,5 @@
 import { Application } from "express";
 import express from "express";
-import bodyParser from "body-parser";
 import passport from "passport";
 import process from "process";
 import http from "http";
@@ -17,8 +16,8 @@ log.notice("Starting Full Noise.");
 config.loadConfigFromArgs(true);
 
 const app: Application = express();
-app.use(bodyParser.urlencoded({ extended: false, limit: "2Mb" }));
-app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: false, limit: "2Mb" }));
+app.use(express.json());
 app.use(passport.initialize());
 app.use(
   expressWinston.logger({
@@ -52,7 +51,9 @@ app.use(customErrors.errorHandler);
 
 // Add file processing API.
 const fileProcessingApp = express();
-fileProcessingApp.use(bodyParser.urlencoded({ extended: false, limit: "2Mb" }));
+fileProcessingApp.use(express.urlencoded({ extended: false, limit: "50Mb" }));
+fileProcessingApp.use(express.json({ limit: "50Mb" }));
+
 fileProcessingApi(fileProcessingApp);
 http.createServer(fileProcessingApp).listen(config.fileProcessing.port);
 log.notice("Starting file processing on %d", config.fileProcessing.port);
