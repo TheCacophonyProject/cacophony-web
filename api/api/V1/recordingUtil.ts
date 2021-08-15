@@ -187,12 +187,16 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
   const maxFrames = meta.fps * 60 * 10;
   logger.info("Extracting frame #%d for thumbnail", frameNumber);
   while (!finished && currentFrame < maxFrames) {
-    currentFrame++;
     frame = await decoder.getNextFrame();
+    if (frame && frame.meta.isBackgroundFrame) {
+      // Skip over background frame without incrementing counter.
+      continue;
+    }
     finished = (frame === null || await decoder.getTotalFrames() !== null);
     if (currentFrame == frameNumber) {
       break;
     }
+    currentFrame++;
   }
   decoder.close();
   return frame;
