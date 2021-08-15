@@ -53,6 +53,7 @@ import { Station } from "../../models/Station";
 import modelsUtil from "../../models/util/util";
 import { dynamicImportESM } from "../../dynamic-import-esm";
 import Sequelize from "sequelize";
+import logger from "../../logging";
 
 // @ts-ignore
 export interface RecordingQuery extends Request {
@@ -183,13 +184,18 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
   let finished = false;
   let currentFrame = 0;
   let frame;
+  logger.info("Extracting frame #%d for thumbnail", frameNumber);
   while (!finished) {
-    currentFrame++;
     frame = await decoder.getNextFrame();
-    finished = frame == null;
+    if (frame && frame.meta.isBackgroundFrame) {
+      // Skip over background frame without incrementing counter.
+      continue;
+    }
+    finished = frame === null || (await decoder.getTotalFrames()) !== null;
     if (currentFrame == frameNumber) {
       break;
     }
+    currentFrame++;
   }
   decoder.close();
   return frame;
