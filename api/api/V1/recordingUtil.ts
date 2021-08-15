@@ -191,7 +191,7 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
       // Skip over background frame without incrementing counter.
       continue;
     }
-    finished = (frame === null || await decoder.getTotalFrames() !== null);
+    finished = frame === null || (await decoder.getTotalFrames()) !== null;
     if (currentFrame == frameNumber) {
       break;
     }
