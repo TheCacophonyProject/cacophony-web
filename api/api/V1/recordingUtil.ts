@@ -184,9 +184,8 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
   let finished = false;
   let currentFrame = 0;
   let frame;
-  const maxFrames = meta.fps * 60 * 10;
   logger.info("Extracting frame #%d for thumbnail", frameNumber);
-  while (!finished && currentFrame < maxFrames) {
+  while (!finished) {
     frame = await decoder.getNextFrame();
     if (frame && frame.meta.isBackgroundFrame) {
       // Skip over background frame without incrementing counter.
