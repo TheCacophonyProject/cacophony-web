@@ -172,7 +172,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccess {json} rows Map of Service Name to Service errors
    * @apiUse V1ResponseSuccess
    * @apiSuccessExample {json} rows
-   * { 
+   * {
    *   "<service-name>": {
    *     "name": "<service-name>",
    *     "devices": ["device1","device2"],
@@ -185,20 +185,20 @@ export default function (app: Application, baseUrl: string) {
    *   }
    * }
    * @apiSuccessExample {json} ApiEventError
-   * { 
+   * {
    *   devices: ["device1", "device2"],
-   *   timestamps: ["2020-08-10T13:10:38.000Z", "2020-08-11T13:10:38.000Z"], 
+   *   timestamps: ["2020-08-10T13:10:38.000Z", "2020-08-11T13:10:38.000Z"],
    *   similar: ApiEventErrorSimilar[],
    *   patterns: ApiEventErrorPattern[]
    * }
    * @apiSuccessExample {json} ApiEventErrorSimilar
-   * { 
+   * {
    *   device: "device1",
    *   timestamp: "2020-08-10T13:10:38.000Z",
    *   lines: ["error line 1", "error line 2", "error line 3"]
    * }
    * @apiSuccessExample {json} ApiEventErrorPattern
-   * { 
+   * {
    *   score: 100,
    *   index: 0,
    *   patterns: ["matched error line"]
@@ -252,11 +252,11 @@ export default function (app: Application, baseUrl: string) {
    *   "lastStopped": "2021-07-17T20:41:55.000Z",
    *   "hasAlerted": true,
    *   "Device": {
-   *     "id": 1576, 
-   *     "devicename": "test-device", 
-   *     "GroupId": 246, 
+   *     "id": 1576,
+   *     "devicename": "test-device",
+   *     "GroupId": 246,
    *     "Group":  {
-   *       "groupname": "test-group", 
+   *       "groupname": "test-group",
    *       "id": 246
    *     }
    *    }
