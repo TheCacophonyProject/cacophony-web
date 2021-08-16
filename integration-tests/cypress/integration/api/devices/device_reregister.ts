@@ -1,11 +1,11 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
 import {
   HTTP_BadRequest,
   HTTP_Unprocessable,
 } from "../../../commands/constants";
+import { getTestName } from "../../../commands/names";
+import { getCreds } from "../../../commands/server";
 import { ApiDevicesDevice } from "../../../commands/types";
 
 describe("Device reregister", () => {

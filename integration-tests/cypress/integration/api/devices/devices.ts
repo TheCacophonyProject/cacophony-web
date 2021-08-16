@@ -1,5 +1,4 @@
 /// <reference path="../../../support/index.d.ts" />
-
 import { getTestName } from "../../../commands/names";
 import {
   makeAuthorizedRequest,
