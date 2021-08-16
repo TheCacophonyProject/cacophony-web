@@ -2,6 +2,12 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
+  type ApiDevicesDevice = import("../types").ApiDevicesDevice;
+  type ApiDeviceInGroupDevice = import("../types").ApiDeviceInGroupDevice;
+  type TestDeviceAndGroup = import("../types").TestDeviceAndGroup;
+  type ApiDeviceQueryDevice = import("../types").ApiDeviceQueryDevice;
+  type ApiDeviceUsersUser = import("../types").ApiDeviceUsersUser;
+
   interface Chainable {
     /**
      * create a device in the given group

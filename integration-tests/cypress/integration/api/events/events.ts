@@ -4,9 +4,7 @@ import { EventTypes } from "../../../commands/api/events";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 
-import {
-  HTTP_Unprocessable,
-} from "../../../commands/constants";
+import { HTTP_Unprocessable } from "../../../commands/constants";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; //do not check eventId or createdAt time
 
@@ -134,10 +132,10 @@ describe("Events - add event as a device", () => {
   });
 
   it("Can add multiple occurrences of an event", () => {
-    let time11 = "2019-01-01T07:22:56.000Z";
-    let time12 = "2019-01-02T07:22:56.000Z";
-    let time13 = "2019-01-03T07:22:56.000Z";
-    let time14 = "2019-01-04T07:22:56.000Z";
+    const time11 = "2019-01-01T07:22:56.000Z";
+    const time12 = "2019-01-02T07:22:56.000Z";
+    const time13 = "2019-01-03T07:22:56.000Z";
+    const time14 = "2019-01-04T07:22:56.000Z";
 
     const eventDetail = {
       type: "alert",

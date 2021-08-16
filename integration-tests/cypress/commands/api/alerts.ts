@@ -9,6 +9,7 @@ import {
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { getTestName, getUniq } from "../names";
+import { ApiAlert, ApiAlertConditions } from "../types";
 
 Cypress.Commands.add(
   "apiAlertAdd",
@@ -144,7 +145,10 @@ function apiAlertsGet(user: string, device: string, statusCode: number) {
   );
 }
 
-function checkExpectedAlerts(response: Cypress.Response, alertName: string) {
+function checkExpectedAlerts(
+  response: Cypress.Response<any>,
+  alertName: string
+) {
   const expectedAlert = getExpectedAlert(alertName);
   expect(response.body.Alerts.length, `Expected 1 alert`).to.eq(1);
   const thealert = response.body.Alerts[0];

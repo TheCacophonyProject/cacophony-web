@@ -1,9 +1,9 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 import { v1ApiPath, getCreds } from "../server";
 import { logTestDescription } from "../descriptions";
+import { TestComparableVisit, TestVisitsWhere } from "../types";
 
 Cypress.Commands.add(
   "checkVisitTags",
@@ -67,7 +67,7 @@ function checkVisitsMatch(
 }
 
 function checkResponseMatches(
-  response: Cypress.Response,
+  response: Cypress.Response<any>,
   expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;

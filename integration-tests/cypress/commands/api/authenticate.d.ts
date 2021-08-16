@@ -1,5 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+
+type ApiAuthenticateAccess = import("../types").ApiAuthenticateAccess;
 declare namespace Cypress {
   interface Chainable {
     /**

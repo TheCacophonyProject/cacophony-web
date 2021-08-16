@@ -307,10 +307,10 @@ describe("Events - add event on behalf of device", () => {
   });
 
   it("Can add multiple occurrences of an event", () => {
-    let time11 = "2019-01-01T07:22:56.000Z";
-    let time12 = "2019-01-02T07:22:56.000Z";
-    let time13 = "2019-01-03T07:22:56.000Z";
-    let time14 = "2019-01-04T07:22:56.000Z";
+    const time11 = "2019-01-01T07:22:56.000Z";
+    const time12 = "2019-01-02T07:22:56.000Z";
+    const time13 = "2019-01-03T07:22:56.000Z";
+    const time14 = "2019-01-04T07:22:56.000Z";
 
     const eventDetail = {
       type: "alert",

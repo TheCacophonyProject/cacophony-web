@@ -13,7 +13,15 @@ import {
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { getTestName, getUniq } from "../names";
-
+import {
+  TestComparableEvent,
+  TestComparablePowerEvent,
+  ApiEventDetail,
+  ApiEventSet,
+  ApiEventReturned,
+  ApiEventErrorCategory,
+  ApiPowerEventReturned,
+} from "../types";
 export const EventTypes = {
   POWERED_ON: "rpi-power-on",
   POWERED_OFF: "daytime-power-off",
@@ -125,7 +133,7 @@ Cypress.Commands.add(
     }
 
     //drop any undefined parameters
-    let filteredParams = removeUndefinedParams(queryParams);
+    const filteredParams = removeUndefinedParams(queryParams);
 
     //send the request
     makeAuthorizedRequestWithStatus(
@@ -134,8 +142,8 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        let errors = response.body.rows;
-        let errorCategories = Object.keys(errors);
+        const errors = response.body.rows;
+        const errorCategories = Object.keys(errors);
         //check the right number of error categories is present
         expect(
           errorCategories.length,
@@ -144,8 +152,8 @@ Cypress.Commands.add(
 
         //then check that each expected category is present
         for (let catCount = 0; catCount < expectedErrors.length; catCount++) {
-          let category = errors[errorCategories[catCount]];
-          let expectedCategory = expectedErrors[catCount];
+          const category = errors[errorCategories[catCount]];
+          const expectedCategory = expectedErrors[catCount];
           expect(errorCategories[catCount]).to.equal(expectedCategory.name);
           expect(category.name).to.equal(expectedCategory.name);
 
@@ -165,8 +173,8 @@ Cypress.Commands.add(
             errorCount < expectedCategory.errors.length;
             errorCount++
           ) {
-            let error = category.errors[errorCount];
-            let expectedError = expectedCategory.errors[errorCount];
+            const error = category.errors[errorCount];
+            const expectedError = expectedCategory.errors[errorCount];
 
             //check device list
             expect(JSON.stringify(error.devices), "devices in error").to.equal(
@@ -188,8 +196,8 @@ Cypress.Commands.add(
               similarCount < expectedError.similar.length;
               similarCount++
             ) {
-              let similar = error.similar[similarCount];
-              let expectedSimilar = expectedError.similar[similarCount];
+              const similar = error.similar[similarCount];
+              const expectedSimilar = expectedError.similar[similarCount];
               //check device
               expect(
                 similar.device,
@@ -235,8 +243,8 @@ Cypress.Commands.add(
       user,
       device,
     });
-    let doNotSort = additionalChecks["doNotSort"];
-    let offset = additionalChecks["offset"] | 0;
+    const doNotSort = additionalChecks["doNotSort"];
+    const offset = additionalChecks["offset"] | 0;
     let sortEvents: ApiEventReturned[];
     let sortExpectedEvents: ApiEventReturned[];
 
@@ -252,7 +260,7 @@ Cypress.Commands.add(
     }
 
     //drop any undefined parameters
-    let filteredParams = removeUndefinedParams(queryParams);
+    const filteredParams = removeUndefinedParams(queryParams);
 
     //send the request
     makeAuthorizedRequestWithStatus(
@@ -303,7 +311,7 @@ Cypress.Commands.add(
     }
 
     //drop any undefined parameters
-    let filteredParams = removeUndefinedParams(queryParams);
+    const filteredParams = removeUndefinedParams(queryParams);
 
     //send the request
     makeAuthorizedRequestWithStatus(
@@ -492,7 +500,7 @@ function checkEventMatchesExpected(
 }
 
 function checkPowerEventMatches(
-  response: Cypress.Response,
+  response: Cypress.Response<any>,
   expectedEvent: TestComparablePowerEvent
 ) {
   expect(response.body.events.length, `Expected 1 event`).to.eq(1);

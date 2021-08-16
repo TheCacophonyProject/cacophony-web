@@ -6,6 +6,7 @@ import {
   v1ApiPath,
   getCreds,
 } from "../../../commands/server";
+import { ApiDevicesDevice } from "../../../commands/types";
 
 describe("Devices list", () => {
   const groupAdmin = "Edith-groupAdmin";

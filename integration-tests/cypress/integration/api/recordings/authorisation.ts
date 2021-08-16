@@ -60,4 +60,3 @@ function checkMonitoringRequestReturnsNoResults(
   logTestDescription(`User ${username} should not see any visits.`, {});
   cy.checkMonitoring(username, camera, [], NO_LOG_MESSAGE);
 }
-

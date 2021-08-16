@@ -8,6 +8,7 @@ import {
   saveCreds,
   expectRequestHasFailed,
 } from "../server";
+import { ApiAuthenticateAccess } from "../types";
 
 Cypress.Commands.add(
   "apiSignInAs",
@@ -19,7 +20,7 @@ Cypress.Commands.add(
     statusCode: number = 200
   ) => {
     const theUrl = apiPath() + "/authenticate_user";
-    let data = {};
+    const data = {};
 
     if (userName !== null) {
       data["username"] = getTestName(userName);
@@ -61,7 +62,7 @@ Cypress.Commands.add(
   "apiAuthenticateAs",
   (userA: string, userB: string | null = null, statusCode: number = 200) => {
     const theUrl = apiPath() + "/admin_authenticate_as_other_user";
-    let data = {};
+    const data = {};
 
     if (userB !== null) {
       data["name"] = getTestName(userB);
@@ -131,7 +132,7 @@ Cypress.Commands.add(
   ) => {
     const theUrl = apiPath() + "/token";
 
-    let data = {};
+    const data = {};
 
     if (ttl !== null) {
       data["ttl"] = ttl;

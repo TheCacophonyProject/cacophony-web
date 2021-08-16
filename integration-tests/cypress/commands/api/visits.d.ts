@@ -2,6 +2,7 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
+  type TestComparableVisit = import("../types").TestComparableVisit;
   interface Chainable {
     /**
      * check the visits returned match the listed visits specified. Only the specified information will be checked.

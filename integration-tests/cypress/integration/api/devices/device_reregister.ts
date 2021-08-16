@@ -6,6 +6,7 @@ import {
   HTTP_BadRequest,
   HTTP_Unprocessable,
 } from "../../../commands/constants";
+import { ApiDevicesDevice } from "../../../commands/types";
 
 describe("Device reregister", () => {
   const KEEP_DEVICE_NAME = false;

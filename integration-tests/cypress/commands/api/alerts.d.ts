@@ -1,5 +1,7 @@
 /// <reference types="../types" />
 
+type ApiAlertConditions = import("../types").ApiAlertConditions;
+
 declare namespace Cypress {
   interface Chainable {
     /**

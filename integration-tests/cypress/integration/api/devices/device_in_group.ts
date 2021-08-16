@@ -3,6 +3,7 @@
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 import { logTestDescription } from "../../../commands/descriptions";
+import { ApiDeviceInGroupDevice } from "../../../commands/types";
 import {
   HTTP_Forbidden,
   HTTP_Unprocessable,

@@ -2,9 +2,12 @@
 
 import { getTestName } from "../../../commands/names";
 //import { getCreds } from "../../../commands/server";
+import { HTTP_Unprocessable } from "../../../commands/constants";
 import {
-  HTTP_Unprocessable,
-} from "../../../commands/constants";
+  ApiEventErrorSimilar,
+  ApiEventError,
+  ApiEventErrorCategory,
+} from "../../../commands/types";
 
 //
 // This test set checks for errors reported against device services
@@ -25,7 +28,7 @@ describe("Events - query errors", () => {
   let expectedSimilar4: ApiEventErrorSimilar;
   let expectedSimilar5: ApiEventErrorSimilar;
 
-//  let expectedError1: ApiEventError;
+  //  let expectedError1: ApiEventError;
   let expectedError1and2: ApiEventError;
   let expectedError1and2and4: ApiEventError;
   let expectedError1and2and4and5: ApiEventError;
@@ -35,7 +38,7 @@ describe("Events - query errors", () => {
   let expectedError4: ApiEventError;
   let expectedError5: ApiEventError;
 
-//  let expectedCategoryError1: ApiEventErrorCategory;
+  //  let expectedCategoryError1: ApiEventErrorCategory;
   let expectedCategoryError1and2: ApiEventErrorCategory;
   let expectedCategoryError1and2and4: ApiEventErrorCategory;
   let expectedCategoryError1and2and4and5: ApiEventErrorCategory;
@@ -234,12 +237,12 @@ describe("Events - query errors", () => {
 
   //Define the expected errors - once the device and event creation has completed
   before(() => {
-//    expectedError1 = {
-//      devices: [getTestName("erCamera")],
-//      patterns: undefined,
-//      similar: [expectedSimilar1],
-//      timestamps: [time1],
-//    };
+    //    expectedError1 = {
+    //      devices: [getTestName("erCamera")],
+    //      patterns: undefined,
+    //      similar: [expectedSimilar1],
+    //      timestamps: [time1],
+    //    };
     expectedError2 = {
       devices: [getTestName("erCamera")],
       patterns: undefined,
@@ -294,11 +297,11 @@ describe("Events - query errors", () => {
       timestamps: [time2, time4],
     };
 
-//    expectedCategoryError1 = {
-//      name: "leptond.service",
-//      devices: [getTestName("erCamera")],
-//      errors: [expectedError1],
-//    };
+    //    expectedCategoryError1 = {
+    //      name: "leptond.service",
+    //      devices: [getTestName("erCamera")],
+    //      errors: [expectedError1],
+    //    };
     expectedCategoryError2 = {
       name: "leptond.service",
       devices: [getTestName("erCamera")],

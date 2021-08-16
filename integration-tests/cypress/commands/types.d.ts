@@ -1,21 +1,21 @@
-interface ApiAlertConditions {
+export interface ApiAlertConditions {
   tag: string;
   automatic: boolean;
 }
 
-interface ApiAlertUser {
+export interface ApiAlertUser {
   id: number;
   username: string;
   email: string;
   name: string;
 }
 
-interface ApiAlertDevice {
+export interface ApiAlertDevice {
   id: number;
   devicename: string;
 }
 
-interface ApiAlert {
+export interface ApiAlert {
   id: number;
   name: string;
   alertName?: string;
@@ -26,18 +26,18 @@ interface ApiAlert {
   Device: ApiAlertDevice;
 }
 
-interface ApiAuthenticateAccess {
+export interface ApiAuthenticateAccess {
   devices: string;
 }
 
-interface ApiDevicesDevice {
+export interface ApiDevicesDevice {
   id: number;
   devicename: string;
   active: boolean;
   Users: ApiDevicesDeviceUser[];
 }
 
-interface ApiDeviceInGroupDevice {
+export interface ApiDeviceInGroupDevice {
   id: number;
   devicename: string;
   groupName: string;
@@ -45,36 +45,36 @@ interface ApiDeviceInGroupDevice {
   users: ApiDeviceInGroupUser[];
 }
 
-interface ApiDeviceQueryDevice {
+export interface ApiDeviceQueryDevice {
   devicename: string;
   groupname: string;
   saltId?: number;
 }
 
-interface TestDeviceAndGroup {
+export interface TestDeviceAndGroup {
   devicename: string;
   groupname: string;
 }
 
-interface ApiDevicesDeviceUser {
+export interface ApiDevicesDeviceUser {
   id: number;
   username: string;
   DeviceUsers: ApiDeviceUserRelationship;
 }
 
-interface ApiDeviceUserRelationship {
+export interface ApiDeviceUserRelationship {
   admin: boolean;
   DeviceId: number;
   UserId: number;
 }
 
-interface ApiDeviceInGroupUser {
+export interface ApiDeviceInGroupUser {
   userName: string;
   admin: boolean;
   id: number;
 }
 
-interface ApiDeviceUsersUser {
+export interface ApiDeviceUsersUser {
   id: number;
   username: string;
   email: string;
@@ -82,24 +82,24 @@ interface ApiDeviceUsersUser {
   admin: boolean;
 }
 
-interface TestComparablePowerEvent {
+export interface TestComparablePowerEvent {
   hasStopped: boolean;
   hasAlerted: boolean;
 }
 
-interface ApiEventDetail {
+export interface ApiEventDetail {
   type?: string;
   details?: any;
 }
 
-interface ApiEventSet {
+export interface ApiEventSet {
   deviceID?: string;
   description?: ApiEventDetail;
   eventDetailId?: number;
   dateTimes?: string[];
 }
 
-interface ApiEventReturned {
+export interface ApiEventReturned {
   id?: number;
   createdAt?: string;
   DeviceId?: number;
@@ -108,7 +108,7 @@ interface ApiEventReturned {
   Device?: { devicename: string };
 }
 
-interface ApiPowerEventReturned {
+export interface ApiPowerEventReturned {
   hasStopped: boolean;
   lastStarted?: string;
   lastReported?: string;
@@ -125,32 +125,32 @@ interface ApiPowerEventReturned {
   };
 }
 
-interface ApiEventErrorSimilar {
+export interface ApiEventErrorSimilar {
   device: string;
   timestamp: string;
   lines: string[];
 }
 
-interface ApiEventErrorPattern {
+export interface ApiEventErrorPattern {
   score?: number;
   index?: number;
   patterns?: string[];
 }
 
-interface ApiEventError {
+export interface ApiEventError {
   devices: string[];
   timestamps: string[];
   similar: ApiEventErrorSimilar[];
   patterns: ApiEventErrorPattern[];
 }
 
-interface ApiEventErrorCategory {
+export interface ApiEventErrorCategory {
   name: string;
   devices: string[];
   errors: ApiEventError[];
 }
 
-interface TestComparableEvent {
+export interface TestComparableEvent {
   id: number;
   dateTime: string;
   createdat: string;
@@ -161,7 +161,7 @@ interface TestComparableEvent {
   };
 }
 
-interface TestComparableVisit {
+export interface TestComparableVisit {
   // either a date object or a string representing the time of day (enough for most tests)
   start?: Date | string;
   end?: Date | string;
@@ -173,7 +173,7 @@ interface TestComparableVisit {
   station?: string;
 }
 
-interface TestVisitSearchParams {
+export interface TestVisitSearchParams {
   from?: Date | string;
   until?: Date | string;
   devices?: number | number[];
@@ -183,27 +183,27 @@ interface TestVisitSearchParams {
   groups?: number | number[];
 }
 
-interface TestVisitsWhere {
+export interface TestVisitsWhere {
   type: string;
   duration?: any;
   DeviceId?: number;
 }
 
 // Station data as supplied to API on creation.
-interface ApiCreateStationData {
+export interface ApiCreateStationData {
   name: string;
   lat: number;
   lng: number;
 }
 
-interface ApiTrackInfo {
+export interface ApiTrackInfo {
   start_s?: number;
   end_s?: number;
   tag?: string;
   // confidence?: number,
 }
 
-interface ApiThermalRecordingInfo {
+export interface ApiThermalRecordingInfo {
   processingState?: string;
   time?: Date | string;
   duration?: number;

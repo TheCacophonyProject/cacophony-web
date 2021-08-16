@@ -1,11 +1,12 @@
 /// <reference path="../../../support/index.d.ts" />
 import { checkResponse } from "../../../commands/server";
 import { getNewIdentity } from "../../../commands/names";
+import { ApiAlertConditions } from "../../../commands/types";
 
 import {
   HTTP_Forbidden,
   HTTP_BadRequest,
-  HTTP_OK200
+  HTTP_OK200,
 } from "../../../commands/constants";
 
 describe("Devices alerts", () => {
@@ -28,7 +29,7 @@ describe("Devices alerts", () => {
       usera.camera,
       null,
       HTTP_Forbidden
-    ).then((response:any) => {
+    ).then((response: any) => {
       checkResponse(response, HTTP_Forbidden);
     });
   });
@@ -48,7 +49,7 @@ describe("Devices alerts", () => {
       usera.camera,
       null,
       HTTP_BadRequest
-    ).then((response:any) => {
+    ).then((response: any) => {
       checkResponse(response, HTTP_BadRequest);
     });
   });

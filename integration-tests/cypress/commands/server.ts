@@ -60,7 +60,11 @@ export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
 
-export function saveCreds(response: Cypress.Response, name: string, id = 0) {
+export function saveCreds(
+  response: Cypress.Response<any>,
+  name: string,
+  id = 0
+) {
   const creds = {
     name,
     headers: {
@@ -76,7 +80,7 @@ export function makeAuthorizedRequestWithStatus(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string,
   statusCode: number
-): Cypress.Chainable<Cypress.Response> {
+): Cypress.Chainable<Cypress.Response<any>> {
   if (statusCode && statusCode > 200) {
     // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
     requestDetails.failOnStatusCode = false;
@@ -115,13 +119,13 @@ export function checkRequestFails(
 export function makeAuthorizedRequest(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string
-): Cypress.Chainable<Cypress.Response> {
+): Cypress.Chainable<Cypress.Response<any>> {
   const creds = getCreds(credName);
   requestDetails.headers = creds.headers;
   return cy.request(requestDetails);
 }
 
-export function expectRequestHasFailed(response:any, statusCode:number) {
+export function expectRequestHasFailed(response: any, statusCode: number) {
   expect(
     response.isOkStatusCode,
     "Request should return a failure status code."
@@ -134,54 +138,13 @@ export function expectRequestHasFailed(response:any, statusCode:number) {
   return response;
 }
 
-//TODO: This functionality duplicates fileUpload in fileUpload.ts. This one needs removing
-export const uploadFileRequest = (
-  fileToUpload,
-  uniqueName,
-  aliasName,
-  uploadUrl,
-  fileData,
-  credentials
-) => {
-  const data = new FormData();
-
-  data.append("data", '{"type":"thermalRaw"}');
-  //  data.append("hasHeader", "true");
-  // data.append("name", uniqueName);
-
-  cy.server()
-    .route({
-      method: "POST",
-      url: uploadUrl,
-    })
-    .as(aliasName)
-    .window()
-    .then((win) => {
-      cy.fixture(fileToUpload, "binary")
-        .then((binary) => Cypress.Blob.binaryStringToBlob(binary))
-        .then((blob) => {
-          const xhr = new win.XMLHttpRequest();
-
-          data.set("file", blob, fileToUpload);
-
-          xhr.open("POST", uploadUrl);
-
-          xhr.setRequestHeader(
-            "Authorization",
-            credentials.headers.authorization
-          ),
-            xhr.send(data);
-        });
-    });
-};
-
-export function checkResponse(response: Cypress.Response, code: number) {
+export function checkResponse(response: Cypress.Response<any>, code: number) {
   expect(response.status, "Expected specified status code").to.eq(code);
   return response;
 }
 
-export function sortArrayOn(theArray, theKey) {
-  theArray.sort(function (a, b) {
+export function sortArrayOn(theArray: any, theKey: string) {
+  theArray.sort(function (a: any, b: any) {
     if (a[theKey] < b[theKey]) {
       return -1;
     }
@@ -193,8 +156,8 @@ export function sortArrayOn(theArray, theKey) {
   return theArray;
 }
 
-export function sortArrayOnTwoKeys(theArray, key1, key2) {
-  theArray.sort(function (a, b) {
+export function sortArrayOnTwoKeys(theArray: any, key1: string, key2: string) {
+  theArray.sort(function (a: any, b: any) {
     if (a[key1] + a[key2] < b[key1] + b[key2]) {
       return -1;
     }
@@ -211,8 +174,8 @@ export function checkFlatStructuresAreEqualExcept(
   containingStruct: any,
   excludeKeys: any
 ) {
-  let containedKeys: string[] = Object.keys(containedStruct).sort();
-  let containingKeys: string[] = Object.keys(containingStruct).sort();
+  const containedKeys: string[] = Object.keys(containedStruct).sort();
+  const containingKeys: string[] = Object.keys(containingStruct).sort();
   for (let count = 0; count < containedKeys.length; count++) {
     if (!excludeKeys.includes(containedKeys[count])) {
       expect(
@@ -249,8 +212,8 @@ export function checkTreeStructuresAreEqualExcept(
 
       //itterate over array
       for (let count = 0; count < containingStruct.length; count++) {
-        let prettyElementName = prettyTreeSoFar + "[" + count + "]";
-        let elementName = treeSoFar + "[]";
+        const prettyElementName = prettyTreeSoFar + "[" + count + "]";
+        const elementName = treeSoFar + "[]";
 
         //if element is a nested object, recursively call this function again over the nested onject
         if (isArrayOrHash(containingStruct[count])) {
@@ -282,13 +245,13 @@ export function checkTreeStructuresAreEqualExcept(
       ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order
-      let containedKeys: string[] = Object.keys(containedStruct).sort();
-      let containingKeys: string[] = Object.keys(containingStruct).sort();
+      const containedKeys: string[] = Object.keys(containedStruct).sort();
+      const containingKeys: string[] = Object.keys(containingStruct).sort();
 
       //itterate over hash
       for (let count = 0; count < containedKeys.length; count++) {
-        let elementName = treeSoFar + "." + containedKeys[count];
-        let prettyElementName = prettyTreeSoFar + "." + containedKeys[count];
+        const elementName = treeSoFar + "." + containedKeys[count];
+        const prettyElementName = prettyTreeSoFar + "." + containedKeys[count];
 
         //check if we asked to ignore this parameter
         if (!excludeKeys.includes(elementName)) {
@@ -337,11 +300,12 @@ function isArrayOrHash(theObject: any) {
 }
 
 export function removeUndefinedParams(jsStruct: any) {
-  let keys = Object.keys(jsStruct);
-  let resultStruct = {};
+  const keys = Object.keys(jsStruct);
+  const resultStruct = {};
   for (let count = 0; count < keys.length; count++) {
-    if (jsStruct[keys[count]] !== undefined)
+    if (jsStruct[keys[count]] !== undefined) {
       resultStruct[keys[count]] = jsStruct[keys[count]];
+    }
   }
   return resultStruct;
 }

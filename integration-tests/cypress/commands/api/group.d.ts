@@ -6,12 +6,12 @@ declare namespace Cypress {
     /**
      * create a group for the given user (who has already been referenced in the test
      */
-    apiCreateGroup(userName: string, groupName: string, log?: boolean):any;
+    apiCreateGroup(userName: string, groupName: string, log?: boolean): any;
 
     /**
      * create a group for the given user (who has already been referenced in the test
      */
-    apiCreateGroup(userName: string, groupName: string, log?: boolean):any;
+    apiCreateGroup(userName: string, groupName: string, log?: boolean): any;
 
     /**
      * Verify that user can see a group
@@ -21,7 +21,7 @@ declare namespace Cypress {
       username: string,
       groupname: string,
       testForSuccess?: boolean
-    ):any;
+    ): any;
 
     /**
      * Add user to group
@@ -34,7 +34,7 @@ declare namespace Cypress {
       admin?: boolean,
       log?: boolean,
       statusCode?: number
-    ):any;
+    ): any;
 
     /**
      * Remove user from group
@@ -45,6 +45,6 @@ declare namespace Cypress {
       userName: string,
       groupName: string,
       statusCode?: number
-    ):any;
+    ): any;
   }
 }

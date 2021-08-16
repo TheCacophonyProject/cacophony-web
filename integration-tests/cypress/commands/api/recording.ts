@@ -12,6 +12,7 @@ import {
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { convertToDate } from "../server";
+import { ApiThermalRecordingInfo, ApiTrackInfo } from "../types";
 
 let lastUsedTime = DEFAULT_DATE;
 

@@ -1,6 +1,8 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+type TestVisitSearchParams = import("../types").TestVisitSearchParams;
+type TestComparableVisit = import("../types").TestComparableVisit;
 declare namespace Cypress {
   interface Chainable {
     /**

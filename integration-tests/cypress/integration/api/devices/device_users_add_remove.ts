@@ -6,6 +6,10 @@ import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
 } from "../../../commands/constants";
+import {
+  ApiDeviceInGroupDevice,
+  ApiDeviceUsersUser,
+} from "../../../commands/types";
 
 describe("Devices add / view / remove users", () => {
   const groupAdmin = "Harold-groupAdmin";
