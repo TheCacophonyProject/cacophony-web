@@ -203,7 +203,6 @@ export default function (app: Application, baseUrl: string) {
    *   index: 0,
    *   patterns: ["matched error line"]
    * }
-
    * @apiUse V1ResponseError
    */
   app.get(
