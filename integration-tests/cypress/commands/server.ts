@@ -184,10 +184,10 @@ export function sortArrayOn(theArray, theKey) {
   theArray.sort(function (a, b) {
     if (a[theKey] < b[theKey]) {
       return -1;
-    };
+    }
     if (a[theKey] > b[theKey]) {
       return 1;
-    };
+    }
     return 0;
   });
   return theArray;
@@ -195,12 +195,12 @@ export function sortArrayOn(theArray, theKey) {
 
 export function sortArrayOnTwoKeys(theArray, key1, key2) {
   theArray.sort(function (a, b) {
-    if (a[key1] + a[key2] < b[key1] + b[key2]) { 
+    if (a[key1] + a[key2] < b[key1] + b[key2]) {
       return -1;
-    };
+    }
     if (a[key1] + a[key2] > b[key1] + b[key2]) {
       return 1;
-    };
+    }
     return 0;
   });
   return theArray;

@@ -1,5 +1,5 @@
-/// <reference path="../../support/index.d.ts" />  
-          
+/// <reference path="../../support/index.d.ts" />
+
 context("Register as new user", () => {
   const username = "new";
 

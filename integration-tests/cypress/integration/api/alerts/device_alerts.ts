@@ -9,7 +9,7 @@ import {
 } from "../../../commands/constants";
 
 describe("Devices alerts", () => {
-  const POSSUM_ALERT: [ApiAlertConditions] = [
+  const POSSUM_ALERT: ApiAlertConditions[] = [
     { tag: "possum", automatic: true },
   ];
 
