@@ -17,22 +17,25 @@ Cypress.Commands.add(
     userName: string,
     alertName: string,
     conditions: ApiAlertConditions[],
-    device: string,
+    deviceName: string,
     frequency: number | null = null,
     statusCode: number = 200
   ) => {
-    logTestDescription(`Create alert ${getUniq(alertName)} for ${device} `, {
-      userName,
-      device,
-      conditions,
-      frequency,
-      id: getUniq(alertName),
-    });
+    logTestDescription(
+      `Create alert ${getUniq(alertName)} for ${deviceName} `,
+      {
+        userName,
+        deviceName,
+        conditions,
+        frequency,
+        id: getUniq(alertName),
+      }
+    );
     apiAlertsPost(
       userName,
       alertName,
       conditions,
-      device,
+      deviceName,
       frequency,
       statusCode
     );
