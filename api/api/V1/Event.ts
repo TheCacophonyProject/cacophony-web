@@ -95,7 +95,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Datetime} [startTime] Return only events on after this time
+   * @apiParam {Datetime} [startTime] Return only events on or after this time
    * @apiParam {Datetime} [endTime] Return only events from before this time
    * @apiParam {Integer} [deviceId] Return only events for this device id
    * @apiParam {Integer} [limit] Limit returned events to this number (default is 100)
@@ -105,7 +105,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} offset Offset of returned page of results from 1st result matched by query.
-   * @apiSuccess {Number} count Total number of results matchig the query.
+   * @apiSuccess {Number} count Total number of results matching the query.
    * @apiSuccess {JSON} rows Array of `ApiEvent` containing details of events matching the criteria given.
    * @apiUse ApiEvent
    * @apiUse V1ResponseError

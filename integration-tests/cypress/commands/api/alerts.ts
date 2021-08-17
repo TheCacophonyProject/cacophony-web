@@ -14,7 +14,7 @@ import { ApiAlert, ApiAlertConditions } from "../types";
 Cypress.Commands.add(
   "apiAlertAdd",
   (
-    user: string,
+    userName: string,
     alertName: string,
     conditions: ApiAlertConditions[],
     device: string,
@@ -22,34 +22,41 @@ Cypress.Commands.add(
     statusCode: number = 200
   ) => {
     logTestDescription(`Create alert ${getUniq(alertName)} for ${device} `, {
-      user,
+      userName,
       device,
       conditions,
       frequency,
       id: getUniq(alertName),
     });
-    apiAlertsPost(user, alertName, conditions, device, frequency, statusCode);
+    apiAlertsPost(
+      userName,
+      alertName,
+      conditions,
+      device,
+      frequency,
+      statusCode
+    );
   }
 );
 
 Cypress.Commands.add(
   "apiAlertCheck",
   (
-    user: string,
-    device: string,
+    userName: string,
+    deviceName: string,
     alertName: string,
     statusCode: number = 200
   ) => {
     logTestDescription(
-      `Check for expected alert ${getUniq(alertName)} for ${device} `,
+      `Check for expected alert ${getUniq(alertName)} for ${deviceName} `,
       {
-        user,
-        device,
+        userName,
+        deviceName,
         id: getUniq(alertName),
       }
     );
 
-    apiAlertsGet(user, device, statusCode).then((response) => {
+    apiAlertsGet(userName, deviceName, statusCode).then((response) => {
       if (statusCode == 200) {
         checkExpectedAlerts(response, getUniq(alertName));
       }
@@ -65,14 +72,14 @@ Cypress.Commands.add(
     frequencySeconds: number,
     conditions: ApiAlertConditions[],
     lastAlert: boolean,
-    user: string,
-    device: string
+    userName: string,
+    deviceName: string
   ) => {
     logTestDescription(
-      `Create expected alert ${getUniq(name)} for ${device} `,
+      `Create expected alert ${getUniq(name)} for ${deviceName} `,
       {
-        user,
-        device,
+        userName,
+        deviceName,
         id: getUniq(name),
       }
     );
@@ -86,13 +93,13 @@ Cypress.Commands.add(
       conditions: conditions,
       lastAlert: lastAlert,
       User: {
-        id: getCreds(user).id,
-        username: getTestName(user),
-        email: getTestName(user) + "@api.created.com",
+        id: getCreds(userName).id,
+        username: getTestName(userName),
+        email: getTestName(userName) + "@api.created.com",
       },
       Device: {
-        id: getCreds(device).id,
-        devicename: getTestName(getCreds(device).name),
+        id: getCreds(deviceName).id,
+        devicename: getTestName(getCreds(deviceName).name),
       },
     };
 
@@ -101,14 +108,14 @@ Cypress.Commands.add(
 );
 
 function apiAlertsPost(
-  user: string,
+  userName: string,
   alertName: string,
   conditions: ApiAlertConditions[],
-  device: string,
+  deviceName: string,
   frequency: number,
   testFailure: number
 ) {
-  const deviceId = getCreds(device).id;
+  const deviceId = getCreds(deviceName).id;
   const alertJson = {
     name: getUniq(alertName),
     conditions: conditions,
@@ -125,7 +132,7 @@ function apiAlertsPost(
       url: v1ApiPath("alerts"),
       body: alertJson,
     },
-    user,
+    userName,
     testFailure
   ).then((response) => {
     if (testFailure === null || testFailure == 200) {
@@ -134,13 +141,17 @@ function apiAlertsPost(
   });
 }
 
-function apiAlertsGet(user: string, device: string, statusCode: number) {
-  const deviceId = getCreds(device).id;
+function apiAlertsGet(
+  userName: string,
+  deviceName: string,
+  statusCode: number
+) {
+  const deviceId = getCreds(deviceName).id;
   const params = {};
 
   return makeAuthorizedRequestWithStatus(
     { url: v1ApiPath(`alerts/device/${deviceId}`, params) },
-    user,
+    userName,
     statusCode
   );
 }

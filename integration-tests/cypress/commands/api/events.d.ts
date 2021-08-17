@@ -12,7 +12,7 @@ declare namespace Cypress {
      * optionally, check for a non-200 status code returned
      */
     apiEventsAdd(
-      camera: string,
+      deviceName: string,
       description?: ApiEventDetail,
       dates?: string[],
       eventDetailId?: number,
@@ -25,8 +25,8 @@ declare namespace Cypress {
      * optionally, check for a non-200 status code returned
      */
     apiEventsDeviceAddOnBehalf(
-      user: string,
-      camera: string,
+      userName: string,
+      deviceIdOrName: string,
       description?: ApiEventDetail,
       dates?: string[],
       eventDetailId?: number,
@@ -46,8 +46,8 @@ declare namespace Cypress {
      *   (defaults to the number of entries in ExpectedEvents)
      */
     apiEventsCheck(
-      user: string,
-      device: string,
+      userName: string,
+      deviceName: string,
       queryParams: any,
       expectedEvents: ApiEventReturned[],
       excludeCheckOn?: string[],
@@ -61,8 +61,8 @@ declare namespace Cypress {
      * optionally exclude checks on values of specific keys (excludeCheckOn)
      */
     apiEventsErrorsCheck(
-      user: string,
-      device: string,
+      userName: string,
+      deviceName: string,
       queryParams: any,
       expectedErrors: ApiEventErrorCategory[],
       excludeCheckOn?: string[],
@@ -78,8 +78,8 @@ declare namespace Cypress {
      * Optionally: disable sorting with additionalChecks.doNotSort=true
      */
     apiPowerEventsCheck(
-      user: string,
-      device: string,
+      userName: string,
+      deviceName: string,
       queryParams: any,
       expectedEvent: ApiPowerEventReturned[],
       excludeCheckOn?: string[],
@@ -95,8 +95,8 @@ declare namespace Cypress {
      *
      */
     apiPowerEventsCheckAgainstExpected(
-      user: string,
-      camera: string,
+      userName: string,
+      deviceName: string,
       expectedEvent: TestComparablePowerEvent,
       statusCode?: number
     ): Chainable<Element>;
@@ -107,8 +107,8 @@ declare namespace Cypress {
      * eventName will be rendered unique _per test_
      */
     apiEventsCheckAgainstExpected(
-      user: string,
-      camera: string,
+      userName: string,
+      deviceName: string,
       eventName: string,
       eventNumber?: number,
       statusCode?: number
@@ -120,8 +120,8 @@ declare namespace Cypress {
      */
     createExpectedEvent(
       name: string,
-      user: string,
-      device: string,
+      userName: string,
+      deviceName: string,
       recording: string,
       alertName: string
     ): any;

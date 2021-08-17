@@ -7,7 +7,7 @@ import { TestComparableVisit, TestVisitsWhere } from "../types";
 
 Cypress.Commands.add(
   "checkVisitTags",
-  (user: string, camera: string, expectedTags: string[]) => {
+  (userName: string, deviceName: string, expectedTags: string[]) => {
     const expectedVisits = expectedTags.map((tag) => {
       return { tag };
     });
@@ -15,32 +15,36 @@ Cypress.Commands.add(
     logTestDescription(
       `Check visit tags match ${JSON.stringify(expectedTags)}`,
       {
-        user,
-        camera,
+        userName,
+        deviceName,
         expectedVisits,
       }
     );
 
-    checkVisitsMatch(user, camera, expectedVisits);
+    checkVisitsMatch(userName, deviceName, expectedVisits);
   }
 );
 
 Cypress.Commands.add(
   "checkVisits",
-  (user: string, camera: string, expectedVisits: TestComparableVisit[]) => {
+  (
+    userName: string,
+    deviceName: string,
+    expectedVisits: TestComparableVisit[]
+  ) => {
     logTestDescription(`Check visits match ${JSON.stringify(expectedVisits)}`, {
-      user,
-      camera,
+      userName,
+      deviceName,
       expectedVisits,
     });
 
-    checkVisitsMatch(user, camera, expectedVisits);
+    checkVisitsMatch(userName, deviceName, expectedVisits);
   }
 );
 
 function checkVisitsMatch(
-  user: string,
-  camera: string,
+  userName: string,
+  deviceName: string,
   expectedVisits: TestComparableVisit[]
 ) {
   const where: TestVisitsWhere = {
@@ -48,8 +52,8 @@ function checkVisitsMatch(
     type: "thermalRaw",
   };
 
-  if (camera) {
-    where.DeviceId = getCreds(camera).id;
+  if (deviceName) {
+    where.DeviceId = getCreds(deviceName).id;
   }
 
   const params = {
@@ -60,7 +64,7 @@ function checkVisitsMatch(
   cy.request({
     method: "GET",
     url: v1ApiPath("recordings/visits", params),
-    headers: getCreds(user).headers,
+    headers: getCreds(userName).headers,
   }).then((response) => {
     checkResponseMatches(response, expectedVisits);
   });

@@ -9,48 +9,48 @@ import { TestComparableVisit, TestVisitSearchParams } from "../types";
 
 Cypress.Commands.add(
   "checkMonitoringTags",
-  (user: string, camera: string, expectedTags: string[]) => {
+  (userName: string, deviceName: string, expectedTags: string[]) => {
     const expectedVisits = expectedTags.map((tag) => {
       return { tag };
     });
 
     logTestDescription(`Check visit tags match ${prettyLog(expectedTags)}`, {
-      user,
-      camera,
+      userName,
+      deviceName,
       expectedVisits,
     });
 
-    checkMonitoringMatches(user, camera, {}, expectedVisits);
+    checkMonitoringMatches(userName, deviceName, {}, expectedVisits);
   }
 );
 
 Cypress.Commands.add(
   "checkMonitoring",
   (
-    user: string,
-    camera: string,
+    userName: string,
+    deviceName: string,
     expectedVisits: TestComparableVisit[],
     log = true
   ) => {
     logTestDescription(
       `Check visits match ${prettyLog(expectedVisits)}`,
       {
-        user,
-        camera,
+        userName,
+        deviceName,
         expectedVisits,
       },
       log
     );
 
-    checkMonitoringMatches(user, camera, {}, expectedVisits);
+    checkMonitoringMatches(userName, deviceName, {}, expectedVisits);
   }
 );
 
 Cypress.Commands.add(
   "checkMonitoringWithFilter",
   (
-    user: string,
-    camera: string,
+    userName: string,
+    deviceName: string,
     searchParams: TestVisitSearchParams,
     expectedVisits: TestComparableVisit[]
   ) => {
@@ -59,8 +59,8 @@ Cypress.Commands.add(
         searchParams
       )} match ${prettyLog(expectedVisits)} `,
       {
-        user,
-        camera,
+        userName,
+        deviceName,
         expectedVisits,
         searchParams,
       }
@@ -74,13 +74,13 @@ Cypress.Commands.add(
       searchParams.until = convertToDate(searchParams.until).toISOString();
     }
 
-    checkMonitoringMatches(user, camera, searchParams, expectedVisits);
+    checkMonitoringMatches(userName, deviceName, searchParams, expectedVisits);
   }
 );
 
 function checkMonitoringMatches(
-  user: string,
-  camera: string,
+  userName: string,
+  deviceName: string,
   specialParams: TestVisitSearchParams,
   expectedVisits: TestComparableVisit[]
 ) {
@@ -91,14 +91,14 @@ function checkMonitoringMatches(
 
   Object.assign(params, specialParams);
 
-  if (camera) {
-    params.devices = getCreds(camera).id;
+  if (deviceName) {
+    params.devices = getCreds(deviceName).id;
   }
 
   cy.request({
     method: "GET",
     url: v1ApiPath("monitoring/page", params),
-    headers: getCreds(user).headers,
+    headers: getCreds(userName).headers,
   }).then((response) => {
     checkResponseMatches(response, expectedVisits);
   });

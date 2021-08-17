@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type TestComparableVisit = import("../types").TestComparableVisit;
+  //  type TestComparableVisit = import("../types").TestComparableVisit;
   interface Chainable {
     /**
      * check the visits returned match the listed visits specified. Only the specified information will be checked.
@@ -11,8 +11,8 @@ declare namespace Cypress {
      *
      */
     checkVisits(
-      user: string,
-      camera: string,
+      userName: string,
+      deviceName: string,
       expectedVisits: TestComparableVisit[]
     ): Chainable<Element>;
 
@@ -23,8 +23,8 @@ declare namespace Cypress {
      *
      */
     checkVisitTags(
-      user: string,
-      camera: string,
+      userName: string,
+      deviceName: string,
       expectedTags: string[]
     ): Chainable<Element>;
   }

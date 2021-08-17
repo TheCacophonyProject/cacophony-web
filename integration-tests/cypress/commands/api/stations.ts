@@ -10,17 +10,17 @@ import { ApiCreateStationData } from "../types";
 Cypress.Commands.add(
   "apiUploadStations",
   (
-    user: string,
-    group: string,
+    userName: string,
+    groupName: string,
     stations: ApiCreateStationData[],
     updateFrom?: Date
   ) => {
     logTestDescription(
-      `Add stations ${prettyLog(stations)} to group '${group}' `,
-      { user, group, stations, updateFrom }
+      `Add stations ${prettyLog(stations)} to group '${groupName}' `,
+      { userName, groupName, stations, updateFrom }
     );
 
-    const actualGroup = getTestName(group);
+    const actualGroup = getTestName(groupName);
     const body: { [key: string]: string } = {
       stations: JSON.stringify(stations),
     };
@@ -34,49 +34,55 @@ Cypress.Commands.add(
         url: v1ApiPath(`groups/${actualGroup}/stations`),
         body,
       },
-      user
+      userName
     );
   }
 );
 
-Cypress.Commands.add("apiCheckStations", (user: string, group: string) => {
-  logTestDescription(`Check stations for group ${group}`, { user, group });
+Cypress.Commands.add(
+  "apiCheckStations",
+  (userName: string, groupName: string) => {
+    logTestDescription(`Check stations for group ${groupName}`, {
+      userName,
+      groupName,
+    });
 
-  const actualGroup = getTestName(group);
+    const actualGroup = getTestName(groupName);
 
-  makeAuthorizedRequest(
-    {
-      method: "GET",
-      url: v1ApiPath(`groups/${actualGroup}/stations`),
-    },
-    user
-  );
-});
+    makeAuthorizedRequest(
+      {
+        method: "GET",
+        url: v1ApiPath(`groups/${actualGroup}/stations`),
+      },
+      userName
+    );
+  }
+);
 
 Cypress.Commands.add(
   "thenCheckStationIs",
   { prevSubject: true },
-  (subject, user: string, station: string) => {
-    checkStationIs(user, subject, station);
+  (subject, userName: string, station: string) => {
+    checkStationIs(userName, subject, station);
   }
 );
 
 Cypress.Commands.add(
   "checkRecordingsStationIs",
-  (user: string, station: string) => {
-    checkStationIs(user, 0, station);
+  (userName: string, station: string) => {
+    checkStationIs(userName, 0, station);
   }
 );
 
-function checkStationIs(user: string, recId: number, station: string) {
+function checkStationIs(userName: string, recId: number, station: string) {
   const text =
     station === ""
       ? "not assigned to a station"
       : `assigned to station '${station}'`;
   logTestDescription(`and check recording is ${text}`, {
-    user,
+    userName,
   });
-  checkRecording(user, recId, (recording) => {
+  checkRecording(userName, recId, (recording) => {
     if (recording.Station) {
       expect(recording.Station.name).equals(station);
     } else {

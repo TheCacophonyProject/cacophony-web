@@ -31,7 +31,7 @@ export const EventTypes = {
 Cypress.Commands.add(
   "apiEventsAdd",
   (
-    camera: string,
+    deviceName: string,
     description: ApiEventDetail,
     dates: string[] = [new Date().toISOString()],
     eventDetailId: number,
@@ -44,7 +44,7 @@ Cypress.Commands.add(
       eventDetailId: eventDetailId,
     };
     logTestDescription(
-      `Create event for ${camera} at ${dates}`,
+      `Create event for ${deviceName} at ${dates}`,
       { data: data },
       log
     );
@@ -54,7 +54,7 @@ Cypress.Commands.add(
         url: v1ApiPath("events"),
         body: data,
       },
-      camera,
+      deviceName,
       statusCode
     ).then((response) => {
       cy.wrap(response.body.eventDetailId);
@@ -65,8 +65,8 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "apiEventsDeviceAddOnBehalf",
   (
-    user: string,
-    camera: string,
+    userName: string,
+    deviceIdOrName: string,
     description: ApiEventDetail,
     dates: string[] = [new Date().toISOString()],
     eventDetailId: number,
@@ -80,14 +80,14 @@ Cypress.Commands.add(
       eventDetailId: eventDetailId,
     };
     //look up device name in records, use raw value if not there
-    if (getCreds(camera) !== undefined) {
-      deviceId = getCreds(camera).id.toString();
+    if (getCreds(deviceIdOrName) !== undefined) {
+      deviceId = getCreds(deviceIdOrName).id.toString();
     } else {
-      deviceId = camera;
+      deviceId = deviceIdOrName;
     }
 
     logTestDescription(
-      `Create event for ${camera} at ${dates}`,
+      `Create event for ${deviceIdOrName} at ${dates}`,
       { data: data },
       log
     );
@@ -97,7 +97,7 @@ Cypress.Commands.add(
         url: v1ApiPath(`events/device/${deviceId}`),
         body: data,
       },
-      user,
+      userName,
       statusCode
     ).then((response) => {
       cy.wrap(response.body.eventDetailId);
@@ -108,17 +108,17 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "apiEventsErrorsCheck",
   (
-    user: string,
-    device: string,
+    userName: string,
+    deviceName: string,
     queryParams: any,
     expectedErrors: ApiEventErrorCategory[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(`Check for expected errors for ${device} `, {
-      user,
-      device,
+    logTestDescription(`Check for expected errors for ${deviceName} `, {
+      userName,
+      deviceName,
     });
 
     // by default count=expected event count, but can specify manually
@@ -128,8 +128,8 @@ Cypress.Commands.add(
     }
 
     // add deviceId to params unless already defined
-    if (queryParams.deviceId === undefined && device !== undefined) {
-      queryParams.deviceId = getCreds(device).id;
+    if (queryParams.deviceId === undefined && deviceName !== undefined) {
+      queryParams.deviceId = getCreds(deviceName).id;
     }
 
     //drop any undefined parameters
@@ -138,7 +138,7 @@ Cypress.Commands.add(
     //send the request
     makeAuthorizedRequestWithStatus(
       { url: v1ApiPath("events/errors/", filteredParams) },
-      user,
+      userName,
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
@@ -231,17 +231,17 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "apiEventsCheck",
   (
-    user: string,
-    device: string,
+    userName: string,
+    deviceName: string,
     queryParams: any,
     expectedEvents: ApiEventReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(`Check for expected events for ${device} `, {
-      user,
-      device,
+    logTestDescription(`Check for expected events for ${deviceName} `, {
+      userName,
+      deviceName,
     });
     const doNotSort = additionalChecks["doNotSort"];
     const offset = additionalChecks["offset"] | 0;
@@ -255,8 +255,8 @@ Cypress.Commands.add(
     }
 
     // add deviceId to params unless already defined
-    if (queryParams.deviceId === undefined && device !== undefined) {
-      queryParams.deviceId = getCreds(device).id;
+    if (queryParams.deviceId === undefined && deviceName !== undefined) {
+      queryParams.deviceId = getCreds(deviceName).id;
     }
 
     //drop any undefined parameters
@@ -265,7 +265,7 @@ Cypress.Commands.add(
     //send the request
     makeAuthorizedRequestWithStatus(
       { url: v1ApiPath("events/", filteredParams) },
-      user,
+      userName,
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
@@ -292,22 +292,22 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "apiPowerEventsCheck",
   (
-    user: string,
-    device: string,
+    userName: string,
+    deviceName: string,
     queryParams: any,
     expectedEvents: ApiPowerEventReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(`Check for expected power events for ${device} `, {
-      user,
-      device,
+    logTestDescription(`Check for expected power events for ${deviceName} `, {
+      userName,
+      deviceName,
     });
 
     // add deviceId to params unless already defined
-    if (queryParams.deviceID === undefined && device !== undefined) {
-      queryParams.deviceID = getCreds(device).id;
+    if (queryParams.deviceID === undefined && deviceName !== undefined) {
+      queryParams.deviceID = getCreds(deviceName).id;
     }
 
     //drop any undefined parameters
@@ -316,7 +316,7 @@ Cypress.Commands.add(
     //send the request
     makeAuthorizedRequestWithStatus(
       { url: v1ApiPath("events/powerEvents", filteredParams) },
-      user,
+      userName,
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
@@ -332,41 +332,45 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiPowerEventsCheckAgainstExpected",
-  (user: string, camera: string, expectedEvent: TestComparablePowerEvent) => {
+  (
+    userName: string,
+    deviceName: string,
+    expectedEvent: TestComparablePowerEvent
+  ) => {
     logTestDescription(
-      `Check power events for ${camera} is ${prettyLog(expectedEvent)}}`,
+      `Check power events for ${deviceName} is ${prettyLog(expectedEvent)}}`,
       {
-        user,
-        camera,
+        userName,
+        deviceName,
         expectedEvent,
       }
     );
 
-    checkPowerEvents(user, camera, expectedEvent);
+    checkPowerEvents(userName, deviceName, expectedEvent);
   }
 );
 
 Cypress.Commands.add(
   "apiEventsCheckAgainstExpected",
   (
-    user: string,
-    camera: string,
+    userName: string,
+    deviceName: string,
     eventName: string,
     eventNumber: number = 1,
     statusCode: number = 200
   ) => {
     logTestDescription(
-      `Check for expected event ${getUniq(eventName)} for ${camera} `,
+      `Check for expected event ${getUniq(eventName)} for ${deviceName} `,
       {
-        user,
-        camera,
+        userName,
+        deviceName,
         eventNumber,
       }
     );
 
     checkEvents(
-      user,
-      camera,
+      userName,
+      deviceName,
       getUniq(eventName),
       eventNumber,
       ["success", "trackId", "dateTime"],
@@ -379,15 +383,15 @@ Cypress.Commands.add(
   "createExpectedEvent",
   (
     name: string,
-    user: string,
-    device: string,
+    userName: string,
+    deviceName: string,
     recording: string,
     alertName: string
   ) => {
     logTestDescription(
       `Create expected event ${getUniq(name)} for ${getUniq(alertName)} `,
       {
-        user,
+        userName,
         name,
         id: getUniq(alertName),
       }
@@ -396,7 +400,7 @@ Cypress.Commands.add(
       id: 1,
       dateTime: "2021-05-19T01:39:41.376Z",
       createdAt: "2021-05-19T01:39:41.771Z",
-      DeviceId: getCreds(device).id,
+      DeviceId: getCreds(deviceName).id,
       EventDetail: {
         type: "alert",
         details: {
@@ -406,44 +410,44 @@ Cypress.Commands.add(
           trackId: 1,
         },
       },
-      Device: { devicename: getTestName(getCreds(device).name) },
+      Device: { devicename: getTestName(getCreds(deviceName).name) },
     };
     Cypress.env("testCreds")[getUniq(name)] = expectedEvent;
   }
 );
 
 function checkPowerEvents(
-  user: string,
-  camera: string,
+  userName: string,
+  deviceName: string,
   expectedEvent: TestComparablePowerEvent
 ) {
   const params = {
-    deviceID: getCreds(camera).id,
+    deviceID: getCreds(deviceName).id,
   };
 
   makeAuthorizedRequest(
     { url: v1ApiPath("events/powerEvents", params) },
-    user
+    userName
   ).then((response) => {
     checkPowerEventMatches(response, expectedEvent);
   });
 }
 
 function checkEvents(
-  user: string,
-  camera: string,
+  userName: string,
+  deviceName: string,
   eventName: string,
   eventNumber: number,
   ignoreParams: string[],
   statusCode: number
 ) {
   const params = {
-    deviceID: getCreds(camera).id,
+    deviceID: getCreds(deviceName).id,
   };
 
   makeAuthorizedRequestWithStatus(
     { url: v1ApiPath("events", params) },
-    user,
+    userName,
     statusCode
   ).then((response) => {
     const expectedEvent = getExpectedEvent(eventName);
