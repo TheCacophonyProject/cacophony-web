@@ -13,19 +13,19 @@ declare namespace Cypress {
      * Optionally, save the id against provided recordingName
      */
     uploadRecordingOnBehalfUsingDevice(
-      cameraName: string,
+      deviceName: string,
       userName: string,
       details: ApiThermalRecordingInfo,
       log?: boolean,
       recordingName?: string
-    ): Cypress.Chainable<Element>; //<Interception>;
+    ): Cypress.Chainable<RecordingId>;
 
     /**
      * upload a single recording to for a particular camera using devicename and groupname and user credentials
      * Optionally, save the id against provided recordingName
      */
     uploadRecordingOnBehalfUsingGroup(
-      cameraName: string,
+      deviceName: string,
       groupName: string,
       userName: string,
       details: ApiThermalRecordingInfo,
@@ -37,14 +37,14 @@ declare namespace Cypress {
      * Optionally, save the id against provided recordingName
      */
     uploadRecording(
-      cameraName: string,
+      deviceName: string,
       details: ApiThermalRecordingInfo,
       log?: boolean,
       recordingName?: string
     ): Cypress.Chainable<RecordingId>;
 
     uploadRecordingThenUserTag(
-      cameraName: string,
+      deviceName: string,
       details: ApiThermalRecordingInfo,
       tagger: string,
       tag: string
@@ -57,7 +57,7 @@ declare namespace Cypress {
       tag: string
     ): any;
 
-    uploadRecordingsAtTimes(cameraName: string, times: string[]): any;
+    uploadRecordingsAtTimes(deviceName: string, times: string[]): any;
 
     // to be run straight after an uploadRecording
     thenUserTagAs(tagger: string, tag: string): any;
@@ -66,7 +66,7 @@ declare namespace Cypress {
      * Check recording count for device matches expected value
      */
     apiCheckDeviceHasRecordings(
-      username: string,
+      userName: string,
       deviceName: string,
       count: number
     ): any;

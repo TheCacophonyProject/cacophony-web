@@ -63,7 +63,10 @@ export default function (app: Application, baseUrl: string) {
    * the 'description' parameter.
    *
    * `Either eventDetailId or description is required`
-   * @apiParam {String} deviceID ID of the device to upload on behalf of. If you don't have access to the ID the devicename can be used instead in it's place.
+   * @apiParam {String} deviceID ID of the device to upload on behalf of.
+   * If you don't have access to the deviceID, the devicename can be used instead in it's place -
+   * however note that requests using devicename will be rejected if multiple devices exist with
+   * the same devicename. The use of devicename is `DEPRECATED` and may not be supported in future.
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse EventParams
@@ -92,7 +95,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Datetime} [startTime] Return only events after this time
+   * @apiParam {Datetime} [startTime] Return only events on or after this time
    * @apiParam {Datetime} [endTime] Return only events from before this time
    * @apiParam {Integer} [deviceId] Return only events for this device id
    * @apiParam {Integer} [limit] Limit returned events to this number (default is 100)
@@ -100,7 +103,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {String} [type] Alphaonly string describing the type of event wanted
    * @apiParam {Boolean} [latest] Set to true to see the most recent events recorded listed first
    *
-   * @apiSuccess {JSON} rows Array containing details of events matching the criteria given.
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Number} offset Offset of returned page of results from 1st result matched by query.
+   * @apiSuccess {Number} count Total number of results matching the query.
+   * @apiSuccess {JSON} rows Array of `ApiEvent` containing details of events matching the criteria given.
+   * @apiUse ApiEvent
    * @apiUse V1ResponseError
    */
   app.get(
@@ -156,13 +163,46 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Datetime} [startTime] Return only errors after this time
+   * @apiParam {Datetime} [startTime] Return only errors on or after this time
    * @apiParam {Datetime} [endTime] Return only errors from before this time
    * @apiParam {Integer} [deviceId] Return only errors for this device id
    * @apiParam {Integer} [limit] Limit returned errors to this number (default is 100)
    * @apiParam {Integer} [offset] Offset returned errors by this amount (default is 0)
    *
-   * @apiSuccess {JSON} map of Service Name to Service errors
+   * @apiSuccess {json} rows Map of Service Name to Service errors
+   * @apiUse V1ResponseSuccess
+   * @apiSuccessExample {json} rows
+   * {
+   *   "<service-name>": {
+   *     "name": "<service-name>",
+   *     "devices": ["device1","device2"],
+   *     "errors": ApiEventError[]
+   *   },
+   *   "<service-name2>": {
+   *     "name": "<service-name2>",
+   *     "devices": ["device3","device4"],
+   *     "errors": ApiEventError[]
+   *   }
+   * }
+   * @apiSuccessExample {json} ApiEventError
+   * {
+   *   devices: ["device1", "device2"],
+   *   timestamps: ["2020-08-10T13:10:38.000Z", "2020-08-11T13:10:38.000Z"],
+   *   similar: ApiEventErrorSimilar[],
+   *   patterns: ApiEventErrorPattern[]
+   * }
+   * @apiSuccessExample {json} ApiEventErrorSimilar
+   * {
+   *   device: "device1",
+   *   timestamp: "2020-08-10T13:10:38.000Z",
+   *   lines: ["error line 1", "error line 2", "error line 3"]
+   * }
+   * @apiSuccessExample {json} ApiEventErrorPattern
+   * {
+   *   score: 100,
+   *   index: 0,
+   *   patterns: ["matched error line"]
+   * }
    * @apiUse V1ResponseError
    */
   app.get(
@@ -201,19 +241,26 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Integer} [deviceId] Return only errors for this device id
+   * @apiParam {Integer} [deviceID] Return only errors for this deviceID
    *
-   * @apiSuccess {JSON} array of device power events
-   * @apiSuccessExample {json} Success-Response:
-   *     HTTP/1.1 200 OK
-   *     "events": [{
-   *       "lastReported": "2021-03-09 08:00:00",
-   *       "lastStarted": "2021-03-09 18:00:00",
-   *       "lastStopped": "2021-03-10 08:00:00",
-   *       "Device": {"id": 10, "devicename": "Camera2", "GroupId": 22},
-   *       "hasStopped": true
-   *       "hasAlerted": true
-   *     }]
+   * @apiSuccess {JSON} events Array of `ApiPowerEvent` containing details of power events matching the criteria given.
+   * @apiSuccessExample ApiPowerEvent:
+   * {
+   *   "hasStopped": true,
+   *   "lastStarted": "2021-07-21T02:00:02.929Z",
+   *   "lastReported": "2021-07-21T02:00:02.929Z",
+   *   "lastStopped": "2021-07-17T20:41:55.000Z",
+   *   "hasAlerted": true,
+   *   "Device": {
+   *     "id": 1576,
+   *     "devicename": "test-device",
+   *     "GroupId": 246,
+   *     "Group":  {
+   *       "groupname": "test-group",
+   *       "id": 246
+   *     }
+   *    }
+   *  }
    * @apiUse V1ResponseError
    */
   app.get(

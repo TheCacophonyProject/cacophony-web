@@ -87,20 +87,75 @@ export interface TestComparablePowerEvent {
   hasAlerted: boolean;
 }
 
+export interface ApiEventDetail {
+  type?: string;
+  details?: any;
+}
+
+export interface ApiEventSet {
+  deviceID?: string;
+  description?: ApiEventDetail;
+  eventDetailId?: number;
+  dateTimes?: string[];
+}
+
+export interface ApiEventReturned {
+  id?: number;
+  createdAt?: string;
+  DeviceId?: number;
+  EventDetail?: ApiEventDetail;
+  dateTime?: string;
+  Device?: { devicename: string };
+}
+
+export interface ApiPowerEventReturned {
+  hasStopped: boolean;
+  lastStarted?: string;
+  lastReported?: string;
+  lastStopped?: string;
+  hasAlerted?: boolean;
+  Device?: {
+    id: number;
+    devicename: string;
+    GroupId: number;
+    Group: {
+      groupname: string;
+      id: number;
+    };
+  };
+}
+
+export interface ApiEventErrorSimilar {
+  device: string;
+  timestamp: string;
+  lines: string[];
+}
+
+export interface ApiEventErrorPattern {
+  score?: number;
+  index?: number;
+  patterns?: string[];
+}
+
+export interface ApiEventError {
+  devices: string[];
+  timestamps: string[];
+  similar: ApiEventErrorSimilar[];
+  patterns: ApiEventErrorPattern[];
+}
+
+export interface ApiEventErrorCategory {
+  name: string;
+  devices: string[];
+  errors: ApiEventError[];
+}
+
 export interface TestComparableEvent {
   id: number;
   dateTime: string;
   createdat: string;
   DeviceId: number;
-  EventDetail: {
-    type: string;
-    details: {
-      recId: number;
-      alertId: number;
-      success: boolean;
-      trackId: number;
-    };
-  };
+  EventDetail: ApiEventDetail;
   Device: {
     devicename: string;
   };

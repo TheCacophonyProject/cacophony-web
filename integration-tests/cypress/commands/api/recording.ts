@@ -19,7 +19,7 @@ let lastUsedTime = DEFAULT_DATE;
 Cypress.Commands.add(
   "uploadRecording",
   (
-    cameraName: string,
+    deviceName: string,
     details: ApiThermalRecordingInfo,
     log: boolean = true,
     recordingName: string = "recording1"
@@ -27,8 +27,8 @@ Cypress.Commands.add(
     const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
-      `Upload recording ${prettyLog(details)}  to '${cameraName}'`,
-      { camera: cameraName, requestData: data },
+      `Upload recording ${prettyLog(details)}  to '${deviceName}'`,
+      { camera: deviceName, requestData: data },
       log
     );
 
@@ -36,7 +36,7 @@ Cypress.Commands.add(
     const url = v1ApiPath("recordings");
     const fileType = "application/cptv";
 
-    uploadFile(url, cameraName, fileName, fileType, data, "@addRecording").then(
+    uploadFile(url, deviceName, fileName, fileType, data, "@addRecording").then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
         if (recordingName !== null) {
@@ -50,7 +50,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "uploadRecordingOnBehalfUsingGroup",
   (
-    cameraName: string,
+    deviceName: string,
     groupName: string,
     userName: string,
     details: ApiThermalRecordingInfo,
@@ -62,15 +62,15 @@ Cypress.Commands.add(
     logTestDescription(
       `Upload recording on behalf using group${prettyLog(
         details
-      )}  to '${cameraName}'`,
-      { camera: cameraName, requestData: data },
+      )}  to '${deviceName}'`,
+      { camera: deviceName, requestData: data },
       log
     );
 
     const fileName = "invalid.cptv";
     const url = v1ApiPath(
       "recordings/device/" +
-        getTestName(cameraName) +
+        getTestName(deviceName) +
         "/group/" +
         getTestName(groupName)
     );
@@ -90,7 +90,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "uploadRecordingOnBehalfUsingDevice",
   (
-    cameraName: string,
+    deviceName: string,
     userName: string,
     details: ApiThermalRecordingInfo,
     log: boolean = true,
@@ -101,12 +101,12 @@ Cypress.Commands.add(
     logTestDescription(
       `Upload recording on behalf using device ${prettyLog(
         details
-      )}  to '${cameraName}' using '${userName}'`,
-      { camera: cameraName, requestData: data },
+      )}  to '${deviceName}' using '${userName}'`,
+      { camera: deviceName, requestData: data },
       log
     );
     const fileName = "invalid.cptv";
-    const deviceId = getCreds(cameraName).id;
+    const deviceId = getCreds(deviceName).id;
     const url = v1ApiPath("recordings/device/" + deviceId);
     const fileType = "application/cptv";
 
@@ -123,14 +123,14 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "uploadRecordingsAtTimes",
-  (cameraName: string, times: string[]) => {
+  (deviceName: string, times: string[]) => {
     logTestDescription(
-      `Upload recordings   at ${prettyLog(times)}  to '${cameraName}'`,
-      { camera: cameraName, times }
+      `Upload recordings   at ${prettyLog(times)}  to '${deviceName}'`,
+      { camera: deviceName, times }
     );
 
     times.forEach((time) => {
-      cy.uploadRecording(cameraName, { time }, false);
+      cy.uploadRecording(deviceName, { time }, false);
     });
   }
 );
@@ -177,12 +177,12 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "uploadRecordingThenUserTag",
   (
-    camera: string,
+    deviceName: string,
     details: ApiThermalRecordingInfo,
     tagger: string,
     tag: string
   ) => {
-    cy.uploadRecording(camera, details).then((recordingId) => {
+    cy.uploadRecording(deviceName, details).then((recordingId) => {
       cy.userTagRecording(recordingId, 0, tagger, tag);
     });
   }
@@ -316,8 +316,8 @@ function addTracksToRecording(
 
 Cypress.Commands.add(
   "apiCheckDeviceHasRecordings",
-  (username, deviceName, count) => {
-    const user = getCreds(username);
+  (userName, deviceName, count) => {
+    const user = getCreds(userName);
     const camera = getCreds(deviceName);
     const params = {
       where: JSON.stringify({ DeviceId: camera.id }),
@@ -334,7 +334,7 @@ Cypress.Commands.add(
 );
 
 export function checkRecording(
-  user: string,
+  userName: string,
   recordingId: number,
   checkFunction: any
 ) {
@@ -343,7 +343,7 @@ export function checkRecording(
     {
       url: v1ApiPath(`recordings`),
     },
-    user
+    userName
   ).then((response) => {
     let recordings = response.body.rows;
     if (recordingId !== 0) {

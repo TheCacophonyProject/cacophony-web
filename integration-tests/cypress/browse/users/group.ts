@@ -111,14 +111,14 @@ describe("Group Admin Pages", () => {
     cy.checkDeviceInGroup(Camera, FriendsForever);
   });
 
-  function getUserRow(username) {
+  function getUserRow(username: string) {
     // just make sure we are actually targeting the row html first
     cy.get(usersTable).contains(username).parent().should("match", "tr");
     cy.get(usersTable).contains(username).parent().as(username);
     return "@" + username;
   }
 
-  function getGroupPageUrl(groupname) {
+  function getGroupPageUrl(groupname: string) {
     return "/groups/" + getTestName(groupname);
   }
 

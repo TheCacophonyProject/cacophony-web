@@ -18,15 +18,13 @@ context("Users can see footage from their cameras", () => {
   });
 
   it("A camera event can be triggered", () => {
-    const eventType = "throttle";
     cy.apiSignInAs(username);
-
-    // FIXME Is this supposed to be cy.createExpectedEvent?
-    // cy.apiUploadEvent(camera, "throttle");
-
+    cy.apiEventsAdd(camera, { type: "throttle" });
     // for event-uploader to upload
     cy.wait(3 * 1000);
-    cy.apiCheckEvents(username, camera, eventType);
+    cy.apiEventsCheck(username, camera, {}, [
+      { EventDetail: { type: "throttle" } },
+    ]);
   });
 
   it("A camera can trigger and upload a new recording", () => {

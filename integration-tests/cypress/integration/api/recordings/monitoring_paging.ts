@@ -11,7 +11,6 @@ describe("Monitoring : pagings", () => {
 
   it("recordings are broken into approximate pages by start date", () => {
     const camera = "basic";
-    const firstRecording = "10:03";
 
     cy.apiCreateDevice(camera, group);
     cy.uploadRecordingsAtTimes(camera, [
