@@ -1,9 +1,9 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 declare namespace Cypress {
   type TestVisitSearchParams = import("../types").TestVisitSearchParams;
+  type TestComparableVisit = import("../types").TestComparableVisit;
   interface Chainable {
     /**
      * check the visits returned match the listed visits specified. Only the specified information will be checked.
@@ -12,9 +12,9 @@ declare namespace Cypress {
      *
      */
     checkMonitoring(
-      user: string,
-      camera: string,
-      expectedVisits: import("../types").TestComparableVisit[],
+      userName: string,
+      deviceName: string,
+      expectedVisits: TestComparableVisit[],
       log?: boolean
     ): any;
 
@@ -25,10 +25,10 @@ declare namespace Cypress {
      *
      */
     checkMonitoringWithFilter(
-      user: string,
-      camera: string,
+      userName: string,
+      deviceName: string,
       searchParams: TestVisitSearchParams,
-      expectedVisits: import("../types").TestComparableVisit[]
+      expectedVisits: TestComparableVisit[]
     ): any;
     /*
      * check the visits returned match the listed visits specified. Only the specified information will be checked.
@@ -37,8 +37,8 @@ declare namespace Cypress {
      *
      */
     checkMonitoringTags(
-      user: string,
-      camera: string,
+      userName: string,
+      deviceName: string,
       expectedTags: string[]
     ): any;
   }

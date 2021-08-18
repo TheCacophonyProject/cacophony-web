@@ -1,5 +1,4 @@
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 import { getTestName } from "../names";
 import {
@@ -23,8 +22,8 @@ import {
 Cypress.Commands.add(
   "apiCreateDevice",
   (
-    cameraName: string,
-    group: string,
+    deviceName: string,
+    groupName: string,
     saltId: number | null = null,
     password: string | null = null,
     generateUniqueName: boolean = true,
@@ -32,18 +31,18 @@ Cypress.Commands.add(
     statusCode: number = 200
   ) => {
     logTestDescription(
-      `Create camera '${cameraName}' in group '${group}' with saltId '${saltId}'`,
+      `Create camera '${deviceName}' in group '${groupName}' with saltId '${saltId}'`,
       {
-        camera: cameraName,
-        group: group,
+        camera: deviceName,
+        group: groupName,
         saltId: saltId,
       },
       log
     );
 
     const request = createDevice(
-      cameraName,
-      group,
+      deviceName,
+      groupName,
       password,
       saltId,
       generateUniqueName
@@ -51,7 +50,7 @@ Cypress.Commands.add(
     if (statusCode == 200) {
       cy.request(request).then((response) => {
         const id = response.body.id;
-        saveCreds(response, cameraName, id);
+        saveCreds(response, deviceName, id);
       });
     } else {
       checkRequestFails(request, statusCode);
@@ -112,15 +111,15 @@ Cypress.Commands.add(
 );
 
 function createDevice(
-  cameraName: string,
-  group: string,
+  deviceName: string,
+  groupName: string,
   password: string,
   saltId: number,
   makeCameraNameTestName = true
 ): any {
   const fullName = makeCameraNameTestName
-    ? getTestName(cameraName)
-    : cameraName;
+    ? getTestName(deviceName)
+    : deviceName;
 
   if (password === null) {
     password = "p" + fullName;
@@ -136,7 +135,7 @@ function createDevice(
   const data: DataType = {
     devicename: fullName,
     password: password,
-    group: getTestName(group),
+    group: getTestName(groupName),
   };
 
   if (saltId !== null) {
@@ -277,7 +276,7 @@ Cypress.Commands.add(
   "apiCheckDeviceInGroup",
   (
     userName: string,
-    cameraName: string,
+    deviceName: string,
     groupName: string,
     groupId: number,
     expectedDevice: ApiDeviceInGroupDevice,
@@ -285,8 +284,8 @@ Cypress.Commands.add(
     statusCode: number = 200
   ) => {
     logTestDescription(
-      `${userName} Check user '${userName}' can see device '${cameraName}' in group '${groupName}' `,
-      { user: userName, groupName, cameraName },
+      `${userName} Check user '${userName}' can see device '${deviceName}' in group '${groupName}' `,
+      { user: userName, groupName, deviceName },
       true
     );
 
@@ -294,13 +293,13 @@ Cypress.Commands.add(
     let fullUrl = null;
     if (groupId !== null) {
       fullUrl = v1ApiPath(
-        "devices/" + getTestName(cameraName) + "/in-group/" + groupId,
+        "devices/" + getTestName(deviceName) + "/in-group/" + groupId,
         params
       );
     } else {
       fullUrl = v1ApiPath(
         "devices/" +
-          getTestName(cameraName) +
+          getTestName(deviceName) +
           "/in-group/" +
           getTestName(groupName),
         params
@@ -308,7 +307,7 @@ Cypress.Commands.add(
     }
 
     logTestDescription(
-      `Check that ${userName} get device ${cameraName} in group ${groupName} returns ${statusCode} and correct data`,
+      `Check that ${userName} get device ${deviceName} in group ${groupName} returns ${statusCode} and correct data`,
       {}
     );
 
@@ -323,8 +322,8 @@ Cypress.Commands.add(
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
         const device = response.body.device;
-        expect(device.id).to.equal(getCreds(cameraName).id);
-        expect(device.deviceName).to.equal(getTestName(cameraName));
+        expect(device.id).to.equal(getCreds(deviceName).id);
+        expect(device.deviceName).to.equal(getTestName(deviceName));
         expect(device.groupName).to.equal(getTestName(groupName));
         expect(device.userIsAdmin).to.equal(expectedDevice.userIsAdmin);
         if (expectedDevice.users === null) {

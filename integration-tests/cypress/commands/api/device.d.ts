@@ -1,6 +1,5 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 declare namespace Cypress {
   type ApiDevicesDevice = import("../types").ApiDevicesDevice;
@@ -15,8 +14,8 @@ declare namespace Cypress {
      * optionally check for non-200 statusCode
      */
     apiCreateDevice(
-      cameraName: string,
-      group: string,
+      deviceName: string,
+      groupName: string,
       saltId?: number,
       password?: string,
       generateUniqueName?: boolean,
@@ -70,7 +69,7 @@ declare namespace Cypress {
      */
     apiCheckDeviceInGroup(
       userName: string,
-      cameraName: string,
+      deviceName: string,
       groupName: string,
       groupId: number,
       expectedDevices: ApiDeviceInGroupDevice,
