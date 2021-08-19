@@ -14,15 +14,25 @@
       </span>
     </h6>
     <div v-if="show_details">
-      <p><strong>Label:</strong> {{ trackData.label }}</p>
+      <p v-if="trackTag.data.model_used">
+        <strong>Model:</strong> {{ trackTag.data.model_used }}
+      </p>
+
+      <p>
+        <strong>Label:</strong>
+        {{ trackTag.what.charAt(0).toUpperCase() + trackTag.what.substring(1) }}
+      </p>
       <p>
         <strong>Confidence:</strong>
-        {{ trackData.confidence }}
-        <span class="delta">(&#916; {{ trackData.clarity }})</span>
+        {{ trackTag.confidence }}
+        <span class="delta">(&#916; {{ trackTag.data.clarity }})</span>
       </p>
-      <p><strong>Novelty:</strong> {{ trackData.average_novelty }}</p>
-      <p v-if="trackData.message">
-        <strong class="title">Message:</strong> {{ trackData.message }}
+
+      <p v-if="trackTag.average_novelty">
+        <strong>Novelty:</strong> {{ trackTag.average_novelty }}
+      </p>
+      <p v-if="message">
+        <strong class="title">Message:</strong> {{ message }}
       </p>
       <table class="table table-sm">
         <thead>
@@ -32,11 +42,11 @@
           </tr>
         </thead>
         <tr
-          v-for="(value, animal) in trackData.all_class_confidences"
+          v-for="(value, animal) in trackTag.data.all_class_confidences"
           :key="animal"
         >
           <td>{{ animal }}</td>
-          <td>{{ value }}</td>
+          <td>{{ Math.round(100 * value) }}</td>
         </tr>
       </table>
     </div>
@@ -47,8 +57,12 @@
 export default {
   name: "TrackData",
   props: {
-    trackData: {
+    trackTag: {
       type: Object,
+      required: true,
+    },
+    message: {
+      type: [String, undefined],
       required: true,
     },
   },
