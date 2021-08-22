@@ -19,9 +19,6 @@ describe("Devices add / view / remove users", () => {
   const hacker = "HonestHacker";
   const group = "H-Team";
   const camera = "camera1";
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const NOT_ADMIN = false;
   const ADMIN = true;
   const group2 = "second_H_group";
   const userB = "Baldrick";

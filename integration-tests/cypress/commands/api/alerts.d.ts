@@ -6,11 +6,11 @@ declare namespace Cypress {
     /**
      * Create an alert for a device. Optioanlly expect to fail with code: failCode
      */
-    apiAddAlert(
-      user: string,
+    apiAlertAdd(
+      userName: string,
       alertName: string,
       tag: ApiAlertConditions[],
-      device: string,
+      deviceName: string,
       frequency?: number,
       statusCode?: number
     ): any;
@@ -20,9 +20,9 @@ declare namespace Cypress {
      * Optionally expect to fail with statusCode!=200
      * alertName can be null if non-200 statusCode is supplied
      */
-    apiCheckAlert(
-      user: string,
-      device: string,
+    apiAlertCheck(
+      userName: string,
+      deviceName: string,
       alertName?: string,
       statusCode?: number
     ): any;
@@ -36,8 +36,8 @@ declare namespace Cypress {
       frequencySeconds: number,
       conditions: ApiAlertConditions[],
       lastAlert: boolean,
-      user: string,
-      device: string
+      userName: string,
+      deviceName: string
     ): any;
   }
 }

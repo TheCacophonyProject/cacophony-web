@@ -17,7 +17,8 @@ function alertBody(
     .format("h:mma Do MMM");
   let html = `<b>${camera} has detected a ${tag.what} - ${dateTime}</b>`;
   if (hasThumbnail) {
-    html += `<br>  <img width="100" height ="100" src="cid:thumbnail" alt="recording thumbnail"><br>`;
+    html += `<br> <a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId}">`;
+    html += `<img width="200" height ="200" src="cid:thumbnail" alt="recording thumbnail"></a><br>`;
   }
   html += `<br><a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId}">View Recording</a>`;
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
