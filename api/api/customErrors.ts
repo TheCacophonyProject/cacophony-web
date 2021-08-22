@@ -20,7 +20,7 @@ import log from "../logging";
 import { format } from "util";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function errorHandler(err, request, response, next) {
+function errorHandler(err: Error, request, response, next) {
   if (
     err instanceof SyntaxError &&
     (err as any).type === "entity.parse.failed"
@@ -33,7 +33,7 @@ function errorHandler(err, request, response, next) {
   }
   log.error(err.toString());
   response.status(500).json({
-    message: "Internal server error: " + err.name + ".",
+    message: `Internal server error: ${err.name}: ${err.message}.`,
     errorType: "server",
   });
 }

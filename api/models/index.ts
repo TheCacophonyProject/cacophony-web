@@ -46,7 +46,7 @@ dbConfig.benchmark = true;
 (dbConfig as any).logging = function (msg, timeMs) {
   log.debug("%s [%d ms]", msg, timeMs);
   if (timeMs > (config.database.slowQueryLogThresholdMs || 1000)) {
-    log.warning("Slow query: %s [%d]ms");
+    log.warning("Slow query: %s [%d]ms", msg, timeMs);
   }
 };
 

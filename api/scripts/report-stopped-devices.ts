@@ -1,5 +1,5 @@
 import config from "../config";
-const winston = require("winston");
+import log from "../logging";
 import eventUtil, { PowerEvents } from "../api/V1/eventUtil";
 import moment from "moment";
 import { sendEmail } from "./emailUtil";
@@ -119,17 +119,6 @@ function generateHtml(stoppedDevices: PowerEvents[]): string {
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
   return html;
 }
-
-const log = new winston.Logger({
-  transports: [
-    new winston.transports.Console({
-      timestamp: function () {
-        return moment().format();
-      },
-      colorize: true,
-    }),
-  ],
-});
 
 main()
   .catch(log.error)
