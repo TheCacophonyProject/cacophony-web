@@ -15,10 +15,10 @@ const logger = winston.createLogger({
   exitOnError: false,
 });
 
-if (config.server.loggerLevel !== 'debug') {
+if (config.server.loggerLevel !== "debug") {
   // nop out debug logs, so we don't make our production logs massive.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  logger.debug = function(message: string) {
+  logger.debug = function (message: string) {
     return this;
   }.bind(logger);
 }
