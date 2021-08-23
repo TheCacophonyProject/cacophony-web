@@ -23,6 +23,13 @@ import { TrackId } from "./Track";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
 
+interface TrackTagData {
+  name: string;
+  all_class_confidences: null | Record<string, number>;
+  classify_time: number;
+  message?: string;
+}
+
 export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   isAdditionalTag: () => boolean;
   id: TrackTagId;
@@ -31,7 +38,7 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   automatic: boolean;
   UserId: UserIdAlias;
   confidence: number;
-  data: any;
+  data: string | TrackTagData;
 }
 export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
 export default function (
