@@ -1,7 +1,7 @@
 import responseUtil from "../V1/responseUtil";
 import middleware from "../middleware";
 import log from "../../logging";
-import { body, param } from "express-validator/check";
+import { body, param, query, oneOf } from "express-validator/check";
 import models from "../../models";
 import recordingUtil from "../V1/recordingUtil";
 import { Application, Request, Response } from "express";
@@ -11,8 +11,32 @@ import {
   RecordingType,
 } from "../../models/Recording";
 
+// TODO(jon): Part of our build process can make this generate JSONschema, and then
+//  we can validate that in our middleware.  We can also use that to generate better docs.
+import { ClassifierRawResult } from "../../../types/processing";
+
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";
+
+  // Add tracks
+
+  // Add track tags
+
+  // TODO - Processing should send this request gzipped.
+  app.put(
+    `${apiUrl}/raw`,
+    [
+      // TODO(jon): Check that the order of these validators is correct
+      body("id").isInt().toInt(),
+      body("jobKey").exists(),
+      body("success").isBoolean().toBoolean(),
+      middleware.parseJSON("result", body),
+      body("newProcessedFileKey").exists(),
+    ],
+    middleware.requestWrapper(async (request: Request, response: Response) => {
+
+    })
+  );
 
   /**
    * @api {get} /api/fileProcessing Get a new file processing job
@@ -22,8 +46,21 @@ export default function (app: Application) {
    * @apiParam {String} type Type of recording.
    * @apiParam {String} state Processing state.
    */
-  app.get(apiUrl, async (request: Request, response: Response) => {
-    log.info(`${request.method} Request: ${request.url}`);
+  app.get(
+    apiUrl,
+    [
+      oneOf([
+        query("type").equals(RecordingType.Audio),
+        query("type").equals(RecordingType.ThermalRaw)
+      ]),
+      oneOf([
+        query("state").equals(RecordingProcessingState.Reprocess),
+        query("state").equals(RecordingProcessingState.ToMp3),
+        query("state").equals(RecordingProcessingState.Analyse),
+        query("state").equals(RecordingProcessingState.AnalyseThermal),
+      ])
+    ],
+    middleware.requestWrapper(async (request: Request, response: Response) => {
     const type = request.query.type as RecordingType;
     const state = request.query.state as RecordingProcessingState;
     const recording = await models.Recording.getOneForProcessing(type, state);
@@ -32,12 +69,10 @@ export default function (app: Application) {
       return response.status(204).json();
     } else {
       return response.status(200).json({
-        // FIXME(jon): Test that dataValues is even a thing.  It's not a publicly
-        //  documented sequelize property.
         recording: (recording as any).dataValues,
       });
     }
-  });
+  }));
 
   /**
    * @api {put} /api/fileProcessing Finished a file processing job
@@ -51,39 +86,19 @@ export default function (app: Application) {
    * @apiParam {Boolean} complete true if the processing is complete, or false if file will be processed further.
    * @apiParam {String} [newProcessedFileKey] LeoFS Key of the new file.
    */
-  app.put(apiUrl, async (request: Request, response: Response) => {
-    const id = parseInt(request.body.id);
-    const jobKey = request.body.jobKey;
-    const success = middleware.parseBool(request.body.success);
-    let result = request.body.result;
-    const complete = middleware.parseBool(request.body.complete);
-    const newProcessedFileKey = request.body.newProcessedFileKey;
-    // Validate request.
-    const errorMessages = [];
-    if (isNaN(id)) {
-      errorMessages.push("'id' field needs to be a number.");
-    }
-    if (jobKey == null) {
-      errorMessages.push("'jobKey' field is required.");
-    }
-    if (success == null) {
-      errorMessages.push("'success' field is required");
-    }
-    if (result != null) {
-      try {
-        result = JSON.parse(result);
-      } catch (e) {
-        errorMessages.push("'result' field was not a valid JSON.");
-      }
-    }
+  app.put(apiUrl, [
+    // TODO(jon): Check that the order of these validators is correct
+    body("id").isInt().toInt(),
+    body("jobKey").exists(),
+    body("success").isBoolean().toBoolean(),
+    oneOf([
+      body("result").isEmpty(),
+      middleware.parseJSON("result", body)
+    ])
+  ], middleware.requestWrapper(async (request: Request, response: Response) => {
+    const { id, result, complete, newProcessedFileKey, success, jobKey } = request.body;
 
-    if (errorMessages.length > 0) {
-      return response.status(400).json({
-        messages: errorMessages,
-      });
-    }
-
-    const recording = await models.Recording.findOne({ where: { id: id } });
+    const recording: Recording | null = await models.Recording.findOne({ where: { id: id } });
     if (!recording) {
       return response.status(400).json({
         messages: [`Recording ${id} not found for jobKey ${jobKey}`],
@@ -115,7 +130,7 @@ export default function (app: Application) {
         await recording.mergeUpdate(result.fieldUpdates);
       }
       await recording.save();
-      if ((recording as Recording).type === RecordingType.ThermalRaw) {
+      if (recording.type === RecordingType.ThermalRaw) {
         if (recording.processingState == RecordingProcessingState.Finished) {
           if (
             recording.additionalMetadata &&
@@ -139,11 +154,10 @@ export default function (app: Application) {
           await recordingUtil.sendAlerts(recording.id);
         }
       }
-
       return response.status(200).json({ messages: ["Processing finished."] });
     } else {
       recording.set({
-        processingState: `${recording.processingState}.failed`,
+        processingState: `${recording.processingState}.failed` as RecordingProcessingState,
         jobKey: null,
         processing: false,
       });
@@ -152,7 +166,8 @@ export default function (app: Application) {
         messages: ["Processing failed."],
       });
     }
-  });
+  })
+  );
 
   /**
    * @api {post} /api/fileProcessing/tags Add a tag to a recording

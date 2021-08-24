@@ -86,6 +86,11 @@ export enum RecordingProcessingState {
   ToMp3 = "toMp3",
   Analyse = "analyse",
   Reprocess = "reprocess",
+
+  AnalyseThermalFailed = "analyse.failed",
+  ToMp3Failed = "toMp3.failed",
+  AnalyseFailed = "analyse.failed",
+  ReprocessFailed = "reprocess.failed",
 }
 export const RecordingPermissions = new Set(Object.values(RecordingPermission));
 
@@ -212,6 +217,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   processingStartTime: string;
   processingEndTime: string;
   processingMeta: RecordingProcessingMetadata;
+  processing: boolean;
   processingState: RecordingProcessingState;
   passedFilter: boolean;
   jobKey: string;
@@ -244,6 +250,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getTracks: (options: FindOptions) => Promise<Track[]>;
   createTrack: ({ data: any, AlgorithmId: DetailSnapshotId }) => Promise<Track>;
   setStation: (station: Station) => Promise<void>;
+
+  getNextState: () => RecordingProcessingState;
 
   Station?: Station;
   Group?: Group;
@@ -322,7 +330,6 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
     id: RecordingId,
     options?: getOptions
   ) => Promise<Recording>;
-  getNextState: () => String;
   //findAll: (query: FindOptions) => Promise<Recording[]>;
 }
 
@@ -793,7 +800,7 @@ from (
   //------------------
   // INSTANCE METHODS
   //------------------
-  Recording.prototype.getNextState = function () {
+  Recording.prototype.getNextState = function (): RecordingProcessingState {
     const jobs = Recording.processingStates[this.type];
     let nextState;
     if (this.processingState == RecordingProcessingState.Reprocess) {
