@@ -25,7 +25,7 @@ describe("Groups - query groups", () => {
 
   before(() => {
     //admin user, group and device
-    cy.apiCreateUserGroupAndDevice("gqGroupAdmin", "gqGroup", "gqCamera").then(() => {
+    cy.testCreateUserGroupAndDevice("gqGroupAdmin", "gqGroup", "gqCamera").then(() => {
         expectedGroup={id:getCreds("gqGroup").id,groupname: getTestName("gqGroup"), 
 		Users: [],
 		Devices: [],
@@ -51,12 +51,12 @@ describe("Groups - query groups", () => {
     });
 
     //2nd device in this group
-    cy.apiCreateDevice("gqCamera1b","gqGroup").then(() => {
+    cy.apiDeviceAdd("gqCamera1b","gqGroup").then(() => {
       expectedDevice1b={id: getCreds("gqCamera1b").id, devicename: getTestName("gqCamera1b")};
     });
 
     //group member for this group
-    cy.apiCreateUser("gqGroupMember");
+    cy.apiUserAdd("gqGroupMember");
     cy.apiGroupUserAdd("gqGroupAdmin", "gqGroupMember", "gqGroup", NOT_ADMIN).then(() => {
       expectedGroupMemberUser={id: getCreds("gqGroupMember").id, username: getTestName("gqGroupMember"), GroupUsers:
             {admin: false, createdAt:"", updatedAt:"", GroupId: getCreds("gqGroup").id, UserId: getCreds("gqGroupMember").id}};
@@ -64,11 +64,11 @@ describe("Groups - query groups", () => {
     });
 
     //device admin for 1st device
-    cy.apiCreateUser("gqDeviceAdmin");
-    cy.apiAddUserToDevice("gqGroupAdmin", "gqDeviceAdmin", "gqCamera", ADMIN);
+    cy.apiUserAdd("gqDeviceAdmin");
+    cy.apiDeviceUserAdd("gqGroupAdmin", "gqDeviceAdmin", "gqCamera", ADMIN);
 
     // test users
-    cy.apiCreateUser("gqTestUser");
+    cy.apiUserAdd("gqTestUser");
   });
 
   it("Admin and member can view group's devices and users", () => {
@@ -98,7 +98,7 @@ describe("Groups - query groups", () => {
     // create a new group with a later timestamp
     const timestamp = new Date().toISOString();
     let expectedGroup3:ApiGroupReturned;
-    cy.apiCreateUserGroupAndDevice("gqGroupAdmin3", "gqGroup3", "gqCamera3").then(() => {
+    cy.testCreateUserGroupAndDevice("gqGroupAdmin3", "gqGroup3", "gqCamera3").then(() => {
       expectedGroup3={id:getCreds("gqGroup3").id,groupname: getTestName("gqGroup3"),
         Users: [{id: getCreds("gqGroupAdmin3").id, username: getTestName("gqGroupAdmin3"), GroupUsers:
           {admin: true, createdAt:"", updatedAt:"", GroupId: getCreds("gqGroup3").id, UserId: getCreds("gqGroupAdmin3").id}}],

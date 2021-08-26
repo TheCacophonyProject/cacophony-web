@@ -23,7 +23,7 @@ describe("Groups - add, get group", () => {
 
   before(() => {
     //admin user, group and device
-    cy.apiCreateUserGroupAndDevice("gaGroupAdmin", "gaGroup", "gaCamera").then(() => {
+    cy.testCreateUserGroupAndDevice("gaGroupAdmin", "gaGroup", "gaCamera").then(() => {
         expectedGroup={id:getCreds("gaGroup").id,groupname: getTestName("gaGroup"), 
 		Users: [],
 		Devices: [],
@@ -37,12 +37,12 @@ describe("Groups - add, get group", () => {
     });
 
     //2nd device in this group
-    cy.apiCreateDevice("gaCamera1b","gaGroup").then(() => {
+    cy.apiDeviceAdd("gaCamera1b","gaGroup").then(() => {
       expectedDevice1b={id: getCreds("gaCamera1b").id, devicename: getTestName("gaCamera1b")};
     });
 
     //group member for this group
-    cy.apiCreateUser("gaGroupMember");
+    cy.apiUserAdd("gaGroupMember");
     cy.apiGroupUserAdd("gaGroupAdmin", "gaGroupMember", "gaGroup", NOT_ADMIN).then(() => {
       expectedGroupMemberUser={id: getCreds("gaGroupMember").id, username: getTestName("gaGroupMember"), GroupUsers:
             {admin: false, createdAt:"", updatedAt:"", GroupId: getCreds("gaGroup").id, UserId: getCreds("gaGroupMember").id}};
@@ -50,12 +50,12 @@ describe("Groups - add, get group", () => {
     });
 
     //device admin for 1st device
-    cy.apiCreateUser("gaDeviceAdmin");
-    cy.apiAddUserToDevice("gaGroupAdmin", "gaDeviceAdmin", "gaCamera", ADMIN);
+    cy.apiUserAdd("gaDeviceAdmin");
+    cy.apiDeviceUserAdd("gaGroupAdmin", "gaDeviceAdmin", "gaCamera", ADMIN);
 
     // test users
-    cy.apiCreateUser("gaTestUser");
-    cy.apiCreateUser("gaTestUser2");
+    cy.apiUserAdd("gaTestUser");
+    cy.apiUserAdd("gaTestUser2");
   });
 
   it("Can add a new group", () => {

@@ -2,14 +2,14 @@ describe("Monitoring : multiple cameras and stations", () => {
   const Penny = "Penny";
 
   before(() => {
-    cy.apiCreateUser(Penny);
+    cy.apiUserAdd(Penny);
   });
 
   it("Recordings at the same time on different cameras are never grouped together", () => {
     const group = "cameras-2";
     const cameraA = "cameraA";
     const cameraB = "cameraB";
-    cy.apiGroupAddAndDevices(Penny, group, cameraA, cameraB);
+    cy.testCreateGroupAndDevices(Penny, group, cameraA, cameraB);
     cy.uploadRecording(cameraA, { tags: ["possum"] });
     cy.uploadRecording(cameraB, { tags: ["cat"] });
     cy.checkMonitoring(Penny, null, [
@@ -21,13 +21,13 @@ describe("Monitoring : multiple cameras and stations", () => {
   it("Station name should be recorded, and reported", () => {
     const group = "stations";
     const camera = "camera";
-    cy.apiGroupAddAndDevices(Penny, group, camera);
+    cy.testCreateGroupAndDevices(Penny, group, camera);
 
     const stations = [
       { name: "forest", lat: -44.0, lng: 172.7 },
       { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
-    cy.apiGroupsStationsUpdate(Penny, group, stations);
+    cy.apiGroupStationsUpdate(Penny, group, stations);
     cy.uploadRecording(camera, { tags: ["possum"], lat: -44.0, lng: 172.7 });
     cy.uploadRecording(camera, { tags: ["cat"], lat: -44.0, lng: 172.7 });
     cy.checkMonitoring(Penny, camera, [{ station: "forest" }]);
@@ -36,13 +36,13 @@ describe("Monitoring : multiple cameras and stations", () => {
   it("If station changes the a new visit should be created", () => {
     const group = "stations-diff";
     const camera = "camera";
-    cy.apiGroupAddAndDevices(Penny, group, camera);
+    cy.testCreateGroupAndDevices(Penny, group, camera);
 
     const stations = [
       { name: "forest", lat: -44.0, lng: 172.7 },
       { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
-    cy.apiGroupsStationsUpdate(Penny, group, stations);
+    cy.apiGroupStationsUpdate(Penny, group, stations);
     cy.uploadRecording(camera, { tags: ["possum"], lat: -44.0, lng: 172.7 });
     cy.uploadRecording(camera, { tags: ["cat"], lat: -43.6, lng: 172.8 });
     cy.checkMonitoring(Penny, camera, [

@@ -65,7 +65,7 @@ declare namespace Cypress {
     /**
      * Check recording count for device matches expected value
      */
-    apiCheckDeviceHasRecordings(
+    testCheckDeviceHasRecordings(
       userName: string,
       deviceName: string,
       count: number

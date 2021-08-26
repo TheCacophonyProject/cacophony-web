@@ -16,11 +16,11 @@ describe("Recording authorizations", () => {
   let recordingUploaded = false;
 
   before(() => {
-    cy.apiCreateUser(member);
-    cy.apiCreateUser(deviceMember);
-    cy.apiCreateUser(hacker);
-    cy.apiCreateUserGroupAndDevice(admin, group, camera);
-    cy.apiAddUserToDevice(admin, deviceMember, camera);
+    cy.apiUserAdd(member);
+    cy.apiUserAdd(deviceMember);
+    cy.apiUserAdd(hacker);
+    cy.testCreateUserGroupAndDevice(admin, group, camera);
+    cy.apiDeviceUserAdd(admin, deviceMember, camera);
     cy.apiGroupUserAdd(admin, member, group, NOT_ADMIN);
   });
 

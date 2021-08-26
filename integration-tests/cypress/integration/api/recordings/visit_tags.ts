@@ -7,28 +7,28 @@ describe("Visits : tracks and tags", () => {
   const group = "VisitTags";
 
   before(() => {
-    cy.apiCreateUserGroup(Dee, group);
+    cy.testCreateUserAndGroup(Dee, group);
   });
 
   it("recordings with no tracks do not create a visit", () => {
     const camera = "no_tracks";
     const notracks = [];
     const noVisits = [];
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tracks: notracks });
     cy.checkVisits(Dee, camera, noVisits);
   });
 
   it("all automatic tags other than master are ignored - to prevent wallaby ai being used on other projects", () => {
     const camera = "only_master";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { model: "different", tags: ["cat"] });
     cy.checkVisitTags(Dee, camera, ["<null>"]);
   });
 
   it("each recording contributes a vote for what the animal is", () => {
     const camera = "multiple_tracks";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tags: ["possum", "rat"] });
     cy.uploadRecording(camera, { tags: ["cat"] });
     cy.uploadRecording(camera, { tags: ["cat"] });
@@ -37,7 +37,7 @@ describe("Visits : tracks and tags", () => {
 
   it("each track in a recording gets contributes a vote for what the animal is", () => {
     const camera = "multiple_tracks2";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tags: ["possum", "rat", "rat", "rat"] });
     cy.uploadRecording(camera, { tags: ["cat"] });
     cy.uploadRecording(camera, { tags: ["cat"] });
@@ -46,7 +46,7 @@ describe("Visits : tracks and tags", () => {
 
   it("track tag 'unidentified` is ignored when deciding label to use", () => {
     const camera = "has_unidentified";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       tags: ["possum", "unidentified", "unidentified", "unidentified"],
     });
@@ -55,7 +55,7 @@ describe("Visits : tracks and tags", () => {
 
   it("What happens when user tags as 'unidentified`?", () => {
     const camera = "user_unidentified_tracks";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tags: ["possum"] }).thenUserTagAs(
       Dee,
       "unidentified"
@@ -65,7 +65,7 @@ describe("Visits : tracks and tags", () => {
 
   it("if a user tags a track then this is what should be used as the track tag", () => {
     const camera = "userTagged";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tracks: [{ tag: "cat" }] }).thenUserTagAs(
       Dee,
       "rabbit"
@@ -75,7 +75,7 @@ describe("Visits : tracks and tags", () => {
 
   it("User tag is preferred over AI tag", () => {
     const camera = "userVsMultiple";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       time: new Date(2021, 1, 20, 21),
       tags: ["possum", "rat", "rat"],
@@ -86,7 +86,7 @@ describe("Visits : tracks and tags", () => {
 
   it("User animal tag is preferred over user unknown tag", () => {
     const camera = "userAnimalUnknown";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       tags: ["unidentified", "unidentified", "unidentified"],
     }).then((recID: number) => {
@@ -98,9 +98,9 @@ describe("Visits : tracks and tags", () => {
   });
   it("User tags conflict", () => {
     const camera = "conflicter";
-    cy.apiCreateUser(Gee);
+    cy.apiUserAdd(Gee);
     cy.apiGroupUserAdd(Dee, Gee, group, true);
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     const recording = cy.uploadRecording(camera, {
       time: new Date(2021, 1, 20, 21),
       tags: ["possum"],

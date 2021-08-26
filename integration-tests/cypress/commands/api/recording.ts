@@ -315,7 +315,7 @@ function addTracksToRecording(
 }
 
 Cypress.Commands.add(
-  "apiCheckDeviceHasRecordings",
+  "testCheckDeviceHasRecordings",
   (userName, deviceName, count) => {
     const user = getCreds(userName);
     const camera = getCreds(deviceName);

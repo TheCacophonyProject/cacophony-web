@@ -46,7 +46,7 @@ declare namespace Cypress {
      * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
-    apiGroupsDevicesCheck(userName: string, groupNameOrId: any,  expectedDevices: ApiGroupsDevice[], excludeCheckOn?: string[], statusCode?: number, additionalChecks?: any):any;
+    apiGroupDevicesCheck(userName: string, groupNameOrId: any,  expectedDevices: ApiGroupsDevice[], excludeCheckOn?: string[], statusCode?: number, additionalChecks?: any):any;
 
     /**
      * Add user to group
@@ -83,7 +83,7 @@ declare namespace Cypress {
      * By default userName and groupName are converted into unique (for this test run) names.
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
-   apiGroupsStationsUpdate( userName: string, groupIdOrName: string, stations: ApiStationData[], updateFrom?: string, statusCode?: number, additionalChecks?: any):any;
+   apiGroupStationsUpdate( userName: string, groupIdOrName: string, stations: ApiStationData[], updateFrom?: string, statusCode?: number, additionalChecks?: any):any;
 
 
     /**
@@ -105,7 +105,7 @@ declare namespace Cypress {
      * Verify that user can see a group
      * Optionally verify they can't see the group (set testForSuccess=false)
      */
-    apiGroupUserCheckAccess(
+    testGroupUserCheckAccess(
       username: string,
       groupname: string,
       testForSuccess?: boolean

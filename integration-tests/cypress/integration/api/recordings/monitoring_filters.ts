@@ -16,9 +16,9 @@ describe("Monitoring : filters", () => {
   const date4 = new Date(2021, 2, 6, 10);
 
   before(() => {
-    cy.apiCreateUser(Poppy);
-    cy.apiGroupAddAndDevices(Poppy, groupRabbits, cameraRabbits);
-    cy.apiGroupAddAndDevices(Poppy, groupHedgehogs, cameraHedgehogs);
+    cy.apiUserAdd(Poppy);
+    cy.testCreateGroupAndDevices(Poppy, groupRabbits, cameraRabbits);
+    cy.testCreateGroupAndDevices(Poppy, groupHedgehogs, cameraHedgehogs);
   });
 
   beforeEach(() => {

@@ -331,7 +331,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiPowerEventsCheckAgainstExpected",
+  "testPowerEventsCheckAgainstExpected",
   (
     userName: string,
     deviceName: string,
@@ -351,7 +351,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiEventsCheckAgainstExpected",
+  "testEventsCheckAgainstExpected",
   (
     userName: string,
     deviceName: string,

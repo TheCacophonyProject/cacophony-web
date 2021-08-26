@@ -16,17 +16,17 @@ let expectedGuAdminUser2:ApiGroupsUserReturned;
 describe("Groups - add, check and remove users", () => {
 
   before(() => {
-    cy.apiCreateUserGroupAndDevice("guGroupAdmin", "guGroup", "guCamera").then(() => {
+    cy.testCreateUserGroupAndDevice("guGroupAdmin", "guGroup", "guCamera").then(() => {
         expectedGuAdminUser={userName: getTestName("guGroupAdmin"), id: getCreds("guGroupAdmin").id, isGroupAdmin: ADMIN};
     });
-    cy.apiCreateUserGroupAndDevice("guGroup2Admin", "guGroup2", "guCamera2").then(() => {
+    cy.testCreateUserGroupAndDevice("guGroup2Admin", "guGroup2", "guCamera2").then(() => {
         expectedGuAdminUser2={userName: getTestName("guGroup2Admin"), id: getCreds("guGroup2Admin").id, isGroupAdmin: ADMIN};
     });
-    cy.apiCreateUser("guDeviceAdmin");
-    cy.apiAddUserToDevice("guGroupAdmin", "guDeviceAdmin", "guCamera", ADMIN);
+    cy.apiUserAdd("guDeviceAdmin");
+    cy.apiDeviceUserAdd("guGroupAdmin", "guDeviceAdmin", "guCamera", ADMIN);
 
-    cy.apiCreateUser("guTestUser");
-    cy.apiCreateUser("guTestUser2");
+    cy.apiUserAdd("guTestUser");
+    cy.apiUserAdd("guTestUser2");
   });
 
   it("Group admin can add, view and remove a new user", () => {

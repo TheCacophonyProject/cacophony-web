@@ -7,12 +7,12 @@ describe("Visits : times and recording groupings", () => {
   const group = "VisitTests";
 
   before(() => {
-    cy.apiCreateUserGroup(Dee, group);
+    cy.testCreateUserAndGroup(Dee, group);
   });
 
   it("recordings less than 10mins apart are considered a single visit", () => {
     const camera = "closeRecordings";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {});
     cy.uploadRecording(camera, { minsLater: 9 });
     cy.uploadRecording(camera, { minsLater: 9 });
@@ -21,7 +21,7 @@ describe("Visits : times and recording groupings", () => {
 
   it("recordings more 10mins apart are different visits", () => {
     const camera = "apartRecordings";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {});
     cy.uploadRecording(camera, { minsLater: 11 });
     cy.checkVisits(Dee, camera, [{ recordings: 1 }, { recordings: 1 }]);
@@ -30,7 +30,7 @@ describe("Visits : times and recording groupings", () => {
   it("test start and end date of visits", () => {
     const camera = "dateTimes";
     const videoStart = new Date(2021, 1, 20, 21);
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       time: videoStart,
       tracks: [
@@ -48,7 +48,7 @@ describe("Visits : times and recording groupings", () => {
   it("test start and end date of visits with first track finishing later than second", () => {
     const camera = "dateTimes2";
     const videoStart = new Date(2021, 1, 20, 21);
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       time: videoStart,
       tracks: [
@@ -70,7 +70,7 @@ describe("Visits : times and recording groupings", () => {
   it("test start and end date of visits with multiple videos", () => {
     const camera = "dateTimes3";
     const videoStart = new Date(2021, 1, 20, 21);
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       time: videoStart,
       tracks: [

@@ -263,7 +263,7 @@ Cypress.Commands.add(
 });
 
 Cypress.Commands.add(
-  "apiGroupsDevicesCheck",
+  "apiGroupDevicesCheck",
   (userName: string, groupNameOrId: any,  expectedDevices: ApiGroupsDevice[], excludeCheckOn: string[] = [], statusCode: number = 200, additionalChecks: any = {}) => {
     let sortDevices:ApiGroupsDevice[];
     let sortExpectedDevices:ApiGroupsDevice[];
@@ -310,7 +310,7 @@ Cypress.Commands.add(
 });
 
 Cypress.Commands.add(
-  "apiGroupsStationsUpdate",
+  "apiGroupStationsUpdate",
     ( userName: string, groupIdOrName: string, stations: ApiStationData[], updateFrom?: string, statusCode: number = 200, additionalChecks: any = {}) => {
       let fullGroupName:string;
 
@@ -400,7 +400,7 @@ Cypress.Commands.add(
 
 
 Cypress.Commands.add(
-  "apiGroupUserCheckAccess",
+  "testGroupUserCheckAccess",
   (userName: string, groupName: string, testForSuccess: boolean = true) => {
     const user = getCreds(userName);
     const fullGroupname = getTestName(groupName);

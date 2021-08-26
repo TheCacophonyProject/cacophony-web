@@ -33,11 +33,11 @@ describe("Devices list", () => {
   let expectedDevice4AdminView: ApiDevicesDevice;
 
   before(() => {
-    cy.apiCreateUser(groupMember);
-    cy.apiCreateUser(deviceAdmin);
-    cy.apiCreateUser(deviceMember);
-    cy.apiCreateUser(hacker);
-    cy.apiCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
+    cy.apiUserAdd(groupMember);
+    cy.apiUserAdd(deviceAdmin);
+    cy.apiUserAdd(deviceMember);
+    cy.apiUserAdd(hacker);
+    cy.testCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
       expectedDeviceAdminView = {
         id: getCreds(camera).id,
         devicename: getTestName(camera),
@@ -71,11 +71,11 @@ describe("Devices list", () => {
       };
     });
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
-    cy.apiAddUserToDevice(groupAdmin, deviceMember, camera);
-    cy.apiAddUserToDevice(groupAdmin, deviceAdmin, camera, ADMIN);
+    cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
+    cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
 
     //second group
-    cy.apiCreateUserGroupAndDevice(user2, group2, camera2).then(() => {
+    cy.testCreateUserGroupAndDevice(user2, group2, camera2).then(() => {
       expectedDevice2AdminView = {
         id: getCreds(camera2).id,
         devicename: getTestName(camera2),
@@ -85,8 +85,8 @@ describe("Devices list", () => {
     });
 
     //reregistered device
-    cy.apiCreateUserGroupAndDevice(user3, group3, camera3);
-    cy.apiAddUserToDevice(user3, user3, camera3);
+    cy.testCreateUserGroupAndDevice(user3, group3, camera3);
+    cy.apiDeviceUserAdd(user3, user3, camera3);
     cy.apiDeviceReregister(camera3, camera4, group3).then(() => {
       expectedDevice3AdminView = {
         id: getCreds(camera3).id,
@@ -125,7 +125,7 @@ describe("Devices list", () => {
         Users: [],
       };
 
-      cy.apiCheckDevicesContains(superuser, [
+      cy.apiDevicesCheckContains(superuser, [
         expectedDeviceAdminView,
         expectedDevice2AdminView,
       ]);
@@ -153,7 +153,7 @@ describe("Devices list", () => {
         user2
       );
 
-      cy.apiCheckDevices(superuser, [expectedDevice2AdminView], {
+      cy.apiDevicesCheck(superuser, [expectedDevice2AdminView], {
         "view-mode": "user",
       });
 
@@ -175,35 +175,35 @@ describe("Devices list", () => {
   }
 
   it("Group admin should see everything including device users", () => {
-    cy.apiCheckDevices(groupAdmin, [expectedDeviceAdminView]);
+    cy.apiDevicesCheck(groupAdmin, [expectedDeviceAdminView]);
   });
 
   it("Group member should be able to read all but device users", () => {
     // TODO: View of users is allowed here but not in single device view.  Issue 62. Enable member view when fixed
-    //cy.apiCheckDevices(groupMember, [expectedDeviceMemberView]);
-    cy.apiCheckDevices(groupMember, [expectedDeviceAdminView]);
+    //cy.apiDevicesCheck(groupMember, [expectedDeviceMemberView]);
+    cy.apiDevicesCheck(groupMember, [expectedDeviceAdminView]);
   });
 
   it("Device admin should see everything including device users", () => {
-    cy.apiCheckDevices(deviceAdmin, [expectedDeviceAdminView]);
+    cy.apiDevicesCheck(deviceAdmin, [expectedDeviceAdminView]);
   });
 
   it("Device member should be able to read all but device users", () => {
     // TODO: View of users is allowed here but not in single device view.  Issue 62. Enable member view when fixed
-    //cy.apiCheckDevices(deviceMember, [expectedDeviceMemberView]);
-    cy.apiCheckDevices(deviceMember, [expectedDeviceAdminView]);
+    //cy.apiDevicesCheck(deviceMember, [expectedDeviceMemberView]);
+    cy.apiDevicesCheck(deviceMember, [expectedDeviceAdminView]);
   });
 
   it("Non member should not have any access to any devices", () => {
-    cy.apiCheckDevices(hacker, []);
+    cy.apiDevicesCheck(hacker, []);
   });
 
   it("Should display inactive devices only when requested", () => {
     //verify inactive device is not shown by default
-    cy.apiCheckDevices(user3, [expectedDevice4AdminView]);
+    cy.apiDevicesCheck(user3, [expectedDevice4AdminView]);
 
     //verify inactive device is shown when inactive is requested
-    cy.apiCheckDevices(
+    cy.apiDevicesCheck(
       user3,
       [expectedDevice3AdminView, expectedDevice4AdminView],
       { onlyActive: false }

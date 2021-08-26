@@ -7,7 +7,7 @@ describe("Monitoring : tracks and tags", () => {
   const group = "MonitoringTags";
 
   before(() => {
-    cy.apiCreateUserGroup(Damian, group);
+    cy.testCreateUserAndGroup(Damian, group);
   });
 
   // at the moment many tracks are being missed so we can't do this.
@@ -16,21 +16,21 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "no_tracks";
     const notracks = [];
     const noVisits = [];
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tracks: notracks });
     cy.checkMonitoring(Damian, camera, noVisits);
   });
 
   it("all automatic tags other than master are ignored - to prevent wallaby ai being used on other projects", () => {
     const camera = "only_master";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { model: "different", tags: ["cat"] });
     cy.checkMonitoringTags(Damian, camera, ["none"]);
   });
 
   it("each recording contributes votes for what the animal is", () => {
     const camera = "multiple_tracks";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tags: ["possum", "rat"] });
     cy.uploadRecording(camera, { tags: ["cat"] });
     cy.uploadRecording(camera, { tags: ["cat"] });
@@ -39,7 +39,7 @@ describe("Monitoring : tracks and tags", () => {
 
   it("each track in a recording gets contributes a vote for what the animal is", () => {
     const camera = "multiple_tracks2";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tags: ["possum", "rat", "rat", "rat"] });
     cy.uploadRecording(camera, { tags: ["cat"] });
     cy.uploadRecording(camera, { tags: ["cat"] });
@@ -48,7 +48,7 @@ describe("Monitoring : tracks and tags", () => {
 
   it("track tag 'unidentified` is ignored when deciding label to use", () => {
     const camera = "has_unidentified";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       tags: ["possum", "unidentified", "unidentified", "unidentified"],
     });
@@ -57,7 +57,7 @@ describe("Monitoring : tracks and tags", () => {
 
   it("What happens when user tags as 'unidentified`?", () => {
     const camera = "user_unidentified_tracks";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tags: ["possum"] }).thenUserTagAs(
       Damian,
       "unidentified"
@@ -67,7 +67,7 @@ describe("Monitoring : tracks and tags", () => {
 
   it("if a user tags a track then this is what should be used as the track tag", () => {
     const camera = "userTagged";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, { tracks: [{ tag: "cat" }] }).thenUserTagAs(
       Damian,
       "rabbit"
@@ -77,7 +77,7 @@ describe("Monitoring : tracks and tags", () => {
 
   it("User tag is preferred over AI tag", () => {
     const camera = "userVsMultiple";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       tags: ["possum", "rat", "rat"],
     }).thenUserTagAs(Damian, "rabbit");
@@ -87,7 +87,7 @@ describe("Monitoring : tracks and tags", () => {
 
   it("When user tag and AI tag aggree", () => {
     const camera = "tagsagree";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       tags: ["possum", "rat", "rat"],
     }).thenUserTagAs(Damian, "possum");
@@ -97,7 +97,7 @@ describe("Monitoring : tracks and tags", () => {
 
   it("User animal tag is preferred over user unknown tag", () => {
     const camera = "userAnimalUnknown";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     cy.uploadRecording(camera, {
       tags: ["unidentified", "unidentified", "unidentified"],
     }).then((recID: number) => {
@@ -109,9 +109,9 @@ describe("Monitoring : tracks and tags", () => {
   });
   it("User tags conflict", () => {
     const camera = "conflicter";
-    cy.apiCreateUser(Gerry);
+    cy.apiUserAdd(Gerry);
     cy.apiGroupUserAdd(Damian, Gerry, group, true);
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     const recording = cy.uploadRecording(camera, {
       tags: ["possum", "rabbit"],
     });
@@ -123,7 +123,7 @@ describe("Monitoring : tracks and tags", () => {
   });
   it("User tags conflict on one of many tracks majority wins", () => {
     const camera = "conflicter-multiple";
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
     const recording = cy.uploadRecording(camera, {
       tags: ["possum", "rabbit"],
     });

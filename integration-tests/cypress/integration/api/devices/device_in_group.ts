@@ -23,11 +23,11 @@ describe("Device in group", () => {
   let expectedDeviceInGroupUserView: ApiDeviceInGroupDevice;
 
   before(() => {
-    cy.apiCreateUser(groupMember);
-    cy.apiCreateUser(deviceMember);
-    cy.apiCreateUser(deviceAdmin);
-    cy.apiCreateUser(hacker);
-    cy.apiCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
+    cy.apiUserAdd(groupMember);
+    cy.apiUserAdd(deviceMember);
+    cy.apiUserAdd(deviceAdmin);
+    cy.apiUserAdd(hacker);
+    cy.testCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
       expectedDeviceInGroupAdminView = {
         id: getCreds(camera).id,
         devicename: getTestName(camera),
@@ -54,13 +54,13 @@ describe("Device in group", () => {
         users: null,
       };
     });
-    cy.apiAddUserToDevice(groupAdmin, deviceMember, camera);
-    cy.apiAddUserToDevice(groupAdmin, deviceAdmin, camera, ADMIN);
+    cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
+    cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
   });
 
   it("Group admin should see everything including device users", () => {
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       groupAdmin,
       camera,
       group,
@@ -70,7 +70,7 @@ describe("Device in group", () => {
   });
 
   it("Device admin should see everything including device users", () => {
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       deviceAdmin,
       camera,
       group,
@@ -80,7 +80,7 @@ describe("Device in group", () => {
   });
 
   it("Group member should be able to read all but device users", () => {
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       groupMember,
       camera,
       group,
@@ -90,7 +90,7 @@ describe("Device in group", () => {
   });
 
   it("Device member should be able to read all but device users", () => {
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       deviceMember,
       camera,
       group,
@@ -104,7 +104,7 @@ describe("Device in group", () => {
       `Check that ${hacker} is blocked from getting device`,
       {}
     );
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       hacker,
       camera,
       group,
@@ -116,7 +116,7 @@ describe("Device in group", () => {
   });
 
   it("Can retrieve group by id instead of name", () => {
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       deviceMember,
       camera,
       group,
@@ -127,7 +127,7 @@ describe("Device in group", () => {
 
   // TODO: Fails - returns empty response instead of error message. Issue 60
   it.skip("Correctly handles invalid device", () => {
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       groupAdmin,
       "bad-camera",
       group,
@@ -139,7 +139,7 @@ describe("Device in group", () => {
   });
 
   it("Correctly handles invalid group", () => {
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       groupAdmin,
       camera,
       "bad-group",

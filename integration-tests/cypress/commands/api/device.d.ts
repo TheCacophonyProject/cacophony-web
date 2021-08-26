@@ -13,7 +13,7 @@ declare namespace Cypress {
      * create a device in the given group
      * optionally check for non-200 statusCode
      */
-    apiCreateDevice(
+    apiDeviceAdd(
       deviceName: string,
       groupName: string,
       saltId?: number,
@@ -44,7 +44,7 @@ declare namespace Cypress {
      * pass optional params (params) to API call
      * optionally check for a non-200 status code
      */
-    apiCheckDevices(
+    apiDevicesCheck(
       userName: string,
       expectedDevice: ApiDevicesDevice[],
       params?: any,
@@ -52,9 +52,9 @@ declare namespace Cypress {
     ): any;
 
     /**
-     * Same as apiCheckDevices but check the expected items are on the list, rather than the only things on the list
+     * Same as apiDevicesCheck but check the expected items are on the list, rather than the only things on the list
      */
-    apiCheckDevicesContains(
+    apiDevicesCheckContains(
       userName: string,
       expectedDevices: ApiDevicesDevice[],
       params?: string,
@@ -67,7 +67,7 @@ declare namespace Cypress {
      * compare with expected device details (JSON equivalent to that retunred by API)
      * optionally check for a non-200 status code
      */
-    apiCheckDeviceInGroup(
+    apiDeviceInGroupCheck(
       userName: string,
       deviceName: string,
       groupName: string,
@@ -83,7 +83,7 @@ declare namespace Cypress {
      * optionally use operator to specify whether to AND or OR the groups and devices conditions supplier (default=OR)
      * optionally check for a non-200 status code
      */
-    apiCheckDevicesQuery(
+    apiDeviceQueryCheck(
       userName: string,
       devicesArray: TestDeviceAndGroup[],
       groupsArray: string[],
@@ -98,7 +98,7 @@ declare namespace Cypress {
      * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
      * optionally check for a non-200 status code
      */
-    apiCheckDevicesUsers(
+    apiDeviceUsersCheck(
       userName: string,
       deviceName: string,
       expectedUsers: ApiDeviceUsersUser[],
@@ -111,7 +111,7 @@ declare namespace Cypress {
      * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
      * optionally check for a non-200 status code
      */
-    apiAddUserToDevice(
+    apiDeviceUserAdd(
       deviceAdminUser: string,
       userName: string,
       deviceName: string,
@@ -124,7 +124,7 @@ declare namespace Cypress {
      * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
      * optionally check for a non-200 status code
      */
-    apiRemoveUserFromDevice(
+    apiDeviceUserRemove(
       deviceAdminUser: string,
       userName: string,
       deviceName: string,

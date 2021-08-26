@@ -16,8 +16,8 @@ describe("Authentication", () => {
   const camera2 = "second_camera";
 
   before(() => {
-    cy.apiCreateUserGroupAndDevice(userA, group1, camera1);
-    cy.apiCreateUserGroupAndDevice(userB, group2, camera2);
+    cy.testCreateUserGroupAndDevice(userA, group1, camera1);
+    cy.testCreateUserGroupAndDevice(userB, group2, camera2);
   });
 
   it("Can authenticate as a device", () => {
@@ -116,9 +116,9 @@ describe("Authentication", () => {
       //admin_test authenticates as Bruce
       cy.apiAuthenticateAs("admin_test", userB);
       //verify each user gets their own data
-      cy.apiGroupUserCheckAccess(userB + "_on_behalf", group2);
+      cy.testGroupUserCheckAccess(userB + "_on_behalf", group2);
       //vefiry user cannot see items outside their group (i.e. are not super_user)
-      cy.apiGroupUserCheckAccess(userB + "_on_behalf", group1, false);
+      cy.testGroupUserCheckAccess(userB + "_on_behalf", group1, false);
     });
   } else {
     it.skip("Superuser can authenticate as another user and receive their permissions", () => {});
@@ -140,7 +140,7 @@ describe("Authentication", () => {
     cy.apiToken(userA, null, { devices: "r" });
 
     //get device
-    cy.apiCheckDevicesQuery(
+    cy.apiDeviceQueryCheck(
       userA + "_temp_token",
       [{ devicename: getTestName(camera1), groupname: getTestName(group1) }],
       null,
@@ -152,7 +152,7 @@ describe("Authentication", () => {
     //TODO: enable the remainder of the checks once issue 57 is fixed, or remove the remaining checks if we do not implement.
 
     //get devices list
-    //cy.apiCheckDeviceInGroup(userA+"_temp_token",[{id: getCreds(camera1).id, devicename: getTestName(camera1), groupName: getTestName(group1), userIsAdmin: true, Users: []}]);
+    //cy.apiDeviceInGroupCheck(userA+"_temp_token",[{id: getCreds(camera1).id, devicename: getTestName(camera1), groupName: getTestName(group1), userIsAdmin: true, Users: []}]);
 
     //get device users
 
@@ -160,7 +160,7 @@ describe("Authentication", () => {
     //cy.uploadRecordingOnBehalfUsingDevice(camera1, userA, { tags: ["possum"]}, null, 'recording1');
 
     //retrieve recording for device
-    //cy.apiCheckDeviceHasRecordings(userA+'_temp_token',camera1,1);
+    //cy.testCheckDeviceHasRecordings(userA+'_temp_token',camera1,1);
 
     //vefiry user cannot see items outside their group (i.e. are not super_user)
     //cy.apiCheckDevice(userA+"_temp_token",camera1,group1,{},HTTP_AuthorizationError);

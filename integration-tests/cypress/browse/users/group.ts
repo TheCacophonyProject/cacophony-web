@@ -12,7 +12,7 @@ describe("Group Admin Pages", () => {
   const trashButton = ".trash-button";
 
   before(() => {
-    cy.apiCreateUser(Anna);
+    cy.apiUserAdd(Anna);
     cy.visit("/");
   });
 
@@ -85,15 +85,15 @@ describe("Group Admin Pages", () => {
     const Admin = true;
 
     ensureFriendsForeverGroupExists();
-    cy.apiCreateUser(Friend);
-    cy.apiCreateUser(GoodFriend);
+    cy.apiUserAdd(Friend);
+    cy.apiUserAdd(GoodFriend);
 
     cy.addUserToGroup(GoodFriend, FriendsForever, Admin);
     cy.addUserToGroup(Friend, FriendsForever).then(() => {
       cy.get(usersTable).contains(Friend);
     });
 
-    cy.apiGroupUserCheckAccess(Friend, FriendsForever);
+    cy.testGroupUserCheckAccess(Friend, FriendsForever);
 
     // check admin status reflected in table
     cy.get(getUserRow(GoodFriend)).get(adminCol).should("contain", "Yes");
@@ -107,7 +107,7 @@ describe("Group Admin Pages", () => {
   it("Can see camera added to group", () => {
     const Camera = "camera";
     ensureFriendsForeverGroupExists();
-    cy.apiCreateDevice(Camera, FriendsForever);
+    cy.apiDeviceAdd(Camera, FriendsForever);
     cy.checkDeviceInGroup(Camera, FriendsForever);
   });
 

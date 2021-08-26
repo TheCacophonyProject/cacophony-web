@@ -37,11 +37,11 @@ describe("Devices add / view / remove users", () => {
   let expectedDeviceInGroupUserView: ApiDeviceInGroupDevice;
 
   before(() => {
-    cy.apiCreateUser(groupMember);
-    cy.apiCreateUser(deviceMember);
-    cy.apiCreateUser(deviceAdmin);
-    cy.apiCreateUser(hacker);
-    cy.apiCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
+    cy.apiUserAdd(groupMember);
+    cy.apiUserAdd(deviceMember);
+    cy.apiUserAdd(deviceAdmin);
+    cy.apiUserAdd(hacker);
+    cy.testCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
       deviceMemberDetails = {
         id: getCreds(deviceMember).id,
         username: getTestName(deviceMember),
@@ -78,10 +78,10 @@ describe("Devices add / view / remove users", () => {
         users: null,
       };
     });
-    cy.apiAddUserToDevice(groupAdmin, deviceAdmin, camera, ADMIN);
+    cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
 
     // second group users & device
-    cy.apiCreateUser(userC).then(() => {
+    cy.apiUserAdd(userC).then(() => {
       userCDetails = {
         id: getCreds(userC).id,
         username: getTestName(userC),
@@ -90,7 +90,7 @@ describe("Devices add / view / remove users", () => {
         admin: true,
       };
     });
-    cy.apiCreateUser(userD).then(() => {
+    cy.apiUserAdd(userD).then(() => {
       userDDetails = {
         id: getCreds(userD).id,
         username: getTestName(userD),
@@ -99,7 +99,7 @@ describe("Devices add / view / remove users", () => {
         admin: true,
       };
     });
-    cy.apiCreateUserGroupAndDevice(userB, group2, camera2).then(() => {
+    cy.testCreateUserGroupAndDevice(userB, group2, camera2).then(() => {
       userBDetails = {
         id: getCreds(userB).id,
         username: getTestName(userB),
@@ -112,17 +112,17 @@ describe("Devices add / view / remove users", () => {
 
   it("Group admin can add/remove user to/from device", () => {
     // add user to device
-    cy.apiAddUserToDevice(groupAdmin, deviceMember, camera);
+    cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
 
     // check user (and group admin) are added
-    cy.apiCheckDevicesUsers(groupAdmin, camera, [
+    cy.apiDeviceUsersCheck(groupAdmin, camera, [
       groupAdminDetails,
       deviceAdminDetails,
       deviceMemberDetails,
     ]);
 
     // check user can access device (one endpoint only - test all endpoints in their own test specs )
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       deviceMember,
       camera,
       group,
@@ -131,10 +131,10 @@ describe("Devices add / view / remove users", () => {
     );
 
     // check user can be removed from device
-    cy.apiRemoveUserFromDevice(groupAdmin, deviceMember, camera);
+    cy.apiDeviceUserRemove(groupAdmin, deviceMember, camera);
 
     // check user (but not group admin) has been removed
-    cy.apiCheckDevicesUsers(groupAdmin, camera, [
+    cy.apiDeviceUsersCheck(groupAdmin, camera, [
       deviceAdminDetails,
       groupAdminDetails,
     ]);
@@ -142,17 +142,17 @@ describe("Devices add / view / remove users", () => {
 
   it("Device admin can add/remove user to/from device", () => {
     // add user to device
-    cy.apiAddUserToDevice(deviceAdmin, deviceMember, camera);
+    cy.apiDeviceUserAdd(deviceAdmin, deviceMember, camera);
 
     // check user (and group admin) are added
-    cy.apiCheckDevicesUsers(deviceAdmin, camera, [
+    cy.apiDeviceUsersCheck(deviceAdmin, camera, [
       deviceAdminDetails,
       groupAdminDetails,
       deviceMemberDetails,
     ]);
 
     // check user can access device (one endpoint only - test all endpoints in their own test specs )
-    cy.apiCheckDeviceInGroup(
+    cy.apiDeviceInGroupCheck(
       deviceMember,
       camera,
       group,
@@ -161,10 +161,10 @@ describe("Devices add / view / remove users", () => {
     );
 
     // check user can be removed from device
-    cy.apiRemoveUserFromDevice(deviceAdmin, deviceMember, camera);
+    cy.apiDeviceUserRemove(deviceAdmin, deviceMember, camera);
 
     // check user (but not group admin) has been removed
-    cy.apiCheckDevicesUsers(deviceAdmin, camera, [
+    cy.apiDeviceUsersCheck(deviceAdmin, camera, [
       deviceAdminDetails,
       groupAdminDetails,
     ]);
@@ -176,17 +176,17 @@ describe("Devices add / view / remove users", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
 
       // add user to device
-      cy.apiAddUserToDevice(superuser, deviceMember, camera);
+      cy.apiDeviceUserAdd(superuser, deviceMember, camera);
 
       // check user (and group admin) are added
-      cy.apiCheckDevicesUsers(superuser, camera, [
+      cy.apiDeviceUsersCheck(superuser, camera, [
         deviceAdminDetails,
         groupAdminDetails,
         deviceMemberDetails,
       ]);
 
       // check user can access device (one endpoint only - test all endpoints in their own test specs )
-      cy.apiCheckDeviceInGroup(
+      cy.apiDeviceInGroupCheck(
         deviceMember,
         camera,
         group,
@@ -195,10 +195,10 @@ describe("Devices add / view / remove users", () => {
       );
 
       // check user can be removed from device
-      cy.apiRemoveUserFromDevice(superuser, deviceMember, camera);
+      cy.apiDeviceUserRemove(superuser, deviceMember, camera);
 
       // check user (but not group admin) has been removed
-      cy.apiCheckDevicesUsers(superuser, camera, [
+      cy.apiDeviceUsersCheck(superuser, camera, [
         deviceAdminDetails,
         groupAdminDetails,
       ]);
@@ -209,13 +209,13 @@ describe("Devices add / view / remove users", () => {
 
   it("Non-admin device member cannot add view or remove user to device", () => {
     // add non-admin user to device
-    cy.apiAddUserToDevice(groupAdmin, deviceMember, camera);
+    cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
 
     // non-admin cannot add another user
-    cy.apiAddUserToDevice(deviceMember, userB, camera, false, HTTP_Forbidden);
+    cy.apiDeviceUserAdd(deviceMember, userB, camera, false, HTTP_Forbidden);
 
     // non-admin cannot remove a user
-    cy.apiRemoveUserFromDevice(
+    cy.apiDeviceUserRemove(
       deviceMember,
       deviceMember,
       camera,
@@ -224,13 +224,13 @@ describe("Devices add / view / remove users", () => {
 
     // check group member cannot see user details
     // TODO: FAIL - Issue 63 - request should be rejected with Forbidden if user does not have permissions, not return empty array
-    cy.apiCheckDevicesUsers(deviceMember, camera, []);
+    cy.apiDeviceUsersCheck(deviceMember, camera, []);
 
     // check user can be removed from device
-    cy.apiRemoveUserFromDevice(groupAdmin, deviceMember, camera);
+    cy.apiDeviceUserRemove(groupAdmin, deviceMember, camera);
 
     // check user (but not group admin) has been removed
-    cy.apiCheckDevicesUsers(groupAdmin, camera, [
+    cy.apiDeviceUsersCheck(groupAdmin, camera, [
       deviceAdminDetails,
       groupAdminDetails,
     ]);
@@ -241,10 +241,10 @@ describe("Devices add / view / remove users", () => {
     cy.apiGroupUserAdd(groupAdmin, groupMember, group);
 
     // non-admin cannot add another user
-    cy.apiAddUserToDevice(groupMember, userB, camera, false, HTTP_Forbidden);
+    cy.apiDeviceUserAdd(groupMember, userB, camera, false, HTTP_Forbidden);
 
     // non-admin cannot remove a user
-    cy.apiRemoveUserFromDevice(
+    cy.apiDeviceUserRemove(
       groupMember,
       deviceMember,
       camera,
@@ -253,10 +253,10 @@ describe("Devices add / view / remove users", () => {
 
     // check group member cannot see user details
     // TODO: FAIL - Issue 63 - request should be rejected with Unauthorised if user does not have permissions, not return empty array
-    cy.apiCheckDevicesUsers(groupMember, camera, []);
+    cy.apiDeviceUsersCheck(groupMember, camera, []);
 
     // check admin member can see ggroup member
-    cy.apiCheckDevicesUsers(groupAdmin, camera, [
+    cy.apiDeviceUsersCheck(groupAdmin, camera, [
       groupMemberDetails,
       deviceAdminDetails,
       groupAdminDetails,
@@ -266,7 +266,7 @@ describe("Devices add / view / remove users", () => {
     cy.apiGroupUserRemove(groupAdmin, groupMember, group);
 
     // check user (but not group admin) has been removed
-    cy.apiCheckDevicesUsers(groupAdmin, camera, [
+    cy.apiDeviceUsersCheck(groupAdmin, camera, [
       deviceAdminDetails,
       groupAdminDetails,
     ]);
@@ -274,7 +274,7 @@ describe("Devices add / view / remove users", () => {
 
   it("Admin cannot add or remove user to another device", () => {
     // cannot add user to another group's devices
-    cy.apiAddUserToDevice(
+    cy.apiDeviceUserAdd(
       groupAdmin,
       deviceMember,
       camera2,
@@ -283,30 +283,30 @@ describe("Devices add / view / remove users", () => {
     );
 
     // but group member can add group user
-    cy.apiAddUserToDevice(userB, userC, camera2, true);
+    cy.apiDeviceUserAdd(userB, userC, camera2, true);
 
     // admin can't remove another groups users
-    cy.apiRemoveUserFromDevice(groupAdmin, userB, camera2, HTTP_Forbidden);
+    cy.apiDeviceUserRemove(groupAdmin, userB, camera2, HTTP_Forbidden);
 
     // check both users are there (delete failed)
-    cy.apiCheckDevicesUsers(userB, camera2, [userBDetails, userCDetails]);
+    cy.apiDeviceUsersCheck(userB, camera2, [userBDetails, userCDetails]);
 
     // but device member can remove themselves
-    cy.apiRemoveUserFromDevice(userC, userC, camera2);
+    cy.apiDeviceUserRemove(userC, userC, camera2);
 
     // check user (but not group admin) has been removed
-    cy.apiCheckDevicesUsers(userB, camera2, [userBDetails]);
+    cy.apiDeviceUsersCheck(userB, camera2, [userBDetails]);
   });
 
   it("Can create a device admin-user who can then manage users", () => {
     // create an admin device user
-    cy.apiAddUserToDevice(groupAdmin, userC, camera, true);
+    cy.apiDeviceUserAdd(groupAdmin, userC, camera, true);
 
     // device admin user can add another user
-    cy.apiAddUserToDevice(userC, userD, camera, true);
+    cy.apiDeviceUserAdd(userC, userD, camera, true);
 
     // check both users are there (delete failed)
-    cy.apiCheckDevicesUsers(userC, camera, [
+    cy.apiDeviceUsersCheck(userC, camera, [
       deviceAdminDetails,
       groupAdminDetails,
       userCDetails,
@@ -314,13 +314,13 @@ describe("Devices add / view / remove users", () => {
     ]);
 
     // Remove test users dfrom device
-    cy.apiRemoveUserFromDevice(userC, userD, camera);
-    cy.apiRemoveUserFromDevice(userC, userC, camera);
+    cy.apiDeviceUserRemove(userC, userD, camera);
+    cy.apiDeviceUserRemove(userC, userC, camera);
   });
 
   it("Invalid usernames rejected", () => {
     // add non existant user to device
-    cy.apiAddUserToDevice(
+    cy.apiDeviceUserAdd(
       groupAdmin,
       "bad-user",
       camera,
@@ -329,7 +329,7 @@ describe("Devices add / view / remove users", () => {
     );
 
     // remove non existant user from device
-    cy.apiRemoveUserFromDevice(
+    cy.apiDeviceUserRemove(
       groupAdmin,
       "bad-user",
       camera,
