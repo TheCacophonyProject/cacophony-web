@@ -34,7 +34,7 @@ Cypress.Commands.add(
       { user: userName, group: group, camera: camera }
     );
     cy.apiCreateUser(userName, false);
-    cy.apiCreateGroup(userName, group, false);
+    cy.apiGroupAdd(userName, group, false);
     cy.apiCreateDevice(camera, group, null, null);
   }
 );
@@ -45,11 +45,11 @@ Cypress.Commands.add("apiCreateUserGroup", (userName, group) => {
     group: group,
   });
   cy.apiCreateUser(userName, false);
-  cy.apiCreateGroup(userName, group, false);
+  cy.apiGroupAdd(userName, group, false);
 });
 
 Cypress.Commands.add(
-  "apiCreateGroupAndDevices",
+  "apiGroupAddAndDevices",
   (userName, group, ...cameras) => {
     logTestDescription(
       `Create group '${group}' with cameras '${prettyLog(cameras)}'`,
@@ -59,7 +59,7 @@ Cypress.Commands.add(
         cameras,
       }
     );
-    cy.apiCreateGroup(userName, group, false);
+    cy.apiGroupAdd(userName, group, false);
     cameras.forEach((camera) => {
       cy.apiCreateDevice(camera, group);
     });

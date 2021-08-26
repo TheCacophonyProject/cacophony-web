@@ -364,7 +364,7 @@ describe("Devices alerts", () => {
     );
 
     //add userb to camera's group
-    cy.apiAddUserToGroup(usera.name, userb.name, usera.group, false, true);
+    cy.apiGroupUserAdd(usera.name, userb.name, usera.group, false, true);
 
     //upload a recording tagged as possum using device
     cy.uploadRecordingOnBehalfUsingDevice(
@@ -423,7 +423,7 @@ describe("Devices alerts", () => {
     );
 
     //add userb to camera's group
-    cy.apiAddUserToGroup(usera.name, userb.name, usera.group, false, true);
+    cy.apiGroupUserAdd(usera.name, userb.name, usera.group, false, true);
 
     //upload a recording tagged as possum using group
     cy.uploadRecordingOnBehalfUsingGroup(

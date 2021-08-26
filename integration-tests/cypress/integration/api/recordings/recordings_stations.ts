@@ -14,7 +14,7 @@ describe("Stations: add and remove", () => {
       { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
       { name: "stream", lat: -43.62367659983, lng: 172.62646754804 },
     ];
-    cy.apiUploadStations(Josie, group, stations);
+    cy.apiGroupsStationsUpdate(Josie, group, stations);
   });
 
   it.skip("recordings are assigned to the correct stations", () => {
@@ -42,7 +42,7 @@ describe("Stations: add and remove", () => {
   it("recordings in another group are not assigned a station", () => {
     const otherGroup = "Josies-other";
     const camera = "other-group";
-    cy.apiCreateGroup(Josie, otherGroup);
+    cy.apiGroupAdd(Josie, otherGroup);
     cy.apiCreateDevice(camera, otherGroup);
     cy.uploadRecording(camera, forestLatLong).thenCheckStationIs(Josie, "");
   });
@@ -59,7 +59,7 @@ describe("Stations: add and remove", () => {
       { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
       { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
-    cy.apiUploadStations(Josie2, groupUpdate, stations, later);
+    cy.apiGroupsStationsUpdate(Josie2, groupUpdate, stations, later);
     cy.checkRecordingsStationIs(Josie2, "");
   });
 
@@ -75,7 +75,7 @@ describe("Stations: add and remove", () => {
       { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
       { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
-    cy.apiUploadStations(Josie3, groupNotUpdate, stations, earlier);
+    cy.apiGroupsStationsUpdate(Josie3, groupNotUpdate, stations, earlier);
     cy.checkRecordingsStationIs(Josie3, "waterfall");
   });
 
@@ -87,14 +87,14 @@ describe("Stations: add and remove", () => {
     const earlier = new Date(2021, 3, 25, 20);
     cy.apiCreateUserGroupAndDevice(Josie4, groupRemove, camera);
     const stations = [{ name: "waterfall", lat: -43.6, lng: 172.8 }];
-    cy.apiUploadStations(Josie4, groupRemove, stations, earlier);
+    cy.apiGroupsStationsUpdate(Josie4, groupRemove, stations, earlier);
     cy.uploadRecording(camera, { time: date, lat: -43.6, lng: 172.8 });
     cy.checkRecordingsStationIs(Josie4, "waterfall");
 
     const stations2 = [
       { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
     ];
-    cy.apiUploadStations(Josie4, groupRemove, stations2, earlier);
+    cy.apiGroupsStationsUpdate(Josie4, groupRemove, stations2, earlier);
     cy.checkRecordingsStationIs(Josie4, "");
   });
 });

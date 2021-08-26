@@ -70,7 +70,7 @@ describe("Devices list", () => {
         Users: null,
       };
     });
-    cy.apiAddUserToGroup(groupAdmin, groupMember, group, NOT_ADMIN);
+    cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
     cy.apiAddUserToDevice(groupAdmin, deviceMember, camera);
     cy.apiAddUserToDevice(groupAdmin, deviceAdmin, camera, ADMIN);
 

@@ -116,9 +116,9 @@ describe("Authentication", () => {
       //admin_test authenticates as Bruce
       cy.apiAuthenticateAs("admin_test", userB);
       //verify each user gets their own data
-      cy.apiCheckUserCanSeeGroup(userB + "_on_behalf", group2);
+      cy.apiGroupUserCheckAccess(userB + "_on_behalf", group2);
       //vefiry user cannot see items outside their group (i.e. are not super_user)
-      cy.apiCheckUserCanSeeGroup(userB + "_on_behalf", group1, false);
+      cy.apiGroupUserCheckAccess(userB + "_on_behalf", group1, false);
     });
   } else {
     it.skip("Superuser can authenticate as another user and receive their permissions", () => {});

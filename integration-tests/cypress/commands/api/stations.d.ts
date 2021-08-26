@@ -2,27 +2,7 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiCreateStationData = import("../types").ApiCreateStationData;
   interface Chainable {
-    /**
-     * upload stations data for a group
-     */
-    apiUploadStations(
-      userName: string,
-      groupName: string,
-      stations: ApiCreateStationData[],
-      updateFrom?: Date
-    ): any;
-
-    /**
-     * upload stations data for a group
-     */
-    apiCheckStations(
-      userName: string,
-      groupName: string,
-      stations: ApiCreateStationData[]
-    ): any;
-
     // to be run straight after an uploadRecording
     // check that the recording has been assigned the right station name. sS
     thenCheckStationIs(userName: string, station: string): any;

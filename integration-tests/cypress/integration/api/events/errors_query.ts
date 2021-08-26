@@ -160,7 +160,7 @@ describe("Events - query errors", () => {
     // group with 2 devices, admin and member users
     cy.apiCreateUserGroupAndDevice("erGroupAdmin", "erGroup", "erCamera");
     cy.apiCreateUser("erGroupMember");
-    cy.apiAddUserToGroup("erGroupAdmin", "erGroupMember", "erGroup", NOT_ADMIN);
+    cy.apiGroupUserAdd("erGroupAdmin", "erGroupMember", "erGroup", NOT_ADMIN);
     cy.apiCreateDevice("erOtherCamera", "erGroup");
 
     //admin and member for single device

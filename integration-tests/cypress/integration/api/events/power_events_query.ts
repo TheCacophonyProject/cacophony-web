@@ -47,7 +47,7 @@ describe("Events - query power events", () => {
     // group with 2 devices, admin and member users
     cy.apiCreateUserGroupAndDevice("peGroupAdmin", "peGroup", "peCamera");
     cy.apiCreateUser("peGroupMember");
-    cy.apiAddUserToGroup("peGroupAdmin", "peGroupMember", "peGroup", false);
+    cy.apiGroupUserAdd("peGroupAdmin", "peGroupMember", "peGroup", false);
     cy.apiCreateDevice("peOtherCamera", "peGroup");
 
     //admin and member for single device

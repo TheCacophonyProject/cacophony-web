@@ -1,9 +1,10 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
-export const AuthorizationError = 402;
 
 import { format as urlFormat } from "url";
+
+import { NOT_NULL } from "./constants";
 
 export function apiPath(): string {
   return Cypress.env("cacophony-api-server");
@@ -145,10 +146,10 @@ export function checkResponse(response: Cypress.Response<any>, code: number) {
 
 export function sortArrayOn(theArray: any, theKey: string) {
   theArray.sort(function (a: any, b: any) {
-    if (a[theKey] < b[theKey]) {
+    if (JSON.stringify(a[theKey]) < JSON.stringify(b[theKey])) {
       return -1;
     }
-    if (a[theKey] > b[theKey]) {
+    if (JSON.stringify(a[theKey]) > JSON.stringify(b[theKey])) {
       return 1;
     }
     return 0;
@@ -269,13 +270,20 @@ export function checkTreeStructuresAreEqualExcept(
               prettyElementName
             );
           } else {
-            //otherwise, check the values are as expected
-            expect(
-              containingStruct[containedKeys[count]],
-              `Expected ${prettyElementName} should equal ${JSON.stringify(
-                containedStruct[containedKeys[count]]
-              )}`
-            ).to.equal(containedStruct[containedKeys[count]]);
+            //check we were aksed to validate, or validate NOT NULL
+            if(containedStruct[containedKeys[count]]==NOT_NULL) {
+              expect(
+                containingStruct[containedKeys[count]],
+                `Expected ${prettyElementName} should not be NULL`).to.not.be.null;
+            } else {
+              //otherwise, check the values are as expected
+              expect(
+                containingStruct[containedKeys[count]],
+                `Expected ${prettyElementName} should equal ${JSON.stringify(
+                  containedStruct[containedKeys[count]]
+                )}`
+              ).to.equal(containedStruct[containedKeys[count]]);
+            };
           }
         }
       }

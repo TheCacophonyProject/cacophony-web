@@ -50,7 +50,7 @@ describe("Devices/query", () => {
       groupname: getTestName(group1),
     };
 
-    cy.apiAddUserToGroup(groupAdmin, groupMember, group1, NOT_ADMIN);
+    cy.apiGroupUserAdd(groupAdmin, groupMember, group1, NOT_ADMIN);
     cy.apiAddUserToDevice(groupAdmin, deviceMember, cameraA1);
     cy.apiAddUserToDevice(groupAdmin, deviceAdmin, cameraA1, ADMIN);
 
@@ -63,8 +63,8 @@ describe("Devices/query", () => {
 
     //user who can see both groups
     cy.apiCreateUser(everythingUser);
-    cy.apiAddUserToGroup(groupAdmin, everythingUser, group1, NOT_ADMIN);
-    cy.apiAddUserToGroup(user2, everythingUser, group2, NOT_ADMIN);
+    cy.apiGroupUserAdd(groupAdmin, everythingUser, group1, NOT_ADMIN);
+    cy.apiGroupUserAdd(user2, everythingUser, group2, NOT_ADMIN);
 
     //reregistered device
     cy.apiCreateUserGroupAndDevice(user3, group3, camera3);

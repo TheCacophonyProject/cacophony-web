@@ -93,7 +93,7 @@ describe("Group Admin Pages", () => {
       cy.get(usersTable).contains(Friend);
     });
 
-    cy.apiCheckUserCanSeeGroup(Friend, FriendsForever);
+    cy.apiGroupUserCheckAccess(Friend, FriendsForever);
 
     // check admin status reflected in table
     cy.get(getUserRow(GoodFriend)).get(adminCol).should("contain", "Yes");

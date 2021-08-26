@@ -89,7 +89,7 @@ describe("Events - add event on behalf of device", () => {
       Device: { devicename: getTestName("camera2") },
       EventDetail: { type: EventTypes.POWERED_ON, details: {} },
     };
-    cy.apiAddUserToGroup("groupAdmin2", "groupMember2", "group2", false);
+    cy.apiGroupUserAdd("groupAdmin2", "groupMember2", "group2", false);
 
     // add and verify events
     cy.apiEventsDeviceAddOnBehalf(

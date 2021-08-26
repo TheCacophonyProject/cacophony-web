@@ -21,7 +21,7 @@ describe("Recording authorizations", () => {
     cy.apiCreateUser(hacker);
     cy.apiCreateUserGroupAndDevice(admin, group, camera);
     cy.apiAddUserToDevice(admin, deviceMember, camera);
-    cy.apiAddUserToGroup(admin, member, group, NOT_ADMIN);
+    cy.apiGroupUserAdd(admin, member, group, NOT_ADMIN);
   });
 
   beforeEach(() => {

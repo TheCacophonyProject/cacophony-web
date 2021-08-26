@@ -238,7 +238,7 @@ describe("Devices add / view / remove users", () => {
 
   it("Non-admin group member cannot add view or remove user to device", () => {
     // add non-admin user to group
-    cy.apiAddUserToGroup(groupAdmin, groupMember, group);
+    cy.apiGroupUserAdd(groupAdmin, groupMember, group);
 
     // non-admin cannot add another user
     cy.apiAddUserToDevice(groupMember, userB, camera, false, HTTP_Forbidden);
@@ -263,7 +263,7 @@ describe("Devices add / view / remove users", () => {
     ]);
 
     // remove user from group
-    cy.apiRemoveUserFromGroup(groupAdmin, groupMember, group);
+    cy.apiGroupUserRemove(groupAdmin, groupMember, group);
 
     // check user (but not group admin) has been removed
     cy.apiCheckDevicesUsers(groupAdmin, camera, [

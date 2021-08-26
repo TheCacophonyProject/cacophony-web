@@ -19,7 +19,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       "RR_default_camera"
     );
-    cy.apiCreateGroup("Augustus", "RR_default_group_2", true);
+    cy.apiGroupAdd("Augustus", "RR_default_group_2", true);
   });
 
   it("re-register a device in same group with different name", () => {

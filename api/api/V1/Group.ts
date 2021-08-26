@@ -100,8 +100,23 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {JSON} where [Sequelize where conditions](http://docs.sequelizejs.com/manual/tutorial/querying.html#where) for query.
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Groups[]} groups Array of groups
-   *
+   * @apiSuccess {ApiGroup[]} groups Array of ApiGroup[]
+   * @apiSuccess {Number} groups.id Identifier of the group
+   * @apiSuccess {String} groups.groupname Name of the group
+   * @apiSuccess {ApiGroupUserRelation[]} groups.Users List of all associated group users and their relationship to the group
+   * @apiSuccess {ApiGroupUser[]} groups.GroupUsers List of users associated with the group
+   * @apiSuccess {ApiDeviceIdAndName[]} groups.Devices List of devices associated with the group
+   * @apiSuccessExample {JSON} ApiGroup:
+   * {
+   *   id: number;
+   *   groupname: string;
+   *   Users: ApiGroupUserRelation[];
+   *   Devices: ApiDeviceIdAndName[];
+   *   GroupUsers: ApiGroupUser[];
+   * }
+   * @apiUse ApiGroupUserRelation
+   * @apiUse ApiDeviceIdAndName
+   * @apiUse ApiGroupUser
    * @apiUse V1ResponseError
    */
   app.get(
@@ -129,12 +144,30 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/v1/groups/{groupNameOrId} Get a group by name or id
    * @apiName GetGroup
    * @apiGroup Group
+   * @apiDescription A group member or an admin member with globalRead permissions can view details of a group.
+   *
+   * @apiParam {Number|String} groupIdOrName group id or group name
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Group} groups Array of groups (but should only contain one item)
-   *
+   * @apiSuccess {ApiGroup[]} groups Array of ApiGroup[] (but should only contain one item)
+   * @apiSuccess {Number} groups.id Identifier of the group
+   * @apiSuccess {String} groups.groupname Name of the group
+   * @apiSuccess {ApiGroupUserRelation[]} groups.Users Relationship between current user and the group
+   * @apiSuccess {ApiGroupUser[]} groups.GroupUsers List of users associated with the group
+   * @apiSuccess {ApiDeviceIdAndName[]} groups.Devices List of devices associated with the group
+   * @apiSuccessExample {JSON} ApiGroup:
+   * {
+   *   id: number;
+   *   groupname: string;
+   *   Users: ApiGroupUserRelation[];
+   *   Devices: ApiDeviceIdAndName[];
+   *   GroupUsers: ApiGroupUser[];
+   * }
+   * @apiUse ApiGroupUserRelation
+   * @apiUse ApiDeviceIdAndName
+   * @apiUse ApiGroupUser
    * @apiUse V1ResponseError
    */
   app.get(
@@ -167,9 +200,16 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} group name or group id
+   * @apiParam {Number|String} groupIdOrName group id or group name
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {ApiGroupsDevice[]} devices List of devices associated with the group
+   * @apiSuccessExample {JSON} ApiGroupsDevice:
+   * {
+   *   id: number;
+   *   deviceName: string;
+   * }
+
    * @apiUse V1ResponseError
    */
   app.get(
@@ -241,10 +281,19 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} group name or group id
+   * @apiParam {Number|String} groupIdOrName group id or group name
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {ApiGroupUser[]} users Array of ApiGroupUser listing users assigned to this group
    * @apiUse V1ResponseError
+   * @apiSuccessExample {JSON} ApiGroupUser:
+   * {
+   *  "id":456,
+   *  "userName":"user name",
+   *  "isGroupAdmin":true
+   * }
+
+   *
    */
   app.get(
     `${apiUrl}/:groupIdOrName/users`,
@@ -273,14 +322,14 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/groups/users Add a user to a group.
    * @apiName AddUserToGroup
    * @apiGroup Group
-   * @apiDescription This call can add a user to a group. Has to be authenticated
+   * @apiDescription This call can add a user to a group. It must to be authenticated
    * by an admin from the group or a user with global write permission. It can also be used to update the
    * admin status of a user for the group by setting admin to true or false.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} group name of the group.
-   * @apiParam {Number} username name of the user to add to the grouop.
+   * @apiParam {String} group name of the group.
+   * @apiParam {String} username name of the user to add to the group.
    * @apiParam {Boolean} admin If the user should be an admin for the group.
    *
    * @apiUse V1ResponseSuccess
@@ -316,8 +365,8 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} group name of the group.
-   * @apiParam {Number} username username of user to remove from the grouop.
+   * @apiParam {String} group name of the group.
+   * @apiParam {String} username username of user to remove from the group.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -350,8 +399,9 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} group name or group id
-   * @apiParam {JSON} Json array of {name: string, lat: number, lng: number}
+   * @apiParam {Number|String} groupNameOrId group name or group id
+   * @apiParam {Station[]} stations Json array of {name: string, lat: number, lng: number}
+   * @apiParam {Date} fromDate Start date/time for the new station
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError

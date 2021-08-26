@@ -17,7 +17,7 @@ describe("Device register", () => {
   before(() => {
     cy.apiCreateUserGroupAndDevice("Anita", camsGroup, "gotya");
     cy.apiCreateDevice("defaultcam", camsGroup);
-    cy.apiCreateGroup("Anita", otherCams, true);
+    cy.apiGroupAdd("Anita", otherCams, true);
   });
 
   it("group can have multiple devices with a different names", () => {

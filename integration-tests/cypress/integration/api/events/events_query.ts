@@ -36,7 +36,7 @@ describe("Events - query events", () => {
     // group with 2 devices, admin and member users
     cy.apiCreateUserGroupAndDevice("eqGroupAdmin", "eqGroup", "eqCamera");
     cy.apiCreateUser("eqGroupMember");
-    cy.apiAddUserToGroup("eqGroupAdmin", "eqGroupMember", "eqGroup", false);
+    cy.apiGroupUserAdd("eqGroupAdmin", "eqGroupMember", "eqGroup", false);
     cy.apiCreateDevice("eqOtherCamera", "eqGroup");
 
     //admin and member for single device

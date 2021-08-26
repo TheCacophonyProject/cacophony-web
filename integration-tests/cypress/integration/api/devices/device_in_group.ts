@@ -56,7 +56,7 @@ describe("Device in group", () => {
     });
     cy.apiAddUserToDevice(groupAdmin, deviceMember, camera);
     cy.apiAddUserToDevice(groupAdmin, deviceAdmin, camera, ADMIN);
-    cy.apiAddUserToGroup(groupAdmin, groupMember, group, NOT_ADMIN);
+    cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
   });
 
   it("Group admin should see everything including device users", () => {

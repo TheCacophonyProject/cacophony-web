@@ -73,7 +73,7 @@ describe("Monitoring : pagings", () => {
     const visitTime = "21:10";
     const nextVisitTime = "21:33";
     cy.apiCreateUser(Bobletta);
-    cy.apiCreateGroupAndDevices(Bobletta, group, camera1, camera2, camera3);
+    cy.apiGroupAddAndDevices(Bobletta, group, camera1, camera2, camera3);
 
     cy.uploadRecording(camera1, { time: visitTime });
     cy.uploadRecording(camera2, { time: visitTime });

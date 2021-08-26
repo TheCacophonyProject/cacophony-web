@@ -17,8 +17,8 @@ describe("Monitoring : filters", () => {
 
   before(() => {
     cy.apiCreateUser(Poppy);
-    cy.apiCreateGroupAndDevices(Poppy, groupRabbits, cameraRabbits);
-    cy.apiCreateGroupAndDevices(Poppy, groupHedgehogs, cameraHedgehogs);
+    cy.apiGroupAddAndDevices(Poppy, groupRabbits, cameraRabbits);
+    cy.apiGroupAddAndDevices(Poppy, groupHedgehogs, cameraHedgehogs);
   });
 
   beforeEach(() => {

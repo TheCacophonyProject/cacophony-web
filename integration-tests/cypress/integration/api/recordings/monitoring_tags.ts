@@ -110,7 +110,7 @@ describe("Monitoring : tracks and tags", () => {
   it("User tags conflict", () => {
     const camera = "conflicter";
     cy.apiCreateUser(Gerry);
-    cy.apiAddUserToGroup(Damian, Gerry, group, true);
+    cy.apiGroupUserAdd(Damian, Gerry, group, true);
     cy.apiCreateDevice(camera, group);
     const recording = cy.uploadRecording(camera, {
       tags: ["possum", "rabbit"],
