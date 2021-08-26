@@ -1,6 +1,6 @@
 /*******************************************************************
-* ALERT definitions            
-********************************************************************/
+ * ALERT definitions
+ ********************************************************************/
 // from api/v1/alerts (get)
 export interface ApiAlert {
   id: number;
@@ -10,7 +10,7 @@ export interface ApiAlert {
   conditions: ApiAlertConditions[];
   lastAlert: boolean;
   User: ApiAlertUser;
-  Device: ApiDeviceIdAndName
+  Device: ApiDeviceIdAndName;
 }
 
 // from api/v1/alerts (post)
@@ -28,8 +28,8 @@ export interface ApiAlertConditions {
 }
 
 /*******************************************************************
-* DEVICE definitions            
-********************************************************************/
+ * DEVICE definitions
+ ********************************************************************/
 // from api/v1/groups (get), api/v1/events (get)
 export interface ApiDeviceIdAndName {
   id: number;
@@ -66,8 +66,8 @@ export interface ApiDeviceQueryDevice {
   id: number;
   saltId?: number;
   Group: {
-   groupname: string;
-  }
+    groupname: string;
+  };
 }
 
 // from api/v1/authenticate/token (POST)
@@ -75,10 +75,9 @@ export interface ApiAuthenticateAccess {
   devices: string;
 }
 
-
 /*******************************************************************
-* USER definitions            
-********************************************************************/
+ * USER definitions
+ ********************************************************************/
 // from api/v1/alerts (get)
 export interface ApiAlertUser {
   id: number;
@@ -98,23 +97,23 @@ export interface ApiDeviceUsersUser {
 
 // from api/v1/groups (get)
 export interface ApiGroupUser {
-  username: string,
+  username: string;
   id: number;
-  isAdmin: boolean
+  isAdmin: boolean;
 }
 
 // api/v1/devices/.../in-group (get)
 export interface ApiDeviceUser {
-  userName: string,
+  userName: string;
   id: number;
-  isAdmin: boolean
+  isAdmin: boolean;
 }
 
 //from api/v1/groups/users (get)
 export interface ApiGroupsUserReturned {
-  userName: string,
+  userName: string;
   id: number;
-  isGroupAdmin: boolean
+  isGroupAdmin: boolean;
 }
 
 // from api/v1/devices
@@ -132,8 +131,8 @@ export interface ApiDeviceUserRelationship {
 }
 
 /*******************************************************************
-* EVENT definitions
-********************************************************************/
+ * EVENT definitions
+ ********************************************************************/
 
 // from /api/v1/events (get) and api/v1/events (post)
 export interface ApiEventDetail {
@@ -207,8 +206,8 @@ export interface ApiEventErrorCategory {
 }
 
 /*******************************************************************
-* GROUP definitions
-********************************************************************/
+ * GROUP definitions
+ ********************************************************************/
 
 // from api/v1/groups (get)
 export interface ApiGroupReturned {
@@ -224,18 +223,17 @@ export interface ApiGroupUserRelation {
   id: number;
   username: string;
   GroupUsers: {
-	  admin: boolean,
-	  createdAt: string,
-	  updatedAt: string,
-	  GroupId: number,
-	  UserId: number
-  }
+    admin: boolean;
+    createdAt: string;
+    updatedAt: string;
+    GroupId: number;
+    UserId: number;
+  };
 }
 
 /*******************************************************************
-* RECORDING definitions
-********************************************************************/
-
+ * RECORDING definitions
+ ********************************************************************/
 
 export interface ApiThermalRecordingInfo {
   processingState?: string;
@@ -269,10 +267,10 @@ export interface ApiStationData {
 export interface ApiStationDataReturned {
   id: number;
   name: string;
-  location: { 
-    type: string,
+  location: {
+    type: string;
     coordinates: [number, number];
-  },
+  };
   lastUpdatedById: number;
   createdAt: string;
   retiredAt: string;
@@ -280,10 +278,9 @@ export interface ApiStationDataReturned {
   GroupId: number;
 }
 
-
 /*******************************************************************
-* Custom structures used internally in test code
-********************************************************************/
+ * Custom structures used internally in test code
+ ********************************************************************/
 
 export interface TestComparableEvent {
   id: number;
@@ -333,4 +330,3 @@ export interface TestDeviceAndGroup {
   devicename: string;
   groupname: string;
 }
-

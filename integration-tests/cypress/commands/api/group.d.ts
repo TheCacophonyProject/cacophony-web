@@ -16,28 +16,47 @@ declare namespace Cypress {
      * By default userName and groupName are converted into unique (for this test run) names.
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
-    apiGroupAdd(userName: string, groupName: string, log?: boolean, statusCode?: number, additionalChecks?: any): any;
+    apiGroupAdd(
+      userName: string,
+      groupName: string,
+      log?: boolean,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * Call api/v1/groups/<groupnameorid> and check that returned values match expectedGroups
      * Optionally check for fail response (statusCode!=200)
      * By default userName and groupName are converted into unique (for this test run) names.
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
-     * By default groups and expectedGroups are sorted on groupName before comparison and 
+     * By default groups and expectedGroups are sorted on groupName before comparison and
      * devices by devicename, Users by username, GroupUsers by userId
      * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
      */
-    apiGroupCheck(userName: string, groupNameOrId: string,  expectedGroups: ApiGroupReturned[], excludeCheckOn?: string[], statusCode?: number, additionalChecks?:any):any;
-
+    apiGroupCheck(
+      userName: string,
+      groupNameOrId: string,
+      expectedGroups: ApiGroupReturned[],
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * Call api/v1/groups and check that returned values match expectedGroups
      * Optionally check for fail response (statusCode!=200)
-     * By default groups and expectedGroups are sorted on groupName before comparison and 
+     * By default groups and expectedGroups are sorted on groupName before comparison and
      * devices by devicename, Users by username, GroupUsers by userId
      * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
      */
-    apiGroupsCheck(userName: string, where: any, expectedGroups: ApiGroupReturned[], excludeCheckOn?: string[], statusCode?: number, additionalChecks?: any):any;
+    apiGroupsCheck(
+      userName: string,
+      where: any,
+      expectedGroups: ApiGroupReturned[],
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * Call api/v1/groups/<groupnameorid>/devices and check that returned values match expectedGroups
@@ -46,7 +65,14 @@ declare namespace Cypress {
      * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
-    apiGroupDevicesCheck(userName: string, groupNameOrId: any,  expectedDevices: ApiGroupsDevice[], excludeCheckOn?: string[], statusCode?: number, additionalChecks?: any):any;
+    apiGroupDevicesCheck(
+      userName: string,
+      groupNameOrId: any,
+      expectedDevices: ApiGroupsDevice[],
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * Add user to group
@@ -54,8 +80,15 @@ declare namespace Cypress {
      * By default userName and groupName are converted into unique (for this test run) names.
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
-    apiGroupUserAdd( groupAdminUser: string, userName: string, groupName: string, admin?: boolean, log?: boolean, statusCode?: number,  additionalChecks?: any): any;
-
+    apiGroupUserAdd(
+      groupAdminUser: string,
+      userName: string,
+      groupName: string,
+      admin?: boolean,
+      log?: boolean,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * Call api/v1/groups/<groupname>/users and check that returned values match expectedUsers
@@ -65,8 +98,14 @@ declare namespace Cypress {
      * By default users and expectedUsers are sorted on userName before comparison
      * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
      */
-    apiGroupUsersCheck(userName: string, groupName: string, expectedUsers: ApiGroupsUserReturned[], excludeCheckOn?: string[], statusCode?: number, additionalChecks?: any):any;
-
+    apiGroupUsersCheck(
+      userName: string,
+      groupName: string,
+      expectedUsers: ApiGroupsUserReturned[],
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * Remove user from group
@@ -74,8 +113,13 @@ declare namespace Cypress {
      * By default userName and groupName are converted into unique (for this test run) names.
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
-    apiGroupUserRemove( groupAdminUser: string, userName: string, groupName: string, statusCode?: number, additionalChecks?: any): any;
-
+    apiGroupUserRemove(
+      groupAdminUser: string,
+      userName: string,
+      groupName: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * POST to api/v1/groups/<groupidorname>/stations to add, update or retire stations from the group
@@ -83,8 +127,14 @@ declare namespace Cypress {
      * By default userName and groupName are converted into unique (for this test run) names.
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
-   apiGroupStationsUpdate( userName: string, groupIdOrName: string, stations: ApiStationData[], updateFrom?: string, statusCode?: number, additionalChecks?: any):any;
-
+    apiGroupStationsUpdate(
+      userName: string,
+      groupIdOrName: string,
+      stations: ApiStationData[],
+      updateFrom?: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * Call api/v1/groups/<groupidorname>/stations and check that returned values match expectedStations
@@ -94,11 +144,18 @@ declare namespace Cypress {
      * By default stations and expectedStations are sorted on userName before comparison
      * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
      */
-   apiGroupsStationsCheck(userName: string, groupIdOrName: any, expectedStations: ApiStationDataReturned[], excludeCheckOn?: string[], statusCode?: number, additionalChecks?: any):any;
+    apiGroupsStationsCheck(
+      userName: string,
+      groupIdOrName: any,
+      expectedStations: ApiStationDataReturned[],
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /*******************************************************************************************************
      * Following are legacy test functions from old tests. The above standard-format API wrappers should be used in
-     * preference to these functions.  These may be deleted in the future 
+     * preference to these functions.  These may be deleted in the future
      *****************************************************************************************************/
 
     /**

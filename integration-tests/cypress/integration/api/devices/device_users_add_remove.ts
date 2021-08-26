@@ -215,12 +215,7 @@ describe("Devices add / view / remove users", () => {
     cy.apiDeviceUserAdd(deviceMember, userB, camera, false, HTTP_Forbidden);
 
     // non-admin cannot remove a user
-    cy.apiDeviceUserRemove(
-      deviceMember,
-      deviceMember,
-      camera,
-      HTTP_Forbidden
-    );
+    cy.apiDeviceUserRemove(deviceMember, deviceMember, camera, HTTP_Forbidden);
 
     // check group member cannot see user details
     // TODO: FAIL - Issue 63 - request should be rejected with Forbidden if user does not have permissions, not return empty array
@@ -244,12 +239,7 @@ describe("Devices add / view / remove users", () => {
     cy.apiDeviceUserAdd(groupMember, userB, camera, false, HTTP_Forbidden);
 
     // non-admin cannot remove a user
-    cy.apiDeviceUserRemove(
-      groupMember,
-      deviceMember,
-      camera,
-      HTTP_Forbidden
-    );
+    cy.apiDeviceUserRemove(groupMember, deviceMember, camera, HTTP_Forbidden);
 
     // check group member cannot see user details
     // TODO: FAIL - Issue 63 - request should be rejected with Unauthorised if user does not have permissions, not return empty array
@@ -329,11 +319,6 @@ describe("Devices add / view / remove users", () => {
     );
 
     // remove non existant user from device
-    cy.apiDeviceUserRemove(
-      groupAdmin,
-      "bad-user",
-      camera,
-      HTTP_Unprocessable
-    );
+    cy.apiDeviceUserRemove(groupAdmin, "bad-user", camera, HTTP_Unprocessable);
   });
 });

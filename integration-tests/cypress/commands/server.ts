@@ -271,10 +271,11 @@ export function checkTreeStructuresAreEqualExcept(
             );
           } else {
             //check we were aksed to validate, or validate NOT NULL
-            if(containedStruct[containedKeys[count]]==NOT_NULL) {
+            if (containedStruct[containedKeys[count]] == NOT_NULL) {
               expect(
                 containingStruct[containedKeys[count]],
-                `Expected ${prettyElementName} should not be NULL`).to.not.be.null;
+                `Expected ${prettyElementName} should not be NULL`
+              ).to.not.be.null;
             } else {
               //otherwise, check the values are as expected
               expect(
@@ -283,7 +284,7 @@ export function checkTreeStructuresAreEqualExcept(
                   containedStruct[containedKeys[count]]
                 )}`
               ).to.equal(containedStruct[containedKeys[count]]);
-            };
+            }
           }
         }
       }
