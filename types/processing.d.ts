@@ -1,6 +1,9 @@
+declare module "*.json"
+
 type IsoFormattedDateString = string;
-type Integer = number;
-type Float = number;
+
+type integer = number;
+type float = number;
 type FloatZeroToOne = number;
 type Seconds = number;
 
@@ -9,23 +12,23 @@ type ClassificationClass = "bird" | "cat" | "false-positive" | "hedgehog" | "hum
 
 interface CameraThresholdConfig {
   camera_model: string;
-  temp_thresh: Integer;
-  background_thresh: Integer;
+  temp_thresh: integer;
+  background_thresh: integer;
   default: boolean;
-  min_temp_thresh: null | Integer;
-  max_temp_thresh: null | Integer;
-  track_min_delta: Float;
-  track_max_delta: Float;
+  min_temp_thresh: null | integer;
+  max_temp_thresh: null | integer;
+  track_min_delta: float;
+  track_max_delta: float;
 }
 
-interface TrackFramePosition {
-  x: Integer;
-  y: Integer;
-  width: Integer;
-  height: Integer;
-  mass: Integer;
-  frame_number: Integer;
-  pixel_variance: Float;
+export interface TrackFramePosition {
+  x: integer;
+  y: integer;
+  width: integer;
+  height: integer;
+  mass: integer;
+  frame_number: integer;
+  pixel_variance: float;
   blank: boolean;
 }
 
@@ -34,33 +37,41 @@ interface TrackClassification {
   label: ClassificationClass;
   confidence: FloatZeroToOne;
   clarity: FloatZeroToOne;
-  average_novelty: Float;
-  max_novelty: Float;
+  average_novelty: float;
+  max_novelty: float;
   all_class_confidences: Record<ClassificationClass, FloatZeroToOne>;
-  predictions: Integer[][];
-  model_id: Integer;
+  predictions: integer[][];
+  model_id: integer;
+
+  // Used in api when calculating good tags
+  tag: string;
+  message: string;
 }
 
 interface RawTrack {
-  id: Integer;
-  tracker_version: Integer;
+  id: integer;
+  tracker_version: integer;
   start_s: Seconds;
   end_s: Seconds;
-  num_frames: Integer;
-  frame_start: Integer;
-  frame_end: Integer;
+  num_frames: integer;
+  frame_start: integer;
+  frame_end: integer;
   positions: TrackFramePosition[];
   predictions: TrackClassification[];
+
+  // Fields used in api when calculating good tracks/tags
+  confidence?: FloatZeroToOne;
+  message?: string;
 }
 
 interface ClassifierModelDescription {
-  id: Integer;
+  id: integer;
   name: string;
   model_file: string;
   model_weights: string;
   wallaby: boolean;
   tag_scores: {
-    default: Integer;
+    default: integer;
   };
   ignored_tags: string[], // TODO - what can these be?
   thumbnail_model: boolean;
@@ -70,48 +81,48 @@ interface ClassifierModelDescription {
 export interface ClassifierRawResult {
   source: string;
   camera_model: string;
-  background_thresh: Integer;
+  background_thresh: integer;
   start_time: IsoFormattedDateString;
   end_time: IsoFormattedDateString;
   tracking_time: Seconds;
   algorithm: {
-    tracker_version: Integer;
+    tracker_version: integer;
     tracker_config: {
       background_calc: "preview";
       motion_config: {
         camera_thresholds: Record<string, CameraThresholdConfig>,
         dynamic_thresh: boolean;
       };
-      ignore_frames: Integer;
-      threshold_percentile: Float;
-      static_background_threshold: Float;
-      max_mean_temperature_threshold: Integer;
-      max_temperature_range_threshold: Integer;
-      edge_pixels: Integer;
-      dilation_pixels: Integer;
-      frame_padding: Integer;
+      ignore_frames: integer;
+      threshold_percentile: float;
+      static_background_threshold: float;
+      max_mean_temperature_threshold: integer;
+      max_temperature_range_threshold: integer;
+      edge_pixels: integer;
+      dilation_pixels: integer;
+      frame_padding: integer;
       track_smoothing: boolean;
-      remove_track_after_frames: Integer;
+      remove_track_after_frames: integer;
       high_quality_optical_flow: boolean;
-      min_threshold: Integer;
-      max_threshold: Integer;
-      flow_threshold: Integer;
-      max_tracks: Integer;
-      track_overlap_ratio: Float;
+      min_threshold: integer;
+      max_threshold: integer;
+      flow_threshold: integer;
+      max_tracks: integer;
+      track_overlap_ratio: float;
       min_duration_secs: Seconds;
-      track_min_offset: Float;
-      track_min_mass: Float;
-      aoi_min_mass: Float;
-      aoi_pixel_variance: Float;
+      track_min_offset: float;
+      track_min_mass: float;
+      aoi_min_mass: float;
+      aoi_pixel_variance: float;
       cropped_regions_strategy: string;
       verbose: boolean;
       enable_track_output: boolean;
-      min_tag_confidence: Float;
-      moving_vel_thresh: Integer;
-      min_moving_frames: Integer;
-      max_blank_percent: Float;
-      max_mass_std_percent: Float;
-      max_jitter: Integer;
+      min_tag_confidence: float;
+      moving_vel_thresh: integer;
+      min_moving_frames: integer;
+      max_blank_percent: float;
+      max_mass_std_percent: float;
+      max_jitter: integer;
       // TODO - what can these be if they're not null?  We probably don't really care.
       stats: null;
       filters: null;
@@ -120,5 +131,5 @@ export interface ClassifierRawResult {
   };
   tracks: RawTrack[];
   models: ClassifierModelDescription[];
-  thumbnail_region: TrackFramePosition;
+  thumbnail_region?: TrackFramePosition;
 }

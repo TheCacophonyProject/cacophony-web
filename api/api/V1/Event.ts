@@ -21,7 +21,7 @@ import auth from "../auth";
 import models from "../../models";
 import { QueryOptions } from "../../models/Event";
 import responseUtil from "./responseUtil";
-import { param, query } from "express-validator/check";
+import { param, query } from "express-validator";
 import { Application } from "express";
 import eventUtil from "./eventUtil";
 

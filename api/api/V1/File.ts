@@ -23,7 +23,7 @@ import util from "./util";
 import responseUtil from "./responseUtil";
 import config from "../../config";
 import jsonwebtoken from "jsonwebtoken";
-import { param, query } from "express-validator/check";
+import { param, query } from "express-validator";
 import { Application } from "express";
 
 export default (app: Application, baseUrl: string) => {

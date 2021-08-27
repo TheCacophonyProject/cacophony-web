@@ -23,7 +23,7 @@ import { TrackId } from "./Track";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
 
-interface TrackTagData {
+export interface TrackTagData {
   name: string;
   all_class_confidences: null | Record<string, number>;
   classify_time: number;

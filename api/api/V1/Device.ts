@@ -20,7 +20,7 @@ import middleware from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param, query } from "express-validator/check";
+import { body, param, query } from "express-validator";
 import Sequelize from "sequelize";
 import { Application } from "express";
 import { AccessLevel } from "../../models/GroupUsers";

@@ -6,7 +6,7 @@ import { Event } from "../../models/Event";
 import { QueryOptions } from "../../models/Event";
 
 import responseUtil from "./responseUtil";
-import { body, oneOf } from "express-validator/check";
+import { body, oneOf } from "express-validator";
 import { groupSystemErrors } from "./systemError";
 import moment, { Moment } from "moment";
 

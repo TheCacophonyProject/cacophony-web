@@ -25,7 +25,7 @@ import {
 } from "./monitoringPage";
 import { generateVisits } from "./monitoringVisit";
 import responseUtil from "./responseUtil";
-import { query } from "express-validator/check";
+import { query } from "express-validator";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;

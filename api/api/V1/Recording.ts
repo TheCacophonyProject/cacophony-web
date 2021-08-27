@@ -24,7 +24,7 @@ import responseUtil from "./responseUtil";
 import models from "../../models";
 // @ts-ignore
 import * as csv from "fast-csv";
-import { body, param, query } from "express-validator/check";
+import { body, param, query } from "express-validator";
 import { RecordingPermission } from "../../models/Recording";
 import { TrackTag } from "../../models/TrackTag";
 import { Track } from "../../models/Track";

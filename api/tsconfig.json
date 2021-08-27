@@ -6,14 +6,24 @@
         "module": "commonjs",
         "moduleResolution": "node",
         "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true
+        "allowSyntheticDefaultImports": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "baseUrl": ".",
+        "resolveJsonModule": true,
+        "paths": {
+            "@typedefs/*":  ["../types/*"]
+        }
     },
     "include": [
         "./models/**/*.ts",
         "./api/**/*.ts",
         "./scripts/**/*.ts",
-        "./**/*.ts"
+        "./**/*.ts",
+        "../types/**/*.ts",
+        "../types/**/*.json"
     ],
+
     "exclude": [
         "./node_modules/*",
         "./test/*",

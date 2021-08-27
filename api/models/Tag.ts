@@ -27,14 +27,23 @@ import {
 } from "./Recording";
 
 export type TagId = number;
-export interface Tag extends Sequelize.Model, ModelCommon<Tag> {
-  RecordingId: RecordingIdAlias;
-  taggerId: UserId;
+
+export interface TagData {
+  detail: string;
+  confidence: number;
+  RecordingId?: RecordingIdAlias;
+  taggerId?: UserId | null;
+  what?: string;
+  automatic?: boolean;
+  version?: number;
+}
+
+export interface Tag extends TagData, Sequelize.Model, ModelCommon<Tag> {
   id: TagId;
 }
 
 export interface TagStatic extends ModelStaticCommon<Tag> {
-  buildSafely: (fields: Record<string, any>) => Tag;
+  buildSafely: (fields: TagData) => Tag;
   getFromId: (id: TagId, user: User, attributes: any) => Promise<Tag>;
   userGetAttributes: readonly string[];
   acceptableTags: Set<AcceptableTag>;
@@ -94,7 +103,7 @@ export default function (sequelize, DataTypes): TagStatic {
   //---------------
   const Recording = sequelize.models.Recording;
 
-  Tag.buildSafely = function (fields) {
+  Tag.buildSafely = function (fields: TagData) {
     return Tag.build(_.pick(fields, Tag.apiSettableFields));
   };
 

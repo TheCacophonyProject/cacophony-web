@@ -75,7 +75,7 @@ class ValidationError extends CustomError {
     const message = errors
       .array()
       .filter((error) => typeof error.msg === "string")
-      .map((error) => error.msg)
+      .map(({ msg, location, param }) => `${location}.${param}: ${msg}`)
       .join("; ");
     super(message, 422);
     this.errors = errors;
@@ -84,8 +84,10 @@ class ValidationError extends CustomError {
   toJson() {
     return {
       errorType: this.getErrorType(),
-      message: this.message,
-      errors: this.errors.mapped(),
+      message: `${
+        this.errors.array().length
+      } request validation errors found. Request payload could not be processed.`,
+      errors: this.errors.array(),
     };
   }
 }

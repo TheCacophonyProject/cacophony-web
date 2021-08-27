@@ -19,7 +19,7 @@
     "cptv-decoder": "github:TheCacophonyProject/cptv-rs#v1.2.0",
     "emailjs": "^3.4.0",
     "express": "^4.17.1",
-    "express-validator": "^5.3.1",
+    "express-validator": "^6.12.1",
     "express-winston": "^4.1.0",
     "extend": "^3.0.2",
     "fast-csv": "^3.7.0",

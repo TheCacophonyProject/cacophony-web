@@ -15,8 +15,9 @@ services:
       - 5432:5432
       - 9001:9001
     volumes:
-      - ./api/models:/app/models
-      - ./api/apidoc:/app/apidoc
-      - ./api/config:/app/config
-      - ./api/api/:/app/api
-      - ./api/scripts:/app/scripts
+      - ./api/models:/app/api/models
+      - ./api/apidoc:/app/api/apidoc
+      - ./api/config:/app/api/config
+      - ./api/api/:/app/api/api
+      - ./api/scripts:/app/api/scripts
+      - ./types:/app/types

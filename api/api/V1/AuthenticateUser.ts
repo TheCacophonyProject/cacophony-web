@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import middleware from "../middleware";
 import auth from "../auth";
-import { body, oneOf } from "express-validator/check";
+import { body, oneOf } from "express-validator";
 import responseUtil from "./responseUtil";
 import { Application } from "express";
 

@@ -18,24 +18,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {
   body,
+  CustomValidator,
   oneOf,
   query,
   ValidationChain,
-  ValidationChainBuilder,
   validationResult,
-  ValidatorOptions,
-} from "express-validator/check";
+} from "express-validator";
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
 import log from "../logging";
 import customErrors from "./customErrors";
 import { RequestHandler, Response } from "express";
+import { IsIntOptions } from "express-validator/src/options";
 
-const getModelById = function <T>(
+export const getModelByIdChain = <T>(
   modelType: ModelStaticCommon<T>,
   fieldName: string,
   checkFunc
-) {
+) => {
   return checkFunc(fieldName).custom(async (val, { req }) => {
     const model = await modelType.findByPk(val);
     if (model === null) {
@@ -48,10 +48,28 @@ const getModelById = function <T>(
   });
 };
 
-const getModelByName = function <T>(
+export const getModelById = <T>(
+  modelType: ModelStaticCommon<T>
+): CustomValidator => {
+  return async (id, { req }) => {
+    const item = await modelType.findByPk(id);
+    if (item === null) {
+      throw new Error(`Could not find a ${modelType.name} with an id of ${id}`);
+    }
+    req.body[modelTypeName(modelType)] = item;
+    return true;
+  };
+};
+
+type ValidationMiddleware = (
+  fields?: string | string[] | undefined,
+  message?: any
+) => ValidationChain;
+
+export const getModelByName = function <T>(
   modelType: ModelStaticCommon<T>,
   fieldName: string,
-  checkFunc: ValidationChainBuilder
+  checkFunc: ValidationMiddleware
 ): ValidationChain {
   return checkFunc(fieldName).custom(async (val, { req }) => {
     const model: T = await modelType.getFromName(val);
@@ -63,8 +81,8 @@ const getModelByName = function <T>(
   });
 };
 
-const getUserByEmail = function (
-  checkFunc: ValidationChainBuilder,
+export const getUserByEmail = function (
+  checkFunc: ValidationMiddleware,
   fieldName: string = "email"
 ): ValidationChain {
   return checkFunc(fieldName)
@@ -80,7 +98,7 @@ const getUserByEmail = function (
     });
 };
 
-function modelTypeName(modelType: ModelStaticCommon<any>): string {
+export function modelTypeName(modelType: ModelStaticCommon<any>): string {
   return modelType.options.name.singular.toLowerCase();
 }
 
@@ -94,7 +112,7 @@ export const toIdArray = function (fieldName: string): ValidationChain {
     .customSanitizer((value) => convertToIdArray(value));
 };
 
-const convertToIdArray = function (idsAsString: string): number[] {
+export const convertToIdArray = function (idsAsString: string): number[] {
   if (idsAsString) {
     try {
       const val = JSON.parse(idsAsString);
@@ -112,7 +130,7 @@ const convertToIdArray = function (idsAsString: string): number[] {
 
 export const isInteger = function (
   fieldName: string,
-  range: ValidatorOptions.IsIntOptions
+  range: IsIntOptions
 ): ValidationChain {
   // add an actually useful error to this isInt check
   const error = `Parameter '${fieldName}' must be an integer between ${range.min} and ${range.max}`;
@@ -127,7 +145,7 @@ export const toDate = function (fieldName: string): ValidationChain {
     .isInt();
 };
 
-const getAsDate = function (dateAsString: string): number {
+export const getAsDate = function (dateAsString: string): number {
   try {
     console.log("date is " + dateAsString);
     return Date.parse(dateAsString);
@@ -139,7 +157,10 @@ const getAsDate = function (dateAsString: string): number {
 const DATE_ERROR =
   "Must be a date or timestamp.   For example, '2017-11-13' or '2017-11-13T00:47:51.160Z'.";
 
-const isDateArray = function (fieldName: string, customError): ValidationChain {
+export const isDateArray = function (
+  fieldName: string,
+  customError
+): ValidationChain {
   return body(fieldName, customError)
     .exists()
     .custom((value) => {
@@ -161,68 +182,74 @@ const isDateArray = function (fieldName: string, customError): ValidationChain {
     });
 };
 
-function getUserById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.User, "userId", checkFunc);
+export function getUserById(checkFunc: ValidationMiddleware): ValidationChain {
+  return getModelByIdChain(models.User, "userId", checkFunc);
 }
 
-function getUserByName(
-  checkFunc: ValidationChainBuilder,
+export function getUserByName(
+  checkFunc: ValidationMiddleware,
   fieldName: string = "username"
 ): ValidationChain {
   return getModelByName(models.User, fieldName, checkFunc);
 }
 
-function getUserByNameOrId(checkFunc: ValidationChainBuilder): RequestHandler {
+export function getUserByNameOrId(
+  checkFunc: ValidationMiddleware
+): RequestHandler {
   return oneOf(
     [getUserByName(checkFunc), getUserById(checkFunc)],
     "User doesn't exist or was not specified"
   );
 }
 
-function getGroupById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.Group, "groupId", checkFunc);
+export function getGroupById(checkFunc: ValidationMiddleware): ValidationChain {
+  return getModelByIdChain(models.Group, "groupId", checkFunc);
 }
 
-function getGroupByName(
-  checkFunc: ValidationChainBuilder,
+export function getGroupByName(
+  checkFunc: ValidationMiddleware,
   fieldName: string = "group"
 ) {
   return getModelByName(models.Group, fieldName, checkFunc);
 }
 
-function getGroupByNameOrId(checkFunc: ValidationChainBuilder): RequestHandler {
+export function getGroupByNameOrId(
+  checkFunc: ValidationMiddleware
+): RequestHandler {
   return oneOf(
     [getGroupById(checkFunc), getGroupByName(checkFunc)],
     "Group doesn't exist or hasn't been specified."
   );
 }
 
-function getGroupByNameOrIdDynamic(
-  checkFunc: ValidationChainBuilder,
+export function getGroupByNameOrIdDynamic(
+  checkFunc: ValidationMiddleware,
   fieldName: string
 ): RequestHandler {
   return oneOf(
     [
-      getModelById(models.Group, fieldName, checkFunc),
+      getModelByIdChain(models.Group, fieldName, checkFunc),
       getModelByName(models.Group, fieldName, checkFunc),
     ],
     "Group doesn't exist or hasn't been specified."
   );
 }
 
-function getDeviceById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.Device, "deviceId", checkFunc);
+export function getDeviceById(
+  checkFunc: ValidationMiddleware
+): ValidationChain {
+  return getModelByIdChain(models.Device, "deviceId", checkFunc);
 }
 
-function setGroupName(checkFunc: ValidationChainBuilder): ValidationChain {
+export function setGroupName(checkFunc: ValidationMiddleware): ValidationChain {
   return checkFunc("groupname").custom(async (value, { req }) => {
     req.body["groupname"] = value;
     return true;
   });
 }
 
-function getDevice(
-  checkFunc: ValidationChainBuilder,
+export function getDevice(
+  checkFunc: ValidationMiddleware,
   paramName: string = "devicename"
 ) {
   return checkFunc(paramName).custom(async (deviceName, { req }) => {
@@ -245,23 +272,24 @@ function getDevice(
   });
 }
 
-function getDetailSnapshotById(
-  checkFunc: ValidationChainBuilder,
+export const getDetailSnapshotById = (
+  checkFunc: ValidationMiddleware,
   paramName: string
-): ValidationChain {
-  return getModelById(models.DetailSnapshot, paramName, checkFunc);
-}
+): ValidationChain =>
+  getModelByIdChain(models.DetailSnapshot, paramName, checkFunc);
 
-function getFileById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.File, "id", checkFunc);
-}
+export const getFileById = (checkFunc: ValidationMiddleware): ValidationChain =>
+  getModelByIdChain(models.File, "id", checkFunc);
 
-function getRecordingById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.Recording, "id", checkFunc);
-}
+export const getRecordingByIdChain = (
+  checkFunc: ValidationMiddleware
+): ValidationChain => getModelByIdChain(models.Recording, "id", checkFunc);
 
-const isValidName = function (
-  checkFunc: ValidationChainBuilder,
+export const getRecordingById = (): CustomValidator =>
+  getModelById(models.Recording);
+
+export const isValidName = function (
+  checkFunc: ValidationMiddleware,
   field: string
 ): ValidationChain {
   return checkFunc(
@@ -272,13 +300,13 @@ const isValidName = function (
     .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/);
 };
 
-const checkNewPassword = function (field: string): ValidationChain {
+export const checkNewPassword = function (field: string): ValidationChain {
   return body(field, "Password must be at least 8 characters long").isLength({
     min: 8,
   });
 };
 
-const viewMode = function (): ValidationChain {
+export const viewMode = function (): ValidationChain {
   // All api listing commands will automatically return all results if the user is a super-admin
   // There is now an optional "view-mode" query param to these APIs, which, if set to "user",
   // will restrict results to items only directly viewable by the super-admin user.
@@ -297,27 +325,29 @@ const viewMode = function (): ValidationChain {
  * @param field The field in the JSON object to get
  * @param checkFunc The express-validator function, typically `body` or `query`
  */
-const parseJSON = function (
+export const parseJSON = function (
   field: string,
-  checkFunc: ValidationChainBuilder
+  checkFunc: ValidationMiddleware
 ): ValidationChain {
-  return checkFunc(field).custom((value, { req, location, path }) => {
-    if (typeof req[location][path] === "string") {
-      let result = value;
-      while (typeof result === "string") {
-        try {
-          result = JSON.parse(result);
-        } catch (e) {
-          throw new Error(format("Could not parse JSON field %s.", path));
-        }
+  return checkFunc(field).custom(parseJSONInternal);
+};
+
+export const parseJSONInternal = (value, { req, location, path }) => {
+  if (typeof req[location][path] === "string") {
+    let result = value;
+    while (typeof result === "string") {
+      try {
+        result = JSON.parse(result);
+      } catch (e) {
+        throw new Error(format("Could not parse JSON field %s.", path));
       }
-      if (typeof result !== "object") {
-        throw new Error(format("JSON field %s is not an object", path));
-      }
-      req[location][path] = result;
     }
-    return req[location][path] !== undefined;
-  });
+    if (typeof result !== "object") {
+      throw new Error(format("JSON field %s is not an object", path));
+    }
+    req[location][path] = result;
+  }
+  return req[location][path] !== undefined;
 };
 
 /**
@@ -330,9 +360,9 @@ const parseJSON = function (
  * @param field The field in the JSON object to get
  * @param checkFunc The express-validator function, typically `body` or `query`
  */
-const parseArray = function (
+export const parseArray = function (
   field: string,
-  checkFunc: ValidationChainBuilder
+  checkFunc: ValidationMiddleware
 ): ValidationChain {
   return checkFunc(field).custom((value, { req, location, path }) => {
     if (Array.isArray(value)) {
@@ -356,14 +386,14 @@ const parseArray = function (
   });
 };
 
-const parseBool = function (value: any): boolean {
+export const parseBool = function (value: any): boolean {
   if (!value) {
     return false;
   }
   return value.toString().toLowerCase() == "true";
 };
 
-const requestWrapper = (fn) => (request, response: Response, next) => {
+export const requestWrapper = (fn) => (request, response: Response, next) => {
   let logMessage = format("%s %s", request.method, request.url);
   if (request.user) {
     logMessage = format(
@@ -387,6 +417,9 @@ const requestWrapper = (fn) => (request, response: Response, next) => {
   }
 };
 
+export const expectedTypeOf = (type) => (val) =>
+  `expected ${type}, got ${typeof val}`;
+
 export default {
   getUserById,
   getUserByName,
@@ -399,7 +432,7 @@ export default {
   getDevice,
   getDetailSnapshotById,
   getFileById,
-  getRecordingById,
+  getRecordingById: getRecordingByIdChain,
   isValidName,
   checkNewPassword,
   parseJSON,
@@ -410,4 +443,5 @@ export default {
   getUserByEmail,
   setGroupName,
   viewMode,
+  typeError: expectedTypeOf,
 };

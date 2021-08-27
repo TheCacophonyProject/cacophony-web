@@ -21,7 +21,7 @@ echo "---- Setting up Minio ----"
 ./mc mb myminio/cacophony
 ./mc mb myminio/cacophony-archived
 
-cd /app
+cd /app/api
 
 CONFIG=config/app.js
 if [ ! -f "$CONFIG" ]; then
@@ -29,11 +29,11 @@ if [ ! -f "$CONFIG" ]; then
 fi
 echo "---- Using config $CONFIG ----"
 
-node_modules/.bin/sequelize db:migrate --config $CONFIG
-sudo -i -u postgres psql cacophonytest -f /app/test/db-seed.sql
+../node_modules/.bin/sequelize db:migrate --config $CONFIG
+sudo -i -u postgres psql cacophonytest -f /app/api/test/db-seed.sql
 
 echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
 
 echo "---- Compiling typescript and starting module ----"
-./node_modules/.bin/tsc
-./node_modules/.bin/tsc-watch --noClear --onSuccess "node --no-warnings=ExperimentalWarnings --experimental-json-modules Server.js --config=$CONFIG"
+../node_modules/.bin/tsc --resolveJsonModule
+../node_modules/.bin/tsc-watch --resolveJsonModule --noClear --onSuccess "node --no-warnings=ExperimentalWarnings --experimental-json-modules Server.js --config=$CONFIG"

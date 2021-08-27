@@ -20,7 +20,7 @@ import middleware from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param } from "express-validator/check";
+import { body, param } from "express-validator";
 import { Application } from "express";
 import { isAlertCondition } from "../../models/Alert";
 

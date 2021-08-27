@@ -1,0 +1,14 @@
+{
+    "name": "cacophony-types",
+    "version": "1.0.0",
+    "scripts": {
+        "generate-schemas": "tsc && node build-schemas.js"
+    },
+    "dependencies": {
+        "ts-json-schema-generator": "^0.95.0"
+    },
+    "devDependencies": {
+        "@tsconfig/node14": "^1.0.1",
+        "@types/node": "^16.7.1"
+    }
+}
