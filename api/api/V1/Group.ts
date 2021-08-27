@@ -400,10 +400,20 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Number|String} groupNameOrId group name or group id
-   * @apiParam {Station[]} stations Json array of {name: string, lat: number, lng: number}
-   * @apiParam {Date} fromDate Start date/time for the new station
+   * @apiParam {Station[]} stations Json array of ApiStation[]
+   * @apiParam {Date} fromDate Start date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParamExample {json} ApiStation:
+   * {
+   *   name: "Station Name:,
+   *   lat: -45.1,
+   *   lng: 172.0
+   * }
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Number[]} stationIdsAddedOrUpdated Array of Identifiers of stations added or updated.
+   * @apiSuccess {JSON} updatedRecordingsPerStation Hash of {stationId:recordingId, ...} showing recordings updated
+   * by the request.
+   * @apiSuccess {string} warnings Warnings showing data validation rule breaches for the applied stations.
    * @apiUse V1ResponseError
    */
   app.post(
@@ -443,9 +453,36 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} group name or group id
+   * @apiParam {Number|String} groupIdOrName Group name or group id
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {ApiStationDetail[]} stations Array of ApiStationDetail[] showing details of stations in group
+   * @apiSuccess {Number} stations.id Id of station
+   * @apiSuccess {Number} stations.GroupId Id of the group to which the station belongs
+   * @apiSuccess {String} stations.createdAt Timestamp station was created 
+   * (Note: this is the database record creation date, not the user-supplied fromDate)
+   * @apiSuccess {String} stations.retiredAt Timestamp station was retired
+   * @apiSuccess {String} stations.updatedAt Timestamp station was last updated
+   * @apiSuccess {Number} stations.lastUpdatedById Id of the user account last used to update the station
+   * @apiSuccess {ApiLocation} stations.location JSON detailing location of the station
+   * @apiSuccess {String} stations.name Name of the station
+   * @apiSuccessExample {JSON} ApiStationDetail:
+   * {
+   *   GroupId: 1338,
+   *   createdAt: "2021-08-27T21:04:35.851Z",
+   *   id: 415,
+   *   lastUpdatedById: 2069,
+   *   location:  ApiLocation,
+   *   name: "station1",
+   *   retiredAt: null,
+   *   updatedAt: "2021-08-27T21:04:35.855Z"
+   * }
+   * @apiSuccessExample {JSON} ApiLocation:
+   * Note: these coordinates are currently reversed (Issue 73). 
+   * {
+   *   type: 'Point',
+   *   coordinates: [ -45.0, 172.9 ]
+   * }
    * @apiUse V1ResponseError
    */
   app.get(

@@ -391,8 +391,8 @@ Cypress.Commands.add(
           sortDevices = response.body.devices;
           sortExpectedDevices = expectedDevices;
         } else {
-          sortDevices = sortArrayOn(response.body.devices, "devicename");
-          sortExpectedDevices = sortArrayOn(expectedDevices, "devicename");
+          sortDevices = sortArrayOn(response.body.devices, "deviceName");
+          sortExpectedDevices = sortArrayOn(expectedDevices, "deviceName");
         }
 
         checkTreeStructuresAreEqualExcept(

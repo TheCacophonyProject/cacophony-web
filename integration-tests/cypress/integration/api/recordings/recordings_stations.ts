@@ -4,9 +4,9 @@ describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";
   const group = "add_stations";
   const forestLatLong = { lat: -43.62367659982, lng: 172.62646754804 };
-  const date = new Date(2021, 3, 25, 21).toISOString();
-  const earlier = new Date(2021, 3, 25, 20).toISOString();
-  const later = new Date(2021, 3, 25, 22).toISOString();
+  const date = "2021-05-25T09:01:00.000Z";
+  const earlier = "2021-05-25T08:00:00.000Z";
+  const later = "2021-05-25T10:00:00.000Z";
 
   before(() => {
     cy.testCreateUserAndGroup(Josie, group);
@@ -52,7 +52,7 @@ describe("Stations: add and remove", () => {
     const groupUpdate = "update-stations";
     const camera = "update-after";
     cy.testCreateUserGroupAndDevice(Josie2, groupUpdate, camera);
-    cy.uploadRecording(camera, { time: date, lat: -43.6, lng: 172.8 });
+    cy.uploadRecording(camera, { time: new Date(date), lat: -43.6, lng: 172.8 });
     cy.checkRecordingsStationIs(Josie2, "");
 
     const stations = [
@@ -68,7 +68,7 @@ describe("Stations: add and remove", () => {
     const camera = "update-earlier";
     const groupNotUpdate = "not-update-stations";
     cy.testCreateUserGroupAndDevice(Josie3, groupNotUpdate, camera);
-    cy.uploadRecording(camera, { time: date, lat: -43.6, lng: 172.8 });
+    cy.uploadRecording(camera, { time: new Date(date), lat: -43.6, lng: 172.8 });
     cy.checkRecordingsStationIs(Josie3, "");
 
     const stations = [
@@ -83,12 +83,12 @@ describe("Stations: add and remove", () => {
     const Josie4 = "Josie4";
     const camera = "update-remove";
     const groupRemove = "remove-station";
-    const date = new Date(2021, 3, 25, 21).toISOString();
-    const earlier = new Date(2021, 3, 25, 20).toISOString();
+    const date = "2021-03-25T21:01:00.000Z";
+    const earlier = "2021-03-25T20:01:00.000Z";
     cy.testCreateUserGroupAndDevice(Josie4, groupRemove, camera);
     const stations = [{ name: "waterfall", lat: -43.6, lng: 172.8 }];
     cy.apiGroupStationsUpdate(Josie4, groupRemove, stations, earlier);
-    cy.uploadRecording(camera, { time: date, lat: -43.6, lng: 172.8 });
+    cy.uploadRecording(camera, { time: new Date(date), lat: -43.6, lng: 172.8 });
     cy.checkRecordingsStationIs(Josie4, "waterfall");
 
     const stations2 = [
