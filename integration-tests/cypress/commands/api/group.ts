@@ -10,6 +10,7 @@ import {
   saveIdOnly,
   v1ApiPath,
   sortArrayOn,
+  sortArrayOnHash,
   checkTreeStructuresAreEqualExcept,
 } from "../server";
 
@@ -443,7 +444,16 @@ Cypress.Commands.add(
       },
       userName,
       statusCode
-    );
+    ).then((response) => {
+      if(additionalChecks["warnings"]) {
+         let warnings=response.body.warnings;
+         let expectedWarnings=additionalChecks["warnings"];
+         expect(warnings).to.exist;
+         expectedWarnings.forEach(function(warning:string) {
+           expect(warnings, 'Expect warning to be present').to.contain(warning);
+         });
+      }; 
+    });
   }
 );
 
@@ -486,8 +496,8 @@ Cypress.Commands.add(
           sortStations = response.body.stations;
           sortExpectedStations = expectedStations;
         } else {
-          sortStations = sortArrayOn(response.body.stations, "location");
-          sortExpectedStations = sortArrayOn(expectedStations, "location");
+          sortStations = sortArrayOnHash(response.body.stations, "location");
+          sortExpectedStations = sortArrayOnHash(expectedStations, "location");
         }
 
         checkTreeStructuresAreEqualExcept(

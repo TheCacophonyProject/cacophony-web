@@ -144,12 +144,25 @@ export function checkResponse(response: Cypress.Response<any>, code: number) {
   return response;
 }
 
-export function sortArrayOn(theArray: any, theKey: string) {
+export function sortArrayOnHash(theArray: any, theKey: string) {
   theArray.sort(function (a: any, b: any) {
     if (JSON.stringify(a[theKey]) < JSON.stringify(b[theKey])) {
       return -1;
     }
     if (JSON.stringify(a[theKey]) > JSON.stringify(b[theKey])) {
+      return 1;
+    }
+    return 0;
+  });
+  return theArray;
+}
+
+export function sortArrayOn(theArray: any, theKey: string) {
+  theArray.sort(function (a: any, b: any) {
+    if (a[theKey] < b[theKey]) {
+      return -1;
+    }
+    if (a[theKey] > b[theKey]) {
       return 1;
     }
     return 0;
