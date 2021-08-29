@@ -459,7 +459,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccess {ApiStationDetail[]} stations Array of ApiStationDetail[] showing details of stations in group
    * @apiSuccess {Number} stations.id Id of station
    * @apiSuccess {Number} stations.GroupId Id of the group to which the station belongs
-   * @apiSuccess {String} stations.createdAt Timestamp station was created 
+   * @apiSuccess {String} stations.createdAt Timestamp station was created
    * (Note: this is the database record creation date, not the user-supplied fromDate)
    * @apiSuccess {String} stations.retiredAt Timestamp station was retired
    * @apiSuccess {String} stations.updatedAt Timestamp station was last updated
@@ -478,7 +478,7 @@ export default function (app: Application, baseUrl: string) {
    *   updatedAt: "2021-08-27T21:04:35.855Z"
    * }
    * @apiSuccessExample {JSON} ApiLocation:
-   * Note: these coordinates are currently reversed (Issue 73). 
+   * Note: these coordinates are currently reversed (Issue 73).
    * {
    *   type: 'Point',
    *   coordinates: [ -45.0, 172.9 ]
