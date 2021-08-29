@@ -53,7 +53,7 @@ declare namespace Cypress {
      * upload a single recording to for a particular camera using pre-rolled test metadata
      * Optionally, save the id against provided recordingName
      */
-    testRecordingAddWithTestData(
+    testUploadRecording(
       deviceName: string,
       details: TestThermalRecordingInfo,
       log?: boolean,

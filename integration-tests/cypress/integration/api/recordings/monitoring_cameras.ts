@@ -10,8 +10,8 @@ describe("Monitoring : multiple cameras and stations", () => {
     const cameraA = "cameraA";
     const cameraB = "cameraB";
     cy.testCreateGroupAndDevices(Penny, group, cameraA, cameraB);
-    cy.testRecordingAddWithTestData(cameraA, { tags: ["possum"] });
-    cy.testRecordingAddWithTestData(cameraB, { tags: ["cat"] });
+    cy.testUploadRecording(cameraA, { tags: ["possum"] });
+    cy.testUploadRecording(cameraB, { tags: ["cat"] });
     cy.checkMonitoring(Penny, null, [
       { camera: cameraA, tag: "possum" },
       { camera: cameraB, tag: "cat" },
@@ -28,12 +28,12 @@ describe("Monitoring : multiple cameras and stations", () => {
       { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
     cy.apiGroupStationsUpdate(Penny, group, stations);
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       tags: ["possum"],
       lat: -44.0,
       lng: 172.7,
     });
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       tags: ["cat"],
       lat: -44.0,
       lng: 172.7,
@@ -51,12 +51,12 @@ describe("Monitoring : multiple cameras and stations", () => {
       { name: "waterfall", lat: -43.6, lng: 172.8 },
     ];
     cy.apiGroupStationsUpdate(Penny, group, stations);
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       tags: ["possum"],
       lat: -44.0,
       lng: 172.7,
     });
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       tags: ["cat"],
       lat: -43.6,
       lng: 172.8,

@@ -19,13 +19,13 @@ describe("Stations: add and remove", () => {
 
   it.skip("recordings are assigned to the correct stations", () => {
     cy.apiDeviceAdd("in-forest", group);
-    cy.testRecordingAddWithTestData(
+    cy.testUploadRecording(
       "in-forest",
       forestLatLong
     ).thenCheckStationIs(Josie, "forest");
 
     cy.apiDeviceAdd("in-stream", group);
-    cy.testRecordingAddWithTestData("in-stream", {
+    cy.testUploadRecording("in-stream", {
       lat: -43.62367659983,
       lng: 172.62646754804,
     }).thenCheckStationIs(Josie, "stream");
@@ -33,7 +33,7 @@ describe("Stations: add and remove", () => {
 
   it("recording that is not close to any station is not assigned a station", () => {
     cy.apiDeviceAdd("neither", group);
-    cy.testRecordingAddWithTestData("neither", {
+    cy.testUploadRecording("neither", {
       lat: -43.6,
       lng: 172.6,
     }).thenCheckStationIs(Josie, "");
@@ -44,7 +44,7 @@ describe("Stations: add and remove", () => {
     const camera = "other-group";
     cy.apiGroupAdd(Josie, otherGroup);
     cy.apiDeviceAdd(camera, otherGroup);
-    cy.testRecordingAddWithTestData(camera, forestLatLong).thenCheckStationIs(
+    cy.testUploadRecording(camera, forestLatLong).thenCheckStationIs(
       Josie,
       ""
     );
@@ -55,7 +55,7 @@ describe("Stations: add and remove", () => {
     const groupUpdate = "update-stations";
     const camera = "update-after";
     cy.testCreateUserGroupAndDevice(Josie2, groupUpdate, camera);
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       time: new Date(date),
       lat: -43.6,
       lng: 172.8,
@@ -75,7 +75,7 @@ describe("Stations: add and remove", () => {
     const camera = "update-earlier";
     const groupNotUpdate = "not-update-stations";
     cy.testCreateUserGroupAndDevice(Josie3, groupNotUpdate, camera);
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       time: new Date(date),
       lat: -43.6,
       lng: 172.8,
@@ -99,7 +99,7 @@ describe("Stations: add and remove", () => {
     cy.testCreateUserGroupAndDevice(Josie4, groupRemove, camera);
     const stations = [{ name: "waterfall", lat: -43.6, lng: 172.8 }];
     cy.apiGroupStationsUpdate(Josie4, groupRemove, stations, earlier);
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       time: new Date(date),
       lat: -43.6,
       lng: 172.8,

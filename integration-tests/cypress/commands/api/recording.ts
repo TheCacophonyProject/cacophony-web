@@ -55,7 +55,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "testRecordingAddWithTestData",
+  "testUploadRecording",
   (
     deviceName: string,
     details: TestThermalRecordingInfo,
@@ -168,7 +168,7 @@ Cypress.Commands.add(
     );
 
     times.forEach((time) => {
-      cy.testRecordingAddWithTestData(deviceName, { time }, false);
+      cy.testUploadRecording(deviceName, { time }, false);
     });
   }
 );
@@ -220,7 +220,7 @@ Cypress.Commands.add(
     tagger: string,
     tag: string
   ) => {
-    cy.testRecordingAddWithTestData(deviceName, details).then((recordingId) => {
+    cy.testUploadRecording(deviceName, details).then((recordingId) => {
       cy.testUserTagRecording(recordingId, 0, tagger, tag);
     });
   }

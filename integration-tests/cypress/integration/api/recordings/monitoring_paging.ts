@@ -75,10 +75,10 @@ describe("Monitoring : pagings", () => {
     cy.apiUserAdd(Bobletta);
     cy.testCreateGroupAndDevices(Bobletta, group, camera1, camera2, camera3);
 
-    cy.testRecordingAddWithTestData(camera1, { time: visitTime });
-    cy.testRecordingAddWithTestData(camera2, { time: visitTime });
-    cy.testRecordingAddWithTestData(camera3, { time: visitTime });
-    cy.testRecordingAddWithTestData(camera1, { time: nextVisitTime });
+    cy.testUploadRecording(camera1, { time: visitTime });
+    cy.testUploadRecording(camera2, { time: visitTime });
+    cy.testUploadRecording(camera3, { time: visitTime });
+    cy.testUploadRecording(camera1, { time: nextVisitTime });
 
     cy.checkMonitoringWithFilter(Bobletta, null, { "page-size": 2, page: 2 }, [
       { start: visitTime },

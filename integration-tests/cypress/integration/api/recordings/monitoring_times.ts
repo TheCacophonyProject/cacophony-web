@@ -27,16 +27,16 @@ describe("Monitoring : times and recording groupings", () => {
   it("recordings exactly 10 mins apart end to start are different visits", () => {
     const camera = "cam-exactly-10-apart";
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { duration: 60 });
-    cy.testRecordingAddWithTestData(camera, { minsLater: 11 });
+    cy.testUploadRecording(camera, { duration: 60 });
+    cy.testUploadRecording(camera, { minsLater: 11 });
     cy.checkMonitoring(Dexter, camera, [{ recordings: 1 }, { recordings: 1 }]);
   });
 
   it("recordings can start more than 10 mins apart so long as gap between one finishing and the next starting is less than 10 mins", () => {
     const camera = "cam-just-close";
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { duration: 61 });
-    cy.testRecordingAddWithTestData(camera, { minsLater: 11 });
+    cy.testUploadRecording(camera, { duration: 61 });
+    cy.testUploadRecording(camera, { minsLater: 11 });
     cy.checkMonitoring(Dexter, camera, [{ recordings: 2 }]);
   });
 
@@ -44,25 +44,25 @@ describe("Monitoring : times and recording groupings", () => {
   //    it("recordings with no tracks are not visits", () => {
   //    const camera = "cam-notracks";
   //    cy.apiDeviceAdd(camera, group);
-  //    cy.testRecordingAddWithTestData(camera, { tracks:[]});
+  //    cy.testUploadRecording(camera, { tracks:[]});
   //    cy.checkMonitoring(Dexter, camera, []);
   //  });
 
   //    it("recordings with no tracks are not included in visits the fall within", () => {
   //    const camera = "cam-notracks-within-visit-timespan";
   //    cy.apiDeviceAdd(camera, group);
-  //    cy.testRecordingAddWithTestData(camera, { });
-  //    cy.testRecordingAddWithTestData(camera, { minsLater: 5, tracks:[]});
-  //    cy.testRecordingAddWithTestData(camera, { minsLater: 10});
+  //    cy.testUploadRecording(camera, { });
+  //    cy.testUploadRecording(camera, { minsLater: 5, tracks:[]});
+  //    cy.testUploadRecording(camera, { minsLater: 10});
   //    cy.checkMonitoring(Dexter, camera, [{ recordings: 2 }]);
   //  });
 
   it("Visits where the first recording is before the start time, but overlap with search period are marked as incomplete", () => {
     const camera = "cam-start-before";
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { time: "20:49", duration: 300 });
-    cy.testRecordingAddWithTestData(camera, { time: "21:02" });
-    cy.testRecordingAddWithTestData(camera, { time: "21:22" });
+    cy.testUploadRecording(camera, { time: "20:49", duration: 300 });
+    cy.testUploadRecording(camera, { time: "21:02" });
+    cy.testUploadRecording(camera, { time: "21:22" });
 
     const filter = {
       from: "21:00",
@@ -77,8 +77,8 @@ describe("Monitoring : times and recording groupings", () => {
   it("Visits where the first recording is just before the search period, but don't overlap with the search period are ignored.", () => {
     const camera = "cam-before-ignore";
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { time: "20:51" });
-    cy.testRecordingAddWithTestData(camera, { time: "21:22" });
+    cy.testUploadRecording(camera, { time: "20:51" });
+    cy.testUploadRecording(camera, { time: "21:22" });
 
     const filter = {
       from: "21:00",
@@ -92,9 +92,9 @@ describe("Monitoring : times and recording groupings", () => {
   it("Visits where the last recording starts on period start time boundary is not included.", () => {
     const camera = "cam-start-boundary-case";
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { time: "20:40" });
-    cy.testRecordingAddWithTestData(camera, { time: "20:50" });
-    cy.testRecordingAddWithTestData(camera, { time: "21:00" });
+    cy.testUploadRecording(camera, { time: "20:40" });
+    cy.testUploadRecording(camera, { time: "20:50" });
+    cy.testUploadRecording(camera, { time: "21:00" });
 
     const filter = {
       from: "21:00",
@@ -106,9 +106,9 @@ describe("Monitoring : times and recording groupings", () => {
   it("Visits where the last recording ends on period end time boundary is included and complete.", () => {
     const camera = "cam-end-boundary-case";
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { time: "20:40" });
-    cy.testRecordingAddWithTestData(camera, { time: "20:50" });
-    cy.testRecordingAddWithTestData(camera, { time: "21:00" });
+    cy.testUploadRecording(camera, { time: "20:40" });
+    cy.testUploadRecording(camera, { time: "20:50" });
+    cy.testUploadRecording(camera, { time: "21:00" });
 
     const filter = {
       until: "21:00",
@@ -122,8 +122,8 @@ describe("Monitoring : times and recording groupings", () => {
   it("Visits which span the end-time but fall withing the collection window are included and marked as complete", () => {
     const camera = "cam-start-justbefore";
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { time: "20:59", duration: 300 });
-    cy.testRecordingAddWithTestData(camera, { time: "21:05" });
+    cy.testUploadRecording(camera, { time: "20:59", duration: 300 });
+    cy.testUploadRecording(camera, { time: "21:05" });
 
     const filter = {
       until: "21:00",
@@ -137,8 +137,8 @@ describe("Monitoring : times and recording groupings", () => {
   it("Visits where the first recording is after the end time are ignored", () => {
     const camera = "cam-start-after";
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { time: "21:01", duration: 300 });
-    cy.testRecordingAddWithTestData(camera, { time: "21:13" });
+    cy.testUploadRecording(camera, { time: "21:01", duration: 300 });
+    cy.testUploadRecording(camera, { time: "21:13" });
 
     const filter = {
       until: "21:00",
@@ -151,9 +151,9 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "justLater";
     // add 12 recordings
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, { time: "20:55", duration: 300 });
+    cy.testUploadRecording(camera, { time: "20:55", duration: 300 });
     for (let i = 0; i < 11; i++) {
-      cy.testRecordingAddWithTestData(camera, { minsLater: 9 });
+      cy.testUploadRecording(camera, { minsLater: 9 });
     }
 
     const filter = {
@@ -170,7 +170,7 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "dateTimes";
     const videoStart = new Date(2021, 1, 20, 21);
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       time: videoStart,
       duration: 15,
     });
@@ -183,11 +183,11 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "dateTimes3";
     const videoStart = new Date(2021, 1, 20, 21);
     cy.apiDeviceAdd(camera, group);
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       time: videoStart,
       duration: 23,
     });
-    cy.testRecordingAddWithTestData(camera, {
+    cy.testUploadRecording(camera, {
       secsLater: 66,
       duration: 41,
     });

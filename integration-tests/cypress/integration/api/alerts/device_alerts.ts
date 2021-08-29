@@ -101,7 +101,7 @@ describe("Devices alerts", () => {
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
-    cy.testRecordingAddWithTestData(
+    cy.testUploadRecording(
       usera.camera,
       { processingState: "FINISHED", tags: ["possum"] },
       null,
@@ -148,7 +148,7 @@ describe("Devices alerts", () => {
     );
 
     //upload a recording tagged as rat and  build an expected event using the returned recording details
-    cy.testRecordingAddWithTestData(
+    cy.testUploadRecording(
       usera.camera,
       { processingState: "FINISHED", tags: ["rat"] },
       null,
@@ -189,7 +189,7 @@ describe("Devices alerts", () => {
     );
 
     //upload a recording tagged as possum against another camera and  build an expected event using the returned recording details
-    cy.testRecordingAddWithTestData(
+    cy.testUploadRecording(
       camera2,
       { processingState: "FINISHED", tags: ["possum"] },
       null,
@@ -229,7 +229,7 @@ describe("Devices alerts", () => {
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
-    cy.testRecordingAddWithTestData(
+    cy.testUploadRecording(
       usera.camera,
       {
         processingState: "FINISHED",
@@ -279,7 +279,7 @@ describe("Devices alerts", () => {
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
-    cy.testRecordingAddWithTestData(
+    cy.testUploadRecording(
       usera.camera,
       {
         processingState: "FINISHED",
@@ -332,7 +332,7 @@ describe("Devices alerts", () => {
     );
 
     //upload a recording tagged as possum
-    cy.testRecordingAddWithTestData(
+    cy.testUploadRecording(
       usera.camera,
       { model: "different", processingState: "FINISHED", tags: ["possum"] },
       null,
@@ -557,7 +557,7 @@ describe("Devices alerts", () => {
     );
 
     //upload a 3rd recording tagged as possum and  build an expected event using the returned recording details
-    cy.testRecordingAddWithTestData(
+    cy.testUploadRecording(
       usera.camera,
       { processingState: "FINISHED", tags: ["possum"] },
       null,
