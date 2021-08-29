@@ -1485,17 +1485,34 @@ const calculateTrackMovement = (track: RawTrack): number => {
   return Math.max(deltaX, deltaY);
 };
 
+const WALLABY_DEVICES = [949, 954, 956, 1176];
+
 // Tags to ignore when checking predictions
-const IGNORE_TAGS = [];
-const MIN_TRACK_FRAMES = 10;
+const IGNORE_TAGS = ["not"];
+
+// This is the minimum length of a track.
+const MIN_TRACK_FRAMES = 3;
 // FIXME(jon): These seem to be used interchangably for prediction.confidence
-const MIN_PREDICTION_CONFIDENCE = 1;
-const MIN_TAG_CONFIDENCE = 1;
+
+// This is the minimum confidence (for an animal rating) a track should have to be considered a possible animal
+const MIN_PREDICTION_CONFIDENCE = 0.4;
+
+// This is the minimum confidence a track should have in order to tag as animal
+const MIN_TAG_CONFIDENCE = 0.8;
+
 const MIN_TRACK_MOVEMENT = 50;
-const MIN_TAG_CLARITY = 1;
-const MIN_TAG_CLARITY_SECONDARY = 1;
-const MAX_TAG_NOVELTY = 1;
+
+// This is the minimum difference in confidence between next choice a track should have in order to tag it as the chosen animal
+const MIN_TAG_CLARITY = 0.2;
+
+// If the same animal has clearly been identified in the video then a reduced clarity is acceptable.
+const MIN_TAG_CLARITY_SECONDARY = 0.05;
+
+// FIXME(jon): This description seems wrong
+// This is the minimum confidence a track should have in order to tag it as the chosen animal
+const MAX_TAG_NOVELTY = 0.7;
 const DEFAULT_CONFIDENCE = 0.85;
+
 const isSignificantTrack = (track: RawTrack, prediction: TrackClassification): boolean => {
   if (track.num_frames < MIN_TRACK_FRAMES) {
     track.message = "Short track";
