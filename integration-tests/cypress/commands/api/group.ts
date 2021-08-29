@@ -445,14 +445,14 @@ Cypress.Commands.add(
       userName,
       statusCode
     ).then((response) => {
-      if(additionalChecks["warnings"]) {
-         let warnings=response.body.warnings;
-         let expectedWarnings=additionalChecks["warnings"];
-         expect(warnings).to.exist;
-         expectedWarnings.forEach(function(warning:string) {
-           expect(warnings, 'Expect warning to be present').to.contain(warning);
-         });
-      }; 
+      if (additionalChecks["warnings"]) {
+        const warnings = response.body.warnings;
+        const expectedWarnings = additionalChecks["warnings"];
+        expect(warnings).to.exist;
+        expectedWarnings.forEach(function (warning: string) {
+          expect(warnings, "Expect warning to be present").to.contain(warning);
+        });
+      }
     });
   }
 );

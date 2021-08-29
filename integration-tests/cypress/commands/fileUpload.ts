@@ -38,7 +38,8 @@ export function uploadFile(
   fileName: string,
   fileType: string,
   data: any,
-  waitOn: string
+  waitOn: string,
+  statusCode: number = 200
 ): Cypress.Chainable<Interception> {
   const jwt = getCreds(credName).jwt;
 
@@ -53,26 +54,38 @@ export function uploadFile(
     formData.set("data", JSON.stringify(data));
     // Perform the request
 
-    return sendMultipartMessage(url, jwt, formData, waitOn, function (xhr) {
-      Cypress.log({
-        name: "Upload debug",
-        displayName: "(upload)",
-        message: url,
-        consoleProps: () => {
-          return {
-            fileName,
-            fileType,
-            uploader: credName,
-            data,
-            response: xhr.response,
-          };
-        },
-      });
+    return sendMultipartMessage(
+      url,
+      jwt,
+      formData,
+      waitOn,
+      function (xhr: any) {
+        Cypress.log({
+          name: "Upload debug",
+          displayName: "(upload)",
+          message: url,
+          consoleProps: () => {
+            return {
+              fileName,
+              fileType,
+              uploader: credName,
+              data,
+              response: xhr.response,
+            };
+          },
+        });
 
-      // Don't want the expect statement to show in the cypress UI unless it fails.
-      if (xhr.status != 200) {
-        expect(xhr.status, "Check response from uploading file").to.eq(200);
+        if (statusCode === 200) {
+          if (xhr.status != 200) {
+            expect(xhr.status, "Check response from uploading file").to.eq(200);
+          }
+        } else {
+          expect(
+            xhr.status,
+            `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`
+          ).to.equal(statusCode);
+        }
       }
-    });
+    );
   });
 }

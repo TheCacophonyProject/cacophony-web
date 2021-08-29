@@ -13,17 +13,17 @@ describe("Visits : times and recording groupings", () => {
   it("recordings less than 10mins apart are considered a single visit", () => {
     const camera = "closeRecordings";
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, {});
-    cy.uploadRecording(camera, { minsLater: 9 });
-    cy.uploadRecording(camera, { minsLater: 9 });
+    cy.testRecordingAddWithTestData(camera, {});
+    cy.testRecordingAddWithTestData(camera, { minsLater: 9 });
+    cy.testRecordingAddWithTestData(camera, { minsLater: 9 });
     cy.checkVisits(Dee, camera, [{ recordings: 3 }]);
   });
 
   it("recordings more 10mins apart are different visits", () => {
     const camera = "apartRecordings";
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, {});
-    cy.uploadRecording(camera, { minsLater: 11 });
+    cy.testRecordingAddWithTestData(camera, {});
+    cy.testRecordingAddWithTestData(camera, { minsLater: 11 });
     cy.checkVisits(Dee, camera, [{ recordings: 1 }, { recordings: 1 }]);
   });
 
@@ -31,7 +31,7 @@ describe("Visits : times and recording groupings", () => {
     const camera = "dateTimes";
     const videoStart = new Date(2021, 1, 20, 21);
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, {
+    cy.testRecordingAddWithTestData(camera, {
       time: videoStart,
       tracks: [
         {
@@ -49,7 +49,7 @@ describe("Visits : times and recording groupings", () => {
     const camera = "dateTimes2";
     const videoStart = new Date(2021, 1, 20, 21);
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, {
+    cy.testRecordingAddWithTestData(camera, {
       time: videoStart,
       tracks: [
         {
@@ -71,7 +71,7 @@ describe("Visits : times and recording groupings", () => {
     const camera = "dateTimes3";
     const videoStart = new Date(2021, 1, 20, 21);
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, {
+    cy.testRecordingAddWithTestData(camera, {
       time: videoStart,
       tracks: [
         {
@@ -80,7 +80,7 @@ describe("Visits : times and recording groupings", () => {
         },
       ],
     });
-    cy.uploadRecording(camera, {
+    cy.testRecordingAddWithTestData(camera, {
       secsLater: 66,
       tracks: [
         {

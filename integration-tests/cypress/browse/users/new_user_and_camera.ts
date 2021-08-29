@@ -29,7 +29,7 @@ context("Users can see footage from their cameras", () => {
 
   it("A camera can trigger and upload a new recording", () => {
     cy.apiSignInAs(username);
-    cy.uploadRecording(camera, {});
+    cy.apiRecordingAdd(camera, {});
     // for video to be uploaded
     cy.wait(3 * 1000);
     cy.testCheckDeviceHasRecordings(username, camera, 1);

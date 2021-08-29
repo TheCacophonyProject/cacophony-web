@@ -235,12 +235,45 @@ export interface ApiGroupUserRelation {
  * RECORDING definitions
  ********************************************************************/
 
-export interface ApiThermalRecordingInfo {
+// from api/v1/recordings (post)
+export interface ApiRecordingData {
+  type: string;
+  fileHash: string;
+  duration: number;
+  recordingDateTime: string;
+  location: ApiLocation;
+  version: string;
+  batteryCharging: boolean;
+  batteryLevel: number;
+  airplaneModeOn: boolean;
+  additionalMetadata: ApiRecordingDataMetadata;
+  comment: string;
+  processingState: string;
+}
+
+// from api/v1/recordings (post)
+export interface ApiRecordingDataMetadata {
+  tracks: ApiTrackSet;
+  algorythm?: string;
+}
+
+//from api/v1/recordings (post)
+export interface ApiTrackSet {
+  positions: number[][];
+  start_s: number;
+  end_s: number;
+  confident_tag?: string;
+  confidence: number;
+  all_class_confidences: any;
+}
+
+//Simplified test version of above structures for generic recordings
+export interface TestThermalRecordingInfo {
   processingState?: string;
   time?: Date | string;
   duration?: number;
   model?: string;
-  tracks?: ApiTrackInfo[];
+  tracks?: TestTrackInfo[];
   noTracks?: boolean; // by default there will normally be one track, set to true if you don't want tracks
   minsLater?: number; // minutes that later that the recording is taken
   secsLater?: number; // minutes that later that the recording is taken
@@ -249,7 +282,8 @@ export interface ApiThermalRecordingInfo {
   lng?: number; // Longitude position for the recording
 }
 
-export interface ApiTrackInfo {
+//Simplified test version of above structures for generic recordings
+export interface TestTrackInfo {
   start_s?: number;
   end_s?: number;
   tag?: string;
@@ -263,14 +297,17 @@ export interface ApiStationData {
   lng: number;
 }
 
+// from api/v1/groups/<>/stations (get), apiRecordings (post)
+export interface ApiLocation {
+  type: string;
+  coordinates: [number, number];
+}
+
 // from api/v1/groups/<>/stations (get)
 export interface ApiStationDataReturned {
   id: number;
   name: string;
-  location: {
-    type: string;
-    coordinates: [number, number];
-  };
+  location: ApiLocation;
   lastUpdatedById: number;
   createdAt: string;
   retiredAt: string;

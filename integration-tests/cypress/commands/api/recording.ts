@@ -12,15 +12,53 @@ import {
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { convertToDate } from "../server";
-import { ApiThermalRecordingInfo, ApiTrackInfo } from "../types";
+import {
+  TestThermalRecordingInfo,
+  TestTrackInfo,
+  ApiRecordingData,
+} from "../types";
 
 let lastUsedTime = DEFAULT_DATE;
 
 Cypress.Commands.add(
-  "uploadRecording",
+  "apiRecordingAdd",
+  (
+    recordingName: string,
+    deviceName: string,
+    data: ApiRecordingData,
+    fileName: string,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(
+      `Upload recording ${recordingName}  to '${deviceName}'`,
+      { camera: deviceName, requestData: data }
+    );
+
+    const url = v1ApiPath("recordings");
+
+    uploadFile(
+      url,
+      deviceName,
+      fileName,
+      data["type"],
+      data,
+      "@addRecording",
+      statusCode
+    ).then((x) => {
+      cy.wrap(x.response.body.recordingId);
+      if (recordingName !== null) {
+        saveIdOnly(recordingName, x.response.body.recordingId);
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "testRecordingAddWithTestData",
   (
     deviceName: string,
-    details: ApiThermalRecordingInfo,
+    details: TestThermalRecordingInfo,
     log: boolean = true,
     recordingName: string = "recording1"
   ) => {
@@ -48,12 +86,12 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "uploadRecordingOnBehalfUsingGroup",
+  "apiRecordingAddOnBehalfUsingGroup",
   (
     deviceName: string,
     groupName: string,
     userName: string,
-    details: ApiThermalRecordingInfo,
+    details: TestThermalRecordingInfo,
     log: boolean = true,
     recordingName: string = "recording1"
   ) => {
@@ -88,11 +126,11 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "uploadRecordingOnBehalfUsingDevice",
+  "apiRecordingAddOnBehalfUsingDevice",
   (
     deviceName: string,
     userName: string,
-    details: ApiThermalRecordingInfo,
+    details: TestThermalRecordingInfo,
     log: boolean = true,
     recordingName: string = "recording1"
   ) => {
@@ -122,7 +160,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "uploadRecordingsAtTimes",
+  "testAddRecordingsAtTimes",
   (deviceName: string, times: string[]) => {
     logTestDescription(
       `Upload recordings   at ${prettyLog(times)}  to '${deviceName}'`,
@@ -130,13 +168,13 @@ Cypress.Commands.add(
     );
 
     times.forEach((time) => {
-      cy.uploadRecording(deviceName, { time }, false);
+      cy.testRecordingAddWithTestData(deviceName, { time }, false);
     });
   }
 );
 
 Cypress.Commands.add(
-  "userTagRecording",
+  "testUserTagRecording",
   (recordingId: number, trackIndex: number, tagger: string, tag: string) => {
     logTestDescription(`User '${tagger}' tags recording as '${tag}'`, {
       recordingId,
@@ -170,20 +208,20 @@ Cypress.Commands.add(
   "thenUserTagAs",
   { prevSubject: true },
   (subject, tagger: string, tag: string) => {
-    cy.userTagRecording(subject, 0, tagger, tag);
+    cy.testUserTagRecording(subject, 0, tagger, tag);
   }
 );
 
 Cypress.Commands.add(
-  "uploadRecordingThenUserTag",
+  "testAddRecordingThenUserTag",
   (
     deviceName: string,
-    details: ApiThermalRecordingInfo,
+    details: TestThermalRecordingInfo,
     tagger: string,
     tag: string
   ) => {
-    cy.uploadRecording(deviceName, details).then((recordingId) => {
-      cy.userTagRecording(recordingId, 0, tagger, tag);
+    cy.testRecordingAddWithTestData(deviceName, details).then((recordingId) => {
+      cy.testUserTagRecording(recordingId, 0, tagger, tag);
     });
   }
 );
@@ -222,7 +260,7 @@ interface ThermalRecordingData {
 }
 
 function makeRecordingDataFromDetails(
-  details: ApiThermalRecordingInfo
+  details: TestThermalRecordingInfo
 ): ThermalRecordingData {
   const data: ThermalRecordingData = {
     type: "thermalRaw",
@@ -251,7 +289,7 @@ function makeRecordingDataFromDetails(
   return data;
 }
 
-function getDateForRecordings(details: ApiThermalRecordingInfo): Date {
+function getDateForRecordings(details: TestThermalRecordingInfo): Date {
   let date = lastUsedTime;
 
   if (details.time) {

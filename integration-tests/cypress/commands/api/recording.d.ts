@@ -1,9 +1,10 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-/// <reference types="../types" />
 
 declare namespace Cypress {
-  type ApiThermalRecordingInfo = import("../types").ApiThermalRecordingInfo;
+  type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
+  type ApiRecordingData = import("../types").ApiRecordingData;
+  type ApiRecordingDataMetadata = import("../types").ApiRecordingDataMetadata;
   type Interception = import("cypress/types/net-stubbing").Interception;
   type RecordingId = number;
 
@@ -12,10 +13,10 @@ declare namespace Cypress {
      * upload a single recording to for a particular camera using deviceId and user credentials
      * Optionally, save the id against provided recordingName
      */
-    uploadRecordingOnBehalfUsingDevice(
+    apiRecordingAddOnBehalfUsingDevice(
       deviceName: string,
       userName: string,
-      details: ApiThermalRecordingInfo,
+      details: TestThermalRecordingInfo,
       log?: boolean,
       recordingName?: string
     ): Cypress.Chainable<RecordingId>;
@@ -24,42 +25,59 @@ declare namespace Cypress {
      * upload a single recording to for a particular camera using devicename and groupname and user credentials
      * Optionally, save the id against provided recordingName
      */
-    uploadRecordingOnBehalfUsingGroup(
+    apiRecordingAddOnBehalfUsingGroup(
       deviceName: string,
       groupName: string,
       userName: string,
-      details: ApiThermalRecordingInfo,
-      log?: boolean,
-      recordingName?: string
-    ): Cypress.Chainable<RecordingId>;
-    /**
-     * upload a single recording to for a particular camera
-     * Optionally, save the id against provided recordingName
-     */
-    uploadRecording(
-      deviceName: string,
-      details: ApiThermalRecordingInfo,
+      details: TestThermalRecordingInfo,
       log?: boolean,
       recordingName?: string
     ): Cypress.Chainable<RecordingId>;
 
-    uploadRecordingThenUserTag(
+    /**
+     * Upload a single recording using device credentials
+     * Save the provided ID against the provided recording name
+     * Optionally, check for a non-200 return statusCode
+     */
+    apiRecordingAdd(
+      recordingName: string,
       deviceName: string,
-      details: ApiThermalRecordingInfo,
+      data: ApiRecordingData,
+      fileName: string,
+      metadata: ApiRecordingDataMetadata,
+      statusCode: number,
+      additionalChecks: any
+    ): any;
+
+    /**
+     * upload a single recording to for a particular camera using pre-rolled test metadata
+     * Optionally, save the id against provided recordingName
+     */
+    testRecordingAddWithTestData(
+      deviceName: string,
+      details: TestThermalRecordingInfo,
+      log?: boolean,
+      recordingName?: string,
+      statusCode?: number
+    ): Cypress.Chainable<RecordingId>;
+
+    testAddRecordingThenUserTag(
+      deviceName: string,
+      details: TestThermalRecordingInfo,
       tagger: string,
       tag: string
     ): any;
 
-    userTagRecording(
+    testUserTagRecording(
       recordingId: number,
       trackIndex: number,
       tagger: string,
       tag: string
     ): any;
 
-    uploadRecordingsAtTimes(deviceName: string, times: string[]): any;
+    testAddRecordingsAtTimes(deviceName: string, times: string[]): any;
 
-    // to be run straight after an uploadRecording
+    // to be run straight after an apiRecordingAdd
     thenUserTagAs(tagger: string, tag: string): any;
 
     /**

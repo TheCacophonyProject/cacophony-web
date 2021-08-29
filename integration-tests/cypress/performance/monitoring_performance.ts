@@ -14,9 +14,9 @@ describe("Monitoring : times and recording groupings", () => {
     const visits = [];
     // add 1000 recordings
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, { time: "20:55", duration: 10 });
+    cy.apiRecordingAdd(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < max_page_length * 10 - 1; i++) {
-      cy.uploadRecording(camera, { minsLater: 11 });
+      cy.apiRecordingAdd(camera, { minsLater: 11 });
     }
 
     for (let i = 0; i < max_page_length; i++) {
@@ -46,9 +46,9 @@ describe("Monitoring : times and recording groupings", () => {
     const visits = [];
     // add 1 page plus 1 worth of recordings
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, { time: "20:55", duration: 10 });
+    cy.apiRecordingAdd(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < max_page_length; i++) {
-      cy.uploadRecording(camera, { minsLater: 11 });
+      cy.apiRecordingAdd(camera, { minsLater: 11 });
     }
 
     // expected visits on 1st page is array of max_page_length of visits
@@ -70,9 +70,9 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "recordings-per-visit";
     // add 1000 recordings
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, { time: "20:55", duration: 10 });
+    cy.apiRecordingAdd(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < 999; i++) {
-      cy.uploadRecording(camera, { minsLater: 9 });
+      cy.apiRecordingAdd(camera, { minsLater: 9 });
     }
 
     const visits = [{ recordings: 1000 }];
@@ -89,9 +89,9 @@ describe("Monitoring : times and recording groupings", () => {
 
     // add 1000 recordings
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecording(camera, { time: "20:55", duration: 10 });
+    cy.apiRecordingAdd(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < 999; i++) {
-      cy.uploadRecording(camera, { minsLater: 11 });
+      cy.apiRecordingAdd(camera, { minsLater: 11 });
     }
 
     const visits = [{ recordings: 1 }];

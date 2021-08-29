@@ -23,10 +23,22 @@ describe("Monitoring : filters", () => {
 
   beforeEach(() => {
     if (!recordingsUploaded) {
-      cy.uploadRecording(cameraRabbits, { time: date1, tags: ["rabbit"] });
-      cy.uploadRecording(cameraHedgehogs, { time: date2, tags: ["hedgehog"] });
-      cy.uploadRecording(cameraHedgehogs, { time: date3, tags: ["hedgehog"] });
-      cy.uploadRecording(cameraRabbits, { time: date4, tags: ["rabbit"] });
+      cy.testRecordingAddWithTestData(cameraRabbits, {
+        time: date1,
+        tags: ["rabbit"],
+      });
+      cy.testRecordingAddWithTestData(cameraHedgehogs, {
+        time: date2,
+        tags: ["hedgehog"],
+      });
+      cy.testRecordingAddWithTestData(cameraHedgehogs, {
+        time: date3,
+        tags: ["hedgehog"],
+      });
+      cy.testRecordingAddWithTestData(cameraRabbits, {
+        time: date4,
+        tags: ["rabbit"],
+      });
     }
   });
 

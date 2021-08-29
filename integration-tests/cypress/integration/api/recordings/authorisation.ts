@@ -26,7 +26,7 @@ describe("Recording authorizations", () => {
 
   beforeEach(() => {
     if (!recordingUploaded) {
-      cy.uploadRecording(camera, { tags: ["possum"] });
+      cy.testRecordingAddWithTestData(camera, { tags: ["possum"] });
       recordingUploaded = true;
     }
   });

@@ -13,7 +13,7 @@ describe("Monitoring : pagings", () => {
     const camera = "basic";
 
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecordingsAtTimes(camera, [
+    cy.testAddRecordingsAtTimes(camera, [
       "21:03",
       "21:23",
       "21:43",
@@ -51,8 +51,8 @@ describe("Monitoring : pagings", () => {
     const camera2 = "cam-2";
     cy.apiDeviceAdd(camera1, group);
     cy.apiDeviceAdd(camera2, group);
-    cy.uploadRecordingsAtTimes(camera1, ["21:03", "21:14", "21:25"]);
-    cy.uploadRecordingsAtTimes(camera2, ["21:13", "21:18", "21:27"]); // all one visit
+    cy.testAddRecordingsAtTimes(camera1, ["21:03", "21:14", "21:25"]);
+    cy.testAddRecordingsAtTimes(camera2, ["21:13", "21:18", "21:27"]); // all one visit
 
     cy.checkMonitoringWithFilter(Henry, null, { "page-size": 3, page: 1 }, [
       { recordings: 3, start: "21:13" },
@@ -75,10 +75,10 @@ describe("Monitoring : pagings", () => {
     cy.apiUserAdd(Bobletta);
     cy.testCreateGroupAndDevices(Bobletta, group, camera1, camera2, camera3);
 
-    cy.uploadRecording(camera1, { time: visitTime });
-    cy.uploadRecording(camera2, { time: visitTime });
-    cy.uploadRecording(camera3, { time: visitTime });
-    cy.uploadRecording(camera1, { time: nextVisitTime });
+    cy.testRecordingAddWithTestData(camera1, { time: visitTime });
+    cy.testRecordingAddWithTestData(camera2, { time: visitTime });
+    cy.testRecordingAddWithTestData(camera3, { time: visitTime });
+    cy.testRecordingAddWithTestData(camera1, { time: nextVisitTime });
 
     cy.checkMonitoringWithFilter(Bobletta, null, { "page-size": 2, page: 2 }, [
       { start: visitTime },
@@ -93,7 +93,7 @@ describe("Monitoring : pagings", () => {
   it("visits that start before search period but cross into search period are only shown on the last page", () => {
     const camera = "close recordings";
     cy.apiDeviceAdd(camera, group);
-    cy.uploadRecordingsAtTimes(camera, [
+    cy.testAddRecordingsAtTimes(camera, [
       "21:03",
       "21:13",
       "21:40",

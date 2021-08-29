@@ -106,7 +106,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
         expectedStation1a["retiredAt"] = null;
         expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
-        cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupA", [expectedStation1a], EXCLUDE_CREATED_UPDATED_ID);
+        cy.apiGroupsStationsCheck(
+          "gsGroupAdmin",
+          "gsGroupA",
+          [expectedStation1a],
+          EXCLUDE_CREATED_UPDATED_ID
+        );
       }
     );
 
@@ -117,7 +122,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
         expectedStation1b["retiredAt"] = null;
         expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
-        cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupA", [expectedStation1b], EXCLUDE_CREATED_UPDATED_ID);
+        cy.apiGroupsStationsCheck(
+          "gsGroupAdmin",
+          "gsGroupA",
+          [expectedStation1b],
+          EXCLUDE_CREATED_UPDATED_ID
+        );
       }
     );
 
@@ -126,7 +136,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
       expectedStation1b["GroupId"] = getCreds("gsGroupA").id;
       expectedStation1b["retiredAt"] = NOT_NULL;
       expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-      cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupA", [], EXCLUDE_CREATED_UPDATED_ID);
+      cy.apiGroupsStationsCheck(
+        "gsGroupAdmin",
+        "gsGroupA",
+        [],
+        EXCLUDE_CREATED_UPDATED_ID
+      );
     });
   });
 
@@ -139,24 +154,62 @@ describe("Groups - add/update/query/remove stations from group", () => {
         expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         cy.log("Check member can view station");
-        cy.apiGroupsStationsCheck( "gsGroupMember", "gsGroup", [expectedStation1a], EXCLUDE_CREATED_UPDATED_ID);
+        cy.apiGroupsStationsCheck(
+          "gsGroupMember",
+          "gsGroup",
+          [expectedStation1a],
+          EXCLUDE_CREATED_UPDATED_ID
+        );
 
         cy.log("Check member cannot add a station");
-        cy.apiGroupStationsUpdate( "gsGroupMember", "gsGroup", [station2a], undefined, HTTP_Forbidden).then(() => {
+        cy.apiGroupStationsUpdate(
+          "gsGroupMember",
+          "gsGroup",
+          [station2a],
+          undefined,
+          HTTP_Forbidden
+        ).then(() => {
           //station not added
-          cy.apiGroupsStationsCheck( "gsGroupMember", "gsGroup", [expectedStation1a], EXCLUDE_CREATED_UPDATED_ID);
+          cy.apiGroupsStationsCheck(
+            "gsGroupMember",
+            "gsGroup",
+            [expectedStation1a],
+            EXCLUDE_CREATED_UPDATED_ID
+          );
         });
 
         cy.log("Check member cannot update a station");
-        cy.apiGroupStationsUpdate( "gsGroupMember", "gsGroup", [station1b], undefined, HTTP_Forbidden).then(() => {
+        cy.apiGroupStationsUpdate(
+          "gsGroupMember",
+          "gsGroup",
+          [station1b],
+          undefined,
+          HTTP_Forbidden
+        ).then(() => {
           //station not added
-          cy.apiGroupsStationsCheck( "gsGroupMember", "gsGroup", [expectedStation1a], EXCLUDE_CREATED_UPDATED_ID);
+          cy.apiGroupsStationsCheck(
+            "gsGroupMember",
+            "gsGroup",
+            [expectedStation1a],
+            EXCLUDE_CREATED_UPDATED_ID
+          );
         });
 
         cy.log("Check member cannot retire a station");
-        cy.apiGroupStationsUpdate( "gsGroupMember", "gsGroup", [], undefined, HTTP_Forbidden).then(() => {
+        cy.apiGroupStationsUpdate(
+          "gsGroupMember",
+          "gsGroup",
+          [],
+          undefined,
+          HTTP_Forbidden
+        ).then(() => {
           //station not retired
-          cy.apiGroupsStationsCheck( "gsGroupMember", "gsGroup", [expectedStation1a], EXCLUDE_CREATED_UPDATED_ID);
+          cy.apiGroupsStationsCheck(
+            "gsGroupMember",
+            "gsGroup",
+            [expectedStation1a],
+            EXCLUDE_CREATED_UPDATED_ID
+          );
         });
       }
     );
@@ -170,24 +223,63 @@ describe("Groups - add/update/query/remove stations from group", () => {
         expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         cy.log("Check non-member cannot view station");
-        cy.apiGroupsStationsCheck( "gsTestUser", "gsGroup", [], null, HTTP_Forbidden);
+        cy.apiGroupsStationsCheck(
+          "gsTestUser",
+          "gsGroup",
+          [],
+          null,
+          HTTP_Forbidden
+        );
 
         cy.log("Check non-member cannot add a station");
-        cy.apiGroupStationsUpdate( "gsTestUser", "gsGroup", [station2a], undefined, HTTP_Forbidden).then(() => {
+        cy.apiGroupStationsUpdate(
+          "gsTestUser",
+          "gsGroup",
+          [station2a],
+          undefined,
+          HTTP_Forbidden
+        ).then(() => {
           //station not added
-          cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroup", [expectedStation1a], EXCLUDE_CREATED_UPDATED_ID);
+          cy.apiGroupsStationsCheck(
+            "gsGroupAdmin",
+            "gsGroup",
+            [expectedStation1a],
+            EXCLUDE_CREATED_UPDATED_ID
+          );
         });
 
         cy.log("Check non-member cannot update a station");
-        cy.apiGroupStationsUpdate( "gsTestUser", "gsGroup", [station1b], undefined, HTTP_Forbidden).then(() => {
+        cy.apiGroupStationsUpdate(
+          "gsTestUser",
+          "gsGroup",
+          [station1b],
+          undefined,
+          HTTP_Forbidden
+        ).then(() => {
           //station not added
-          cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroup", [expectedStation1a], EXCLUDE_CREATED_UPDATED_ID);
+          cy.apiGroupsStationsCheck(
+            "gsGroupAdmin",
+            "gsGroup",
+            [expectedStation1a],
+            EXCLUDE_CREATED_UPDATED_ID
+          );
         });
 
         cy.log("Check non-member cannot retire a station");
-        cy.apiGroupStationsUpdate( "gsTestUser", "gsGroup", [], undefined, HTTP_Forbidden).then(() => {
+        cy.apiGroupStationsUpdate(
+          "gsTestUser",
+          "gsGroup",
+          [],
+          undefined,
+          HTTP_Forbidden
+        ).then(() => {
           //station not retired
-          cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroup", [expectedStation1a], EXCLUDE_CREATED_UPDATED_ID);
+          cy.apiGroupsStationsCheck(
+            "gsGroupAdmin",
+            "gsGroup",
+            [expectedStation1a],
+            EXCLUDE_CREATED_UPDATED_ID
+          );
         });
       }
     );
@@ -197,7 +289,10 @@ describe("Groups - add/update/query/remove stations from group", () => {
     cy.apiGroupAdd("gsGroupAdmin", "gsGroupD");
 
     cy.log("Add two stations");
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupD", [ station1a, station2a, ]).then(() => {
+    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupD", [
+      station1a,
+      station2a,
+    ]).then(() => {
       expectedStation1a["GroupId"] = getCreds("gsGroupD").id;
       expectedStation1a["retiredAt"] = null;
       expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
@@ -206,12 +301,20 @@ describe("Groups - add/update/query/remove stations from group", () => {
       expectedStation2a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //stations added
-      cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupD", [expectedStation1a, expectedStation2a], EXCLUDE_CREATED_UPDATED_ID);
+      cy.apiGroupsStationsCheck(
+        "gsGroupAdmin",
+        "gsGroupD",
+        [expectedStation1a, expectedStation2a],
+        EXCLUDE_CREATED_UPDATED_ID
+      );
     });
 
     //TODO Fails =: Issue 43
     cy.log("update two stations");
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupD", [ station1b, station2b, ]).then(() => {
+    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupD", [
+      station1b,
+      station2b,
+    ]).then(() => {
       expectedStation1b["GroupId"] = getCreds("gsGroupD").id;
       expectedStation1b["retiredAt"] = null;
       expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
@@ -220,7 +323,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //stations updated
-      cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupD", [expectedStation1b, expectedStation2b], EXCLUDE_CREATED_UPDATED_ID);
+      cy.apiGroupsStationsCheck(
+        "gsGroupAdmin",
+        "gsGroupD",
+        [expectedStation1b, expectedStation2b],
+        EXCLUDE_CREATED_UPDATED_ID
+      );
     });
 
     //TODO: FAILS: Issue 44
@@ -234,7 +342,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //stations retired
-      cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupD", [expectedStation1b, expectedStation2b], EXCLUDE_CREATED_UPDATED_ID);
+      cy.apiGroupsStationsCheck(
+        "gsGroupAdmin",
+        "gsGroupD",
+        [expectedStation1b, expectedStation2b],
+        EXCLUDE_CREATED_UPDATED_ID
+      );
     });
   });
 
@@ -246,7 +359,10 @@ describe("Groups - add/update/query/remove stations from group", () => {
     //cy.apiGroupStationsUpdate("gsGroupAdmin","gsGroupE", [station1a]);
     cy.log("Add and update station at same time");
 
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupE", [ station1b, station2b, ]).then(() => {
+    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupE", [
+      station1b,
+      station2b,
+    ]).then(() => {
       expectedStation1b["GroupId"] = getCreds("gsGroupE").id;
       expectedStation1b["retiredAt"] = null;
       expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
@@ -255,7 +371,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //stations updated and added
-      cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupE", [expectedStation1b, expectedStation2b], EXCLUDE_CREATED_UPDATED_ID);
+      cy.apiGroupsStationsCheck(
+        "gsGroupAdmin",
+        "gsGroupE",
+        [expectedStation1b, expectedStation2b],
+        EXCLUDE_CREATED_UPDATED_ID
+      );
     });
 
     cy.log("retire a station");
@@ -269,7 +390,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
         expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         //stations deleted
-        cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupE", [expectedStation1b, expectedStation2b], EXCLUDE_CREATED_UPDATED_ID);
+        cy.apiGroupsStationsCheck(
+          "gsGroupAdmin",
+          "gsGroupE",
+          [expectedStation1b, expectedStation2b],
+          EXCLUDE_CREATED_UPDATED_ID
+        );
       }
     );
 
@@ -287,76 +413,173 @@ describe("Groups - add/update/query/remove stations from group", () => {
         expectedStation3a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         //stations deleted and added
-        cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupE", [expectedStation1b, expectedStation2b, expectedStation3a], EXCLUDE_CREATED_UPDATED_ID);
+        cy.apiGroupsStationsCheck(
+          "gsGroupAdmin",
+          "gsGroupE",
+          [expectedStation1b, expectedStation2b, expectedStation3a],
+          EXCLUDE_CREATED_UPDATED_ID
+        );
       }
     );
   });
 
   it("Invalid group handled correctly", () => {
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "ThisGroupDoesNotExist", [station3a], undefined, HTTP_Unprocessable);
-    cy.apiGroupsStationsCheck( "gsGroupAdmin", "ThisGroupDoesNotExist", [], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "ThisGroupDoesNotExist",
+      [station3a],
+      undefined,
+      HTTP_Unprocessable
+    );
+    cy.apiGroupsStationsCheck(
+      "gsGroupAdmin",
+      "ThisGroupDoesNotExist",
+      [],
+      undefined,
+      HTTP_Unprocessable
+    );
   });
 
   it("Invalid stations parameters handled correctly", () => {
     let badStation: ApiStationData = { name: "hello", lat: null, lng: 172 };
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_Unprocessable
+    );
 
     badStation = { name: "hello", lat: "string", lng: 172 };
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_Unprocessable
+    );
 
     badStation = { name: "hello", lng: 172 };
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_Unprocessable
+    );
 
     badStation = { name: "hello", lat: -45, lng: null };
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_Unprocessable
+    );
 
     badStation = { name: "hello", lat: -45 };
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_Unprocessable
+    );
 
     badStation = { name: "hello", lat: -45, lng: "string" };
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_Unprocessable
+    );
 
     badStation = { name: null, lat: -45, lng: 172 };
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_Unprocessable
+    );
 
     badStation = { lat: -45, lng: "string" };
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_Unprocessable
+    );
 
     badStation = { name: "hello", lat: -45, lng: 172, randomParameter: true };
     //unexpected parameters ignored
     //cy.apiGroupStationsUpdate("gsGroupAdmin","gsGroup",[badStation],undefined,HTTP_Unprocessable);
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [badStation], undefined, HTTP_OK200);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [badStation],
+      undefined,
+      HTTP_OK200
+    );
 
     //but a valid one still works
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [station1a], undefined, HTTP_OK200);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [station1a],
+      undefined,
+      HTTP_OK200
+    );
   });
 
   it("Stations too close rejected", () => {
-   cy.apiGroupAdd("gsGroupAdmin", "gsGroupG");
+    cy.apiGroupAdd("gsGroupAdmin", "gsGroupG");
     cy.log("Add a station");
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupG", [ station1a ]);
+    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupG", [station1a]);
 
     cy.log("Attempt to add another too close");
-    let badStation = { name: "tooClose", lat: -45.100001, lng: 172.100001 };
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupG", [ station1a, badStation ],undefined,HTTP_OK200,{warnings: ["Stations too close together"]});
+    const badStation = { name: "tooClose", lat: -45.100001, lng: 172.100001 };
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroupG",
+      [station1a, badStation],
+      undefined,
+      HTTP_OK200,
+      { warnings: ["Stations too close together"] }
+    );
 
     cy.log("Attempt to add two too close at same time");
-    let badStation1 = { name: "tooClose", lat: -45.500001, lng: 172.100001 };
-    let badStation2 = { name: "tooClose", lat: -45.500002, lng: 172.100001 };
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupG", [ station1a, badStation1, badStation2], undefined, HTTP_OK200, {warnings: ["Stations too close together"] });
+    const badStation1 = { name: "tooClose", lat: -45.500001, lng: 172.100001 };
+    const badStation2 = { name: "tooClose", lat: -45.500002, lng: 172.100001 };
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroupG",
+      [station1a, badStation1, badStation2],
+      undefined,
+      HTTP_OK200,
+      { warnings: ["Stations too close together"] }
+    );
   });
 
   it("Add new station with same name as retired station - both kept", () => {
-   cy.apiGroupAdd("gsGroupAdmin", "gsGroupF");
-  
+    cy.apiGroupAdd("gsGroupAdmin", "gsGroupF");
+
     cy.log("Add two stations");
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupF", [ station1a, station2a ]);
-  
+    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupF", [
+      station1a,
+      station2a,
+    ]);
+
     cy.log("retire station");
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupF", [ station1a ]);
+    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupF", [station1a]);
 
     cy.log("Re-add new station");
-    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupF", [ station1a, station2b ]).then(() => {
+    cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupF", [
+      station1a,
+      station2b,
+    ]).then(() => {
       expectedStation1a["GroupId"] = getCreds("gsGroupF").id;
       expectedStation1a["retiredAt"] = null;
       expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
@@ -367,25 +590,53 @@ describe("Groups - add/update/query/remove stations from group", () => {
       expectedStation2b["retiredAt"] = null;
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
-      //check both retired and new station shows 
-      cy.apiGroupsStationsCheck( "gsGroupAdmin", "gsGroupF", [expectedStation1a, expectedStation2a, expectedStation2b], EXCLUDE_CREATED_UPDATED_ID);
-      
+      //check both retired and new station shows
+      cy.apiGroupsStationsCheck(
+        "gsGroupAdmin",
+        "gsGroupF",
+        [expectedStation1a, expectedStation2a, expectedStation2b],
+        EXCLUDE_CREATED_UPDATED_ID
+      );
     });
   });
 
   it("From date validated correctly", () => {
     const timestamp = new Date().toISOString();
     cy.log("from date timestamp accepted");
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [station1a], timestamp, HTTP_OK200);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [station1a],
+      timestamp,
+      HTTP_OK200
+    );
 
     cy.log("from date absent accepted");
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [station1a], undefined, HTTP_OK200);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [station1a],
+      undefined,
+      HTTP_OK200
+    );
 
     cy.log("from date blank rejected");
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [station1a], "", HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [station1a],
+      "",
+      HTTP_Unprocessable
+    );
 
     cy.log("malformed from date rejected");
-    cy.apiGroupStationsUpdate( "gsGroupAdmin", "gsGroup", [station1a], "ThisIsNotADate", HTTP_Unprocessable);
+    cy.apiGroupStationsUpdate(
+      "gsGroupAdmin",
+      "gsGroup",
+      [station1a],
+      "ThisIsNotADate",
+      HTTP_Unprocessable
+    );
   });
 
   //Mapping of recording to stations tested in the recordings section

@@ -50,10 +50,16 @@ describe("Groups - get devices for group", () => {
 
   it("Admin and member can view group's devices", () => {
     cy.log("Check admin can view group's device");
-    cy.apiGroupDevicesCheck("gdGroupAdmin", "gdGroup", [ expectedDevice, expectedDevice1b ]);
+    cy.apiGroupDevicesCheck("gdGroupAdmin", "gdGroup", [
+      expectedDevice,
+      expectedDevice1b,
+    ]);
 
     cy.log("Check member can view group's devices");
-    cy.apiGroupDevicesCheck("gdGroupMember", "gdGroup", [ expectedDevice, expectedDevice1b ]);
+    cy.apiGroupDevicesCheck("gdGroupMember", "gdGroup", [
+      expectedDevice,
+      expectedDevice1b,
+    ]);
   });
 
   it("Non group members cannot view devices", () => {
