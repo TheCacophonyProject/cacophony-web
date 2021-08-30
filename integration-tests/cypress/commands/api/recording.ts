@@ -14,7 +14,7 @@ import { logTestDescription, prettyLog } from "../descriptions";
 import { convertToDate } from "../server";
 import {
   TestThermalRecordingInfo,
-  TestTrackInfo,
+  ApiTrackSet,
   ApiRecordingData,
 } from "../types";
 
@@ -23,10 +23,10 @@ let lastUsedTime = DEFAULT_DATE;
 Cypress.Commands.add(
   "apiRecordingAdd",
   (
-    recordingName: string,
     deviceName: string,
     data: ApiRecordingData,
-    fileName: string,
+    fileName: string="invalid.cptv",
+    recordingName: string="recording1",
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
@@ -63,49 +63,31 @@ Cypress.Commands.add(
     recordingName: string = "recording1"
   ) => {
     const data = makeRecordingDataFromDetails(details);
+    cy.apiRecordingAdd(deviceName, data, "invalid.cptv", recordingName);
 
-    logTestDescription(
-      `Upload recording ${prettyLog(details)}  to '${deviceName}'`,
-      { camera: deviceName, requestData: data },
-      log
-    );
-
-    const fileName = "invalid.cptv";
-    const url = v1ApiPath("recordings");
-    const fileType = "application/cptv";
-
-    uploadFile(url, deviceName, fileName, fileType, data, "@addRecording").then(
-      (x) => {
-        cy.wrap(x.response.body.recordingId);
-        if (recordingName !== null) {
-          saveIdOnly(recordingName, x.response.body.recordingId);
-        }
-      }
-    );
   }
 );
 
 Cypress.Commands.add(
   "apiRecordingAddOnBehalfUsingGroup",
   (
+    userName: string,
     deviceName: string,
     groupName: string,
-    userName: string,
-    details: TestThermalRecordingInfo,
-    log: boolean = true,
-    recordingName: string = "recording1"
+    data: ApiRecordingData,
+    recordingName: string,
+    fileName: string = "invalid.cptv",
+    statusCode: number = 200,
+    additionalChecks: any = {}
   ) => {
-    const data = makeRecordingDataFromDetails(details);
 
     logTestDescription(
       `Upload recording on behalf using group${prettyLog(
-        details
+        recordingName
       )}  to '${deviceName}'`,
       { camera: deviceName, requestData: data },
-      log
     );
 
-    const fileName = "invalid.cptv";
     const url = v1ApiPath(
       "recordings/device/" +
         getTestName(deviceName) +
@@ -114,7 +96,7 @@ Cypress.Commands.add(
     );
     const fileType = "application/cptv";
 
-    uploadFile(url, userName, fileName, fileType, data, "@addRecording").then(
+    uploadFile(url, userName, fileName, fileType, data, "@addRecording", statusCode).then(
       (x) => {
         cy.wrap(x.response.body.recordingId);
         if (recordingName !== null) {
@@ -226,43 +208,11 @@ Cypress.Commands.add(
   }
 );
 
-type IsoFormattedDateString = string;
-
-interface TrackData {
-  start_s?: number;
-  end_s?: number;
-  confident_tag?: string;
-  confidence?: number;
-}
-
-interface AlgorithmMetadata {
-  model_name?: string;
-}
-
-interface ThermalRecordingMetaData {
-  algorithm?: AlgorithmMetadata;
-  tracks: TrackData[];
-}
-
-interface ThermalRecordingData {
-  type: "thermalRaw";
-  recordingDateTime: IsoFormattedDateString;
-  duration: number;
-  comment?: string;
-  batteryLevel?: number;
-  batteryCharging?: string;
-  airplaneModeOn?: boolean;
-  version?: string;
-  additionalMetadata?: JSON;
-  metadata?: ThermalRecordingMetaData;
-  location?: number[];
-  processingState?: string;
-}
 
 function makeRecordingDataFromDetails(
   details: TestThermalRecordingInfo
-): ThermalRecordingData {
-  const data: ThermalRecordingData = {
+): ApiRecordingData {
+  const data: ApiRecordingData = {
     type: "thermalRaw",
     recordingDateTime: "",
     duration: 12,
@@ -314,12 +264,12 @@ function getDateForRecordings(details: TestThermalRecordingInfo): Date {
 }
 
 function addTracksToRecording(
-  data: ThermalRecordingData,
+  data: ApiRecordingData,
   model: string,
-  trackDetails?: ApiTrackInfo[],
+  trackDetails?: ApiTrackSet[],
   tags?: string[]
 ): void {
-  data.metadata = {
+  data.additionalMetadata = {
     algorithm: {
       model_name: model,
     },
@@ -327,13 +277,13 @@ function addTracksToRecording(
   };
 
   if (tags && !trackDetails) {
-    trackDetails = tags.map((tag) => ({ tag }));
+    trackDetails = tags.map((confident_tag) => ({ confident_tag, start_s:undefined, end_s: undefined }));
   }
 
   if (trackDetails) {
     let count = 0;
-    data.metadata.tracks = trackDetails.map((track) => {
-      const tag = track.tag ? track.tag : "possum";
+    data.additionalMetadata.tracks = trackDetails.map((track) => {
+      const tag = track.confident_tag ? track.confident_tag : "possum";
       return {
         start_s: track.start_s || 2 + count * 10,
         end_s: track.end_s || 8 + count * 10,
@@ -343,7 +293,7 @@ function addTracksToRecording(
     });
     count++;
   } else {
-    data.metadata.tracks.push({
+    data.additionalMetadata.tracks.push({
       start_s: 2,
       end_s: 8,
       confident_tag: "possum",

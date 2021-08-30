@@ -40,13 +40,13 @@ declare namespace Cypress {
      * Optionally, check for a non-200 return statusCode
      */
     apiRecordingAdd(
-      recordingName: string,
       deviceName: string,
       data: ApiRecordingData,
-      fileName: string,
-      metadata: ApiRecordingDataMetadata,
-      statusCode: number,
-      additionalChecks: any
+      fileName?: string,
+      recordingName?: string,
+      metadata?: ApiRecordingDataMetadata,
+      statusCode?: number,
+      additionalChecks?: any
     ): any;
 
     /**

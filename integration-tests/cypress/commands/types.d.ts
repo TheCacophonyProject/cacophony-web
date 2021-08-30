@@ -238,33 +238,38 @@ export interface ApiGroupUserRelation {
 // from api/v1/recordings (post)
 export interface ApiRecordingData {
   type: string;
-  fileHash: string;
+  fileHash?: string;
   duration: number;
   recordingDateTime: string;
-  location: ApiLocation;
-  version: string;
-  batteryCharging: boolean;
-  batteryLevel: number;
-  airplaneModeOn: boolean;
-  additionalMetadata: ApiRecordingDataMetadata;
-  comment: string;
-  processingState: string;
+  location?: ApiLocation|number[];
+  version?: string;
+  batteryCharging?: string;
+  batteryLevel?: number;
+  airplaneModeOn?: boolean;
+  additionalMetadata?: ApiRecordingDataMetadata;
+  comment?: string;
+  processingState?: string;
+}
+
+// from api/v1/recordings (post)
+export interface ApiAlogrithmMetadata {
+  model_name?: string;
 }
 
 // from api/v1/recordings (post)
 export interface ApiRecordingDataMetadata {
-  tracks: ApiTrackSet;
-  algorythm?: string;
+  tracks?: ApiTrackSet[];
+  algorithm?: ApiAlogrithmMetadata;
 }
 
 //from api/v1/recordings (post)
 export interface ApiTrackSet {
-  positions: number[][];
+  positions?: number[][];
   start_s: number;
   end_s: number;
   confident_tag?: string;
-  confidence: number;
-  all_class_confidences: any;
+  confidence?: number;
+  all_class_confidences?: any;
 }
 
 //Simplified test version of above structures for generic recordings
@@ -273,21 +278,13 @@ export interface TestThermalRecordingInfo {
   time?: Date | string;
   duration?: number;
   model?: string;
-  tracks?: TestTrackInfo[];
+  tracks?: ApiTrackSet[];
   noTracks?: boolean; // by default there will normally be one track, set to true if you don't want tracks
   minsLater?: number; // minutes that later that the recording is taken
   secsLater?: number; // minutes that later that the recording is taken
   tags?: string[]; // short cut for defining tags for each track
   lat?: number; // Latitude position for the recording
   lng?: number; // Longitude position for the recording
-}
-
-//Simplified test version of above structures for generic recordings
-export interface TestTrackInfo {
-  start_s?: number;
-  end_s?: number;
-  tag?: string;
-  // confidence?: number,
 }
 
 // from api/v1/groups/<>/stations (post)
