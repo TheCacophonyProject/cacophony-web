@@ -28,6 +28,7 @@ import {
 } from "../api/V1/recordingUtil";
 import { AuthorizationError } from "../api/customErrors";
 import { Device } from "./Device";
+import logger from "../logging";
 
 export type GroupId = number;
 

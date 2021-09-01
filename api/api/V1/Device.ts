@@ -16,15 +16,19 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import middleware, { expectedTypeOf, modelTypeName } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param, query } from "express-validator";
+import { body, CustomValidator, param, query } from "express-validator";
 import Sequelize from "sequelize";
 import { Application } from "express";
 import { AccessLevel } from "../../models/GroupUsers";
 import { AuthorizationError } from "../customErrors";
+import logger from "../../logging";
+import { format } from "util";
+import {performance} from "perf_hooks";
+import Group from "models/Group";
 
 const Op = Sequelize.Op;
 
@@ -50,41 +54,50 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     apiUrl,
     [
-      middleware.getGroupByName(body),
-      middleware.isValidName(body, "devicename"),
-      middleware.checkNewPassword("password"),
+      body("group")
+        .if(middleware.getGroupByName(body))
+        .if(
+          // Devicename depends on resolving group
+          body("devicename")
+            .exists()
+            .withMessage(expectedTypeOf("string"))
+            .bail()
+            .if(middleware.isValidName(body, "devicename"))
+            .bail()
+            .custom(async (val, {req}) => {
+              const v = await models.Device.freeDevicename(
+                req.body.devicename,
+                req.body.group.id
+              );
+              logger.info("Free %s", v);
+              return v;
+            })
+            .withMessage((deviceName) => `Device name ${deviceName} in use`)
+      ),
+      body("password")
+        .exists()
+        .withMessage(expectedTypeOf("string"))
+        .bail()
+        .if(middleware.checkNewPassword("password")),
       body("saltId").optional().isInt(),
     ],
     middleware.requestWrapper(async (request, response) => {
-      if (
-        !(await models.Device.freeDevicename(
-          request.body.devicename,
-          request.body.group.id
-        ))
-      ) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Device name in use."],
-        });
-      }
       const device = await models.Device.create({
         devicename: request.body.devicename,
         password: request.body.password,
         GroupId: request.body.group.id,
       });
-
       if (request.body.saltId) {
         await device.update({ saltId: request.body.saltId });
       } else {
         await device.update({ saltId: device.id });
       }
-
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new device."],
         id: device.id,
         saltId: device.saltId,
-        token: "JWT " + auth.createEntityJWT(device),
+        token: `JWT ${auth.createEntityJWT(device)}`,
       });
     })
   );

@@ -55,7 +55,7 @@ import modelsUtil from "../../models/util/util";
 import { dynamicImportESM } from "../../dynamic-import-esm";
 import Sequelize from "sequelize";
 import logger from "../../logging";
-import {ClassifierModelDescription, ClassifierRawResult, RawTrack, TrackClassification, TrackFramePosition } from "@typedefs/processing";
+import {ClassifierModelDescription, ClassifierRawResult, RawTrack, TrackClassification, TrackFramePosition } from "@typedefs/api/fileProcessing";
 import { CptvFrame } from "cptv-decoder";
 import { GetObjectOutput } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
@@ -63,7 +63,7 @@ import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
 import SendData = ManagedUpload.SendData;
 import {Track} from "../../models/Track";
 import {DetailSnapshotId} from "../../models/DetailSnapshot";
-import {AcceptableTag, Tag, TagData} from "models/Tag";
+import {AcceptableTag, Tag, TagData} from "../../models/Tag";
 
 // @ts-ignore
 export interface RecordingQuery extends Request {

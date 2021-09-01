@@ -27,9 +27,10 @@ import {
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
 import log from "../logging";
-import customErrors from "./customErrors";
+import customErrors, { ClientError } from "./customErrors";
 import { RequestHandler, Response } from "express";
 import { IsIntOptions } from "express-validator/src/options";
+import logger from "../logging";
 
 export const getModelByIdChain = <T>(
   modelType: ModelStaticCommon<T>,
@@ -37,6 +38,7 @@ export const getModelByIdChain = <T>(
   checkFunc
 ) => {
   return checkFunc(fieldName).custom(async (val, { req }) => {
+    logger.info("Get id %s for %s", val, modelTypeName(modelType));
     const model = await modelType.findByPk(val);
     if (model === null) {
       throw new Error(
@@ -52,9 +54,11 @@ export const getModelById = <T>(
   modelType: ModelStaticCommon<T>
 ): CustomValidator => {
   return async (id, { req }) => {
+    logger.info("Get model by id %s for %s", id, modelTypeName(modelType));
     const item = await modelType.findByPk(id);
+    logger.info("Returned %s", item);
     if (item === null) {
-      throw new Error(`Could not find a ${modelType.name} with an id of ${id}`);
+      throw new ClientError(`Could not find a ${modelType.name} with an id of ${id}`);
     }
     req.body[modelTypeName(modelType)] = item;
     return true;
@@ -77,6 +81,7 @@ export const getModelByName = function <T>(
       throw new Error(format("Could not find %s of %s.", fieldName, val));
     }
     req.body[modelTypeName(modelType)] = model;
+    logger.info("req.body[%s] = %s", modelTypeName(modelType), JSON.stringify(req.body[modelTypeName(modelType)]));
     return true;
   });
 };
@@ -288,6 +293,7 @@ export const getRecordingByIdChain = (
 export const getRecordingById = (): CustomValidator =>
   getModelById(models.Recording);
 
+
 export const isValidName = function (
   checkFunc: ValidationMiddleware,
   field: string
@@ -300,11 +306,27 @@ export const isValidName = function (
     .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/);
 };
 
+export const isValidName2 = (val) => (
+    val
+      .isLength({ min: 3 })
+      .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
+      .withMessage("password must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter")
+);
+
+
 export const checkNewPassword = function (field: string): ValidationChain {
   return body(field, "Password must be at least 8 characters long").isLength({
     min: 8,
   });
 };
+
+export const checkNewPassword2 = (val) => (
+  val
+    .isLength({
+      min: 8,
+    })
+    .withMessage("Password must be at least 8 characters long")
+);
 
 export const viewMode = function (): ValidationChain {
   // All api listing commands will automatically return all results if the user is a super-admin
@@ -410,6 +432,7 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
   }
   log.info(logMessage);
   const validationErrors = validationResult(request);
+  log.info("Validation errors %s", validationErrors);
   if (!validationErrors.isEmpty()) {
     throw new customErrors.ValidationError(validationErrors);
   } else {
@@ -434,7 +457,9 @@ export default {
   getFileById,
   getRecordingById: getRecordingByIdChain,
   isValidName,
+  isValidName2,
   checkNewPassword,
+  checkNewPassword2,
   parseJSON,
   parseArray,
   parseBool,

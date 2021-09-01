@@ -21,7 +21,7 @@ import http from "http";
 import config from "../config";
 import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
-import customErrors from "./customErrors";
+import customErrors, { ClientError } from "./customErrors";
 import models, { ModelCommon } from "../models";
 
 /*
@@ -32,18 +32,20 @@ function createEntityJWT<T>(
   options?,
   access?: {}
 ): string {
-  const payload: {
-    id: string;
-    _type: string;
-    access?: any;
-  } = entity.getJwtDataValues();
+  const payload: DecodedJWTToken = entity.getJwtDataValues();
   if (access) {
     payload.access = access;
   }
   return jwt.sign(payload, config.server.passportSecret, options);
 }
 
-const getVerifiedJWT = (req) => {
+export interface DecodedJWTToken {
+  access?: Record<string, any>;
+  _type: string;
+  id: number;
+}
+
+export const getVerifiedJWT = (req): string | object | DecodedJWTToken => {
   const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(req);
   if (!token) {
     throw new customErrors.AuthenticationError("Could not find JWT token.");
@@ -58,7 +60,7 @@ const getVerifiedJWT = (req) => {
 /**
  * check requested auth access exists in jwt access object
  */
-function checkAccess(reqAccess, jwtDecoded) {
+export function checkAccess(reqAccess, jwtDecoded: DecodedJWTToken) {
   if (!reqAccess && jwtDecoded.access) {
     return false;
   }
@@ -96,20 +98,22 @@ type AuthenticateMiddleware = (
 /*
  * Authenticate a JWT in the 'Authorization' header of the given type
  */
-const authenticate = function (
+const authenticate = (
   types: string[] | null,
   reqAccess?
-): AuthenticateMiddleware {
+): AuthenticateMiddleware => {
   return async (req, res, next) => {
-    let jwtDecoded;
+    let jwtDecoded: DecodedJWTToken;
     try {
-      jwtDecoded = getVerifiedJWT(req);
+      jwtDecoded = getVerifiedJWT(req) as DecodedJWTToken;
     } catch (e) {
       return res.status(401).json({ messages: [e.message] });
     }
 
     if (types && !types.includes(jwtDecoded._type)) {
-      res.status(401).json({ messages: ["Invalid JWT type."] });
+      res.status(401).json({ messages: [
+        `Invalid JWT access type '${jwtDecoded._type}', must be ${types.length > 1 ? "one of " : ""}${types.map(t => `'${t}'`).join(", ")}`
+      ]});
       return;
     }
     const hasAccess = checkAccess(reqAccess, jwtDecoded);
@@ -120,7 +124,7 @@ const authenticate = function (
     const result = await lookupEntity(jwtDecoded);
     if (!result) {
       res.status(401).json({
-        messages: ["Could not find entity referenced by JWT."],
+        messages: [`Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`],
       });
       return;
     }
@@ -129,7 +133,40 @@ const authenticate = function (
   };
 };
 
-async function lookupEntity(jwtDecoded) {
+export const extractJWT = () => {
+  return (val, {req}) => {
+    try {
+      req.token = getVerifiedJWT(req) as DecodedJWTToken;
+    } catch (e) {
+      throw new ClientError(e.message, 401);
+    }
+  };
+};
+
+export const authenticate2 = (
+  types: string[] | null,
+  reqAccess?
+) => {
+  return async (val, {req}) => {
+    const jwtDecoded: DecodedJWTToken = req.token;
+    if (types && !types.includes(jwtDecoded._type)) {
+      throw new ClientError(`Invalid JWT access type '${jwtDecoded._type}', must be ${types.length > 1 ? "one of " : ""}${types.map(t => `'${t}'`).join(", ")}`, 401);
+    }
+    const hasAccess = checkAccess(reqAccess, jwtDecoded);
+    if (!hasAccess) {
+      throw new ClientError("JWT does not have access.", 401);
+    }
+    const result = await lookupEntity(jwtDecoded);
+    if (!result) {
+      throw new ClientError(`Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`, 401);
+    }
+    req[jwtDecoded._type] = result;
+    return true;
+  };
+};
+
+
+export async function lookupEntity(jwtDecoded) {
   switch (jwtDecoded._type) {
     case "user":
       return models.User.findByPk(jwtDecoded.id);
@@ -266,6 +303,29 @@ const userCanAccessDevices = async (request, response, next) => {
   next();
 };
 
+export const userCanAccessDevices2 = async (val, {req}) => {
+  let devices = [];
+  if ("device" in req && req.device) {
+    req["devices"] = [req.device];
+    devices = [req.device.id];
+  } else if ("devices" in req) {
+    devices = req.devices;
+  } else {
+    throw new ClientError("No devices specified.", 422);
+  }
+
+  if (!("user" in req)) {
+    throw new ClientError("No user specified.", 422);
+  }
+
+  await req.user.checkUserControlsDevices(
+    devices,
+    req.body.viewAsSuperAdmin
+  );
+
+  return true;
+};
+
 // A request wrapper that also checks if user should be playing around with the
 // the group before continuing.
 const userHasReadAccessToGroup = async (request, response, next) => {
@@ -321,6 +381,7 @@ const userHasWriteAccessToGroup = async (request, response, next) => {
 };
 
 export default {
+  authenticate2,
   createEntityJWT,
   authenticateUser,
   authenticateDevice,
@@ -330,6 +391,7 @@ export default {
   paramOrHeader,
   signedUrl,
   userCanAccessDevices,
+  userCanAccessDevices2,
   userHasReadAccessToGroup,
   userHasWriteAccessToGroup,
 };

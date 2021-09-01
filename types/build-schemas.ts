@@ -1,11 +1,19 @@
 import {
     BaseType,
+    SubNodeParser,
+    Context,
+    ReferenceType,
+    SubTypeFormatter,
+    FunctionType,
+    Definition,
     createFormatter,
-    createParser, createProgram,
-    SchemaGenerator, SubNodeParser, Context, ReferenceType, SubTypeFormatter, FunctionType, Definition
+    createProgram,
+    createParser, SchemaGenerator
 } from "ts-json-schema-generator";
-import fs from "fs";
+import fs from "fs/promises";
 import ts from "typescript";
+import crypto from "crypto";
+import readdir from "recursive-readdir";
 
 class IntegerType extends FunctionType {
     public getId(): string {
@@ -26,7 +34,7 @@ class IsoFormattedDateStringType extends FunctionType {
 }
 
 class IntegerFormatter implements SubTypeFormatter {
-    public supportsType(type: IntegerType): boolean {
+    public supportsType(type: BaseType): boolean {
         return type instanceof IntegerType;
     }
 
@@ -43,7 +51,7 @@ class IntegerFormatter implements SubTypeFormatter {
 }
 
 class IsoFormattedDateStringFormatter implements SubTypeFormatter {
-    public supportsType(type: IsoFormattedDateStringType): boolean {
+    public supportsType(type: BaseType): boolean {
         return type instanceof IsoFormattedDateStringType;
     }
 
@@ -61,7 +69,7 @@ class IsoFormattedDateStringFormatter implements SubTypeFormatter {
 }
 
 class FloatZeroOneFormatter implements SubTypeFormatter {
-    public supportsType(type: FloatZeroOneType): boolean {
+    public supportsType(type: BaseType): boolean {
         return type instanceof FloatZeroOneType;
     }
 
@@ -114,44 +122,98 @@ class IsoFormattedDateStringParser implements SubNodeParser {
     }
 }
 
-
-const config = {
-    path: "./processing.d.ts",
-    tsconfig: "./tsconfig.json",
-    type: "ClassifierRawResult", // Or <type-name> if you want to generate schema for that one type only
-};
-
-// const config = {
-//     path: "./test.d.ts",
-//     tsconfig: "./tsconfig.json",
-//     type: "Test", // Or <type-name> if you want to generate schema for that one type only
-// };
-
 // We configure the parser an add our custom parser to it.
+(async () => {
+    const files = await readdir("api");
+    const schemaDefinitions = files.filter(file => file.endsWith(".d.ts"));
+    // Load the changes cache file if it exists:
+    let changes: Record<string, string> = {};
+    try {
+        changes = JSON.parse(await fs.readFile("./schema-cache.json", 'utf8'));
+    } catch (e) {
+        console.log("Cache doesn't exist?", e);
+    }
+    const updatedSchemas = [];
+    for (const typedefFile of schemaDefinitions) {
+        const file = await fs.readFile(typedefFile);
+        const hash = crypto.createHash("sha1");
+        hash.update(file);
+        const digest = hash.digest('hex');
+        if (!changes[typedefFile] || (changes[typedefFile] && changes[typedefFile] !== digest)) {
+            changes[typedefFile] = digest;
+            const exportedNames = [];
+            {
+                // Use the typescript compiler to extract all the exported types:
+                let program = ts.createProgram([typedefFile], {});
+                const source = program.getSourceFile(typedefFile);
+                const fileSymbol = program.getTypeChecker().getSymbolAtLocation(source as ts.Node);
+                if (source && fileSymbol) {
+                    const exported = program.getTypeChecker().getExportsOfModule(fileSymbol);
+                    for (const e of exported) {
+                        if (e.declarations) {
+                            for (const declaration of e.declarations) {
+                                if (declaration.modifiers) {
+                                    for (const modifier of declaration.modifiers) {
+                                        if (modifier.kind === ts.SyntaxKind.ExportKeyword) {
+                                            exportedNames.push((declaration as any).name.escapedText);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for (const exportedName of exportedNames) {
+                const config = {
+                    path: typedefFile,
+                    tsconfig: "./tsconfig.json",
+                    type: exportedName, // Or <type-name> if you want to generate schema for that one type only
+                }
 
+                // Get the exported types from each of the schema files that has changed.
+                const formatter = createFormatter(config, (fmt, circularReferenceTypeFormatter) => {
+                    // If your formatter DOES NOT support children, e.g. getChildren() { return [] }:
+                    fmt.addTypeFormatter(new IntegerFormatter());
+                    fmt.addTypeFormatter(new FloatZeroOneFormatter());
+                    fmt.addTypeFormatter(new IsoFormattedDateStringFormatter());
+                });
 
-const formatter = createFormatter(config, (fmt, circularReferenceTypeFormatter) => {
-    // If your formatter DOES NOT support children, e.g. getChildren() { return [] }:
-    fmt.addTypeFormatter(new IntegerFormatter());
-    fmt.addTypeFormatter(new FloatZeroOneFormatter());
-    fmt.addTypeFormatter(new IsoFormattedDateStringFormatter());
-});
+                const program = createProgram(config);
+                const parser = createParser(program, config, (prs) => {
+                    prs.addNodeParser(new TypeAliasParser());
+                    prs.addNodeParser(new FloatZeroOneParser());
+                    prs.addNodeParser(new IsoFormattedDateStringParser());
+                });
 
-const output_path = "./jsonSchemas/ClassifierRawResult.schema.json";
+                const generator = new SchemaGenerator(program, parser, formatter, config);
+                const schema = generator.createSchema(config.type);
+                const schemaString = JSON.stringify(schema, null, 2);
 
-const program = createProgram(config);
-const parser = createParser(program, config, (prs) => {
-    prs.addNodeParser(new TypeAliasParser());
-    prs.addNodeParser(new FloatZeroOneParser());
-    prs.addNodeParser(new IsoFormattedDateStringParser());
-});
+                const subdirNames = typedefFile.replace(".d.ts", "").split("/");
+                const p = [];
+                if (subdirNames.length) {
+                    while (p.length < subdirNames.length) {
+                        p.push(subdirNames[p.length]);
+                        try {
+                            await fs.access(`./jsonSchemas/${p.join("/")}`);
+                        } catch (e) {
+                            await fs.mkdir(`./jsonSchemas/${p.join("/")}`);
+                        }
+                    }
+                }
+                await fs.writeFile(`./jsonSchemas/${subdirNames.join("/")}/${exportedName}.schema.json`, schemaString);
+                updatedSchemas.push(typedefFile);
+            }
+        } else {
+            changes[typedefFile] = digest;
+            console.log(`Schema def ${typedefFile} unchanged, skipping`);
+        }
+    }
+    if (updatedSchemas.length) {
+        console.log(`Built ${updatedSchemas.length} json schemas`);
+        await fs.writeFile("./schema-cache.json", JSON.stringify(changes, null, 2));
+    }
+    process.exit();
+})();
 
-//const formatter = createFormatter(config);
-const generator = new SchemaGenerator(program, parser, formatter, config);
-const schema = generator.createSchema(config.type);
-const schemaString = JSON.stringify(schema, null, 2);
-fs.writeFile(output_path, schemaString, (err) => {
-    if (err) throw err;
-});
-
-console.log("Built json schemas");

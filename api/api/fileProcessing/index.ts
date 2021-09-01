@@ -20,8 +20,8 @@ import {
 
 // TODO(jon): Part of our build process can make this generate JSONschema, and then
 //  we can validate that in our middleware.  We can also use that to generate better docs.
-import { ClassifierRawResult } from "@typedefs/processing";
-import ClassifierRawResultSchema from "../../../types/jsonSchemas/ClassifierRawResult.schema.json";
+import { ClassifierRawResult } from "@typedefs/api/fileProcessing";
+import ClassifierRawResultSchema from "../../../types/jsonSchemas/api/fileProcessing/ClassifierRawResult.schema.json";
 import { jsonSchemaOf } from "../schema-validation";
 
 export default function (app: Application) {
@@ -87,7 +87,7 @@ export default function (app: Application) {
         .toInt()
         .withMessage(expectedTypeOf("integer"))
         .bail()
-        .custom(getRecordingById)
+        .custom(getRecordingById())
         .bail()
         .custom(() =>
           // Job key given matches the one on the retrieved recording
@@ -112,6 +112,7 @@ export default function (app: Application) {
       body("result")
         .exists()
         .withMessage(expectedTypeOf("ClassifierRawResult"))
+        .bail()
         .custom(jsonSchemaOf(ClassifierRawResultSchema)), // TODO: Can we compile the schema for this on demand?
       body("newProcessedFileKey").optional(),
     ],

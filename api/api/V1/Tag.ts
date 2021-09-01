@@ -67,12 +67,16 @@ export default function (app: Application, baseUrl: string) {
         request.body.recordingId,
         RecordingPermission.TAG
       );
-      await recordingUtil.addTag(
+      const tagInstance = await recordingUtil.addTag(
         request.user,
         recording,
-        request.body.tag,
-        response
+        request.body.tag
       );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Added new tag."],
+        tagId: tagInstance.id,
+      });
     })
   );
 

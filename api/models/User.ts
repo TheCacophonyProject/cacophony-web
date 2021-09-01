@@ -334,7 +334,6 @@ export default function (
   ) {
     if (!(viewAsSuperAdmin && this.hasGlobalWrite())) {
       const usersDevices = await this.getAllDeviceIds();
-
       deviceIds.forEach((deviceId) => {
         if (!usersDevices.includes(deviceId)) {
           log.info(

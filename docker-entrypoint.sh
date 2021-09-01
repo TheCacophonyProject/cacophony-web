@@ -34,6 +34,10 @@ sudo -i -u postgres psql cacophonytest -f /app/api/test/db-seed.sql
 
 echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
 
+echo "---- Compiling JSON schemas ----"
+cd ../types && npm run generate-schemas
+cd ../api
+
 echo "---- Compiling typescript and starting module ----"
 ../node_modules/.bin/tsc --resolveJsonModule
 ../node_modules/.bin/tsc-watch --resolveJsonModule --noClear --onSuccess "node --no-warnings=ExperimentalWarnings --experimental-json-modules Server.js --config=$CONFIG"

@@ -5,10 +5,12 @@
         "generate-schemas": "tsc && node build-schemas.js"
     },
     "dependencies": {
+        "recursive-readdir": "^2.2.2",
         "ts-json-schema-generator": "^0.95.0"
     },
     "devDependencies": {
         "@tsconfig/node14": "^1.0.1",
-        "@types/node": "^16.7.1"
+        "@types/node": "^16.7.1",
+        "@types/recursive-readdir": "^2.2.0"
     }
 }

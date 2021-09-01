@@ -2,13 +2,15 @@ declare module "*.json"
 
 type IsoFormattedDateString = string;
 
+
 type integer = number;
 type float = number;
 type FloatZeroToOne = number;
 type Seconds = number;
 
 type ClassificationClass = "bird" | "cat" | "false-positive" | "hedgehog" | "human"
-  | "leporidae" | "mustelid" | "possum" | "rodent" | "vehicle" | "wallaby";
+  | "leporidae" | "mustelid" | "possum" | "rodent" | "vehicle" | "wallaby" | "not";
+// NOTE "not" is ignored..
 
 interface CameraThresholdConfig {
   camera_model: string;
@@ -64,19 +66,23 @@ interface RawTrack {
   message?: string;
 }
 
+
 interface ClassifierModelDescription {
   id: integer;
   name: string;
   model_file: string;
-  model_weights: string;
+  model_weights: string | null;
   wallaby: boolean;
   tag_scores: {
     default: integer;
+    wallaby?: integer;
   };
   ignored_tags: string[], // TODO - what can these be?
   thumbnail_model: boolean;
   classify_time: Seconds;
 }
+
+// Some comment
 
 export interface ClassifierRawResult {
   source: string;

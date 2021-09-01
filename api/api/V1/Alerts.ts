@@ -16,15 +16,35 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
+import middleware, { expectedTypeOf, getDeviceById, modelTypeName, parseJSONInternal } from "../middleware";
+import auth, { checkAccess, DecodedJWTToken, extractJWT, getVerifiedJWT, lookupEntity } from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param } from "express-validator";
-import { Application } from "express";
+import { body, header, param, ValidationChain, validationResult } from "express-validator";
+import { Application, NextFunction, Request, Response } from "express";
 import { isAlertCondition } from "../../models/Alert";
+import { ClientError } from "../customErrors";
+import logger from "../../logging";
+import { format, types } from "util";
+import { jsonSchemaOf } from "../schema-validation";
+import ApiAlertConditionsSchema from "../../../types/jsonSchemas/api/alerts/ApiAlertConditions.schema.json";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
+
+
+// sequential processing, stops running validations chain if the previous one have failed.
+const validateSequentially = (validations: ValidationChain[]) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    for (const validation of validations) {
+      const result = await validation.run(req);
+      logger.info("Result %s", result);
+      if (!result.isEmpty()) {
+        break;
+      }
+    }
+    return next();
+  };
+};
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/alerts`;
@@ -58,38 +78,41 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(body),
-      auth.userCanAccessDevices,
-    ],
-    body("name").isString(),
-    middleware.parseJSON("conditions", body),
-    body("frequencySeconds").toInt().optional(),
-    middleware.getDeviceById(body),
+      // TODO - always extract JWT, then see if the rest of the fields are correct
+      body("name")
+        .exists()
+        .isString(),
+      body("frequencySeconds")
+        .isInt()
+        .toInt()
+        .optional()
+        .default(DEFAULT_FREQUENCY),
+      validateSequentially([
+        header("Authorization").custom(extractJWT),
+        body("conditions")
+          .exists()
+          .withMessage(expectedTypeOf("ApiAlertConditions"))
+          .bail()
+          .custom(jsonSchemaOf(ApiAlertConditionsSchema)),
+        body("deviceId")
+          .exists()
+          .withMessage(expectedTypeOf("integer"))
+          .bail()
+          .custom((val, { req }) => {
+            return new Promise((resolve, reject) => {
+              models.Device.findByPk(val).then(device => {
+                if (device === null) {
+                  reject(format("Could not find a %s with an id of %s.", "Device", val));
+                }
+                req["devices"] = [device];
+                resolve(true);
+              });
+            });
+        }),
+        body().custom(auth.authenticate2(['user'])),
+        body().custom(auth.userCanAccessDevices2)
+      ]),
     middleware.requestWrapper(async (request, response) => {
-      if (!Array.isArray(request.body.conditions)) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Expecting array of conditions."],
-        });
-        return;
-      }
-      for (const condition of request.body.conditions) {
-        if (!isAlertCondition(condition)) {
-          responseUtil.send(response, {
-            statusCode: 400,
-            messages: ["Bad condition."],
-          });
-          return;
-        }
-      }
-      if (
-        request.body.frequencySeconds == undefined ||
-        request.body.frequencySeconds == null
-      ) {
-        request.body.frequencySeconds = DEFAULT_FREQUENCY;
-      }
       const newAlert = await models.Alert.create({
         name: request.body.name,
         conditions: request.body.conditions,

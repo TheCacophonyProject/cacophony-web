@@ -1,5 +1,7 @@
 import { Validator } from "jsonschema";
 import { Schema, ValidationError } from "jsonschema/lib";
+import logger from "../logging";
+import { ClientError } from "./customErrors";
 
 const JsonSchema = new Validator();
 Validator.prototype.customFormats.FloatZeroOne = (val) => {
@@ -10,10 +12,8 @@ Validator.prototype.customFormats.IsoFormattedDateString = (val) => {
     return false;
   }
   const d = Date.parse(val);
-  if (isNaN(d)) {
-    return false;
-  }
-  return new Date(d).toISOString() === val;
+  return !isNaN(d);
+
 };
 
 const SpecialFormats = {
@@ -29,6 +29,9 @@ const getPathType = (
   const name = getPathName(item, path, instance);
   if (name === "array") {
     return name;
+  }
+  if (name === null) {
+    return "'null'";
   }
   return typeof name;
 };
@@ -73,13 +76,13 @@ export const jsonSchemaOf =
       try {
         val = JSON.parse(val);
       } catch (e) {
-        throw new Error("Malformed json");
+        throw new ClientError("Malformed json");
       }
     }
     const result = JsonSchema.validate(val, schema, { required: true });
     if (result.errors.length) {
       const errors: ValidationError[] = result.errors;
-      throw new Error(
+      throw new ClientError(
         "JSON Schema error(s): " +
           errors
             .map(
@@ -122,8 +125,10 @@ export const jsonSchemaOf =
                         ? `${location}.${requestPath}`
                         : property
                     )}' is not allowed to have the additional property '${argument}'`;
+                  case "enum":
+                    return `!!${path}, ${stack}`;
                   default:
-                    console.warn("Unhandled JSON schema error formatter", name);
+                    console.warn("Unhandled JSON schema error formatter", name, message, property, argument);
                     return message;
                 }
               }

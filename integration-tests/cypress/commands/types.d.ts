@@ -1,7 +1,4 @@
-export interface ApiAlertConditions {
-  tag: string;
-  automatic: boolean;
-}
+import { ApiAlertConditions } from "@typedefs/api/alerts";
 
 export interface ApiAlertUser {
   id: number;
@@ -20,7 +17,7 @@ export interface ApiAlert {
   name: string;
   alertName?: string;
   frequencySeconds: number;
-  conditions: ApiAlertConditions[];
+  conditions: ApiAlertConditions;
   lastAlert: boolean;
   User: ApiAlertUser;
   Device: ApiAlertDevice;

@@ -20,13 +20,24 @@
         "./api/**/*.ts",
         "./scripts/**/*.ts",
         "./**/*.ts",
+        "./*.ts",
         "../types/**/*.ts",
         "../types/**/*.json"
     ],
-
     "exclude": [
         "./node_modules/*",
         "./test/*",
         "./test-cypress/*"
-    ]
+    ],
+    "watchOptions": {
+        "excludeDirectories": [
+            "/app/node_modules",
+            "/app/node_modules/**",
+            "/app/types/jsonSchemas",
+            "/app/types/jsonSchemas/**",
+            "/app/types/node_modules",
+            "/app/types/node_modules/**"
+        ],
+        "excludeFiles": ["*.schema.json", "/app/types/build-schemas.js"]
+    }
 }
