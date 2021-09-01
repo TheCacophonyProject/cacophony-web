@@ -330,7 +330,7 @@ async function createThumbnail(
 }
 
 function makeUploadHandler(mungeData?: (any) => any) {
-  return util.multipartUpload("raw", async (request, data, key) => {
+  return util.multipartUpload("raw", async (request, response, data, key) => {
     if (mungeData) {
       data = mungeData(data);
     }
@@ -415,9 +415,6 @@ function makeUploadHandler(mungeData?: (any) => any) {
       recording.public = request.device.public;
     }
 
-    await recording.validate();
-    // NOTE: The documentation for save() claims that it also does validation,
-    //  so not sure if we really need the call to validate() here.
     await recording.save();
     if (data.metadata) {
       await tracksFromMeta(recording, data.metadata);
@@ -441,6 +438,12 @@ function makeUploadHandler(mungeData?: (any) => any) {
         recording.processingState = RecordingProcessingState.Corrupt;
       }
     }
+    await recording.validate();
+    // NOTE: The documentation for save() claims that it also does validation,
+    //  so not sure if we really need the call to validate() here.
+    await recording.save();
+
+    responseUtil.validRecordingUpload(response, recording.id);
     return recording;
   });
 }
@@ -717,29 +720,19 @@ async function get(request, type?: RecordingType) {
   };
 
   if (recording.fileKey) {
-    data.cookedJWT = jsonwebtoken.sign(
-      {
-        _type: "fileDownload",
-        key: recording.fileKey,
-        filename: recording.getFileName(),
-        mimeType: recording.fileMimeType,
-      },
-      config.server.passportSecret,
-      { expiresIn: 60 * 10 }
+    data.cookedJWT = signedToken(
+      recording.fileKey,
+      recording.getFileName(),
+      recording.fileMimeType
     );
     data.cookedSize = await util.getS3ObjectFileSize(recording.fileKey);
   }
 
   if (recording.rawFileKey) {
-    data.rawJWT = jsonwebtoken.sign(
-      {
-        _type: "fileDownload",
-        key: recording.rawFileKey,
-        filename: recording.getRawFileName(),
-        mimeType: recording.rawMimeType,
-      },
-      config.server.passportSecret,
-      { expiresIn: 60 * 10 }
+    data.rawJWT = signedToken(
+      recording.rawFileKey,
+      recording.getRawFileName(),
+      recording.rawMimeType
     );
     data.rawSize = await util.getS3ObjectFileSize(recording.rawFileKey);
   }
@@ -748,6 +741,19 @@ async function get(request, type?: RecordingType) {
   delete data.recording.fileKey;
 
   return data;
+}
+
+function signedToken(key, file, mimeType) {
+  return jsonwebtoken.sign(
+    {
+      _type: "fileDownload",
+      key: key,
+      filename: file,
+      mimeType: mimeType,
+    },
+    config.server.passportSecret,
+    { expiresIn: 60 * 10 }
+  );
 }
 
 async function delete_(request, response) {
@@ -1400,4 +1406,5 @@ export default {
   saveThumbnailInfo,
   sendAlerts,
   getThumbnail,
+  signedToken,
 };

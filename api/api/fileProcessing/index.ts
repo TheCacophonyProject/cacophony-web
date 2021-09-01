@@ -3,6 +3,7 @@ import middleware from "../middleware";
 import log from "../../logging";
 import { body, param } from "express-validator/check";
 import models from "../../models";
+import util from "../V1/util";
 import recordingUtil from "../V1/recordingUtil";
 import { Application, Request, Response } from "express";
 import {
@@ -21,23 +22,53 @@ export default function (app: Application) {
    *
    * @apiParam {String} type Type of recording.
    * @apiParam {String} state Processing state.
+   * @apiSuccess {recording} requested
+   * @apiSuccess {String} signed url to download the raw file
+
    */
   app.get(apiUrl, async (request: Request, response: Response) => {
     log.info(`${request.method} Request: ${request.url}`);
     const type = request.query.type as RecordingType;
     const state = request.query.state as RecordingProcessingState;
     const recording = await models.Recording.getOneForProcessing(type, state);
+
     if (recording == null) {
       log.debug("No file to be processed.");
       return response.status(204).json();
     } else {
+      const rawJWT = recordingUtil.signedToken(
+        recording.rawFileKey,
+        recording.getRawFileName(),
+        recording.rawMimeType
+      );
       return response.status(200).json({
         // FIXME(jon): Test that dataValues is even a thing.  It's not a publicly
         //  documented sequelize property.
         recording: (recording as any).dataValues,
+        rawJWT: rawJWT,
       });
     }
   });
+
+  /**
+   * @api {put} /api/fileProcessing/processed Upload a processed file to the db
+   * @apiName PostProcessedFile
+   * @apiGroup FileProcessing
+
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {String} fileKey of uploaded file
+   *
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/processed`,
+    middleware.requestWrapper(
+      util.multipartUpload("file", async (request, response, data, key) => {
+        responseUtil.validFileUpload(response, key);
+        return key;
+      })
+    )
+  );
 
   /**
    * @api {put} /api/fileProcessing Finished a file processing job
