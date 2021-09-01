@@ -34,7 +34,6 @@ class TestFileProcessing:
         # Ensure there's a recording to work with (the file processing
         # API may return a different one though).
         helper.given_a_recording(self)
-
         # Get a recording to process.
         recording = file_processing.get("thermalRaw", "analyse")
         assert recording["processingState"] == "analyse"

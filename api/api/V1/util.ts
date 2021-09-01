@@ -24,7 +24,7 @@ import responseUtil from "./responseUtil";
 import modelsUtil from "../../models/util/util";
 import crypto from "crypto";
 
-function multipartUpload(keyPrefix, buildRecord) {
+function multipartUpload(keyPrefix, onSaved) {
   return (request, response) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
@@ -97,7 +97,6 @@ function multipartUpload(keyPrefix, buildRecord) {
         return;
       }
 
-      let dbRecord;
       try {
         // Wait for the upload to complete.
         const uploadResult = await upload;
@@ -152,16 +151,11 @@ function multipartUpload(keyPrefix, buildRecord) {
         }
 
         data.filename = filename;
-
-        // Store a record for the upload.
-        dbRecord = await buildRecord(request, data, key);
-        await dbRecord.validate();
-        await dbRecord.save();
+        await onSaved(request, response, data, key);
       } catch (err) {
         responseUtil.serverError(response, err);
         return;
       }
-      responseUtil.validRecordingUpload(response, dbRecord.id);
     });
 
     form.parse(request);
