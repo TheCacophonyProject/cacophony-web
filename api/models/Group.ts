@@ -527,13 +527,13 @@ export default function (sequelize, DataTypes): GroupStatic {
     return this.findByPk(id);
   };
 
-  Group.getFromName = async function (name) {
+  Group.getFromName = async function (name): Promise<Group | null> {
     return this.findOne({ where: { groupname: name } });
   };
 
   Group.freeGroupname = async function (name) {
-    const group = await this.findOne({ where: { groupname: name } });
-    if (group != null) {
+    const group = await Group.getFromName(name);
+    if (group !== null) {
       throw new Error("groupname in use");
     }
     return true;
@@ -541,13 +541,8 @@ export default function (sequelize, DataTypes): GroupStatic {
 
   // NOTE: It doesn't seem that there are any consumers of this function right now.
   Group.getIdFromName = async function (name): Promise<GroupId | null> {
-    const Group = this;
-    const group = await Group.findOne({ where: { groupname: name } });
-    if (group == null) {
-      return null;
-    } else {
-      group.getDataValue("id");
-    }
+    const group = await Group.getFromName(name);
+    return group && group.getDataValue("id") || null;
   };
 
   //------------------

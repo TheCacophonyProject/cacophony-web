@@ -1,6 +1,6 @@
 import config from "../config";
 import log from "../logging";
-import eventUtil, { PowerEvents } from "../api/V1/eventUtil";
+import { PowerEvents, powerEventsPerDevice } from "../api/V1/eventUtil";
 import moment from "moment";
 import { sendEmail } from "./emailUtil";
 import models from "../models";
@@ -34,7 +34,7 @@ async function main() {
     throw "No SMTP details found in config/app.js";
   }
   const powerEvents = (
-    await eventUtil.powerEventsPerDevice({ query: {} }, true)
+    await powerEventsPerDevice({ query: {}, res: { locals: {} } }, true)
   ).filter(
     (device: PowerEvents) =>
       device.hasStopped == true && device.hasAlerted == false

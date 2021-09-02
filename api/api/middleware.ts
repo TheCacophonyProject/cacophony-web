@@ -21,6 +21,7 @@ import {
   CustomValidator,
   oneOf,
   query,
+  Result,
   ValidationChain,
   validationResult,
 } from "express-validator";
@@ -28,9 +29,10 @@ import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
 import log from "../logging";
 import customErrors, { ClientError } from "./customErrors";
-import { RequestHandler, Response } from "express";
+import { NextFunction, Request, RequestHandler, Response } from "express";
 import { IsIntOptions } from "express-validator/src/options";
 import logger from "../logging";
+import { DecodedJWTToken } from "./auth";
 
 export const getModelByIdChain = <T>(
   modelType: ModelStaticCommon<T>,
@@ -78,10 +80,11 @@ export const getModelByName = function <T>(
   return checkFunc(fieldName).custom(async (val, { req }) => {
     const model: T = await modelType.getFromName(val);
     if (model === null) {
-      throw new Error(format("Could not find %s of %s.", fieldName, val));
+      await Promise.reject(format("Could not find %s of %s.", fieldName, val));
+      //throw new Error(format("Could not find %s of %s.", fieldName, val));
     }
-    req.body[modelTypeName(modelType)] = model;
-    logger.info("req.body[%s] = %s", modelTypeName(modelType), JSON.stringify(req.body[modelTypeName(modelType)]));
+    req.body[`__stash_${modelTypeName(modelType)}`] = model;
+    logger.info("req.body.%s = %s", modelTypeName(modelType), JSON.stringify(req.body[modelTypeName(modelType)]));
     return true;
   });
 };
@@ -105,6 +108,10 @@ export const getUserByEmail = function (
 
 export function modelTypeName(modelType: ModelStaticCommon<any>): string {
   return modelType.options.name.singular.toLowerCase();
+}
+
+export function modelTypeNamePlural(modelType: ModelStaticCommon<any>): string {
+  return modelType.options.name.plural.toLowerCase();
 }
 
 const ID_OR_ID_ARRAY_REGEXP = /^\[[0-9,]+\]$|^[0-9]+$/;
@@ -432,8 +439,9 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
   }
   log.info(logMessage);
   const validationErrors = validationResult(request);
-  log.info("Validation errors %s", validationErrors);
+  // log.info("Validation errors %s", validationErrors);
   if (!validationErrors.isEmpty()) {
+    log.warning("%s", validationErrors.array().map(item => JSON.stringify(item)).join(', '));
     throw new customErrors.ValidationError(validationErrors);
   } else {
     Promise.resolve(fn(request, response, next)).catch(next);
@@ -442,6 +450,43 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
 
 export const expectedTypeOf = (type) => (val) =>
   `expected ${type}, got ${typeof val}`;
+
+
+// sequential processing, stops running validations chain if the previous one have failed.
+export const validateFields = (validations: ((((req: Request, res: any, next: (err?: any) => void) => void) & { run: (req: Request) => Promise<Result> }) | ValidationChain)[], sequentially: boolean = false) => {
+  return async (request: Request, response: Response, next: NextFunction) => {
+    if (sequentially) {
+      for (const validation of validations) {
+        const result = await validation.run(request);
+        logger.info("Result %s", result);
+        if (!result.isEmpty()) {
+          break;
+        }
+      }
+    } else {
+      await Promise.all(validations.map(validation => validation.run(request)));
+    }
+    {
+      const logMessage = format("%s %s", request.method, request.url);
+      const requester = (response.locals.token && (response.locals.token as DecodedJWTToken)._type);
+      const requestId = (response.locals.user && response.locals.user.get("username")) ||
+        (response.locals.device && response.locals.device.get("devicename")) ||
+        (requester && (response.locals.token as DecodedJWTToken).id) || "unknown";
+
+      // TODO: At this point *if* we have errors, we may want to lookup the username or devicename?
+
+      log.info("%s (%s: %s)", logMessage, requester || "unauthenticated", requestId);
+      const validationErrors = validationResult(request);
+      // log.info("Validation errors %s", validationErrors);
+      if (!validationErrors.isEmpty()) {
+        log.warning("%s", validationErrors.array().map(item => JSON.stringify(item)).join(', '));
+        return next(new customErrors.ValidationError(validationErrors));
+      } else {
+        return next();
+      }
+    }
+  };
+};
 
 export default {
   getUserById,
@@ -468,5 +513,6 @@ export default {
   getUserByEmail,
   setGroupName,
   viewMode,
+  validateSequentially: validateFields,
   typeError: expectedTypeOf,
 };

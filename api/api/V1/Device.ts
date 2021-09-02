@@ -16,21 +16,21 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { expectedTypeOf, modelTypeName } from "../middleware";
+import middleware, { expectedTypeOf, validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, CustomValidator, param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import Sequelize from "sequelize";
-import { Application } from "express";
+import { Application, Response, Request, NextFunction } from "express";
 import { AccessLevel } from "../../models/GroupUsers";
 import { AuthorizationError } from "../customErrors";
 import logger from "../../logging";
-import { format } from "util";
-import {performance} from "perf_hooks";
-import Group from "models/Group";
+import { extractGroupByName, extractValidJWT } from "../extract-middleware";
+import { checkDeviceNameIsUniqueInGroup } from "../validation-middleware";
 
 const Op = Sequelize.Op;
+
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/devices`;
@@ -53,39 +53,26 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [
-      body("group")
-        .if(middleware.getGroupByName(body))
-        .if(
-          // Devicename depends on resolving group
-          body("devicename")
-            .exists()
-            .withMessage(expectedTypeOf("string"))
-            .bail()
-            .if(middleware.isValidName(body, "devicename"))
-            .bail()
-            .custom(async (val, {req}) => {
-              const v = await models.Device.freeDevicename(
-                req.body.devicename,
-                req.body.group.id
-              );
-              logger.info("Free %s", v);
-              return v;
-            })
-            .withMessage((deviceName) => `Device name ${deviceName} in use`)
-      ),
+    validateFields([
+      body("group").exists().isString(),
+      body("devicename")
+        .exists()
+        .withMessage(expectedTypeOf("string")),
       body("password")
         .exists()
-        .withMessage(expectedTypeOf("string"))
-        .bail()
-        .if(middleware.checkNewPassword("password")),
+        .withMessage(expectedTypeOf("string")),
       body("saltId").optional().isInt(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+      middleware.checkNewPassword("password"),
+      middleware.isValidName(body, "devicename")
+    ]),
+    extractGroupByName("body", "group"),
+    checkDeviceNameIsUniqueInGroup("body", "devicename"),
+    async (request, response) => {
+      logger.info("Create Device for group %s", response.locals.group.id);
       const device = await models.Device.create({
         devicename: request.body.devicename,
         password: request.body.password,
-        GroupId: request.body.group.id,
+        GroupId: response.locals.group.id,
       });
       if (request.body.saltId) {
         await device.update({ saltId: request.body.saltId });
@@ -99,7 +86,7 @@ export default function (app: Application, baseUrl: string) {
         saltId: device.saltId,
         token: `JWT ${auth.createEntityJWT(device)}`,
       });
-    })
+    }
   );
 
   /**
@@ -152,15 +139,17 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     apiUrl,
-    [
-      auth.authenticateUser,
+    extractValidJWT,
+    validateFields([
+      // FIXME(jon): Is the view-mode always part of the body? I don't think so.
       middleware.viewMode(),
       query("onlyActive").optional().isBoolean().toBoolean(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const onlyActiveDevices = request.query.onlyActive !== false;
+    ]),
+    auth.authenticateAndExtractUser,
+    async (request: Request, response: Response) => {
+      const onlyActiveDevices = request.query.onlyActive && Boolean(request.query.onlyActive) !== false;
       const devices = await models.Device.allForUser(
-        request.user,
+        response.locals.requestUser,
         onlyActiveDevices,
         request.body.viewAsSuperAdmin
       );
@@ -169,7 +158,7 @@ export default function (app: Application, baseUrl: string) {
         statusCode: 200,
         messages: ["Completed get devices query."],
       });
-    })
+    }
   );
 
   /**

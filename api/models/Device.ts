@@ -19,7 +19,7 @@ import { format } from "util";
 import Sequelize, { FindOptions } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
-import { Group, GroupStatic } from "./Group";
+import { Group, GroupId, GroupStatic } from "./Group";
 import { GroupUsersStatic } from "./GroupUsers";
 import { DeviceUsersStatic } from "./DeviceUsers";
 import { ScheduleId } from "./Schedule";
@@ -71,7 +71,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     ScheduleId?: ScheduleId,
     includeData?: any
   ) => Promise<{ rows: Device[]; count: number }>;
-  freeDevicename: (name: string, id: number) => Promise<boolean>;
+  freeDevicename: (name: string, id: GroupId) => Promise<boolean>;
   getFromId: (id: DeviceId) => Promise<Device>;
   findDevice: (
     deviceID?: DeviceId,
@@ -295,10 +295,7 @@ export default function (
     const device = await this.findOne({
       where: { devicename: devicename, GroupId: groupId },
     });
-    if (device != null) {
-      return false;
-    }
-    return true;
+    return device === null;
   };
 
   Device.getFromId = async function (id) {

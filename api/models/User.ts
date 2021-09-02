@@ -27,6 +27,7 @@ import log from "../logging";
 import { bool } from "aws-sdk/clients/signer";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { Group } from "./Group";
+import logger from "../logging";
 
 const Op = Sequelize.Op;
 
@@ -262,7 +263,6 @@ export default function (
     if (this.hasGlobalRead()) {
       return null;
     }
-
     const allDeviceIds = await this.getAllDeviceIds();
     return { DeviceId: { [Op.in]: allDeviceIds } };
   };
@@ -334,6 +334,7 @@ export default function (
   ) {
     if (!(viewAsSuperAdmin && this.hasGlobalWrite())) {
       const usersDevices = await this.getAllDeviceIds();
+      logger.info("User devices %s", usersDevices);
       deviceIds.forEach((deviceId) => {
         if (!usersDevices.includes(deviceId)) {
           log.info(
@@ -342,9 +343,7 @@ export default function (
               " by " +
               this.username
           );
-          throw new AuthorizationError(
-            "User is not authorized for one (or more) of specified devices."
-          );
+          throw new AuthorizationError("User is not authorized for one (or more) of specified devices.");
         }
       });
     }

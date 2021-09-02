@@ -75,9 +75,14 @@ export const jsonSchemaOf =
     if (typeof val === "string") {
       try {
         val = JSON.parse(val);
+        // FIXME: Store back the parsed JSON - test this case!
+        req[location][requestPath] = val;
       } catch (e) {
         throw new ClientError("Malformed json");
       }
+    }
+    if (typeof val !== "object") {
+      throw new ClientError("Malformed json");
     }
     const result = JsonSchema.validate(val, schema, { required: true });
     if (result.errors.length) {

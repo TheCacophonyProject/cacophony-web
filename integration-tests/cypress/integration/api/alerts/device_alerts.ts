@@ -6,7 +6,7 @@ import { ApiAlertConditions } from "@typedefs/api/alerts";
 import {
   HTTP_BadRequest,
   HTTP_Forbidden,
-  HTTP_OK200,
+  HTTP_OK200, HTTP_Unprocessable
 } from "../../../commands/constants";
 
 describe("Devices alerts", () => {
@@ -48,9 +48,9 @@ describe("Devices alerts", () => {
       BAD_POSSUM_ALERT,
       usera.camera,
       null,
-      HTTP_BadRequest
+      HTTP_Unprocessable
     ).then((response: any) => {
-      checkResponse(response, HTTP_BadRequest);
+      checkResponse(response, HTTP_Unprocessable);
     });
   });
 

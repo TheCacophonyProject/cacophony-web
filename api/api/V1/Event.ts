@@ -16,14 +16,93 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import { expectedTypeOf, validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import { QueryOptions } from "../../models/Event";
 import responseUtil from "./responseUtil";
-import { param, query } from "express-validator";
-import { Application } from "express";
-import eventUtil from "./eventUtil";
+import { body, oneOf, param, query } from "express-validator";
+import { Application, Response, Request, NextFunction } from "express";
+import {errors, powerEventsPerDevice} from "./eventUtil";
+import {
+  extractDevice,
+  extractOptionalDevice,
+  extractOptionalEventDetailSnapshot,
+  extractValidJWT
+} from "../extract-middleware";
+import { jsonSchemaOf } from "../schema-validation";
+import EventDatesSchema from "../../../types/jsonSchemas/api/event/EventDates.schema.json";
+import EventDescriptionSchema from "../../../types/jsonSchemas/api/event/EventDescription.schema.json";
+import { EventDescription } from "@typedefs/api/event";
+import logger from "../../logging";
+
+const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
+
+const uploadEvent = async (request: Request, response: Response, next: NextFunction) => {
+  let detailsId = request.body.eventDetailId;
+  if (!detailsId) {
+    const description: EventDescription = request.body.description;
+    const detail = await models.DetailSnapshot.getOrCreateMatching(
+      description.type,
+      description.details
+    );
+    detailsId = detail.id;
+  }
+  const eventList = request.body.dateTimes.map(dateTime => ({
+    DeviceId: response.locals.requestDevice.id,
+    EventDetailId: detailsId,
+    dateTime,
+  }));
+  const count = eventList.length;
+  try {
+    await models.Event.bulkCreate(eventList);
+  } catch (exception) {
+    return responseUtil.send(response, {
+      statusCode: 500,
+      messages: ["Failed to record events.", exception.message],
+    });
+  }
+  return responseUtil.send(response, {
+    statusCode: 200,
+    messages: ["Added events."],
+    eventsAdded: count,
+    eventDetailId: detailsId,
+  });
+};
+
+// TODO(jon): Consider whether extracting this is worth it compared with just
+//  duplicating and having things be explicit in each api endpoint?
+const commonEventFields = [
+  oneOf([
+      body("eventDetailId")
+        .exists()
+        .withMessage(expectedTypeOf("integer"))
+        .bail()
+        .isInt()
+        .toInt()
+        .withMessage(expectedTypeOf("integer")),
+      body("description")
+        .exists()
+        .withMessage(expectedTypeOf("EventDescription"))
+        .bail()
+        .custom(jsonSchemaOf(EventDescriptionSchema))
+        .bail()
+        .custom((description: EventDescription) => (
+          description.type.match(EVENT_TYPE_REGEXP) !== null
+        ))
+        .withMessage("description type contains invalid characters")
+    ],
+    "Either 'eventDetailId' or 'description' must be specified."
+  ),
+  body("dateTimes")
+    .exists()
+    .bail()
+    .withMessage(expectedTypeOf("Array of ISO formatted date time strings"))
+    .isArray({min: 1})
+    .withMessage(`Got empty array`)
+    .bail()
+    .custom(jsonSchemaOf(EventDatesSchema)),
+];
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/events`;
@@ -50,8 +129,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [auth.authenticateDevice, ...eventUtil.eventAuth],
-    middleware.requestWrapper(eventUtil.uploadEvent)
+    extractValidJWT,
+    validateFields(commonEventFields),
+    // Extract required resources
+    extractOptionalEventDetailSnapshot("body", "eventDetailId"),
+    auth.authenticateAndExtractDevice,
+    // Finally, upload event(s)
+    uploadEvent
   );
 
   /**
@@ -79,14 +163,26 @@ export default function (app: Application, baseUrl: string) {
    * @apiuse V1ResponseError
    */
   app.post(
-    apiUrl + "/device/:deviceID",
-    [
-      auth.authenticateUser,
-      middleware.getDevice(param, "deviceID"),
-      auth.userCanAccessDevices,
-      ...eventUtil.eventAuth,
-    ],
-    middleware.requestWrapper(eventUtil.uploadEvent)
+    `${apiUrl}/device/:deviceId`,
+    // Validate session
+    extractValidJWT,
+    // Validate fields
+    validateFields([
+      param("deviceId")
+        .isInt()
+        .toInt()
+        .withMessage(expectedTypeOf("integer")),
+      ...commonEventFields
+      ]
+    ),
+    // Extract required resources
+    extractOptionalEventDetailSnapshot("body", "eventDetailId"),
+    auth.authenticateAndExtractUser,
+    extractDevice("params", "deviceId"),
+    // Validate resource permissions
+    auth.userCanAccessExtractedDevices,
+    // Finally, upload event(s)
+    uploadEvent
   );
 
   /**
@@ -112,49 +208,60 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     apiUrl,
-    [
-      auth.authenticateUser,
+    // Validate session
+    extractValidJWT,
+    // Validate request structure
+    validateFields([
       query("startTime")
-        // @ts-ignore
         .isISO8601({ strict: true })
-        .optional(),
+        .optional()
+        .withMessage(expectedTypeOf("ISO formatted date string")),
       query("endTime")
-        // @ts-ignore
         .isISO8601({ strict: true })
-        .optional(),
+        .optional()
+        .withMessage(expectedTypeOf("ISO formatted date string")),
       query("deviceId").isInt().optional().toInt(),
       query("offset").isInt().optional().toInt(),
       query("limit").isInt().optional().toInt(),
-      query("type").matches(eventUtil.EVENT_TYPE_REGEXP).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+      query("type").matches(EVENT_TYPE_REGEXP).optional(),
+      query("latest").isBoolean().optional(),
+    ]),
+    // Extract required resources
+    auth.authenticateAndExtractUser,
+    extractOptionalDevice("query", "deviceId"),
+    // Check permissions on resources
+    auth.userCanAccessOptionalExtractedDevices,
+    // Extract device if any, and check that user has permissions to access it
+    async (request: Request, response: Response) => {
       const query = request.query;
-      query.offset = query.offset || 0;
+      const offset: number = (query.offset && query.offset as unknown as number) || 0;
       let options: QueryOptions;
       if (query.type) {
         options = { eventType: query.type } as QueryOptions;
       }
 
       const result = await models.Event.query(
-        request.user,
-        query.startTime,
-        query.endTime,
-        query.deviceId,
-        query.offset,
-        query.limit,
-        query.latest,
+        response.locals.requestUser,
+        query.startTime as string,
+        query.endTime as string,
+        query.deviceId as unknown as number,
+        offset,
+        query.limit as unknown as number,
+        query.latest as unknown as boolean,
         options
       );
+
+      // TODO(jon): Flatten out the response structure and formalise and validate it.
 
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
         limit: query.limit,
-        offset: query.offset,
+        offset,
         count: result.count,
         rows: result.rows,
       });
-    })
+    }
   );
 
   /**
@@ -206,25 +313,31 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    apiUrl + "/errors",
-    [
-      auth.authenticateUser,
+    `${apiUrl}/errors`,
+    // Authenticate the session
+    extractValidJWT,
+    // Validate request structure
+    validateFields([
       query("startTime")
-        // @ts-ignore
         .isISO8601({ strict: true })
         .optional(),
       query("endTime")
-        // @ts-ignore
         .isISO8601({ strict: true })
         .optional(),
       query("deviceId").isInt().optional().toInt(),
       query("offset").isInt().optional().toInt(),
       query("limit").isInt().optional().toInt(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    ]),
+    // Extract required resources
+    auth.authenticateAndExtractUser,
+    extractOptionalDevice("query", "deviceId"),
+    // Check permissions on resources
+    auth.userCanAccessOptionalExtractedDevices,
+    async (request: Request, response: Response) => {
       const query = request.query;
-      const result = await eventUtil.errors(request);
 
+      // FIXME(jon): This smells bad, sometimes requires user, and sometimes doesn't
+      const result = await errors({ query: {...request.query}, res: { locals: {...response.locals } } });
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
@@ -232,7 +345,7 @@ export default function (app: Application, baseUrl: string) {
         offset: query.offset,
         rows: result,
       });
-    })
+    }
   );
 
   /**
@@ -241,7 +354,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Integer} [deviceID] Return only errors for this deviceID
+   * @apiParam {Integer} [deviceId] Return only errors for this deviceId
    *
    * @apiSuccess {JSON} events Array of `ApiPowerEvent` containing details of power events matching the criteria given.
    * @apiSuccessExample ApiPowerEvent:
@@ -264,15 +377,27 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    apiUrl + "/powerEvents",
-    [auth.authenticateUser, query("deviceId").isInt().optional().toInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const result = await eventUtil.powerEventsPerDevice(request);
+    `${apiUrl}/powerEvents`,
+    extractValidJWT,
+    validateFields([
+      query("deviceId")
+        .isInt()
+        .optional()
+        .toInt()
+    ]),
+    // Extract required resources
+    auth.authenticateAndExtractUser,
+    extractOptionalDevice("query", "deviceId"),
+    // Check permissions on resources
+    auth.userCanAccessOptionalExtractedDevices,
+    async (request: Request, response: Response) => {
+      logger.info("Get power events for %s", response.locals.requestUser);
+      const result = await powerEventsPerDevice({ query: { ...request.query }, res: { locals: { ...response.locals }} });
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
         events: result,
       });
-    })
+    }
   );
 }

@@ -16,35 +16,18 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { expectedTypeOf, getDeviceById, modelTypeName, parseJSONInternal } from "../middleware";
-import auth, { checkAccess, DecodedJWTToken, extractJWT, getVerifiedJWT, lookupEntity } from "../auth";
+import middleware, { expectedTypeOf, validateFields } from "../middleware";
+import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, header, param, ValidationChain, validationResult } from "express-validator";
-import { Application, NextFunction, Request, Response } from "express";
-import { isAlertCondition } from "../../models/Alert";
-import { ClientError } from "../customErrors";
-import logger from "../../logging";
-import { format, types } from "util";
+import { body, param} from "express-validator";
+import { Application} from "express";
 import { jsonSchemaOf } from "../schema-validation";
 import ApiAlertConditionsSchema from "../../../types/jsonSchemas/api/alerts/ApiAlertConditions.schema.json";
+import { extractDevice, extractValidJWT } from "../extract-middleware";
+import logger from "../../logging";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
-
-
-// sequential processing, stops running validations chain if the previous one have failed.
-const validateSequentially = (validations: ValidationChain[]) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    for (const validation of validations) {
-      const result = await validation.run(req);
-      logger.info("Result %s", result);
-      if (!result.isEmpty()) {
-        break;
-      }
-    }
-    return next();
-  };
-};
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/alerts`;
@@ -78,7 +61,18 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-      // TODO - always extract JWT, then see if the rest of the fields are correct
+    // For authenticated requests, always extract a valid JWT first,
+    // so that we don't leak data in subsequent error messages for an
+    // unauthenticated request.
+    extractValidJWT,
+    // Validation: Make sure the request payload is well-formed,
+    // without regard for whether the described entities exist.
+    validateFields([
+      body("conditions")
+        .exists()
+        .withMessage(expectedTypeOf("ApiAlertConditions"))
+        .bail()
+        .custom(jsonSchemaOf(ApiAlertConditionsSchema)),
       body("name")
         .exists()
         .isString(),
@@ -87,45 +81,29 @@ export default function (app: Application, baseUrl: string) {
         .toInt()
         .optional()
         .default(DEFAULT_FREQUENCY),
-      validateSequentially([
-        header("Authorization").custom(extractJWT),
-        body("conditions")
-          .exists()
-          .withMessage(expectedTypeOf("ApiAlertConditions"))
-          .bail()
-          .custom(jsonSchemaOf(ApiAlertConditionsSchema)),
-        body("deviceId")
-          .exists()
-          .withMessage(expectedTypeOf("integer"))
-          .bail()
-          .custom((val, { req }) => {
-            return new Promise((resolve, reject) => {
-              models.Device.findByPk(val).then(device => {
-                if (device === null) {
-                  reject(format("Could not find a %s with an id of %s.", "Device", val));
-                }
-                req["devices"] = [device];
-                resolve(true);
-              });
-            });
-        }),
-        body().custom(auth.authenticate2(['user'])),
-        body().custom(auth.userCanAccessDevices2)
-      ]),
-    middleware.requestWrapper(async (request, response) => {
+      body("deviceId")
+        .isInt()
+        .toInt()
+        .withMessage(expectedTypeOf("integer"))
+    ]),
+    // Now extract the items we need from the database.
+    extractDevice("body", "deviceId"),
+    auth.authenticateAndExtractUser,
+    auth.userCanAccessExtractedDevices,
+    async (request, response) => {
       const newAlert = await models.Alert.create({
         name: request.body.name,
         conditions: request.body.conditions,
         frequencySeconds: request.body.frequencySeconds,
-        UserId: request.user.id,
-        DeviceId: request.body.device.id,
+        UserId: response.locals.requestUser.id,
+        DeviceId: response.locals.device.id,
       });
       return responseUtil.send(response, {
         id: newAlert.id,
         statusCode: 200,
         messages: ["Created new Alert."],
       });
-    })
+    }
   );
 
   /**
@@ -169,23 +147,24 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/device/:deviceId`,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(param),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    extractValidJWT,
+    validateFields([
+      param("deviceId").isInt().toInt(),
+    ]),
+    extractDevice("params", "deviceId"),
+    auth.authenticateAndExtractUser,
+    auth.userCanAccessExtractedDevices,
+    async (request, response) => {
       const Alerts = await models.Alert.query(
-        { DeviceId: request.body.device.id },
-        request.user,
-        null,
-        null
+        { DeviceId: response.locals.device.id },
+        response.locals.requestUser
       );
+      // FIXME validate schema of returned payload.
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
         Alerts,
       });
-    })
+    }
   );
 }

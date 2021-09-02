@@ -67,9 +67,10 @@ export default function (sequelize, DataTypes): DetailSnapshotStatic {
   };
 
   DetailSnapshot.getOrCreateMatching = async function (
-    searchType,
-    searchDetails
+    searchType: string,
+    searchDetails: any
   ): Promise<DetailSnapShot> {
+    // FIXME(jon): It's a little bit fuzzy if this should actually be an object, or just default to null
     if (!searchDetails) {
       searchDetails = {
         [Op.eq]: null,

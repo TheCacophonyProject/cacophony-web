@@ -1,6 +1,6 @@
 import config from "../config";
 import log from "../logging";
-import eventUtil from "../api/V1/eventUtil";
+import { errors } from "../api/V1/eventUtil";
 import moment, { Moment } from "moment";
 import { ServiceErrorMap } from "../api/V1/systemError";
 import { sendEmail } from "./emailUtil";
@@ -17,7 +17,7 @@ async function main() {
     offset: null,
     limit: null,
   };
-  const serviceErrors = await eventUtil.errors({ query: query }, true);
+  const serviceErrors = await errors({ query: query, res: {locals: {requestUser: null } } }, true);
   if (Object.keys(serviceErrors).length == 0) {
     log.info("No service errors in the last 24 hours");
     return;

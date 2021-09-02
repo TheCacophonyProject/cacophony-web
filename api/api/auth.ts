@@ -23,7 +23,8 @@ import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
 import customErrors, { ClientError } from "./customErrors";
 import models, { ModelCommon } from "../models";
-
+import logger from "../logging";
+import {Request, Response, NextFunction} from "express";
 /*
  * Create a new JWT for a user or device.
  */
@@ -60,7 +61,7 @@ export const getVerifiedJWT = (req): string | object | DecodedJWTToken => {
 /**
  * check requested auth access exists in jwt access object
  */
-export function checkAccess(reqAccess, jwtDecoded: DecodedJWTToken) {
+export const checkAccess = (reqAccess, jwtDecoded: DecodedJWTToken): boolean => {
   if (!reqAccess && jwtDecoded.access) {
     return false;
   }
@@ -81,28 +82,22 @@ export function checkAccess(reqAccess, jwtDecoded: DecodedJWTToken) {
     }
   }
   return true;
-}
+};
 
 type AuthenticateMiddleware = (
   req,
   res,
   next
-) => Promise<
-  | ((
-      req: http.IncomingMessage,
-      res: http.ServerResponse,
-      next: createServer.NextFunction
-    ) => void)
-  | undefined
->;
+) => Promise<void>;
 /*
  * Authenticate a JWT in the 'Authorization' header of the given type
  */
 const authenticate = (
   types: string[] | null,
-  reqAccess?
+  reqAccess?: Record<string, any>
 ): AuthenticateMiddleware => {
   return async (req, res, next) => {
+    logger.notice("Authenticate");
     let jwtDecoded: DecodedJWTToken;
     try {
       jwtDecoded = getVerifiedJWT(req) as DecodedJWTToken;
@@ -133,14 +128,36 @@ const authenticate = (
   };
 };
 
-export const extractJWT = () => {
-  return (val, {req}) => {
-    try {
-      req.token = getVerifiedJWT(req) as DecodedJWTToken;
-    } catch (e) {
-      throw new ClientError(e.message, 401);
+const upperFirst = (str: string): string => (
+  str.slice(0, 1).toUpperCase() + str.slice(1)
+);
+
+const authenticateAndExtractModelForJWT = (
+  types: string[] | null,
+  reqAccess?: Record<string, any>
+): AuthenticateMiddleware => {
+  return async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    const jwtDecoded = response.locals.token;
+    const type = jwtDecoded._type;
+    if (types && !types.includes(jwtDecoded._type)) {
+      return next(new ClientError(`Invalid JWT access type '${type}', must be ${types.length > 1 ? "one of " : ""}${types.map(t => `'${t}'`).join(", ")}`, 401));
     }
+    const hasAccess = checkAccess(reqAccess, jwtDecoded);
+    if (!hasAccess) {
+      return next(new ClientError("JWT does not have access.", 401));
+    }
+    const result = await lookupEntity(jwtDecoded);
+    if (result === null) {
+      return next(new ClientError(`Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`, 401));
+    }
+    response.locals[`request${upperFirst(type)}`] = result;
+    next();
   };
+};
+
+export const extractJWT = (val, {req}) => {
+  req.token = getVerifiedJWT(req) as DecodedJWTToken;
+  return true;
 };
 
 export const authenticate2 = (
@@ -152,8 +169,7 @@ export const authenticate2 = (
     if (types && !types.includes(jwtDecoded._type)) {
       throw new ClientError(`Invalid JWT access type '${jwtDecoded._type}', must be ${types.length > 1 ? "one of " : ""}${types.map(t => `'${t}'`).join(", ")}`, 401);
     }
-    const hasAccess = checkAccess(reqAccess, jwtDecoded);
-    if (!hasAccess) {
+    if (!checkAccess(reqAccess, jwtDecoded)) {
       throw new ClientError("JWT does not have access.", 401);
     }
     const result = await lookupEntity(jwtDecoded);
@@ -166,7 +182,7 @@ export const authenticate2 = (
 };
 
 
-export async function lookupEntity(jwtDecoded) {
+export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
   switch (jwtDecoded._type) {
     case "user":
       return models.User.findByPk(jwtDecoded.id);
@@ -182,6 +198,10 @@ export async function lookupEntity(jwtDecoded) {
 const authenticateUser: AuthenticateMiddleware = authenticate(["user"]);
 const authenticateDevice: AuthenticateMiddleware = authenticate(["device"]);
 const authenticateAny: AuthenticateMiddleware = authenticate(null);
+
+const authenticateAndExtractUser: AuthenticateMiddleware = authenticateAndExtractModelForJWT(["user"]);
+const authenticateAndExtractDevice: AuthenticateMiddleware = authenticateAndExtractModelForJWT(["device"]);
+const authenticateAndExtractAny: AuthenticateMiddleware = authenticateAndExtractModelForJWT(null);
 
 const authenticateAccess = function (
   type: string[],
@@ -293,6 +313,63 @@ const userCanAccessDevices = async (request, response, next) => {
   }
 
   try {
+    logger.info("Device %s", devices);
+    await request.user.checkUserControlsDevices(
+      devices,
+      request.body.viewAsSuperAdmin
+    );
+  } catch (e) {
+    return response.status(403).json({ messages: [e.message] });
+  }
+  next();
+};
+
+const userCanAccessExtractedDevicesInternal = (stopOnFailure = true) => async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  const devices = response.locals.devices || (response.locals.device && [response.locals.device]);
+  if (!devices || (devices && devices.length === 0)) {
+    if (stopOnFailure) {
+      return next(new ClientError("No device(s) specified.", 422));
+    } else {
+      return next();
+    }
+  }
+  const user = response.locals.requestUser;
+  if (!user) {
+    return next(new ClientError("No user specified.", 422));
+  }
+  const deviceIds = devices.map(({id}) => id);
+  try {
+    logger.info("Device(s) %s", deviceIds);
+    await user.checkUserControlsDevices(
+      deviceIds,
+      request.body.viewAsSuperAdmin
+    );
+  } catch (e) {
+    return next(new ClientError(e.message, 403));
+  }
+  next();
+};
+
+const userCanAccessExtractedDevices = userCanAccessExtractedDevicesInternal();
+const userCanAccessOptionalExtractedDevices = userCanAccessExtractedDevicesInternal(false);
+
+const userCanAccessDevices3 = async (request, response, next) => {
+  let devices = [];
+  if ("device" in request && request.device) {
+    devices = [request.device.id];
+  } else if ("devices" in request) {
+    devices = request.devices;
+  } else {
+    next(new customErrors.ClientError("No devices specified.", 422));
+    return;
+  }
+
+  if (!("user" in request)) {
+    next(new customErrors.ClientError("No user specified.", 422));
+    return;
+  }
+
+  try {
     await request.user.checkUserControlsDevices(
       devices,
       request.body.viewAsSuperAdmin
@@ -384,6 +461,8 @@ export default {
   authenticate2,
   createEntityJWT,
   authenticateUser,
+  authenticateAndExtractUser,
+  authenticateAndExtractDevice,
   authenticateDevice,
   authenticateAny,
   authenticateAccess,
@@ -392,6 +471,9 @@ export default {
   signedUrl,
   userCanAccessDevices,
   userCanAccessDevices2,
+  userCanAccessDevices3,
+  userCanAccessExtractedDevices,
+  userCanAccessOptionalExtractedDevices,
   userHasReadAccessToGroup,
   userHasWriteAccessToGroup,
 };

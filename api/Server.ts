@@ -18,8 +18,8 @@ const asyncExec = promisify(exec);
 
 const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
   log.info("Checking if type schemas need recompilation");
-  //const { stdout, stderr } = await asyncExec("cd ../types && node build-schemas.js");
-  const { stdout, stderr } = await asyncExec("cd ../types && npm run generate-schemas");
+  const { stdout, stderr } = await asyncExec("cd ../types && node build-schemas.js");
+  //const { stdout, stderr } = await asyncExec("cd ../types && npm run generate-schemas");
   log.info("Stdout: %s", stdout);
   return;
 };

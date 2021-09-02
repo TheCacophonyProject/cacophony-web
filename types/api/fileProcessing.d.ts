@@ -1,12 +1,6 @@
 declare module "*.json"
 
-type IsoFormattedDateString = string;
-
-
-type integer = number;
-type float = number;
-type FloatZeroToOne = number;
-type Seconds = number;
+import {integer, float, Seconds, FloatZeroToOne, IsoFormattedDateString } from "./common";
 
 type ClassificationClass = "bird" | "cat" | "false-positive" | "hedgehog" | "human"
   | "leporidae" | "mustelid" | "possum" | "rodent" | "vehicle" | "wallaby" | "not";

@@ -33,11 +33,15 @@ export default function (app: Application) {
     "apidoc.js",
   ];
   // Filter out files that are not added to app directly, and filter out typescript versions of files.
+
   const apiRoutes = fs
     .readdirSync(__dirname)
     .filter((file) => file.endsWith(".js") && !excludedFiles.includes(file));
-
   for (const route of apiRoutes) {
-    require(path.join(__dirname, route)).default(app, "/api/v1");
+    try {
+      require(path.join(__dirname, route)).default(app, "/api/v1");
+    } catch (e) {
+      logger.warning(e.message);
+    }
   }
 }

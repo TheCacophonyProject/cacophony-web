@@ -16,13 +16,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param, query } from "express-validator";
+import { body, oneOf, param, query } from "express-validator";
 import { Application } from "express";
 import { Validator } from "jsonschema";
+import { extractDevice, extractGroupByName, extractGroupByNameOrId, extractUserByNameOrId, extractValidJWT } from "../extract-middleware";
 
 const JsonSchema = new Validator();
 
@@ -280,25 +281,36 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Number} group name of the group.
-   * @apiParam {Number} username name of the user to add to the grouop.
+   * @apiParam {Number} username name of the user to add to the group.
    * @apiParam {Boolean} admin If the user should be an admin for the group.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
+
+  // TODO(jon): Would be nicer as /api/v1/groups/:groupName/users or something
   app.post(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrId(body),
-      middleware.getUserByNameOrId(body),
+    extractValidJWT,
+    validateFields([
+      oneOf([
+        body("group").exists().isString(),
+        body("groupId").exists().isInt().toInt()
+      ]),
+      oneOf([
+        body("username").exists().isString(),
+        body("userId").exists().isInt().toInt()
+      ]),
       body("admin").isBoolean(),
-    ],
+    ]),
+    extractGroupByNameOrId("body", "group", "groupId"),
+    extractUserByNameOrId("body", "username", "userId"),
+    auth.authenticateAndExtractUser,
     middleware.requestWrapper(async (request, response) => {
       await models.Group.addUserToGroup(
-        request.user,
-        request.body.group,
-        request.body.user,
+        response.locals.requestUser,
+        response.locals.group,
+        response.locals.user,
         request.body.admin
       );
       return responseUtil.send(response, {

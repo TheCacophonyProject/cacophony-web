@@ -422,7 +422,7 @@ function checkPowerEvents(
   expectedEvent: TestComparablePowerEvent
 ) {
   const params = {
-    deviceID: getCreds(deviceName).id,
+    deviceId: getCreds(deviceName).id,
   };
 
   makeAuthorizedRequest(

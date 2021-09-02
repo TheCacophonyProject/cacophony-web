@@ -21,6 +21,7 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { DeviceId, Device } from "./Device";
 import { User } from "./User";
 import { DetailSnapShot } from "./DetailSnapshot";
+import logger from "../logging";
 
 const Op = Sequelize.Op;
 
@@ -136,7 +137,7 @@ export default function (sequelize, DataTypes) {
       }
     }
 
-    let order: any[] = ["dateTime"];
+    let order: (string | string[])[] = ["dateTime"];
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
@@ -145,10 +146,11 @@ export default function (sequelize, DataTypes) {
       where: {
         [Op.and]: [
           where, // User query
+          // FIXME(jon): This smells
           options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
-      order: order,
+      order,
       include: [
         {
           model: models.DetailSnapshot,
@@ -162,8 +164,8 @@ export default function (sequelize, DataTypes) {
         },
       ],
       attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      limit: limit,
-      offset: offset,
+      limit,
+      offset,
     });
   };
 
@@ -186,7 +188,7 @@ export default function (sequelize, DataTypes) {
       }
     }
 
-    const order: any[] = [
+    const order = [
       ["EventDetail", "type", "DESC"],
       ["DeviceId", "DESC"],
       ["dateTime", "DESC"],
@@ -196,10 +198,11 @@ export default function (sequelize, DataTypes) {
       where: {
         [Op.and]: [
           where, // User query
+          // FIXME(jon): This also smells bad
           options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
-      order: order,
+      order,
       include: [
         {
           model: models.DetailSnapshot,

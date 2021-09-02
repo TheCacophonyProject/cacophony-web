@@ -44,7 +44,6 @@ export interface AlertStatic extends ModelStaticCommon<Alert> {
   query: (
     where: any,
     user: User | null,
-    deviceId: number | null,
     trackTag?: TrackTag | null,
     admin?: boolean
   ) => Promise<any[]>;
@@ -109,9 +108,10 @@ export default function (sequelize, DataTypes): AlertStatic {
   Alert.query = async function (
     where: any,
     user: User | null,
-    trackTag: TrackTag | null,
+    trackTag: TrackTag | null = null,
     admin: boolean = false
   ) {
+    // FIXME User can be null, this is broken
     let userWhere = {};
     if (!admin) {
       userWhere = { id: user.id };
