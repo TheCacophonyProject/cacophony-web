@@ -5,7 +5,7 @@ import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 import { ApiEventReturned } from "../../../commands/types";
 
-import { HTTP_Unprocessable, HTTP_OK200 } from "../../../commands/constants";
+import { HTTP_Unprocessable, HTTP_OK200, HTTP_Forbidden, HTTP_BadRequest } from "../../../commands/constants";
 
 const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values
 
@@ -48,7 +48,7 @@ describe("Events - query events", () => {
     //another group and device
     cy.apiCreateUserGroupAndDevice(
       "eqOtherGroupAdmin",
-      "eqOherGroup",
+      "eqOtherGroup",
       "eqOtherGroupCamera"
     );
 
@@ -168,7 +168,8 @@ describe("Events - query events", () => {
       "eqOtherGroupCamera",
       {},
       [],
-      EXCL_TIME_ID
+      EXCL_TIME_ID,
+      HTTP_Forbidden
     );
   });
 
@@ -180,8 +181,8 @@ describe("Events - query events", () => {
       [expectedEvent1, expectedEvent2],
       EXCL_TIME_ID
     );
-    cy.apiEventsCheck("eqDeviceAdmin", "eqOtherCamera", {}, []);
-    cy.apiEventsCheck("eqDeviceAdmin", "eqOtherGroupCamera", {}, []);
+    cy.apiEventsCheck("eqDeviceAdmin", "eqOtherCamera", {}, [], [], HTTP_Forbidden);
+    cy.apiEventsCheck("eqDeviceAdmin", "eqOtherGroupCamera", {}, [], [], HTTP_Forbidden);
   });
 
   it("Verify time filtering works correctly", () => {
@@ -658,9 +659,9 @@ describe("Events - query events", () => {
   });
 
   it("Handles invalid devices correctly", () => {
-    cy.log("Test for non existant device");
-    cy.apiEventsCheck("eqGroupAdmin", undefined, { deviceId: 999999 }, []);
-    cy.log("Bad value for devcice id");
+    cy.log("Test for non existent device");
+    cy.apiEventsCheck("eqGroupAdmin", undefined, { deviceId: 999999 }, [], [], HTTP_BadRequest);
+    cy.log("Bad value for device id");
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,

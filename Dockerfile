@@ -25,7 +25,9 @@ EXPOSE 5432
 
 COPY docker-entrypoint.sh /
 
-COPY api .
+COPY api ./api
+
+COPY ../types ./types
 
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

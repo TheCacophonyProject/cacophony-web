@@ -26,6 +26,9 @@ const getPathType = (
   path: (string | number)[] | string,
   instance?: any
 ) => {
+  if (item === null) {
+    return "'null'";
+  }
   const name = getPathName(item, path, instance);
   if (name === "array") {
     return name;
@@ -69,6 +72,24 @@ const printInstance = (instance: any): string => {
   }
   return instance;
 };
+
+export const arrayOf = (schemaOriginal: Schema): Schema => {
+  const schema = JSON.parse(JSON.stringify(schemaOriginal));
+  // Wrap schema in array type.
+  if (schema.definitions.length > 1) {
+    throw new ClientError("arrayOf error");
+  }
+  const definition = Object.keys(schema.definitions)[0];
+  schema.$ref = `#/definitions/${definition}s`;
+  schema.definitions[`${definition}s`] = {
+    "type": "array",
+    "items": {
+      "$ref": `#/definitions/${definition}`
+    }
+  };
+  return schema;
+};
+
 export const jsonSchemaOf =
   (schema: Schema) =>
   (val: string | object, { location, path: requestPath, req }) => {
@@ -76,7 +97,7 @@ export const jsonSchemaOf =
       try {
         val = JSON.parse(val);
         // FIXME: Store back the parsed JSON - test this case!
-        req[location][requestPath] = val;
+        // req[location][requestPath] = val;
       } catch (e) {
         throw new ClientError("Malformed json");
       }
@@ -103,7 +124,8 @@ export const jsonSchemaOf =
                 switch (name) {
                   case "type":
                     return `field '${printPath(
-                      path
+                      path,
+                      requestPath
                     )}' expected ${name} ${argument}, got ${getPathType(
                       val as object,
                       path

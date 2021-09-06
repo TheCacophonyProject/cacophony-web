@@ -16,8 +16,8 @@ import {
   ApiDeviceQueryDevice,
   ApiDevicesDevice,
   ApiDeviceUsersUser,
-  TestDeviceAndGroup,
 } from "../types";
+import { TestDeviceAndGroup } from "@typedefs/api/device";
 
 Cypress.Commands.add(
   "apiCreateDevice",
@@ -353,10 +353,10 @@ Cypress.Commands.add(
   "apiCheckDevicesQuery",
   (
     userName: string,
-    devicesArray: TestDeviceAndGroup[],
-    groupsArray: string[],
+    devicesArray: TestDeviceAndGroup[] | undefined,
+    groupsArray: string[] | undefined,
     expectedDevices: ApiDeviceQueryDevice[],
-    operator: string = "or",
+    operator: "and" | "or" = "or",
     statusCode: number = 200
   ) => {
     logTestDescription(
@@ -366,12 +366,15 @@ Cypress.Commands.add(
       { user: userName, devicesArray, groupsArray, operator },
       true
     );
-
-    const params = {
-      devices: JSON.stringify(devicesArray),
-      groups: JSON.stringify(groupsArray),
-      operator: operator,
+    const params: any = {
+      operator
     };
+    if (devicesArray) {
+      params.devices = JSON.stringify(devicesArray);
+    }
+    if (groupsArray) {
+      params.groups = JSON.stringify(groupsArray);
+    }
     const fullUrl = v1ApiPath("devices/query", params);
 
     makeAuthorizedRequestWithStatus(

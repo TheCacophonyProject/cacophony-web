@@ -21,6 +21,7 @@ import auth from "../auth";
 import { body, oneOf } from "express-validator";
 import responseUtil from "./responseUtil";
 import { Application } from "express";
+import { extractUser, extractValidJWT } from "../extract-middleware";
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
 
@@ -59,7 +60,7 @@ export default function (app: Application) {
         request.body.password
       );
       if (passwordMatch) {
-        const token = await auth.createEntityJWT(request.body.user);
+        const token = auth.createEntityJWT(request.body.user);
         const userData = await request.body.user.getDataValues();
         responseUtil.send(response, {
           statusCode: 200,

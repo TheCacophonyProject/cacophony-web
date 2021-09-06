@@ -48,8 +48,9 @@ const uploadEvent = async (request: Request, response: Response, next: NextFunct
     );
     detailsId = detail.id;
   }
+  const device = response.locals.device || response.locals.requestDevice;
   const eventList = request.body.dateTimes.map(dateTime => ({
-    DeviceId: response.locals.requestDevice.id,
+    DeviceId: device.id,
     EventDetailId: detailsId,
     dateTime,
   }));
@@ -172,7 +173,7 @@ export default function (app: Application, baseUrl: string) {
         .isInt()
         .toInt()
         .withMessage(expectedTypeOf("integer")),
-      ...commonEventFields
+        ...commonEventFields
       ]
     ),
     // Extract required resources
@@ -391,7 +392,7 @@ export default function (app: Application, baseUrl: string) {
     // Check permissions on resources
     auth.userCanAccessOptionalExtractedDevices,
     async (request: Request, response: Response) => {
-      logger.info("Get power events for %s", response.locals.requestUser);
+      logger.info("Get power events for %s at time %s", response.locals.requestUser, new Date());
       const result = await powerEventsPerDevice({ query: { ...request.query }, res: { locals: { ...response.locals }} });
       return responseUtil.send(response, {
         statusCode: 200,

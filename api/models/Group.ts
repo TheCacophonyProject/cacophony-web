@@ -206,11 +206,10 @@ export interface Group extends Sequelize.Model, ModelCommon<Group> {
 }
 export interface GroupStatic extends ModelStaticCommon<Group> {
   addUserToGroup: (
-    authUser: User,
     group: Group,
     userToAdd: User,
     admin: boolean
-  ) => Promise<void>;
+  ) => Promise<string>;
   removeUserFromGroup: (
     authUser: User,
     group: Group,
@@ -266,13 +265,7 @@ export default function (sequelize, DataTypes): GroupStatic {
    * Adds a user to a Group, if the given user has permission to do so.
    * The user must be a group admin to do this.
    */
-  Group.addUserToGroup = async function (authUser, group, userToAdd, admin) {
-    if (!(await group.userPermissions(authUser)).canAddUsers) {
-      throw new AuthorizationError(
-        "User is not a group admin so cannot add users"
-      );
-    }
-
+  Group.addUserToGroup = async function (group, userToAdd, admin) {
     // Get association if already there and update it.
     const groupUser = await models.GroupUsers.findOne({
       where: {
@@ -280,12 +273,17 @@ export default function (sequelize, DataTypes): GroupStatic {
         UserId: userToAdd.id,
       },
     });
-    if (groupUser != null) {
-      groupUser.admin = admin; // Update admin value.
-      await groupUser.save();
+    if (groupUser !== null) {
+      if (groupUser.admin !== admin) {
+        groupUser.admin = admin; // Update admin value.
+        await groupUser.save();
+        return "Updated was made admin for group.";
+      } else {
+        return "No change, user already added.";
+      }
     }
-
     await group.addUser(userToAdd, { through: { admin: admin } });
+    return "Added user to group.";
   };
 
   /**
@@ -293,12 +291,6 @@ export default function (sequelize, DataTypes): GroupStatic {
    * The user must be a group admin to do this.
    */
   Group.removeUserFromGroup = async function (authUser, group, userToRemove) {
-    if (!(await group.userPermissions(authUser)).canRemoveUsers) {
-      throw new AuthorizationError(
-        "User is not a group admin so cannot remove users"
-      );
-    }
-
     // Get association if already there and update it.
     const groupUsers = await models.GroupUsers.findAll({
       where: {

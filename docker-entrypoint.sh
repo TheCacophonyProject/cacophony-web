@@ -3,6 +3,10 @@ set -e
 
 cd /
 
+echo "---- Syncing time ----"
+#timedatectl set-ntp on
+#timedatectl
+
 echo "---- Starting Minio ----"
 ./minio server --address :9001 .data &> minio.log &
 

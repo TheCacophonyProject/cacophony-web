@@ -1,5 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
+import { TestDeviceAndGroup } from "@typedefs/api/device";
 import { HTTP_Unprocessable } from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
@@ -81,7 +82,7 @@ describe("Devices/query", () => {
   });
 
   it("Can match a single device by group+devicename", () => {
-    cy.apiCheckDevicesQuery(groupAdmin, [expectedDeviceA1], null, [
+    cy.apiCheckDevicesQuery(groupAdmin, [expectedDeviceA1], undefined, [
       expectedDeviceA1,
     ]);
   });
@@ -89,7 +90,7 @@ describe("Devices/query", () => {
   it("Can match a single device by group", () => {
     cy.apiCheckDevicesQuery(
       user2,
-      null,
+      undefined,
       [getTestName(group2)],
       [expectedDeviceA2]
     );
@@ -99,7 +100,7 @@ describe("Devices/query", () => {
     cy.apiCheckDevicesQuery(
       groupAdmin,
       [expectedDeviceA1, expectedDeviceB1],
-      null,
+      undefined,
       [expectedDeviceA1, expectedDeviceB1]
     );
   });
@@ -107,7 +108,7 @@ describe("Devices/query", () => {
   it("Can match multiple devices in single group", () => {
     cy.apiCheckDevicesQuery(
       groupAdmin,
-      null,
+      undefined,
       [getTestName(group1)],
       [expectedDeviceA1, expectedDeviceB1]
     );
@@ -116,7 +117,7 @@ describe("Devices/query", () => {
   it("Can match multiple devices in multiple groups", () => {
     cy.apiCheckDevicesQuery(
       everythingUser,
-      null,
+      undefined,
       [getTestName(group1), getTestName(group2)],
       [expectedDeviceA1, expectedDeviceB1, expectedDeviceA2]
     );
@@ -164,7 +165,7 @@ describe("Devices/query", () => {
 
       cy.apiCheckDevicesQuery(
         superuser,
-        null,
+        undefined,
         [getTestName(group1), getTestName(group2)],
         [expectedDeviceA1, expectedDeviceB1, expectedDeviceA2]
       );
@@ -176,7 +177,7 @@ describe("Devices/query", () => {
   it("Group admin can see all and only their group's devices", () => {
     cy.apiCheckDevicesQuery(
       groupAdmin,
-      null,
+      undefined,
       [getTestName(group1), getTestName(group2)],
       [expectedDeviceA1, expectedDeviceB1]
     );
@@ -185,7 +186,7 @@ describe("Devices/query", () => {
   it("Group user can see all and only their group's devices", () => {
     cy.apiCheckDevicesQuery(
       groupMember,
-      null,
+      undefined,
       [getTestName(group1), getTestName(group2)],
       [expectedDeviceA1, expectedDeviceB1]
     );
@@ -194,7 +195,7 @@ describe("Devices/query", () => {
   it("Device admin can see all and only their devices", () => {
     cy.apiCheckDevicesQuery(
       deviceAdmin,
-      null,
+      undefined,
       [getTestName(group1), getTestName(group2)],
       [expectedDeviceA1]
     );
@@ -203,7 +204,7 @@ describe("Devices/query", () => {
   it("Device user can see all and only their devices", () => {
     cy.apiCheckDevicesQuery(
       deviceMember,
-      null,
+      undefined,
       [getTestName(group1), getTestName(group2)],
       [expectedDeviceA1]
     );
@@ -237,28 +238,30 @@ describe("Devices/query", () => {
       groupname: getTestName(group1),
       saltId: 9999,
     };
-    cy.apiCheckDevicesQuery(everythingUser, [expectedDevice5], null, [
+    const testDevice = {
+      ...expectedDevice5
+    };
+    delete testDevice.saltId;
+    cy.apiCheckDevicesQuery(everythingUser, [testDevice], undefined, [
       expectedDevice5,
     ]);
   });
 
   it("Correctly handles incorrect parameters", () => {
-    //no group or devices (returns empty list)
-    cy.apiCheckDevicesQuery(groupMember, null, null, []);
+    //no group or devices
+    cy.apiCheckDevicesQuery(groupMember, undefined, undefined, [], 'or', HTTP_Unprocessable);
 
     //devices is missing devicename
-    //TODO: This fails with internal server error - issue 64.  Reenable when fixed.
-    //    cy.apiCheckDevicesQuery(groupMember, [{"groupname": getTestName(group1)}], null, [], 'or', HTTP_Unprocessable);
+    cy.apiCheckDevicesQuery(groupMember, [{"groupname": getTestName(group1)} as TestDeviceAndGroup], undefined, [], 'or', HTTP_Unprocessable);
 
     //devices is missing groupname
-    //TODO: This fails with internal server error - issue 64.  Reenable when fixed.
-    //    cy.apiCheckDevicesQuery(groupMember, [{"devicename": getTestName(cameraA1)}], null, [], 'or', HTTP_Unprocessable);
+    cy.apiCheckDevicesQuery(groupMember, [{"devicename": getTestName(cameraA1)} as TestDeviceAndGroup], undefined, [], 'or', HTTP_Unprocessable);
 
     //devices not  JSON array
     cy.apiCheckDevicesQuery(
       groupMember,
       "bad value" as unknown as [],
-      null,
+      undefined,
       [],
       "or",
       HTTP_Unprocessable
@@ -267,7 +270,7 @@ describe("Devices/query", () => {
     //group not  JSON array
     cy.apiCheckDevicesQuery(
       groupMember,
-      null,
+      undefined,
       "bad value" as unknown as [],
       [],
       "or",
@@ -277,10 +280,10 @@ describe("Devices/query", () => {
     //operator not and or or
     cy.apiCheckDevicesQuery(
       groupMember,
-      null,
+      undefined,
       [getTestName(group1)],
       [],
-      "bad-operator",
+      "bad-operator" as unknown as "or",
       HTTP_Unprocessable
     );
   });

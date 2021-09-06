@@ -25,6 +25,8 @@ import { DeviceUsersStatic } from "./DeviceUsers";
 import { ScheduleId } from "./Schedule";
 import { Event } from "./Event";
 import { AccessLevel } from "./GroupUsers";
+import { TestDeviceAndGroup } from "@typedefs/api/device";
+import logger from "../logging";
 
 const Op = Sequelize.Op;
 export type DeviceId = number;
@@ -88,7 +90,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
   getFromNameAndGroup: (name: string, groupName: string) => Promise<Device>;
   queryDevices: (
     authUser: User,
-    devices: Device[],
+    devices: TestDeviceAndGroup[],
     groupNames: string[],
     operator: any
   ) => Promise<{ devices: Device[]; nameMatches: string }>;
@@ -461,15 +463,12 @@ order by hour;
     authUser,
     devices,
     groupNames,
-    operator
+    operator = Op.or
   ) {
     let whereQuery;
     let nameMatches;
-    if (!operator) {
-      operator = Op.or;
-    }
 
-    if (devices) {
+    if (devices.length) {
       const fullNames = devices.filter((device) => {
         return device.devicename.length > 0 && device.groupname.length > 0;
       });
@@ -488,6 +487,7 @@ order by hour;
         );
       }
 
+      // Are we saying that groupname is optional here?
       const deviceNames = devices.filter((device) => {
         return device.devicename.length > 0 && device.groupname.length == 0;
       });
@@ -496,6 +496,8 @@ order by hour;
         let nameQuery = Sequelize.where(Sequelize.col("devicename"), {
           [Op.in]: names,
         });
+
+        // FIXME Ideally this happens during API permissions stage
         nameQuery = await addUserAccessQuery(authUser, nameQuery);
         nameMatches = await this.findAll({
           where: nameQuery,
@@ -512,11 +514,11 @@ order by hour;
       }
     }
 
-    if (groupNames) {
+    if (groupNames.length) {
       const groupQuery = Sequelize.where(Sequelize.col("Group.groupname"), {
         [Op.in]: groupNames,
       });
-      if (devices) {
+      if (devices.length) {
         whereQuery = { [operator]: [whereQuery, groupQuery] };
       } else {
         whereQuery = groupQuery;
@@ -675,7 +677,6 @@ async function addUserAccessQuery(
   }
   const deviceIds = await authUser.getDeviceIds();
   const userGroupIds = await authUser.getGroupsIds();
-
   const accessQuery = {
     [Op.and]: [
       {

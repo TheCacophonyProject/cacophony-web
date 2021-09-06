@@ -83,7 +83,7 @@ export const getModelByName = function <T>(
       await Promise.reject(format("Could not find %s of %s.", fieldName, val));
       //throw new Error(format("Could not find %s of %s.", fieldName, val));
     }
-    req.body[`__stash_${modelTypeName(modelType)}`] = model;
+    req.body[modelTypeName(modelType)] = model;
     logger.info("req.body.%s = %s", modelTypeName(modelType), JSON.stringify(req.body[modelTypeName(modelType)]));
     return true;
   });
@@ -445,6 +445,29 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
     throw new customErrors.ValidationError(validationErrors);
   } else {
     Promise.resolve(fn(request, response, next)).catch(next);
+  }
+};
+
+export const asArray = (options?: {min?: number, max?: number}) => (val) => {
+  if (typeof val === "string") {
+    try {
+      val = JSON.parse(val);
+    } catch (e) {
+      throw new ClientError("Expected array of strings");
+    }
+  }
+  if (options) {
+    if (options.min && val.length < options.min) {
+      throw new ClientError(`Expected at least ${options.min} array elements`);
+    }
+    if (options.max && val.length > options.max) {
+      throw new ClientError(`Expected at most ${options.max} array elements`);
+    }
+  }
+  if (Array.isArray(val)) {
+    return true;
+  } else {
+    throw new ClientError("Expected array");
   }
 };
 

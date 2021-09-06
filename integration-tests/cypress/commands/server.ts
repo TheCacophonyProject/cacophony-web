@@ -193,7 +193,7 @@ export function checkFlatStructuresAreEqualExcept(
 }
 // recursively search a JSON tree or array and match values in containing with contained, except any keys in excludeKeys.
 // excludeKeys should be in the form: ["a.b[].c", ...] where [] indicates and array and a,b and c are keys
-// treeSoFar is an internal varaible used to pass the current point in the tree when making recursive calls
+// treeSoFar is an internal variable used to pass the current point in the tree when making recursive calls
 // prettyTreeSoFar is same as treeSoFar but includes array element numbers and is used for display purposes only
 export function checkTreeStructuresAreEqualExcept(
   containedStruct: any,
@@ -210,7 +210,7 @@ export function checkTreeStructuresAreEqualExcept(
         `Expect ${prettyTreeSoFar} number of elements should match`
       ).to.equal(containedStruct.length);
 
-      //itterate over array
+      //iterate over array
       for (let count = 0; count < containingStruct.length; count++) {
         const prettyElementName = prettyTreeSoFar + "[" + count + "]";
         const elementName = treeSoFar + "[]";
@@ -300,11 +300,10 @@ function isArrayOrHash(theObject: any) {
 }
 
 export function removeUndefinedParams(jsStruct: any) {
-  const keys = Object.keys(jsStruct);
   const resultStruct = {};
-  for (let count = 0; count < keys.length; count++) {
-    if (jsStruct[keys[count]] !== undefined) {
-      resultStruct[keys[count]] = jsStruct[keys[count]];
+  for (const [key, val] of Object.entries(jsStruct)) {
+    if (val !== undefined) {
+      resultStruct[key] = val;
     }
   }
   return resultStruct;

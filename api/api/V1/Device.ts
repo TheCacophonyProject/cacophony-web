@@ -16,18 +16,21 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { expectedTypeOf, validateFields } from "../middleware";
+import middleware, { asArray, expectedTypeOf, validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param, query } from "express-validator";
+import { body, oneOf, param, query } from "express-validator";
 import Sequelize from "sequelize";
 import { Application, Response, Request, NextFunction } from "express";
 import { AccessLevel } from "../../models/GroupUsers";
-import { AuthorizationError } from "../customErrors";
+import { AuthorizationError, ClientError } from "../customErrors";
 import logger from "../../logging";
-import { extractGroupByName, extractValidJWT } from "../extract-middleware";
+import { extractGroupByName, extractJSONField, extractUser, extractValidJWT } from "../extract-middleware";
 import { checkDeviceNameIsUniqueInGroup } from "../validation-middleware";
+import { TestDeviceAndGroup } from "@typedefs/api/device";
+import TestDeviceAndGroupSchema from "../../../types/jsonSchemas/api/device/TestDeviceAndGroup.schema.json";
+import { arrayOf, jsonSchemaOf } from "../schema-validation";
 
 const Op = Sequelize.Op;
 
@@ -143,7 +146,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       // FIXME(jon): Is the view-mode always part of the body? I don't think so.
       middleware.viewMode(),
-      query("onlyActive").optional().isBoolean().toBoolean(),
+      query("onlyActive").default(true).isBoolean().toBoolean(),
     ]),
     auth.authenticateAndExtractUser,
     async (request: Request, response: Response) => {
@@ -411,7 +414,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {String} newPassword password for the device
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiSuccess {int} id id of device reregistered
+   * @apiSuccess {int} id id of device re-registered
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -443,7 +446,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName query
    * @apiGroup Device
    * @apiDescription This call is to query all devices by groupname and/or groupname & devicename.
-   * Both acitve and inactive devices are returned.
+   * Both active and inactive devices are returned.
    *
    * @apiUse V1DeviceAuthorizationHeader
    *
@@ -470,27 +473,43 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/query`,
-    [
-      middleware.parseJSON("devices", query).optional(),
-      middleware.parseArray("groups", query).optional(),
-      query("operator").isIn(["or", "and", "OR", "AND"]).optional(),
-      auth.authenticateAccess(["user"], { devices: "r" }),
-    ],
-    middleware.requestWrapper(async function (request, response) {
-      if (
-        request.query.operator &&
-        request.query.operator.toLowerCase() == "and"
-      ) {
-        request.query.operator = Op.and;
-      } else {
-        request.query.operator = Op.or;
+    extractValidJWT,
+    validateFields([
+      // Does this only work for users with global read access?
+      query("devices")
+        .exists()
+        .optional()
+        .withMessage(expectedTypeOf("TestDeviceAndGroupSchema[]"))
+        .bail()
+        .custom(jsonSchemaOf(arrayOf(TestDeviceAndGroupSchema))),
+      query("groups")
+        .exists()
+        .optional()
+        .bail()
+        .custom(asArray({ min: 1 }))
+        .withMessage(expectedTypeOf("string[]")),
+      query("operator")
+        .isIn(["or", "and", "OR", "AND"])
+        .optional(),
+    ]),
+    auth.authenticateAndExtractUserWithAccess({ devices: "r" }), // What about checking access to devices?
+    extractJSONField("query", "devices"),
+    extractJSONField("query", "groups"),
+    async function (request: Request, response: Response, next: NextFunction) {
+      if (!response.locals.devices && !response.locals.groups) {
+        return next(new ClientError("At least one of 'devices' or 'groups' must be specified", 422));
       }
-
+      let operator = Op.or;
+      if (
+        request.query.operator && (request.query.operator as string).toLowerCase() == "and"
+      ) {
+        operator = Op.and;
+      }
       const devices = await models.Device.queryDevices(
-        request.user,
-        request.query.devices,
-        request.query.groups,
-        request.query.operator
+        response.locals.requestUser,
+        (response.locals.devices || []) as TestDeviceAndGroup[],
+        (response.locals.groups || []) as string[],
+        operator
       );
       return responseUtil.send(response, {
         statusCode: 200,
@@ -498,7 +517,7 @@ export default function (app: Application, baseUrl: string) {
         nameMatches: devices.nameMatches,
         messages: ["Completed get devices query."],
       });
-    })
+    }
   );
 
   /**

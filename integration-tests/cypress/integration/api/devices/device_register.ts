@@ -2,7 +2,7 @@
 
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
-import { HTTP_Unprocessable } from "../../../commands/constants";
+import { HTTP_BadRequest, HTTP_Unprocessable } from "../../../commands/constants";
 
 describe("Device register", () => {
   const camsGroup = "cams";
@@ -36,7 +36,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
       LOG,
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
   });
 
@@ -104,8 +104,13 @@ describe("Device register", () => {
       saltId: getCreds("defaultcam").id,
     };
 
+    const testDevice = {
+      ...expectedDevice
+    };
+    delete testDevice.saltId;
+
     //Test with Salt Id = device id by default
-    cy.apiCheckDevicesQuery("Anita", [expectedDevice], null, [expectedDevice]);
+    cy.apiCheckDevicesQuery("Anita", [testDevice], null, [expectedDevice]);
   });
 
   it("Can register a device and specify salt id", () => {
@@ -115,7 +120,11 @@ describe("Device register", () => {
       groupname: getTestName(camsGroup),
       saltId: 9998,
     };
-    cy.apiCheckDevicesQuery("Anita", [expectedDevice], null, [expectedDevice]);
+    const testDevice = {
+      ...expectedDevice
+    };
+    delete testDevice.saltId;
+    cy.apiCheckDevicesQuery("Anita", [testDevice], null, [expectedDevice]);
   });
 
   it("When registering a device must specify a valid password", () => {
@@ -154,12 +163,12 @@ describe("Device register", () => {
   it("When registering a device must specify a group that exists", () => {
     cy.apiCreateDevice(
       "device4",
-      "nonexitant group",
+      "nonexistent group",
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
       LOG,
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
   });
 

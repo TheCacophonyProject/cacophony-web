@@ -48,11 +48,6 @@ export interface ApiDeviceQueryDevice {
   saltId?: number;
 }
 
-export interface TestDeviceAndGroup {
-  devicename: string;
-  groupname: string;
-}
-
 export interface ApiDevicesDeviceUser {
   id: number;
   username: string;

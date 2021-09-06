@@ -5,6 +5,7 @@ import { Event } from "../../models/Event";
 import { QueryOptions } from "../../models/Event";
 import { groupSystemErrors } from "./systemError";
 import moment, { Moment } from "moment";
+import logger from "../../logging";
 export const errors = async (request: { query: any, res: any }, admin?: boolean) => {
   const query = request.query;
   const options = {} as QueryOptions;
@@ -100,13 +101,13 @@ export class PowerEvents {
     // check that started hasn't occurred after stopped
     if (this.lastStopped == null) {
       // check that the started event was at least 12 hours ago
-      this.hasStopped = moment().diff(this.lastStarted, "hours") > 12;
+      this.hasStopped = moment().diff(this.lastStarted, "minutes") > 12 * 60;
     } else if (this.lastStarted.isAfter(this.lastStopped)) {
       //check we are at least 30 minutes after expected stopped time (based of yesterdays)
       this.hasStopped = moment().diff(this.lastStopped, "minutes") > 24.5 * 60;
     } else {
       // check it started in the last 24 hours
-      this.hasStopped = moment().diff(this.lastStarted, "hours") > 24;
+      this.hasStopped = moment().diff(this.lastStarted, "minutes") > 24 * 60;
     }
 
     // check if we have already reported this event

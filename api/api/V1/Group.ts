@@ -21,9 +21,18 @@ import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
 import { body, oneOf, param, query } from "express-validator";
-import { Application } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import { Validator } from "jsonschema";
-import { extractDevice, extractGroupByName, extractGroupByNameOrId, extractUserByNameOrId, extractValidJWT } from "../extract-middleware";
+import {
+  extractDevice,
+  extractGroupByName,
+  extractGroupByNameOrId,
+  extractUser,
+  extractUserByNameOrId,
+  extractValidJWT
+} from "../extract-middleware";
+import logger from "../../logging";
+import { AuthorizationError } from "../customErrors";
 
 const JsonSchema = new Validator();
 
@@ -301,23 +310,33 @@ export default function (app: Application, baseUrl: string) {
         body("username").exists().isString(),
         body("userId").exists().isInt().toInt()
       ]),
-      body("admin").isBoolean(),
+      body("admin").isBoolean().toBoolean(),
     ]),
+    // Extract required resources to validate permissions.
     extractGroupByNameOrId("body", "group", "groupId"),
-    extractUserByNameOrId("body", "username", "userId"),
     auth.authenticateAndExtractUser,
-    middleware.requestWrapper(async (request, response) => {
-      await models.Group.addUserToGroup(
-        response.locals.requestUser,
+    // Make sure the requesting user is has 'admin' status for the group.
+    async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+      if (!(await response.locals.group.userPermissions(response.locals.requestUser)).canAddUsers) {
+        throw new AuthorizationError(
+          "User is not a group admin so cannot add users"
+        );
+      }
+      next();
+    },
+    // Extract secondary resource
+    extractUserByNameOrId("body", "username", "userId"),
+    async (request, response) => {
+      const action = await models.Group.addUserToGroup(
         response.locals.group,
         response.locals.user,
         request.body.admin
       );
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Added user to group."],
+        messages: [action],
       });
-    })
+    }
   );
   /**
    * @api {delete} /api/v1/groups/users Removes a user from a group.
@@ -336,22 +355,42 @@ export default function (app: Application, baseUrl: string) {
    */
   app.delete(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getUserByNameOrId(body),
-      middleware.getGroupByNameOrId(body),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    extractValidJWT,
+    validateFields([
+      oneOf([
+        body("group").exists().isString(),
+        body("groupId").exists().isInt().toInt()
+      ]),
+      oneOf([
+        body("username").exists().isString(),
+        body("userId").exists().isInt().toInt()
+      ]),
+    ]),
+    // Extract required resources to check permissions
+    extractGroupByNameOrId("body", "group", "groupId"),
+    auth.authenticateAndExtractUser,
+    // Check user permissions for resources
+    async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+      if (!(await response.locals.group.userPermissions(response.locals.requestUser)).canRemoveUsers) {
+        throw new AuthorizationError(
+          "User is not a group admin so cannot remove users"
+        );
+      }
+      next();
+    },
+    // Extract secondary resource
+    extractUserByNameOrId("body", "username", "userId"),
+    async (request, response) => {
       await models.Group.removeUserFromGroup(
-        request.user,
-        request.body.group,
-        request.body.user
+        response.locals.requestUser,
+        response.locals.group,
+        response.locals.user
       );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Removed user from the group."],
       });
-    })
+    }
   );
 
   /**

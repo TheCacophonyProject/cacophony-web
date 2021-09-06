@@ -200,6 +200,7 @@ const authenticateDevice: AuthenticateMiddleware = authenticate(["device"]);
 const authenticateAny: AuthenticateMiddleware = authenticate(null);
 
 const authenticateAndExtractUser: AuthenticateMiddleware = authenticateAndExtractModelForJWT(["user"]);
+const authenticateAndExtractUserWithAccess = (access: { devices?: any }): AuthenticateMiddleware => authenticateAndExtractModelForJWT(["user"], access);
 const authenticateAndExtractDevice: AuthenticateMiddleware = authenticateAndExtractModelForJWT(["device"]);
 const authenticateAndExtractAny: AuthenticateMiddleware = authenticateAndExtractModelForJWT(null);
 
@@ -375,7 +376,7 @@ const userCanAccessDevices3 = async (request, response, next) => {
       request.body.viewAsSuperAdmin
     );
   } catch (e) {
-    return response.status(403).json({ messages: [e.message] });
+    return next(new customErrors.ClientError(e.message, 403));
   }
   next();
 };
@@ -462,6 +463,7 @@ export default {
   createEntityJWT,
   authenticateUser,
   authenticateAndExtractUser,
+  authenticateAndExtractUserWithAccess,
   authenticateAndExtractDevice,
   authenticateDevice,
   authenticateAny,

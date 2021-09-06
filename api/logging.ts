@@ -2,9 +2,7 @@ import config from "./config";
 import winston, { format } from "winston";
 
 export const consoleTransport = new winston.transports.Console({
-  // NOTE: We *don't* want to set a default logger level, since this overrides the set levels, and makes
-  //  it impossible to use structured log level filtering in journalctl etc.
-  // level: config.server.loggerLevel,
+  //level: config.server.loggerLevel,
   format: format.combine(format.colorize(), format.splat(), format.simple()),
   handleExceptions: true,
 });

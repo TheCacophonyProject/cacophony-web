@@ -224,7 +224,9 @@ describe("Device reregister", () => {
         groupname: getTestName("RR_group7"),
         saltId: getCreds("RR_cam7").id,
       };
-      cy.apiCheckDevicesQuery("RR_user7", [expectedDevice1], null, [
+      const testDevice = { ...expectedDevice1 };
+      delete testDevice.saltId;
+      cy.apiCheckDevicesQuery("RR_user7", [testDevice], undefined, [
         expectedDevice1,
       ]);
 
@@ -236,7 +238,9 @@ describe("Device reregister", () => {
         groupname: getTestName("RR_group7"),
         saltId: getCreds("RR_cam7").id,
       };
-      cy.apiCheckDevicesQuery("RR_user7", [expectedDevice2], null, [
+      const testDevice2 = { ...expectedDevice2 };
+      delete testDevice2.saltId;
+      cy.apiCheckDevicesQuery("RR_user7", [testDevice2], undefined, [
         expectedDevice2,
       ]);
     });
@@ -253,7 +257,9 @@ describe("Device reregister", () => {
       groupname: getTestName("RR_group8"),
       saltId: 9997,
     };
-    cy.apiCheckDevicesQuery("RR_user8", [expectedDevice2], null, [
+    const testDevice = { ...expectedDevice2 };
+    delete testDevice.saltId;
+    cy.apiCheckDevicesQuery("RR_user8", [testDevice], undefined, [
       expectedDevice2,
     ]);
   });

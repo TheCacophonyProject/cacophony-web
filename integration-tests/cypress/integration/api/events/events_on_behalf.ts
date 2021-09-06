@@ -5,8 +5,9 @@ import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 
 import {
+  HTTP_BadRequest,
   HTTP_Forbidden,
-  HTTP_Unprocessable,
+  HTTP_Unprocessable
 } from "../../../commands/constants";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; // do not check claues of event id or createdAt time
@@ -411,7 +412,7 @@ describe("Events - add event on behalf of device", () => {
       true,
       HTTP_Unprocessable
     );
-    cy.log("ecentDetailsId=non-existent event detail record");
+    cy.log("eventDetailsId=non-existent event detail record");
     cy.apiEventsDeviceAddOnBehalf(
       "groupAdmin",
       "camera",
@@ -419,7 +420,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       9999999,
       true,
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
   });
 
@@ -431,7 +432,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       null,
       true,
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
   });
 
@@ -478,7 +479,8 @@ describe("Events - add event on behalf of device", () => {
     );
   });
 
-  it("Can upload event using devicename", () => {
+  it.skip("Can upload event using devicename", () => {
+    // NOTE: Deprecated, no longer works
     cy.apiEventsDeviceAddOnBehalf(
       "groupAdmin9",
       getTestName("camera9"),
