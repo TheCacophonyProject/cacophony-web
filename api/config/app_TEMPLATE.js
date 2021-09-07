@@ -60,7 +60,7 @@ const influx = {
   database: "",
   username: "",
   password: "",
-}
+};
 
 exports.smtpDetails = smtpDetails;
 exports.server = server;

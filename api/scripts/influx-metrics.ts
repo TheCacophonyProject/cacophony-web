@@ -1,7 +1,7 @@
 import * as config from "../config";
-import  eventUtil from "../api/V1/eventUtil";
+import eventUtil from "../api/V1/eventUtil";
 
-const Influx = require('influx')
+const Influx = require("influx");
 import process from "process";
 import { program } from "commander";
 import { Client } from "pg";
@@ -20,12 +20,12 @@ const timeout = 1000;
 
   Config = {
     ...config.default,
-    ...config.default.loadConfig(options.config)
+    ...config.default.loadConfig(options.config),
   };
 
   const pgClient = await pgConnect();
   const influx = await influxConnect();
-  
+
   try {
     await Promise.all([
       stateCount(influx, pgClient),
@@ -41,39 +41,42 @@ const timeout = 1000;
 
 async function pgQuery(client, query) {
   const res = await client.query({
-    text: `SET statement_timeout = ${timeout}; ${query}`
-  })
-  return res[1]
+    text: `SET statement_timeout = ${timeout}; ${query}`,
+  });
+  return res[1];
 }
 
 async function writePoints(influx, measurement, fields) {
-  return await influx.writePoints([{
-    measurement: measurement,
-    tags: { host: os.hostname },
-    fields: fields
-  }]);
+  return await influx.writePoints([
+    {
+      measurement: measurement,
+      tags: { host: os.hostname },
+      fields: fields,
+    },
+  ]);
 }
 
-const processingWaitTimeMeasurement = 'processing_wait_time'
+const processingWaitTimeMeasurement = "processing_wait_time";
 
 async function measureProcessingWaitTime(influx, pgClient) {
-  const res = await pgQuery(pgClient, 
+  const res = await pgQuery(
+    pgClient,
     `select "createdAt" from "Recordings"
     where "processingState" = 'analyse'
-    order by "createdAt" asc limit 1`)
-  
-  var waitMinutes = 0
+    order by "createdAt" asc limit 1`
+  );
+
+  var waitMinutes = 0;
   if (res.rowCount != 0) {
     const uploadedAt = moment(res.rows[0].createdAt);
-    const dif = moment().diff(uploadedAt, 'minutes')
-    waitMinutes = dif
+    const dif = moment().diff(uploadedAt, "minutes");
+    waitMinutes = dif;
   }
   console.log(processingWaitTimeMeasurement, waitMinutes);
-  
-  await writePoints(influx,
-    processingWaitTimeMeasurement,
-    {waitMinutes: waitMinutes},
-  );
+
+  await writePoints(influx, processingWaitTimeMeasurement, {
+    waitMinutes: waitMinutes,
+  });
 }
 
 const countStates = [
@@ -85,22 +88,22 @@ const countStates = [
   "reprocess",
   "reprocess.failed",
 ];
-const stateCountMeasurement = 'processing_state_count';
+const stateCountMeasurement = "processing_state_count";
 
 async function stateCount(influx, pgClient) {
   const fields = {};
   for (const state of countStates) {
-    fields[state] = await getCount(pgClient, `select Count(id) from "Recordings" where "processingState" = '${state}'`)
+    fields[state] = await getCount(
+      pgClient,
+      `select Count(id) from "Recordings" where "processingState" = '${state}'`
+    );
   }
   console.log("Count: ", fields);
-  
-  await writePoints(influx,
-    stateCountMeasurement,
-    fields,
-  );
+
+  await writePoints(influx, stateCountMeasurement, fields);
 }
 
-const inPast24Measurement = 'in_past_24';
+const inPast24Measurement = "in_past_24";
 
 async function inPast24(influx, pgClient) {
   const thermalRawQuery = `SELECT COUNT(id) FROM "Recordings" 
@@ -113,12 +116,9 @@ async function inPast24(influx, pgClient) {
   const fields = {
     thermal_recordings: await getCount(pgClient, thermalRawQuery),
     audio_recordings: await getCount(pgClient, audioQuery),
-  }
+  };
   console.log(inPast24Measurement, fields);
-  await writePoints(influx,
-    inPast24Measurement,
-    fields,
-  );
+  await writePoints(influx, inPast24Measurement, fields);
 }
 
 async function getCount(pgClient, query: string) {
@@ -127,8 +127,10 @@ async function getCount(pgClient, query: string) {
 }
 
 async function influxConnect() {
-  const processingFields = {}
-  countStates.forEach((val) => processingFields[val] = Influx.FieldType.INTEGER)
+  const processingFields = {};
+  countStates.forEach(
+    (val) => (processingFields[val] = Influx.FieldType.INTEGER)
+  );
   return new Influx.InfluxDB({
     host: Config.influx.host,
     database: Config.influx.database,
@@ -138,18 +140,14 @@ async function influxConnect() {
       {
         measurement: stateCountMeasurement,
         fields: processingFields,
-        tags: [
-          'host'
-        ]
+        tags: ["host"],
       },
       {
         measurement: processingWaitTimeMeasurement,
         fields: {
           waitMinutes: Influx.FieldType.INTEGER,
         },
-        tags: [
-          'host'
-        ]
+        tags: ["host"],
       },
       {
         measurement: inPast24Measurement,
@@ -157,12 +155,10 @@ async function influxConnect() {
           thermal_recordings: Influx.FieldType.INTEGER,
           audio_recordings: Influx.FieldType.INTEGER,
         },
-        tags: [
-          'host'
-        ]
+        tags: ["host"],
       },
-    ]
-   })
+    ],
+  });
 }
 
 async function pgConnect() {
@@ -172,7 +168,7 @@ async function pgConnect() {
     port: dbConf.port,
     user: dbConf.username,
     password: dbConf.password,
-    database: dbConf.database
+    database: dbConf.database,
   });
   await client.connect();
   return client;
