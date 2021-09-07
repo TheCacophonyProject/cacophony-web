@@ -413,8 +413,6 @@ export default function (app: Application) {
    * @apiGroup Tracks
    * @apiDescription Get all tracks for a given recording and their tags.
    *
-   * @apiUse V1UserAuthorizationHeader
-   *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {JSON} tracks Array with elements containing id,
    * algorithm, data and tags fields.
