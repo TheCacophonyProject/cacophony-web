@@ -32,8 +32,7 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   UserId: UserIdAlias;
   confidence: number;
   data: any;
-  archivedAt:Date;
-
+  archivedAt: Date;
 }
 export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
 export default function (

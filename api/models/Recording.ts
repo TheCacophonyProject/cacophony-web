@@ -871,7 +871,7 @@ from (
             attributes: {
               exclude: ["UserId"],
             },
-            required: false
+            required: false,
           },
         ],
       });
@@ -986,7 +986,7 @@ from (
       },
     });
     const tracks = await this.getTracks();
-    for (const track of tracks){
+    for (const track of tracks) {
       await track.archiveTags();
     }
 
