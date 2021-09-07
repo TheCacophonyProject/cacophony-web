@@ -1,5 +1,4 @@
 import * as config from "../config";
-import eventUtil from "../api/V1/eventUtil";
 
 const Influx = require("influx");
 import process from "process";
@@ -66,7 +65,7 @@ async function measureProcessingWaitTime(influx, pgClient) {
     order by "createdAt" asc limit 1`
   );
 
-  var waitMinutes = 0;
+  let waitMinutes = 0;
   if (res.rowCount != 0) {
     const uploadedAt = moment(res.rows[0].createdAt);
     const dif = moment().diff(uploadedAt, "minutes");
