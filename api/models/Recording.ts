@@ -686,7 +686,7 @@ from (
         (select tId as "TrackId" from
           (
            -- TrackTags for Tracks that have *only* TrackTags that were automatically set.
-           (select distinct("TrackId") as tId from "TrackTags" where automatic is true and "tags"."archivedAt" IS NULL) as a
+           (select distinct("TrackId") as tId from "TrackTags" where automatic is true and "TrackTags"."archivedAt" IS NULL) as a
              left outer join
                (select distinct("TrackId") from "TrackTags" where automatic is false) as b
              on a.tId = b."TrackId"
@@ -1283,7 +1283,7 @@ from (
     tags?: (TagMode | AcceptableTag)[],
     tagTypeSql?
   ) => {
-    let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "tags"."archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
+    let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags"."archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
     if (tags) {
       sql += ` AND (${Recording.queryBuilder.selectByTagWhat(
         tags,

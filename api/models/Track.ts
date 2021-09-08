@@ -145,7 +145,6 @@ export default function (
 
   // Archives tags for reprocessing
   Track.prototype.archiveTags = async function () {
-    console.log("archivibg tags");
     models.TrackTag.update(
       {
         archivedAt: Date.now(),
