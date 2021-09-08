@@ -16,50 +16,25 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { validateFields } from "../middleware";
+import middleware, { expectedTypeOf, validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
 import { body, oneOf, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
-import { Validator } from "jsonschema";
 import {
   extractDevice,
   extractGroupByName,
-  extractGroupByNameOrId,
+  extractGroupByNameOrId, extractJSONField,
   extractUser,
   extractUserByNameOrId,
   extractValidJWT
 } from "../extract-middleware";
 import logger from "../../logging";
 import { AuthorizationError } from "../customErrors";
-
-const JsonSchema = new Validator();
-
-const validateStationsJson = (val, { req }) => {
-  const stations = JSON.parse(val);
-
-  // Validate json schema of input:
-  JsonSchema.validate(
-    stations,
-    {
-      type: "array",
-      minItems: 1,
-      uniqueItems: true,
-      items: {
-        properties: {
-          name: { type: "string" },
-          lat: { type: "number" },
-          lng: { type: "number" },
-        },
-        required: ["name", "lat", "lng"],
-      },
-    },
-    { throwFirst: true }
-  );
-  req.body.stations = stations;
-  return true;
-};
+import { arrayOf, jsonSchemaOf } from "../schema-validation";
+import ApiCreateStationDataSchema from "../../../types/jsonSchemas/api/station/ApiCreateStationData.schema.json";
+import { booleanOf, eitherOf, idOf, nameOf, nameOrIdOf } from "../validation-middleware";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
@@ -187,7 +162,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup,
+      auth.userHasAccessToGroup,
     ],
     middleware.requestWrapper(async (request, response) => {
       const devices = await request.body.group.getDevices({
@@ -224,7 +199,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup,
+      auth.userHasAccessToGroup,
     ],
     middleware.requestWrapper(async (request, response) => {
       const users = await request.body.group.getUsers({
@@ -261,7 +236,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup,
+      auth.userHasAccessToGroup,
     ],
     middleware.requestWrapper(async (request, response) => {
       const users = await request.body.group.getUsers({
@@ -302,28 +277,20 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractValidJWT,
     validateFields([
-      oneOf([
-        body("group").exists().isString(),
-        body("groupId").exists().isInt().toInt()
-      ]),
-      oneOf([
-        body("username").exists().isString(),
-        body("userId").exists().isInt().toInt()
-      ]),
-      body("admin").isBoolean().toBoolean(),
+      eitherOf(
+        nameOf(body("group")),
+        idOf(body("groupId"))
+      ),
+      eitherOf(
+        nameOf(body("username")),
+        idOf(body("userId"))
+      ),
+      booleanOf(body("admin"))
     ]),
     // Extract required resources to validate permissions.
     extractGroupByNameOrId("body", "group", "groupId"),
     auth.authenticateAndExtractUser,
-    // Make sure the requesting user is has 'admin' status for the group.
-    async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-      if (!(await response.locals.group.userPermissions(response.locals.requestUser)).canAddUsers) {
-        throw new AuthorizationError(
-          "User is not a group admin so cannot add users"
-        );
-      }
-      next();
-    },
+    auth.userHasAdminAccessToGroup,
     // Extract secondary resource
     extractUserByNameOrId("body", "username", "userId"),
     async (request, response) => {
@@ -357,39 +324,38 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractValidJWT,
     validateFields([
-      oneOf([
-        body("group").exists().isString(),
-        body("groupId").exists().isInt().toInt()
-      ]),
-      oneOf([
-        body("username").exists().isString(),
-        body("userId").exists().isInt().toInt()
-      ]),
+      eitherOf(
+        nameOf(body("group")),
+        idOf(body("groupId"))
+      ),
+      eitherOf(
+        nameOf(body("username")),
+        idOf(body("userId"))
+      ),
     ]),
     // Extract required resources to check permissions
     extractGroupByNameOrId("body", "group", "groupId"),
     auth.authenticateAndExtractUser,
     // Check user permissions for resources
-    async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-      if (!(await response.locals.group.userPermissions(response.locals.requestUser)).canRemoveUsers) {
-        throw new AuthorizationError(
-          "User is not a group admin so cannot remove users"
-        );
-      }
-      next();
-    },
+    auth.userHasAdminAccessToGroup,
     // Extract secondary resource
     extractUserByNameOrId("body", "username", "userId"),
     async (request, response) => {
-      await models.Group.removeUserFromGroup(
-        response.locals.requestUser,
+      const removed = await models.Group.removeUserFromGroup(
         response.locals.group,
         response.locals.user
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Removed user from the group."],
-      });
+      if (removed) {
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Removed user from the group."],
+        });
+      } else {
+        return responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["Failed to remove user from the group."],
+        });
+      }
     }
   );
 
@@ -409,22 +375,29 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:groupIdOrName/stations`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasWriteAccessToGroup,
+    extractValidJWT,
+    validateFields([
       body("stations")
         .exists()
-        .isJSON()
-        .withMessage("Expected JSON array")
-        .custom(validateStationsJson),
-      body("fromDate").isISO8601().toDate().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+        .custom(jsonSchemaOf(arrayOf(ApiCreateStationDataSchema))),
+      body("fromDate")
+        .isISO8601()
+        .toDate()
+        .optional(),
+      nameOrIdOf(param("groupIdOrName"))
+    ]),
+    // Extract required resources
+    auth.authenticateAndExtractUser,
+    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
+    // Check permissions
+    auth.userHasAdminAccessToGroup,
+    // Extract further non-dependent resources:
+    extractJSONField("body", "stations"),
+    async (request, response) => {
       const stationsUpdated = await models.Group.addStationsToGroup(
-        request.user,
-        request.body.group,
-        request.body.stations,
+        response.locals.requestUser,
+        response.locals.group,
+        response.locals.stations,
         request.body.fromDate
       );
       return responseUtil.send(response, {
@@ -432,7 +405,7 @@ export default function (app: Application, baseUrl: string) {
         messages: ["Added stations to group."],
         ...stationsUpdated,
       });
-    })
+    }
   );
 
   /**
@@ -454,7 +427,7 @@ export default function (app: Application, baseUrl: string) {
     [
       auth.authenticateUser,
       middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup,
+      auth.userHasAccessToGroup,
     ],
     middleware.requestWrapper(async (request, response) => {
       const stations = await request.body.group.getStations();

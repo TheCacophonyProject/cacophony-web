@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import { body } from "express-validator";
 import models from "../../models";
@@ -24,6 +24,8 @@ import recordingUtil from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import { Application } from "express";
 import { RecordingPermission } from "../../models/Recording";
+import { extractValidJWT } from "../extract-middleware";
+import { idOf } from "../validation-middleware";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
@@ -83,11 +85,17 @@ export default function (app: Application, baseUrl: string) {
   // Delete a tag
   app.delete(
     apiUrl,
-    [auth.authenticateUser, body("tagId").isInt()],
-    middleware.requestWrapper(async function (request, response) {
+    extractValidJWT,
+    validateFields([
+      idOf(body("tagId"))
+    ]),
+    auth.authenticateAndExtractUser,
+    // FIXME - So according to this, anyone with tag permissions can delete anyone elses tag.
+    //  There is no validation that they control the recordings or anything.
+    async function (request, response) {
       const tagDeleteResult = await models.Tag.deleteFromId(
         request.body.tagId,
-        request.user
+        response.locals.requestUser
       );
       if (tagDeleteResult) {
         return responseUtil.send(response, {
@@ -100,6 +108,6 @@ export default function (app: Application, baseUrl: string) {
           messages: ["Failed to delete tag."],
         });
       }
-    })
+    }
   );
 }

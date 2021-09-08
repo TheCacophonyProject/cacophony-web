@@ -67,9 +67,9 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceIdOrName: string,
-    description: ApiEventDetail,
+    description?: ApiEventDetail,
     dates: string[] = [new Date().toISOString()],
-    eventDetailId: number,
+    eventDetailId?: number,
     log: boolean = true,
     statusCode: number = 200
   ) => {
@@ -306,8 +306,8 @@ Cypress.Commands.add(
     });
 
     // add deviceId to params unless already defined
-    if (queryParams.deviceID === undefined && deviceName !== undefined) {
-      queryParams.deviceID = getCreds(deviceName).id;
+    if (queryParams.deviceId === undefined && deviceName !== undefined) {
+      queryParams.deviceId = getCreds(deviceName).id;
     }
 
     //drop any undefined parameters
@@ -442,7 +442,7 @@ function checkEvents(
   statusCode: number
 ) {
   const params = {
-    deviceID: getCreds(deviceName).id,
+    deviceId: getCreds(deviceName).id,
   };
 
   makeAuthorizedRequestWithStatus(

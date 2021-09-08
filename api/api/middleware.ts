@@ -18,12 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {
   body,
-  CustomValidator,
+  CustomValidator, matchedData,
   oneOf,
   query,
   Result,
   ValidationChain,
-  validationResult,
+  validationResult
 } from "express-validator";
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
@@ -33,6 +33,7 @@ import { NextFunction, Request, RequestHandler, Response } from "express";
 import { IsIntOptions } from "express-validator/src/options";
 import logger from "../logging";
 import { DecodedJWTToken } from "./auth";
+import levenshteinEditDistance from "levenshtein-edit-distance";
 
 export const getModelByIdChain = <T>(
   modelType: ModelStaticCommon<T>,
@@ -159,7 +160,6 @@ export const toDate = function (fieldName: string): ValidationChain {
 
 export const getAsDate = function (dateAsString: string): number {
   try {
-    console.log("date is " + dateAsString);
     return Date.parse(dateAsString);
   } catch (error) {
     return NaN;
@@ -471,9 +471,65 @@ export const asArray = (options?: {min?: number, max?: number}) => (val) => {
   }
 };
 
-export const expectedTypeOf = (type) => (val) =>
-  `expected ${type}, got ${typeof val}`;
+export const expectedTypeOf = (...type: string[]) => (val) => {
+  let typeOf = typeof val as string;
+  if (typeOf === "object" && Array.isArray(val)) {
+    typeOf = "array";
+  }
+  if (type.length > 1) {
+    return `expected one of ${(type as string[]).map(t => `'${t}'`).join(', ')}, got ${typeOf}`;
+  }
+  return `expected ${type[0]}, got ${typeOf}`;
+};
 
+export const isIntArray = (val) => {
+  if (Array.isArray(val)) {
+    return !(val as string[]).some(v => isNaN(parseInt(v)));
+  }
+  return !isNaN(parseInt(val));
+};
+
+const checkForUnknownFields = (validators, req: Request): { unknownFields: string[], suggestions: Record<string, string> } => {
+  const allowedFieldsKnown = validators.reduce((fields, rule) => {
+    if (rule.builder) {
+      for (const field of rule.builder.fields) {
+        fields.push(field);
+      }
+    }
+    return fields;
+  }, []);
+  const matchedAllowedFields = Object.keys(matchedData(req, { onlyValidData: false, includeOptionals: true }));
+  const allowed = new Set();
+  for (const field of allowedFieldsKnown) {
+    allowed.add(field);
+  }
+  for (const field of matchedAllowedFields) {
+    allowed.add(field);
+  }
+  const allowedFields: string[] = Array.from(allowed.keys()) as unknown as string[];
+
+  // Check for all common request inputs
+  const requestInput = { ...req.query, ...req.params, ...req.body };
+  const requestFields = Object.keys(requestInput);
+  const unusedAllowedFields = allowedFields.filter(field => !requestFields.includes(field));
+  const unknownFields = requestFields.filter(item => !allowedFields.includes(item));
+  const suggestions = {};
+  if (unusedAllowedFields.length && unknownFields.length) {
+    // We have unused allowed fields, see if any of our unknown fields is potentially a typo
+    // of an allowed field.
+    for (const unknownField of unknownFields) {
+      let bestDistance = 3;
+      for (const unusedField of unusedAllowedFields) {
+        const distance = levenshteinEditDistance(unknownField, unusedField, true);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          suggestions[unknownField] = unusedField;
+        }
+      }
+    }
+  }
+  return {unknownFields, suggestions};
+};
 
 // sequential processing, stops running validations chain if the previous one have failed.
 export const validateFields = (validations: ((((req: Request, res: any, next: (err?: any) => void) => void) & { run: (req: Request) => Promise<Result> }) | ValidationChain)[], sequentially: boolean = false) => {
@@ -481,7 +537,6 @@ export const validateFields = (validations: ((((req: Request, res: any, next: (e
     if (sequentially) {
       for (const validation of validations) {
         const result = await validation.run(request);
-        logger.info("Result %s", result);
         if (!result.isEmpty()) {
           break;
         }
@@ -489,6 +544,18 @@ export const validateFields = (validations: ((((req: Request, res: any, next: (e
     } else {
       await Promise.all(validations.map(validation => validation.run(request)));
     }
+
+    const {unknownFields, suggestions} = checkForUnknownFields(validations, request);
+    if (unknownFields.length) {
+      return next(new ClientError(`Unknown fields found: ${unknownFields.map(item => {
+        let field = `'${item}'`;
+        if (suggestions[item]) {
+          field += ` - did you mean '${suggestions[item]}'?`;
+        }
+        return field;
+      }).join(", ")}`, 422));
+    }
+
     {
       const logMessage = format("%s %s", request.method, request.url);
       const requester = (response.locals.token && (response.locals.token as DecodedJWTToken)._type);

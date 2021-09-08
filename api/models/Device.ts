@@ -17,7 +17,7 @@ import { AuthorizationError, ClientError } from "../api/customErrors";
 import bcrypt from "bcrypt";
 import { format } from "util";
 import Sequelize, { FindOptions } from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
+import models, { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
 import { Group, GroupId, GroupStatic } from "./Group";
 import { GroupUsersStatic } from "./GroupUsers";
@@ -39,31 +39,30 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   groupname: string;
   password?: string;
   comparePassword: (password: string) => Promise<boolean>;
-  reregister: (
+  reRegister: (
     devicename: string,
     group: Group,
     newPassword: string
-  ) => Promise<Device>;
+  ) => Promise<Device | false>;
   Group: Group;
   GroupId: number;
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;
+  users: (authUser: User, attrs?: string[]) => Promise<User[]>;
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
   addUserToDevice: (
-    authUser: User,
     device: Device,
     userToAdd: User,
     admin: boolean
-  ) => Promise<boolean>;
+  ) => Promise<string>;
   allForUser: (
     user: User,
     onlyActive: boolean,
     viewAsSuperAdmin: boolean
   ) => Promise<{ rows: Device[]; count: number }>;
   removeUserFromDevice: (
-    authUser: User,
     device: Device,
     user: User
   ) => Promise<boolean>;
@@ -96,7 +95,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
   ) => Promise<{ devices: Device[]; nameMatches: string }>;
   getCacophonyIndex: (
     authUser: User,
-    deviceId: DeviceId,
+    deviceId: Device,
     from: Date,
     windowSize: number
   ) => Promise<number>;
@@ -176,20 +175,9 @@ export default function (
   };
 
   /**
-   * Adds/update a user to a Device, if the given user has permission to do so.
-   * The authenticated user must either be admin of the group that the device
-   * belongs to, an admin of that device, or have global write permission.
+   * Adds/update a user to a Device
    */
-  Device.addUserToDevice = async function (authUser, device, userToAdd, admin) {
-    if (device == null || userToAdd == null) {
-      return false;
-    }
-    if ((await device.getAccessLevel(authUser)) != AccessLevel.Admin) {
-      throw new AuthorizationError(
-        "User is not a group, device, or global admin so cannot add users to this device"
-      );
-    }
-
+  Device.addUserToDevice = async function (device, userToAdd, admin) {
     // Get association if already there and update it.
     const deviceUser = await models.DeviceUsers.findOne({
       where: {
@@ -197,44 +185,38 @@ export default function (
         UserId: userToAdd.id,
       },
     });
-    if (deviceUser != null) {
-      deviceUser.admin = admin; // Update admin value.
-      await deviceUser.save();
-      return true;
+    if (deviceUser !== null) {
+      if (!deviceUser.admin) {
+        deviceUser.admin = admin; // Update admin value.
+        await deviceUser.save();
+        return "Updated, user was made admin for device.";
+      } else {
+        return "No change, user already added.";
+      }
     }
 
     await device.addUser(userToAdd.id, { through: { admin: admin } });
-    return true;
+    return "Added user to device.";
   };
 
   /**
-   * Removes a user from a Device, if the given user has permission to do so.
-   * The user must be a group or device admin, or have global write permission to do this. .
+   * Removes a user from a Device
    */
   Device.removeUserFromDevice = async function (
-    authUser,
     device,
     userToRemove
-  ) {
-    if (device == null || userToRemove == null) {
-      return false;
-    }
-    if ((await device.getAccessLevel(authUser)) != AccessLevel.Admin) {
-      throw new AuthorizationError(
-        "User is not a group, device, or global admin so cannot remove users from this device"
-      );
-    }
-
+  ): Promise<boolean> {
     // Check that association is there to delete.
-    const deviceUsers = await models.DeviceUsers.findAll({
+    const deviceUser = await models.DeviceUsers.findOne({
       where: {
         DeviceId: device.id,
         UserId: userToRemove.id,
       },
     });
-    for (const i in deviceUsers) {
-      await deviceUsers[i].destroy();
+    if (deviceUser === null) {
+      return false;
     }
+    await deviceUser.destroy();
     return true;
   };
 
@@ -385,14 +367,12 @@ export default function (
 
   Device.getCacophonyIndex = async function (
     authUser,
-    deviceId,
+    device,
     from,
     windowSizeInHours
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    // Make sure the user can see the device:
-    await authUser.checkUserControlsDevices([deviceId]);
 
     // FIXME(jon): So the problem is that we're inserting recordings into the databases without
     //  saying how to interpret the timestamps, so they are interpreted as being NZ time when they come in.
@@ -407,7 +387,7 @@ export default function (
 from
 	"Recordings"
 where
-	"DeviceId" = ${deviceId}
+	"DeviceId" = ${device.id}
 	and "type" = 'audio'
 	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophony_index;`);
     const index = result[0].cacophony_index;
@@ -591,72 +571,82 @@ order by hour;
   // membership or direct assignment. By default, only "safe" user
   // attributes are returned.
   Device.prototype.users = async function (
-    authUser,
+    authUser: User,
     attrs = ["id", "username", "email"]
-  ) {
-    if (!((await this.getAccessLevel(authUser)) == AccessLevel.Admin)) {
-      return [];
-    }
-
-    const device_users = await this.getUsers({ attributes: attrs });
+  ): Promise<User[]> {
+    const deviceUsers = await this.getUsers({ attributes: attrs });
     const group: Group = await (models.Group as GroupStatic).getFromId(
       this.GroupId
     );
+    const groupUsers = await group.getUsers({ attributes: attrs });
 
-    const group_users = await group.getUsers({ attributes: attrs });
-
-    return device_users.concat(group_users);
+    // De-dupe users, since some users can be a group member as well as a device member.
+    const dedupedUsers = new Map();
+    for (const user of groupUsers) {
+      dedupedUsers.set(user.id, user);
+    }
+    // Prefer group membership in the case where we have both?
+    for (const user of deviceUsers) {
+      if (!dedupedUsers.has(user.id)) {
+        dedupedUsers.set(user.id, user);
+      }
+    }
+    return Array.from(dedupedUsers.values());
   };
 
   // Will register as a new device
-  Device.prototype.reregister = async function (
-    newName,
-    newGroup,
-    newPassword
-  ) {
+  Device.prototype.reRegister = async function (
+    newName: string,
+    newGroup: Group,
+    newPassword: string
+  ): Promise<Device | false> {
     let newDevice;
-    await sequelize.transaction(
-      {
-        isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE,
-      },
-      async (t) => {
-        const conflictingDevice = await Device.findOne({
-          where: {
-            devicename: newName,
-            GroupId: newGroup.id,
-          },
-          transaction: t,
-        });
+    try {
+      await sequelize.transaction(
+        {
+          isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+        },
+        async (t) => {
+          // FIXME - Move clientError to API layer
+          const conflictingDevice = await Device.findOne({
+            where: {
+              devicename: newName,
+              GroupId: newGroup.id,
+            },
+            transaction: t,
+          });
 
-        if (conflictingDevice != null) {
-          throw new ClientError(
-            `already a device in group '${newGroup.groupname}' with the name '${newName}'`
+          if (conflictingDevice !== null) {
+            logger.warning("Got conflicting device %s", conflictingDevice);
+            throw new Error();
+          }
+
+          await Device.update(
+            {
+              active: false,
+            },
+            {
+              where: { saltId: this.saltId },
+              transaction: t,
+            }
+          );
+
+          newDevice = await models.Device.create(
+            {
+              devicename: newName,
+              GroupId: newGroup.id,
+              password: newPassword,
+              saltId: this.saltId,
+            },
+            {
+              transaction: t,
+            }
           );
         }
-
-        await Device.update(
-          {
-            active: false,
-          },
-          {
-            where: { saltId: this.saltId },
-            transaction: t,
-          }
-        );
-
-        newDevice = await models.Device.create(
-          {
-            devicename: newName,
-            GroupId: newGroup.id,
-            password: newPassword,
-            saltId: this.saltId,
-          },
-          {
-            transaction: t,
-          }
-        );
-      }
-    );
+      );
+    } catch (e) {
+      return false;
+    }
     return newDevice;
   };
 

@@ -22,8 +22,8 @@ import models from "../../models";
 import responseUtil from "./responseUtil";
 import { body, param} from "express-validator";
 import { Application} from "express";
-import { jsonSchemaOf } from "../schema-validation";
-import ApiAlertConditionsSchema from "../../../types/jsonSchemas/api/alerts/ApiAlertConditions.schema.json";
+import { arrayOf, jsonSchemaOf } from "../schema-validation";
+import ApiAlertConditionSchema from "../../../types/jsonSchemas/api/alerts/ApiAlertCondition.schema.json";
 import { extractDevice, extractValidJWT } from "../extract-middleware";
 import logger from "../../logging";
 
@@ -72,7 +72,7 @@ export default function (app: Application, baseUrl: string) {
         .exists()
         .withMessage(expectedTypeOf("ApiAlertConditions"))
         .bail()
-        .custom(jsonSchemaOf(ApiAlertConditionsSchema)),
+        .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
       body("name")
         .exists()
         .isString(),

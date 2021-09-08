@@ -21,7 +21,7 @@ import auth from "../auth";
 import models from "../../models";
 import { QueryOptions } from "../../models/Event";
 import responseUtil from "./responseUtil";
-import { body, oneOf, param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { Application, Response, Request, NextFunction } from "express";
 import {errors, powerEventsPerDevice} from "./eventUtil";
 import {
@@ -35,6 +35,7 @@ import EventDatesSchema from "../../../types/jsonSchemas/api/event/EventDates.sc
 import EventDescriptionSchema from "../../../types/jsonSchemas/api/event/EventDescription.schema.json";
 import { EventDescription } from "@typedefs/api/event";
 import logger from "../../logging";
+import { booleanOf, eitherOf, idOf, integerOf } from "../validation-middleware";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -74,14 +75,8 @@ const uploadEvent = async (request: Request, response: Response, next: NextFunct
 // TODO(jon): Consider whether extracting this is worth it compared with just
 //  duplicating and having things be explicit in each api endpoint?
 const commonEventFields = [
-  oneOf([
-      body("eventDetailId")
-        .exists()
-        .withMessage(expectedTypeOf("integer"))
-        .bail()
-        .isInt()
-        .toInt()
-        .withMessage(expectedTypeOf("integer")),
+  eitherOf(
+      idOf(body("eventDetailId")),
       body("description")
         .exists()
         .withMessage(expectedTypeOf("EventDescription"))
@@ -92,8 +87,6 @@ const commonEventFields = [
           description.type.match(EVENT_TYPE_REGEXP) !== null
         ))
         .withMessage("description type contains invalid characters")
-    ],
-    "Either 'eventDetailId' or 'description' must be specified."
   ),
   body("dateTimes")
     .exists()
@@ -140,7 +133,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/events/device/:deviceID Add new events on behalf of device
+   * @api {post} /api/v1/events/device/:deviceId Add new events on behalf of device
    * @apiName AddEventOnBehalf
    * @apiGroup Events
    * @apiDescription This call is used to upload new events on behalf of a device.
@@ -148,8 +141,8 @@ export default function (app: Application, baseUrl: string) {
    * the 'description' parameter.
    *
    * `Either eventDetailId or description is required`
-   * @apiParam {String} deviceID ID of the device to upload on behalf of.
-   * If you don't have access to the deviceID, the devicename can be used instead in it's place -
+   * @apiParam {String} deviceId ID of the device to upload on behalf of.
+   * If you don't have access to the deviceId, the devicename can be used instead in it's place -
    * however note that requests using devicename will be rejected if multiple devices exist with
    * the same devicename. The use of devicename is `DEPRECATED` and may not be supported in future.
    * @apiUse V1UserAuthorizationHeader
@@ -169,10 +162,7 @@ export default function (app: Application, baseUrl: string) {
     extractValidJWT,
     // Validate fields
     validateFields([
-      param("deviceId")
-        .isInt()
-        .toInt()
-        .withMessage(expectedTypeOf("integer")),
+      idOf(param("deviceId")),
         ...commonEventFields
       ]
     ),
@@ -221,11 +211,11 @@ export default function (app: Application, baseUrl: string) {
         .isISO8601({ strict: true })
         .optional()
         .withMessage(expectedTypeOf("ISO formatted date string")),
-      query("deviceId").isInt().optional().toInt(),
-      query("offset").isInt().optional().toInt(),
-      query("limit").isInt().optional().toInt(),
+      idOf(query("deviceId")).optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
       query("type").matches(EVENT_TYPE_REGEXP).optional(),
-      query("latest").isBoolean().optional(),
+      booleanOf(query("latest")).optional(),
     ]),
     // Extract required resources
     auth.authenticateAndExtractUser,
@@ -385,6 +375,7 @@ export default function (app: Application, baseUrl: string) {
         .isInt()
         .optional()
         .toInt()
+        .withMessage(expectedTypeOf("integer")),
     ]),
     // Extract required resources
     auth.authenticateAndExtractUser,

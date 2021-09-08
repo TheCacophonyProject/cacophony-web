@@ -6,6 +6,7 @@ import { modelTypeName } from "./middleware";
 import { format } from "util";
 import { Location } from "express-validator";
 import { ClientError } from "./customErrors";
+import { User } from "models/User";
 
 export const extractValidJWT = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
   try {
@@ -64,6 +65,43 @@ export const extractDevice = (location: Location, key: string, stopOnFailure = t
 export const extractOptionalDevice = (location: Location, key: string) => extractDevice(location, key, false);
 export const extractUser = (location: Location, key: string, stopOnFailure = true) => extractModel(models.User, location, key, stopOnFailure);
 export const extractGroupByName = (location: Location, key: string, stopOnFailure = true) => extractModelByName(models.Group, location, key, stopOnFailure);
+
+export const extractDeviceByName = (location: Location, key: string, stopOnFailure = true) => async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  const name = request[location][key];
+  if (!name) {
+    if (stopOnFailure) {
+      return next(new ClientError(format("Could not find a %s with a name of '%s'", "device", name), 400));
+    } else {
+      return next();
+    }
+  }
+  if (!response.locals.group) {
+    return next(new ClientError(`No group specified for device with name ${name}`, 400));
+  }
+  const device = await models.Device.findOne({
+    where: {
+      devicename: request.params.deviceName,
+      GroupId: response.locals.group.id,
+    },
+    // include: [
+    //   {
+    //     model: models.User,
+    //     attributes: ["id", "username"],
+    //   },
+    // ],
+  });
+  if (device === null) {
+    if (stopOnFailure) {
+      return next(new ClientError(format("Could not find a device with a name of '%s'", name), 400));
+    } else {
+      return next();
+    }
+  }
+  response.locals.device = device;
+  next();
+};
+
+
 export const extractEventDetailSnapshot = (location: Location, key: string, stopOnFailure = true) => extractModel(models.DetailSnapshot, location, key, stopOnFailure);
 export const extractOptionalEventDetailSnapshot = (location: Location, key: string) => extractModel(models.DetailSnapshot, location, key, false);
 export const extractJSONField = (location: Location, key: string) => (request: Request, response: Response, next: NextFunction) => {
@@ -79,9 +117,16 @@ export const extractJSONField = (location: Location, key: string) => (request: R
     if (typeof value !== "object") {
       throw new ClientError(`Malformed json`);
     }
-    logger.warning("Extracted %s, %s", key, value);
     response.locals[key] = value;
   }
+  next();
+};
+
+export const extractViewMode = (request: Request, response: Response, next: NextFunction) => {
+  // This only makes sense if the user is a super-user, which we can check
+  const globalPermissions = (response.locals.requestUser as User).globalPermission;
+  const isSuperUser = globalPermissions !== "off";
+  response.locals.viewAsSuperUser = isSuperUser && request.query["view-mode"] !== 'user';
   next();
 };
 
@@ -99,32 +144,32 @@ export const extractModelNameOrId = <T>(modelType: ModelStaticCommon<T>, locatio
   const name = request[location][nameKey];
   if (!id && !name) {
     if (!id) {
-      return next(new Error(format("Could not find a %s with an id of '%s'", modelType.name, id)));
+      return next(new ClientError(`Could not find a ${modelType.name} with an id of '${name}'`));
     }
     if (!name) {
-      return next(new Error(format("Could not find a %s with an name of '%s'", modelType.name, name)));
+      return next(new ClientError(`Could not find a ${modelType.name} with a name of '${name}'`));
     }
   }
   let model;
   const modelName = modelTypeName(modelType);
-  if (id) {
+  if (id && Number(id) == id) {
     logger.info("Get id %s for %s", id, modelName);
     model = await modelType.findByPk(id);
-  } else if (name) {
+  }
+  if (!model && name) {
     logger.info("Get name %s for %s", name, modelName);
     if (!modelType.getFromName) {
       logger.info(`${modelName} does not support 'getFromName'`);
       return next(new Error(`${modelName} does not support 'getFromName'`));
     }
     model = await modelType.getFromName(name);
-    logger.info("Got model %s", model);
   }
   if (model === null) {
     if (stopOnFailure) {
       if (id) {
-        return next(new Error(format("Could not find a %s with an id of '%s'", modelType.name, id)));
+        return next(new ClientError(`Could not find a ${modelType.name} with an id of '${name}'`));
       } else if (name) {
-        return next(new Error(format("Could not find a %s with an name of '%s'", modelType.name, name)));
+        return next(new ClientError(`Could not find a ${modelType.name} with a name of '${name}'`));
       }
     } else {
       return next();

@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiCreateStationData = import("../types").ApiCreateStationData;
+  type ApiCreateStationData = import("@typedefs/api/station").ApiCreateStationData;
   interface Chainable {
     /**
      * upload stations data for a group

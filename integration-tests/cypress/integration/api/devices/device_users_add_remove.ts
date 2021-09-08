@@ -1,8 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
 
 import {
+  HTTP_BadRequest,
   HTTP_Forbidden,
-  HTTP_Unprocessable,
+  HTTP_Unprocessable
 } from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
@@ -223,8 +224,7 @@ describe("Devices add / view / remove users", () => {
     );
 
     // check group member cannot see user details
-    // TODO: FAIL - Issue 63 - request should be rejected with Forbidden if user does not have permissions, not return empty array
-    cy.apiCheckDevicesUsers(deviceMember, camera, []);
+    cy.apiCheckDevicesUsers(deviceMember, camera, [], HTTP_Forbidden);
 
     // check user can be removed from device
     cy.apiRemoveUserFromDevice(groupAdmin, deviceMember, camera);
@@ -252,8 +252,7 @@ describe("Devices add / view / remove users", () => {
     );
 
     // check group member cannot see user details
-    // TODO: FAIL - Issue 63 - request should be rejected with Unauthorised if user does not have permissions, not return empty array
-    cy.apiCheckDevicesUsers(groupMember, camera, []);
+    cy.apiCheckDevicesUsers(groupMember, camera, [], HTTP_Forbidden);
 
     // check admin member can see ggroup member
     cy.apiCheckDevicesUsers(groupAdmin, camera, [
@@ -319,21 +318,21 @@ describe("Devices add / view / remove users", () => {
   });
 
   it("Invalid usernames rejected", () => {
-    // add non existant user to device
+    // add non existent user to device
     cy.apiAddUserToDevice(
       groupAdmin,
       "bad-user",
       camera,
       false,
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
 
-    // remove non existant user from device
+    // remove non existent user from device
     cy.apiRemoveUserFromDevice(
       groupAdmin,
       "bad-user",
       camera,
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
   });
 });

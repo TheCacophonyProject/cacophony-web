@@ -16,9 +16,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { toIdArray, toDate, isInteger } from "../middleware";
+import middleware, { toIdArray, toDate, isInteger, validateFields, expectedTypeOf, isIntArray } from "../middleware";
 import auth from "../auth";
-import e, { Application } from "express";
+import { Application, Response, Request } from "express";
 import {
   calculateMonitoringPageCriteria,
   MonitoringParams,
@@ -26,6 +26,9 @@ import {
 import { generateVisits } from "./monitoringVisit";
 import responseUtil from "./responseUtil";
 import { query } from "express-validator";
+import { extractValidJWT, extractViewMode } from "../extract-middleware";
+import { User } from "models/User";
+import logger from "../../logging";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -130,57 +133,91 @@ export default function (app: Application, baseUrl: string) {
      * @apiUse V1ResponseError
      */
   app.get(
-    apiUrl + "/page",
-    [
-      auth.authenticateUser,
-      toIdArray("devices").optional(),
-      toIdArray("groups").optional(),
-      toDate("from").optional(),
-      toDate("until").optional(),
-      isInteger("page", { min: 1, max: 10000 }),
-      isInteger("page-size", { min: 1, max: 100 }),
-      middleware.isValidName(query, "ai").optional(),
-    ],
-    middleware.viewMode(),
-    middleware.requestWrapper(
-      async (request: e.Request, response: e.Response) => {
-        const user = (request as any).user;
-        const params: MonitoringParams = {
-          user,
-          devices: request.query.devices as unknown[] as number[],
-          groups: request.query.groups as unknown[] as number[],
-          page: Number(request.query.page),
-          pageSize: Number(request.query["page-size"]),
-        };
-
-        if (request.query.from) {
-          params.from = new Date(request.query.from as string);
-        }
-
-        if (request.query.until) {
-          params.until = new Date(request.query.until as string);
-        }
-
-        const viewAsSuperAdmin = request.body.viewAsSuperAdmin;
-        const searchDetails = await calculateMonitoringPageCriteria(
-          params,
-          viewAsSuperAdmin
-        );
-        searchDetails.compareAi = (request.query["ai"] as string) || "Master";
-
-        const visits = await generateVisits(
-          user,
-          searchDetails,
-          viewAsSuperAdmin
-        );
-
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          params: searchDetails,
-          visits: visits,
-        });
+    `${apiUrl}/page`,
+    // Validate session
+    extractValidJWT,
+    validateFields([
+      query("page-size")
+        .exists()
+        .withMessage(expectedTypeOf("integer"))
+        .bail()
+        .isInt({ min: 1, max: 100 })
+        .toInt()
+        .withMessage(`Parameter 'page-size' must be an integer from 1 to 100`), //${range.min} and ${range.max}
+      query("page")
+        .exists()
+        .withMessage(expectedTypeOf("integer"))
+        .bail()
+        .isInt({ min: 1, max: 10000 })
+        .toInt()
+        .withMessage(`Parameter 'page' must be an integer from 1 to 10000`), //${range.min} and ${range.max}
+      query("devices")
+        .optional()
+        .toArray()
+        .isArray({min: 1})
+        .custom(isIntArray)
+        .withMessage("Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"),
+      query("groups")
+        .optional()
+        .toArray()
+        .isArray({min: 1})
+        .custom(isIntArray)
+        .withMessage("Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"),
+      query("ai")
+        .optional()
+        .isLength({ min: 3 })
+        .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
+        .withMessage((val, {location, path}) => `'${location}.${path}' must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`),
+      query("from")
+        .optional()
+        .isISO8601()
+        .toDate(),
+      query("until")
+        .optional()
+        .isISO8601()
+        .toDate(),
+      query("view-mode")
+        .optional()
+    ]),
+    // Extract resources
+    auth.authenticateAndExtractUser,
+    extractViewMode,
+    // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
+    async (request: Request, response: Response) => {
+      const user: User = response.locals.requestUser;
+      const params: MonitoringParams = {
+        user,
+        devices: request.query.devices as unknown[] as number[],
+        groups: request.query.groups as unknown[] as number[],
+        page: request.query.page as unknown as number,
+        pageSize: request.query["page-size"] as unknown as number,
+      };
+      if (request.query.from) {
+        params.from = request.query.from as unknown as Date;
       }
-    )
+      if (request.query.until) {
+        params.until = request.query.until as unknown as Date;
+      }
+
+      const viewAsSuperAdmin = response.locals.viewAsSuperAdmin;
+      const searchDetails = await calculateMonitoringPageCriteria(
+        params,
+        viewAsSuperAdmin
+      );
+      searchDetails.compareAi = (request.query["ai"] as string) || "Master";
+
+      const visits = await generateVisits(
+        user,
+        searchDetails,
+        viewAsSuperAdmin
+      );
+
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        params: searchDetails,
+        visits,
+      });
+    }
   );
 }

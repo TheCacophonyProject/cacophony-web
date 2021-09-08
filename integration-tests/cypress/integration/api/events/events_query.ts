@@ -325,7 +325,7 @@ describe("Events - query events", () => {
       { offset: 4, count: 3 }
     );
 
-    cy.log("Arbitrary offset untelated to page length works");
+    cy.log("Arbitrary offset unrelated to page length works");
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,

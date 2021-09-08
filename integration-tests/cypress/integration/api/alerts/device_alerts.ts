@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
 import { checkResponse } from "../../../commands/server";
 import { getNewIdentity } from "../../../commands/names";
-import { ApiAlertConditions } from "@typedefs/api/alerts";
+import { ApiAlertCondition } from "@typedefs/api/alerts";
 
 import {
   HTTP_BadRequest,
@@ -10,7 +10,7 @@ import {
 } from "../../../commands/constants";
 
 describe("Devices alerts", () => {
-  const POSSUM_ALERT: ApiAlertConditions = [
+  const POSSUM_ALERT: ApiAlertCondition[] = [
     { tag: "possum", automatic: true },
   ];
 
@@ -35,9 +35,9 @@ describe("Devices alerts", () => {
   });
 
   it("Cannot create alert with invalid condition", () => {
-    const BAD_POSSUM_ALERT: ApiAlertConditions = [
+    const BAD_POSSUM_ALERT: ApiAlertCondition[] = [
       { bad_tag: "any", automatic: true },
-    ] as unknown as ApiAlertConditions;
+    ] as unknown as ApiAlertCondition[];
     const usera = getNewIdentity("anna");
     cy.apiCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 

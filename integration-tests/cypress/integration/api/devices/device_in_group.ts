@@ -5,8 +5,8 @@ import { getCreds } from "../../../commands/server";
 import { logTestDescription } from "../../../commands/descriptions";
 import { ApiDeviceInGroupDevice } from "../../../commands/types";
 import {
+  HTTP_BadRequest,
   HTTP_Forbidden,
-  HTTP_Unprocessable,
 } from "../../../commands/constants";
 
 describe("Device in group", () => {
@@ -43,6 +43,16 @@ describe("Device in group", () => {
             userName: getTestName(deviceAdmin),
             admin: true,
             id: getCreds(deviceAdmin).id,
+          },
+          {
+            userName: getTestName(groupAdmin),
+            admin: true,
+            id: getCreds(groupAdmin).id,
+          },
+          {
+            userName: getTestName(groupMember),
+            admin: false,
+            id: getCreds(groupMember).id,
           },
         ],
       };
@@ -125,8 +135,7 @@ describe("Device in group", () => {
     );
   });
 
-  // TODO: Fails - returns empty response instead of error message. Issue 60
-  it.skip("Correctly handles invalid device", () => {
+  it("Correctly handles invalid device", () => {
     cy.apiCheckDeviceInGroup(
       groupAdmin,
       "bad-camera",
@@ -134,7 +143,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
   });
 
@@ -146,7 +155,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
   });
 });

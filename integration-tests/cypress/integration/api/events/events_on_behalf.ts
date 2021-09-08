@@ -408,7 +408,7 @@ describe("Events - add event on behalf of device", () => {
       "camera",
       undefined,
       [time1],
-      null,
+      undefined,
       true,
       HTTP_Unprocessable
     );
@@ -430,7 +430,7 @@ describe("Events - add event on behalf of device", () => {
       "999999",
       eventDetails1,
       [time1],
-      null,
+      undefined,
       true,
       HTTP_BadRequest
     );
@@ -443,7 +443,7 @@ describe("Events - add event on behalf of device", () => {
       "camera",
       eventDetails1,
       [],
-      null,
+      undefined,
       true,
       HTTP_Unprocessable
     );
@@ -453,7 +453,7 @@ describe("Events - add event on behalf of device", () => {
       "camera",
       eventDetails1,
       [""],
-      null,
+      undefined,
       true,
       HTTP_Unprocessable
     );
@@ -463,7 +463,7 @@ describe("Events - add event on behalf of device", () => {
       "camera",
       eventDetails1,
       ["bad time"],
-      null,
+      undefined,
       true,
       HTTP_Unprocessable
     );
@@ -473,7 +473,7 @@ describe("Events - add event on behalf of device", () => {
       "camera",
       eventDetails1,
       [time1, time2, "bad time"],
-      null,
+      undefined,
       true,
       HTTP_Unprocessable
     );
@@ -515,7 +515,7 @@ describe("Events - add event on behalf of device", () => {
       getTestName("camera"),
       eventDetails1,
       [timeNow],
-      null,
+      undefined,
       true,
       HTTP_Unprocessable
     );

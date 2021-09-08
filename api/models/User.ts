@@ -17,17 +17,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import bcrypt from "bcrypt";
-import Sequelize, {
-  BuildOptions,
-  ModelAttributes,
-  ModelOptions,
-} from "sequelize";
+import Sequelize, { BuildOptions, ModelAttributes, ModelOptions } from "sequelize";
 import { AuthorizationError } from "../api/customErrors";
 import log from "../logging";
+import logger from "../logging";
 import { bool } from "aws-sdk/clients/signer";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { Group } from "./Group";
-import logger from "../logging";
+import { Group, GroupId } from "./Group";
+import { AccessLevel, GroupUsersStatic } from "./GroupUsers";
+import { Device, DeviceId, DeviceStatic } from "./Device";
+import { DeviceUsersStatic } from "./DeviceUsers";
 
 const Op = Sequelize.Op;
 
@@ -59,7 +58,22 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
     deviceIds: number[],
     viewAsSuperAdmin?: boolean
   ) => Promise<void>;
-  canAccessDevice: (deviceId: number) => Promise<bool>;
+
+  isInDevice : (deviceId: DeviceId) => Promise<bool>;
+  isDeviceAdmin: (deviceId: DeviceId) => Promise<bool>;
+  canReadGroup: (groupId: GroupId) => Promise<bool>;
+  canWriteGroup: (groupId: GroupId) => Promise<bool>;
+
+  canDirectlyAccessDevice: (device: DeviceId | Device) => Promise<bool>;
+  canDirectlyAdministrateDevice: (device: DeviceId | Device) => Promise<bool>;
+  canDirectlyOrIndirectlyAccessDevice: (device: DeviceId | Device) => Promise<bool>;
+  canDirectlyOrIndirectlyAdministrateDevice: (device: DeviceId | Device) => Promise<bool>;
+
+  canDirectlyAccessGroup: (group: GroupId | Group) => Promise<bool>;
+  canDirectlyAdministrateGroup: (group: GroupId | Group) => Promise<bool>;
+  canDirectlyOrIndirectlyAccessGroup: (group: GroupId | Group) => Promise<bool>;
+  canDirectlyOrIndirectlyAdministrateGroup: (group: GroupId | Group) => Promise<bool>;
+
   canAccessGroup: (groupId: number) => Promise<bool>;
   getDeviceIds: () => Promise<number[]>;
   admin: boolean;
@@ -299,39 +313,80 @@ export default function (
     return groups.map((g) => g.id);
   };
 
-  User.prototype.isInGroup = async function (
-    groupId: number
-  ): Promise<boolean> {
-    const groupIds = await this.getGroupsIds();
-    return groupIds.includes(groupId) === true;
-  };
-
-  User.prototype.isGroupAdmin = async function (
-    groupId: number
-  ): Promise<boolean> {
-    // FIXME: Better to put the groupId in the where clause here?
-    const groupIds = await this.getGroups();
-    return groupIds.some(
-      ({ id, GroupUsers }) => id === groupId && GroupUsers.admin === true
-    );
-  };
 
   // Returns the devices that are directly associated with this user
   // (via DeviceUsers).
-  User.prototype.getDeviceIds = async function () {
+  User.prototype.getDeviceIds = async function (): Promise<DeviceId[]> {
     const devices = await this.getDevices();
     return devices.map((d) => d.id);
   };
 
-  User.prototype.canAccessDevice = async function (deviceId) {
-    const deviceIds = await this.getDeviceIds();
-    return deviceIds.includes(deviceId);
+
+  User.prototype.canDirectlyAccessDevice = async function (device: DeviceId | Device): Promise<bool> {
+    const deviceId = typeof device === 'number' ? device : device.id;
+    const accessLevel = await (models.DeviceUsers as DeviceUsersStatic).getAccessLevel(deviceId, this.id);
+    return accessLevel !== AccessLevel.None;
+  };
+  User.prototype.canDirectlyAdministrateDevice = async function (device: DeviceId | Device): Promise<bool> {
+    const deviceId = typeof device === 'number' ? device : device.id;
+    const accessLevel = await (models.DeviceUsers as DeviceUsersStatic).getAccessLevel(deviceId, this.id);
+    return accessLevel === AccessLevel.Admin;
+  };
+  User.prototype.canDirectlyOrIndirectlyAccessDevice = async function (device: DeviceId | Device): Promise<bool> {
+    if (this.hasGlobalRead()) {
+      return true;
+    }
+    logger.warning("HERE");
+    if (await this.canDirectlyAccessDevice(device)) {
+      return true;
+    }
+    let actualDevice = device;
+    if (typeof device === "number") {
+      actualDevice = await (models.Device as DeviceStatic).findByPk(device);
+    }
+    return await this.canDirectlyOrIndirectlyAccessGroup((actualDevice as Device).GroupId);
+  };
+  User.prototype.canDirectlyOrIndirectlyAdministrateDevice = async function (device: DeviceId | Device): Promise<bool> {
+    if (this.hasGlobalWrite()) {
+      return true;
+    }
+    if (await this.canDirectlyAdministrateDevice(device)) {
+      return true;
+    }
+    let actualDevice = device;
+    if (typeof device === "number") {
+      actualDevice = await (models.Device as DeviceStatic).findByPk(device);
+    }
+    return await this.canDirectlyOrIndirectlyAdministrateGroup((actualDevice as Device).GroupId);
+  };
+
+  User.prototype.canDirectlyAccessGroup = async function (group: GroupId | Group): Promise<bool> {
+    const groupId = typeof group === 'number' ? group : group.id;
+    const accessLevel = await (models.GroupUsers as GroupUsersStatic).getAccessLevel(groupId, this.id);
+    return accessLevel !== AccessLevel.None;
+  };
+  User.prototype.canDirectlyAdministrateGroup = async function (group: GroupId | Group): Promise<bool> {
+    const groupId = typeof group === 'number' ? group : group.id;
+    const accessLevel = await (models.GroupUsers as GroupUsersStatic).getAccessLevel(groupId, this.id);
+    return accessLevel === AccessLevel.Admin;
+  };
+  User.prototype.canDirectlyOrIndirectlyAccessGroup = async function (group: GroupId | Group): Promise<bool> {
+    if (this.hasGlobalRead()) {
+      return true;
+    }
+    return await this.canDirectlyAccessGroup(group);
+  };
+  User.prototype.canDirectlyOrIndirectlyAdministrateGroup = async function (group: GroupId | Group): Promise<bool> {
+    if (this.hasGlobalWrite()) {
+      return true;
+    }
+    return await this.canDirectlyAdministrateGroup(group);
   };
 
   User.prototype.checkUserControlsDevices = async function (
-    deviceIds,
+    deviceIds: DeviceId[],
     viewAsSuperAdmin = true
-  ) {
+  ): Promise<AuthorizationError | void> {
     if (!(viewAsSuperAdmin && this.hasGlobalWrite())) {
       const usersDevices = await this.getAllDeviceIds();
       logger.info("User devices %s", usersDevices);

@@ -23,9 +23,7 @@ Cypress.Commands.add(
   ) => {
     const adminStr = admin ? " as admin " : "";
     logTestDescription(
-      `${groupAdminUser} Adding user '${userName}' ${adminStr} to group '${group}' ${
-        admin ? "as admin" : ""
-      }`,
+      `${groupAdminUser} Adding user '${userName}' to group '${group}' ${adminStr}`,
       { user: userName, group, isAdmin: admin },
       log
     );

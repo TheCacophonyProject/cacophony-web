@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { asArray, expectedTypeOf, validateFields } from "../middleware";
+import { asArray, expectedTypeOf, validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
@@ -26,11 +26,27 @@ import { Application, Response, Request, NextFunction } from "express";
 import { AccessLevel } from "../../models/GroupUsers";
 import { AuthorizationError, ClientError } from "../customErrors";
 import logger from "../../logging";
-import { extractGroupByName, extractJSONField, extractUser, extractValidJWT } from "../extract-middleware";
-import { checkDeviceNameIsUniqueInGroup } from "../validation-middleware";
+import {
+  extractDevice,
+  extractDeviceByName,
+  extractGroupByName, extractGroupByNameOrId,
+  extractJSONField,
+  extractUserByNameOrId,
+  extractValidJWT, extractViewMode
+} from "../extract-middleware";
+import {
+  booleanOf,
+  checkDeviceNameIsUniqueInGroup,
+  eitherOf,
+  idOf,
+  nameOf,
+  nameOrIdOf, validNameOf, validPasswordOf
+} from "../validation-middleware";
 import { TestDeviceAndGroup } from "@typedefs/api/device";
 import TestDeviceAndGroupSchema from "../../../types/jsonSchemas/api/device/TestDeviceAndGroup.schema.json";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
+import { User } from "models/User";
+import { Device } from "models/Device";
 
 const Op = Sequelize.Op;
 
@@ -57,20 +73,14 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     apiUrl,
     validateFields([
-      body("group").exists().isString(),
-      body("devicename")
-        .exists()
-        .withMessage(expectedTypeOf("string")),
-      body("password")
-        .exists()
-        .withMessage(expectedTypeOf("string")),
+      nameOf(body("group")),
+      validNameOf(body("devicename")),
+      validPasswordOf(body("password")),
       body("saltId").optional().isInt(),
-      middleware.checkNewPassword("password"),
-      middleware.isValidName(body, "devicename")
     ]),
     extractGroupByName("body", "group"),
     checkDeviceNameIsUniqueInGroup("body", "devicename"),
-    async (request, response) => {
+    async (request: Request, response: Response) => {
       logger.info("Create Device for group %s", response.locals.group.id);
       const device = await models.Device.create({
         devicename: request.body.devicename,
@@ -144,17 +154,17 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractValidJWT,
     validateFields([
-      // FIXME(jon): Is the view-mode always part of the body? I don't think so.
-      middleware.viewMode(),
+      query("view-mode").optional().equals("user"),
       query("onlyActive").default(true).isBoolean().toBoolean(),
     ]),
     auth.authenticateAndExtractUser,
+    extractViewMode,
     async (request: Request, response: Response) => {
       const onlyActiveDevices = request.query.onlyActive && Boolean(request.query.onlyActive) !== false;
       const devices = await models.Device.allForUser(
         response.locals.requestUser,
         onlyActiveDevices,
-        request.body.viewAsSuperAdmin
+        response.locals.viewAsSuperAdmin
       );
       return responseUtil.send(response, {
         devices: devices,
@@ -197,58 +207,49 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceName/in-group/:groupIdOrName`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      middleware.isValidName(param, "deviceName"),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const device = await models.Device.findOne({
-        where: {
-          devicename: request.params.deviceName,
-          GroupId: request.body.group.id,
-        },
-        include: [
-          {
-            model: models.User,
-            attributes: ["id", "username"],
-          },
-        ],
-      });
-
-      let deviceReturn: any = {};
-      if (device) {
-        const accessLevel = await device.getAccessLevel(request.user);
-        if (accessLevel < AccessLevel.Read) {
-          throw new AuthorizationError(
-            "User is not authorized to access device"
-          );
-        }
-
-        deviceReturn = {
-          id: device.id,
-          deviceName: device.devicename,
-          groupName: request.body.group.groupname,
-          userIsAdmin: accessLevel == AccessLevel.Admin,
-        };
-        if (accessLevel == AccessLevel.Admin) {
-          deviceReturn.users = device.Users.map((user) => {
-            return {
-              userName: user.username,
-              admin: user.DeviceUsers.admin,
-              id: user.DeviceUsers.UserId,
-            };
-          });
-        }
+    extractValidJWT,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      nameOf(param("deviceName")),
+    ]),
+    auth.authenticateAndExtractUser,
+    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
+    extractDeviceByName("params", "deviceName"),
+    auth.userHasAccessToDevice,
+    async (request: Request, response: Response) => {
+      const user: User = response.locals.requestUser;
+      const device: Device = response.locals.device;
+      const userIsDeviceAdmin = await user.canDirectlyOrIndirectlyAdministrateDevice(device);
+      const deviceReturn: any = {
+        id: device.id,
+        deviceName: device.devicename,
+        groupName: response.locals.group.groupname,
+        userIsAdmin: userIsDeviceAdmin,
+      };
+      if (userIsDeviceAdmin) {
+        // FIXME - Should we just let all users see other user states?
+        const deviceUsers = await device.users(user, ["id", "username"]);
+        deviceReturn.users = deviceUsers.map((user) => ({
+          userName: user.username,
+          id: user.id,
+          admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
+          relation: (user as any).DeviceUsers ? "device" : "group"
+        }));
       }
+
       return responseUtil.send(response, {
         statusCode: 200,
         device: deviceReturn,
-        messages: ["Request succesful"],
+        user: {
+          userName: user.username,
+          id: user.id
+        },
+        messages: ["Request successful"],
       });
-    })
-  );
+  });
 
+  // FIXME - It's unclear if we ever use this API - deprecate?
+  // Should be basically an alias for /api/v1/devices/:deviceName/in-group/:groupIdOrName anyway
   /**
    * @api {get} /api/v1/devices/users Get all users who can access a device.
    * @apiName GetDeviceUsers
@@ -267,7 +268,6 @@ export default function (app: Application, baseUrl: string) {
    * [{
    * "id":1564,
    * "username":"user name",
-   * "email":"email@server.nz",
    * "relation":"device",
    * "admin":true
    * }]
@@ -276,37 +276,32 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(query),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      let users = await request.body.device.users(request.user);
-
-      users = users.map((u) => {
-        u = u.get({ plain: true });
-
-        // Extract the useful parts from DeviceUsers/GroupUsers.
-        if (u.DeviceUsers) {
-          u.relation = "device";
-          u.admin = u.DeviceUsers.admin;
-          delete u.DeviceUsers;
-        } else if (u.GroupUsers) {
-          u.relation = "group";
-          u.admin = u.GroupUsers.admin;
-          delete u.GroupUsers;
-        }
-
-        return u;
-      });
+    extractValidJWT,
+    validateFields([
+      idOf(query("deviceId"))
+    ]),
+    auth.authenticateAndExtractUser,
+    extractDevice("query", "deviceId"),
+    auth.userHasAdminAccessToDevice,
+    async (request: Request, response: Response) => {
+      const users = (
+        await response.locals.device.users(
+          response.locals.requestUser,
+          ["id", "username"]
+        )
+      ).map((user) => ({
+        userName: user.username,
+        id: user.id,
+        admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
+        relation: (user as any).DeviceUsers ? "device" : "group"
+      }));
 
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["OK."],
         rows: users,
       });
-    })
+    }
   );
 
   /**
@@ -328,36 +323,35 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getUserByNameOrId(body),
-      middleware.getDeviceById(body),
-      body("admin").isIn(["true", "false"]),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    extractValidJWT,
+    validateFields([
+      eitherOf(
+        nameOf(body("username")),
+        idOf(body("userId"))
+      ),
+      idOf(body("deviceId")),
+      booleanOf(body("admin"))
+    ]),
+    auth.authenticateAndExtractUser,
+    extractUserByNameOrId("body", "username", "userId"),
+    extractDevice("body", "deviceId"),
+    auth.userHasAdminAccessToDevice,
+    async (request, response) => {
       const added = await models.Device.addUserToDevice(
-        request.user,
-        request.body.device,
-        request.body.user,
+        response.locals.device,
+        response.locals.user,
         request.body.admin
       );
 
-      if (added) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Added user to device."],
-        });
-      } else {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to add user to device."],
-        });
-      }
-    })
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: [added],
+      });
+    }
   );
 
   /**
-   * @api {delete} /api/v1/devices/users Removes a user from a device.
+   * @api {delete} /api/v1/devices/users Removes a user with a direct relationship with a device from a device.
    * @apiName RemoveUserFromDevice
    * @apiGroup Device
    * @apiDescription This call can remove a user from a device. Has to be
@@ -375,18 +369,23 @@ export default function (app: Application, baseUrl: string) {
    */
   app.delete(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(body),
-      middleware.getUserByNameOrId(body),
-    ],
-    middleware.requestWrapper(async function (request, response) {
+    extractValidJWT,
+    validateFields([
+      idOf(body("deviceId")),
+      eitherOf(
+        nameOf(body("username")),
+        idOf(body("userId"))
+      )
+    ]),
+    auth.authenticateAndExtractUser,
+    extractDevice("body", "deviceId"),
+    auth.userHasAdminAccessToDevice,
+    extractUserByNameOrId("body", "username", "userId"),
+    async function (request: Request, response: Response) {
       const removed = await models.Device.removeUserFromDevice(
-        request.user,
-        request.body.device,
-        request.body.user
+        response.locals.device,
+        response.locals.user
       );
-
       if (removed) {
         return responseUtil.send(response, {
           statusCode: 200,
@@ -398,7 +397,7 @@ export default function (app: Application, baseUrl: string) {
           messages: ["Failed to remove user from the device."],
         });
       }
-    })
+    }
   );
 
   /**
@@ -420,25 +419,33 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/reregister`,
-    [
-      auth.authenticateDevice,
-      middleware.getGroupByName(body, "newGroup"),
-      middleware.isValidName(body, "newName"),
-      middleware.checkNewPassword("newPassword"),
-    ],
-    middleware.requestWrapper(async function (request, response) {
-      const device = await request.device.reregister(
+    extractValidJWT,
+    validateFields([
+      nameOf(body("newGroup")),
+      validNameOf(body("newName")),
+      validPasswordOf(body("newPassword"))
+    ]),
+    auth.authenticateAndExtractDevice,
+    extractGroupByName("body", "newGroup"),
+    async function (request: Request, response: Response, next: NextFunction) {
+      logger.warning("Request device %s", response.locals.requestDevice);
+      const device = await (response.locals.requestDevice as Device).reRegister(
         request.body.newName,
-        request.body.group,
+        response.locals.group,
         request.body.newPassword
       );
+      if (device === false) {
+        return next(new ClientError(
+          `already a device in group '${response.locals.groupname}' with the name '${request.body.newName}'`
+        ));
+      }
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Registered the device again."],
         id: device.id,
-        token: "JWT " + auth.createEntityJWT(device),
+        token: `JWT ${auth.createEntityJWT(device)}`,
       });
-    })
+    }
   );
 
   /**
@@ -448,7 +455,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiDescription This call is to query all devices by groupname and/or groupname & devicename.
    * Both active and inactive devices are returned.
    *
-   * @apiUse V1DeviceAuthorizationHeader
+   * @apiUse V1DeviceAuthorizationHeader // FIXME - is this correct?
    *
    * @apiParam {JSON} [devices] array of Devices. Either groups or devices (or both) must be supplied.
    * @apiParamExample {JSON} devices:
@@ -492,7 +499,7 @@ export default function (app: Application, baseUrl: string) {
         .isIn(["or", "and", "OR", "AND"])
         .optional(),
     ]),
-    auth.authenticateAndExtractUserWithAccess({ devices: "r" }), // What about checking access to devices?
+    auth.authenticateAndExtractUserWithAccess({ devices: "r" }), // FIXME What about checking access to devices?
     extractJSONField("query", "devices"),
     extractJSONField("query", "groups"),
     async function (request: Request, response: Response, next: NextFunction) {
@@ -539,27 +546,35 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceId/cacophony-index`,
-    [
-      param("deviceId").isInt().toInt(),
-      query("from").isISO8601().toDate().optional(),
-      query("window-size").isInt().toInt().optional(),
-      auth.authenticateUser,
-    ],
-    middleware.requestWrapper(async function (request, response) {
+    extractValidJWT,
+    validateFields([
+      idOf(param("deviceId")),
+      query("from")
+        .isISO8601()
+        .toDate()
+        .default(new Date()),
+      query("window-size")
+        .isInt()
+        .toInt()
+        .default(2160), // Default to a three month rolling window
+    ]),
+    auth.authenticateAndExtractUser,
+    extractDevice("params", "deviceId"),
+    // Make sure the user can see the device:
+    auth.userHasAccessToGroup,
+    async function (request: Request, response: Response) {
       const cacophonyIndex = await models.Device.getCacophonyIndex(
-        request.user,
-        request.params.deviceId,
-        request.query.from || new Date(), // Get the current cacophony index
-        typeof request.query["window-size"] === "number"
-          ? request.query["window-size"]
-          : 2160 // Default to a three month rolling window
+        response.locals.requestUser,
+        response.locals.device,
+        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query["window-size"] as unknown as number
       );
       return responseUtil.send(response, {
         statusCode: 200,
         cacophonyIndex,
         messages: [],
       });
-    })
+    }
   );
 
   /**
@@ -581,26 +596,33 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceId/cacophony-index-histogram`,
-    [
-      param("deviceId").isInt().toInt(),
-      query("from").isISO8601().toDate().optional(),
-      query("window-size").isInt().toInt().optional(),
-      auth.authenticateUser,
-    ],
-    middleware.requestWrapper(async function (request, response) {
+    extractValidJWT,
+    validateFields([
+      idOf(param("deviceId")),
+      query("from")
+        .isISO8601()
+        .toDate()
+        .default(new Date()),
+      query("window-size")
+        .isInt()
+        .toInt()
+        .default(2160), // Default to a three month rolling window
+    ]),
+    auth.authenticateAndExtractUser,
+    extractDevice("params", "deviceId"),
+    auth.userHasAccessToDevice,
+    async function (request: Request, response: Response) {
       const cacophonyIndex = await models.Device.getCacophonyIndexHistogram(
-        request.user,
-        request.params.deviceId,
-        request.query.from || new Date(), // Get the current cacophony index
-        typeof request.query["window-size"] === "number"
-          ? request.query["window-size"]
-          : 2160 // Default to a three month rolling window
+        response.locals.requestUser,
+        response.locals.device.id,
+        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query["window-size"] as unknown as number
       );
       return responseUtil.send(response, {
         statusCode: 200,
         cacophonyIndex,
         messages: [],
       });
-    })
+    }
   );
 }

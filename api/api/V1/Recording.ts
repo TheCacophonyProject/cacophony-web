@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import e, { Application } from "express";
-import middleware from "../middleware";
+import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import recordingUtil, { RecordingQuery } from "./recordingUtil";
 import responseUtil from "./responseUtil";
@@ -33,6 +33,8 @@ import jwt from "jsonwebtoken";
 import config from "../../config";
 import { ClientError } from "../customErrors";
 import log from "../../logging";
+import { extractValidJWT } from "../extract-middleware";
+import { integerOf } from "../validation-middleware";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
@@ -219,6 +221,7 @@ export default (app: Application, baseUrl: string) => {
     middleware.requestWrapper(recordingUtil.makeUploadHandler())
   );
 
+  // FIXME - Should we just delete this now?
   /**
    * @api {get} /api/v1/recordings/visits Query available recordings and generate visits
    * @apiName QueryVisits
@@ -235,28 +238,40 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.get(
-    apiUrl + "/visits",
-    [auth.authenticateUser, middleware.viewMode(), ...queryValidators],
-    middleware.requestWrapper(
-      async (request: e.Request, response: e.Response) => {
-        const result = await recordingUtil.queryVisits(
-          request as unknown as RecordingQuery
-        );
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          limit: request.query.limit,
-          offset: request.query.offset,
-          numRecordings: result.numRecordings,
-          numVisits: result.numVisits,
-          queryOffset: result.queryOffset,
-          totalRecordings: result.totalRecordings,
-          hasMoreVisits: result.hasMoreVisits,
-          visits: result.visits,
-          summary: result.summary.generateAnimalSummary(),
-        });
-      }
-    )
+    `${apiUrl}/visits`,
+    extractValidJWT,
+    validateFields([
+      middleware.parseJSON("where", query).optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+      middleware.parseJSON("order", query).optional(),
+      middleware.parseArray("tags", query).optional(),
+      query("tagMode")
+        .optional()
+        .custom((value) => {
+          return models.Recording.isValidTagMode(value);
+        }),
+      middleware.parseJSON("filterOptions", query).optional(),
+    ]),
+    auth.authenticateAndExtractUser,
+    async (request: e.Request, response: e.Response) => {
+      const result = await recordingUtil.queryVisits(
+        request as unknown as RecordingQuery
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        limit: request.query.limit,
+        offset: request.query.offset,
+        numRecordings: result.numRecordings,
+        numVisits: result.numVisits,
+        queryOffset: result.queryOffset,
+        totalRecordings: result.totalRecordings,
+        hasMoreVisits: result.hasMoreVisits,
+        visits: result.visits,
+        summary: result.summary.generateAnimalSummary(),
+      });
+    }
   );
 
   /**
@@ -897,6 +912,7 @@ export default (app: Application, baseUrl: string) => {
     })
   );
 
+  // FIXME - These functions don't belong here
   async function loadTrackForTagJWT(request, response): Promise<Track> {
     let jwtDecoded;
     const tagJWT = request.body.tagJWT || request.query.tagJWT;

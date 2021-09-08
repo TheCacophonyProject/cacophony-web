@@ -458,16 +458,15 @@ Cypress.Commands.add(
       if (statusCode === null || statusCode == 200) {
         // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
         // sort users and expected users to ensure order is the same
-        const users = sortArrayOn(response.body.rows, "username");
+        const users = sortArrayOn(response.body.rows, "userName");
         expectedUsers = sortArrayOn(expectedUsers, "username");
         expect(users.length).to.equal(expectedUsers.length);
 
         for (let index = 0; index < expectedUsers.length; index++) {
           expect(users[index].id).to.equal(expectedUsers[index].id);
-          expect(users[index].username).to.equal(expectedUsers[index].username);
+          expect(users[index].userName).to.equal(expectedUsers[index].username);
           expect(users[index].relation).to.equal(expectedUsers[index].relation);
           expect(users[index].admin).to.equal(expectedUsers[index].admin);
-          expect(users[index].email).to.equal(expectedUsers[index].email);
         }
       }
     });
@@ -523,7 +522,6 @@ Cypress.Commands.add(
         url: v1ApiPath("devices/users"),
         body: {
           deviceId: getCreds(device).id,
-          admin: "false",
           username: getTestName(userName),
         },
       },

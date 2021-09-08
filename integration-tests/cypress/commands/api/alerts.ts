@@ -10,14 +10,14 @@ import {
 import { logTestDescription } from "../descriptions";
 import { getTestName, getUniq } from "../names";
 import { ApiAlert } from "../types";
-import { ApiAlertConditions } from "@typedefs/api/alerts";
+import { ApiAlertCondition } from "@typedefs/api/alerts";
 
 Cypress.Commands.add(
   "apiAlertAdd",
   (
     userName: string,
     alertName: string,
-    conditions: ApiAlertConditions,
+    conditions: ApiAlertCondition[],
     deviceName: string,
     frequency: number | null = null,
     statusCode: number = 200
@@ -74,7 +74,7 @@ Cypress.Commands.add(
     name: string,
     alertName: string,
     frequencySeconds: number,
-    conditions: ApiAlertConditions,
+    conditions: ApiAlertCondition[],
     lastAlert: boolean,
     userName: string,
     deviceName: string
@@ -114,7 +114,7 @@ Cypress.Commands.add(
 function apiAlertsPost(
   userName: string,
   alertName: string,
-  conditions: ApiAlertConditions,
+  conditions: ApiAlertCondition[],
   deviceName: string,
   frequency: number,
   testFailure: number

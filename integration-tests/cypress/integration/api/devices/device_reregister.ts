@@ -269,8 +269,8 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "RR_default_camera",
       "valid_name",
-      "",
       "RR_default_group",
+      "",
       GENERATE_UNIQUE_NAME,
       HTTP_Unprocessable
     );
@@ -278,8 +278,8 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "RR_default_camera",
       "valid_name2",
-      " ",
       "RR_default_group",
+      " ",
       GENERATE_UNIQUE_NAME,
       HTTP_Unprocessable
     );
@@ -287,8 +287,8 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "RR_default_camera",
       "valid_name3",
-      "1234567",
       "RR_default_group",
+      "1234567",
       GENERATE_UNIQUE_NAME,
       HTTP_Unprocessable
     );
@@ -298,10 +298,10 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "RR_default_camera",
       "valid_name",
-      GENERATE_PASSWORD,
       "invalid-group",
+      GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HTTP_Unprocessable
+      HTTP_BadRequest
     );
   });
 

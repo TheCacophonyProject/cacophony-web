@@ -25,6 +25,9 @@ import customErrors, { ClientError } from "./customErrors";
 import models, { ModelCommon } from "../models";
 import logger from "../logging";
 import {Request, Response, NextFunction} from "express";
+import { Group } from "models/Group";
+import { User } from "../models/User";
+import { Device } from "models/Device";
 /*
  * Create a new JWT for a user or device.
  */
@@ -404,59 +407,52 @@ export const userCanAccessDevices2 = async (val, {req}) => {
   return true;
 };
 
-// A request wrapper that also checks if user should be playing around with the
+// A request middleware that also checks if user should be playing around with the
 // the group before continuing.
-const userHasReadAccessToGroup = async (request, response, next) => {
-  if (request.body.group) {
-    request.group = request.body.group;
-  } else {
-    next(new customErrors.ClientError("No group specified.", 422));
-    return;
+const checkUserPermissionsForGroup = (permissions: "user" | "admin") =>  async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  const user: User = response.locals.requestUser;
+  const group: Group = response.locals.group;
+  if (!group) {
+    return next(new ClientError("No group specified.", 422));
   }
-
-  if (!request.user) {
-    next(new customErrors.ClientError("No user specified.", 422));
-    return;
+  if (!user) {
+    return next(new ClientError("No user specified.", 422));
   }
 
   if (
-    request.user.hasGlobalRead() ||
-    (await request.user.isInGroup(request.body.group.id))
+    (permissions === "user" && await user.canDirectlyOrIndirectlyAccessGroup(group)) ||
+    (permissions === "admin" && await user.canDirectlyOrIndirectlyAdministrateGroup(group))
   ) {
     next();
   } else {
-    return response
-      .status(403)
-      .json({ messages: ["User doesn't have permission to access group"] });
+    return next(new ClientError(`User ${user.username} (${user.id}) doesn't have permission to access group ${group.groupname} (${group.id})`, 403));
   }
 };
 
-// A request wrapper that also checks if user should be playing around with the
-// the group before continuing.
-const userHasWriteAccessToGroup = async (request, response, next) => {
-  if (request.body.group) {
-    request.group = request.body.group;
-  } else {
-    next(new customErrors.ClientError("No group specified.", 422));
-    return;
+const checkUserPermissionsForDevice = (permissions: "user" | "admin") =>  async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  const user: User = response.locals.requestUser;
+  const device: Device = response.locals.device;
+  if (!device) {
+    return next(new ClientError("No device specified.", 422));
   }
-
-  if (!request.user) {
-    next(new customErrors.ClientError("No user specified.", 422));
-    return;
+  if (!user) {
+    return next(new ClientError("No user specified.", 422));
   }
 
   if (
-    request.user.hasGlobalWrite() ||
-    (await request.user.isGroupAdmin(request.body.group.id))
+    (permissions === "user" && await user.canDirectlyOrIndirectlyAccessDevice(device)) ||
+    (permissions === "admin" && await user.canDirectlyOrIndirectlyAdministrateDevice(device))
   ) {
     next();
   } else {
-    return response
-      .status(403)
-      .json({ messages: ["User doesn't have permission to access group"] });
+    return next(new ClientError(`User ${user.username} (${user.id}) doesn't have permission to access group ${device.groupname} (${device.id})`, 403));
   }
 };
+
+const userHasAccessToGroup = checkUserPermissionsForGroup("user");
+const userHasAdminAccessToGroup = checkUserPermissionsForGroup("admin");
+const userHasAccessToDevice = checkUserPermissionsForDevice("user");
+const userHasAdminAccessToDevice = checkUserPermissionsForDevice("admin");
 
 export default {
   authenticate2,
@@ -476,6 +472,9 @@ export default {
   userCanAccessDevices3,
   userCanAccessExtractedDevices,
   userCanAccessOptionalExtractedDevices,
-  userHasReadAccessToGroup,
-  userHasWriteAccessToGroup,
+
+  userHasAccessToGroup,
+  userHasAdminAccessToGroup,
+  userHasAccessToDevice,
+  userHasAdminAccessToDevice,
 };

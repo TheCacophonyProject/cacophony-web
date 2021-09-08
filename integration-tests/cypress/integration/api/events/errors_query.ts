@@ -486,7 +486,7 @@ describe("Events - query errors", () => {
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
       "erCamera",
-      { offest: 0, limit: 2 },
+      { offset: 0, limit: 2 },
       [expectedCategoryError1and2]
     );
 

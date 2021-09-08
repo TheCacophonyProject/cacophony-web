@@ -496,6 +496,7 @@ export default function (
     permission,
     options: getOptions = {}
   ) {
+    // FIXME - permissions should be handled at the API layer.
     if (isUser(modelObj)) {
       return Recording.getForUser(modelObj as User, id, permission, options);
     } else if (isDevice(modelObj)) {
@@ -539,6 +540,8 @@ export default function (
     if (!recording) {
       return null;
     }
+
+    // FIXME - This should happen waaaay earlier, at the API layer.
     const userPermissions = await recording.getUserPermissions(user);
     if (!userPermissions.includes(permission)) {
       throw new AuthorizationError(
@@ -552,7 +555,7 @@ export default function (
   };
 
   /**
-   * Return a single recording for a devce.
+   * Return a single recording for a device.
    */
   Recording.getForDevice = async function (
     device: Device,
@@ -884,12 +887,13 @@ from (
    * TODO This will be edited in the future when recordings can be public.
    */
   Recording.prototype.getUserPermissions = async function (
-    user: User
+    user: User,
+    viewAsSuperAdmin = true
   ): Promise<RecordingPermission[]> {
     if (
-      user.hasGlobalWrite() ||
-      (await user.isInGroup(this.GroupId)) ||
-      (await user.canAccessDevice(this.Device.id))
+      (user.hasGlobalWrite() && viewAsSuperAdmin) ||
+      (await user.canDirectlyAccessGroup(this.GroupId)) ||
+      (await user.canDirectlyAccessDevice(this.Device.id))
     ) {
       return [...RecordingPermissions.values()];
     }

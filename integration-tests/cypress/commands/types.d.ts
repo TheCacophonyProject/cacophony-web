@@ -1,4 +1,4 @@
-import { ApiAlertConditions } from "@typedefs/api/alerts";
+import { ApiAlertCondition } from "@typedefs/api/alerts";
 
 export interface ApiAlertUser {
   id: number;
@@ -17,7 +17,7 @@ export interface ApiAlert {
   name: string;
   alertName?: string;
   frequencySeconds: number;
-  conditions: ApiAlertConditions;
+  conditions: ApiAlertCondition[];
   lastAlert: boolean;
   User: ApiAlertUser;
   Device: ApiAlertDevice;
@@ -85,7 +85,7 @@ export interface ApiEventDetail {
 }
 
 export interface ApiEventSet {
-  deviceID?: string;
+  deviceId?: string;
   description?: ApiEventDetail;
   eventDetailId?: number;
   dateTimes?: string[];
@@ -179,13 +179,6 @@ export interface TestVisitsWhere {
   type: string;
   duration?: any;
   DeviceId?: number;
-}
-
-// Station data as supplied to API on creation.
-export interface ApiCreateStationData {
-  name: string;
-  lat: number;
-  lng: number;
 }
 
 export interface ApiTrackInfo {

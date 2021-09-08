@@ -188,6 +188,7 @@ export interface Group extends Sequelize.Model, ModelCommon<Group> {
   getUsers: (options?: {
     through?: any;
     where?: any;
+    include?: any;
     attributes?: string[];
   }) => Promise<User[]>;
   getDevices: (options?: {
@@ -211,10 +212,9 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
     admin: boolean
   ) => Promise<string>;
   removeUserFromGroup: (
-    authUser: User,
     group: Group,
     userToRemove: User
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   query: (
     where: any,
     user: User,
@@ -277,7 +277,7 @@ export default function (sequelize, DataTypes): GroupStatic {
       if (groupUser.admin !== admin) {
         groupUser.admin = admin; // Update admin value.
         await groupUser.save();
-        return "Updated was made admin for group.";
+        return "Updated, user was made admin for group.";
       } else {
         return "No change, user already added.";
       }
@@ -287,20 +287,21 @@ export default function (sequelize, DataTypes): GroupStatic {
   };
 
   /**
-   * Removes a user from a Group, if the given user has permission to do so.
-   * The user must be a group admin to do this.
+   * Removes a user from a Group
    */
-  Group.removeUserFromGroup = async function (authUser, group, userToRemove) {
+  Group.removeUserFromGroup = async function (group, userToRemove) {
     // Get association if already there and update it.
-    const groupUsers = await models.GroupUsers.findAll({
+    const groupUser = await models.GroupUsers.findOne({
       where: {
         GroupId: group.id,
         UserId: userToRemove.id,
       },
     });
-    for (const groupUser of groupUsers) {
-      await groupUser.destroy();
+    if (groupUser === null) {
+      return false;
     }
+    await groupUser.destroy();
+    return true;
   };
 
   /**

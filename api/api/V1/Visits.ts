@@ -9,6 +9,8 @@ A visit is assumed to be the tag that occurs the most in the visitevents
 All tracks of a recording always belong to the same visit
 */
 
+// FIXME - This file seems to be in the wrong place - this folder is full of API endpoints...
+
 import { Recording } from "../../models/Recording";
 import { TrackTag } from "../../models/TrackTag";
 import { Track } from "../../models/Track";
