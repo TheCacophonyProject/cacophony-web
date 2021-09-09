@@ -416,8 +416,9 @@ function makeUploadHandler(mungeData?: (any) => any) {
     }
 
     await recording.save();
+    let tracked = false
     if (data.metadata) {
-      await tracksFromMeta(recording, data.metadata);
+      tracked = await tracksFromMeta(recording, data.metadata);
     }
     if (data.processingState) {
       recording.processingState = data.processingState;
@@ -429,9 +430,14 @@ function makeUploadHandler(mungeData?: (any) => any) {
       }
     } else {
       if (!fileIsCorrupt) {
-        recording.processingState = models.Recording.uploadedState(
-          data.type as RecordingType
-        );
+        if (tracked && recording.type != RecordingType.Audio){
+          recording.processingState =RecordingProcessingState.AnalyseThermal
+          // already have done tracking pi skip to analyse state
+        }else{
+          recording.processingState = models.Recording.uploadedState(
+            data.type as RecordingType
+          );
+        }
       } else {
         // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
         log.warning("File was corrupt, don't queue for processing");
@@ -936,7 +942,7 @@ async function reprocess(request, response: Response) {
 
 async function tracksFromMeta(recording: Recording, metadata: any) {
   if (!("tracks" in metadata)) {
-    return;
+    return false;
   }
   try {
     const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
@@ -971,6 +977,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       err.toString()
     );
   }
+  return true
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
