@@ -65,8 +65,8 @@ class TestFileProcessing:
         props = {"metadata": metadata}
         helper.given_a_recording(self, props=props)
 
-        recording = file_processing.get("thermalRaw", "tracking")
-        assert recording["processingState"] == "tracking"
+        recording = file_processing.get("thermalRaw", "analyse")
+        assert recording["processingState"] == "analyse"
 
         tracks = user.get_tracks(recording.id_)
         assert len(tracks) == 1
