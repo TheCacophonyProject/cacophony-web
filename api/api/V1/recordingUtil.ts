@@ -416,7 +416,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
     }
 
     await recording.save();
-    let tracked = false
+    let tracked = false;
     if (data.metadata) {
       tracked = await tracksFromMeta(recording, data.metadata);
     }
@@ -430,10 +430,10 @@ function makeUploadHandler(mungeData?: (any) => any) {
       }
     } else {
       if (!fileIsCorrupt) {
-        if (tracked && recording.type != RecordingType.Audio){
-          recording.processingState =RecordingProcessingState.AnalyseThermal
+        if (tracked && recording.type != RecordingType.Audio) {
+          recording.processingState = RecordingProcessingState.AnalyseThermal;
           // already have done tracking pi skip to analyse state
-        }else{
+        } else {
           recording.processingState = models.Recording.uploadedState(
             data.type as RecordingType
           );
@@ -977,7 +977,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       err.toString()
     );
   }
-  return true
+  return true;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
