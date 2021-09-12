@@ -66,7 +66,7 @@
           @addTag="addTag($event)"
           @deleteTag="deleteTag($event)"
         />
-        <TrackData :track-data="track.data" />
+        <TrackData :track-tag="masterTag" :message="track.data.message" />
       </div>
     </div>
   </div>
@@ -135,6 +135,9 @@ export default {
     };
   },
   computed: {
+    masterTag() {
+      return this.track.TrackTags.find((tag) => tag.data.name == "Master");
+    },
     trackClass() {
       const selected = "selected-" + this.show;
       if ("tag" in this.track.data) {
