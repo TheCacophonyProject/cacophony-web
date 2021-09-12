@@ -18,46 +18,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import _ from "lodash";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { User, UserId } from "./User";
+import { User } from "./User";
 import Sequelize from "sequelize";
 import util from "./util/util";
 import {
-  RecordingId as RecordingIdAlias,
+  AcceptableTag,
   RecordingPermission,
 } from "./Recording";
+import { ApiTagData } from "@typedefs/api/tag";
+import { TagId } from "@typedefs/api/common";
 
-export type TagId = number;
-
-export interface TagData {
-  detail: string;
-  confidence: number;
-  RecordingId?: RecordingIdAlias;
-  taggerId?: UserId | null;
-  what?: string;
-  automatic?: boolean;
-  version?: number;
-}
-
-export interface Tag extends TagData, Sequelize.Model, ModelCommon<Tag> {
+export interface Tag extends ApiTagData, Sequelize.Model, ModelCommon<Tag> {
   id: TagId;
 }
 
 export interface TagStatic extends ModelStaticCommon<Tag> {
-  buildSafely: (fields: TagData) => Tag;
+  buildSafely: (fields: ApiTagData) => Tag;
   getFromId: (id: TagId, user: User, attributes: any) => Promise<Tag>;
   userGetAttributes: readonly string[];
   acceptableTags: Set<AcceptableTag>;
   deleteFromId: (id: TagId, user: User) => Promise<boolean>;
-}
-
-export enum AcceptableTag {
-  Cool = "cool",
-  RequiresReview = "requires review",
-  InteractionWithTrap = "interaction with trap",
-  MissedTrack = "missed track",
-  MultipleAnimals = "multiple animals",
-  TrappedInTrap = "trapped in trap",
-  MissedRecording = "missed recording",
 }
 
 export const AcceptableTags = new Set(Object.values(AcceptableTag));
@@ -103,7 +83,7 @@ export default function (sequelize, DataTypes): TagStatic {
   //---------------
   const Recording = sequelize.models.Recording;
 
-  Tag.buildSafely = function (fields: TagData) {
+  Tag.buildSafely = function (fields: ApiTagData) {
     return Tag.build(_.pick(fields, Tag.apiSettableFields));
   };
 
@@ -125,6 +105,7 @@ export default function (sequelize, DataTypes): TagStatic {
     if (tag == null) {
       return true;
     }
+    // FIXME - How about we validate *before* we get the resource?
     const recording = await Recording.get(
       user,
       tag.RecordingId,

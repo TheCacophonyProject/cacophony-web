@@ -1,11 +1,27 @@
 import config from "./config";
 import winston, { format } from "winston";
+import { asyncLocalStorage } from "./Server";
 
 export const consoleTransport = new winston.transports.Console({
   //level: config.server.loggerLevel,
-  format: format.combine(format.colorize(), format.splat(), format.simple()),
+  format: format.combine(
+    format((info) => {
+      const asyncStore = asyncLocalStorage.getStore() as Map<string, string>;
+      if (asyncStore) {
+        const requestId = asyncStore.get("requestId");
+        if (requestId) {
+          info.message = `${requestId.split("-")[0]}: ${info.message}`;
+        }
+      }
+      return info;
+    })(),
+    format.colorize(),
+    format.splat(),
+    format.simple(),
+  ),
   handleExceptions: true,
 });
+
 
 const logger = winston.createLogger({
   levels: winston.config.syslog.levels,

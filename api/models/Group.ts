@@ -221,7 +221,6 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
     viewAsSuperAdmin: boolean
   ) => Promise<Group[]>;
   getFromId: (id: GroupId) => Promise<Group>;
-  freeGroupname: (groupname: string) => Promise<boolean>;
   getIdFromName: (groupname: string) => Promise<GroupId | null>;
 
   addStationsToGroup: (
@@ -441,12 +440,13 @@ export default function (sequelize, DataTypes): GroupStatic {
    * that the user belongs if user does not have global read/write permission.
    */
   Group.query = async function (where, user: User, viewAsSuperAdmin: boolean) {
+    // FIXME - ideally move this permissions stuff up to the API layer
     let userWhere = { id: user.id };
     if (viewAsSuperAdmin && user.hasGlobalRead()) {
       userWhere = null;
     }
     return await models.Group.findAll({
-      where: where,
+      where,
       attributes: ["id", "groupname"],
       include: [
         {
@@ -522,14 +522,6 @@ export default function (sequelize, DataTypes): GroupStatic {
 
   Group.getFromName = async function (name): Promise<Group | null> {
     return this.findOne({ where: { groupname: name } });
-  };
-
-  Group.freeGroupname = async function (name) {
-    const group = await Group.getFromName(name);
-    if (group !== null) {
-      throw new Error("groupname in use");
-    }
-    return true;
   };
 
   // NOTE: It doesn't seem that there are any consumers of this function right now.

@@ -178,6 +178,7 @@ export function getFromId(id: number, user: User, attributes) {
  * A promise is returned that will resolve if successful and reject if failed
  * to delete the file and modelInstance.
  */
+// FIXME - this is dead code?
 export function deleteModelInstance(id, user) {
   const modelClass = this;
   let modelInstance = null;

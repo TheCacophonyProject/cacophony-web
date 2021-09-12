@@ -61,6 +61,7 @@ const extractModelByName = <T>(modelType: ModelStaticCommon<T>, location: Locati
   next();
 };
 
+export const extractRecording = (location: Location, key: string, stopOnFailure = true) => extractModel(models.Recording, location, key, stopOnFailure);
 export const extractDevice = (location: Location, key: string, stopOnFailure = true) => extractModel(models.Device, location, key, stopOnFailure);
 export const extractOptionalDevice = (location: Location, key: string) => extractDevice(location, key, false);
 export const extractUser = (location: Location, key: string, stopOnFailure = true) => extractModel(models.User, location, key, stopOnFailure);
@@ -104,7 +105,7 @@ export const extractDeviceByName = (location: Location, key: string, stopOnFailu
 
 export const extractEventDetailSnapshot = (location: Location, key: string, stopOnFailure = true) => extractModel(models.DetailSnapshot, location, key, stopOnFailure);
 export const extractOptionalEventDetailSnapshot = (location: Location, key: string) => extractModel(models.DetailSnapshot, location, key, false);
-export const extractJSONField = (location: Location, key: string) => (request: Request, response: Response, next: NextFunction) => {
+export const parseJSONField = (location: Location, key: string) => (request: Request, response: Response, next: NextFunction) => {
   if (request[location][key]) {
     let value = request[location][key];
     if (typeof value === "string") {

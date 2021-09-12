@@ -39,6 +39,7 @@ export default function (app: Application) {
     .filter((file) => file.endsWith(".js") && !excludedFiles.includes(file));
   for (const route of apiRoutes) {
     try {
+      logger.info("Init route %s", route);
       require(path.join(__dirname, route)).default(app, "/api/v1");
     } catch (e) {
       logger.warning(e.message);

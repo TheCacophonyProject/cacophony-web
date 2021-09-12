@@ -16,12 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import { body, param } from "express-validator";
 
-import recordingUtil from "./recordingUtil";
-import { Application } from "express";
+import { reprocessRecording, StatusCode } from "./recordingUtil";
+import { Application, Response, Request } from "express";
+import { extractValidJWT } from "../extract-middleware";
+import { idOf } from "../validation-middleware";
+import responseUtil from "./responseUtil";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
@@ -40,10 +43,22 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/:id`,
-    [auth.authenticateUser, param("id").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      return await recordingUtil.reprocess(request, response);
-    })
+    extractValidJWT,
+    validateFields([
+      idOf(param("id"))
+    ]),
+    auth.authenticateAndExtractUser,
+    // FIXME - recording permissions checking should happen here?
+
+    // FIXME - Any user can ask for all their recordings to be reprocessed at once
+    //  This is a good way for us to get DDOS'd
+    async (request: Request, response: Response) => {
+      const responseInfo = await reprocessRecording(
+        response.locals.requestUser,
+        request.params.id
+      );
+      responseUtil.send(response, responseInfo);
+    }
   );
 
   /**
@@ -62,9 +77,52 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     apiUrl,
-    [auth.authenticateUser, middleware.parseJSON("recordings", body)],
-    middleware.requestWrapper(async (request, response) => {
-      return await recordingUtil.reprocessAll(request, response);
-    })
+    extractValidJWT,
+    // FIXME - Should this be a JSON schema of something?
+    validateFields([
+      middleware.parseJSON("recordings", body)
+    ]),
+    auth.authenticateAndExtractUser,
+    async (request: Request, response: Response) => {
+      // FIXME Simplify
+      const recordings = request.body.recordings;
+      const responseMessage = {
+        statusCode: 200,
+        messages: [],
+        reprocessed: [],
+        fail: [],
+      };
+
+      let status = 0;
+      for (let i = 0; i < recordings.length; i++) {
+
+        // FIXME - Pull out user privileges check
+        const resp = await reprocessRecording(response.locals.requestUser, recordings[i]);
+        if (resp.statusCode !== 200) {
+          status = status | StatusCode.Fail;
+          responseMessage.messages.push(resp.messages[0]);
+          responseMessage.statusCode = resp.statusCode;
+          responseMessage.fail.push(resp.recordingId);
+        } else {
+          responseMessage.reprocessed.push(resp.recordingId);
+          status = status | StatusCode.Success;
+        }
+      }
+
+      function getReprocessMessage(status) {
+        switch (status) {
+          case StatusCode.Success:
+            return "All recordings scheduled for reprocessing";
+          case StatusCode.Fail:
+            return "Recordings could not be scheduled for reprocessing";
+          case StatusCode.Both:
+            return "Some recordings could not be scheduled for reprocessing";
+          default:
+            return "";
+        }
+      }
+      responseMessage.messages.splice(0, 0, getReprocessMessage(status));
+      responseUtil.send(response, responseMessage);
+    }
   );
 };

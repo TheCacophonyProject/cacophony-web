@@ -1,4 +1,4 @@
-import { Application } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import express from "express";
 import passport from "passport";
 import process from "process";
@@ -14,6 +14,11 @@ import expressWinston from "express-winston";
 import { exec } from "child_process";
 import { promisify } from "util";
 
+import { AsyncLocalStorage } from "async_hooks";
+import { performance } from "perf_hooks";
+import { v4 as uuidv4 } from "uuid";
+
+export const asyncLocalStorage = new AsyncLocalStorage();
 const asyncExec = promisify(exec);
 
 const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
@@ -70,16 +75,38 @@ const checkS3Connection = (): Promise<void> => {
     log.notice("Running in RELEASE mode");
   }
   const app: Application = express();
-  app.use(express.urlencoded({ extended: false, limit: "2Mb" }));
-  app.use(express.json());
-  app.use(passport.initialize());
+
+  app.use((request: Request, response: Response, next: NextFunction) => {
+    log.info("Running %s", request.path);
+    asyncLocalStorage.run(new Map(), () => {
+      (asyncLocalStorage.getStore() as Map<string, string>).set("requestId", uuidv4());
+      next();
+    });
+  });
   app.use(
     expressWinston.logger({
       transports: [consoleTransport],
       meta: false,
-      expressFormat: true,
+      //expressFormat: true,
+      msg: (req, res): string => {
+        const asyncStore = asyncLocalStorage.getStore() as Map<string, string>;
+        let message = "";
+        let requestId = "";
+        if (asyncStore) {
+          requestId = asyncStore.get("requestId");
+          if (requestId) {
+            requestId = requestId.split("-")[0];
+          }
+        }
+        return `${requestId}: ${req.method} ${req.url}`;
+
+        //return `${res.statusCode} - ${req.method}`.  Warning: while supported, returning mustache style interpolation from an options.msg function has performance and memory implications under load
+      }
     })
   );
+  app.use(express.urlencoded({ extended: false, limit: "2Mb" }));
+  app.use(express.json());
+  app.use(passport.initialize());
 // Adding API documentation
   app.use(express.static(__dirname + "/apidoc"));
 
@@ -87,13 +114,13 @@ const checkS3Connection = (): Promise<void> => {
 // Adding headers to allow cross-origin HTTP request.
 // This is so the web interface running on a different port/domain can access the API.
 // This could cause security issues with Cookies but JWTs are used instead of Cookies.
-  app.all("*", (req, res, next) => {
-    res.header("Access-Control-Allow-Origin", req.headers.origin);
-    res.header(
+  app.all("*", (request: Request, response: Response, next: NextFunction) => {
+    response.header("Access-Control-Allow-Origin", request.headers.origin);
+    response.header(
       "Access-Control-Allow-Methods",
       "PUT, GET, POST, DELETE, OPTIONS, PATCH"
     );
-    res.header(
+    response.header(
       "Access-Control-Allow-Headers",
       "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept"
     );

@@ -16,25 +16,22 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { expectedTypeOf, validateFields } from "../middleware";
+import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, oneOf, param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  extractDevice,
-  extractGroupByName,
-  extractGroupByNameOrId, extractJSONField,
-  extractUser,
+  extractGroupByNameOrId, parseJSONField,
   extractUserByNameOrId,
-  extractValidJWT
+  extractValidJWT, extractViewMode
 } from "../extract-middleware";
 import logger from "../../logging";
-import { AuthorizationError } from "../customErrors";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "../../../types/jsonSchemas/api/station/ApiCreateStationData.schema.json";
-import { booleanOf, eitherOf, idOf, nameOf, nameOrIdOf } from "../validation-middleware";
+import { booleanOf, eitherOf, idOf, nameOf, nameOrIdOf, validNameOf } from "../validation-middleware";
+import { ClientError } from "../customErrors";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
@@ -56,23 +53,29 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware.isValidName(body, "groupname").custom((value) => {
-        return models.Group.freeGroupname(value);
-      }),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    extractValidJWT,
+    validateFields([
+      validNameOf(body("groupname")),
+    ]),
+    auth.authenticateAndExtractUser,
+    async (request: Request, response: Response, next: NextFunction) => {
+      const existingGroup = await models.Group.getFromName(request.body.groupname);
+      if (existingGroup !== null) {
+        return next(new ClientError("Group name in use", 400));
+      }
+      next();
+    },
+    async (request: Request, response: Response) => {
       const newGroup = await models.Group.create({
         groupname: request.body.groupname,
       });
-      await newGroup.addUser(request.user.id, { through: { admin: true } });
+      await newGroup.addUser(response.locals.requestUser.id, { through: { admin: true } });
       return responseUtil.send(response, {
         statusCode: 200,
         groupId: newGroup.id,
         messages: ["Created new group."],
       });
-    })
+    }
   );
 
   /**
@@ -91,23 +94,26 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     apiUrl,
-    [
-      auth.authenticateUser,
+    extractValidJWT,
+    // FIXME deprecate this where query!  Realistically, do we ever use it?
+    validateFields([
       middleware.parseJSON("where", query).optional(),
-      middleware.viewMode(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+      query("view-mode").optional().equals("user"),
+    ]),
+    auth.authenticateAndExtractUser,
+    extractViewMode,
+    async (request: Request, response: Response) => {
       const groups = await models.Group.query(
         request.query.where || {},
-        request.user,
-        request.body.viewAsSuperAdmin
+        response.locals.requestUser,
+        response.locals.viewAsSuperAdmin
       );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
         groups,
       });
-    })
+    }
   );
 
   /**
@@ -124,23 +130,29 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      middleware.viewMode(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    extractValidJWT,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      query("view-mode").optional().equals("user"),
+    ]),
+    auth.authenticateAndExtractUser,
+    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
+    auth.userHasAccessToGroup,
+    extractViewMode,
+    async (request: Request, response: Response) => {
+      // FIXME - We are likely returning way too much and the kitchen sink information here
+      // Who uses this function?
       const groups = await models.Group.query(
-        { id: request.body.group.id },
-        request.user,
-        request.viewAsSuperAdmin
+        { id: response.locals.group.id },
+        response.locals.requestUser,
+        response.locals.viewAsSuperAdmin
       );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
         groups,
       });
-    })
+    }
   );
 
   /**
@@ -159,13 +171,16 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/devices`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasAccessToGroup,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const devices = await request.body.group.getDevices({
+    extractValidJWT,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName"))
+    ]),
+    auth.authenticateAndExtractUser,
+    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
+    auth.userHasAccessToGroup,
+    async (request: Request, response: Response) => {
+      // FIXME - should active devices be a request flag?
+      const devices = await response.locals.group.getDevices({
         where: { active: true },
         attributes: ["id", "devicename"],
       });
@@ -177,7 +192,7 @@ export default function (app: Application, baseUrl: string) {
         })),
         messages: ["Got devices for group"],
       });
-    })
+    }
   );
 
   /**
@@ -196,13 +211,15 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/users`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasAccessToGroup,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const users = await request.body.group.getUsers({
+    extractValidJWT,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+    ]),
+    auth.authenticateAndExtractUser,
+    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
+    auth.userHasAccessToGroup,
+    async (request: Request, response: Response) => {
+      const users = await response.locals.group.getUsers({
         attributes: ["id", "username"],
       });
       return responseUtil.send(response, {
@@ -211,47 +228,11 @@ export default function (app: Application, baseUrl: string) {
           userName: username,
           id,
           isGroupAdmin: GroupUsers.admin,
+          relation: "group"
         })),
         messages: ["Got users for group"],
       });
-    })
-  );
-
-  /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/users Retrieves all users for a group.
-   * @apiName GetUsersForGroup
-   * @apiGroup Group
-   * @apiDescription A group member or an admin member with globalRead permissions can view users that belong
-   * to a group.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Number|String} group name or group id
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:groupIdOrName/users`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasAccessToGroup,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const users = await request.body.group.getUsers({
-        attributes: ["id", "username"],
-      });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        users: users.map(({ username, id, GroupUsers }) => ({
-          userName: username,
-          id,
-          isGroupAdmin: GroupUsers.admin,
-        })),
-        messages: ["Got users for group"],
-      });
-    })
+    }
   );
 
   /**
@@ -392,7 +373,7 @@ export default function (app: Application, baseUrl: string) {
     // Check permissions
     auth.userHasAdminAccessToGroup,
     // Extract further non-dependent resources:
-    extractJSONField("body", "stations"),
+    parseJSONField("body", "stations"),
     async (request, response) => {
       const stationsUpdated = await models.Group.addStationsToGroup(
         response.locals.requestUser,
@@ -424,18 +405,21 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/stations`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasAccessToGroup,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const stations = await request.body.group.getStations();
+    extractValidJWT,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName"))
+    ]),
+    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
+    auth.authenticateAndExtractUser,
+    auth.userHasAccessToGroup,
+    async (request: Request, response: Response) => {
+      // FIXME - A flag to only get non-retired stations?
+      const stations = await response.locals.group.getStations();
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got stations for group"],
         stations,
       });
-    })
+    }
   );
 }

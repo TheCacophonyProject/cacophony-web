@@ -20,17 +20,16 @@ import { asArray, expectedTypeOf, validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, oneOf, param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import Sequelize from "sequelize";
 import { Application, Response, Request, NextFunction } from "express";
-import { AccessLevel } from "../../models/GroupUsers";
-import { AuthorizationError, ClientError } from "../customErrors";
+import { ClientError } from "../customErrors";
 import logger from "../../logging";
 import {
   extractDevice,
   extractDeviceByName,
   extractGroupByName, extractGroupByNameOrId,
-  extractJSONField,
+  parseJSONField,
   extractUserByNameOrId,
   extractValidJWT, extractViewMode
 } from "../extract-middleware";
@@ -76,7 +75,7 @@ export default function (app: Application, baseUrl: string) {
       nameOf(body("group")),
       validNameOf(body("devicename")),
       validPasswordOf(body("password")),
-      body("saltId").optional().isInt(),
+      idOf(body("saltId")).optional(),
     ]),
     extractGroupByName("body", "group"),
     checkDeviceNameIsUniqueInGroup("body", "devicename"),
@@ -500,8 +499,8 @@ export default function (app: Application, baseUrl: string) {
         .optional(),
     ]),
     auth.authenticateAndExtractUserWithAccess({ devices: "r" }), // FIXME What about checking access to devices?
-    extractJSONField("query", "devices"),
-    extractJSONField("query", "groups"),
+    parseJSONField("query", "devices"),
+    parseJSONField("query", "groups"),
     async function (request: Request, response: Response, next: NextFunction) {
       if (!response.locals.devices && !response.locals.groups) {
         return next(new ClientError("At least one of 'devices' or 'groups' must be specified", 422));

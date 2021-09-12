@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sharp from "sharp";
 import zlib from "zlib";
 import { AlertStatic } from "../../models/Alert";
-import {AI_MASTER, TrackTagId} from "../../models/TrackTag";
+import {AI_MASTER} from "../../models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
@@ -31,9 +31,9 @@ import responseUtil from "./responseUtil";
 import util from "./util";
 import { Request, Response } from "express";
 import {
+  AcceptableTag,
   AudioRecordingMetadata,
   Recording,
-  RecordingId,
   RecordingPermission,
   RecordingProcessingState,
   RecordingType,
@@ -63,7 +63,9 @@ import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
 import SendData = ManagedUpload.SendData;
 import {Track} from "../../models/Track";
 import {DetailSnapshotId} from "../../models/DetailSnapshot";
-import {AcceptableTag, Tag, TagData} from "../../models/Tag";
+import {Tag} from "../../models/Tag";
+import { RecordingId, TrackTagId } from "@typedefs/api/common";
+import { ApiTagData } from "@typedefs/api/tag";
 
 // @ts-ignore
 export interface RecordingQuery extends Request {
@@ -818,7 +820,7 @@ function guessRawMimeType(type, filename) {
 }
 
 // FIXME(jon): This should really be a method on Recording?
-const addTag = async (user: User | null, recording: Recording, tag: TagData): Promise<Tag> => {
+const addTag = async (user: User | null, recording: Recording, tag: ApiTagData): Promise<Tag> => {
   if (!recording) {
     throw new ClientError("No such recording.");
   }
@@ -834,10 +836,10 @@ const addTag = async (user: User | null, recording: Recording, tag: TagData): Pr
   return tagInstance;
 };
 
-function handleLegacyTagFieldsForCreate(tag: object): TagData {
+function handleLegacyTagFieldsForCreate(tag: object): ApiTagData {
   tag = moveLegacyField(tag, "animal", "what");
   tag = moveLegacyField(tag, "event", "detail");
-  return tag as TagData;
+  return tag as ApiTagData;
 }
 
 function moveLegacyField(o: object, oldName: string, newName: string): object {
@@ -865,11 +867,11 @@ function handleLegacyTagFieldsForGetOnRecording(recording) {
   return recording;
 }
 
-const statusCode = {
-  Success: 1,
-  Fail: 2,
-  Both: 3,
-};
+export enum StatusCode {
+  Success = 1,
+  Fail = 2,
+  Both = 3
+}
 
 // reprocessAll expects request.body.recordings to be a list of recording_ids
 // will mark each recording to be reprocessed
@@ -886,13 +888,13 @@ async function reprocessAll(request, response) {
   for (let i = 0; i < recordings.length; i++) {
     const resp = await reprocessRecording(request.user, recordings[i]);
     if (resp.statusCode != 200) {
-      status = status | statusCode.Fail;
+      status = status | StatusCode.Fail;
       responseMessage.messages.push(resp.messages[0]);
       responseMessage.statusCode = resp.statusCode;
       responseMessage.fail.push(resp.recordingId);
     } else {
       responseMessage.reprocessed.push(resp.recordingId);
-      status = status | statusCode.Success;
+      status = status | StatusCode.Success;
     }
   }
   responseMessage.messages.splice(0, 0, getReprocessMessage(status));
@@ -902,11 +904,11 @@ async function reprocessAll(request, response) {
 
 function getReprocessMessage(status) {
   switch (status) {
-    case statusCode.Success:
+    case StatusCode.Success:
       return "All recordings scheduled for reprocessing";
-    case statusCode.Fail:
+    case StatusCode.Fail:
       return "Recordings could not be scheduled for reprocessing";
-    case statusCode.Both:
+    case StatusCode.Both:
       return "Some recordings could not be scheduled for reprocessing";
     default:
       return "";
@@ -915,7 +917,7 @@ function getReprocessMessage(status) {
 
 // reprocessRecording marks supplied recording_id for reprocessing,
 // under supplied user privileges
-async function reprocessRecording(user, recording_id) {
+export async function reprocessRecording(user, recording_id) {
   const recording = await models.Recording.get(
     user,
     recording_id,

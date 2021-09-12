@@ -28,7 +28,7 @@ import { AuthorizationError } from "../api/customErrors";
 import _ from "lodash";
 import { User } from "./User";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { AcceptableTag, TagStatic } from "./Tag";
+import { TagStatic } from "./Tag";
 import {
   Device,
   DeviceId,
@@ -43,9 +43,21 @@ import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
 import { Station, StationId } from "./Station";
 import { tryToMatchRecordingToStation } from "../api/V1/recordingUtil";
+import { RecordingId } from "@typedefs/api/common";
 
-export type RecordingId = number;
 type SqlString = string;
+
+// FIXME don't duplicate this
+export enum AcceptableTag {
+  Cool = "cool",
+  RequiresReview = "requires review",
+  InteractionWithTrap = "interaction with trap",
+  MissedTrack = "missed track",
+  MultipleAnimals = "multiple animals",
+  TrappedInTrap = "trapped in trap",
+  MissedRecording = "missed recording",
+}
+
 
 export enum TagMode {
   Any = "any",
@@ -1165,6 +1177,7 @@ from (
       tagMode = tagWhats ? TagMode.Tagged : TagMode.Any;
     }
 
+    // FIXME Seems like we're doing validation here that should be done at the API layer
     const humanSQL = 'NOT "Tags".automatic';
     const AISQL = '"Tags".automatic';
     if (

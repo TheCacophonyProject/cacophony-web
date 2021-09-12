@@ -16,16 +16,18 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { validateFields } from "../middleware";
+import middleware, { expectedTypeOf, validateFields } from "../middleware";
 import auth from "../auth";
 import { body } from "express-validator";
 import models from "../../models";
 import recordingUtil from "./recordingUtil";
 import responseUtil from "./responseUtil";
-import { Application } from "express";
+import { Application, Request, Response } from "express";
 import { RecordingPermission } from "../../models/Recording";
-import { extractValidJWT } from "../extract-middleware";
+import { parseJSONField, extractRecording, extractValidJWT } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
+import { jsonSchemaOf } from "../schema-validation";
+import TagData from "../../../types/jsonSchemas/api/tag/TagData.schema.json"
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
@@ -58,19 +60,27 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware.parseJSON("tag", body),
-      body("recordingId").isInt(),
-    ],
-    middleware.requestWrapper(async function (request, response) {
+    extractValidJWT,
+    validateFields([
+      body("tag")
+        .custom(jsonSchemaOf(TagData))
+        .withMessage(expectedTypeOf("ApiTagData")),
+      idOf(body("recordingId")),
+    ]),
+    parseJSONField("body", "tag"),
+    auth.authenticateAndExtractUser,
+    // We want a recording that this user has permissions for, and has permissions to tag.
+    extractRecording("body", "recordingId"),
+    async function (request: Request, response: Response) {
+      // FIXME - Come back to this
+      // HERE we're doing aquisition and permissions checking in one step - maybe this should be the norm?
       const recording = await models.Recording.get(
-        request.user,
+        response.locals.requestUser,
         request.body.recordingId,
         RecordingPermission.TAG
       );
       const tagInstance = await recordingUtil.addTag(
-        request.user,
+        response.locals.requestUser,
         recording,
         request.body.tag
       );
@@ -79,7 +89,7 @@ export default function (app: Application, baseUrl: string) {
         messages: ["Added new tag."],
         tagId: tagInstance.id,
       });
-    })
+    }
   );
 
   // Delete a tag
@@ -90,9 +100,13 @@ export default function (app: Application, baseUrl: string) {
       idOf(body("tagId"))
     ]),
     auth.authenticateAndExtractUser,
+
+    // Can we guarantee that when a recording is deleted, all its tags are deleted too?
+
     // FIXME - So according to this, anyone with tag permissions can delete anyone elses tag.
     //  There is no validation that they control the recordings or anything.
-    async function (request, response) {
+    // Actually not true - validation is handled deep inside Recording.get
+    async function (request: Request, response: Response) {
       const tagDeleteResult = await models.Tag.deleteFromId(
         request.body.tagId,
         response.locals.requestUser

@@ -100,7 +100,6 @@ const authenticate = (
   reqAccess?: Record<string, any>
 ): AuthenticateMiddleware => {
   return async (req, res, next) => {
-    logger.notice("Authenticate");
     let jwtDecoded: DecodedJWTToken;
     try {
       jwtDecoded = getVerifiedJWT(req) as DecodedJWTToken;
