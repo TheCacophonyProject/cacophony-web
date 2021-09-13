@@ -19,10 +19,10 @@ describe("Stations: add and remove", () => {
 
   it.skip("recordings are assigned to the correct stations", () => {
     cy.apiDeviceAdd("in-forest", group);
-    cy.testUploadRecording(
-      "in-forest",
-      forestLatLong
-    ).thenCheckStationIs(Josie, "forest");
+    cy.testUploadRecording("in-forest", forestLatLong).thenCheckStationIs(
+      Josie,
+      "forest"
+    );
 
     cy.apiDeviceAdd("in-stream", group);
     cy.testUploadRecording("in-stream", {
@@ -44,10 +44,7 @@ describe("Stations: add and remove", () => {
     const camera = "other-group";
     cy.apiGroupAdd(Josie, otherGroup);
     cy.apiDeviceAdd(camera, otherGroup);
-    cy.testUploadRecording(camera, forestLatLong).thenCheckStationIs(
-      Josie,
-      ""
-    );
+    cy.testUploadRecording(camera, forestLatLong).thenCheckStationIs(Josie, "");
   });
 
   it("recordings are not updated if before date specified", () => {

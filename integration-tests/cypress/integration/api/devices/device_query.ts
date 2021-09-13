@@ -1,6 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { HTTP_Unprocessable } from "../../../commands/constants";
+import {
+  HTTP_Unprocessable,
+  superuser,
+  suPassword,
+} from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 import { ApiDeviceQueryDevice } from "../../../commands/types";
@@ -25,8 +29,6 @@ describe("Devices/query", () => {
   const camera5 = "F-camera5";
   const NOT_ADMIN = false;
   const ADMIN = true;
-  const superuser = "admin_test";
-  const suPassword = "admin_test";
   let expectedDeviceA1: ApiDeviceQueryDevice;
   let expectedDeviceA2: ApiDeviceQueryDevice;
   let expectedDeviceB1: ApiDeviceQueryDevice;

@@ -5,6 +5,7 @@ export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 import { format as urlFormat } from "url";
 
 import { NOT_NULL } from "./constants";
+import {ApiLocation} from "./types";
 
 export function apiPath(): string {
   return Cypress.env("cacophony-api-server");
@@ -16,6 +17,14 @@ export function v1ApiPath(page: string, queryParams: any = {}): string {
     query: queryParams,
   });
   return `${Cypress.env("cacophony-api-server")}${urlpage}`;
+}
+
+export function processingApiPath(page: string, queryParams: any = {}): string {
+  const urlpage = urlFormat({
+    pathname: `/api/fileProcessing/${page}`,
+    query: queryParams,
+  });
+  return `${Cypress.env("cacophony-processing-api-server")}${urlpage}`;
 }
 
 // time string should look like "21:09"
@@ -43,6 +52,8 @@ interface ApiCreds {
   };
   jwt: string;
   id: number;
+  location: ApiLocation;
+  jobKey: string;
 }
 
 export function saveIdOnly(name: string, id: number) {
@@ -56,6 +67,20 @@ export function saveIdOnly(name: string, id: number) {
   };
   Cypress.env("testCreds")[name] = creds;
 }
+
+export function saveJobKeyById(id: number, jobKey: string) {
+  //TODO must be a better way to find this entry
+  const entries=Cypress.env("testCreds")
+  let creds:ApiCreds;
+  for (let entry in entries) {
+    if(entries[entry].id==id) { 
+      creds=entries[entry];
+    }
+  }
+  creds.jobKey=jobKey;
+  Cypress.env("testCreds")[creds.name] = creds;
+}
+
 
 export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
@@ -72,10 +97,26 @@ export function saveCreds(
       authorization: response.body.token,
     },
     jwt: response.body.token,
+    jobKey: response.body.jobKey,
     id,
   };
   Cypress.env("testCreds")[name] = creds;
 }
+
+  export function saveStation(
+    location: ApiLocation,
+    name: string,
+    id = 0
+  ) {
+    const creds = {
+      name,
+      headers: {
+      },
+      location: location,
+      id,
+    };
+    Cypress.env("testCreds")[name] = creds;
+  }
 
 export function makeAuthorizedRequestWithStatus(
   requestDetails: Partial<Cypress.RequestOptions>,
@@ -214,7 +255,8 @@ export function checkTreeStructuresAreEqualExcept(
   containingStruct: any,
   excludeKeys: any = [],
   treeSoFar: string = "",
-  prettyTreeSoFar: string = ""
+  prettyTreeSoFar: string = "",
+  approximateTimes: any = []
 ) {
   if (isArrayOrHash(containingStruct)) {
     if (Array.isArray(containingStruct)) {
@@ -236,7 +278,8 @@ export function checkTreeStructuresAreEqualExcept(
             containingStruct[count],
             excludeKeys,
             elementName,
-            prettyElementName
+            prettyElementName,
+            approximateTimes
           );
         } else {
           //otherwise, check the values are as expected
@@ -280,15 +323,27 @@ export function checkTreeStructuresAreEqualExcept(
               containingStruct[containedKeys[count]],
               excludeKeys,
               elementName,
-              prettyElementName
+              prettyElementName,
+              approximateTimes
             );
           } else {
-            //check we were aksed to validate, or validate NOT NULL
+            //check we were asked to validate, or validate NOT NULL
             if (containedStruct[containedKeys[count]] == NOT_NULL) {
               expect(
                 containingStruct[containedKeys[count]],
                 `Expected ${prettyElementName} should not be NULL`
               ).to.not.be.null;
+            } else if (approximateTimes.includes(elementName)) {
+              const comparedTime = new Date(
+                containingStruct[containedKeys[count]]
+              ).getTime();
+              const expectedTime = new Date(
+                containedStruct[containedKeys[count]]
+              ).getTime();
+              expect(
+                new Date(comparedTime),
+                `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`
+              ).to.be.within(expectedTime - 60000, expectedTime + 60000);
             } else {
               //otherwise, check the values are as expected
               expect(
@@ -321,7 +376,7 @@ function isArrayOrHash(theObject: any) {
   );
 }
 
-export function removeUndefinedParams(jsStruct: any) {
+export function removeUndefinedParams(jsStruct: any):any {
   const keys = Object.keys(jsStruct);
   const resultStruct = {};
   for (let count = 0; count < keys.length; count++) {

@@ -104,7 +104,6 @@ describe("Devices alerts", () => {
     cy.testUploadRecording(
       usera.camera,
       { processingState: "FINISHED", tags: ["possum"] },
-      null,
       "recording1"
     ).then(() => {
       cy.createExpectedAlert(
@@ -151,7 +150,6 @@ describe("Devices alerts", () => {
     cy.testUploadRecording(
       usera.camera,
       { processingState: "FINISHED", tags: ["rat"] },
-      null,
       "recording1b"
     ).then(() => {
       cy.createExpectedAlert(
@@ -192,7 +190,6 @@ describe("Devices alerts", () => {
     cy.testUploadRecording(
       camera2,
       { processingState: "FINISHED", tags: ["possum"] },
-      null,
       "recording1c"
     ).then(() => {
       cy.createExpectedAlert(
@@ -235,7 +232,6 @@ describe("Devices alerts", () => {
         processingState: "FINISHED",
         tags: ["rat", "possum", "possum", "possum", "rat"],
       },
-      null,
       "recording1d"
     ).then(() => {
       cy.createExpectedAlert(
@@ -285,7 +281,6 @@ describe("Devices alerts", () => {
         processingState: "FINISHED",
         tags: ["rat", "rat", "possum", "possum", "rat"],
       },
-      null,
       "recording1d"
     ).then(() => {
       cy.createExpectedAlert(
@@ -335,7 +330,6 @@ describe("Devices alerts", () => {
     cy.testUploadRecording(
       usera.camera,
       { model: "different", processingState: "FINISHED", tags: ["possum"] },
-      null,
       "recording2"
     );
 
@@ -367,11 +361,10 @@ describe("Devices alerts", () => {
     cy.apiGroupUserAdd(usera.name, userb.name, usera.group, false, true);
 
     //upload a recording tagged as possum using device
-    cy.apiRecordingAddOnBehalfUsingDevice(
-      usera.camera,
+    cy.testUploadRecordingOnBehalfUsingDevice(
       userb.name,
+      usera.camera,
       { processingState: "FINISHED", tags: ["possum"] },
-      null,
       "recording3"
     ).then(() => {
       cy.createExpectedAlert(
@@ -426,12 +419,11 @@ describe("Devices alerts", () => {
     cy.apiGroupUserAdd(usera.name, userb.name, usera.group, false, true);
 
     //upload a recording tagged as possum using group
-    cy.apiRecordingAddOnBehalfUsingGroup(
+    cy.testUploadRecordingOnBehalfUsingGroup(
+      userb.name,
       usera.camera,
       usera.group,
-      userb.name,
       { processingState: "FINISHED", tags: ["possum"] },
-      null,
       "recording4"
     ).then(() => {
       cy.createExpectedAlert(
@@ -480,12 +472,11 @@ describe("Devices alerts", () => {
     );
 
     //upload a recording tagged as possum using group
-    cy.apiRecordingAddOnBehalfUsingGroup(
+    cy.testUploadRecordingOnBehalfUsingGroup(
+      usera.name,
       usera.camera,
       usera.group,
-      usera.name,
       { processingState: "FINISHED", tags: ["possum"] },
-      null,
       "recording1"
     ).then(() => {
       cy.createExpectedAlert(
@@ -519,11 +510,10 @@ describe("Devices alerts", () => {
     );
 
     //upload a 2nd recording tagged as possum using device
-    cy.apiRecordingAddOnBehalfUsingDevice(
-      usera.camera,
+    cy.testUploadRecordingOnBehalfUsingDevice(
       usera.name,
+      usera.camera,
       { processingState: "FINISHED", tags: ["possum"] },
-      null,
       "recording2"
     ).then(() => {
       cy.createExpectedAlert(
@@ -560,7 +550,6 @@ describe("Devices alerts", () => {
     cy.testUploadRecording(
       usera.camera,
       { processingState: "FINISHED", tags: ["possum"] },
-      null,
       "recording3"
     ).then(() => {
       cy.createExpectedAlert(

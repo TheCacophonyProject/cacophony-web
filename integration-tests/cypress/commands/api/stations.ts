@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 import { logTestDescription } from "../descriptions";
-import { checkRecording } from "./recording";
+import { checkRecording } from "./recording-tests";
 
 // Legacy test functions used in /recordings. To be retired and replaces with standard-format API wrappers.
 

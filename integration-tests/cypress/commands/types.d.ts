@@ -30,7 +30,7 @@ export interface ApiAlertConditions {
 /*******************************************************************
  * DEVICE definitions
  ********************************************************************/
-// from api/v1/groups (get), api/v1/events (get)
+// from api/v1/groups (get), api/v1/events (get), api/recordings (get)
 export interface ApiDeviceIdAndName {
   id: number;
   devicename: string;
@@ -93,6 +93,12 @@ export interface ApiDeviceUsersUser {
   email: string;
   relation: string;
   admin: boolean;
+}
+
+// from api/v1/recordings (get)
+export interface ApiUserNameAndId {
+  username: string;
+  id: number;
 }
 
 // from api/v1/groups (get)
@@ -235,31 +241,138 @@ export interface ApiGroupUserRelation {
  * RECORDING definitions
  ********************************************************************/
 
+//from /api/fileProcessing (get)
+export interface ApiRecordingForProcessing {
+  id: number;
+  type: string;
+  jobKey: string;
+  rawFileKey: string;
+  rawMimeType: string;
+  fileKey: string;
+  fileMimeType: string;
+  processingState: string;
+  processingMeta: any;
+  GroupId: number;
+  DeviceId: number;
+  StationId: number;
+  recordingDateTime: string;
+  duration: number;
+  location: { type: "Point"; coordinates: number[] } | null;
+  hasAlert: boolean;
+  processingStartTime: string;
+  processingEndTime: string;
+  processing: boolean;
+  updatedAt: string;
+}
+
 // from api/v1/recordings (post)
-export interface ApiRecordingData {
+export interface ApiRecordingSet {
   type: string;
   fileHash?: string;
   duration: number;
+  location?: ApiLocation | number[];
   recordingDateTime: string;
-  location?: ApiLocation|number[];
+  relativeToDawn?: number;
+  relativeToDusk?: number;
   version?: string;
   batteryCharging?: string;
   batteryLevel?: number;
   airplaneModeOn?: boolean;
-  additionalMetadata?: ApiRecordingDataMetadata;
+  metadata?: ApiRecordingDataMetadata;
+  additionalMetadata?: ApiThermalAdditionalMetadata | any;
   comment?: string;
   processingState?: string;
 }
 
+export interface ApiRecordingReturned {
+  id: number;
+  fileHash?: string;
+  rawMimeType: string;
+  fileMimeType: string;
+  processingState: string;
+  duration: number;
+  recordingDateTime: string;
+  relativeToDawn: number;
+  relativeToDusk: number;
+  location: ApiLocation;
+  version: string;
+  batteryLevel: number;
+  batteryCharging: string;
+  airplaneModeOn: boolean;
+  type: string;
+  additionalMetadata: ApiThermalAdditionalMetadata | any;
+  GroupId: number;
+  StationId: number;
+  comment: string;
+  processing: boolean;
+  Group?: { groupname: string };
+  Station?: ApiRecordingStation;
+  Tags?: ApiRecordingTag[];
+  Tracks?: ApiRecordingTrack[];
+  Device?: ApiDeviceIdAndName;
+}
+
+// from api/v1/recordings (get)
+export interface ApiRecordingTag {
+  id: number;
+  what: string;
+  detail: string;
+  confidence: number;
+  startTime: string;
+  duration: number;
+  automatic: boolean;
+  version: number;
+  createdAt: string;
+  taggerId: number;
+  tagger: ApiUserNameAndId;
+  animal: string;
+  event: string;
+}
+
 // from api/v1/recordings (post)
-export interface ApiAlogrithmMetadata {
+export interface ApiRecordingAlogrithm {
   model_name?: string;
 }
 
 // from api/v1/recordings (post)
 export interface ApiRecordingDataMetadata {
   tracks?: ApiTrackSet[];
-  algorithm?: ApiAlogrithmMetadata;
+  algorithm?: ApiRecordingAlogrithm;
+}
+
+// from api/v1/recordings (get)
+export interface ApiThermalAdditionalMetadata {
+  models?: Record<string, ApiRecordingModel>;
+  algorithm?: number;
+  tracking_time?: number;
+  thumbnail_region?: ApiRecordingThumbnailRegion;
+  previewSecs?: number;
+  totalFrames?: number;
+}
+
+// from api/v1/recordings (get)
+export interface ApiRecordingThumbnailRegion {
+  x: number;
+  y: number;
+  mass: number;
+  blank: boolean;
+  width: number;
+  height: number;
+  frame_number: number;
+  pixel_variance: number;
+}
+
+//from api/v1/recordings (get)
+export interface ApiRecordingTrack {
+  id: number;
+  data: ApiRecordingTrackData;
+  TrackTags: ApiRecordingTrackTag[];
+}
+
+//from api/v1/recordings (get)
+export interface ApiRecordingTrackData {
+  start_s: number;
+  end_s: number;
 }
 
 //from api/v1/recordings (post)
@@ -270,6 +383,22 @@ export interface ApiTrackSet {
   confident_tag?: string;
   confidence?: number;
   all_class_confidences?: any;
+}
+
+//from api/v1/recordings (get)
+export interface ApiRecordingTrackTag {
+  what: string;
+  automatic: boolean;
+  TrackId: number;
+  confidence?: number;
+  UserId?: number;
+  data?: string;
+  User?: any;
+}
+
+// from api/v1/recordings (get)
+export interface ApiRecordingModel {
+  classify_time: number;
 }
 
 //Simplified test version of above structures for generic recordings
@@ -287,6 +416,16 @@ export interface TestThermalRecordingInfo {
   lng?: number; // Longitude position for the recording
 }
 
+/*******************************************************************
+ * Stations
+ ********************************************************************/
+
+// from api/v1/recording (get)
+export interface ApiRecordingStation {
+  name: string;
+  location: ApiLocation;
+}
+
 // from api/v1/groups/<>/stations (post)
 export interface ApiStationData {
   name: string;
@@ -297,7 +436,7 @@ export interface ApiStationData {
 // from api/v1/groups/<>/stations (get), apiRecordings (post)
 export interface ApiLocation {
   type: string;
-  coordinates: [number, number];
+  coordinates: number[];
 }
 
 // from api/v1/groups/<>/stations (get)

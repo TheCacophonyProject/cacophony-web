@@ -2,23 +2,55 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
-  type ApiRecordingData = import("../types").ApiRecordingData;
+  type ApiRecordingSet = import("../types").ApiRecordingSet;
+  type ApiRecordingReturned = import("../types").ApiRecordingReturned;
   type ApiRecordingDataMetadata = import("../types").ApiRecordingDataMetadata;
   type Interception = import("cypress/types/net-stubbing").Interception;
+  type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
   type RecordingId = number;
 
   interface Chainable {
+    /** Check the values returned by /api/fileProcessing (get)
+     * specify type and processingState (state)
+     * Verfiy that the recording data matched the expectedRecording
+     * Optionally: check for a non-200 statusCode
+     * Optionally: check for a retuened error message (additionalChecks.message)
+     */
+    processingApiCheck(
+      type: string,
+      state: string,
+      expectedRecording: any,
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+     /** Post to /api/fileProcessing 'done' endpoint
+       * recordingId and jobkey is looked up using recordingName
+       * other parameters are passed to the endpoint transparently
+       * Optionally: check for a non-200 statusCode
+       */
+
+    processingApiPost (
+    recordingName: string,
+    success: boolean,
+    result: any,
+    complete: boolean,
+    newProcessedFileKey: string,
+    statusCode?: number
+  ):any;
     /**
      * upload a single recording to for a particular camera using deviceId and user credentials
      * Optionally, save the id against provided recordingName
      */
     apiRecordingAddOnBehalfUsingDevice(
-      deviceName: string,
       userName: string,
+      deviceName: string,
       details: TestThermalRecordingInfo,
-      log?: boolean,
-      recordingName?: string
+      recordingName?: string,
+      fileName?: string,
+      statusCode?: number,
+      additionalChecks?: any
     ): Cypress.Chainable<RecordingId>;
 
     /**
@@ -26,12 +58,14 @@ declare namespace Cypress {
      * Optionally, save the id against provided recordingName
      */
     apiRecordingAddOnBehalfUsingGroup(
+      userName: string,
       deviceName: string,
       groupName: string,
-      userName: string,
-      details: TestThermalRecordingInfo,
-      log?: boolean,
-      recordingName?: string
+      data: ApiRecordingSet,
+      recordingName?: string,
+      fileName?: string,
+      statusCode?: number,
+      additionalChecks?: any
     ): Cypress.Chainable<RecordingId>;
 
     /**
@@ -41,52 +75,75 @@ declare namespace Cypress {
      */
     apiRecordingAdd(
       deviceName: string,
-      data: ApiRecordingData,
+      data: ApiRecordingSet,
       fileName?: string,
       recordingName?: string,
-      metadata?: ApiRecordingDataMetadata,
       statusCode?: number,
       additionalChecks?: any
     ): any;
 
-    /**
-     * upload a single recording to for a particular camera using pre-rolled test metadata
-     * Optionally, save the id against provided recordingName
+    /* Get a single recording using api/v1/recordings/{id}
+     * Verfiy that the recording data matched the expectedRecording
+     * Optionally: check for a non-200 statusCode
+     * By default function looks up the recording Id using the recordingNameOrId supplied when
+     * recording was created
+     * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
      */
-    testUploadRecording(
-      deviceName: string,
-      details: TestThermalRecordingInfo,
-      log?: boolean,
-      recordingName?: string,
-      statusCode?: number
-    ): Cypress.Chainable<RecordingId>;
-
-    testAddRecordingThenUserTag(
-      deviceName: string,
-      details: TestThermalRecordingInfo,
-      tagger: string,
-      tag: string
-    ): any;
-
-    testUserTagRecording(
-      recordingId: number,
-      trackIndex: number,
-      tagger: string,
-      tag: string
-    ): any;
-
-    testAddRecordingsAtTimes(deviceName: string, times: string[]): any;
-
-    // to be run straight after an apiRecordingAdd
-    thenUserTagAs(tagger: string, tag: string): any;
-
-    /**
-     * Check recording count for device matches expected value
-     */
-    testCheckDeviceHasRecordings(
+    apiRecordingCheck(
       userName: string,
-      deviceName: string,
-      count: number
+      recordingNameOrId: string,
+      expectedRecording: ApiRecordingReturned,
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
     ): any;
+
+    /* Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
+     * Verfiy that the recording data matched the expectedRecordings
+     * Optionally: check for a non-200 statusCode
+     * Optionally: check returned messages for addditionalChecks["message"]
+     */
+    apiRecordingsQueryCheck(
+      userName: string,
+      query: any,
+      expectedRecordings?: ApiRecordingReturned[],
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /* Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
+     * Verfiy that the recording data matched the expectedRecordings
+     * Optionally: check for a non-200 statusCode
+     * Optionally: check returned messages for addditionalChecks["message"]
+     */
+    apiRecordingsCountCheck(
+      userName: string,
+      query: any,
+      expectedCount: number,
+      statusCode?: number,
+      additionalChecks?: any
+    ): number;
+
+    /* Delete a single recording using api/v1/recordings/{id} DELETE
+     * Optionally: check for a non-200 statusCode
+     * By default function looks up the recording Id using the recordingNameOrId supplied when
+     * recording was created
+     * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+     */
+    apiRecordingDelete(
+      userName: string,
+      recordingNameOrId: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /* Mark a list fo recordings (recordingIds[]) for reprocessing
+     * Optionally: check for a non-200 statusCode
+     * Optionally: check for the returned list of reporocessed ids (expectedReprocessed)
+     * Optionally: check fot the returned list of failed ids (additionalChecks["fail"])
+     * Optioanlly: check for a returned error message (additionalChecks["message"])
+     */
+    apiReprocess ( userName: string, recordingIds: number[], expectedReprocessed?: number[], statusCode?: number, additionalChecks?: any):any;
   }
 }

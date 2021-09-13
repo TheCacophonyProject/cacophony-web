@@ -157,7 +157,7 @@ describe("Authentication", () => {
     //get device users
 
     //upload a recording for device (using user's main token)
-    //cy.apiRecordingAddOnBehalfUsingDevice(camera1, userA, { tags: ["possum"]}, null, 'recording1');
+    //cy.testUploadRecodingOnBehalfUsingDevice(camera1, userA, { tags: ["possum"]}, 'recording1');
 
     //retrieve recording for device
     //cy.testCheckDeviceHasRecordings(userA+'_temp_token',camera1,1);
