@@ -35,6 +35,7 @@ import { GroupUsersStatic } from "./GroupUsers";
 import { DeviceUsersStatic } from "./DeviceUsers";
 import { ScheduleStatic } from "./Schedule";
 import { StationStatic } from "./Station";
+import { asyncLocalStorage } from "../Server";
 
 const basename = path.basename(module.filename);
 const dbConfig = config.database;
@@ -44,7 +45,12 @@ dbConfig.benchmark = true;
 
 // Send logs via winston
 (dbConfig as any).logging = function (msg, timeMs) {
+
+  // Sequelize seems to happen in its own async context?
   log.debug("%s [%d ms]", msg, timeMs);
+  let requestQueryCount = (asyncLocalStorage.getStore() as Map<string, any>)?.get("queryCount") || 0;
+  requestQueryCount++;
+  (asyncLocalStorage.getStore() as Map<string, any>)?.set("queryCount", requestQueryCount);
   if (timeMs > (config.database.slowQueryLogThresholdMs || 1000)) {
     log.warning("Slow query: %s [%d]ms", msg, timeMs);
   }

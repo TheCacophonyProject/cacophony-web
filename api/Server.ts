@@ -77,31 +77,34 @@ const checkS3Connection = (): Promise<void> => {
   const app: Application = express();
 
   app.use((request: Request, response: Response, next: NextFunction) => {
-    log.info("Running %s", request.path);
-    asyncLocalStorage.run(new Map(), () => {
-      (asyncLocalStorage.getStore() as Map<string, string>).set("requestId", uuidv4());
+    //
+    // asyncLocalStorage.enterWith(new Map());
+    // (asyncLocalStorage.getStore() as Map<string, any>).set("requestId", uuidv4());
+    asyncLocalStorage.run(new Map(), async () =>{
+      (asyncLocalStorage.getStore() as Map<string, any>).set("requestId", uuidv4());
       next();
     });
+    //next();
   });
   app.use(
     expressWinston.logger({
       transports: [consoleTransport],
       meta: false,
+      metaField: null,
       //expressFormat: true,
-      msg: (req, res): string => {
-        const asyncStore = asyncLocalStorage.getStore() as Map<string, string>;
-        let message = "";
-        let requestId = "";
-        if (asyncStore) {
-          requestId = asyncStore.get("requestId");
-          if (requestId) {
-            requestId = requestId.split("-")[0];
-          }
+      msg: (req: Request, res: Response): string => {
+          // const asyncStore = asyncLocalStorage.getStore() as Map<string, string>;
+          // const message = "";
+          // let requestId = "";
+          // if (asyncStore) {
+          //   requestId = asyncStore.get("requestId");
+          //   if (requestId) {
+          //     requestId = requestId.split("-")[0];
+          //   }
+          // }
+          const dbQueryCount = (asyncLocalStorage.getStore() as Map<string, any>)?.get("queryCount");
+          return `${req.method} ${req.url} => (${res.statusCode}) ${dbQueryCount ? `(${dbQueryCount}) ` : ""}[${(res as any).responseTime}ms]`;
         }
-        return `${requestId}: ${req.method} ${req.url}`;
-
-        //return `${res.statusCode} - ${req.method}`.  Warning: while supported, returning mustache style interpolation from an options.msg function has performance and memory implications under load
-      }
     })
   );
   app.use(express.urlencoded({ extended: false, limit: "2Mb" }));

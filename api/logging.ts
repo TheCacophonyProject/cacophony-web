@@ -3,7 +3,7 @@ import winston, { format } from "winston";
 import { asyncLocalStorage } from "./Server";
 
 export const consoleTransport = new winston.transports.Console({
-  //level: config.server.loggerLevel,
+  level: config.server.loggerLevel,
   format: format.combine(
     format((info) => {
       const asyncStore = asyncLocalStorage.getStore() as Map<string, string>;
@@ -16,6 +16,7 @@ export const consoleTransport = new winston.transports.Console({
       return info;
     })(),
     format.colorize(),
+
     format.splat(),
     format.simple(),
   ),
