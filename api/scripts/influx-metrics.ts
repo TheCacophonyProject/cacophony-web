@@ -81,11 +81,11 @@ async function measureProcessingWaitTime(influx, pgClient) {
 
 const countStates = Object.values(RecordingProcessingState).filter(
   (state) => state != RecordingProcessingState.Finished
-);
+) as string[];
 countStates.push(
   ...countStates
     .filter((state) => state != RecordingProcessingState.Corrupt)
-    .map((state) => state + ".failed")
+    .map((state) => `${state}.failed`)
 );
 
 const stateCountMeasurement = "processing_state_count";
