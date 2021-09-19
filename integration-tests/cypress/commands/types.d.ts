@@ -67,9 +67,11 @@ export interface ApiDeviceInGroupDevice {
 export interface ApiDeviceQueryDevice {
   devicename: string;
   groupname: string;
-  id: number;
+
+  // FIXME(jon): This is the return type, not the request type
+  id?: number;
   saltId?: number;
-  Group: {
+  Group?: {
     groupname: string;
   };
 }

@@ -36,24 +36,24 @@ describe("Device in group", () => {
         users: [
           {
             userName: getTestName(deviceMember),
-            admin: false,
+            isAdmin: false,
             id: getCreds(deviceMember).id,
           },
           {
             userName: getTestName(deviceAdmin),
-            admin: true,
+            isAdmin: true,
             id: getCreds(deviceAdmin).id,
           },
 
           //NOTE(jon): Was removed?
           {
             userName: getTestName(groupAdmin),
-            admin: true,
+            isAdmin: true,
             id: getCreds(groupAdmin).id,
           },
           {
             userName: getTestName(groupMember),
-            admin: false,
+            isAdmin: false,
             id: getCreds(groupMember).id,
           },
         ],
