@@ -20,9 +20,9 @@ describe("Events - add event as a device", () => {
   };
 
   before(() => {
-    cy.apiCreateUserGroupAndDevice("evGroupAdmin", "evGroup", "evCamera");
-    cy.apiCreateUserGroupAndDevice("evGroupAdmin2", "evGroup2", "evCamera2");
-    cy.apiCreateUserGroupAndDevice("evGroupAdmin8", "evGroup8", "evCamera8");
+    cy.testCreateUserGroupAndDevice("evGroupAdmin", "evGroup", "evCamera");
+    cy.testCreateUserGroupAndDevice("evGroupAdmin2", "evGroup2", "evCamera2");
+    cy.testCreateUserGroupAndDevice("evGroupAdmin8", "evGroup8", "evCamera8");
 
     //Create some events to reuse / query
     cy.apiEventsAdd("evCamera", eventDetails1, [time1]).then(

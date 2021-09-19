@@ -46,19 +46,19 @@ describe("Events - query power events", () => {
 
   before(() => {
     // group with 2 devices, admin and member users
-    cy.apiCreateUserGroupAndDevice("peGroupAdmin", "peGroup", "peCamera");
-    cy.apiCreateUser("peGroupMember");
-    cy.apiAddUserToGroup("peGroupAdmin", "peGroupMember", "peGroup", false);
-    cy.apiCreateDevice("peOtherCamera", "peGroup");
+    cy.testCreateUserGroupAndDevice("peGroupAdmin", "peGroup", "peCamera");
+    cy.apiUserAdd("peGroupMember");
+    cy.apiGroupUserAdd("peGroupAdmin", "peGroupMember", "peGroup", false);
+    cy.apiDeviceAdd("peOtherCamera", "peGroup");
 
     //admin and member for single device
-    cy.apiCreateUser("peDeviceAdmin");
-    cy.apiCreateUser("peDeviceMember");
-    cy.apiAddUserToDevice("peGroupAdmin", "peDeviceAdmin", "peCamera", true);
-    cy.apiAddUserToDevice("peGroupAdmin", "peDeviceMember", "peCamera", true);
+    cy.apiUserAdd("peDeviceAdmin");
+    cy.apiUserAdd("peDeviceMember");
+    cy.apiDeviceUserAdd("peGroupAdmin", "peDeviceAdmin", "peCamera", true);
+    cy.apiDeviceUserAdd("peGroupAdmin", "peDeviceMember", "peCamera", true);
 
     //another group and device
-    cy.apiCreateUserGroupAndDevice(
+    cy.testCreateUserGroupAndDevice(
       "peOtherGroupAdmin",
       "peOtherGroup",
       "peOtherGroupCamera"

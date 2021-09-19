@@ -6,17 +6,17 @@ declare namespace Cypress {
     /**
      * create user and save api credentials further use
      */
-    apiCreateUser(userName: string, log?: boolean): any;
+    apiUserAdd(userName: string, log?: boolean): any;
 
     /**
      * create a group for the given user (who has already been referenced in the test
      */
-    apiCreateGroup(userName: string, groupName: string, log?: boolean): any;
+    apiGroupAdd(userName: string, groupName: string, log?: boolean): any;
 
     /**
      * create user group and camera at the same time
      */
-    apiCreateUserGroupAndDevice(
+    testCreateUserGroupAndDevice(
       userName: string,
       group: string,
       camera: string
@@ -25,12 +25,12 @@ declare namespace Cypress {
     /**
      * create user group and camera at the same time
      */
-    apiCreateUserGroup(userName: string, group: string): any;
+    testCreateUserAndGroup(userName: string, group: string): any;
 
     /**
      * create user group and camera at the same time
      */
-    apiCreateGroupAndDevices(
+    testCreateGroupAndDevices(
       userName: string,
       group: string,
       ...cameras: string[]

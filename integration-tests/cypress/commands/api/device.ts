@@ -20,7 +20,7 @@ import {
 import { TestDeviceAndGroup } from "@typedefs/api/device";
 
 Cypress.Commands.add(
-  "apiCreateDevice",
+  "apiDeviceAdd",
   (
     deviceName: string,
     groupName: string,
@@ -150,7 +150,7 @@ function createDevice(
 }
 
 Cypress.Commands.add(
-  "apiCheckDevices",
+  "apiDevicesCheck",
   (
     userName: string,
     expectedDevices: ApiDevicesDevice[],
@@ -224,7 +224,7 @@ function checkDeviceMatchesExpected(
 }
 
 Cypress.Commands.add(
-  "apiCheckDevicesContains",
+  "apiDevicesCheckContains",
   (
     userName: string,
     expectedDevices: ApiDevicesDevice[],
@@ -273,7 +273,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiCheckDeviceInGroup",
+  "apiDeviceInGroupCheck",
   (
     userName: string,
     deviceName: string,
@@ -350,7 +350,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiCheckDevicesQuery",
+  "apiDeviceQueryCheck",
   (
     userName: string,
     devicesArray: TestDeviceAndGroup[] | undefined,
@@ -429,7 +429,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiCheckDevicesUsers",
+  "apiDeviceUsersCheck",
   (
     userName: string,
     deviceName: string,
@@ -474,7 +474,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiAddUserToDevice",
+  "apiDeviceUserAdd",
   (
     deviceAdminUser: string,
     userName: string,
@@ -504,7 +504,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiRemoveUserFromDevice",
+  "apiDeviceUserRemove",
   (
     deviceAdminUser: string,
     userName: string,

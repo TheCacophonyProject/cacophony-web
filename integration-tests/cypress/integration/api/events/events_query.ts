@@ -34,19 +34,19 @@ describe("Events - query events", () => {
 
   before(() => {
     // group with 2 devices, admin and member users
-    cy.apiCreateUserGroupAndDevice("eqGroupAdmin", "eqGroup", "eqCamera");
-    cy.apiCreateUser("eqGroupMember");
-    cy.apiAddUserToGroup("eqGroupAdmin", "eqGroupMember", "eqGroup", false);
-    cy.apiCreateDevice("eqOtherCamera", "eqGroup");
+    cy.testCreateUserGroupAndDevice("eqGroupAdmin", "eqGroup", "eqCamera");
+    cy.apiUserAdd("eqGroupMember");
+    cy.apiGroupUserAdd("eqGroupAdmin", "eqGroupMember", "eqGroup", false);
+    cy.apiDeviceAdd("eqOtherCamera", "eqGroup");
 
     //admin and member for single device
-    cy.apiCreateUser("eqDeviceAdmin");
-    cy.apiCreateUser("eqDeviceMember");
-    cy.apiAddUserToDevice("eqGroupAdmin", "eqDeviceAdmin", "eqCamera", true);
-    cy.apiAddUserToDevice("eqGroupAdmin", "eqDeviceMember", "eqCamera", true);
+    cy.apiUserAdd("eqDeviceAdmin");
+    cy.apiUserAdd("eqDeviceMember");
+    cy.apiDeviceUserAdd("eqGroupAdmin", "eqDeviceAdmin", "eqCamera", true);
+    cy.apiDeviceUserAdd("eqGroupAdmin", "eqDeviceMember", "eqCamera", true);
 
     //another group and device
-    cy.apiCreateUserGroupAndDevice(
+    cy.testCreateUserGroupAndDevice(
       "eqOtherGroupAdmin",
       "eqOtherGroup",
       "eqOtherGroupCamera"

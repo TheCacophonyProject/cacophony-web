@@ -94,7 +94,7 @@ declare namespace Cypress {
      * Legacy test  function to check the this device is reported as stopped or not
      *
      */
-    apiPowerEventsCheckAgainstExpected(
+    testPowerEventsCheckAgainstExpected(
       userName: string,
       deviceName: string,
       expectedEvent: TestComparablePowerEvent,
@@ -106,7 +106,7 @@ declare namespace Cypress {
      * if supplied then Nth event will be checked where N is taken from eventNumber
      * eventName will be rendered unique _per test_
      */
-    apiEventsCheckAgainstExpected(
+    testEventsCheckAgainstExpected(
       userName: string,
       deviceName: string,
       eventName: string,

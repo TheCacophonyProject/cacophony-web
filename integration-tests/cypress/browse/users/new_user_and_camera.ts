@@ -11,7 +11,7 @@ context("Users can see footage from their cameras", () => {
     cy.createGroup(group);
 
     // create a camera in the group
-    cy.apiCreateDevice(camera, group);
+    cy.apiDeviceAdd(camera, group);
 
     // check that user can see camera
     cy.checkDeviceInGroup(camera, group);
@@ -29,9 +29,9 @@ context("Users can see footage from their cameras", () => {
 
   it("A camera can trigger and upload a new recording", () => {
     cy.apiSignInAs(username);
-    cy.uploadRecording(camera, {});
+    cy.apiRecordingAdd(camera, {});
     // for video to be uploaded
     cy.wait(3 * 1000);
-    cy.apiCheckDeviceHasRecordings(username, camera, 1);
+    cy.testCheckDeviceHasRecordings(username, camera, 1);
   });
 });

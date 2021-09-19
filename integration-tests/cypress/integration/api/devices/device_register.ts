@@ -15,21 +15,21 @@ describe("Device register", () => {
   const LOG = true;
 
   before(() => {
-    cy.apiCreateUserGroupAndDevice("Anita", camsGroup, "gotya");
-    cy.apiCreateDevice("defaultcam", camsGroup);
-    cy.apiCreateGroup("Anita", otherCams, true);
+    cy.testCreateUserGroupAndDevice("Anita", camsGroup, "gotya");
+    cy.apiDeviceAdd("defaultcam", camsGroup);
+    cy.apiGroupAdd("Anita", otherCams, true);
   });
 
   it("group can have multiple devices with a different names", () => {
-    cy.apiCreateDevice("Smile", camsGroup);
+    cy.apiDeviceAdd("Smile", camsGroup);
   });
 
   it("devices in different groups can have the same names", () => {
-    cy.apiCreateDevice("gotya", otherCams);
+    cy.apiDeviceAdd("gotya", otherCams);
   });
 
   it("But cannot create device with same name (even with different case) in the same group", () => {
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "GotYa",
       camsGroup,
       KEEP_SALT_ID,
@@ -41,7 +41,7 @@ describe("Device register", () => {
   });
 
   it("Should not be able to create a device name that doesn't have any letters", () => {
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "12345",
       camsGroup,
       KEEP_SALT_ID,
@@ -50,7 +50,7 @@ describe("Device register", () => {
       LOG,
       HTTP_Unprocessable
     );
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "123-34",
       camsGroup,
       KEEP_SALT_ID,
@@ -62,13 +62,13 @@ describe("Device register", () => {
   });
 
   it("Should be able to create a device name that has -, _, and spaces in it", () => {
-    cy.apiCreateDevice("funny device1", camsGroup);
-    cy.apiCreateDevice("funny-device2", camsGroup);
-    cy.apiCreateDevice("funny_device3", camsGroup);
+    cy.apiDeviceAdd("funny device1", camsGroup);
+    cy.apiDeviceAdd("funny-device2", camsGroup);
+    cy.apiDeviceAdd("funny_device3", camsGroup);
   });
 
   it("Shouldn't be able to create a device name that starts with -, _, and spaces in it", () => {
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       " device1",
       camsGroup,
       KEEP_SALT_ID,
@@ -77,7 +77,7 @@ describe("Device register", () => {
       LOG,
       HTTP_Unprocessable
     );
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "-device2",
       camsGroup,
       KEEP_SALT_ID,
@@ -86,7 +86,7 @@ describe("Device register", () => {
       LOG,
       HTTP_Unprocessable
     );
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "_device3",
       camsGroup,
       KEEP_SALT_ID,
@@ -110,11 +110,11 @@ describe("Device register", () => {
     delete testDevice.saltId;
 
     //Test with Salt Id = device id by default
-    cy.apiCheckDevicesQuery("Anita", [testDevice], null, [expectedDevice]);
+    cy.apiDeviceQueryCheck("Anita", [testDevice], null, [expectedDevice]);
   });
 
   it("Can register a device and specify salt id", () => {
-    cy.apiCreateDevice("specify salt", camsGroup, 9998);
+    cy.apiDeviceAdd("specify salt", camsGroup, 9998);
     const expectedDevice = {
       devicename: getTestName("specify salt"),
       groupname: getTestName(camsGroup),
@@ -124,12 +124,12 @@ describe("Device register", () => {
       ...expectedDevice
     };
     delete testDevice.saltId;
-    cy.apiCheckDevicesQuery("Anita", [testDevice], null, [expectedDevice]);
+    cy.apiDeviceQueryCheck("Anita", [testDevice], null, [expectedDevice]);
   });
 
   it("When registering a device must specify a valid password", () => {
     //not blank
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "device4",
       camsGroup,
       KEEP_SALT_ID,
@@ -139,7 +139,7 @@ describe("Device register", () => {
       HTTP_Unprocessable
     );
     //not space
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "device5",
       camsGroup,
       KEEP_SALT_ID,
@@ -149,7 +149,7 @@ describe("Device register", () => {
       HTTP_Unprocessable
     );
     //not less than 8 chars
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "device6",
       camsGroup,
       KEEP_SALT_ID,
@@ -161,7 +161,7 @@ describe("Device register", () => {
   });
 
   it("When registering a device must specify a group that exists", () => {
-    cy.apiCreateDevice(
+    cy.apiDeviceAdd(
       "device4",
       "nonexistent group",
       KEEP_SALT_ID,
@@ -173,6 +173,6 @@ describe("Device register", () => {
   });
 
   it.skip("Correctly handles missing parameters in register device", () => {
-    //TODO: write this (helper apiCreateDevice does not yet support missing params)
+    //TODO: write this (helper apiDeviceAdd does not yet support missing params)
   });
 });
