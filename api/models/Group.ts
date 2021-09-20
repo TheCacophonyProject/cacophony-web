@@ -211,10 +211,7 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
     userToAdd: User,
     admin: boolean
   ) => Promise<string>;
-  removeUserFromGroup: (
-    group: Group,
-    userToRemove: User
-  ) => Promise<boolean>;
+  removeUserFromGroup: (group: Group, userToRemove: User) => Promise<boolean>;
   query: (
     where: any,
     user: User,
@@ -527,7 +524,7 @@ export default function (sequelize, DataTypes): GroupStatic {
   // NOTE: It doesn't seem that there are any consumers of this function right now.
   Group.getIdFromName = async function (name): Promise<GroupId | null> {
     const group = await Group.getFromName(name);
-    return group && group.getDataValue("id") || null;
+    return (group && group.getDataValue("id")) || null;
   };
 
   //------------------

@@ -23,12 +23,13 @@ const asyncExec = promisify(exec);
 
 const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
   log.info("Checking if type schemas need recompilation");
-  const { stdout, stderr } = await asyncExec("cd ../types && node build-schemas.js");
+  const { stdout, stderr } = await asyncExec(
+    "cd ../types && node build-schemas.js"
+  );
   //const { stdout, stderr } = await asyncExec("cd ../types && npm run generate-schemas");
   log.info("Stdout: %s", stdout);
   return;
 };
-
 
 const openHttpServer = (app): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -67,7 +68,7 @@ const checkS3Connection = (): Promise<void> => {
   log.notice("Starting Full Noise.");
   config.loadConfigFromArgs(true);
 
-// Check if any of the Cacophony type definitions have changed, and need recompiling?
+  // Check if any of the Cacophony type definitions have changed, and need recompiling?
   if (config.server.loggerLevel === "debug") {
     log.notice("Running in DEBUG mode");
     await maybeRecompileJSONSchemaDefinitions();
@@ -79,7 +80,10 @@ const checkS3Connection = (): Promise<void> => {
   app.use((request: Request, response: Response, next: NextFunction) => {
     // Add a unique request ID to each API request, for logging purposes.
     asyncLocalStorage.enterWith(new Map());
-    (asyncLocalStorage.getStore() as Map<string, any>).set("requestId", uuidv4());
+    (asyncLocalStorage.getStore() as Map<string, any>).set(
+      "requestId",
+      uuidv4()
+    );
     next();
   });
   app.use(
@@ -88,21 +92,24 @@ const checkS3Connection = (): Promise<void> => {
       meta: false,
       metaField: null,
       msg: (req: Request, res: Response): string => {
-          const dbQueryCount = (asyncLocalStorage.getStore() as Map<string, any>)?.get("queryCount");
-          return `${req.method} ${req.url} => Status(${res.statusCode}) ${dbQueryCount ? `(${dbQueryCount} DB queries) ` : ""}[${(res as any).responseTime}ms]`;
-        }
+        const dbQueryCount = (
+          asyncLocalStorage.getStore() as Map<string, any>
+        )?.get("queryCount");
+        return `${req.method} ${req.url} => Status(${res.statusCode}) ${
+          dbQueryCount ? `(${dbQueryCount} DB queries) ` : ""
+        }[${(res as any).responseTime}ms]`;
+      },
     })
   );
   app.use(express.urlencoded({ extended: false, limit: "2Mb" }));
   app.use(express.json());
   app.use(passport.initialize());
-// Adding API documentation
+  // Adding API documentation
   app.use(express.static(__dirname + "/apidoc"));
 
-
-// Adding headers to allow cross-origin HTTP request.
-// This is so the web interface running on a different port/domain can access the API.
-// This could cause security issues with Cookies but JWTs are used instead of Cookies.
+  // Adding headers to allow cross-origin HTTP request.
+  // This is so the web interface running on a different port/domain can access the API.
+  // This could cause security issues with Cookies but JWTs are used instead of Cookies.
   app.all("*", (request: Request, response: Response, next: NextFunction) => {
     response.header("Access-Control-Allow-Origin", request.headers.origin);
     response.header(
@@ -118,7 +125,7 @@ const checkS3Connection = (): Promise<void> => {
   initialiseApi(app);
   app.use(customErrors.errorHandler);
 
-// Add file processing API.
+  // Add file processing API.
   const fileProcessingApp = express();
   fileProcessingApp.use(express.urlencoded({ extended: false, limit: "50Mb" }));
   fileProcessingApp.use(express.json({ limit: "50Mb" }));

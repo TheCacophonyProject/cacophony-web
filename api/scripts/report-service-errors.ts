@@ -17,7 +17,10 @@ async function main() {
     offset: null,
     limit: null,
   };
-  const serviceErrors = await errors({ query: query, res: {locals: {requestUser: null } } }, true);
+  const serviceErrors = await errors(
+    { query: query, res: { locals: { requestUser: null } } },
+    true
+  );
   if (Object.keys(serviceErrors).length == 0) {
     log.info("No service errors in the last 24 hours");
     return;

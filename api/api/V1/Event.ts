@@ -23,12 +23,12 @@ import { QueryOptions } from "../../models/Event";
 import responseUtil from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, Response, Request, NextFunction } from "express";
-import {errors, powerEventsPerDevice} from "./eventUtil";
+import { errors, powerEventsPerDevice } from "./eventUtil";
 import {
   extractDevice,
   extractOptionalDevice,
   extractOptionalEventDetailSnapshot,
-  extractValidJWT
+  extractValidJWT,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import EventDatesSchema from "../../../types/jsonSchemas/api/event/EventDates.schema.json";
@@ -39,7 +39,11 @@ import { booleanOf, eitherOf, idOf, integerOf } from "../validation-middleware";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
-const uploadEvent = async (request: Request, response: Response, next: NextFunction) => {
+const uploadEvent = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+) => {
   let detailsId = request.body.eventDetailId;
   if (!detailsId) {
     const description: EventDescription = request.body.description;
@@ -50,7 +54,7 @@ const uploadEvent = async (request: Request, response: Response, next: NextFunct
     detailsId = detail.id;
   }
   const device = response.locals.device || response.locals.requestDevice;
-  const eventList = request.body.dateTimes.map(dateTime => ({
+  const eventList = request.body.dateTimes.map((dateTime) => ({
     DeviceId: device.id,
     EventDetailId: detailsId,
     dateTime,
@@ -76,23 +80,24 @@ const uploadEvent = async (request: Request, response: Response, next: NextFunct
 //  duplicating and having things be explicit in each api endpoint?
 const commonEventFields = [
   eitherOf(
-      idOf(body("eventDetailId")),
-      body("description")
-        .exists()
-        .withMessage(expectedTypeOf("EventDescription"))
-        .bail()
-        .custom(jsonSchemaOf(EventDescriptionSchema))
-        .bail()
-        .custom((description: EventDescription) => (
+    idOf(body("eventDetailId")),
+    body("description")
+      .exists()
+      .withMessage(expectedTypeOf("EventDescription"))
+      .bail()
+      .custom(jsonSchemaOf(EventDescriptionSchema))
+      .bail()
+      .custom(
+        (description: EventDescription) =>
           description.type.match(EVENT_TYPE_REGEXP) !== null
-        ))
-        .withMessage("description type contains invalid characters")
+      )
+      .withMessage("description type contains invalid characters")
   ),
   body("dateTimes")
     .exists()
     .bail()
     .withMessage(expectedTypeOf("Array of ISO formatted date time strings"))
-    .isArray({min: 1})
+    .isArray({ min: 1 })
     .withMessage(`Got empty array`)
     .bail()
     .custom(jsonSchemaOf(EventDatesSchema)),
@@ -161,11 +166,7 @@ export default function (app: Application, baseUrl: string) {
     // Validate session
     extractValidJWT,
     // Validate fields
-    validateFields([
-      idOf(param("deviceId")),
-        ...commonEventFields
-      ]
-    ),
+    validateFields([idOf(param("deviceId")), ...commonEventFields]),
     // Extract required resources
     extractOptionalEventDetailSnapshot("body", "eventDetailId"),
     auth.authenticateAndExtractUser,
@@ -225,7 +226,8 @@ export default function (app: Application, baseUrl: string) {
     // Extract device if any, and check that user has permissions to access it
     async (request: Request, response: Response) => {
       const query = request.query;
-      const offset: number = (query.offset && query.offset as unknown as number) || 0;
+      const offset: number =
+        (query.offset && (query.offset as unknown as number)) || 0;
       let options: QueryOptions;
       if (query.type) {
         options = { eventType: query.type } as QueryOptions;
@@ -309,12 +311,8 @@ export default function (app: Application, baseUrl: string) {
     extractValidJWT,
     // Validate request structure
     validateFields([
-      query("startTime")
-        .isISO8601({ strict: true })
-        .optional(),
-      query("endTime")
-        .isISO8601({ strict: true })
-        .optional(),
+      query("startTime").isISO8601({ strict: true }).optional(),
+      query("endTime").isISO8601({ strict: true }).optional(),
       query("deviceId").isInt().optional().toInt(),
       query("offset").isInt().optional().toInt(),
       query("limit").isInt().optional().toInt(),
@@ -328,7 +326,10 @@ export default function (app: Application, baseUrl: string) {
       const query = request.query;
 
       // FIXME(jon): This smells bad, sometimes requires user, and sometimes doesn't
-      const result = await errors({ query: {...request.query}, res: { locals: {...response.locals } } });
+      const result = await errors({
+        query: { ...request.query },
+        res: { locals: { ...response.locals } },
+      });
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
@@ -383,8 +384,15 @@ export default function (app: Application, baseUrl: string) {
     // Check permissions on resources
     auth.userCanAccessOptionalExtractedDevices,
     async (request: Request, response: Response) => {
-      logger.info("Get power events for %s at time %s", response.locals.requestUser, new Date());
-      const result = await powerEventsPerDevice({ query: { ...request.query }, res: { locals: { ...response.locals }} });
+      logger.info(
+        "Get power events for %s at time %s",
+        response.locals.requestUser,
+        new Date()
+      );
+      const result = await powerEventsPerDevice({
+        query: { ...request.query },
+        res: { locals: { ...response.locals } },
+      });
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],

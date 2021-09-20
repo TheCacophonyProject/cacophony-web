@@ -44,9 +44,7 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/:id`,
     extractValidJWT,
-    validateFields([
-      idOf(param("id"))
-    ]),
+    validateFields([idOf(param("id"))]),
     auth.authenticateAndExtractUser,
     // FIXME - recording permissions checking should happen here?
 
@@ -79,9 +77,7 @@ export default (app: Application, baseUrl: string) => {
     apiUrl,
     extractValidJWT,
     // FIXME - Should this be a JSON schema of something?
-    validateFields([
-      middleware.parseJSON("recordings", body)
-    ]),
+    validateFields([middleware.parseJSON("recordings", body)]),
     auth.authenticateAndExtractUser,
     async (request: Request, response: Response) => {
       // FIXME Simplify
@@ -95,9 +91,11 @@ export default (app: Application, baseUrl: string) => {
 
       let status = 0;
       for (let i = 0; i < recordings.length; i++) {
-
         // FIXME - Pull out user privileges check
-        const resp = await reprocessRecording(response.locals.requestUser, recordings[i]);
+        const resp = await reprocessRecording(
+          response.locals.requestUser,
+          recordings[i]
+        );
         if (resp.statusCode !== 200) {
           status = status | StatusCode.Fail;
           responseMessage.messages.push(resp.messages[0]);

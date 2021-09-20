@@ -18,12 +18,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {
   body,
-  CustomValidator, matchedData,
+  CustomValidator,
+  matchedData,
   oneOf,
   query,
   Result,
   ValidationChain,
-  validationResult
+  validationResult,
 } from "express-validator";
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
@@ -61,7 +62,9 @@ export const getModelById = <T>(
     const item = await modelType.findByPk(id);
     logger.info("Returned %s", item);
     if (item === null) {
-      throw new ClientError(`Could not find a ${modelType.name} with an id of ${id}`);
+      throw new ClientError(
+        `Could not find a ${modelType.name} with an id of ${id}`
+      );
     }
     req.body[modelTypeName(modelType)] = item;
     return true;
@@ -85,7 +88,11 @@ export const getModelByName = function <T>(
       //throw new Error(format("Could not find %s of %s.", fieldName, val));
     }
     req.body[modelTypeName(modelType)] = model;
-    logger.info("req.body.%s = %s", modelTypeName(modelType), JSON.stringify(req.body[modelTypeName(modelType)]));
+    logger.info(
+      "req.body.%s = %s",
+      modelTypeName(modelType),
+      JSON.stringify(req.body[modelTypeName(modelType)])
+    );
     return true;
   });
 };
@@ -300,7 +307,6 @@ export const getRecordingByIdChain = (
 export const getRecordingById = (): CustomValidator =>
   getModelById(models.Recording);
 
-
 export const isValidName = function (
   checkFunc: ValidationMiddleware,
   field: string
@@ -313,13 +319,13 @@ export const isValidName = function (
     .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/);
 };
 
-export const isValidName2 = (val) => (
-    val
-      .isLength({ min: 3 })
-      .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
-      .withMessage("password must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter")
-);
-
+export const isValidName2 = (val) =>
+  val
+    .isLength({ min: 3 })
+    .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
+    .withMessage(
+      "password must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter"
+    );
 
 export const checkNewPassword = function (field: string): ValidationChain {
   return body(field, "Password must be at least 8 characters long").isLength({
@@ -327,13 +333,12 @@ export const checkNewPassword = function (field: string): ValidationChain {
   });
 };
 
-export const checkNewPassword2 = (val) => (
+export const checkNewPassword2 = (val) =>
   val
     .isLength({
       min: 8,
     })
-    .withMessage("Password must be at least 8 characters long")
-);
+    .withMessage("Password must be at least 8 characters long");
 
 export const viewMode = function (): ValidationChain {
   // All api listing commands will automatically return all results if the user is a super-admin
@@ -441,14 +446,20 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
   const validationErrors = validationResult(request);
   // log.info("Validation errors %s", validationErrors);
   if (!validationErrors.isEmpty()) {
-    log.warning("%s", validationErrors.array().map(item => JSON.stringify(item)).join(', '));
+    log.warning(
+      "%s",
+      validationErrors
+        .array()
+        .map((item) => JSON.stringify(item))
+        .join(", ")
+    );
     throw new customErrors.ValidationError(validationErrors);
   } else {
     Promise.resolve(fn(request, response, next)).catch(next);
   }
 };
 
-export const asArray = (options?: {min?: number, max?: number}) => (val) => {
+export const asArray = (options?: { min?: number; max?: number }) => (val) => {
   if (typeof val === "string") {
     try {
       val = JSON.parse(val);
@@ -471,25 +482,32 @@ export const asArray = (options?: {min?: number, max?: number}) => (val) => {
   }
 };
 
-export const expectedTypeOf = (...type: string[]) => (val) => {
-  let typeOf = typeof val as string;
-  if (typeOf === "object" && Array.isArray(val)) {
-    typeOf = "array";
-  }
-  if (type.length > 1) {
-    return `expected one of ${(type as string[]).map(t => `'${t}'`).join(', ')}, got ${typeOf}`;
-  }
-  return `expected ${type[0]}, got ${typeOf}`;
-};
+export const expectedTypeOf =
+  (...type: string[]) =>
+  (val) => {
+    let typeOf = typeof val as string;
+    if (typeOf === "object" && Array.isArray(val)) {
+      typeOf = "array";
+    }
+    if (type.length > 1) {
+      return `expected one of ${(type as string[])
+        .map((t) => `'${t}'`)
+        .join(", ")}, got ${typeOf}`;
+    }
+    return `expected ${type[0]}, got ${typeOf}`;
+  };
 
 export const isIntArray = (val) => {
   if (Array.isArray(val)) {
-    return !(val as string[]).some(v => isNaN(parseInt(v)));
+    return !(val as string[]).some((v) => isNaN(parseInt(v)));
   }
   return !isNaN(parseInt(val));
 };
 
-const checkForUnknownFields = (validators, req: Request): { unknownFields: string[], suggestions: Record<string, string> } => {
+const checkForUnknownFields = (
+  validators,
+  req: Request
+): { unknownFields: string[]; suggestions: Record<string, string> } => {
   const allowedFieldsKnown = validators.reduce((fields, rule) => {
     if (rule.builder) {
       for (const field of rule.builder.fields) {
@@ -498,7 +516,9 @@ const checkForUnknownFields = (validators, req: Request): { unknownFields: strin
     }
     return fields;
   }, []);
-  const matchedAllowedFields = Object.keys(matchedData(req, { onlyValidData: false, includeOptionals: true }));
+  const matchedAllowedFields = Object.keys(
+    matchedData(req, { onlyValidData: false, includeOptionals: true })
+  );
   const allowed = new Set();
   for (const field of allowedFieldsKnown) {
     allowed.add(field);
@@ -506,13 +526,19 @@ const checkForUnknownFields = (validators, req: Request): { unknownFields: strin
   for (const field of matchedAllowedFields) {
     allowed.add(field);
   }
-  const allowedFields: string[] = Array.from(allowed.keys()) as unknown as string[];
+  const allowedFields: string[] = Array.from(
+    allowed.keys()
+  ) as unknown as string[];
 
   // Check for all common request inputs
   const requestInput = { ...req.query, ...req.params, ...req.body };
   const requestFields = Object.keys(requestInput);
-  const unusedAllowedFields = allowedFields.filter(field => !requestFields.includes(field));
-  const unknownFields = requestFields.filter(item => !allowedFields.includes(item));
+  const unusedAllowedFields = allowedFields.filter(
+    (field) => !requestFields.includes(field)
+  );
+  const unknownFields = requestFields.filter(
+    (item) => !allowedFields.includes(item)
+  );
   const suggestions = {};
   if (unusedAllowedFields.length && unknownFields.length) {
     // We have unused allowed fields, see if any of our unknown fields is potentially a typo
@@ -520,7 +546,11 @@ const checkForUnknownFields = (validators, req: Request): { unknownFields: strin
     for (const unknownField of unknownFields) {
       let bestDistance = 3;
       for (const unusedField of unusedAllowedFields) {
-        const distance = levenshteinEditDistance(unknownField, unusedField, true);
+        const distance = levenshteinEditDistance(
+          unknownField,
+          unusedField,
+          true
+        );
         if (distance < bestDistance) {
           bestDistance = distance;
           suggestions[unknownField] = unusedField;
@@ -528,11 +558,19 @@ const checkForUnknownFields = (validators, req: Request): { unknownFields: strin
       }
     }
   }
-  return {unknownFields, suggestions};
+  return { unknownFields, suggestions };
 };
 
 // sequential processing, stops running validations chain if the previous one have failed.
-export const validateFields = (validations: ((((req: Request, res: any, next: (err?: any) => void) => void) & { run: (req: Request) => Promise<Result> }) | ValidationChain)[], sequentially: boolean = false) => {
+export const validateFields = (
+  validations: (
+    | (((req: Request, res: any, next: (err?: any) => void) => void) & {
+        run: (req: Request) => Promise<Result>;
+      })
+    | ValidationChain
+  )[],
+  sequentially: boolean = false
+) => {
   return async (request: Request, response: Response, next: NextFunction) => {
     if (sequentially) {
       for (const validation of validations) {
@@ -542,34 +580,61 @@ export const validateFields = (validations: ((((req: Request, res: any, next: (e
         }
       }
     } else {
-      await Promise.all(validations.map(validation => validation.run(request)));
+      await Promise.all(
+        validations.map((validation) => validation.run(request))
+      );
     }
 
-    const {unknownFields, suggestions} = checkForUnknownFields(validations, request);
+    const { unknownFields, suggestions } = checkForUnknownFields(
+      validations,
+      request
+    );
     if (unknownFields.length) {
-      return next(new ClientError(`Unknown fields found: ${unknownFields.map(item => {
-        let field = `'${item}'`;
-        if (suggestions[item]) {
-          field += ` - did you mean '${suggestions[item]}'?`;
-        }
-        return field;
-      }).join(", ")}`, 422));
+      return next(
+        new ClientError(
+          `Unknown fields found: ${unknownFields
+            .map((item) => {
+              let field = `'${item}'`;
+              if (suggestions[item]) {
+                field += ` - did you mean '${suggestions[item]}'?`;
+              }
+              return field;
+            })
+            .join(", ")}`,
+          422
+        )
+      );
     }
 
     {
       const logMessage = format("%s %s", request.method, request.url);
-      const requester = (response.locals.token && (response.locals.token as DecodedJWTToken)._type);
-      const requestId = (response.locals.user && response.locals.user.get("username")) ||
+      const requester =
+        response.locals.token &&
+        (response.locals.token as DecodedJWTToken)._type;
+      const requestId =
+        (response.locals.user && response.locals.user.get("username")) ||
         (response.locals.device && response.locals.device.get("devicename")) ||
-        (requester && (response.locals.token as DecodedJWTToken).id) || "unknown";
+        (requester && (response.locals.token as DecodedJWTToken).id) ||
+        "unknown";
 
       // TODO: At this point *if* we have errors, we may want to lookup the username or devicename?
 
-      log.info("%s (%s: %s)", logMessage, requester || "unauthenticated", requestId);
+      log.info(
+        "%s (%s: %s)",
+        logMessage,
+        requester || "unauthenticated",
+        requestId
+      );
       const validationErrors = validationResult(request);
       // log.info("Validation errors %s", validationErrors);
       if (!validationErrors.isEmpty()) {
-        log.warning("%s", validationErrors.array().map(item => JSON.stringify(item)).join(', '));
+        log.warning(
+          "%s",
+          validationErrors
+            .array()
+            .map((item) => JSON.stringify(item))
+            .join(", ")
+        );
         return next(new customErrors.ValidationError(validationErrors));
       } else {
         return next();

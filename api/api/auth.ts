@@ -24,7 +24,7 @@ import { ExtractJwt } from "passport-jwt";
 import customErrors, { ClientError } from "./customErrors";
 import models, { ModelCommon } from "../models";
 import logger from "../logging";
-import {Request, Response, NextFunction} from "express";
+import { Request, Response, NextFunction } from "express";
 import { Group } from "models/Group";
 import { User } from "../models/User";
 import { Device } from "models/Device";
@@ -64,7 +64,10 @@ export const getVerifiedJWT = (req): string | object | DecodedJWTToken => {
 /**
  * check requested auth access exists in jwt access object
  */
-export const checkAccess = (reqAccess, jwtDecoded: DecodedJWTToken): boolean => {
+export const checkAccess = (
+  reqAccess,
+  jwtDecoded: DecodedJWTToken
+): boolean => {
   if (!reqAccess && jwtDecoded.access) {
     return false;
   }
@@ -87,11 +90,7 @@ export const checkAccess = (reqAccess, jwtDecoded: DecodedJWTToken): boolean => 
   return true;
 };
 
-type AuthenticateMiddleware = (
-  req,
-  res,
-  next
-) => Promise<void>;
+type AuthenticateMiddleware = (req, res, next) => Promise<void>;
 /*
  * Authenticate a JWT in the 'Authorization' header of the given type
  */
@@ -108,9 +107,15 @@ const authenticate = (
     }
 
     if (types && !types.includes(jwtDecoded._type)) {
-      res.status(401).json({ messages: [
-        `Invalid JWT access type '${jwtDecoded._type}', must be ${types.length > 1 ? "one of " : ""}${types.map(t => `'${t}'`).join(", ")}`
-      ]});
+      res
+        .status(401)
+        .json({
+          messages: [
+            `Invalid JWT access type '${jwtDecoded._type}', must be ${
+              types.length > 1 ? "one of " : ""
+            }${types.map((t) => `'${t}'`).join(", ")}`,
+          ],
+        });
       return;
     }
     const hasAccess = checkAccess(reqAccess, jwtDecoded);
@@ -121,7 +126,9 @@ const authenticate = (
     const result = await lookupEntity(jwtDecoded);
     if (!result) {
       res.status(401).json({
-        messages: [`Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`],
+        messages: [
+          `Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`,
+        ],
       });
       return;
     }
@@ -130,19 +137,29 @@ const authenticate = (
   };
 };
 
-const upperFirst = (str: string): string => (
-  str.slice(0, 1).toUpperCase() + str.slice(1)
-);
+const upperFirst = (str: string): string =>
+  str.slice(0, 1).toUpperCase() + str.slice(1);
 
 const authenticateAndExtractModelForJWT = (
   types: string[] | null,
   reqAccess?: Record<string, any>
 ): AuthenticateMiddleware => {
-  return async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+  return async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
     const jwtDecoded = response.locals.token;
     const type = jwtDecoded._type;
     if (types && !types.includes(jwtDecoded._type)) {
-      return next(new ClientError(`Invalid JWT access type '${type}', must be ${types.length > 1 ? "one of " : ""}${types.map(t => `'${t}'`).join(", ")}`, 401));
+      return next(
+        new ClientError(
+          `Invalid JWT access type '${type}', must be ${
+            types.length > 1 ? "one of " : ""
+          }${types.map((t) => `'${t}'`).join(", ")}`,
+          401
+        )
+      );
     }
     const hasAccess = checkAccess(reqAccess, jwtDecoded);
     if (!hasAccess) {
@@ -150,39 +167,48 @@ const authenticateAndExtractModelForJWT = (
     }
     const result = await lookupEntity(jwtDecoded);
     if (result === null) {
-      return next(new ClientError(`Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`, 401));
+      return next(
+        new ClientError(
+          `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`,
+          401
+        )
+      );
     }
     response.locals[`request${upperFirst(type)}`] = result;
     next();
   };
 };
 
-export const extractJWT = (val, {req}) => {
+export const extractJWT = (val, { req }) => {
   req.token = getVerifiedJWT(req) as DecodedJWTToken;
   return true;
 };
 
-export const authenticate2 = (
-  types: string[] | null,
-  reqAccess?
-) => {
-  return async (val, {req}) => {
+export const authenticate2 = (types: string[] | null, reqAccess?) => {
+  return async (val, { req }) => {
     const jwtDecoded: DecodedJWTToken = req.token;
     if (types && !types.includes(jwtDecoded._type)) {
-      throw new ClientError(`Invalid JWT access type '${jwtDecoded._type}', must be ${types.length > 1 ? "one of " : ""}${types.map(t => `'${t}'`).join(", ")}`, 401);
+      throw new ClientError(
+        `Invalid JWT access type '${jwtDecoded._type}', must be ${
+          types.length > 1 ? "one of " : ""
+        }${types.map((t) => `'${t}'`).join(", ")}`,
+        401
+      );
     }
     if (!checkAccess(reqAccess, jwtDecoded)) {
       throw new ClientError("JWT does not have access.", 401);
     }
     const result = await lookupEntity(jwtDecoded);
     if (!result) {
-      throw new ClientError(`Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`, 401);
+      throw new ClientError(
+        `Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`,
+        401
+      );
     }
     req[jwtDecoded._type] = result;
     return true;
   };
 };
-
 
 export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
   switch (jwtDecoded._type) {
@@ -201,10 +227,16 @@ const authenticateUser: AuthenticateMiddleware = authenticate(["user"]);
 const authenticateDevice: AuthenticateMiddleware = authenticate(["device"]);
 const authenticateAny: AuthenticateMiddleware = authenticate(null);
 
-const authenticateAndExtractUser: AuthenticateMiddleware = authenticateAndExtractModelForJWT(["user"]);
-const authenticateAndExtractUserWithAccess = (access: { devices?: any }): AuthenticateMiddleware => authenticateAndExtractModelForJWT(["user"], access);
-const authenticateAndExtractDevice: AuthenticateMiddleware = authenticateAndExtractModelForJWT(["device"]);
-const authenticateAndExtractAny: AuthenticateMiddleware = authenticateAndExtractModelForJWT(null);
+const authenticateAndExtractUser: AuthenticateMiddleware =
+  authenticateAndExtractModelForJWT(["user"]);
+const authenticateAndExtractUserWithAccess = (access: {
+  devices?: any;
+}): AuthenticateMiddleware =>
+  authenticateAndExtractModelForJWT(["user"], access);
+const authenticateAndExtractDevice: AuthenticateMiddleware =
+  authenticateAndExtractModelForJWT(["device"]);
+const authenticateAndExtractAny: AuthenticateMiddleware =
+  authenticateAndExtractModelForJWT(null);
 
 const authenticateAccess = function (
   type: string[],
@@ -327,34 +359,43 @@ const userCanAccessDevices = async (request, response, next) => {
   next();
 };
 
-const userCanAccessExtractedDevicesInternal = (stopOnFailure = true) => async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-  const devices = response.locals.devices || (response.locals.device && [response.locals.device]);
-  if (!devices || (devices && devices.length === 0)) {
-    if (stopOnFailure) {
-      return next(new ClientError("No device(s) specified.", 422));
-    } else {
-      return next();
+const userCanAccessExtractedDevicesInternal =
+  (stopOnFailure = true) =>
+  async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    const devices =
+      response.locals.devices ||
+      (response.locals.device && [response.locals.device]);
+    if (!devices || (devices && devices.length === 0)) {
+      if (stopOnFailure) {
+        return next(new ClientError("No device(s) specified.", 422));
+      } else {
+        return next();
+      }
     }
-  }
-  const user = response.locals.requestUser;
-  if (!user) {
-    return next(new ClientError("No user specified.", 422));
-  }
-  const deviceIds = devices.map(({id}) => id);
-  try {
-    logger.info("Device(s) %s", deviceIds);
-    await user.checkUserControlsDevices(
-      deviceIds,
-      request.body.viewAsSuperAdmin
-    );
-  } catch (e) {
-    return next(new ClientError(e.message, 403));
-  }
-  next();
-};
+    const user = response.locals.requestUser;
+    if (!user) {
+      return next(new ClientError("No user specified.", 422));
+    }
+    const deviceIds = devices.map(({ id }) => id);
+    try {
+      logger.info("Device(s) %s", deviceIds);
+      await user.checkUserControlsDevices(
+        deviceIds,
+        request.body.viewAsSuperAdmin
+      );
+    } catch (e) {
+      return next(new ClientError(e.message, 403));
+    }
+    next();
+  };
 
 const userCanAccessExtractedDevices = userCanAccessExtractedDevicesInternal();
-const userCanAccessOptionalExtractedDevices = userCanAccessExtractedDevicesInternal(false);
+const userCanAccessOptionalExtractedDevices =
+  userCanAccessExtractedDevicesInternal(false);
 
 const userCanAccessDevices3 = async (request, response, next) => {
   let devices = [];
@@ -383,7 +424,7 @@ const userCanAccessDevices3 = async (request, response, next) => {
   next();
 };
 
-export const userCanAccessDevices2 = async (val, {req}) => {
+export const userCanAccessDevices2 = async (val, { req }) => {
   let devices = [];
   if ("device" in req && req.device) {
     req["devices"] = [req.device];
@@ -398,55 +439,78 @@ export const userCanAccessDevices2 = async (val, {req}) => {
     throw new ClientError("No user specified.", 422);
   }
 
-  await req.user.checkUserControlsDevices(
-    devices,
-    req.body.viewAsSuperAdmin
-  );
+  await req.user.checkUserControlsDevices(devices, req.body.viewAsSuperAdmin);
 
   return true;
 };
 
 // A request middleware that also checks if user should be playing around with the
 // the group before continuing.
-const checkUserPermissionsForGroup = (permissions: "user" | "admin") =>  async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-  const user: User = response.locals.requestUser;
-  const group: Group = response.locals.group;
-  if (!group) {
-    return next(new ClientError("No group specified.", 422));
-  }
-  if (!user) {
-    return next(new ClientError("No user specified.", 422));
-  }
+const checkUserPermissionsForGroup =
+  (permissions: "user" | "admin") =>
+  async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    const user: User = response.locals.requestUser;
+    const group: Group = response.locals.group;
+    if (!group) {
+      return next(new ClientError("No group specified.", 422));
+    }
+    if (!user) {
+      return next(new ClientError("No user specified.", 422));
+    }
 
-  if (
-    (permissions === "user" && await user.canDirectlyOrIndirectlyAccessGroup(group)) ||
-    (permissions === "admin" && await user.canDirectlyOrIndirectlyAdministrateGroup(group))
-  ) {
-    next();
-  } else {
-    return next(new ClientError(`User ${user.username} (${user.id}) doesn't have permission to access group ${group.groupname} (${group.id})`, 403));
-  }
-};
+    if (
+      (permissions === "user" &&
+        (await user.canDirectlyOrIndirectlyAccessGroup(group))) ||
+      (permissions === "admin" &&
+        (await user.canDirectlyOrIndirectlyAdministrateGroup(group)))
+    ) {
+      next();
+    } else {
+      return next(
+        new ClientError(
+          `User ${user.username} (${user.id}) doesn't have permission to access group ${group.groupname} (${group.id})`,
+          403
+        )
+      );
+    }
+  };
 
-const checkUserPermissionsForDevice = (permissions: "user" | "admin") =>  async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-  const user: User = response.locals.requestUser;
-  const device: Device = response.locals.device;
-  if (!device) {
-    return next(new ClientError("No device specified.", 422));
-  }
-  if (!user) {
-    return next(new ClientError("No user specified.", 422));
-  }
+const checkUserPermissionsForDevice =
+  (permissions: "user" | "admin") =>
+  async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    const user: User = response.locals.requestUser;
+    const device: Device = response.locals.device;
+    if (!device) {
+      return next(new ClientError("No device specified.", 422));
+    }
+    if (!user) {
+      return next(new ClientError("No user specified.", 422));
+    }
 
-  if (
-    (permissions === "user" && await user.canDirectlyOrIndirectlyAccessDevice(device)) ||
-    (permissions === "admin" && await user.canDirectlyOrIndirectlyAdministrateDevice(device))
-  ) {
-    next();
-  } else {
-    return next(new ClientError(`User ${user.username} (${user.id}) doesn't have permission to access group ${device.groupname} (${device.id})`, 403));
-  }
-};
+    if (
+      (permissions === "user" &&
+        (await user.canDirectlyOrIndirectlyAccessDevice(device))) ||
+      (permissions === "admin" &&
+        (await user.canDirectlyOrIndirectlyAdministrateDevice(device)))
+    ) {
+      next();
+    } else {
+      return next(
+        new ClientError(
+          `User ${user.username} (${user.id}) doesn't have permission to access group ${device.groupname} (${device.id})`,
+          403
+        )
+      );
+    }
+  };
 
 const userHasAccessToGroup = checkUserPermissionsForGroup("user");
 const userHasAdminAccessToGroup = checkUserPermissionsForGroup("admin");

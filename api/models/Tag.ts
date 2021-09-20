@@ -21,10 +21,7 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { User } from "./User";
 import Sequelize from "sequelize";
 import util from "./util/util";
-import {
-  AcceptableTag,
-  RecordingPermission,
-} from "./Recording";
+import { AcceptableTag, RecordingPermission } from "./Recording";
 import { ApiTagData } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
 

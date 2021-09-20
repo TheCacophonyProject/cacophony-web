@@ -28,10 +28,12 @@ import logger from "../../logging";
 import {
   extractDevice,
   extractDeviceByName,
-  extractGroupByName, extractGroupByNameOrId,
+  extractGroupByName,
+  extractGroupByNameOrId,
   parseJSONField,
   extractUserByNameOrId,
-  extractValidJWT, extractViewMode
+  extractValidJWT,
+  extractViewMode,
 } from "../extract-middleware";
 import {
   booleanOf,
@@ -39,7 +41,9 @@ import {
   eitherOf,
   idOf,
   nameOf,
-  nameOrIdOf, validNameOf, validPasswordOf
+  nameOrIdOf,
+  validNameOf,
+  validPasswordOf,
 } from "../validation-middleware";
 import { TestDeviceAndGroup } from "@typedefs/api/device";
 import TestDeviceAndGroupSchema from "../../../types/jsonSchemas/api/device/TestDeviceAndGroup.schema.json";
@@ -48,7 +52,6 @@ import { User } from "models/User";
 import { Device } from "models/Device";
 
 const Op = Sequelize.Op;
-
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/devices`;
@@ -159,7 +162,8 @@ export default function (app: Application, baseUrl: string) {
     auth.authenticateAndExtractUser,
     extractViewMode,
     async (request: Request, response: Response) => {
-      const onlyActiveDevices = request.query.onlyActive && Boolean(request.query.onlyActive) !== false;
+      const onlyActiveDevices =
+        request.query.onlyActive && Boolean(request.query.onlyActive) !== false;
       const devices = await models.Device.allForUser(
         response.locals.requestUser,
         onlyActiveDevices,
@@ -218,7 +222,8 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       const user: User = response.locals.requestUser;
       const device: Device = response.locals.device;
-      const userIsDeviceAdmin = await user.canDirectlyOrIndirectlyAdministrateDevice(device);
+      const userIsDeviceAdmin =
+        await user.canDirectlyOrIndirectlyAdministrateDevice(device);
       const deviceReturn: any = {
         id: device.id,
         deviceName: device.devicename,
@@ -232,7 +237,7 @@ export default function (app: Application, baseUrl: string) {
           userName: user.username,
           id: user.id,
           admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
-          relation: (user as any).DeviceUsers ? "device" : "group"
+          relation: (user as any).DeviceUsers ? "device" : "group",
         }));
       }
 
@@ -241,11 +246,12 @@ export default function (app: Application, baseUrl: string) {
         device: deviceReturn,
         user: {
           userName: user.username,
-          id: user.id
+          id: user.id,
         },
         messages: ["Request successful"],
       });
-  });
+    }
+  );
 
   // FIXME - It's unclear if we ever use this API - deprecate?
   // Should be basically an alias for /api/v1/devices/:deviceName/in-group/:groupIdOrName anyway
@@ -276,23 +282,21 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/users`,
     extractValidJWT,
-    validateFields([
-      idOf(query("deviceId"))
-    ]),
+    validateFields([idOf(query("deviceId"))]),
     auth.authenticateAndExtractUser,
     extractDevice("query", "deviceId"),
     auth.userHasAdminAccessToDevice,
     async (request: Request, response: Response) => {
       const users = (
-        await response.locals.device.users(
-          response.locals.requestUser,
-          ["id", "username"]
-        )
+        await response.locals.device.users(response.locals.requestUser, [
+          "id",
+          "username",
+        ])
       ).map((user) => ({
         userName: user.username,
         id: user.id,
         admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
-        relation: (user as any).DeviceUsers ? "device" : "group"
+        relation: (user as any).DeviceUsers ? "device" : "group",
       }));
 
       return responseUtil.send(response, {
@@ -324,12 +328,9 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractValidJWT,
     validateFields([
-      eitherOf(
-        nameOf(body("username")),
-        idOf(body("userId"))
-      ),
+      eitherOf(nameOf(body("username")), idOf(body("userId"))),
       idOf(body("deviceId")),
-      booleanOf(body("admin"))
+      booleanOf(body("admin")),
     ]),
     auth.authenticateAndExtractUser,
     extractUserByNameOrId("body", "username", "userId"),
@@ -371,10 +372,7 @@ export default function (app: Application, baseUrl: string) {
     extractValidJWT,
     validateFields([
       idOf(body("deviceId")),
-      eitherOf(
-        nameOf(body("username")),
-        idOf(body("userId"))
-      )
+      eitherOf(nameOf(body("username")), idOf(body("userId"))),
     ]),
     auth.authenticateAndExtractUser,
     extractDevice("body", "deviceId"),
@@ -422,7 +420,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       nameOf(body("newGroup")),
       validNameOf(body("newName")),
-      validPasswordOf(body("newPassword"))
+      validPasswordOf(body("newPassword")),
     ]),
     auth.authenticateAndExtractDevice,
     extractGroupByName("body", "newGroup"),
@@ -434,9 +432,11 @@ export default function (app: Application, baseUrl: string) {
         request.body.newPassword
       );
       if (device === false) {
-        return next(new ClientError(
-          `already a device in group '${response.locals.groupname}' with the name '${request.body.newName}'`
-        ));
+        return next(
+          new ClientError(
+            `already a device in group '${response.locals.groupname}' with the name '${request.body.newName}'`
+          )
+        );
       }
       return responseUtil.send(response, {
         statusCode: 200,
@@ -494,20 +494,24 @@ export default function (app: Application, baseUrl: string) {
         .bail()
         .custom(asArray({ min: 1 }))
         .withMessage(expectedTypeOf("string[]")),
-      query("operator")
-        .isIn(["or", "and", "OR", "AND"])
-        .optional(),
+      query("operator").isIn(["or", "and", "OR", "AND"]).optional(),
     ]),
     auth.authenticateAndExtractUserWithAccess({ devices: "r" }), // FIXME What about checking access to devices?
     parseJSONField("query", "devices"),
     parseJSONField("query", "groups"),
     async function (request: Request, response: Response, next: NextFunction) {
       if (!response.locals.devices && !response.locals.groups) {
-        return next(new ClientError("At least one of 'devices' or 'groups' must be specified", 422));
+        return next(
+          new ClientError(
+            "At least one of 'devices' or 'groups' must be specified",
+            422
+          )
+        );
       }
       let operator = Op.or;
       if (
-        request.query.operator && (request.query.operator as string).toLowerCase() == "and"
+        request.query.operator &&
+        (request.query.operator as string).toLowerCase() == "and"
       ) {
         operator = Op.and;
       }
@@ -548,14 +552,8 @@ export default function (app: Application, baseUrl: string) {
     extractValidJWT,
     validateFields([
       idOf(param("deviceId")),
-      query("from")
-        .isISO8601()
-        .toDate()
-        .default(new Date()),
-      query("window-size")
-        .isInt()
-        .toInt()
-        .default(2160), // Default to a three month rolling window
+      query("from").isISO8601().toDate().default(new Date()),
+      query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
     ]),
     auth.authenticateAndExtractUser,
     extractDevice("params", "deviceId"),
@@ -598,14 +596,8 @@ export default function (app: Application, baseUrl: string) {
     extractValidJWT,
     validateFields([
       idOf(param("deviceId")),
-      query("from")
-        .isISO8601()
-        .toDate()
-        .default(new Date()),
-      query("window-size")
-        .isInt()
-        .toInt()
-        .default(2160), // Default to a three month rolling window
+      query("from").isISO8601().toDate().default(new Date()),
+      query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
     ]),
     auth.authenticateAndExtractUser,
     extractDevice("params", "deviceId"),

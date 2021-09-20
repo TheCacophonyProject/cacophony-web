@@ -58,7 +58,6 @@ export enum AcceptableTag {
   MissedRecording = "missed recording",
 }
 
-
 export enum TagMode {
   Any = "any",
   UnTagged = "untagged",

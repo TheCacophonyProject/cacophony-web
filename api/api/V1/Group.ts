@@ -23,14 +23,23 @@ import responseUtil from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  extractGroupByNameOrId, parseJSONField,
+  extractGroupByNameOrId,
+  parseJSONField,
   extractUserByNameOrId,
-  extractValidJWT, extractViewMode
+  extractValidJWT,
+  extractViewMode,
 } from "../extract-middleware";
 import logger from "../../logging";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "../../../types/jsonSchemas/api/station/ApiCreateStationData.schema.json";
-import { booleanOf, eitherOf, idOf, nameOf, nameOrIdOf, validNameOf } from "../validation-middleware";
+import {
+  booleanOf,
+  eitherOf,
+  idOf,
+  nameOf,
+  nameOrIdOf,
+  validNameOf,
+} from "../validation-middleware";
 import { ClientError } from "../customErrors";
 
 export default function (app: Application, baseUrl: string) {
@@ -54,12 +63,12 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     apiUrl,
     extractValidJWT,
-    validateFields([
-      validNameOf(body("groupname")),
-    ]),
+    validateFields([validNameOf(body("groupname"))]),
     auth.authenticateAndExtractUser,
     async (request: Request, response: Response, next: NextFunction) => {
-      const existingGroup = await models.Group.getFromName(request.body.groupname);
+      const existingGroup = await models.Group.getFromName(
+        request.body.groupname
+      );
       if (existingGroup !== null) {
         return next(new ClientError("Group name in use", 400));
       }
@@ -69,7 +78,9 @@ export default function (app: Application, baseUrl: string) {
       const newGroup = await models.Group.create({
         groupname: request.body.groupname,
       });
-      await newGroup.addUser(response.locals.requestUser.id, { through: { admin: true } });
+      await newGroup.addUser(response.locals.requestUser.id, {
+        through: { admin: true },
+      });
       return responseUtil.send(response, {
         statusCode: 200,
         groupId: newGroup.id,
@@ -212,9 +223,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/:groupIdOrName/devices`,
     extractValidJWT,
-    validateFields([
-      nameOrIdOf(param("groupIdOrName"))
-    ]),
+    validateFields([nameOrIdOf(param("groupIdOrName"))]),
     auth.authenticateAndExtractUser,
     extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
     auth.userHasAccessToGroup,
@@ -261,9 +270,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/:groupIdOrName/users`,
     extractValidJWT,
-    validateFields([
-      nameOrIdOf(param("groupIdOrName")),
-    ]),
+    validateFields([nameOrIdOf(param("groupIdOrName"))]),
     auth.authenticateAndExtractUser,
     extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
     auth.userHasAccessToGroup,
@@ -277,7 +284,7 @@ export default function (app: Application, baseUrl: string) {
           userName: username,
           id,
           isGroupAdmin: GroupUsers.admin,
-          relation: "group"
+          relation: "group",
         })),
         messages: ["Got users for group"],
       });
@@ -307,15 +314,9 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractValidJWT,
     validateFields([
-      eitherOf(
-        nameOf(body("group")),
-        idOf(body("groupId"))
-      ),
-      eitherOf(
-        nameOf(body("username")),
-        idOf(body("userId"))
-      ),
-      booleanOf(body("admin"))
+      eitherOf(nameOf(body("group")), idOf(body("groupId"))),
+      eitherOf(nameOf(body("username")), idOf(body("userId"))),
+      booleanOf(body("admin")),
     ]),
     // Extract required resources to validate permissions.
     extractGroupByNameOrId("body", "group", "groupId"),
@@ -354,14 +355,8 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractValidJWT,
     validateFields([
-      eitherOf(
-        nameOf(body("group")),
-        idOf(body("groupId"))
-      ),
-      eitherOf(
-        nameOf(body("username")),
-        idOf(body("userId"))
-      ),
+      eitherOf(nameOf(body("group")), idOf(body("groupId"))),
+      eitherOf(nameOf(body("username")), idOf(body("userId"))),
     ]),
     // Extract required resources to check permissions
     extractGroupByNameOrId("body", "group", "groupId"),
@@ -421,11 +416,8 @@ export default function (app: Application, baseUrl: string) {
       body("stations")
         .exists()
         .custom(jsonSchemaOf(arrayOf(ApiCreateStationDataSchema))),
-      body("fromDate")
-        .isISO8601()
-        .toDate()
-        .optional(),
-      nameOrIdOf(param("groupIdOrName"))
+      body("fromDate").isISO8601().toDate().optional(),
+      nameOrIdOf(param("groupIdOrName")),
     ]),
     // Extract required resources
     auth.authenticateAndExtractUser,
@@ -493,9 +485,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/:groupIdOrName/stations`,
     extractValidJWT,
-    validateFields([
-      nameOrIdOf(param("groupIdOrName"))
-    ]),
+    validateFields([nameOrIdOf(param("groupIdOrName"))]),
     extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
     auth.authenticateAndExtractUser,
     auth.userHasAccessToGroup,

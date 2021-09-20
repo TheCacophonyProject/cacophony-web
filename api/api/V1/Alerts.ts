@@ -16,16 +16,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { expectedTypeOf, validateFields } from "../middleware";
-import auth from "../auth";
+import { expectedTypeOf, validateFields } from "../middleware";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param} from "express-validator";
-import { Application} from "express";
+import { body, param, query } from "express-validator";
+import { Application } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiAlertConditionSchema from "../../../types/jsonSchemas/api/alerts/ApiAlertCondition.schema.json";
-import { extractDevice, extractValidJWT } from "../extract-middleware";
-import logger from "../../logging";
+import {
+  extractAuthorisedUser,
+  extractDeviceForRequestingUser,
+} from "../extract-middleware";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
@@ -64,7 +65,7 @@ export default function (app: Application, baseUrl: string) {
     // For authenticated requests, always extract a valid JWT first,
     // so that we don't leak data in subsequent error messages for an
     // unauthenticated request.
-    extractValidJWT,
+    extractAuthorisedUser,
     // Validation: Make sure the request payload is well-formed,
     // without regard for whether the described entities exist.
     validateFields([
@@ -73,23 +74,16 @@ export default function (app: Application, baseUrl: string) {
         .withMessage(expectedTypeOf("ApiAlertConditions"))
         .bail()
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
-      body("name")
-        .exists()
-        .isString(),
+      body("name").exists().isString(),
       body("frequencySeconds")
         .isInt()
         .toInt()
         .optional()
         .default(DEFAULT_FREQUENCY),
-      body("deviceId")
-        .isInt()
-        .toInt()
-        .withMessage(expectedTypeOf("integer"))
+      body("deviceId").isInt().toInt().withMessage(expectedTypeOf("integer")),
     ]),
-    auth.authenticateAndExtractUser,
     // Now extract the items we need from the database.
-    extractDevice("body", "deviceId"),
-    auth.userCanAccessExtractedDevices,
+    extractDeviceForRequestingUser("body", "deviceId"),
     async (request, response) => {
       const newAlert = await models.Alert.create({
         name: request.body.name,
@@ -147,23 +141,24 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/device/:deviceId`,
-    extractValidJWT,
+    extractAuthorisedUser,
     validateFields([
       param("deviceId").isInt().toInt(),
+      query("view-mode").optional().equals("user"),
     ]),
-    auth.authenticateAndExtractUser,
-    extractDevice("params", "deviceId"),
-    auth.userCanAccessExtractedDevices,
+    extractDeviceForRequestingUser("params", "deviceId"),
     async (request, response) => {
-      const Alerts = await models.Alert.query(
-        { DeviceId: response.locals.device.id },
-        response.locals.requestUser
+      const alerts = await models.Alert.queryUserDevice(
+        response.locals.device.id,
+        response.locals.requestUser.id,
+        null,
+        response.locals.viewAsSuperUser
       );
       // FIXME validate schema of returned payload.
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        Alerts,
+        Alerts: alerts,
       });
     }
   );

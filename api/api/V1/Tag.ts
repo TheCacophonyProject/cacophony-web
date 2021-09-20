@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { expectedTypeOf, validateFields } from "../middleware";
+import { expectedTypeOf, validateFields } from "../middleware";
 import auth from "../auth";
 import { body } from "express-validator";
 import models from "../../models";
@@ -24,10 +24,14 @@ import recordingUtil from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import { Application, Request, Response } from "express";
 import { RecordingPermission } from "../../models/Recording";
-import { parseJSONField, extractRecording, extractValidJWT } from "../extract-middleware";
+import {
+  parseJSONField,
+  extractRecording,
+  extractValidJWT,
+} from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
-import TagData from "../../../types/jsonSchemas/api/tag/TagData.schema.json"
+import TagData from "../../../types/jsonSchemas/api/tag/ApiTagData.schema.json";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
@@ -96,9 +100,7 @@ export default function (app: Application, baseUrl: string) {
   app.delete(
     apiUrl,
     extractValidJWT,
-    validateFields([
-      idOf(body("tagId"))
-    ]),
+    validateFields([idOf(body("tagId"))]),
     auth.authenticateAndExtractUser,
 
     // Can we guarantee that when a recording is deleted, all its tags are deleted too?

@@ -16,7 +16,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { toIdArray, toDate, isInteger, validateFields, expectedTypeOf, isIntArray } from "../middleware";
+import middleware, {
+  toIdArray,
+  toDate,
+  isInteger,
+  validateFields,
+  expectedTypeOf,
+  isIntArray,
+} from "../middleware";
 import auth from "../auth";
 import { Application, Response, Request } from "express";
 import {
@@ -154,30 +161,30 @@ export default function (app: Application, baseUrl: string) {
       query("devices")
         .optional()
         .toArray()
-        .isArray({min: 1})
+        .isArray({ min: 1 })
         .custom(isIntArray)
-        .withMessage("Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"),
+        .withMessage(
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+        ),
       query("groups")
         .optional()
         .toArray()
-        .isArray({min: 1})
+        .isArray({ min: 1 })
         .custom(isIntArray)
-        .withMessage("Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"),
+        .withMessage(
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+        ),
       query("ai")
         .optional()
         .isLength({ min: 3 })
         .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
-        .withMessage((val, {location, path}) => `'${location}.${path}' must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`),
-      query("from")
-        .optional()
-        .isISO8601()
-        .toDate(),
-      query("until")
-        .optional()
-        .isISO8601()
-        .toDate(),
-      query("view-mode")
-        .optional()
+        .withMessage(
+          (val, { location, path }) =>
+            `'${location}.${path}' must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`
+        ),
+      query("from").optional().isISO8601().toDate(),
+      query("until").optional().isISO8601().toDate(),
+      query("view-mode").optional(),
     ]),
     // Extract resources
     auth.authenticateAndExtractUser,

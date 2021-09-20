@@ -22,6 +22,8 @@ import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
 import { alertBody, sendEmail } from "../scripts/emailUtil";
+import { DeviceId } from "@typedefs/api/common";
+import logger from "../logging";
 
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -38,22 +40,29 @@ export interface Alert extends Sequelize.Model, ModelCommon<Alert> {
   UserId: UserId;
   conditions: AlertCondition[];
   frequencySeconds: number;
+  sendAlert: (
+    recording: Recording,
+    track: Track,
+    tag: TrackTag,
+    thumbnail?: Buffer
+  ) => Promise<null>;
 }
 
 export interface AlertStatic extends ModelStaticCommon<Alert> {
   query: (
     where: any,
-    user: User | null,
+    userId: UserId | null,
     trackTag?: TrackTag | null,
     admin?: boolean
-  ) => Promise<any[]>;
+  ) => Promise<Alert[]>;
+  queryUserDevice: (
+    deviceId: DeviceId,
+    userId: UserId | null,
+    trackTag?: TrackTag | null,
+    asAdmin?: boolean
+  ) => Promise<Alert[]>;
   getFromId: (id: number, user: User) => Promise<Alert>;
-  getActiveAlerts: (deviceId: number, tag: TrackTag) => Promise<any[]>;
-  sendAlert: (
-    recording: Recording,
-    track: Track,
-    thumbnail?: Buffer
-  ) => Promise<null>;
+  getActiveAlerts: (deviceId: number, tag: TrackTag) => Promise<Alert[]>;
 }
 
 export default function (sequelize, DataTypes): AlertStatic {
@@ -105,22 +114,33 @@ export default function (sequelize, DataTypes): AlertStatic {
     });
   };
 
+  Alert.queryUserDevice = async (
+    deviceId: DeviceId,
+    userId: UserId | null,
+    trackTag: TrackTag | null = null,
+    asAdmin: boolean = false
+  ) => {
+    return Alert.query({ DeviceId: deviceId }, userId, trackTag, asAdmin);
+  };
+
   Alert.query = async function (
     where: any,
-    user: User | null,
+    userId: UserId | null,
     trackTag: TrackTag | null = null,
-    admin: boolean = false
+    asAdmin: boolean = false
   ) {
-    // FIXME User can be null, this is broken
+    if (userId === null && !asAdmin) {
+      logger.warning(
+        "Alert.query called without userId specified, as non-admin"
+      );
+      return [];
+    }
     let userWhere = {};
-    if (!admin) {
-      userWhere = { id: user.id };
-      if (user.hasGlobalRead()) {
-        userWhere = null;
-      }
+    if (!asAdmin) {
+      userWhere = { id: userId };
     }
     const alerts = await models.Alert.findAll({
-      where: where,
+      where,
       attributes: ["id", "name", "frequencySeconds", "conditions", "lastAlert"],
       include: [
         {
@@ -135,20 +155,13 @@ export default function (sequelize, DataTypes): AlertStatic {
       ],
     });
     if (trackTag) {
-      return alerts.filter((alert) =>
-        filterConditions(alert.conditions as AlertCondition[], trackTag)
+      // check that any of the alert conditions are met
+      return alerts.filter(({ conditions }) =>
+        conditions.some(({ tag }) => tag === trackTag.what)
       );
     }
     return alerts;
   };
-
-  // check that any of the alert conditions are met
-  function filterConditions(
-    conditions: AlertCondition[],
-    trackTag: TrackTag
-  ): boolean {
-    return conditions.some((condition) => condition.tag == trackTag.what);
-  }
 
   // get all alerts for this device that satisfy the what condition and have
   // not been triggered already (are active)

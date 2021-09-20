@@ -16,16 +16,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import { validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param, matchedData } from "express-validator";
+import { body, param, matchedData, oneOf } from "express-validator";
 import { ClientError } from "../customErrors";
-import { Application } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import config from "../../config";
-import { User, UserStatic } from "../../models/User";
-import AllModels from "../../models";
+import { User } from "../../models/User";
+import {validNameOf, validPasswordOf} from "../validation-middleware";
+import {extractAuthorisedAdminUser, extractAuthorisedUser, extractUserByName} from "../extract-middleware";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
@@ -48,35 +49,41 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [
-      middleware.isValidName(body, "username").custom((value) => {
-        return models.User.freeUsername(value);
-      }),
-      body("email")
-        .isEmail()
-        .custom((value) => {
-          return models.User.freeEmail(value);
-        }),
-      middleware.checkNewPassword("password"),
+    validateFields([
+      validNameOf(body("username")),
+      body("email").isEmail(),
+      validPasswordOf(body("password")),
       body("endUserAgreement").isInt().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    ]),
+    async (request: Request, Response: Response, next: NextFunction) => {
+      if (!(await models.User.freeUsername(request.body.username))) {
+        return next(new ClientError("Username in use"));
+      } else {
+        next();
+      }
+    },
+    async (request: Request, Response: Response, next: NextFunction) => {
+      if (!(await models.User.freeEmail(request.body.email))) {
+        return next(new ClientError("Email address in use"));
+      } else {
+        next();
+      }
+    },
+    async (request, response) => {
       const user: User = await models.User.create({
         username: request.body.username,
         password: request.body.password,
         email: request.body.email,
         endUserAgreement: request.body.endUserAgreement,
       });
-
       const userData = await user.getDataValues();
-
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new user."],
-        token: "JWT " + auth.createEntityJWT(user),
+        token: `JWT ${auth.createEntityJWT(user)}`,
         userData: userData,
       });
-    })
+    }
   );
 
   /**
@@ -95,42 +102,41 @@ export default function (app: Application, baseUrl: string) {
    */
   app.patch(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware
-        .isValidName(body, "username")
-        .custom((value) => {
-          return models.User.freeUsername(value);
-        })
-        .optional(),
-      body("email")
-        .isEmail()
-        .custom((value) => {
-          return models.User.freeEmail(value);
-        })
-        .optional(),
-      middleware.checkNewPassword("password").optional(),
-      body("endUserAgreement").isInt().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const validData = matchedData(request);
-      if (Object.keys(validData).length === 0) {
-        throw new ClientError(
-          "Must provide at least one of: username; email; password; endUserAgreement."
-        );
+    extractAuthorisedUser,
+    validateFields([
+        // FIXME - Could be "At least one of" with nicer error messages?
+        oneOf([
+      validNameOf(body("username")),
+      body("email").isEmail(),
+      validPasswordOf(body("password")),
+      body("endUserAgreement").isInt(),
+            ], "Must provide at least one of: username; email; password; endUserAgreement."),
+    ]),
+    async (request: Request, Response: Response, next: NextFunction) => {
+      if (request.body.username && !(await models.User.freeUsername(request.body.username))) {
+        return next(new ClientError("Username in use"));
+      } else {
+        next();
       }
-      const user: UserStatic = request.user;
-      await user.update(validData, {
-        where: {},
-        fields: user.apiSettableFields as string[],
-      });
+    },
+    async (request: Request, Response: Response, next: NextFunction) => {
+      if (request.body.email && !(await models.User.freeEmail(request.body.email))) {
+        return next(new ClientError("Email address in use"));
+      } else {
+        next();
+      }
+    },
+    async (request: Request, response: Response) => {
+      await response.locals.requestUser.update(matchedData(request));
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated user."],
       });
-    })
+    }
   );
 
+
+  // FIXME - Make this username *or* id?
   /**
    * @api {get} api/v1/users/:username Get details for a user
    * @apiName GetUser
@@ -144,15 +150,20 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:username`,
-    [auth.authenticateUser, middleware.getUserByName(param)],
-    middleware.requestWrapper(async (request, response) => {
+    `${apiUrl}/:userName`,
+      extractAuthorisedUser,
+      validateFields([
+          validNameOf(param("userName"))
+      ]),
+      extractUserByName("params", "userName"),
+      // FIXME - should a regular user be able to get user information for any other user?
+    async (request, response) => {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        userData: await request.body.user.getDataValues(),
+        userData: await response.locals.user.getDataValues(),
       });
-    })
+    }
   );
 
   /**
@@ -172,15 +183,15 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${baseUrl}/listUsers`,
-    [auth.authenticateAdmin],
-    middleware.requestWrapper(async (request, response) => {
-      const users = await AllModels.User.getAll({});
+    extractAuthorisedAdminUser,
+    async (request, response) => {
+      const users = await models.User.getAll({});
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
         usersList: users,
       });
-    })
+    }
   );
 
   /**
@@ -194,13 +205,13 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    baseUrl + "/endUserAgreement/latest",
-    middleware.requestWrapper(async (request, response) => {
+   `${baseUrl}/endUserAgreement/latest`,
+    async (request, response) => {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
         euaVersion: config.euaVersion,
       });
-    })
+    }
   );
 }

@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sharp from "sharp";
 import zlib from "zlib";
 import { AlertStatic } from "../../models/Alert";
-import {AI_MASTER} from "../../models/TrackTag";
+import { AI_MASTER } from "../../models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
@@ -55,15 +55,21 @@ import modelsUtil from "../../models/util/util";
 import { dynamicImportESM } from "../../dynamic-import-esm";
 import Sequelize from "sequelize";
 import logger from "../../logging";
-import {ClassifierModelDescription, ClassifierRawResult, RawTrack, TrackClassification, TrackFramePosition } from "@typedefs/api/fileProcessing";
+import {
+  ClassifierModelDescription,
+  ClassifierRawResult,
+  RawTrack,
+  TrackClassification,
+  TrackFramePosition,
+} from "@typedefs/api/fileProcessing";
 import { CptvFrame } from "cptv-decoder";
 import { GetObjectOutput } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
 import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
 import SendData = ManagedUpload.SendData;
-import {Track} from "../../models/Track";
-import {DetailSnapshotId} from "../../models/DetailSnapshot";
-import {Tag} from "../../models/Tag";
+import { Track } from "../../models/Track";
+import { DetailSnapshotId } from "../../models/DetailSnapshot";
+import { Tag } from "../../models/Tag";
 import { RecordingId, TrackTagId } from "@typedefs/api/common";
 import { ApiTagData } from "@typedefs/api/tag";
 
@@ -820,7 +826,11 @@ function guessRawMimeType(type, filename) {
 }
 
 // FIXME(jon): This should really be a method on Recording?
-const addTag = async (user: User | null, recording: Recording, tag: ApiTagData): Promise<Tag> => {
+const addTag = async (
+  user: User | null,
+  recording: Recording,
+  tag: ApiTagData
+): Promise<Tag> => {
   if (!recording) {
     throw new ClientError("No such recording.");
   }
@@ -870,7 +880,7 @@ function handleLegacyTagFieldsForGetOnRecording(recording) {
 export enum StatusCode {
   Success = 1,
   Fail = 2,
-  Both = 3
+  Both = 3,
 }
 
 // reprocessAll expects request.body.recordings to be a list of recording_ids
@@ -1400,7 +1410,7 @@ async function sendAlerts(recID: number) {
         recording,
         matchedTrack,
         matchedTag,
-        thumbnail ? thumbnail.Body : thumbnail
+        thumbnail && (thumbnail.Body as Buffer)
       );
     }
   }
@@ -1423,9 +1433,20 @@ interface TrackData {
   num_frames: number;
 }
 
-const addTracksToRecording = async (recording: Recording, tracks: RawTrack[], trackingAlgorithmId: DetailSnapshotId): Promise<Track[]> => {
+const addTracksToRecording = async (
+  recording: Recording,
+  tracks: RawTrack[],
+  trackingAlgorithmId: DetailSnapshotId
+): Promise<Track[]> => {
   const createTracks = [];
-  for (const {positions, start_s, end_s, frame_start, frame_end, num_frames } of tracks) {
+  for (const {
+    positions,
+    start_s,
+    end_s,
+    frame_start,
+    frame_end,
+    num_frames,
+  } of tracks) {
     const limitedTrack: TrackData = {
       // TODO do we need id in the front-end?
       start_s,
@@ -1435,36 +1456,50 @@ const addTracksToRecording = async (recording: Recording, tracks: RawTrack[], tr
       num_frames,
       positions,
     };
-    createTracks.push(recording.createTrack({
-      data: limitedTrack,
-      AlgorithmId: trackingAlgorithmId, // FIXME Should *tracks* have an algorithm id, or rather should it be on the TrackTag?
-    }));
+    createTracks.push(
+      recording.createTrack({
+        data: limitedTrack,
+        AlgorithmId: trackingAlgorithmId, // FIXME Should *tracks* have an algorithm id, or rather should it be on the TrackTag?
+      })
+    );
   }
   return await Promise.all(createTracks);
 };
 
-const addAITrackTags = async (recording: Recording, rawTracks: RawTrack[], tracks: Track[], models: ClassifierModelDescription[]): Promise<TrackTagId[]> => {
+const addAITrackTags = async (
+  recording: Recording,
+  rawTracks: RawTrack[],
+  tracks: Track[],
+  models: ClassifierModelDescription[]
+): Promise<TrackTagId[]> => {
   const trackTags = [];
   for (let i = 0; i < rawTracks.length; i++) {
     const rawTrack = rawTracks[i];
     const createdTrack = tracks[i];
-    for (const { label, confidence, classify_time, all_class_confidences, model_id } of rawTrack.predictions) {
-      trackTags.push(createdTrack.addTag(
-          label,
-          confidence,
-          true,
-          {
-            name: models.find(({id}) => model_id === id).name,
-            classify_time,
-            all_class_confidences
-          }
-      ));
+    for (const {
+      label,
+      confidence,
+      classify_time,
+      all_class_confidences,
+      model_id,
+    } of rawTrack.predictions) {
+      trackTags.push(
+        createdTrack.addTag(label, confidence, true, {
+          name: models.find(({ id }) => model_id === id).name,
+          classify_time,
+          all_class_confidences,
+        })
+      );
     }
   }
   return Promise.all(trackTags);
 };
 
-const calculateAndAddAIMasterTag = async (recording: Recording, rawTracks: RawTrack[], tracks: Track[]): Promise<TrackTagId> => {
+const calculateAndAddAIMasterTag = async (
+  recording: Recording,
+  rawTracks: RawTrack[],
+  tracks: Track[]
+): Promise<TrackTagId> => {
   return 0;
 };
 
@@ -1476,8 +1511,8 @@ const calculateTrackMovement = (track: RawTrack): number => {
   const midXs = [];
   const midYs = [];
   for (const position of track.positions) {
-    midXs.push(position.x + (position.width / 2));
-    midYs.push(position.y + (position.height / 2));
+    midXs.push(position.x + position.width / 2);
+    midYs.push(position.y + position.height / 2);
   }
   const deltaX = Math.max(...midXs) - Math.min(...midXs);
   const deltaY = Math.max(...midYs) - Math.min(...midYs);
@@ -1515,7 +1550,10 @@ const MIN_TAG_CLARITY_SECONDARY = 0.05;
 const MAX_TAG_NOVELTY = 0.7;
 const DEFAULT_CONFIDENCE = 0.85;
 
-const isSignificantTrack = (track: RawTrack, prediction: TrackClassification): boolean => {
+const isSignificantTrack = (
+  track: RawTrack,
+  prediction: TrackClassification
+): boolean => {
   if (track.num_frames < MIN_TRACK_FRAMES) {
     track.message = "Short track";
     return false;
@@ -1546,7 +1584,9 @@ const predictionIsClear = (prediction: TrackClassification): boolean => {
   return true;
 };
 
-const getSignificantTracks = (tracks: RawTrack[]): [RawTrack[], RawTrack[], Record<string, { confidence: number }>] => {
+const getSignificantTracks = (
+  tracks: RawTrack[]
+): [RawTrack[], RawTrack[], Record<string, { confidence: number }>] => {
   const clearTracks = [];
   const unclearTracks = [];
   const tags: Record<string, { confidence: number }> = {};
@@ -1559,7 +1599,10 @@ const getSignificantTracks = (tracks: RawTrack[]): [RawTrack[], RawTrack[], Reco
         continue;
       }
       if (isSignificantTrack(track, prediction)) {
-        if (prediction.label === "false-positive" && prediction.clarity < MIN_TAG_CLARITY_SECONDARY) {
+        if (
+          prediction.label === "false-positive" &&
+          prediction.clarity < MIN_TAG_CLARITY_SECONDARY
+        ) {
           continue;
         }
         const confidence = prediction.confidence;
@@ -1590,7 +1633,9 @@ const getSignificantTracks = (tracks: RawTrack[]): [RawTrack[], RawTrack[], Reco
 
 const calculateMultipleAnimalConfidence = (tracks: RawTrack[]): number => {
   let confidence = 0;
-  const allTracks = [...tracks].sort((a: RawTrack, b: RawTrack) => a.start_s - b.start_s);
+  const allTracks = [...tracks].sort(
+    (a: RawTrack, b: RawTrack) => a.start_s - b.start_s
+  );
   for (let i = 0; i < allTracks.length - 1; i++) {
     for (let j = i + 1; j < allTracks.length; j++) {
       if (allTracks[j].start_s + 1 < allTracks[i].end_s) {
@@ -1603,50 +1648,73 @@ const calculateMultipleAnimalConfidence = (tracks: RawTrack[]): number => {
 };
 
 const MULTIPLE_ANIMAL_CONFIDENCE = 1;
-const calculateTags = (tracks: RawTrack[]): [RawTrack[], Record<string, { confidence: number }>, boolean] => {
+const calculateTags = (
+  tracks: RawTrack[]
+): [RawTrack[], Record<string, { confidence: number }>, boolean] => {
   if (tracks.length === 0) {
     return [tracks, {}, false];
   }
   const [clearTracks, unclearTracks, tags] = getSignificantTracks(tracks);
   // This could happen outside this function, unless we discard tracks?
-  const multipleAnimalConfidence = calculateMultipleAnimalConfidence([...clearTracks, ...unclearTracks]);
-  const hasMultipleAnimals = multipleAnimalConfidence > MULTIPLE_ANIMAL_CONFIDENCE;
+  const multipleAnimalConfidence = calculateMultipleAnimalConfidence([
+    ...clearTracks,
+    ...unclearTracks,
+  ]);
+  const hasMultipleAnimals =
+    multipleAnimalConfidence > MULTIPLE_ANIMAL_CONFIDENCE;
 
   if (hasMultipleAnimals) {
-    logger.debug("multiple animals detected, (%d)", multipleAnimalConfidence.toFixed(2));
+    logger.debug(
+      "multiple animals detected, (%d)",
+      multipleAnimalConfidence.toFixed(2)
+    );
   }
 
   return [tracks, tags, hasMultipleAnimals];
 };
-
 
 export const finishedProcessingRecording = async (
   recording: Recording,
   classifierResult: ClassifierRawResult,
   prevState: RecordingProcessingState
 ): Promise<void> => {
-
   // See if we should tag the recording as having multiple animals
   const [_, tags, hasMultipleAnimals] = calculateTags(classifierResult.tracks);
   if (hasMultipleAnimals) {
-    await addTag(null, recording, { "detail": AcceptableTag.MultipleAnimals, confidence: 1 });
+    await addTag(null, recording, {
+      detail: AcceptableTag.MultipleAnimals,
+      confidence: 1,
+    });
   }
 
   // See if we should tag the recording as false-positive (with no tracks) (or missed tracks?)
 
   // TODO(jon): Do we need to stringify this?
   const algorithm = await models.DetailSnapshot.getOrCreateMatching(
-      "algorithm",
-      classifierResult.algorithm
+    "algorithm",
+    classifierResult.algorithm
   );
   // Add any tracks
-  const tracks = await addTracksToRecording(recording, classifierResult.tracks, algorithm.id);
+  const tracks = await addTracksToRecording(
+    recording,
+    classifierResult.tracks,
+    algorithm.id
+  );
 
   // Add tags for those tracks
-  const trackTags = await addAITrackTags(recording, classifierResult.tracks, tracks, classifierResult.models);
+  const trackTags = await addAITrackTags(
+    recording,
+    classifierResult.tracks,
+    tracks,
+    classifierResult.models
+  );
 
   // Calculate the AI_MASTER tag from the tracks provided, and add that
-  const masterTrackTagId = await calculateAndAddAIMasterTag(recording, classifierResult.tracks, tracks);
+  const masterTrackTagId = await calculateAndAddAIMasterTag(
+    recording,
+    classifierResult.tracks,
+    tracks
+  );
 
   // Add additionalMetadata to recording:
   // model name + classify time (total?)

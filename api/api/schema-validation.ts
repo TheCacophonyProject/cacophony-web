@@ -13,7 +13,6 @@ Validator.prototype.customFormats.IsoFormattedDateString = (val) => {
   }
   const d = Date.parse(val);
   return !isNaN(d);
-
 };
 
 const SpecialFormats = {
@@ -82,10 +81,10 @@ export const arrayOf = (schemaOriginal: Schema): Schema => {
   const definition = Object.keys(schema.definitions)[0];
   schema.$ref = `#/definitions/${definition}s`;
   schema.definitions[`${definition}s`] = {
-    "type": "array",
-    "items": {
-      "$ref": `#/definitions/${definition}`
-    }
+    type: "array",
+    items: {
+      $ref: `#/definitions/${definition}`,
+    },
   };
   return schema;
 };
@@ -155,7 +154,13 @@ export const jsonSchemaOf =
                   case "enum":
                     return `!!${path}, ${stack}`;
                   default:
-                    console.warn("Unhandled JSON schema error formatter", name, message, property, argument);
+                    console.warn(
+                      "Unhandled JSON schema error formatter",
+                      name,
+                      message,
+                      property,
+                      argument
+                    );
                     return message;
                 }
               }

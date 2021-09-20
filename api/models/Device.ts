@@ -61,10 +61,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     onlyActive: boolean,
     viewAsSuperAdmin: boolean
   ) => Promise<{ rows: Device[]; count: number }>;
-  removeUserFromDevice: (
-    device: Device,
-    user: User
-  ) => Promise<boolean>;
+  removeUserFromDevice: (device: Device, user: User) => Promise<boolean>;
   onlyUsersDevicesMatching: (
     user?: User,
     conditions?: any,

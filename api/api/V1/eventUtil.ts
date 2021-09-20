@@ -6,7 +6,10 @@ import { QueryOptions } from "../../models/Event";
 import { groupSystemErrors } from "./systemError";
 import moment, { Moment } from "moment";
 import logger from "../../logging";
-export const errors = async (request: { query: any, res: any }, admin?: boolean) => {
+export const errors = async (
+  request: { query: any; res: any },
+  admin?: boolean
+) => {
   const query = request.query;
   const options = {} as QueryOptions;
   options.eventType = "systemError";
@@ -28,7 +31,7 @@ export const errors = async (request: { query: any, res: any }, admin?: boolean)
 };
 
 export async function powerEventsPerDevice(
-  request: { query: any, res: any },
+  request: { query: any; res: any },
   admin?: boolean
 ): Promise<PowerEvents[]> {
   const query = request.query;

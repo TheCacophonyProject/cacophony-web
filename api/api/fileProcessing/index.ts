@@ -329,7 +329,11 @@ export default function (app: Application) {
         request.body.recordingId,
         options
       );
-      const tagInstance = await recordingUtil.addTag(null, recording, request.body.tag);
+      const tagInstance = await recordingUtil.addTag(
+        null,
+        recording,
+        request.body.tag
+      );
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Added new tag."],
