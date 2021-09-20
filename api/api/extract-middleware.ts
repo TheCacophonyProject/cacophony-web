@@ -7,6 +7,9 @@ import { format } from "util";
 import { Location } from "express-validator";
 import { ClientError } from "./customErrors";
 import { User } from "models/User";
+import DeviceUsers from "../models/DeviceUsers";
+import GroupUsers from "../models/GroupUsers";
+import { Op } from "sequelize";
 
 export const extractValidJWT = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
   try {
@@ -17,7 +20,7 @@ export const extractValidJWT = async (request: Request, response: Response, next
   }
 };
 
-const extractModel = <T>(modelType: ModelStaticCommon<T>, location: Location, key: string, stopOnFailure = true) => async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+const extractModel = <T>(modelType: ModelStaticCommon<T>, location: Location, key: string, stopOnFailure = true, forRequestUser = false) => async (request: Request, response: Response, next: NextFunction): Promise<void> => {
   const id = request[location][key];
   if (!id) {
     if (stopOnFailure) {
@@ -27,7 +30,114 @@ const extractModel = <T>(modelType: ModelStaticCommon<T>, location: Location, ke
     }
   }
   logger.info("Get id %s for %s", id, modelTypeName(modelType));
-  const model = await modelType.findByPk(id);
+
+  // FIXME/TODO: getModelForUser: first check if the user is a super-user, and is viewing as admin.
+  // Then to a query through the resource type to the user, and throw an Authorization error if not authorised
+  let options;
+  let device;
+  if (response.locals.requestUser) {
+    const user = response.locals.requestUser;
+    //const device = await user.getDevices({where: {id: id}});
+    try {
+      device = await modelType.findOne({
+        where: {
+          [Op.and]: [
+            {id},
+            [Op.or]: [{
+            include: [
+              // Make this a left outer join?
+              {
+                model: models.User,
+                attributes: [],
+                where: { id: user.id }
+              }
+            ]
+        } as any,
+            {
+              include: [
+                {
+                  model: models.Group,
+                  attributes: [],
+                  include: [
+                    {
+                      model: models.User,
+                      attributes: [],
+                      where: { id: user.id }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }],
+        // include: [
+        //   {
+        //     model: models.Group,
+        //     attributes: [],
+        //     include: [
+        //       {
+        //         model: models.User,
+        //         attributes: [],
+        //         where: { id: user.id }
+        //       }
+        //     ]
+        //   },
+        //   // Make this a left outer join?
+        //   {
+        //     model: models.User,
+        //     attributes: [],
+        //     where: { id: user.id }
+        //   }
+        // ]
+
+        // where: {
+        //   [Op.or]: [
+        //     {
+        //       include: [{
+        //         model: models.User,
+        //         where: {
+        //           "id": user.id,
+        //         }
+        //       }]
+        //     },
+        //     {
+        //       include: [{
+        //         model: models.GroupUsers,
+        //         where: { "UserId": user.id, "DeviceId": id}
+        //       }]
+        //     }
+        //   ]
+        // },
+        // include: [
+        //   {
+        //     model: models.Group
+        //   },
+        //   {
+        //     model: models.User,
+        //     where: {
+        //       "id": user.id,
+        //     },
+        //     include: [{
+        //       model: models.GroupUsers,
+        //       where: {
+        //         "UserId": user.id,
+        //         "GroupId":
+        //       }
+        //     }]
+        //   }
+        // ]
+      });
+    } catch (e) {
+      logger.warning("%s", e);
+    }
+    logger.notice("Got user device %s", device);
+  }
+  //let options;
+  const model = await modelType.findByPk(id, options);
+  // if (response.locals.requestUser && model.hasUsers([response.locals.requestUser])) {
+  //   logger.notice("model %s has user %s", model, response.locals.requestUser);
+  // }
+
   if (model === null) {
     return next(new ClientError(format("Could not find a %s with an id of '%s'", modelType.name, id), 400));
   }

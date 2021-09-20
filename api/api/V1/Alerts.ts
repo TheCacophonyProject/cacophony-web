@@ -86,9 +86,9 @@ export default function (app: Application, baseUrl: string) {
         .toInt()
         .withMessage(expectedTypeOf("integer"))
     ]),
+    auth.authenticateAndExtractUser,
     // Now extract the items we need from the database.
     extractDevice("body", "deviceId"),
-    auth.authenticateAndExtractUser,
     auth.userCanAccessExtractedDevices,
     async (request, response) => {
       const newAlert = await models.Alert.create({
@@ -151,8 +151,8 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       param("deviceId").isInt().toInt(),
     ]),
-    extractDevice("params", "deviceId"),
     auth.authenticateAndExtractUser,
+    extractDevice("params", "deviceId"),
     auth.userCanAccessExtractedDevices,
     async (request, response) => {
       const Alerts = await models.Alert.query(

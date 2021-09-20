@@ -392,11 +392,9 @@ export default function (
       logger.info("User devices %s", usersDevices);
       deviceIds.forEach((deviceId) => {
         if (!usersDevices.includes(deviceId)) {
+          // FIXME - Move this to middleware
           log.info(
-            "Attempted unauthorized use of device " +
-              deviceId +
-              " by " +
-              this.username
+            `Attempted unauthorized use of device ${deviceId} by ${this.username}`
           );
           throw new AuthorizationError("User is not authorized for one (or more) of specified devices.");
         }

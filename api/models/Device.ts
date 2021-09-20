@@ -13,11 +13,10 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { AuthorizationError, ClientError } from "../api/customErrors";
 import bcrypt from "bcrypt";
 import { format } from "util";
 import Sequelize, { FindOptions } from "sequelize";
-import models, { ModelCommon, ModelStaticCommon } from "./index";
+import { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
 import { Group, GroupId, GroupStatic } from "./Group";
 import { GroupUsersStatic } from "./GroupUsers";
@@ -168,9 +167,9 @@ export default function (
   Device.addAssociations = function (models) {
     models.Device.hasMany(models.Recording);
     models.Device.hasMany(models.Event);
+    models.Device.belongsTo(models.Group);
     models.Device.belongsToMany(models.User, { through: models.DeviceUsers });
     models.Device.belongsTo(models.Schedule);
-    models.Device.belongsTo(models.Group);
     models.Device.hasMany(models.Alert);
   };
 

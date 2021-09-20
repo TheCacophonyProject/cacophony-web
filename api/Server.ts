@@ -77,33 +77,19 @@ const checkS3Connection = (): Promise<void> => {
   const app: Application = express();
 
   app.use((request: Request, response: Response, next: NextFunction) => {
-    //
-    // asyncLocalStorage.enterWith(new Map());
-    // (asyncLocalStorage.getStore() as Map<string, any>).set("requestId", uuidv4());
-    asyncLocalStorage.run(new Map(), async () =>{
-      (asyncLocalStorage.getStore() as Map<string, any>).set("requestId", uuidv4());
-      next();
-    });
-    //next();
+    // Add a unique request ID to each API request, for logging purposes.
+    asyncLocalStorage.enterWith(new Map());
+    (asyncLocalStorage.getStore() as Map<string, any>).set("requestId", uuidv4());
+    next();
   });
   app.use(
     expressWinston.logger({
       transports: [consoleTransport],
       meta: false,
       metaField: null,
-      //expressFormat: true,
       msg: (req: Request, res: Response): string => {
-          // const asyncStore = asyncLocalStorage.getStore() as Map<string, string>;
-          // const message = "";
-          // let requestId = "";
-          // if (asyncStore) {
-          //   requestId = asyncStore.get("requestId");
-          //   if (requestId) {
-          //     requestId = requestId.split("-")[0];
-          //   }
-          // }
           const dbQueryCount = (asyncLocalStorage.getStore() as Map<string, any>)?.get("queryCount");
-          return `${req.method} ${req.url} => (${res.statusCode}) ${dbQueryCount ? `(${dbQueryCount}) ` : ""}[${(res as any).responseTime}ms]`;
+          return `${req.method} ${req.url} => Status(${res.statusCode}) ${dbQueryCount ? `(${dbQueryCount} DB queries) ` : ""}[${(res as any).responseTime}ms]`;
         }
     })
   );
