@@ -411,7 +411,14 @@ export function TestCreateExpectedRecordingData(
   expected.id = getCreds(recordingName).id;
   expected.Device = device;
   expected.Group = group;
+  expected.type = inputRecording.type;
+  if(inputRecording.type=='thermalRaw') { 
+    expected.rawMimeType="application/x-cptv";
+  } else { 
+    expected.rawMimeType="audio/mpeg";
+  }
   if(inputRecording.duration!==undefined) expected.duration = inputRecording.duration;
+  if(inputRecording.recordingDateTime!==undefined) expected.recordingDateTime = inputRecording.recordingDateTime;
   if(inputRecording.version!==undefined) expected.version = inputRecording.version;
   if(inputRecording.comment!==undefined) expected.comment = inputRecording.comment;
   if(inputRecording.additionalMetadata!==undefined) expected.additionalMetadata = inputRecording.additionalMetadata;
@@ -430,17 +437,19 @@ export function TestCreateExpectedRecordingData(
   if (inputTrackData && inputTrackData.tracks) {
     inputTrackData.tracks.forEach((track: any) => {
       const newTrack: ApiRecordingTrack = {};
-      newTrack.TrackTags = [
-        {
-          what: track.confident_tag,
-          automatic: true,
-          TrackId: -99,
-          data: inputTrackData.algorithm.model_name,
-          confidence: track.confidence,
-          User: null,
-          UserId: null,
-        },
-      ];
+      if(track.confident_tag!==undefined) {
+        newTrack.TrackTags = [
+          {
+            what: track.confident_tag,
+            automatic: true,
+            TrackId: -99,
+            data: inputTrackData.algorithm.model_name,
+            confidence: track.confidence,
+            User: null,
+            UserId: null,
+          },
+        ];
+      }
       newTrack.data = { start_s: track.start_s, end_s: track.end_s };
       newTrack.id = -99;
       expected.Tracks.push(newTrack);

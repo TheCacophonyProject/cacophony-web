@@ -478,13 +478,19 @@ Cypress.Commands.add(
     userName: string,
     device: string,
     admin: boolean = false,
-    statusCode: number = 200
+    statusCode: number = 200,
+    additionalChecks: any = {}
   ) => {
+    let fullName:string;
     logTestDescription(
       `${deviceAdminUser} Adding user '${userName}' to device '${device}'`,
       { user: userName, device }
     );
-
+    if (additionalChecks["useRawUserName"]===true) {
+      fullName=userName;
+    } else {
+      fullName=getTestName(userName);
+    }
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
@@ -492,7 +498,7 @@ Cypress.Commands.add(
         body: {
           deviceId: getCreds(device).id,
           admin: admin,
-          username: getTestName(userName),
+          username: fullName,
         },
       },
       deviceAdminUser,
@@ -507,8 +513,17 @@ Cypress.Commands.add(
     deviceAdminUser: string,
     userName: string,
     device: string,
-    statusCode: number = 200
+    statusCode: number = 200,
+    additionalChecks: any = {}
+
   ) => {
+    let fullName:string;
+    if (additionalChecks["useRawUserName"]===true) {
+      fullName=userName;
+    } else {
+      fullName=getTestName(userName);
+    }
+
     logTestDescription(
       `${deviceAdminUser} Removing user '${userName}' to device '${device}'`,
       { user: userName, device }
@@ -521,7 +536,7 @@ Cypress.Commands.add(
         body: {
           deviceId: getCreds(device).id,
           admin: "false",
-          username: getTestName(userName),
+          username: fullName,
         },
       },
       deviceAdminUser,
