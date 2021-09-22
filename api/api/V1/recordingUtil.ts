@@ -949,26 +949,49 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       "algorithm",
       metadata["algorithm"]
     );
-    const model = {
-      name: "unknown",
-      algorithmId: algorithmDetail.id,
-    };
+    let model = "unknown";
+
     if ("model_name" in metadata["algorithm"]) {
-      model["name"] = metadata["algorithm"]["model_name"];
+      model = metadata["algorithm"]["model_name"];
     }
     for (const trackMeta of metadata["tracks"]) {
       const track = await recording.createTrack({
         data: trackMeta,
         AlgorithmId: algorithmDetail.id,
       });
-      if ("confident_tag" in trackMeta) {
-        model["all_class_confidences"] = trackMeta["all_class_confidences"];
-        await track.addTag(
-          trackMeta["confident_tag"],
-          trackMeta["confidence"],
-          true,
-          model
-        );
+      if (!("predictions" in trackMeta)) {
+        continue;
+      }
+      for (const prediction of trackMeta["predictions"]) {
+        let tag_data = { name: model };
+        if (prediction.clarity) {
+          tag_data["clarity"] = prediction["clarity"];
+        }
+        if (prediction.classify_time) {
+          tag_data["classify_time"] = prediction["classify_time"];
+        }
+        if (prediction.prediction_frames) {
+          tag_data["prediction_frames"] = prediction["prediction_frames"];
+        }
+        if (prediction.predictions) {
+          tag_data["predictions"] = prediction["predictions"];
+        }
+        if (prediction.label) {
+          tag_data["raw_tag"] = prediction["label"];
+        }
+        if (prediction.all_class_confidences) {
+          tag_data["all_class_confidences"] =
+            prediction["all_class_confidences"];
+        }
+        if (prediction.all_class_confidences) {
+          tag_data["all_class_confidences"] =
+            prediction["all_class_confidences"];
+        }
+        let tag = "unidentified";
+        if (prediction.confident_tag) {
+          tag = prediction["confident_tag"];
+        }
+        await track.addTag(tag, prediction["confidence"], true, tag_data);
       }
     }
   } catch (err) {
