@@ -963,7 +963,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         continue;
       }
       for (const prediction of trackMeta["predictions"]) {
-        let tag_data = { name: model };
+        const tag_data = { name: model };
         if (prediction.clarity) {
           tag_data["clarity"] = prediction["clarity"];
         }
