@@ -13,11 +13,11 @@ import {
 import { logTestDescription } from "../descriptions";
 import {
   ApiDeviceInGroupDevice,
-  ApiDeviceQueryDevice,
   ApiDevicesDevice,
   ApiDeviceUsersUser,
 } from "../types";
 import { TestDeviceAndGroup } from "@typedefs/api/device";
+import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -175,13 +175,11 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
-        const devices = response.body.devices.rows;
-        //TODO: Issue 63.  Reenable this when devices count is correct
-        //expect(response.body.devices.count).to.equal(expectedDevices.length);
+        const devices = response.body.devices;
         expect(devices.length).to.equal(expectedDevices.length);
         let devCount: number;
-        const sortDevices = sortArrayOn(devices, "devicename");
-        const sortExpectedDevices = sortArrayOn(expectedDevices, "devicename");
+        const sortDevices = sortArrayOn(devices, "deviceName");
+        const sortExpectedDevices = sortArrayOn(expectedDevices, "deviceName");
         for (devCount = 0; devCount < expectedDevices.length; devCount++) {
           checkDeviceMatchesExpected(
             sortDevices[devCount],
@@ -194,40 +192,21 @@ Cypress.Commands.add(
 );
 
 function checkDeviceMatchesExpected(
-  device: ApiDevicesDevice,
-  expectedDevice: ApiDevicesDevice
+  device: ApiDeviceResponse,
+  expectedDevice: ApiDeviceResponse
 ) {
-  expect(device.id).to.equal(expectedDevice.id);
-  expect(device.devicename).to.equal(expectedDevice.devicename);
+  expect(device.groupName).to.equal(expectedDevice.groupName);
+  expect(device.deviceName).to.equal(expectedDevice.deviceName);
+  expect(device.groupId).to.equal(expectedDevice.groupId);
   expect(device.active).to.equal(expectedDevice.active);
-  if (expectedDevice.Users === null) {
-    expect(device.Users).to.not.exist;
-  } else {
-    expect(device.Users.length).to.equal(expectedDevice.Users.length);
-    // sort users and expected users to ensure order is the same
-    const users = sortArrayOn(device.Users, "username");
-    const expectedUsers = sortArrayOn(expectedDevice.Users, "username");
-
-    // compare user list
-    let count: number;
-    for (count = 0; count < expectedUsers.length; count++) {
-      expect(users[count].username).to.equal(expectedUsers[count].username);
-      expect(users[count].id).to.equal(expectedUsers[count].id);
-      expect(users[count].DeviceUsers.admin).to.equal(
-        expectedUsers[count].DeviceUsers.admin
-      );
-      expect(users[count].DeviceUsers.UserId).to.equal(
-        expectedUsers[count].DeviceUsers.UserId
-      );
-    }
-  }
+  expect(device.isAdmin).to.equal(expectedDevice.isAdmin);
 }
 
 Cypress.Commands.add(
   "apiDevicesCheckContains",
   (
     userName: string,
-    expectedDevices: ApiDevicesDevice[],
+    expectedDevices: ApiDeviceResponse[],
     params: any = {},
     statusCode: number = 200
   ) => {
@@ -248,19 +227,16 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
-        const devices = response.body.devices.rows;
-        expect(response.body.devices.count).to.be.at.least(
-          expectedDevices.length
-        );
+        const devices = response.body.devices;
         expect(devices.length).to.be.at.least(expectedDevices.length);
         let devCount: number;
         //check each device in our expected list
         for (devCount = 0; devCount < expectedDevices.length; devCount++) {
           let found = false;
           // is found somewhere in the actual list
-          devices.forEach(function (device: ApiDevicesDevice) {
+          devices.forEach(function (device: ApiDeviceResponse) {
             // and contains the correct values
-            if (device.devicename == expectedDevices[devCount].devicename) {
+            if (device.deviceName == expectedDevices[devCount].deviceName) {
               found = true;
               checkDeviceMatchesExpected(device, expectedDevices[devCount]);
             }
@@ -279,7 +255,7 @@ Cypress.Commands.add(
     deviceName: string,
     groupName: string,
     groupId: number,
-    expectedDevice: ApiDeviceInGroupDevice,
+    expectedDevice: ApiDeviceResponse,
     params: any = {},
     statusCode: number = 200
   ) => {
@@ -325,104 +301,7 @@ Cypress.Commands.add(
         expect(device.id).to.equal(getCreds(deviceName).id);
         expect(device.deviceName).to.equal(getTestName(deviceName));
         expect(device.groupName).to.equal(getTestName(groupName));
-        expect(device.userIsAdmin).to.equal(expectedDevice.userIsAdmin);
-        if (expectedDevice.users === null) {
-          expect(device.users).to.not.exist;
-        } else {
-          expect(device.users.length).to.equal(expectedDevice.users.length);
-          // sort users and expected users to ensure order is the same
-          const users = sortArrayOn(device.users, "userName");
-          const expectedUsers = sortArrayOn(expectedDevice.users, "userName");
-
-          // compare user list
-          let count: number;
-          for (count = 0; count < expectedDevice.users.length; count++) {
-            expect(users[count].userName).to.equal(
-              expectedUsers[count].userName
-            );
-            expect(users[count].admin).to.equal(expectedUsers[count].admin);
-            expect(users[count].id).to.equal(expectedUsers[count].id);
-          }
-        }
-      }
-    });
-  }
-);
-
-Cypress.Commands.add(
-  "apiDeviceQueryCheck",
-  (
-    userName: string,
-    devicesArray: TestDeviceAndGroup[] | undefined,
-    groupsArray: string[] | undefined,
-    expectedDevices: ApiDeviceQueryDevice[],
-    operator: "and" | "or" = "or",
-    statusCode: number = 200
-  ) => {
-    logTestDescription(
-      `${userName} Check devices using query '${JSON.stringify(
-        devicesArray
-      )}' '${operator}' '${JSON.stringify(groupsArray)}'`,
-      { user: userName, devicesArray, groupsArray, operator },
-      true
-    );
-    const params: any = {
-      operator
-    };
-    if (devicesArray) {
-      params.devices = JSON.stringify(devicesArray);
-    }
-    if (groupsArray) {
-      params.groups = JSON.stringify(groupsArray);
-    }
-    const fullUrl = v1ApiPath("devices/query", params);
-
-    makeAuthorizedRequestWithStatus(
-      {
-        method: "GET",
-        url: fullUrl,
-        body: null,
-      },
-      userName,
-      statusCode
-    ).then((response) => {
-      if (statusCode === null || statusCode == 200) {
-        // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
-        // sort both devices and expected devices on devicename,groupname to ensure order is same
-        const devices = sortArrayOnTwoKeys(
-          response.body.devices,
-          "devicename",
-          "groupname"
-        );
-        expectedDevices = sortArrayOnTwoKeys(
-          expectedDevices,
-          "devicename",
-          "groupname"
-        );
-        expect(devices.length).to.equal(expectedDevices.length);
-
-        //compare device list
-        for (let index = 0; index < expectedDevices.length; index++) {
-          expect(devices[index].groupname).to.equal(
-            expectedDevices[index].groupname
-          );
-          expect(devices[index].devicename).to.equal(
-            expectedDevices[index].devicename
-          );
-          if (
-            expectedDevices[index].saltId !== null &&
-            expectedDevices[index].saltId !== undefined
-          ) {
-            expect(devices[index].saltId).to.equal(
-              expectedDevices[index].saltId
-            );
-          }
-
-          //TODO: consider removing the following from API - not a standard format of parameter
-          expect(devices[index]["Group.groupname"]).to.equal(
-            expectedDevices[index].groupname
-          );
-        }
+        expect(device.isAdmin).to.equal(expectedDevice.isAdmin);
       }
     });
   }

@@ -49,31 +49,16 @@ export interface ApiGroupsDevice {
 // from api/v1/devices (get)
 export interface ApiDevicesDevice {
   id: number;
-  devicename: string;
+  deviceName: string;
   active: boolean;
-  Users: ApiDevicesDeviceUser[];
 }
 
 // from api/v1/devices/.../in-group/ (get)
 export interface ApiDeviceInGroupDevice {
   id: number;
-  devicename: string;
+  deviceName: string;
   groupName: string;
-  userIsAdmin: boolean;
-  users: ApiDeviceUser[];
-}
-
-//From api/v1/devices/query (get)
-export interface ApiDeviceQueryDevice {
-  devicename: string;
-  groupname: string;
-
-  // FIXME(jon): This is the return type, not the request type
-  id?: number;
-  saltId?: number;
-  Group?: {
-    groupname: string;
-  };
+  isAdmin: boolean;
 }
 
 /*******************************************************************

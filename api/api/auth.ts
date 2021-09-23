@@ -107,15 +107,13 @@ const authenticate = (
     }
 
     if (types && !types.includes(jwtDecoded._type)) {
-      res
-        .status(401)
-        .json({
-          messages: [
-            `Invalid JWT access type '${jwtDecoded._type}', must be ${
-              types.length > 1 ? "one of " : ""
-            }${types.map((t) => `'${t}'`).join(", ")}`,
-          ],
-        });
+      res.status(401).json({
+        messages: [
+          `Invalid JWT access type '${jwtDecoded._type}', must be ${
+            types.length > 1 ? "one of " : ""
+          }${types.map((t) => `'${t}'`).join(", ")}`,
+        ],
+      });
       return;
     }
     const hasAccess = checkAccess(reqAccess, jwtDecoded);
@@ -385,7 +383,7 @@ const userCanAccessExtractedDevicesInternal =
       logger.info("Device(s) %s", deviceIds);
       await user.checkUserControlsDevices(
         deviceIds,
-        request.body.viewAsSuperAdmin
+        response.locals.viewAsSuperUser
       );
     } catch (e) {
       return next(new ClientError(e.message, 403));

@@ -110,7 +110,7 @@ describe("Device register", () => {
     delete testDevice.saltId;
 
     //Test with Salt Id = device id by default
-    cy.apiDeviceQueryCheck("Anita", [testDevice], null, [expectedDevice]);
+    cy.apiDevicesCheck("Anita", [testDevice], null, [expectedDevice]);
   });
 
   it("Can register a device and specify salt id", () => {
@@ -124,7 +124,7 @@ describe("Device register", () => {
       ...expectedDevice
     };
     delete testDevice.saltId;
-    cy.apiDeviceQueryCheck("Anita", [testDevice], null, [expectedDevice]);
+    cy.apiDevicesCheck("Anita", [testDevice], null, [expectedDevice]);
   });
 
   it("When registering a device must specify a valid password", () => {

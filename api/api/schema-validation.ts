@@ -3,7 +3,7 @@ import { Schema, ValidationError } from "jsonschema/lib";
 import logger from "../logging";
 import { ClientError } from "./customErrors";
 
-const JsonSchema = new Validator();
+export const JsonSchema = new Validator();
 Validator.prototype.customFormats.FloatZeroOne = (val) => {
   return typeof val === "number" && val >= 0 && val <= 1;
 };

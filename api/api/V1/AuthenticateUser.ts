@@ -16,12 +16,16 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import { body, oneOf } from "express-validator";
 import responseUtil from "./responseUtil";
-import { Application } from "express";
-import { extractUser, extractValidJWT } from "../extract-middleware";
+import { Application, Request, Response } from "express";
+import { validNameOf, validPasswordOf } from "../validation-middleware";
+import {
+  extractJwtAuthorisedSuperAdminUser,
+  extractRequiredUserByNameOrEmailOrId,
+} from "../extract-middleware";
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
 
@@ -43,30 +47,51 @@ export default function (app: Application) {
    */
   app.post(
     "/authenticate_user",
-    [
+    validateFields([
       oneOf(
         [
-          middleware.getUserByName(body),
-          middleware.getUserByName(body, "nameOrEmail"),
-          middleware.getUserByEmail(body),
-          middleware.getUserByEmail(body, "nameOrEmail"),
+          validNameOf(body("username")),
+          validNameOf(body("userName")),
+          validNameOf(body("nameOrEmail")),
+          body("nameOrEmail").isEmail(),
+          body("email").isEmail(),
         ],
         "could not find a user with the given username or email"
       ),
-      body("password").exists(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const passwordMatch = await request.body.user.comparePassword(
+      // FIXME - How about not sending our passwords in the clear eh?
+      validPasswordOf(body("password")),
+    ]),
+    extractRequiredUserByNameOrEmailOrId(
+      body(["username", "userName", "nameOrEmail", "email"])
+    ),
+    async (request: Request, response: Response) => {
+      const passwordMatch = await response.locals.user.comparePassword(
         request.body.password
       );
       if (passwordMatch) {
-        const token = auth.createEntityJWT(request.body.user);
-        const userData = await request.body.user.getDataValues();
+        const token = auth.createEntityJWT(response.locals.user);
+        const {
+          id,
+          username,
+          firstName,
+          lastName,
+          email,
+          globalPermission,
+          endUserAgreement,
+        } = response.locals.user;
         responseUtil.send(response, {
           statusCode: 200,
           messages: ["Successful login."],
-          token: "JWT " + token,
-          userData: userData,
+          token: `JWT ${token}`,
+          userData: {
+            id,
+            userName: username,
+            firstName,
+            lastName,
+            email,
+            globalPermission,
+            endUserAgreement,
+          },
         });
       } else {
         responseUtil.send(response, {
@@ -74,7 +99,7 @@ export default function (app: Application) {
           messages: ["Wrong password or username."],
         });
       }
-    })
+    }
   );
 
   /**
@@ -92,23 +117,35 @@ export default function (app: Application) {
    */
   app.post(
     "/admin_authenticate_as_other_user",
-    [
-      auth.authenticateAdmin,
-      oneOf(
-        [middleware.getUserByName(body, "name")],
-        "could not find a user with the given username"
-      ),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const token = await auth.createEntityJWT(request.body.user);
-      const userData = await request.body.user.getDataValues();
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([validNameOf(body("name"))]),
+    extractRequiredUserByNameOrEmailOrId(body("name")),
+    async (request: Request, response: Response) => {
+      const token = auth.createEntityJWT(response.locals.user);
+      const {
+        id,
+        username,
+        firstName,
+        lastName,
+        email,
+        globalPermission,
+        endUserAgreement,
+      } = response.locals.user;
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got user token."],
-        token: "JWT " + token,
-        userData: userData,
+        token: `JWT ${token}`,
+        userData: {
+          id,
+          userName: username,
+          firstName,
+          lastName,
+          email,
+          globalPermission,
+          endUserAgreement,
+        },
       });
-    })
+    }
   );
 
   /**

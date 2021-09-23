@@ -2,11 +2,8 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiDevicesDevice = import("../types").ApiDevicesDevice;
-  type ApiDeviceInGroupDevice = import("../types").ApiDeviceInGroupDevice;
-  type TestDeviceAndGroup = import("../../../../types/api/device").TestDeviceAndGroup;
-  type ApiDeviceQueryDevice = import("../types").ApiDeviceQueryDevice;
-  type ApiDeviceUsersUser = import("../types").ApiDeviceUsersUser;
+  type ApiDeviceResponse = import("../../../../types/api/device").ApiDeviceResponse;
+  type ApiDeviceUserRelationshipResponse = import("../../../../types/api/device").ApiDeviceUserRelationshipResponse;
 
   interface Chainable {
     /**
@@ -40,23 +37,25 @@ declare namespace Cypress {
 
     /**
      * Retrieve devices list from /devices
-     * compare with expected device details (JSON equivalent to that retunred by API)
+     * compare with expected device details (JSON equivalent to that returned by API)
      * pass optional params (params) to API call
      * optionally check for a non-200 status code
      */
     apiDevicesCheck(
       userName: string,
-      expectedDevice: ApiDevicesDevice[],
+      expectedDevice: ApiDeviceResponse[],
       params?: any,
       statusCode?: number
     ): any;
 
+
+    // FIXME - Maybe remove?
     /**
      * Same as apiDevicesCheck but check the expected items are on the list, rather than the only things on the list
      */
     apiDevicesCheckContains(
       userName: string,
-      expectedDevices: ApiDevicesDevice[],
+      expectedDevices: ApiDeviceResponse[],
       params?: string,
       statusCode?: number
     ): any;
@@ -64,7 +63,7 @@ declare namespace Cypress {
     /**
      * Retrieve device details using name and groupname from /device/XX/in-group/YY
      * use groupId if provided, otherwise groupName - the unused parameter should be set to null
-     * compare with expected device details (JSON equivalent to that retunred by API)
+     * compare with expected device details (JSON equivalent to that returned by API)
      * optionally check for a non-200 status code
      */
     apiDeviceInGroupCheck(
@@ -72,43 +71,30 @@ declare namespace Cypress {
       deviceName: string,
       groupName: string,
       groupId: number,
-      expectedDevices: ApiDeviceInGroupDevice,
+      expectedDevices: ApiDeviceResponse,
       params?: any,
       statusCode?: number
     ): any;
 
-    /**
-     * Retrieve list of devices matching  name and groupname or just groupname from /devices/query
-     * compare with expected device details (JSON equivalent to that retunred by API)
-     * optionally use operator to specify whether to AND or OR the groups and devices conditions supplier (default=OR)
-     * optionally check for a non-200 status code
-     */
-    apiDeviceQueryCheck(
-      userName: string,
-      devicesArray: TestDeviceAndGroup[] | undefined,
-      groupsArray: string[] | undefined,
-      expectedDevice: ApiDeviceQueryDevice[],
-      operator?: "and" | "or",
-      statusCode?: number
-    ): any;
-
+    // FIXME - Delete?  Just use deviceInGroup?
     /**
      * Retrieve list of users  who can access a device from /devices/users
      * compare with expected list of users
-     * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
+     * takes deviceName and looks up the device Id to pass tot he API.  Hence deviceName must be unique within test environment
      * optionally check for a non-200 status code
      */
     apiDeviceUsersCheck(
       userName: string,
       deviceName: string,
-      expectedUsers: ApiDeviceUsersUser[],
+      expectedUsers: ApiDeviceUserRelationshipResponse[],
       statusCode?: number
     ): any;
 
+    // FIXME - Delete?  Doesn't disambiguate by group
     /**
      * Add user to a device using /device/users
-     * Specify admin or non admin user (defualt=non-admin)
-     * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
+     * Specify admin or non admin user (default=non-admin)
+     * takes deviceName and looks up the device Id to pass tot he API.  Hence deviceName must be unique within test environment
      * optionally check for a non-200 status code
      */
     apiDeviceUserAdd(
@@ -119,9 +105,10 @@ declare namespace Cypress {
       statusCode?: number
     ): any;
 
+    // FIXME - Delete?  Doesn't disambiguate by group
     /**
      * Remove user from a device using /device/users
-     * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
+     * takes deviceName and looks up the device Id to pass tot he API.  Hence deviceName must be unique within test environment
      * optionally check for a non-200 status code
      */
     apiDeviceUserRemove(

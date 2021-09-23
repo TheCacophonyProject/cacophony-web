@@ -33,7 +33,7 @@ import jwt from "jsonwebtoken";
 import config from "../../config";
 import { ClientError } from "../customErrors";
 import log from "../../logging";
-import { extractValidJWT } from "../extract-middleware";
+import { extractJwtAuthorisedUser } from "../extract-middleware";
 import { integerOf } from "../validation-middleware";
 
 export default (app: Application, baseUrl: string) => {
@@ -239,7 +239,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/visits`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       middleware.parseJSON("where", query).optional(),
       integerOf(query("offset")).optional(),
@@ -253,7 +253,6 @@ export default (app: Application, baseUrl: string) => {
         }),
       middleware.parseJSON("filterOptions", query).optional(),
     ]),
-    auth.authenticateAndExtractUser,
     async (request: e.Request, response: e.Response) => {
       const result = await recordingUtil.queryVisits(
         request as unknown as RecordingQuery

@@ -24,7 +24,6 @@ import { DeviceUsersStatic } from "./DeviceUsers";
 import { ScheduleId } from "./Schedule";
 import { Event } from "./Event";
 import { AccessLevel } from "./GroupUsers";
-import { TestDeviceAndGroup } from "@typedefs/api/device";
 import logger from "../logging";
 
 const Op = Sequelize.Op;
@@ -36,6 +35,8 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   addUser: (userId: UserId, options: any) => any;
   devicename: string;
   groupname: string;
+  saltId: number;
+  active: boolean;
   password?: string;
   comparePassword: (password: string) => Promise<boolean>;
   reRegister: (
@@ -83,12 +84,6 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
   getFromNameAndPassword: (name: string, password: string) => Promise<Device>;
   allWithName: (name: string) => Promise<Device[]>;
   getFromNameAndGroup: (name: string, groupName: string) => Promise<Device>;
-  queryDevices: (
-    authUser: User,
-    devices: TestDeviceAndGroup[],
-    groupNames: string[],
-    operator: any
-  ) => Promise<{ devices: Device[]; nameMatches: string }>;
   getCacophonyIndex: (
     authUser: User,
     deviceId: Device,
@@ -226,7 +221,7 @@ export default function (
     if (viewAsSuperAdmin && user.hasGlobalRead()) {
       return this.findAndCountAll({
         where: conditions,
-        attributes: ["devicename", "id", "GroupId", "active"],
+        attributes: ["devicename", "id", "GroupId", "active", "saltId"],
         include: includeData,
         order: ["devicename"],
       });
@@ -240,7 +235,7 @@ export default function (
 
     return this.findAndCountAll({
       where: whereQuery,
-      attributes: ["devicename", "id", "active"],
+      attributes: ["devicename", "id", "active", "saltId"],
       order: ["devicename"],
       include: includeData,
     });
@@ -432,96 +427,6 @@ order by hour;
     }));
   };
 
-  /**
-   * finds devices that match device array and groups array with supplied operator (or by default)
-   */
-  Device.queryDevices = async function (
-    authUser,
-    devices,
-    groupNames,
-    operator = Op.or
-  ) {
-    let whereQuery;
-    let nameMatches;
-
-    if (devices.length) {
-      const fullNames = devices.filter((device) => {
-        return device.devicename.length > 0 && device.groupname.length > 0;
-      });
-      if (fullNames.length > 0) {
-        const groupDevices = fullNames.map((device) =>
-          [device.groupname, device.devicename].join(":")
-        );
-        whereQuery = Sequelize.where(
-          Sequelize.fn(
-            "concat",
-            Sequelize.col("Group.groupname"),
-            ":",
-            Sequelize.col("devicename")
-          ),
-          { [Op.in]: groupDevices }
-        );
-      }
-
-      // Are we saying that groupname is optional here?
-      const deviceNames = devices.filter((device) => {
-        return device.devicename.length > 0 && device.groupname.length == 0;
-      });
-      if (deviceNames.length > 0) {
-        const names = deviceNames.map((device) => device.devicename);
-        let nameQuery = Sequelize.where(Sequelize.col("devicename"), {
-          [Op.in]: names,
-        });
-
-        // FIXME Ideally this happens during API permissions stage
-        nameQuery = await addUserAccessQuery(authUser, nameQuery);
-        nameMatches = await this.findAll({
-          where: nameQuery,
-          include: [
-            {
-              model: models.Group,
-              as: "Group",
-              attributes: ["groupname"],
-            },
-          ],
-          raw: true,
-          attributes: ["Group.groupname", "devicename", "id", "saltId"],
-        });
-      }
-    }
-
-    if (groupNames.length) {
-      const groupQuery = Sequelize.where(Sequelize.col("Group.groupname"), {
-        [Op.in]: groupNames,
-      });
-      if (devices.length) {
-        whereQuery = { [operator]: [whereQuery, groupQuery] };
-      } else {
-        whereQuery = groupQuery;
-      }
-    }
-    const matches: any = {};
-    if (whereQuery) {
-      whereQuery = await addUserAccessQuery(authUser, whereQuery);
-      matches.devices = await this.findAll({
-        where: whereQuery,
-        include: [
-          {
-            model: models.Group,
-            as: "Group",
-            attributes: ["groupname"],
-          },
-        ],
-        raw: true,
-        attributes: ["Group.groupname", "devicename", "id", "saltId"],
-      });
-    }
-    if (nameMatches) {
-      matches.nameMatches = nameMatches;
-    }
-    return matches;
-  };
-
   // Fields that are directly settable by the API.
   Device.apiSettableFields = ["location", "newConfig"];
 
@@ -568,7 +473,7 @@ order by hour;
   // attributes are returned.
   Device.prototype.users = async function (
     authUser: User,
-    attrs = ["id", "username", "email"]
+    attrs = ["id", "username"]
   ): Promise<User[]> {
     const deviceUsers = await this.getUsers({ attributes: attrs });
     const group: Group = await (models.Group as GroupStatic).getFromId(

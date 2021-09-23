@@ -24,8 +24,8 @@ import { Application } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiAlertConditionSchema from "../../../types/jsonSchemas/api/alerts/ApiAlertCondition.schema.json";
 import {
-  extractAuthorisedUser,
-  extractDeviceForRequestingUser,
+  extractJwtAuthorisedUser,
+  extractAuthenticatedRequiredDeviceById,
 } from "../extract-middleware";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
@@ -65,7 +65,7 @@ export default function (app: Application, baseUrl: string) {
     // For authenticated requests, always extract a valid JWT first,
     // so that we don't leak data in subsequent error messages for an
     // unauthenticated request.
-    extractAuthorisedUser,
+    extractJwtAuthorisedUser,
     // Validation: Make sure the request payload is well-formed,
     // without regard for whether the described entities exist.
     validateFields([
@@ -83,7 +83,7 @@ export default function (app: Application, baseUrl: string) {
       body("deviceId").isInt().toInt().withMessage(expectedTypeOf("integer")),
     ]),
     // Now extract the items we need from the database.
-    extractDeviceForRequestingUser("body", "deviceId"),
+    extractAuthenticatedRequiredDeviceById(body("deviceId")),
     async (request, response) => {
       const newAlert = await models.Alert.create({
         name: request.body.name,
@@ -141,12 +141,12 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/device/:deviceId`,
-    extractAuthorisedUser,
+    extractJwtAuthorisedUser,
     validateFields([
       param("deviceId").isInt().toInt(),
       query("view-mode").optional().equals("user"),
     ]),
-    extractDeviceForRequestingUser("params", "deviceId"),
+    extractAuthenticatedRequiredDeviceById(param("deviceId")),
     async (request, response) => {
       const alerts = await models.Alert.queryUserDevice(
         response.locals.device.id,

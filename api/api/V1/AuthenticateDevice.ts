@@ -16,11 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import { validateFields } from "../middleware";
 import { body } from "express-validator";
 import auth from "../auth";
 import responseUtil from "./responseUtil";
-import { Application } from "express";
+import {Application, Response, Request, NextFunction} from "express";
+import {anyOf, validNameOf, validPasswordOf} from "../validation-middleware";
+import {extractUnauthenticatedOptionalDeviceInGroup} from "../extract-middleware";
+import { Device } from "models/Device";
+import { ClientError } from "../customErrors";
 
 export default function (app: Application) {
   /**
@@ -40,17 +44,34 @@ export default function (app: Application) {
    */
   app.post(
     "/authenticate_device",
-    [body("password").exists(), middleware.getDevice(body)],
-    middleware.requestWrapper(async (request, response) => {
-      const passwordMatch = await request.body.device.comparePassword(
+    validateFields([
+      validPasswordOf(body("password")),
+      anyOf(
+          validNameOf(body("devicename")),
+          validNameOf(body("deviceName"))
+      ),
+      anyOf(
+        validNameOf(body("groupname")),
+        validNameOf(body("groupName"))
+      ),
+    ]),
+    extractUnauthenticatedOptionalDeviceInGroup(body(["devicename", "deviceName"]), body(["groupname", "groupName"])),
+    (request: Request, response: Response, next: NextFunction) => {
+        if (!response.locals.device) {
+          return next(new ClientError("Device not found for supplied deviceName and groupName", 401));
+        }
+        next();
+      },
+    async (request: Request, response: Response) => {
+      const passwordMatch = await (response.locals.device as Device).comparePassword(
         request.body.password
       );
       if (passwordMatch) {
         return responseUtil.send(response, {
           statusCode: 200,
           messages: ["Successful login."],
-          id: request.body.device.id,
-          token: "JWT " + auth.createEntityJWT(request.body.device),
+          id: response.locals.device.id,
+          token: `JWT ${auth.createEntityJWT(response.locals.device)}`,
         });
       } else {
         return responseUtil.send(response, {
@@ -58,6 +79,6 @@ export default function (app: Application) {
           messages: ["Wrong password or devicename."],
         });
       }
-    })
+    }
   );
 }

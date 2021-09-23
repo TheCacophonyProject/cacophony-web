@@ -61,6 +61,7 @@ export default {
   loadConfig,
   timeZone,
   server,
+  productionEnv: server.loggerLevel !== "debug",
   euaVersion: 3,
   ...loadConfigFromArgs(),
 };

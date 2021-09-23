@@ -27,7 +27,7 @@ import { RecordingPermission } from "../../models/Recording";
 import {
   parseJSONField,
   extractRecording,
-  extractValidJWT,
+  extractJwtAuthorisedUser,
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
@@ -64,7 +64,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       body("tag")
         .custom(jsonSchemaOf(TagData))
@@ -72,7 +72,6 @@ export default function (app: Application, baseUrl: string) {
       idOf(body("recordingId")),
     ]),
     parseJSONField("body", "tag"),
-    auth.authenticateAndExtractUser,
     // We want a recording that this user has permissions for, and has permissions to tag.
     extractRecording("body", "recordingId"),
     async function (request: Request, response: Response) {
@@ -99,10 +98,8 @@ export default function (app: Application, baseUrl: string) {
   // Delete a tag
   app.delete(
     apiUrl,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([idOf(body("tagId"))]),
-    auth.authenticateAndExtractUser,
-
     // Can we guarantee that when a recording is deleted, all its tags are deleted too?
 
     // FIXME - So according to this, anyone with tag permissions can delete anyone elses tag.

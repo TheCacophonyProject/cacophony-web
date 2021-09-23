@@ -33,7 +33,7 @@ import {
 import { generateVisits } from "./monitoringVisit";
 import responseUtil from "./responseUtil";
 import { query } from "express-validator";
-import { extractValidJWT, extractViewMode } from "../extract-middleware";
+import { extractJwtAuthorisedUser } from "../extract-middleware";
 import { User } from "models/User";
 import logger from "../../logging";
 
@@ -142,7 +142,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/page`,
     // Validate session
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       query("page-size")
         .exists()
@@ -187,8 +187,6 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional(),
     ]),
     // Extract resources
-    auth.authenticateAndExtractUser,
-    extractViewMode,
     // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
     async (request: Request, response: Response) => {
       const user: User = response.locals.requestUser;

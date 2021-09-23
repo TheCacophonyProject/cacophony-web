@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware";
-import auth from "../auth";
 import models from "../../models";
 import { QueryOptions } from "../../models/Event";
 import responseUtil from "./responseUtil";
@@ -25,17 +24,18 @@ import { body, param, query } from "express-validator";
 import { Application, Response, Request, NextFunction } from "express";
 import { errors, powerEventsPerDevice } from "./eventUtil";
 import {
-  extractDevice,
-  extractOptionalDevice,
+  extractJwtAuthorisedDevice,
+  extractJwtAuthorisedUser,
   extractOptionalEventDetailSnapshot,
-  extractValidJWT,
+  extractAuthenticatedRequiredDeviceById,
+  extractAuthenticatedOptionalDeviceById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import EventDatesSchema from "../../../types/jsonSchemas/api/event/EventDates.schema.json";
 import EventDescriptionSchema from "../../../types/jsonSchemas/api/event/EventDescription.schema.json";
 import { EventDescription } from "@typedefs/api/event";
 import logger from "../../logging";
-import { booleanOf, eitherOf, idOf, integerOf } from "../validation-middleware";
+import { booleanOf, anyOf, idOf, integerOf } from "../validation-middleware";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -79,7 +79,7 @@ const uploadEvent = async (
 // TODO(jon): Consider whether extracting this is worth it compared with just
 //  duplicating and having things be explicit in each api endpoint?
 const commonEventFields = [
-  eitherOf(
+  anyOf(
     idOf(body("eventDetailId")),
     body("description")
       .exists()
@@ -128,11 +128,12 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    extractValidJWT,
+    extractJwtAuthorisedDevice,
     validateFields(commonEventFields),
     // Extract required resources
+
+    // FIXME - technically, should validate event detail snapshot against device here?
     extractOptionalEventDetailSnapshot("body", "eventDetailId"),
-    auth.authenticateAndExtractDevice,
     // Finally, upload event(s)
     uploadEvent
   );
@@ -164,16 +165,12 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     `${apiUrl}/device/:deviceId`,
     // Validate session
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     // Validate fields
     validateFields([idOf(param("deviceId")), ...commonEventFields]),
     // Extract required resources
     extractOptionalEventDetailSnapshot("body", "eventDetailId"),
-    auth.authenticateAndExtractUser,
-    extractDevice("params", "deviceId"),
-    // Validate resource permissions
-    auth.userCanAccessExtractedDevices,
-    // Finally, upload event(s)
+    extractAuthenticatedRequiredDeviceById(param("deviceId")),
     uploadEvent
   );
 
@@ -201,7 +198,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     apiUrl,
     // Validate session
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     // Validate request structure
     validateFields([
       query("startTime")
@@ -219,10 +216,10 @@ export default function (app: Application, baseUrl: string) {
       booleanOf(query("latest")).optional(),
     ]),
     // Extract required resources
-    auth.authenticateAndExtractUser,
-    extractOptionalDevice("query", "deviceId"),
+
+    // TODO(jon): Check that this works without a deviceId
+    extractAuthenticatedOptionalDeviceById(query("deviceId")),
     // Check permissions on resources
-    auth.userCanAccessOptionalExtractedDevices,
     // Extract device if any, and check that user has permissions to access it
     async (request: Request, response: Response) => {
       const query = request.query;
@@ -308,7 +305,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/errors`,
     // Authenticate the session
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     // Validate request structure
     validateFields([
       query("startTime").isISO8601({ strict: true }).optional(),
@@ -318,10 +315,7 @@ export default function (app: Application, baseUrl: string) {
       query("limit").isInt().optional().toInt(),
     ]),
     // Extract required resources
-    auth.authenticateAndExtractUser,
-    extractOptionalDevice("query", "deviceId"),
-    // Check permissions on resources
-    auth.userCanAccessOptionalExtractedDevices,
+    extractAuthenticatedOptionalDeviceById(query("deviceId")),
     async (request: Request, response: Response) => {
       const query = request.query;
 
@@ -370,7 +364,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/powerEvents`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       query("deviceId")
         .isInt()
@@ -379,10 +373,7 @@ export default function (app: Application, baseUrl: string) {
         .withMessage(expectedTypeOf("integer")),
     ]),
     // Extract required resources
-    auth.authenticateAndExtractUser,
-    extractOptionalDevice("query", "deviceId"),
-    // Check permissions on resources
-    auth.userCanAccessOptionalExtractedDevices,
+    extractAuthenticatedOptionalDeviceById(query("deviceId")),
     async (request: Request, response: Response) => {
       logger.info(
         "Get power events for %s at time %s",

@@ -11,15 +11,16 @@ import {
 import { expectedTypeOf } from "./middleware";
 import { Middleware } from "express-validator/src/base";
 import exp from "constants";
+import { extractValFromRequest } from "./extract-middleware";
 
 export const checkDeviceNameIsUniqueInGroup =
-  (location: Location, key: string) =>
+  (device: ValidationChain) =>
   async (
     request: Request,
     response: Response,
     next: NextFunction
   ): Promise<void> => {
-    const deviceName = request[location][key];
+    const deviceName = extractValFromRequest(request, device);
     const group = response.locals.group;
     if (!group) {
       return next(new ClientError("No group specified"));
@@ -60,7 +61,7 @@ export const booleanOf = (field: ValidationChain): ValidationChain =>
   field.isBoolean().toBoolean().withMessage(expectedTypeOf("boolean"));
 
 // Wrapping 'oneOf' with a useful error message.
-export const eitherOf = (
+export const anyOf = (
   ...fields: ValidationChain[] | ValidationChain[][]
 ): Middleware & { run: (req: Request) => Promise<Result> } => {
   if (Array.isArray(fields[0])) {

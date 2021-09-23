@@ -6,6 +6,7 @@ import {
   getCreds,
 } from "../../../commands/server";
 import { ApiDevicesDevice } from "../../../commands/types";
+import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe("Devices list", () => {
   const groupAdmin = "Edith-groupAdmin";
@@ -26,11 +27,11 @@ describe("Devices list", () => {
   const camera4 = "Debbie-camera";
   const superuser = "admin_test";
   const suPassword = "admin_test";
-  let expectedDeviceAdminView: ApiDevicesDevice;
-  let expectedDeviceMemberView: ApiDevicesDevice;
-  let expectedDevice2AdminView: ApiDevicesDevice;
-  let expectedDevice3AdminView: ApiDevicesDevice;
-  let expectedDevice4AdminView: ApiDevicesDevice;
+  let expectedDeviceAdminView: ApiDeviceResponse;
+  let expectedDeviceMemberView: ApiDeviceResponse;
+  let expectedDevice2AdminView: ApiDeviceResponse;
+  let expectedDevice3AdminView: ApiDeviceResponse;
+  let expectedDevice4AdminView: ApiDeviceResponse;
 
   before(() => {
     cy.apiUserAdd(groupMember);
@@ -40,34 +41,21 @@ describe("Devices list", () => {
     cy.testCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
       expectedDeviceAdminView = {
         id: getCreds(camera).id,
-        devicename: getTestName(camera),
+        saltId: getCreds(camera).id,
+        deviceName: getTestName(camera),
+        groupName: getTestName(group),
+        groupId: getCreds(group).id,
         active: true,
-        Users: [
-          {
-            id: getCreds(deviceAdmin).id,
-            username: getTestName(deviceAdmin),
-            DeviceUsers: {
-              admin: true,
-              DeviceId: getCreds(camera).id,
-              UserId: getCreds(deviceAdmin).id,
-            },
-          },
-          {
-            id: getCreds(deviceMember).id,
-            username: getTestName(deviceMember),
-            DeviceUsers: {
-              admin: false,
-              DeviceId: getCreds(camera).id,
-              UserId: getCreds(deviceMember).id,
-            },
-          },
-        ],
+        isAdmin: true,
       };
       expectedDeviceMemberView = {
         id: getCreds(camera).id,
-        devicename: getTestName(camera),
+        deviceName: getTestName(camera),
         active: true,
-        Users: null,
+        groupName: getTestName(group),
+        groupId: getCreds(group).id,
+        isAdmin: false,
+        saltId: getCreds(camera).id
       };
     });
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
@@ -78,9 +66,12 @@ describe("Devices list", () => {
     cy.testCreateUserGroupAndDevice(user2, group2, camera2).then(() => {
       expectedDevice2AdminView = {
         id: getCreds(camera2).id,
-        devicename: getTestName(camera2),
+        saltId: getCreds(camera2).id,
+        deviceName: getTestName(camera2),
+        groupId: getCreds(group2).id,
+        groupName: getTestName(group2),
         active: true,
-        Users: [],
+        isAdmin: true,
       };
     });
 
@@ -90,25 +81,21 @@ describe("Devices list", () => {
     cy.apiDeviceReregister(camera3, camera4, group3).then(() => {
       expectedDevice3AdminView = {
         id: getCreds(camera3).id,
-        devicename: getTestName(camera3),
+        saltId: getCreds(camera3).id,
+        deviceName: getTestName(camera3),
+        groupName: getTestName(group3),
+        groupId: getCreds(group3).id,
         active: false,
-        Users: [
-          {
-            id: getCreds(user3).id,
-            username: getTestName(user3),
-            DeviceUsers: {
-              admin: false,
-              DeviceId: getCreds(camera3).id,
-              UserId: getCreds(user3).id,
-            },
-          },
-        ],
+        isAdmin: true,
       };
       expectedDevice4AdminView = {
         id: getCreds(camera4).id,
-        devicename: getTestName(camera4),
+        saltId: getCreds(camera4).id,
+        deviceName: getTestName(camera4),
         active: true,
-        Users: [],
+        isAdmin: true,
+        groupName: getTestName(group3),
+        groupId: getCreds(group3).id
       };
     });
   });
@@ -120,9 +107,12 @@ describe("Devices list", () => {
 
       const expectedDevice2AdminView = {
         id: getCreds(camera2).id,
-        devicename: getTestName(camera2),
+        saltId: getCreds(camera2).id,
+        deviceName: getTestName(camera2),
         active: true,
-        Users: [],
+        isAdmin: true,
+        groupName: getTestName(group3),
+        groupId: getCreds(group3).id,
       };
 
       cy.apiDevicesCheckContains(superuser, [
@@ -174,24 +164,20 @@ describe("Devices list", () => {
     it.skip("Super-user 'as user' should see only their devices and users only where they are device admin", () => {});
   }
 
-  it("Group admin should see everything including device users", () => {
+  it("Group admin should see everything, and be listed as admin", () => {
     cy.apiDevicesCheck(groupAdmin, [expectedDeviceAdminView]);
   });
 
-  it("Group member should be able to read all but device users", () => {
-    // TODO: View of users is allowed here but not in single device view.  Issue 62. Enable member view when fixed
-    //cy.apiDevicesCheck(groupMember, [expectedDeviceMemberView]);
-    cy.apiDevicesCheck(groupMember, [expectedDeviceAdminView]);
+  it("Group member should be able to see everything, but should be not listed as admin", () => {
+    cy.apiDevicesCheck(groupMember, [expectedDeviceMemberView]);
   });
 
-  it("Device admin should see everything including device users", () => {
+  it("Device admin should see everything, and be listed as admin", () => {
     cy.apiDevicesCheck(deviceAdmin, [expectedDeviceAdminView]);
   });
 
-  it("Device member should be able to read all but device users", () => {
-    // TODO: View of users is allowed here but not in single device view.  Issue 62. Enable member view when fixed
-    //cy.apiDevicesCheck(deviceMember, [expectedDeviceMemberView]);
-    cy.apiDevicesCheck(deviceMember, [expectedDeviceAdminView]);
+  it("Device member should be see everything, but should be not listed as admin", () => {
+    cy.apiDevicesCheck(deviceMember, [expectedDeviceMemberView]);
   });
 
   it("Non member should not have any access to any devices", () => {

@@ -16,42 +16,45 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { asArray, expectedTypeOf, validateFields } from "../middleware";
+import { validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
 import { body, param, query } from "express-validator";
-import Sequelize from "sequelize";
 import { Application, Response, Request, NextFunction } from "express";
 import { ClientError } from "../customErrors";
 import logger from "../../logging";
 import {
-  extractDevice,
-  extractDeviceByName,
   extractGroupByName,
   extractGroupByNameOrId,
-  parseJSONField,
   extractUserByNameOrId,
-  extractValidJWT,
-  extractViewMode,
+  extractJwtAuthorisedUser,
+  extractDeviceForRequestingUser,
+  extractJwtAuthorisedDevice,
+  extractDevicesForRequestingUser,
+  extractDeviceForRequestingUserWithAdminPermissions,
+  extractDeviceByNameForRequestingUser,
+  extractAuthenticatedRequiredDeviceInGroup,
+  extractUnauthenticatedRequiredDeviceInGroup,
+  extractUnauthenticatedRequiredDeviceById,
+  extractAuthenticatedRequiredDeviceById,
+  extractUnauthenticatedRequiredGroupByNameOrId,
+  extractAdminAuthenticatedRequiredDeviceById,
+  extractOptionalUserById,
+  extractOptionalUserByNameOrId,
 } from "../extract-middleware";
 import {
   booleanOf,
   checkDeviceNameIsUniqueInGroup,
-  eitherOf,
+  anyOf,
   idOf,
   nameOf,
   nameOrIdOf,
   validNameOf,
   validPasswordOf,
 } from "../validation-middleware";
-import { TestDeviceAndGroup } from "@typedefs/api/device";
-import TestDeviceAndGroupSchema from "../../../types/jsonSchemas/api/device/TestDeviceAndGroup.schema.json";
-import { arrayOf, jsonSchemaOf } from "../schema-validation";
-import { User } from "models/User";
 import { Device } from "models/Device";
-
-const Op = Sequelize.Op;
+import { ApiDeviceResponse } from "@typedefs/api/device";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/devices`;
@@ -76,20 +79,24 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     validateFields([
       nameOf(body("group")),
-      validNameOf(body("devicename")),
+      anyOf(
+          validNameOf(body("devicename")),
+          validNameOf(body("deviceName")),
+      ),
       validPasswordOf(body("password")),
       idOf(body("saltId")).optional(),
     ]),
-    extractGroupByName("body", "group"),
-    checkDeviceNameIsUniqueInGroup("body", "devicename"),
+    extractUnauthenticatedRequiredGroupByNameOrId(body("group")),
+    checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
     async (request: Request, response: Response) => {
-      logger.info("Create Device for group %s", response.locals.group.id);
       const device = await models.Device.create({
-        devicename: request.body.devicename,
+        devicename: request.body.devicename || request.body.deviceName,
         password: request.body.password,
         GroupId: response.locals.group.id,
       });
       if (request.body.saltId) {
+        // FIXME - Looks like we can overwrite any devices saltId here - is that true, or will we get
+        //  a database error on the unique key constraint?
         await device.update({ saltId: request.body.saltId });
       } else {
         await device.update({ saltId: device.id });
@@ -154,23 +161,31 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     apiUrl,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
       query("onlyActive").default(true).isBoolean().toBoolean(),
     ]),
-    auth.authenticateAndExtractUser,
-    extractViewMode,
+    extractDevicesForRequestingUser,
     async (request: Request, response: Response) => {
-      const onlyActiveDevices =
-        request.query.onlyActive && Boolean(request.query.onlyActive) !== false;
-      const devices = await models.Device.allForUser(
-        response.locals.requestUser,
-        onlyActiveDevices,
-        response.locals.viewAsSuperAdmin
+      // TODO: If requested by super-user - set isAdmin on all devices.
+      const devicesResponse: ApiDeviceResponse[] = response.locals.devices.map(
+        (device) => ({
+          deviceName: device.devicename,
+          id: device.id,
+          groupName: device.Group.groupname,
+          groupId: device.GroupId,
+          active: device.active,
+          saltId: device.saltId,
+          isAdmin:
+            (
+              (device as any).Group?.Users[0]?.GroupUsers ||
+              (device as any).Users[0]?.DeviceUsers
+            )?.admin || false,
+        })
       );
       return responseUtil.send(response, {
-        devices: devices,
+        devices: devicesResponse,
         statusCode: 200,
         messages: ["Completed get devices query."],
       });
@@ -210,51 +225,39 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceName/in-group/:groupIdOrName`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
       nameOf(param("deviceName")),
     ]),
-    auth.authenticateAndExtractUser,
-    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
-    extractDeviceByName("params", "deviceName"),
-    auth.userHasAccessToDevice,
+    extractAuthenticatedRequiredDeviceInGroup(
+      param("deviceName"),
+      param("groupIdOrName")
+    ),
     async (request: Request, response: Response) => {
-      const user: User = response.locals.requestUser;
       const device: Device = response.locals.device;
-      const userIsDeviceAdmin =
-        await user.canDirectlyOrIndirectlyAdministrateDevice(device);
-      const deviceReturn: any = {
+      // TODO - map device response helper?
+      const deviceReturn: ApiDeviceResponse = {
         id: device.id,
         deviceName: device.devicename,
-        groupName: response.locals.group.groupname,
-        userIsAdmin: userIsDeviceAdmin,
+        groupName: device.Group.groupname,
+        saltId: device.saltId,
+        groupId: device.GroupId,
+        active: device.active,
+        isAdmin:
+            (
+                (device as any).Group?.Users[0]?.GroupUsers ||
+                (device as any).Users[0]?.DeviceUsers
+            )?.admin || false,
       };
-      if (userIsDeviceAdmin) {
-        // FIXME - Should we just let all users see other user states?
-        const deviceUsers = await device.users(user, ["id", "username"]);
-        deviceReturn.users = deviceUsers.map((user) => ({
-          userName: user.username,
-          id: user.id,
-          admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
-          relation: (user as any).DeviceUsers ? "device" : "group",
-        }));
-      }
-
       return responseUtil.send(response, {
         statusCode: 200,
         device: deviceReturn,
-        user: {
-          userName: user.username,
-          id: user.id,
-        },
         messages: ["Request successful"],
       });
     }
   );
 
-  // FIXME - It's unclear if we ever use this API - deprecate?
-  // Should be basically an alias for /api/v1/devices/:deviceName/in-group/:groupIdOrName anyway
   /**
    * @api {get} /api/v1/devices/users Get all users who can access a device.
    * @apiName GetDeviceUsers
@@ -281,11 +284,10 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/users`,
-    extractValidJWT,
     validateFields([idOf(query("deviceId"))]),
-    auth.authenticateAndExtractUser,
-    extractDevice("query", "deviceId"),
-    auth.userHasAdminAccessToDevice,
+
+    // Should this require admin access to the device?
+    extractAdminAuthenticatedRequiredDeviceById(query("deviceId")),
     async (request: Request, response: Response) => {
       const users = (
         await response.locals.device.users(response.locals.requestUser, [
@@ -295,7 +297,7 @@ export default function (app: Application, baseUrl: string) {
       ).map((user) => ({
         userName: user.username,
         id: user.id,
-        admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
+        isAdmin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
         relation: (user as any).DeviceUsers ? "device" : "group",
       }));
 
@@ -326,16 +328,26 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/users`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
-      eitherOf(nameOf(body("username")), idOf(body("userId"))),
+      anyOf(
+          nameOf(body("username")),
+          nameOf(body("userName")),
+          idOf(body("userId"))
+      ),
       idOf(body("deviceId")),
       booleanOf(body("admin")),
     ]),
-    auth.authenticateAndExtractUser,
-    extractUserByNameOrId("body", "username", "userId"),
-    extractDevice("body", "deviceId"),
-    auth.userHasAdminAccessToDevice,
+    extractOptionalUserById(body("userId")),
+    extractOptionalUserByNameOrId(body(["username", "userName"])),
+    (request: Request, response: Response, next: NextFunction) => {
+      // Check that we found the user through one of the methods.
+      if (!response.locals.user) {
+        return next(new ClientError(`User not found`));
+      }
+      next();
+    },
+    extractAdminAuthenticatedRequiredDeviceById(body("deviceId")),
     async (request, response) => {
       const added = await models.Device.addUserToDevice(
         response.locals.device,
@@ -369,15 +381,21 @@ export default function (app: Application, baseUrl: string) {
    */
   app.delete(
     `${apiUrl}/users`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       idOf(body("deviceId")),
-      eitherOf(nameOf(body("username")), idOf(body("userId"))),
+      anyOf(nameOf(body("username")), idOf(body("userId"))),
     ]),
-    auth.authenticateAndExtractUser,
-    extractDevice("body", "deviceId"),
-    auth.userHasAdminAccessToDevice,
-    extractUserByNameOrId("body", "username", "userId"),
+    extractOptionalUserById(body("userId")),
+    extractOptionalUserByNameOrId(body("username")),
+    (request: Request, response: Response, next: NextFunction) => {
+      // Check that we found the user through one of the methods.
+      if (!response.locals.user) {
+        return next(new ClientError(`User not found`));
+      }
+      next();
+    },
+    extractAdminAuthenticatedRequiredDeviceById(body("deviceId")),
     async function (request: Request, response: Response) {
       const removed = await models.Device.removeUserFromDevice(
         response.locals.device,
@@ -416,14 +434,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/reregister`,
-    extractValidJWT,
+    extractJwtAuthorisedDevice,
     validateFields([
       nameOf(body("newGroup")),
       validNameOf(body("newName")),
       validPasswordOf(body("newPassword")),
     ]),
-    auth.authenticateAndExtractDevice,
-    extractGroupByName("body", "newGroup"),
+    extractUnauthenticatedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
       logger.warning("Request device %s", response.locals.requestDevice);
       const device = await (response.locals.requestDevice as Device).reRegister(
@@ -434,7 +451,7 @@ export default function (app: Application, baseUrl: string) {
       if (device === false) {
         return next(
           new ClientError(
-            `already a device in group '${response.locals.groupname}' with the name '${request.body.newName}'`
+            `already a device in group '${response.locals.group.groupname}' with the name '${request.body.newName}'`
           )
         );
       }
@@ -443,89 +460,6 @@ export default function (app: Application, baseUrl: string) {
         messages: ["Registered the device again."],
         id: device.id,
         token: `JWT ${auth.createEntityJWT(device)}`,
-      });
-    }
-  );
-
-  /**
-   * @api {get} /api/v1/devices/query Query devices by groups or devices.
-   * @apiName query
-   * @apiGroup Device
-   * @apiDescription This call is to query all devices by groupname and/or groupname & devicename.
-   * Both active and inactive devices are returned.
-   *
-   * @apiUse V1DeviceAuthorizationHeader // FIXME - is this correct?
-   *
-   * @apiParam {JSON} [devices] array of Devices. Either groups or devices (or both) must be supplied.
-   * @apiParamExample {JSON} devices:
-   * [{
-   *   "devicename":"newdevice",
-   *   "groupname":"newgroup"
-   * }]
-   * @apiParam {String[]} [groups] array of group names. Either groups or devices (or both) must be supplied.
-   * @apiParam {String} [operator] to use when user supplies both groups and devices. Default is `"or"`.
-   * Accepted values are `"and"` or `"or"`.
-   * @apiSuccess {JSON} devices Array of devices which match fully (group or group and devicename)
-   * @apiSuccessExample {JSON} devices:
-   * [{
-   *  "groupname":"group name",
-   *  "devicename":"device name",
-   *  "id":2008,
-   *  "saltId":1007,
-   *  "Group.groupname":"group name"
-   * }]
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/query`,
-    extractValidJWT,
-    validateFields([
-      // Does this only work for users with global read access?
-      query("devices")
-        .exists()
-        .optional()
-        .withMessage(expectedTypeOf("TestDeviceAndGroupSchema[]"))
-        .bail()
-        .custom(jsonSchemaOf(arrayOf(TestDeviceAndGroupSchema))),
-      query("groups")
-        .exists()
-        .optional()
-        .bail()
-        .custom(asArray({ min: 1 }))
-        .withMessage(expectedTypeOf("string[]")),
-      query("operator").isIn(["or", "and", "OR", "AND"]).optional(),
-    ]),
-    auth.authenticateAndExtractUserWithAccess({ devices: "r" }), // FIXME What about checking access to devices?
-    parseJSONField("query", "devices"),
-    parseJSONField("query", "groups"),
-    async function (request: Request, response: Response, next: NextFunction) {
-      if (!response.locals.devices && !response.locals.groups) {
-        return next(
-          new ClientError(
-            "At least one of 'devices' or 'groups' must be specified",
-            422
-          )
-        );
-      }
-      let operator = Op.or;
-      if (
-        request.query.operator &&
-        (request.query.operator as string).toLowerCase() == "and"
-      ) {
-        operator = Op.and;
-      }
-      const devices = await models.Device.queryDevices(
-        response.locals.requestUser,
-        (response.locals.devices || []) as TestDeviceAndGroup[],
-        (response.locals.groups || []) as string[],
-        operator
-      );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        devices: devices.devices,
-        nameMatches: devices.nameMatches,
-        messages: ["Completed get devices query."],
       });
     }
   );
@@ -549,16 +483,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceId/cacophony-index`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
     ]),
-    auth.authenticateAndExtractUser,
-    extractDevice("params", "deviceId"),
-    // Make sure the user can see the device:
-    auth.userHasAccessToGroup,
+    extractAuthenticatedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const cacophonyIndex = await models.Device.getCacophonyIndex(
         response.locals.requestUser,
@@ -593,15 +524,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceId/cacophony-index-histogram`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
     ]),
-    auth.authenticateAndExtractUser,
-    extractDevice("params", "deviceId"),
-    auth.userHasAccessToDevice,
+    extractAuthenticatedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const cacophonyIndex = await models.Device.getCacophonyIndexHistogram(
         response.locals.requestUser,

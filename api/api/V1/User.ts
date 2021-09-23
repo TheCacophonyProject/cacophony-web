@@ -25,8 +25,12 @@ import { ClientError } from "../customErrors";
 import { Application, NextFunction, Request, Response } from "express";
 import config from "../../config";
 import { User } from "../../models/User";
-import {validNameOf, validPasswordOf} from "../validation-middleware";
-import {extractAuthorisedAdminUser, extractAuthorisedUser, extractUserByName} from "../extract-middleware";
+import { validNameOf, validPasswordOf } from "../validation-middleware";
+import {
+  extractJwtAuthorisedSuperAdminUser,
+  extractJwtAuthorisedUser,
+  extractUserByName,
+} from "../extract-middleware";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
@@ -102,25 +106,34 @@ export default function (app: Application, baseUrl: string) {
    */
   app.patch(
     apiUrl,
-    extractAuthorisedUser,
+    extractJwtAuthorisedUser,
     validateFields([
-        // FIXME - Could be "At least one of" with nicer error messages?
-        oneOf([
-      validNameOf(body("username")),
-      body("email").isEmail(),
-      validPasswordOf(body("password")),
-      body("endUserAgreement").isInt(),
-            ], "Must provide at least one of: username; email; password; endUserAgreement."),
+      // FIXME - Could be "At least one of" with nicer error messages?
+      oneOf(
+        [
+          validNameOf(body("username")),
+          body("email").isEmail(),
+          validPasswordOf(body("password")),
+          body("endUserAgreement").isInt(),
+        ],
+        "Must provide at least one of: username; email; password; endUserAgreement."
+      ),
     ]),
     async (request: Request, Response: Response, next: NextFunction) => {
-      if (request.body.username && !(await models.User.freeUsername(request.body.username))) {
+      if (
+        request.body.username &&
+        !(await models.User.freeUsername(request.body.username))
+      ) {
         return next(new ClientError("Username in use"));
       } else {
         next();
       }
     },
     async (request: Request, Response: Response, next: NextFunction) => {
-      if (request.body.email && !(await models.User.freeEmail(request.body.email))) {
+      if (
+        request.body.email &&
+        !(await models.User.freeEmail(request.body.email))
+      ) {
         return next(new ClientError("Email address in use"));
       } else {
         next();
@@ -134,7 +147,6 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
-
 
   // FIXME - Make this username *or* id?
   /**
@@ -151,12 +163,10 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:userName`,
-      extractAuthorisedUser,
-      validateFields([
-          validNameOf(param("userName"))
-      ]),
-      extractUserByName("params", "userName"),
-      // FIXME - should a regular user be able to get user information for any other user?
+    extractJwtAuthorisedUser,
+    validateFields([validNameOf(param("userName"))]),
+    extractUserByName("params", "userName"),
+    // FIXME - should a regular user be able to get user information for any other user?
     async (request, response) => {
       return responseUtil.send(response, {
         statusCode: 200,
@@ -183,7 +193,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${baseUrl}/listUsers`,
-    extractAuthorisedAdminUser,
+    extractJwtAuthorisedSuperAdminUser,
     async (request, response) => {
       const users = await models.User.getAll({});
       return responseUtil.send(response, {
@@ -204,14 +214,11 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-  app.get(
-   `${baseUrl}/endUserAgreement/latest`,
-    async (request, response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
-        euaVersion: config.euaVersion,
-      });
-    }
-  );
+  app.get(`${baseUrl}/endUserAgreement/latest`, async (request, response) => {
+    return responseUtil.send(response, {
+      statusCode: 200,
+      messages: [],
+      euaVersion: config.euaVersion,
+    });
+  });
 }

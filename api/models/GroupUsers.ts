@@ -48,6 +48,8 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
     attributes
   ) as unknown as GroupUsersStatic;
 
+  GroupUsers.addAssociations = function () {};
+
   //---------------
   // CLASS METHODS
   //---------------

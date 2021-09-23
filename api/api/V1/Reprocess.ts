@@ -17,12 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import middleware, { validateFields } from "../middleware";
-import auth from "../auth";
 import { body, param } from "express-validator";
 
 import { reprocessRecording, StatusCode } from "./recordingUtil";
 import { Application, Response, Request } from "express";
-import { extractValidJWT } from "../extract-middleware";
+import { extractJwtAuthorisedUser } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import responseUtil from "./responseUtil";
 
@@ -43,9 +42,8 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/:id`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([idOf(param("id"))]),
-    auth.authenticateAndExtractUser,
     // FIXME - recording permissions checking should happen here?
 
     // FIXME - Any user can ask for all their recordings to be reprocessed at once
@@ -75,10 +73,9 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     apiUrl,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     // FIXME - Should this be a JSON schema of something?
     validateFields([middleware.parseJSON("recordings", body)]),
-    auth.authenticateAndExtractUser,
     async (request: Request, response: Response) => {
       // FIXME Simplify
       const recordings = request.body.recordings;

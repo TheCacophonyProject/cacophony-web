@@ -10,4 +10,5 @@ export type RecordingId = number;
 export type TrackId = number;
 export type TrackTagId = number;
 export type DeviceId = number;
+export type SaltId = number;
 export type GroupId = number;

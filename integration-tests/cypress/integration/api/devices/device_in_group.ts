@@ -8,6 +8,7 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
 } from "../../../commands/constants";
+import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe("Device in group", () => {
   const groupAdmin = "George-groupAdmin";
@@ -19,8 +20,8 @@ describe("Device in group", () => {
   const camera = "camera1";
   const NOT_ADMIN = false;
   const ADMIN = true;
-  let expectedDeviceInGroupAdminView: ApiDeviceInGroupDevice;
-  let expectedDeviceInGroupUserView: ApiDeviceInGroupDevice;
+  let expectedDeviceInGroupAdminView: ApiDeviceResponse;
+  let expectedDeviceInGroupUserView: ApiDeviceResponse;
 
   before(() => {
     cy.apiUserAdd(groupMember);
@@ -30,40 +31,21 @@ describe("Device in group", () => {
     cy.testCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
       expectedDeviceInGroupAdminView = {
         id: getCreds(camera).id,
-        devicename: getTestName(camera),
+        saltId: getCreds(camera).id,
+        deviceName: getTestName(camera),
         groupName: getTestName(group),
-        userIsAdmin: true,
-        users: [
-          {
-            userName: getTestName(deviceMember),
-            isAdmin: false,
-            id: getCreds(deviceMember).id,
-          },
-          {
-            userName: getTestName(deviceAdmin),
-            isAdmin: true,
-            id: getCreds(deviceAdmin).id,
-          },
-
-          //NOTE(jon): Was removed?
-          {
-            userName: getTestName(groupAdmin),
-            isAdmin: true,
-            id: getCreds(groupAdmin).id,
-          },
-          {
-            userName: getTestName(groupMember),
-            isAdmin: false,
-            id: getCreds(groupMember).id,
-          },
-        ],
+        groupId: getCreds(group).id,
+        isAdmin: true,
+        active: true,
       };
       expectedDeviceInGroupUserView = {
         id: getCreds(camera).id,
-        devicename: getTestName(camera),
+        saltId: getCreds(camera).id,
+        deviceName: getTestName(camera),
         groupName: getTestName(group),
-        userIsAdmin: false,
-        users: null,
+        groupId: getCreds(group).id,
+        isAdmin: false,
+        active: true,
       };
     });
     cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
@@ -137,8 +119,7 @@ describe("Device in group", () => {
     );
   });
 
-  // TODO: Fails - returns empty response instead of error message. Issue 60
-  it.skip("Correctly handles invalid device", () => {
+  it("Correctly handles invalid device", () => {
     cy.apiDeviceInGroupCheck(
       groupAdmin,
       "bad-camera",
@@ -146,7 +127,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HTTP_BadRequest
+        HTTP_Forbidden
     );
   });
 
@@ -158,7 +139,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HTTP_BadRequest
+      HTTP_Forbidden
     );
   });
 });

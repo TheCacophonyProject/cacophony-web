@@ -26,15 +26,14 @@ import {
   extractGroupByNameOrId,
   parseJSONField,
   extractUserByNameOrId,
-  extractValidJWT,
-  extractViewMode,
+  extractJwtAuthorisedUser,
 } from "../extract-middleware";
 import logger from "../../logging";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "../../../types/jsonSchemas/api/station/ApiCreateStationData.schema.json";
 import {
   booleanOf,
-  eitherOf,
+  anyOf,
   idOf,
   nameOf,
   nameOrIdOf,
@@ -62,9 +61,8 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([validNameOf(body("groupname"))]),
-    auth.authenticateAndExtractUser,
     async (request: Request, response: Response, next: NextFunction) => {
       const existingGroup = await models.Group.getFromName(
         request.body.groupname
@@ -120,14 +118,12 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     apiUrl,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     // FIXME deprecate this where query!  Realistically, do we ever use it?
     validateFields([
       middleware.parseJSON("where", query).optional(),
       query("view-mode").optional().equals("user"),
     ]),
-    auth.authenticateAndExtractUser,
-    extractViewMode,
     async (request: Request, response: Response) => {
       const groups = await models.Group.query(
         request.query.where || {},
@@ -174,15 +170,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
       query("view-mode").optional().equals("user"),
     ]),
-    auth.authenticateAndExtractUser,
     extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
     auth.userHasAccessToGroup,
-    extractViewMode,
     async (request: Request, response: Response) => {
       // FIXME - We are likely returning way too much and the kitchen sink information here
       // Who uses this function?
@@ -222,9 +216,9 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/devices`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([nameOrIdOf(param("groupIdOrName"))]),
-    auth.authenticateAndExtractUser,
+    // FIXME - combine
     extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
     auth.userHasAccessToGroup,
     async (request: Request, response: Response) => {
@@ -269,9 +263,9 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/users`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([nameOrIdOf(param("groupIdOrName"))]),
-    auth.authenticateAndExtractUser,
+    // FIXME - combine
     extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
     auth.userHasAccessToGroup,
     async (request: Request, response: Response) => {
@@ -312,15 +306,15 @@ export default function (app: Application, baseUrl: string) {
   // TODO(jon): Would be nicer as /api/v1/groups/:groupName/users or something
   app.post(
     `${apiUrl}/users`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
-      eitherOf(nameOf(body("group")), idOf(body("groupId"))),
-      eitherOf(nameOf(body("username")), idOf(body("userId"))),
+      anyOf(nameOf(body("group")), idOf(body("groupId"))),
+      anyOf(nameOf(body("username")), idOf(body("userId"))),
       booleanOf(body("admin")),
     ]),
     // Extract required resources to validate permissions.
+    // FIXME - combine
     extractGroupByNameOrId("body", "group", "groupId"),
-    auth.authenticateAndExtractUser,
     auth.userHasAdminAccessToGroup,
     // Extract secondary resource
     extractUserByNameOrId("body", "username", "userId"),
@@ -353,14 +347,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.delete(
     `${apiUrl}/users`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
-      eitherOf(nameOf(body("group")), idOf(body("groupId"))),
-      eitherOf(nameOf(body("username")), idOf(body("userId"))),
+      anyOf(nameOf(body("group")), idOf(body("groupId"))),
+      anyOf(nameOf(body("username")), idOf(body("userId"))),
     ]),
     // Extract required resources to check permissions
     extractGroupByNameOrId("body", "group", "groupId"),
-    auth.authenticateAndExtractUser,
     // Check user permissions for resources
     auth.userHasAdminAccessToGroup,
     // Extract secondary resource
@@ -411,7 +404,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:groupIdOrName/stations`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([
       body("stations")
         .exists()
@@ -420,7 +413,6 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
     ]),
     // Extract required resources
-    auth.authenticateAndExtractUser,
     extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
     // Check permissions
     auth.userHasAdminAccessToGroup,
@@ -484,10 +476,10 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/stations`,
-    extractValidJWT,
+    extractJwtAuthorisedUser,
     validateFields([nameOrIdOf(param("groupIdOrName"))]),
+    // FIXME - combine
     extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
-    auth.authenticateAndExtractUser,
     auth.userHasAccessToGroup,
     async (request: Request, response: Response) => {
       // FIXME - A flag to only get non-retired stations?
