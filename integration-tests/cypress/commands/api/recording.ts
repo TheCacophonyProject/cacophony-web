@@ -193,7 +193,11 @@ Cypress.Commands.add(
         if (response.body.recording!==undefined) {
           saveJobKeyByName(recordingName, response.body.recording.jobKey);
         }
-        expect(response.body.recording,"Expect response to contain a recording").to.exist;
+        if (expectedRecording===undefined) {
+          expect(response.body.recording,"Expect response to contain no recordings").to.be.undefined;
+        } else {
+          expect(response.body.recording,"Expect response to contain a recording").to.exist;
+        };
         checkTreeStructuresAreEqualExcept(
           expectedRecording,
           response.body.recording,
@@ -249,6 +253,49 @@ Cypress.Commands.add(
     });
   }
 );
+
+Cypress.Commands.add(
+  "apiRecordingUpdate",
+  (
+    userName: string,
+    recordingNameOrId: string,
+    updates: any,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+
+    logTestDescription(
+      `Update recording ${recordingNameOrId}`,
+      { recording: recordingNameOrId, updates: updates }
+    );
+
+    let recordingId: string;
+    if (additionalChecks["useRawRecordingId"] === true) {
+      recordingId = recordingNameOrId;
+    } else {
+      recordingId = getCreds(recordingNameOrId).id.toString();
+    }
+
+    const url = v1ApiPath(`recordings/${recordingId}`)
+
+    const params = {
+      updates: JSON.stringify(updates)
+    };
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "PATCH",
+        url: url,
+        body: params
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages).to.contain(additionalChecks["message"]);
+      }
+    });
+  });
 
 Cypress.Commands.add(
   "apiRecordingDelete",

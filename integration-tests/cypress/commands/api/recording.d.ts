@@ -129,6 +129,22 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
+    /* Update a single recording using api/v1/recordings/{id} PATCH
+     * Optionally: check for a non-200 statusCode
+     * By default function looks up the recording Id using the recordingNameOrId supplied when
+     * recording was created
+     * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+     * Optionally: check for returned messages (additionalChecks.message)
+     */
+    apiRecordingUpdate(
+      userName: string,
+      recordingNameOrId: string,
+      updates: any,
+      statusCode?: number,
+      additionalChecks?: any
+    ):any;
+
+
     /* Get thumbnail for recording using api/v1/recordings/{id}/thumbnail
      * Verfiy that the recording returns a file
      * Optionally: check for a non-200 statusCode

@@ -388,7 +388,7 @@ describe("Recordings - processing tests", () => {
       let expectedRecording19 = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording19", "rpCamera1", "rpGroup", null, recording19);
 
       cy.log("Send for processing");
-      cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording10", expectedProcessing19, EXCLUDE_KEYS);
+      cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording19", expectedProcessing19, EXCLUDE_KEYS);
 
       cy.log("Look up algorithm and then post tracks");
       cy.processingApiAlgorithmPost ({"tracking-format":42}).then((algorithmId) => {
