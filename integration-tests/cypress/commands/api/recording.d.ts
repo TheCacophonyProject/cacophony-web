@@ -19,19 +19,20 @@ declare namespace Cypress {
     processingApiCheck(
       type: string,
       state: string,
+      recordingName: string, 
       expectedRecording: any,
       excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any
     ): any;
 
-     /** Post to /api/fileProcessing 'done' endpoint
+     /** Put to /api/fileProcessing 'done' endpoint
        * recordingId and jobkey is looked up using recordingName
        * other parameters are passed to the endpoint transparently
        * Optionally: check for a non-200 statusCode
        */
 
-    processingApiPost (
+    processingApiPut (
     recordingName: string,
     success: boolean,
     result: any,
@@ -39,6 +40,36 @@ declare namespace Cypress {
     newProcessedFileKey: string,
     statusCode?: number
   ):any;
+
+    /** Post to /api/fileProcessing/algorithm
+      * Add or look up algorithm matching supplied JSON algorithm
+      * Returns algorithmId
+      */
+
+   processingApiAlgorithmPost( algorithm: any): Chainable<number>;
+
+
+    /** Post to /api/fileProcessing/:id/tracks
+      * recordingId is looked up using recordingName
+      * other parameters are passed to the endpoint transparently
+      * Optionally: check for a non-200 statusCode
+      */
+    processingApiTracksPost ( trackName: string, recordingName: string, data: any, algorithmId: number, statusCode?: number ):any;
+
+    /** Post to /api/fileProcessing/:id/tracks/:trackId/tags
+      * recordingId is looked up using recordingName
+      * other parameters are passed to the endpoint transparently
+      * Optionally: check for a non-200 statusCode
+      */
+    processingApiTracksTagsPost ( trackName: string, recordingName: string, what: any, confidence: number, data?: any, statusCode?: number):any;
+
+    /** Delete from /api/fileProcessing/:id/tracks
+      * recordingId is looked up using recordingName
+      * Optionally: check for a non-200 statusCode
+      */
+    processingApiTracksDelete ( recordingName: string, statusCode?: number):any;
+
+
     /**
      * upload a single recording to for a particular camera using deviceId and user credentials
      * Optionally, save the id against provided recordingName
@@ -97,6 +128,15 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
+    /* Get thumbnail for recording using api/v1/recordings/{id}/thumbnail
+     * Verfiy that the recording returns a file
+     * Optionally: check for a non-200 statusCode
+     * By default function looks up the recording Id using the recordingNameOrId supplied when
+     * recording was created
+     * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+     */
+    apiRecordingThumbnailCheck ( userName: string, recordingNameOrId: string, statusCode?: number, additionalChecks?: any):any;
 
     /* Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
      * Verfiy that the recording data matched the expectedRecordings

@@ -3,7 +3,7 @@ import {
   //  HTTP_Unprocessable,
   //  HTTP_BadRequest,
   //HTTP_Forbidden,
-  //  HTTP_OK200,
+  //HTTP_OK200,
   NOT_NULL,
   superuser,
   suPassword,
@@ -20,7 +20,9 @@ import {
   ApiRecordingReturned,
   ApiRecordingSet,
   ApiRecordingForProcessing,
+  ApiAlertConditions
 } from "../../../commands/types";
+import { getCreds } from "../../../commands/server";
 
 import {
   TestCreateExpectedRecordingData,
@@ -161,11 +163,13 @@ const templateAudioRecording: ApiRecordingSet = {
   processingState: "analyse",
 };
 
+const POSSUM_ALERT: ApiAlertConditions[] = [ { tag: "possum", automatic: true }, ];
+
 describe("Recordings - processing tests", () => {
   before(() => {
     cy.testCreateUserGroupAndDevice("rpGroupAdmin", "rpGroup", "rpCamera1");
     cy.apiDeviceAdd("rpCamera1b", "rpGroup");
-    cy.apiAlertAdd( "rpGroupAdmin", "rpAlert1b", [{ tag: "possum", automatic: true }], "rpCamera1b");
+    cy.apiAlertAdd( "rpGroupAdmin", "rpAlert1b", POSSUM_ALERT, "rpCamera1b",0);
 
     cy.testCreateUserGroupAndDevice("rpGroup2Admin", "rpGroup2", "rpCamera2");
 
@@ -213,7 +217,7 @@ describe("Recordings - processing tests", () => {
       cy.log("Send for processing (tracking)");
       expectedProcessing1.processingStartTime = NOT_NULL;
       expectedProcessing1.updatedAt = NOT_NULL;
-      cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing1, EXCLUDE_KEYS);
+      cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording1", expectedProcessing1, EXCLUDE_KEYS);
 
       cy.log("Check status");
       expectedRecording1b = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording1", "rpCamera1", "rpGroup", null, recording1);
@@ -222,7 +226,7 @@ describe("Recordings - processing tests", () => {
       cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording1", expectedRecording1b, EXCLUDE_IDS);
 
       cy.log("Mark processing as done");
-      cy.processingApiPost ( "rpRecording1",  true, {}, true, undefined);
+      cy.processingApiPut ( "rpRecording1",  true, {}, true, undefined);
 
       cy.log("Check status (FINISHED)");
       expectedRecording1c = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording1", "rpCamera1", "rpGroup", null, recording1);
@@ -253,9 +257,9 @@ describe("Recordings - processing tests", () => {
           const expectedProcessing5 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording5", "rpCamera1", "rpGroup", null, recording5);
 
           cy.log("Check recordings ordered by recordingDateTime (3,5,4)");
-          cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing3, EXCLUDE_KEYS);
-          cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing5, EXCLUDE_KEYS);
-          cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing4, EXCLUDE_KEYS);
+          cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording3", expectedProcessing3, EXCLUDE_KEYS);
+          cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording5", expectedProcessing5, EXCLUDE_KEYS);
+          cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording4", expectedProcessing4, EXCLUDE_KEYS);
 
           //TODO: repeat for each stage of processing
         });
@@ -287,10 +291,10 @@ describe("Recordings - processing tests", () => {
             cy.log(
               "Check recordings ordered by alerts first, oldest first (9,7,8,6)"
             );
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing9, EXCLUDE_KEYS);
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing7, EXCLUDE_KEYS);
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing8, EXCLUDE_KEYS);
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing6, EXCLUDE_KEYS);
+            cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording9", expectedProcessing9, EXCLUDE_KEYS);
+            cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording7", expectedProcessing7, EXCLUDE_KEYS);
+            cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording9", expectedProcessing8, EXCLUDE_KEYS);
+            cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording6", expectedProcessing6, EXCLUDE_KEYS);
 
             //TODO: repeat for each stage of processing
           });
@@ -320,10 +324,10 @@ describe("Recordings - processing tests", () => {
             cy.log(
               "Check recordings ordered by oldest first with audio and thermal in different queues"
             );
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing12, EXCLUDE_KEYS);
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing10, EXCLUDE_KEYS);
-            cy.processingApiCheck( "audio", "analyse", expectedProcessing13, EXCLUDE_KEYS);
-            cy.processingApiCheck( "audio", "analyse", expectedProcessing11, EXCLUDE_KEYS);
+            cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording12", expectedProcessing12, EXCLUDE_KEYS);
+            cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording10", expectedProcessing10, EXCLUDE_KEYS);
+            cy.processingApiCheck( "audio", "analyse", "rpRecording13", expectedProcessing13, EXCLUDE_KEYS);
+            cy.processingApiCheck( "audio", "analyse", "rpRecording11", expectedProcessing11, EXCLUDE_KEYS);
 
             //TODO: repeat for each stage of processing once GP's changes are integrated
           });
@@ -332,28 +336,246 @@ describe("Recordings - processing tests", () => {
     });
   });
 
+
+  it("Tracking stage can add tracks and tags to the recording", () => {
+    const recording18 = TestCreateRecordingData(templateRecording);
+    cy.apiRecordingAdd( "rpCamera1", recording18, "oneframe.cptv", "rpRecording18").then(() => {
+      const expectedProcessing18 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording18", "rpCamera1", "rpGroup", null, recording18);
+      let expectedRecording18 = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording18", "rpCamera1", "rpGroup", null, recording18);
+
+      cy.log("Send for processing");
+      cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording18", expectedProcessing18, EXCLUDE_KEYS);
+
+      cy.log("Look up algorithm and then post tracks");
+      cy.processingApiAlgorithmPost ({"tracking-format":42}).then((algorithmId) => {
+        cy.processingApiTracksPost ( "rpTrack18", "rpRecording18", {"start_s": 1, "end_s": 4}, algorithmId);
+
+        cy.log("Check tracks added to recording");
+        expectedRecording18.processing=true;
+        expectedRecording18.processingState='analyse';
+        expectedRecording18.Tracks= [{
+          TrackTags: [],
+          data: {start_s: 1, end_s: 4},
+          id: 1
+        }];
+        cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording18", expectedRecording18, EXCLUDE_IDS).then(() => {
+
+          cy.log("Check tags added to recording/track");
+          expectedRecording18.Tracks= [{
+            TrackTags: [{what: "possum", automatic: true, TrackId: getCreds("rpTrack18").id, confidence: 0.9, UserId: null, data: "master", User: null}],
+            data: {start_s: 1, end_s: 4},
+            id: 1
+          }];
+  
+          cy.processingApiTracksTagsPost("rpTrack18", "rpRecording18","possum",0.9, {name: 'master'});
+          cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording18", expectedRecording18, EXCLUDE_IDS).then(() => {
+ 
+            cy.log("set processing to done and recheck tracks");
+            cy.processingApiPut ( "rpRecording18",  true, {}, true, undefined);
+            expectedRecording18.processing=false;
+            expectedRecording18.processingState="FINISHED";
+            cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording18", expectedRecording18, EXCLUDE_IDS);
+          });
+        });      
+      });
+    }); 
+  }); 
+
+  it("Tracking stage can delete tracks and tags from the recording", () => {
+    const recording19 = TestCreateRecordingData(templateRecording);
+    cy.apiRecordingAdd( "rpCamera1", recording19, "oneframe.cptv", "rpRecording19").then(() => {
+      const expectedProcessing19 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording19", "rpCamera1", "rpGroup", null, recording19);
+      let expectedRecording19 = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording19", "rpCamera1", "rpGroup", null, recording19);
+
+      cy.log("Send for processing");
+      cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording10", expectedProcessing19, EXCLUDE_KEYS);
+
+      cy.log("Look up algorithm and then post tracks");
+      cy.processingApiAlgorithmPost ({"tracking-format":42}).then((algorithmId) => {
+        cy.processingApiTracksPost ( "rpTrack19", "rpRecording19", {"start_s": 1, "end_s": 4}, algorithmId);
+
+        cy.log("Check tracks added to recording");
+        expectedRecording19.processing=true;
+        expectedRecording19.processingState='analyse';
+        expectedRecording19.Tracks= [{
+          TrackTags: [],
+          data: {start_s: 1, end_s: 4},
+          id: 1
+        }];
+        cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording19", expectedRecording19, EXCLUDE_IDS).then(() => {
+
+          cy.log("Check tags added to recording/track");
+          expectedRecording19.Tracks= [{
+            TrackTags: [{what: "possum", automatic: true, TrackId: getCreds("rpTrack19").id, confidence: 0.9, UserId: null, data: "master", User: null}],
+            data: {start_s: 1, end_s: 4},
+            id: 1
+          }];
+          cy.processingApiTracksTagsPost("rpTrack19", "rpRecording19","possum",0.9, {name: 'master'});
+          cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording19", expectedRecording19, EXCLUDE_IDS).then(() => {
+ 
+            cy.log("Delete the track and check tracks deleted");
+            cy.processingApiTracksDelete ("rpRecording19");
+            expectedRecording19.Tracks=[];
+            cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording19", expectedRecording19, EXCLUDE_IDS).then(() => {
+
+              cy.log("set processing to done and recheck tracks");
+              cy.processingApiPut ( "rpRecording19",  true, {}, true, undefined);
+              expectedRecording19.processing=false;
+              expectedRecording19.processingState='FINISHED';
+              cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording19", expectedRecording19, EXCLUDE_IDS);
+            });
+          });
+        });      
+      });
+    }); 
+  }); 
+
+
   //This is a single test to check that alerts are triggered by processing
-  //Full tests of the alerts logic are done through the recoring upload API
-  it.skip("Alert when desired animal is detected by processing", () => {});
+  //Full tests of the alerts logic are done through the recording upload API
+  //TODO: Work out why this test does not generate an alert - it should!!!
+  it.skip("Alert when desired animal is detected by processing", () => {
 
-  it.skip("Tracking stage can add tracks to the recording", () => {});
+    //Note: camera 1b has an alert for possums
+    const recording20 = TestCreateRecordingData(templateRecording);
+    cy.apiRecordingAdd( "rpCamera1b", recording20, "oneframe.cptv", "rpRecording20").then(() => {
+      cy.createExpectedAlert( "expectedAlert20", "rpAlert1b", 0, POSSUM_ALERT, true, "rpGroupAdmin", "rpCamera1b").then(() => {
+        cy.createExpectedEvent( "expectedEvent20", "rpGroupAdmin", "rpCamera1b", "rpRecording20", "rpAlert1b"); 
+      });
 
-  it.skip("Processing stage can add tags to the recording", () => {});
+      let expectedProcessing20 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording20", "rpCamera1b", "rpGroup", null, recording20);
+      expectedProcessing20.hasAlert=true;
 
-  it.skip("Test other metadata can be set by processing", () => {
+      cy.log("Send for processing and check is flagges as hasAlert");
+      cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording20", expectedProcessing20, EXCLUDE_KEYS);
+
+      cy.log("Look up algorithm and then post tracks");
+      cy.processingApiAlgorithmPost ({"tracking-format":42}).then((algorithmId) => {
+        cy.processingApiTracksPost ( "rpTrack20", "rpRecording20", {"start_s": 1, "end_s": 4}, algorithmId);
+
+        cy.log("Add tags");
+        cy.processingApiTracksTagsPost("rpTrack20", "rpRecording20","possum",0.9, {name: 'master'}).then(() => {
+
+          cy.log("set processing to done and recheck tracks");
+          cy.processingApiPut ( "rpRecording20",  true, {}, true, undefined).then(() => {
+            cy.log("Check an event was generated");
+            cy.apiAlertCheck("rpGroupAdmin", "rpCamera1b", "expectedAlert20");
+            cy.testEventsCheckAgainstExpected("rpGroupAdmin", "rpCamera1b", "expectedEvent20");
+          });
+        });
+      });
+    }); 
+  }); 
+
+
+
+  //TODO: Issue 96 - updates of location fail (time out)
+  it("Test other metadata can be set by processing", () => {
+    const fieldUpdates = {
+      rawMimeType: "application/test",
+      fileMimeType: "application/test2",
+      duration: 20,
+      recordingDateTime: "2020-01-01T00:00:00.000Z",
+      relativeToDawn: 1000,
+      relativeToDusk: -1000,
+      version: "346",
+      batteryLevel: 87,
+      batteryCharging: "CHARGING",
+      airplaneModeOn: true,
+      type: "audio",
+      comment: "This is a new comment",
+      // add newFields, change algorythm, set previewSecs to null, leave totalFrames unchanged
+      additionalMetadata: {
+        newField: "newValue", 
+        newField2: "newValue2",
+        algorithm: 99999,
+        previewSecs: null
+      }
+//      location: { type: "Point", coordinates: [-46.29115, 170.30845] }
+ 
+    };
     //top level recording data
-    //additionalMetadata
-    //Location -> stationId
+    const recording17 = TestCreateRecordingData(templateRecording);
+    cy.apiRecordingAdd( "rpCamera1", recording17, "oneframe.cptv", "rpRecording17").then(() => {
+      const expectedProcessing17 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording17", "rpCamera1", "rpGroup", null, recording17);
+      let expectedRecording17 = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording17", "rpCamera1", "rpGroup", null, recording17);
+      expectedRecording17.processingState = "FINISHED";
+      expectedRecording17.processing = false;
+      expectedRecording17.rawMimeType= "application/test";
+      expectedRecording17.fileMimeType= "application/test2";
+      expectedRecording17.duration= 20;
+      expectedRecording17.recordingDateTime= "2020-01-01T00:00:00.000Z";
+      expectedRecording17.relativeToDawn= 1000;
+      expectedRecording17.relativeToDusk= -1000;
+      expectedRecording17.version= "346";
+      expectedRecording17.batteryLevel= 87;
+      expectedRecording17.batteryCharging= "CHARGING";
+      expectedRecording17.airplaneModeOn= true;
+      expectedRecording17.type= "audio";
+      expectedRecording17.comment= "This is a new comment";
+//      expectedRecording17.location= { type: "Point", coordinates: [-46.29115, 170.30845] };
+      expectedRecording17.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};
+
+      cy.processingApiCheck( "thermalRaw", "analyse", "rpRecording17", expectedProcessing17, EXCLUDE_KEYS);
+      cy.processingApiPut ( "rpRecording17",  true, {fieldUpdates: fieldUpdates}, true, undefined);
+      cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording17", expectedRecording17, EXCLUDE_IDS);
+
+    });
   });
 
   it("No files to process handled correctly", () => {
-    cy.processingApiCheck( "thermalRaw", "analyse", undefined, EXCLUDE_KEYS);
-    cy.processingApiCheck("audio", "analyse", undefined, EXCLUDE_KEYS);
+    cy.processingApiCheck( "thermalRaw", "analyse", "", undefined, EXCLUDE_KEYS);
+    cy.processingApiCheck("audio", "analyse", "", undefined, EXCLUDE_KEYS);
   });
 
-  it.skip("Audio recordings follow correct workflow", () => {});
+  it("Audio recordings follow correct workflow", () => {
+    const recording21 = TestCreateRecordingData(templateAudioRecording);
+    let expectedRecording21: ApiRecordingReturned;
+    let expectedRecording21b: ApiRecordingReturned;
+    let expectedRecording21c: ApiRecordingReturned;
+    let expectedProcessing21: ApiRecordingForProcessing;
 
-  it("Recordings in other states not picked up for preocessing", () => {
+    cy.log("Add recording as device");
+    cy.apiRecordingAdd( "rpCamera1", recording21, "60sec-audio.mp4", "rpRecording21").then(() => {
+      expectedRecording21 = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording21", "rpCamera1", "rpGroup", null, recording21);
+      expectedProcessing21 = TestCreateExpectedProcessingData( templateExpectedAudioProcessing, "rpRecording21", "rpCamera1", "rpGroup", null, recording21);
+
+      cy.log("Check recording status is 'analyse'");
+      expectedRecording21.processingState = "analyse";
+      expectedRecording21.processing = null;
+      expectedRecording21.rawMimeType="video/mp4";
+      cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording21", expectedRecording21, EXCLUDE_IDS);
+
+      cy.log("Send for processing (tracking)");
+      expectedProcessing21.processingStartTime = NOT_NULL;
+      expectedProcessing21.updatedAt = NOT_NULL;
+      cy.processingApiCheck( "audio", "analyse", "rpRecording21", expectedProcessing21, EXCLUDE_KEYS);
+
+      cy.log("Check status");
+      expectedRecording21b = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording21", "rpCamera1", "rpGroup", null, recording21);
+      expectedRecording21b.processingState = "analyse";
+      expectedRecording21b.processing = true;
+      expectedRecording21b.rawMimeType="video/mp4";
+      cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording21", expectedRecording21b, EXCLUDE_IDS);
+
+      cy.log("Mark processing as done");
+      cy.processingApiPut ( "rpRecording21",  true, {}, true, undefined);
+
+      cy.log("Check status (FINISHED)");
+      expectedRecording21c = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording21", "rpCamera1", "rpGroup", null, recording21);
+      expectedRecording21c.processingState = "FINISHED";
+      expectedRecording21c.processing = false;
+      expectedRecording21c.rawMimeType="video/mp4";
+      expectedRecording21c.Tracks=[];
+      cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording21", expectedRecording21c, EXCLUDE_IDS);
+
+      cy.log("Check status (FINISHED)");
+    });
+
+  });
+
+
+  it("Recordings in other states not picked up for processing", () => {
     const recording14 = TestCreateRecordingData(templateRecording);
     recording14.processingState="FINIHED";
     const recording15 = TestCreateRecordingData(templateRecording);
@@ -365,7 +587,7 @@ describe("Recordings - processing tests", () => {
       cy.apiRecordingAdd( "rpCamera1", recording15, "oneframe.cptv", "rpRecording15").then(() => {
         cy.apiRecordingAdd( "rpCamera1", recording16, "oneframe.cptv", "rpRecording16").then(() => {
           cy.log("Check none of above (non-'analyze') recordings are picked up for processing");
-          cy.processingApiCheck( "thermalRaw", "analyse", undefined, EXCLUDE_KEYS);
+          cy.processingApiCheck( "thermalRaw", "analyse", "", undefined, EXCLUDE_KEYS);
         });
       });
     });

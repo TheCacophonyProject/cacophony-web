@@ -68,17 +68,8 @@ export function saveIdOnly(name: string, id: number) {
   Cypress.env("testCreds")[name] = creds;
 }
 
-export function saveJobKeyById(id: number, jobKey: string) {
-  //TODO must be a better way to find this entry
-  const entries=Cypress.env("testCreds")
-  let creds:ApiCreds;
-  for (let entry in entries) {
-    if(entries[entry].id==id) { 
-      creds=entries[entry];
-    }
-  }
-  creds.jobKey=jobKey;
-  Cypress.env("testCreds")[creds.name] = creds;
+export function saveJobKeyByName(name: string, jobKey: string) {
+  Cypress.env("testCreds")[name].jobKey = jobKey;
 }
 
 

@@ -165,7 +165,7 @@ describe("Recordings - reprocessing tests", () => {
       expectedProcessing1.processingStartTime = NOT_NULL;
       expectedProcessing1.processingState = "reprocess";
       expectedProcessing1.updatedAt = NOT_NULL;
-      cy.processingApiCheck( "thermalRaw", "reprocess", expectedProcessing1, EXCLUDE_KEYS); 
+      cy.processingApiCheck( "thermalRaw", "reprocess", "rrpRecording1", expectedProcessing1, EXCLUDE_KEYS); 
 
       cy.log("Check recording status is now 'reprocess'")
       expectedRecording3 = TestCreateExpectedRecordingData( templateExpectedRecording, "rrpRecording1", "rrpCamera1", "rrpGroup", null, recording1);
@@ -175,7 +175,7 @@ describe("Recordings - reprocessing tests", () => {
       cy.apiRecordingCheck( "rrpGroupAdmin", "rrpRecording1", expectedRecording3, EXCLUDE_IDS);
 
       cy.log("Mark as done");
-      cy.processingApiPost( "rrpRecording1",  true, {}, true, undefined);
+      cy.processingApiPut( "rrpRecording1",  true, {}, true, undefined);
 
       cy.log("Check recording status is now FINISHED")
       expectedRecording4 = TestCreateExpectedRecordingData( templateExpectedRecording, "rrpRecording1", "rrpCamera1", "rrpGroup", null, recording1);
