@@ -312,6 +312,22 @@ export interface ApiRecordingReturned {
   Device?: ApiDeviceIdAndName;
 }
 
+export interface ApiRecordingNeedsTagReturned {
+  DeviceId: number;
+  RecordingId: number;
+  duration: number;
+  fileSize: number;
+  recordingJWT: string;
+  tagJWT: string;
+  tracks: ApiRecordingNeedsTagTrack[]
+}
+
+export interface ApiRecordingNeedsTagTrack {
+  TrackId: number;
+  data: { end_s: number, start_s: number };
+  needsTagging: boolean;
+}
+
 // from api/v1/recordings (get)
 export interface ApiRecordingTag {
   id: number;

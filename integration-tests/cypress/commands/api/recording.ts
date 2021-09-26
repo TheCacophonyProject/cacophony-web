@@ -14,7 +14,7 @@ import {
   removeUndefinedParams
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { ApiRecordingSet, ApiRecordingReturned } from "../types";
+import { ApiRecordingSet, ApiRecordingReturned, ApiRecordingNeedsTagReturned } from "../types";
 
 
 
@@ -380,6 +380,76 @@ Cypress.Commands.add(
     });
   }
 );
+
+Cypress.Commands.add(
+  "apiRecordingNeedsTagCheck",
+  (
+    userName: string,
+    deviceNameOrId: string,
+    expectedRecordings: ApiRecordingNeedsTagReturned[],
+    excludeCheckOn: string[] = [],
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(`Check recording needs-tag, biased to ${deviceNameOrId} `, {
+      device: deviceNameOrId,
+    });
+
+    let params: any={};
+    if (deviceNameOrId!==undefined) {
+      if (additionalChecks["useRawDeviceId"] === true) {
+        params = { deviceId: deviceNameOrId };
+      } else {
+        params = { deviceId: getCreds(deviceNameOrId).id.toString()};
+      }
+    }
+    const url = v1ApiPath(`recordings/needs-tag`,params);
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: url
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      let expectedRecording:ApiRecordingNeedsTagReturned;
+      if (statusCode === 200) {
+        if (expectedRecordings.length>0) {
+          if (additionalChecks["doNotValidate"]!=true) {
+            //find returned recording in expectedRecordings
+            let recordingIds="";
+            expectedRecordings.forEach((recording) => {
+              recordingIds=recordingIds+recording.RecordingId.toString()+", ";
+              if(recording.RecordingId == response.body.rows[0].RecordingId) {
+                expectedRecording=recording;
+              }
+            });
+            expect(expectedRecording,`Recording ID ${response.body.rows[0].RecordingId} should be in list (${recordingIds})`).to.exist;
+       
+            //Verify result matches expected 
+            checkTreeStructuresAreEqualExcept(
+              expectedRecording,
+              response.body.rows[0],
+              excludeCheckOn
+            );
+          }
+        } else {
+          //TODO: Issue 100 workaround. Remove when fixed
+          //expect(response.body.rows.length,"Expect no returned recordings").to.equal(0);
+          expect(response.body.rows[0].RecordingId,"Expect dummy recording with id of 0").to.equal(0);
+        }
+      } else {
+        if (additionalChecks["message"] !== undefined) {
+          expect(response.body.messages).to.contain(
+            additionalChecks["message"]
+          );
+        }
+      }
+    });
+  }
+);
+
 
 Cypress.Commands.add(
   "apiRecordingThumbnailCheck",

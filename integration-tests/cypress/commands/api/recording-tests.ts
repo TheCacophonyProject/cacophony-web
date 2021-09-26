@@ -21,9 +21,10 @@ import {
   ApiRecordingStation,
   ApiRecordingTrack,
   ApiDeviceIdAndName,
+  ApiRecordingNeedsTagReturned
 } from "../types";
 
-import { HTTP_OK200 } from "../constants";
+import { HTTP_OK200, NOT_NULL } from "../constants";
 
 let lastUsedTime = DEFAULT_DATE;
 
@@ -286,7 +287,7 @@ Cypress.Commands.add(
   (userName: string, where: any) => {
     const user = getCreds(userName);
     const params = {
-      where: JSON.stringify(where),
+      where: JSON.stringify(removeUndefinedParams(where)),
     };
     const fullUrl = v1ApiPath("recordings", params);
     cy.request({
@@ -378,6 +379,36 @@ export function TestCreateExpectedProcessingData(
   expected.GroupId = groupId;
   expected.duration = inputRecording.duration;
   expected.recordingDateTime = inputRecording.recordingDateTime;
+
+  return expected;
+}
+
+export function TestCreateExpectedNeedsTagData(
+  template: ApiRecordingNeedsTagReturned,
+  recordingName: string,
+  deviceName: string,
+  inputRecording: any
+): ApiRecordingNeedsTagReturned {
+  const expected = JSON.parse(JSON.stringify(template));
+  const deviceId = getCreds(deviceName).id;
+
+  expected.DeviceId = deviceId;
+  expected.RecordingId = getCreds(recordingName).id;
+  expected.duration = inputRecording.duration;
+  expected.recordingJWT = NOT_NULL;
+  expected.tagJWT = NOT_NULL;
+  expected.tracks = [];
+  inputRecording.metadata.tracks.forEach((track) => {
+    expected.tracks.push({
+      TrackId: NOT_NULL,
+      data: {
+        start_s: track.start_s,
+        end_s: track.end_s
+      },
+      needsTagging: true
+    });
+  });
+
 
   return expected;
 }

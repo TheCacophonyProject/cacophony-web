@@ -4,6 +4,7 @@
 declare namespace Cypress {
   type ApiRecordingSet = import("../types").ApiRecordingSet;
   type ApiRecordingReturned = import("../types").ApiRecordingReturned;
+  type ApiRecordingNeedsTagReturned = import("../types").ApiRecordingNeedsTagReturned;
   type ApiRecordingDataMetadata = import("../types").ApiRecordingDataMetadata;
   type Interception = import("cypress/types/net-stubbing").Interception;
   type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
@@ -128,6 +129,17 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
+    /* Get a single recording that needs tagging using api/v1/recordings/needs-tag
+     * Verfiy that the recording data matches (one of) the expectedRecordings
+     * Optionally: check for a non-200 statusCode
+     * Specify a devieNameOrId to bias towards or undefined for no bias
+     * By default function looks up the device Id using the deviceNameOrId supplied when
+     * recording was created
+     * Optionally: specify recording by id (not saved name) using additionalChecks["useRawDeviceId"] === true
+     * Optionally: do not validate returned recording data (addtionalChecks["doNotValidate"]=true
+     */
+    apiRecordingNeedsTagCheck ( userName: string, deviceNameOrId: string, expectedRecordings: ApiRecordingNeedsTagReturned[], excludeCheckOn?: string[], statusCode?: number, additionalChecks?: any):any;
 
     /* Update a single recording using api/v1/recordings/{id} PATCH
      * Optionally: check for a non-200 statusCode
