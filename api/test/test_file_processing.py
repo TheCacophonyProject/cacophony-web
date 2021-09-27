@@ -86,7 +86,6 @@ class TestFileProcessing:
         assert track_tag["automatic"] is True
         assert track_tag["what"] == track_meta["predictions"][0]["confident_tag"]
         assert track_tag["confidence"] == track_meta["predictions"][0]["confidence"]
-        assert track_tag["data"]["name"] == metadata["algorithm"]["model_name"]
 
         # can upload meta data and mark as processed
         self.process_all_recordings(file_processing)
