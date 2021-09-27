@@ -120,7 +120,7 @@ function generateHtml(stoppedDevices: PowerEvents[]): string {
   return html;
 }
 
-const log = new winston.Logger({
+const log = winston.createLogger({
   transports: [
     new winston.transports.Console({
       timestamp: function () {
