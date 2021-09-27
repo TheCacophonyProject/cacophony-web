@@ -18,7 +18,6 @@ import {
   TestCreateRecordingData,
 } from "../../../commands/api/recording-tests";
 
-
 describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
@@ -30,7 +29,7 @@ describe("Recordings query using where", () => {
     "[].Tracks[].id",
     "[].location.coordinates",
   ];
-  
+
   //TODO: DeviceId is here but not in Recording (get).  Inconsistent.  Remove here or add there
   const templateExpectedRecording: ApiRecordingReturned = {
     Device: { devicename: "cy_raCamera1_f9a1b6a1", id: 844 },
@@ -71,7 +70,7 @@ describe("Recordings query using where", () => {
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     type: "thermalRaw",
   };
-  
+
   //TODO: Issue ##. Several parameters not propogated to returned recordings query (but present in /recording (get)).  Commented out here
   //Either fix API to be consistent or remove this comment and remove commented lines below
   const templateRecording1: ApiRecordingSet = {
@@ -96,7 +95,7 @@ describe("Recordings query using where", () => {
     comment: "This is a comment",
     processingState: "FINISHED",
   };
-  
+
   const templateRecording2: ApiRecordingSet = {
     type: "thermalRaw",
     fileHash: null,
@@ -121,7 +120,7 @@ describe("Recordings query using where", () => {
     comment: "This is a comment2",
     processingState: "CORRUPT",
   };
-  
+
   const templateRecording3: ApiRecordingSet = {
     type: "audio",
     fileHash: null,
@@ -161,7 +160,7 @@ describe("Recordings query using where", () => {
     comment: "test comment",
     processingState: "analyse",
   };
-  
+
   const templateRecording4: ApiRecordingSet = {
     type: "thermalRaw",
     fileHash: null,
@@ -184,8 +183,8 @@ describe("Recordings query using where", () => {
     comment: "This is a comment2",
     processingState: "FINISHED",
   };
- 
-  //Four recording templates for setting and their expected return values 
+
+  //Four recording templates for setting and their expected return values
   const recording1 = TestCreateRecordingData(templateRecording1);
   let expectedRecording1: ApiRecordingReturned;
   const recording2 = TestCreateRecordingData(templateRecording2);
@@ -194,10 +193,10 @@ describe("Recordings query using where", () => {
   let expectedRecording3: ApiRecordingReturned;
   const recording4 = TestCreateRecordingData(templateRecording4);
   let expectedRecording4: ApiRecordingReturned;
- 
-  //Array of recordings for paging tests 
+
+  //Array of recordings for paging tests
   const expectedRecording: ApiRecordingReturned[] = [];
-  
+
   before(() => {
     //Create group1 with admin, member and 2 devices
     cy.testCreateUserGroupAndDevice("rqGroupAdmin", "rqGroup", "rqCamera1");
@@ -214,7 +213,7 @@ describe("Recordings query using where", () => {
     //Create a 2nd group, admin & device
     cy.testCreateUserGroupAndDevice("rqGroup2Admin", "rqGroup2", "rqCamera2");
 
-    //define intercept here to allow adding recordings in before() - normally intercept is 
+    //define intercept here to allow adding recordings in before() - normally intercept is
     //added in beforeEach
     cy.intercept("POST", "recordings").as("addRecording");
 

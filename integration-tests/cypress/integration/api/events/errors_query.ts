@@ -15,7 +15,6 @@ import {
 //
 //
 
-
 describe("Events - query errors", () => {
   const ADMIN = true;
   const NOT_ADMIN = false;

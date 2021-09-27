@@ -36,7 +36,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     comment: "This is a comment",
     processing: null,
   };
-  
+
   const templateRecording: ApiRecordingSet = {
     type: "thermalRaw",
     fileHash: null,
@@ -59,7 +59,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     comment: "This is a comment",
     processingState: "FINISHED",
   };
-  
+
   before(() => {
     //Create group1 with 2 devices, admin and member
     cy.testCreateUserGroupAndDevice("raGroupAdmin", "raGroup", "raCamera1");

@@ -20,7 +20,6 @@ import {
   TestCreateRecordingData,
 } from "../../../commands/api/recording-tests";
 
-
 describe("Recording needs-tag (power-tagger)", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
@@ -62,7 +61,7 @@ describe("Recording needs-tag (power-tagger)", () => {
 
   let dev_env = false;
   let doNotValidate = true;
-  
+
   const recording1 = TestCreateRecordingData(templateRecording);
   let expectedRecording1: ApiRecordingNeedsTagReturned;
 
@@ -81,9 +80,9 @@ describe("Recording needs-tag (power-tagger)", () => {
       "rntCamera2"
     );
 
-    //When running on dev we know what recordings are present so can validate 
-    //all paramters.  
-    //When running on test we cannot control what data is present so just validate that the 
+    //When running on dev we know what recordings are present so can validate
+    //all paramters.
+    //When running on test we cannot control what data is present so just validate that the
     //API calls work
     if (Cypress.env("running_in_a_dev_environment") == true) {
       dev_env = true;
@@ -153,13 +152,13 @@ describe("Recording needs-tag (power-tagger)", () => {
           "possum"
         ).then(() => {
           cy.log("Verify this recording not returned");
-        cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, []);
+          cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, []);
         });
       });
     });
   } else {
-    it.skip("DISABLED: Does not return recordings not needing tagging")
-  };
+    it.skip("DISABLED: Does not return recordings not needing tagging");
+  }
 
   //TODO: Isssue 100 - test fails, returns a recording with all 0's / blanks when no recording available
   //TODO: apiRecordingNeedsTagCheck has a workaround which needs removing when this is fixed

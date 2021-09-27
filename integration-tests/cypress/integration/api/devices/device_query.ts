@@ -1,8 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import {
-  HTTP_Unprocessable,
-} from "../../../commands/constants";
+import { HTTP_Unprocessable } from "../../../commands/constants";
 
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";

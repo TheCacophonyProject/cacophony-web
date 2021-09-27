@@ -13,7 +13,7 @@ describe("Groups - add, check and remove users", () => {
   const NOT_ADMIN = false;
   let expectedGuAdminUser: ApiGroupsUserReturned;
   let expectedGuAdminUser2: ApiGroupsUserReturned;
-  
+
   before(() => {
     cy.testCreateUserGroupAndDevice("guGroupAdmin", "guGroup", "guCamera").then(
       () => {

@@ -28,7 +28,7 @@ describe("Groups - add, get group", () => {
     "[].Users[].GroupUsers.createdAt",
     "[].Users[].GroupUsers.updatedAt",
   ];
-  
+
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gaGroupAdmin", "gaGroup", "gaCamera").then(

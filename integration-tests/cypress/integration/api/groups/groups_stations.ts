@@ -17,13 +17,13 @@ describe("Groups - add/update/query/remove stations from group", () => {
 
   //do not validate updatedAt or createdAt values
   const EXCLUDE_CREATED_UPDATED_ID = ["[].createdAt", "[].updatedAt", "[].id"];
-  
+
   const station1a = { name: "station1", lat: -45.1, lng: 172.1 };
   const station1b = { name: "station1", lat: -45.2, lng: 172.1 };
   const station2a = { name: "station2", lat: -45.1, lng: 172.2 };
   const station2b = { name: "station2", lat: -45.2, lng: 172.2 };
   const station3a = { name: "station3", lat: -45.1, lng: 172.3 };
-  
+
   //TODO: These coordinates are back to front.  Issue 73. Reverse once database & API are corrected. Should be X,Y
   const expectedStation1a: ApiStationDataReturned = {
     id: 0,
@@ -75,7 +75,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     updatedAt: null,
     GroupId: null,
   };
-  
+
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gsGroupAdmin", "gsGroup", "gsCamera").then(

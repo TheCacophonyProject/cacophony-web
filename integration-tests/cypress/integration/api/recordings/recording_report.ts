@@ -43,7 +43,7 @@ describe("Recordings report using where", () => {
     comment: "This is a comment",
     processingState: "FINISHED",
   };
-  
+
   const templateRecording2: ApiRecordingSet = {
     type: "thermalRaw",
     fileHash: null,
@@ -69,7 +69,7 @@ describe("Recordings report using where", () => {
     comment: "This is a comment2",
     processingState: "CORRUPT",
   };
-  
+
   const templateRecording3: ApiRecordingSet = {
     type: "audio",
     fileHash: null,
@@ -119,7 +119,7 @@ describe("Recordings report using where", () => {
     comment: null,
     processingState: "analyse",
   };
-  
+
   const templateRecording4: ApiRecordingSet = {
     type: "thermalRaw",
     fileHash: null,
@@ -143,12 +143,12 @@ describe("Recordings report using where", () => {
     comment: "This is a comment2",
     processingState: "FINISHED",
   };
-  
+
   //TODO: Travis does not handle timezones well. So ignoring datetime for now as in report we have no idea
   //what timezone data is in
   const EXCLUDE_COLUMNS = ["Date", "Time"];
 
-  //Four sets of recording parameters to set and query  
+  //Four sets of recording parameters to set and query
   const recording1 = TestCreateRecordingData(templateRecording1);
   let expectedRecording1: ApiRecordingColumns;
   const recording2 = TestCreateRecordingData(templateRecording2);

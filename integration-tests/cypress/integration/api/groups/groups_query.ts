@@ -12,7 +12,6 @@ import { getCreds } from "../../../commands/server";
 import { HTTP_OK200 } from "../../../commands/constants";
 import { HTTP_Unprocessable } from "../../../commands/constants";
 
-
 describe("Groups - query groups", () => {
   const ADMIN = true;
   const NOT_ADMIN = false;

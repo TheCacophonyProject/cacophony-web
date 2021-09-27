@@ -35,7 +35,7 @@ describe("Recording thumbnails", () => {
     ".Tracks[].id",
     ".location.coordinates",
   ];
-  
+
   const templateExpectedRecording: ApiRecordingReturned = {
     id: 892972,
     rawMimeType: "application/x-cptv",
@@ -57,7 +57,7 @@ describe("Recording thumbnails", () => {
     comment: "This is a comment",
     processing: false,
   };
-  
+
   const templateRecording: ApiRecordingSet = {
     type: "thermalRaw",
     fileHash: null,
@@ -80,7 +80,7 @@ describe("Recording thumbnails", () => {
     comment: "This is a comment2",
     processingState: "analyse",
   };
-  
+
   const templateExpectedProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: "thermalRaw",
@@ -103,37 +103,36 @@ describe("Recording thumbnails", () => {
     processing: true,
     updatedAt: NOT_NULL,
   };
- 
+
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
   //recordings that are in analyse state that do not belong to us.  This can be removed once
-  //the analyse.test state has been implemented.  All analyse states in this test suite 
+  //the analyse.test state has been implemented.  All analyse states in this test suite
   //can then be changed to analyse.test
   if (Cypress.env("running_in_a_dev_environment") == true) {
-
     before(() => {
       //Create group1 with 2 devices, admin and member
       cy.testCreateUserGroupAndDevice("rtGroupAdmin", "rtGroup", "rtCamera1");
       cy.apiDeviceAdd("rtCamera1b", "rtGroup");
       cy.apiUserAdd("rtGroupMember");
       cy.apiGroupUserAdd("rtGroupAdmin", "rtGroupMember", "rtGroup", true);
-  
+
       //Device1 admin and member
       cy.apiUserAdd("rtDeviceAdmin");
       cy.apiUserAdd("rtDeviceMember");
       cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceAdmin", "rtCamera1", true);
       cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceMember", "rtCamera1", true);
-  
+
       //Second group with admin and member
       cy.testCreateUserGroupAndDevice("rtGroup2Admin", "rtGroup2", "rtCamera2");
-  
+
       cy.apiSignInAs(null, null, superuser, suPassword);
     });
-  
+
     beforeEach(() => {
       cy.testDeleteRecordingsInState(superuser, "thermalRaw", "analyse");
       cy.testDeleteRecordingsInState(superuser, "audio", "analyse");
     });
-  
+
     it("Thumbnail generated as expected", () => {
       const recording01 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(
@@ -158,7 +157,7 @@ describe("Recording thumbnails", () => {
           null,
           recording01
         );
-  
+
         cy.log("Send for processing");
         cy.processingApiCheck(
           "thermalRaw",
@@ -167,7 +166,7 @@ describe("Recording thumbnails", () => {
           expectedProcessing01,
           EXCLUDE_KEYS
         );
-  
+
         cy.log("Look up algorithm and then post tracks");
         cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
           (algorithmId) => {
@@ -202,7 +201,7 @@ describe("Recording thumbnails", () => {
                   id: 1,
                 },
               ];
-  
+
               cy.log("set processing to done and recheck tracks");
               cy.processingApiPut(
                 "rtRecording01",
@@ -226,7 +225,7 @@ describe("Recording thumbnails", () => {
                 true,
                 undefined
               );
-  
+
               cy.log("Check thumbnail data present");
               expectedRecording01.additionalMetadata["thumbnail_region"] = {
                 x: 5,
@@ -244,7 +243,7 @@ describe("Recording thumbnails", () => {
                 expectedRecording01,
                 EXCLUDE_IDS
               );
-  
+
               cy.log("Check thumbnail available");
               cy.apiRecordingThumbnailCheck(
                 "rtGroupAdmin",
@@ -257,7 +256,7 @@ describe("Recording thumbnails", () => {
         );
       });
     });
-  
+
     //The remaining tests depend on test 1. Bad practice - but hard to avoid. Sorry!
     it("Group member can query device's thumbnail", () => {
       cy.apiRecordingThumbnailCheck(
@@ -267,7 +266,7 @@ describe("Recording thumbnails", () => {
         { type: "PNG" }
       );
     });
-  
+
     it("Device admin can query device's thumbnail", () => {
       cy.apiRecordingThumbnailCheck(
         "rtDeviceAdmin",
@@ -276,7 +275,7 @@ describe("Recording thumbnails", () => {
         { type: "PNG" }
       );
     });
-  
+
     it("Device member can query device's thumbnail", () => {
       cy.apiRecordingThumbnailCheck(
         "rtDeviceMember",
@@ -285,7 +284,7 @@ describe("Recording thumbnails", () => {
         { type: "PNG" }
       );
     });
-  
+
     //TODO: FAIL - Issue 97 - anyone can retrieve a thumbnail
     it.skip("Non member cannot view device's thumbnail", () => {
       cy.apiRecordingThumbnailCheck(
@@ -294,14 +293,19 @@ describe("Recording thumbnails", () => {
         HTTP_Forbidden
       );
     });
-  
+
     it("Can handle no returned matches", () => {
-      cy.apiRecordingThumbnailCheck("rtGroup2Admin", "999999", HTTP_BadRequest, {
-        useRawRecordingId: true,
-        message: "Failed to get recording.",
-      });
+      cy.apiRecordingThumbnailCheck(
+        "rtGroup2Admin",
+        "999999",
+        HTTP_BadRequest,
+        {
+          useRawRecordingId: true,
+          message: "Failed to get recording.",
+        }
+      );
     });
-  
+
     it("Thumbnail generator can handle recording with no thumbnail data", () => {
       const recording02 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(
@@ -326,7 +330,7 @@ describe("Recording thumbnails", () => {
           null,
           recording02
         );
-  
+
         cy.log("Send for processing");
         cy.processingApiCheck(
           "thermalRaw",
@@ -335,7 +339,7 @@ describe("Recording thumbnails", () => {
           expectedProcessing02,
           EXCLUDE_KEYS
         );
-  
+
         cy.log("Look up algorithm and then post tracks");
         cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
           (algorithmId) => {
@@ -370,10 +374,10 @@ describe("Recording thumbnails", () => {
                   id: 1,
                 },
               ];
-  
+
               cy.log("set processing to done and recheck tracks");
               cy.processingApiPut("rtRecording02", true, {}, true, undefined);
-  
+
               cy.log("Check no thumbnail data present");
               cy.apiRecordingCheck(
                 "rtGroupAdmin",
@@ -381,7 +385,7 @@ describe("Recording thumbnails", () => {
                 expectedRecording02,
                 EXCLUDE_IDS
               );
-  
+
               cy.log("Check thumbnail not available");
               cy.apiRecordingThumbnailCheck(
                 "rtGroupAdmin",
@@ -395,6 +399,6 @@ describe("Recording thumbnails", () => {
       });
     });
   } else {
-     it.skip("NOTE: Thumbnail generation tests skipped superuser diabled in environment variables", () => {});
+    it.skip("NOTE: Thumbnail generation tests skipped superuser diabled in environment variables", () => {});
   }
 });

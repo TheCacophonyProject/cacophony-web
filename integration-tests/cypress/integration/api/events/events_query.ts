@@ -7,7 +7,6 @@ import { ApiEventReturned } from "../../../commands/types";
 
 import { HTTP_Unprocessable, HTTP_OK200 } from "../../../commands/constants";
 
-
 describe("Events - query events", () => {
   const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values
 

@@ -27,7 +27,7 @@ describe("Recordings - audio recording parameter tests", () => {
     //TODO: workaround for issue 88, inconsistent mime type for audio (audio/mpeg vs video/mp4)
     ".rawMimeType",
   ];
-  
+
   const templateExpectedRecording: ApiRecordingReturned = {
     // TODO: Issue 87.  Filehash missing on returned values
     // fileHash: null,
@@ -80,7 +80,7 @@ describe("Recordings - audio recording parameter tests", () => {
     Tracks: [],
     Device: { devicename: "mattb-s5", id: 2023 },
   };
-  
+
   const templateRecording: ApiRecordingSet = {
     type: "audio",
     fileHash: null,
@@ -120,7 +120,7 @@ describe("Recordings - audio recording parameter tests", () => {
     comment: null,
     processingState: "FINISHED",
   };
-  
+
   before(() => {
     //Create group1 with Admin, Member and 2 devices
     cy.testCreateUserGroupAndDevice("rarGroupAdmin", "rarGroup", "rarDevice1");

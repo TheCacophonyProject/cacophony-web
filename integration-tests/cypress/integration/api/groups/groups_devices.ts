@@ -13,7 +13,7 @@ describe("Groups - get devices for group", () => {
   const NOT_ADMIN = false;
   let expectedDevice: ApiGroupsDevice;
   let expectedDevice1b: ApiGroupsDevice;
-  
+
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gdGroupAdmin", "gdGroup", "gdCamera").then(

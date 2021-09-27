@@ -67,7 +67,7 @@ export function saveIdOnly(name: string, id: number) {
     jwt: "",
     jobKey: "",
     id: id,
-    location: undefined
+    location: undefined,
   };
   Cypress.env("testCreds")[name] = creds;
 }
@@ -94,7 +94,7 @@ export function saveCreds(
     jwt: response.body.token,
     jobKey: response.body.jobKey,
     id: id,
-    location: response.body.location
+    location: response.body.location,
   };
   Cypress.env("testCreds")[name] = creds;
 }

@@ -19,7 +19,6 @@ describe("Authentication", () => {
   const camera1 = "first_camera";
   const camera2 = "second_camera";
 
-
   before(() => {
     cy.testCreateUserGroupAndDevice(userA, group1, camera1);
     cy.testCreateUserGroupAndDevice(userB, group2, camera2);

@@ -16,7 +16,7 @@ import {
 } from "../../../commands/api/recording-tests";
 
 describe("Update recordings", () => {
-  //Do not validate IDs 
+  //Do not validate IDs
   const EXCLUDE_IDS = [".Tracks[].TrackTags[].TrackId", ".Tracks[].id"];
 
   const templateExpectedRecording: ApiRecordingReturned = {
@@ -40,7 +40,7 @@ describe("Update recordings", () => {
     comment: "This is a comment",
     processing: null,
   };
-  
+
   const templateRecording: ApiRecordingSet = {
     type: "thermalRaw",
     fileHash: null,
@@ -66,7 +66,7 @@ describe("Update recordings", () => {
     comment: "This is a comment2",
     processingState: "FINISHED",
   };
-  
+
   //TODO: Issue 98 - only comments and additional metadata succeed at update
   //location causes server error
   //all others rejected with bad request
@@ -92,7 +92,7 @@ describe("Update recordings", () => {
     },
     location: [-46.29105, 170.30835],
   };
-  
+
   before(() => {
     //Create group1, admin and 2 devices
     cy.testCreateUserGroupAndDevice("ruGroupAdmin", "ruGroup", "ruCamera1");

@@ -26,7 +26,7 @@ describe("Recordings - parameter tests", () => {
     ".Tracks[].id",
     ".location.coordinates",
   ];
-  
+
   const templateExpectedRecording: ApiRecordingReturned = {
     id: 892972,
     // TODO: Issue 87.  Filehash missing on returned values
@@ -50,7 +50,7 @@ describe("Recordings - parameter tests", () => {
     comment: "This is a comment",
     processing: null,
   };
-  
+
   const templateRecording: ApiRecordingSet = {
     type: "thermalRaw",
     fileHash: null,
@@ -73,7 +73,7 @@ describe("Recordings - parameter tests", () => {
     comment: "This is a comment",
     processingState: "FINISHED",
   };
-  
+
   before(() => {
     //Create group 1 with 2 devices, admin and member
     cy.testCreateUserGroupAndDevice("rpaGroupAdmin", "rpaGroup", "rpaCamera1");
