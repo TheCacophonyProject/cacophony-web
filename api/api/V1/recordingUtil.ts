@@ -949,11 +949,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       "algorithm",
       metadata["algorithm"]
     );
-    let model = "unknown";
 
-    if ("model_name" in metadata["algorithm"]) {
-      model = metadata["algorithm"]["model_name"];
-    }
     for (const trackMeta of metadata["tracks"]) {
       const track = await recording.createTrack({
         data: trackMeta,
@@ -963,7 +959,19 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         continue;
       }
       for (const prediction of trackMeta["predictions"]) {
-        const tag_data = { name: model };
+        let modelName = "unknown";
+        if (prediction.model_id) {
+          if (metadata.models) {
+            const model = metadata.models.find(
+              (model) => model.id == prediction.model_id
+            );
+            if (model) {
+              modelName = model.name;
+            }
+          }
+        }
+
+        const tag_data = { name: modelName };
         if (prediction.clarity) {
           tag_data["clarity"] = prediction["clarity"];
         }
