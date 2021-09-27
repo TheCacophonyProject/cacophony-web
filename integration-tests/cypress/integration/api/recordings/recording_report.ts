@@ -142,6 +142,10 @@ const templateRecording4: ApiRecordingSet = {
   processingState: "FINISHED",
 };
 
+//TODO: Travis does not handle timezones well. So ignoring datetime for now as in report we have no idea
+//what timezone data is in
+const EXCLUDE_COLUMNS = ["Date", "Time"];
+
 const recording1 = TestCreateRecordingData(templateRecording1);
 let expectedRecording1: ApiRecordingColumns;
 const recording2 = TestCreateRecordingData(templateRecording2);
@@ -264,7 +268,8 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { id: getCreds("rreRecording1").id } },
-      [expectedRecording1]
+      [expectedRecording1],
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -273,7 +278,8 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { id: getCreds("rreRecording3").id } },
-      [expectedRecording3]
+      [expectedRecording3],
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -282,7 +288,8 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroupMember",
       { where: { id: getCreds("rreRecording1").id } },
-      [expectedRecording1]
+      [expectedRecording1],
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -291,7 +298,8 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreDeviceAdmin",
       { where: { id: getCreds("rreRecording1").id } },
-      [expectedRecording1]
+      [expectedRecording1],
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -300,7 +308,8 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreDeviceMember",
       { where: { id: getCreds("rreRecording1").id } },
-      [expectedRecording1]
+      [expectedRecording1],
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -322,21 +331,24 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroup2Admin",
       { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
-      expectedRecording.slice(0, 3)
+      expectedRecording.slice(0, 3),
+      EXCLUDE_COLUMNS
     );
 
     cy.log("Get intermediate page, setting limit");
     cy.apiRecordingsReportCheck(
       "rreGroup2Admin",
       { where: {}, offset: 3, limit: 3, order: '[["id", "ASC"]]' },
-      expectedRecording.slice(3, 6)
+      expectedRecording.slice(3, 6),
+      EXCLUDE_COLUMNS
     );
 
     cy.log("Get final (part) page, setting limit");
     cy.apiRecordingsReportCheck(
       "rreGroup2Admin",
       { where: {}, offset: 18, limit: 3, order: '[["id", "ASC"]]' },
-      expectedRecording.slice(18, 20)
+      expectedRecording.slice(18, 20),
+      EXCLUDE_COLUMNS
     );
 
     //note slice() has to be used to stop .reverse() modifying original array in-place - crazy.
@@ -345,19 +357,22 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroup2Admin",
       { where: {}, offset: 0, limit: 3, order: '[["id", "DESC"]]' },
-      expectedRecording.slice().reverse().slice(0, 3)
+      expectedRecording.slice().reverse().slice(0, 3),
+      EXCLUDE_COLUMNS
     );
     cy.log("Reverse sort order, intermediate page");
     cy.apiRecordingsReportCheck(
       "rreGroup2Admin",
       { where: {}, offset: 3, limit: 3, order: '[["id", "DESC"]]' },
-      expectedRecording.slice().reverse().slice(3, 6)
+      expectedRecording.slice().reverse().slice(3, 6),
+      EXCLUDE_COLUMNS
     );
     cy.log("Reverse sort order, last (part) page");
     cy.apiRecordingsReportCheck(
       "rreGroup2Admin",
       { where: {}, offset: 18, limit: 3, order: '[["id", "DESC"]]' },
-      expectedRecording.slice().reverse().slice(18, 20)
+      expectedRecording.slice().reverse().slice(18, 20),
+      EXCLUDE_COLUMNS
     );
 
     cy.log("Verify sort on a different parameter (recordingDateTime)");
@@ -365,7 +380,8 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroup2Admin",
       { where: {}, offset: 3, limit: 30, order: '[["id", "DESC"]]' },
-      expectedRecording.slice().reverse().slice(3, 30)
+      expectedRecording.slice().reverse().slice(3, 30),
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -374,14 +390,16 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { id: getCreds("rreRecording2").id } },
-      [expectedRecording2]
+      [expectedRecording2],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("recordingDateTime");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { recordingDateTime: recording3.recordingDateTime } },
-      [expectedRecording3]
+      [expectedRecording3],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("DeviceId");
@@ -391,7 +409,8 @@ describe("Recordings report using where", () => {
         where: { DeviceId: getCreds("rreCamera1").id },
         order: '[["id", "ASC"]]',
       },
-      [expectedRecording1, expectedRecording2]
+      [expectedRecording1, expectedRecording2],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("GroupId");
@@ -403,7 +422,8 @@ describe("Recordings report using where", () => {
         expectedRecording2,
         expectedRecording3,
         expectedRecording4,
-      ]
+      ],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("type");
@@ -415,13 +435,17 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { processingState: "CORRUPT" } },
-      [expectedRecording2]
+      [expectedRecording2],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("duration");
-    cy.apiRecordingsReportCheck("rreGroupAdmin", { where: { duration: 60 } }, [
-      expectedRecording3,
-    ]);
+    cy.apiRecordingsReportCheck(
+      "rreGroupAdmin",
+      { where: { duration: 60 } },
+      [expectedRecording3],
+      EXCLUDE_COLUMNS
+    );
 
     //cy.log("StationId");
     //cy.log("processing");
@@ -432,21 +456,24 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { duration: { $gt: 40 } } },
-      [expectedRecording3]
+      [expectedRecording3],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("Less than");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { duration: { $lt: 40 } } },
-      [expectedRecording1]
+      [expectedRecording1],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("Less than equal");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { duration: { $lte: 40 } }, order: '[["id", "ASC"]]' },
-      [expectedRecording1, expectedRecording2, expectedRecording4]
+      [expectedRecording1, expectedRecording2, expectedRecording4],
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -461,7 +488,8 @@ describe("Recordings report using where", () => {
         where: { DeviceId: getCreds("rreCamera1").id, duration: { $gte: 40 } },
         order: '[["id", "ASC"]]',
       },
-      [expectedRecording2]
+      [expectedRecording2],
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -470,14 +498,16 @@ describe("Recordings report using where", () => {
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: {}, tags: '["possum"]', order: '[["id", "ASC"]]' },
-      [expectedRecording2, expectedRecording4]
+      [expectedRecording2, expectedRecording4],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("Tagged as possum or cat");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: {}, tags: '["possum", "cat"]', order: '[["id", "ASC"]]' },
-      [expectedRecording1, expectedRecording2, expectedRecording4]
+      [expectedRecording1, expectedRecording2, expectedRecording4],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("'Any' tagmode");
@@ -489,49 +519,56 @@ describe("Recordings report using where", () => {
         expectedRecording2,
         expectedRecording3,
         expectedRecording4,
-      ]
+      ],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("'untagged' tagmode");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: {}, tagMode: "untagged", order: '[["id", "ASC"]]' },
-      [expectedRecording3]
+      [expectedRecording3],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("'tagged' tagmode");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: {}, tagMode: "tagged", order: '[["id", "ASC"]]' },
-      [expectedRecording1, expectedRecording2, expectedRecording4]
+      [expectedRecording1, expectedRecording2, expectedRecording4],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("'no-human' tagmode");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: {}, tagMode: "no-human", order: '[["id", "ASC"]]' },
-      [expectedRecording1, expectedRecording2, expectedRecording3]
+      [expectedRecording1, expectedRecording2, expectedRecording3],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("'automatic-only' tagmode");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: {}, tagMode: "automatic-only", order: '[["id", "ASC"]]' },
-      [expectedRecording1, expectedRecording2]
+      [expectedRecording1, expectedRecording2],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("'human-only' tagmode");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: {}, tagMode: "human-only", order: '[["id", "ASC"]]' },
-      [expectedRecording4]
+      [expectedRecording4],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("'automatic+human' tagmode");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: {}, tagMode: "automatic+human", order: '[["id", "ASC"]]' },
-      []
+      [],
+      EXCLUDE_COLUMNS
     );
 
     cy.log("tag (possum) and tagmode (automatic)");
@@ -543,7 +580,8 @@ describe("Recordings report using where", () => {
         tags: '["possum"]',
         order: '[["id", "ASC"]]',
       },
-      [expectedRecording2]
+      [expectedRecording2],
+      EXCLUDE_COLUMNS
     );
   });
 
@@ -556,6 +594,7 @@ describe("Recordings report using where", () => {
       "rreGroupAdmin",
       { where: {}, tagMode: "rubbish value" },
       [],
+      EXCLUDE_COLUMNS,
       HTTP_Unprocessable
     );
     //cy.log("order");
@@ -580,7 +619,8 @@ describe("Recordings report using where", () => {
       cy.apiRecordingsReportCheck(
         superuser,
         { where: {}, "view-mode": "user" },
-        [expectedRecording3, expectedRecording4]
+        [expectedRecording3, expectedRecording4],
+        EXCLUDE_COLUMNS
       );
       cy.apiDeviceUserRemove(
         "rreGroupAdmin",

@@ -668,6 +668,7 @@ Cypress.Commands.add(
     userName: string,
     query: any,
     expectedResults: ApiRecordingColumns[] = [],
+    excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
@@ -711,10 +712,14 @@ Cypress.Commands.add(
             column < ApiRecordingColumnNames.length;
             column++
           ) {
-            expect(
-              columns[column],
-              `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
-            ).to.equal(expectedResults[count][ApiRecordingColumnNames[column]]);
+            if (!excludeCheckOn.includes(columns[column])) {
+              expect(
+                columns[column],
+                `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
+              ).to.equal(
+                expectedResults[count][ApiRecordingColumnNames[column]]
+              );
+            }
           }
         }
       } else {

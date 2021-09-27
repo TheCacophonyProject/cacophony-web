@@ -213,6 +213,7 @@ declare namespace Cypress {
       userName: string,
       query: any,
       expectedRecordings?: ApiRecordingColumns[],
+      excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any
     ): any;
