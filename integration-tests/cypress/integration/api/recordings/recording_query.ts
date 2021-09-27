@@ -81,10 +81,10 @@ const templateRecording1: ApiRecordingSet = {
   batteryLevel: null,
   //  airplaneModeOn: null,
   additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
+    algorithm: 31143,
+    previewSecs: 5,
+    totalFrames: 141,
+  },
   metadata: {
     algorithm: { model_name: "master" },
     tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
@@ -103,11 +103,11 @@ const templateRecording2: ApiRecordingSet = {
   //  batteryCharging: null,
   batteryLevel: null,
   //  airplaneModeOn: null,
-    additionalMetadata: {
-      algorithm: 31144,
-      previewSecs: 6,
-      totalFrames: 142,
-    },
+  additionalMetadata: {
+    algorithm: 31144,
+    previewSecs: 6,
+    totalFrames: 142,
+  },
   metadata: {
     algorithm: { model_name: "master" },
     tracks: [
@@ -154,7 +154,7 @@ const templateRecording3: ApiRecordingSet = {
     "Phone manufacturer": "samsung",
     "App has root access": false,
   },
-  comment: 'test comment',
+  comment: "test comment",
   processingState: "analyse",
 };
 
@@ -168,11 +168,11 @@ const templateRecording4: ApiRecordingSet = {
   //  batteryCharging: null,
   batteryLevel: null,
   //  airplaneModeOn: null,
-    additionalMetadata: {
-      algorithm: 31144,
-      previewSecs: 6,
-      totalFrames: 142,
-    },
+  additionalMetadata: {
+    algorithm: 31144,
+    previewSecs: 6,
+    totalFrames: 142,
+  },
   metadata: {
     algorithm: { model_name: "master" },
     tracks: [{ start_s: 2, end_s: 5 }],
@@ -219,73 +219,108 @@ describe("Recordings query using where", () => {
           null,
           recording1
         );
-      }
-    );
-    cy.apiRecordingAdd("rqCamera1", recording2, undefined, "rqRecording2").then(
-      () => {
-        expectedRecording2 = TestCreateExpectedRecordingData(
-          templateExpectedRecording,
-          "rqRecording2",
+
+        cy.apiRecordingAdd(
           "rqCamera1",
-          "rqGroup",
-          null,
-          recording2
-        );
-        expectedRecording2.processingState = "CORRUPT";
+          recording2,
+          undefined,
+          "rqRecording2"
+        ).then(() => {
+          expectedRecording2 = TestCreateExpectedRecordingData(
+            templateExpectedRecording,
+            "rqRecording2",
+            "rqCamera1",
+            "rqGroup",
+            null,
+            recording2
+          );
+          expectedRecording2.processingState = "CORRUPT";
+
+          cy.apiRecordingAdd(
+            "rqCamera1b",
+            recording3,
+            undefined,
+            "rqRecording3"
+          ).then(() => {
+            expectedRecording3 = TestCreateExpectedRecordingData(
+              templateExpectedRecording,
+              "rqRecording3",
+              "rqCamera1b",
+              "rqGroup",
+              null,
+              recording3
+            );
+            expectedRecording3.processingState = "analyse";
+
+            cy.apiRecordingAdd(
+              "rqCamera1b",
+              recording4,
+              undefined,
+              "rqRecording4"
+            ).then(() => {
+              expectedRecording4 = TestCreateExpectedRecordingData(
+                templateExpectedRecording,
+                "rqRecording4",
+                "rqCamera1b",
+                "rqGroup",
+                null,
+                recording4
+              );
+
+              expectedRecording4.processingState = "FINISHED";
+              cy.testUserTagRecording(
+                getCreds("rqRecording4").id,
+                0,
+                "rqGroupAdmin",
+                "possum"
+              );
+
+              expectedRecording4.Tracks[0].TrackTags = [
+                {
+                  what: "possum",
+                  automatic: false,
+                  confidence: 0.7,
+                  data: null,
+                  TrackId: -99,
+                  User: {
+                    username: getTestName("rqGroupAdmin"),
+                    id: getCreds("rqGroupAdmin").id,
+                  },
+                  UserId: getCreds("rqGroupAdmin").id,
+                },
+              ];
+              //TODO: DEBUG!!!!! For some reason the recordings aren't fully available immediately.
+              //Issue 103
+              //Get them in .then  ... to verify they're there ...
+              cy.apiRecordingsQueryCheck(
+                "rqGroupAdmin",
+                { where: { id: getCreds("rqRecording1").id } },
+                [expectedRecording1],
+                EXCLUDE_IDS
+              );
+              cy.apiRecordingsQueryCheck(
+                "rqGroupAdmin",
+                { where: { id: getCreds("rqRecording2").id } },
+                [expectedRecording2],
+                EXCLUDE_IDS
+              );
+              cy.apiRecordingsQueryCheck(
+                "rqGroupAdmin",
+                { where: { id: getCreds("rqRecording3").id } },
+                [expectedRecording3],
+                EXCLUDE_IDS
+              );
+              cy.apiRecordingsQueryCheck(
+                "rqGroupAdmin",
+                { where: { id: getCreds("rqRecording4").id } },
+                [expectedRecording4],
+                EXCLUDE_IDS
+              );
+            });
+          });
+        });
       }
     );
-    cy.apiRecordingAdd(
-      "rqCamera1b",
-      recording3,
-      undefined,
-      "rqRecording3"
-    ).then(() => {
-      expectedRecording3 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rqRecording3",
-        "rqCamera1b",
-        "rqGroup",
-        null,
-        recording3
-      );
-      expectedRecording3.processingState = "analyse";
-    });
-    cy.apiRecordingAdd(
-      "rqCamera1b",
-      recording4,
-      undefined,
-      "rqRecording4"
-    ).then(() => {
-      expectedRecording4 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rqRecording4",
-        "rqCamera1b",
-        "rqGroup",
-        null,
-        recording4
-      );
-      expectedRecording4.processingState = "FINISHED";
-      cy.testUserTagRecording(
-        getCreds("rqRecording4").id,
-        0,
-        "rqGroupAdmin",
-        "possum"
-      );
-      expectedRecording4.Tracks[0].TrackTags = [
-        {
-          what: "possum",
-          automatic: false,
-          confidence: 0.7,
-          data: null,
-          TrackId: -99,
-          User: {
-            username: getTestName("rqGroupAdmin"),
-            id: getCreds("rqGroupAdmin").id,
-          },
-          UserId: getCreds("rqGroupAdmin").id,
-        },
-      ];
-    });
     for (let count = 0; count < 20; count++) {
       const tempRecording = JSON.parse(JSON.stringify(recording1));
       //recordingDateTime order different to id order to test sort on different parameters
@@ -307,9 +342,6 @@ describe("Recordings query using where", () => {
         );
       });
     }
-    //TODO: HACK!!!!! For some reason the recordings aren't fully available immediately.
-    //Issue 103 
-    cy.wait(10000);
   });
 
   it("Group admin can query device's recordings", () => {
