@@ -712,7 +712,7 @@ Cypress.Commands.add(
             column < ApiRecordingColumnNames.length;
             column++
           ) {
-            if (!excludeCheckOn.includes(columns[column])) {
+            if (excludeCheckOn.indexOf(ApiRecordingColumnNames[column]) == -1) {
               expect(
                 columns[column],
                 `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
