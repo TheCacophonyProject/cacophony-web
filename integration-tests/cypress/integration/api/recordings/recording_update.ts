@@ -10,7 +10,6 @@ import {
 
 import { ApiRecordingReturned, ApiRecordingSet } from "../../../commands/types";
 
-
 import {
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
@@ -43,7 +42,7 @@ const templateRecording: ApiRecordingSet = {
   fileHash: null,
   duration: 40,
   recordingDateTime: "2021-01-01T00:00:00.000Z",
-//TODO: workaround for issue 81 - imprecise locations by default.  Values chosen to avoid issue
+  //TODO: workaround for issue 81 - imprecise locations by default.  Values chosen to avoid issue
   location: [-45.00045, 169.00065],
   version: "346",
   batteryCharging: null,
@@ -56,16 +55,15 @@ const templateRecording: ApiRecordingSet = {
   },
   metadata: {
     algorithm: { model_name: "master" },
-    tracks: [{ start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 }],
+    tracks: [
+      { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+    ],
   },
   comment: "This is a comment2",
   processingState: "FINISHED",
 };
 
-const EXCLUDE_IDS = [
-  ".Tracks[].TrackTags[].TrackId",
-  ".Tracks[].id",
-];
+const EXCLUDE_IDS = [".Tracks[].TrackTags[].TrackId", ".Tracks[].id"];
 
 //TODO: Issue i98 - only comments and additional metadata succeed at update
 //location causes server error
@@ -88,9 +86,9 @@ const fieldUpdates = {
     newField: "newValue",
     newField2: "newValue2",
     algorithm: 99999,
-    previewSecs: null
+    previewSecs: null,
   },
-  location: [-46.29105, 170.30835]
+  location: [-46.29105, 170.30835],
 };
 
 describe("Update recordings", () => {
@@ -105,111 +103,248 @@ describe("Update recordings", () => {
     cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceMember", "ruCamera1", true);
 
     cy.testCreateUserGroupAndDevice("ruGroup2Admin", "ruGroup2", "ruCamera2");
-
   });
 
   it("Group admin can update recording", () => {
     const recording01 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd( "ruCamera1", recording01, "oneframe.cptv", "ruRecording01").then(() => {
-      let expectedRecording01 = TestCreateExpectedRecordingData( templateExpectedRecording, "ruRecording01", "ruCamera1", "ruGroup", null, recording01);
+    cy.apiRecordingAdd(
+      "ruCamera1",
+      recording01,
+      "oneframe.cptv",
+      "ruRecording01"
+    ).then(() => {
+      let expectedRecording01 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "ruRecording01",
+        "ruCamera1",
+        "ruGroup",
+        null,
+        recording01
+      );
       cy.log("Check recording prior to update");
-      cy.apiRecordingCheck( "ruGroupAdmin", "ruRecording01", expectedRecording01, EXCLUDE_IDS).then(() => {
+      cy.apiRecordingCheck(
+        "ruGroupAdmin",
+        "ruRecording01",
+        expectedRecording01,
+        EXCLUDE_IDS
+      ).then(() => {
         cy.log("Update recording");
-        cy.apiRecordingUpdate( "ruGroupAdmin", "ruRecording01", fieldUpdates);
-        expectedRecording01=updateExpected(expectedRecording01);
+        cy.apiRecordingUpdate("ruGroupAdmin", "ruRecording01", fieldUpdates);
+        expectedRecording01 = updateExpected(expectedRecording01);
 
         cy.log("Check recording after update");
-        cy.apiRecordingCheck( "ruGroupAdmin", "ruRecording01", expectedRecording01, EXCLUDE_IDS);
+        cy.apiRecordingCheck(
+          "ruGroupAdmin",
+          "ruRecording01",
+          expectedRecording01,
+          EXCLUDE_IDS
+        );
       });
     });
   });
 
   it("Group member can update recording", () => {
     const recording02 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd( "ruCamera1", recording02, "oneframe.cptv", "ruRecording02").then(() => {
-      let expectedRecording02 = TestCreateExpectedRecordingData( templateExpectedRecording, "ruRecording02", "ruCamera1", "ruGroup", null, recording02);
+    cy.apiRecordingAdd(
+      "ruCamera1",
+      recording02,
+      "oneframe.cptv",
+      "ruRecording02"
+    ).then(() => {
+      let expectedRecording02 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "ruRecording02",
+        "ruCamera1",
+        "ruGroup",
+        null,
+        recording02
+      );
       cy.log("Check recording prior to update");
-      cy.apiRecordingCheck( "ruGroupMember", "ruRecording02", expectedRecording02, EXCLUDE_IDS).then(() => {
+      cy.apiRecordingCheck(
+        "ruGroupMember",
+        "ruRecording02",
+        expectedRecording02,
+        EXCLUDE_IDS
+      ).then(() => {
         cy.log("Update recording");
-        cy.apiRecordingUpdate( "ruGroupMember", "ruRecording02", fieldUpdates);
-        expectedRecording02=updateExpected(expectedRecording02);
+        cy.apiRecordingUpdate("ruGroupMember", "ruRecording02", fieldUpdates);
+        expectedRecording02 = updateExpected(expectedRecording02);
 
         cy.log("Check recording after update");
-        cy.apiRecordingCheck( "ruGroupMember", "ruRecording02", expectedRecording02, EXCLUDE_IDS);
+        cy.apiRecordingCheck(
+          "ruGroupMember",
+          "ruRecording02",
+          expectedRecording02,
+          EXCLUDE_IDS
+        );
       });
     });
   });
-  
+
   it("Device admin can update recording", () => {
     const recording03 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd( "ruCamera1", recording03, "oneframe.cptv", "ruRecording03").then(() => {
-      let expectedRecording03 = TestCreateExpectedRecordingData( templateExpectedRecording, "ruRecording03", "ruCamera1", "ruGroup", null, recording03);
+    cy.apiRecordingAdd(
+      "ruCamera1",
+      recording03,
+      "oneframe.cptv",
+      "ruRecording03"
+    ).then(() => {
+      let expectedRecording03 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "ruRecording03",
+        "ruCamera1",
+        "ruGroup",
+        null,
+        recording03
+      );
       cy.log("Check recording prior to update");
-      cy.apiRecordingCheck( "ruDeviceAdmin", "ruRecording03", expectedRecording03, EXCLUDE_IDS).then(() => {
+      cy.apiRecordingCheck(
+        "ruDeviceAdmin",
+        "ruRecording03",
+        expectedRecording03,
+        EXCLUDE_IDS
+      ).then(() => {
         cy.log("Update recording");
-        cy.apiRecordingUpdate( "ruDeviceAdmin", "ruRecording03", fieldUpdates);
-        expectedRecording03=updateExpected(expectedRecording03);
+        cy.apiRecordingUpdate("ruDeviceAdmin", "ruRecording03", fieldUpdates);
+        expectedRecording03 = updateExpected(expectedRecording03);
 
         cy.log("Check recording after update");
-        cy.apiRecordingCheck( "ruDeviceAdmin", "ruRecording03", expectedRecording03, EXCLUDE_IDS);
+        cy.apiRecordingCheck(
+          "ruDeviceAdmin",
+          "ruRecording03",
+          expectedRecording03,
+          EXCLUDE_IDS
+        );
       });
     });
   });
-    
+
   it("Device member can update recording", () => {
     const recording04 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd( "ruCamera1", recording04, "oneframe.cptv", "ruRecording04").then(() => {
-      let expectedRecording04 = TestCreateExpectedRecordingData( templateExpectedRecording, "ruRecording04", "ruCamera1", "ruGroup", null, recording04);
+    cy.apiRecordingAdd(
+      "ruCamera1",
+      recording04,
+      "oneframe.cptv",
+      "ruRecording04"
+    ).then(() => {
+      let expectedRecording04 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "ruRecording04",
+        "ruCamera1",
+        "ruGroup",
+        null,
+        recording04
+      );
       cy.log("Check recording prior to update");
-      cy.apiRecordingCheck( "ruDeviceMember", "ruRecording04", expectedRecording04, EXCLUDE_IDS).then(() => {
+      cy.apiRecordingCheck(
+        "ruDeviceMember",
+        "ruRecording04",
+        expectedRecording04,
+        EXCLUDE_IDS
+      ).then(() => {
         cy.log("Update recording");
-        cy.apiRecordingUpdate( "ruDeviceMember", "ruRecording04", fieldUpdates);
-        expectedRecording04=updateExpected(expectedRecording04);
+        cy.apiRecordingUpdate("ruDeviceMember", "ruRecording04", fieldUpdates);
+        expectedRecording04 = updateExpected(expectedRecording04);
 
         cy.log("Check recording after update");
-        cy.apiRecordingCheck( "ruDeviceMember", "ruRecording04", expectedRecording04, EXCLUDE_IDS);
+        cy.apiRecordingCheck(
+          "ruDeviceMember",
+          "ruRecording04",
+          expectedRecording04,
+          EXCLUDE_IDS
+        );
       });
     });
   });
-    
 
-  
   it("Non member cannot update recording", () => {
     const recording05 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd( "ruCamera1", recording05, "oneframe.cptv", "ruRecording05").then(() => {
-      let expectedRecording05 = TestCreateExpectedRecordingData( templateExpectedRecording, "ruRecording05", "ruCamera1", "ruGroup", null, recording05);
+    cy.apiRecordingAdd(
+      "ruCamera1",
+      recording05,
+      "oneframe.cptv",
+      "ruRecording05"
+    ).then(() => {
+      const expectedRecording05 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "ruRecording05",
+        "ruCamera1",
+        "ruGroup",
+        null,
+        recording05
+      );
       cy.log("Attempt to update recording");
-      cy.apiRecordingUpdate( "ruGroup2Admin", "ruRecording05", fieldUpdates, HTTP_Forbidden);
+      cy.apiRecordingUpdate(
+        "ruGroup2Admin",
+        "ruRecording05",
+        fieldUpdates,
+        HTTP_Forbidden
+      );
 
       cy.log("Check recording not updated");
-      cy.apiRecordingCheck( "ruDeviceMember", "ruRecording05", expectedRecording05, EXCLUDE_IDS);
+      cy.apiRecordingCheck(
+        "ruDeviceMember",
+        "ruRecording05",
+        expectedRecording05,
+        EXCLUDE_IDS
+      );
     });
   });
-    
-    
-  it("Can handle no matching recording", () => {
-    cy.apiRecordingUpdate( "ruGroupAdmin", "99999", fieldUpdates, HTTP_BadRequest, {useRawRecordingId: true});
-  });
 
+  it("Can handle no matching recording", () => {
+    cy.apiRecordingUpdate(
+      "ruGroupAdmin",
+      "99999",
+      fieldUpdates,
+      HTTP_BadRequest,
+      { useRawRecordingId: true }
+    );
+  });
 
   it("Handles unsupported parameters and values correctly", () => {
     const recording06 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd( "ruCamera1", recording06, "oneframe.cptv", "ruRecording06").then(() => {
-      let expectedRecording06 = TestCreateExpectedRecordingData( templateExpectedRecording, "ruRecording06", "ruCamera1", "ruGroup", null, recording06);
+    cy.apiRecordingAdd(
+      "ruCamera1",
+      recording06,
+      "oneframe.cptv",
+      "ruRecording06"
+    ).then(() => {
+      const expectedRecording06 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "ruRecording06",
+        "ruCamera1",
+        "ruGroup",
+        null,
+        recording06
+      );
       cy.log("Attempt to update invalid field");
-      cy.apiRecordingUpdate( "ruGroupAdmin", "ruRecording06", {badField: "hello"}, HTTP_BadRequest);
+      cy.apiRecordingUpdate(
+        "ruGroupAdmin",
+        "ruRecording06",
+        { badField: "hello" },
+        HTTP_BadRequest
+      );
       cy.log("Attempt to update field with invalid value");
-      cy.apiRecordingUpdate( "ruGroupAdmin", "ruRecording06", {additionalMetdata: "badValue"}, HTTP_BadRequest);
+      cy.apiRecordingUpdate(
+        "ruGroupAdmin",
+        "ruRecording06",
+        { additionalMetdata: "badValue" },
+        HTTP_BadRequest
+      );
 
       cy.log("Check recording not updated");
-      cy.apiRecordingCheck( "ruDeviceMember", "ruRecording06", expectedRecording06, EXCLUDE_IDS);
+      cy.apiRecordingCheck(
+        "ruDeviceMember",
+        "ruRecording06",
+        expectedRecording06,
+        EXCLUDE_IDS
+      );
     });
   });
-
-
 });
 
-function updateExpected(expectedRecording:any) {
+//TODO: Issue 98 - mosty parameters appear unsupported. Commented out - remove from here if we will never support them
+function updateExpected(expectedRecording: any) {
   expectedRecording.processingState = "FINISHED";
   //expectedRecording.processing = false;
   //expectedRecording.rawMimeType= "application/test";
@@ -223,12 +358,18 @@ function updateExpected(expectedRecording:any) {
   //expectedRecording.batteryCharging= "CHARGING";
   //expectedRecording.airplaneModeOn= true;
   //expectedRecording.type= "audio";
-  expectedRecording.comment= "This is a new comment";
-  expectedRecording.location= { type: "Point", coordinates: [-46.29105, 170.30835] };
+  expectedRecording.comment = "This is a new comment";
+  expectedRecording.location = {
+    type: "Point",
+    coordinates: [-46.29105, 170.30835],
+  };
   //expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};
   //TODO: Issue 99 behaviour here and in fileProcessing inconsistent.  fileProcessing merges additionalMetedata here we replace it
-  expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, previewSecs: null};
-  return(expectedRecording);
-};;
-
-
+  expectedRecording.additionalMetadata = {
+    newField: "newValue",
+    newField2: "newValue2",
+    algorithm: 99999,
+    previewSecs: null,
+  };
+  return expectedRecording;
+}

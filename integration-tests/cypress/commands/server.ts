@@ -5,7 +5,7 @@ export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 import { format as urlFormat } from "url";
 
 import { NOT_NULL } from "./constants";
-import {ApiLocation} from "./types";
+import { ApiLocation } from "./types";
 
 export function apiPath(): string {
   return Cypress.env("cacophony-api-server");
@@ -72,7 +72,6 @@ export function saveJobKeyByName(name: string, jobKey: string) {
   Cypress.env("testCreds")[name].jobKey = jobKey;
 }
 
-
 export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
@@ -94,20 +93,15 @@ export function saveCreds(
   Cypress.env("testCreds")[name] = creds;
 }
 
-  export function saveStation(
-    location: ApiLocation,
-    name: string,
-    id = 0
-  ) {
-    const creds = {
-      name,
-      headers: {
-      },
-      location: location,
-      id,
-    };
-    Cypress.env("testCreds")[name] = creds;
-  }
+export function saveStation(location: ApiLocation, name: string, id = 0) {
+  const creds = {
+    name,
+    headers: {},
+    location: location,
+    id,
+  };
+  Cypress.env("testCreds")[name] = creds;
+}
 
 export function makeAuthorizedRequestWithStatus(
   requestDetails: Partial<Cypress.RequestOptions>,
@@ -367,7 +361,7 @@ function isArrayOrHash(theObject: any) {
   );
 }
 
-export function removeUndefinedParams(jsStruct: any):any {
+export function removeUndefinedParams(jsStruct: any): any {
   const keys = Object.keys(jsStruct);
   const resultStruct = {};
   for (let count = 0; count < keys.length; count++) {

@@ -110,7 +110,7 @@ declare namespace Cypress {
      * Specify admin or non admin user (defualt=non-admin)
      * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
      * optionally check for a non-200 status code
-     * By default user name is made unique. Specify 
+     * By default user name is made unique. Specify
      * additionalChecks.useRawUserName=true to keep name as supplied.
      */
     apiDeviceUserAdd(
@@ -126,7 +126,7 @@ declare namespace Cypress {
      * Remove user from a device using /device/users
      * takes devicename and looks up the device Id to pass tot he API.  Hence devicename must be unique within test environment
      * optionally check for a non-200 status code
-     * By default user name is made unique. Specify 
+     * By default user name is made unique. Specify
      * additionalChecks.useRawUserName=true to keep name as supplied.
      */
     apiDeviceUserRemove(

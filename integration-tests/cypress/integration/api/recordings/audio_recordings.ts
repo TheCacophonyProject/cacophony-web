@@ -9,10 +9,10 @@ import {
 const EXCLUDE_IDS = [
   ".Tracks[].TrackTags[].TrackId",
   ".Tracks[].id",
-//TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
+  //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
   ".location.coordinates",
-//TODO: workaround for issue 88, inconsistent mime type for audio (audio/mpeg vs video/mp4)
-  ".rawMimeType"
+  //TODO: workaround for issue 88, inconsistent mime type for audio (audio/mpeg vs video/mp4)
+  ".rawMimeType",
 ];
 import {
   ApiRecordingReturned,
@@ -29,7 +29,7 @@ const templateExpectedRecording: ApiRecordingReturned = {
   // TODO: Issue 87.  Filehash missing on returned values
   // fileHash: null,
   id: 204771,
-  rawMimeType:"audio/mp4",
+  rawMimeType: "audio/mp4",
   //rawMimeType: "video/mp4",
   fileMimeType: null,
   processingState: "FINISHED",

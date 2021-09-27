@@ -722,10 +722,10 @@ describe("Recordings (thermal): add, get, delete", () => {
   });
 
   it.skip("Correct handling of invalid recording upload parameters", () => {
-    //TODO: where to start!!!!
+    //TODO: to be defined / written
   });
 
   it.skip("Deleted recording deletes associated tracks, tracktags and tags", () => {
-
+    //TODO: would need to include a database query - i.e. use sequelize or an external system call
   });
 });

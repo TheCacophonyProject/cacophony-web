@@ -481,15 +481,15 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    let fullName:string;
+    let fullName: string;
     logTestDescription(
       `${deviceAdminUser} Adding user '${userName}' to device '${device}'`,
       { user: userName, device }
     );
-    if (additionalChecks["useRawUserName"]===true) {
-      fullName=userName;
+    if (additionalChecks["useRawUserName"] === true) {
+      fullName = userName;
     } else {
-      fullName=getTestName(userName);
+      fullName = getTestName(userName);
     }
     makeAuthorizedRequestWithStatus(
       {
@@ -515,13 +515,12 @@ Cypress.Commands.add(
     device: string,
     statusCode: number = 200,
     additionalChecks: any = {}
-
   ) => {
-    let fullName:string;
-    if (additionalChecks["useRawUserName"]===true) {
-      fullName=userName;
+    let fullName: string;
+    if (additionalChecks["useRawUserName"] === true) {
+      fullName = userName;
     } else {
-      fullName=getTestName(userName);
+      fullName = getTestName(userName);
     }
 
     logTestDescription(

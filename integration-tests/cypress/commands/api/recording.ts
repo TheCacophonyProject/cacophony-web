@@ -11,12 +11,18 @@ import {
   saveIdOnly,
   saveJobKeyByName,
   checkTreeStructuresAreEqualExcept,
-  removeUndefinedParams
+  removeUndefinedParams,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { ApiRecordingSet, ApiRecordingReturned, ApiRecordingNeedsTagReturned } from "../types";
+import {
+  ApiRecordingSet,
+  ApiRecordingReturned,
+  ApiRecordingNeedsTagReturned,
+  ApiRecordingColumns,
+} from "../types";
+import { ApiRecordingColumnNames } from "../constants";
 
-
+// 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
 Cypress.Commands.add(
   "processingApiPut",
@@ -28,13 +34,13 @@ Cypress.Commands.add(
     newProcessedFileKey: string,
     statusCode: number = 200
   ) => {
-    let id=getCreds(recordingName).id;
-    let jobKey=getCreds(recordingName).jobKey;
-   logTestDescription(
-      `Processing 'done' for recording ${recordingName}`,
-      { id: id, result: result }
-    );
-    const params = { 
+    const id = getCreds(recordingName).id;
+    const jobKey = getCreds(recordingName).jobKey;
+    logTestDescription(`Processing 'done' for recording ${recordingName}`, {
+      id: id,
+      result: result,
+    });
+    const params = {
       id: id,
       jobKey: jobKey,
       success: success,
@@ -42,18 +48,19 @@ Cypress.Commands.add(
       complete: complete,
       newProcessedFileKey: newProcessedFileKey,
     };
-  
+
     const url = processingApiPath("");
-    cy.request(
-      {
-        method: "PUT",
-        url: url,
-        body: params
-      }
-    ).then((response) => {
-     expect(response.status,"Check return statusCode is").to.equal(statusCode);
+    cy.request({
+      method: "PUT",
+      url: url,
+      body: params,
+    }).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode
+      );
     });
-  });
+  }
+);
 
 Cypress.Commands.add(
   "processingApiTracksPost",
@@ -64,52 +71,51 @@ Cypress.Commands.add(
     algorithmId: number,
     statusCode: number = 200
   ) => {
-    let id=getCreds(recordingName).id;
-    logTestDescription(
-      `Adding tracks for recording ${recordingName}`,
-      { id: id, data: data, algorithmId: algorithmId }
-    );
-    const params = { 
-      data: JSON.stringify(data),
-      algorithmId: algorithmId
-    };
-  
-    const url = processingApiPath(id.toString()+"/tracks");
-    cy.request(
-      {
-        method: "POST",
-        url: url,
-        body: params
-      }
-    ).then((response) => {
-     expect(response.status,"Check return statusCode is").to.equal(statusCode);
-     saveIdOnly(trackName, response.body.trackId);
+    const id = getCreds(recordingName).id;
+    logTestDescription(`Adding tracks for recording ${recordingName}`, {
+      id: id,
+      data: data,
+      algorithmId: algorithmId,
     });
-  });
+    const params = {
+      data: JSON.stringify(data),
+      algorithmId: algorithmId,
+    };
+
+    const url = processingApiPath(id.toString() + "/tracks");
+    cy.request({
+      method: "POST",
+      url: url,
+      body: params,
+    }).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode
+      );
+      saveIdOnly(trackName, response.body.trackId);
+    });
+  }
+);
 
 Cypress.Commands.add(
   "processingApiTracksDelete",
-  (
-    recordingName: string,
-    statusCode: number = 200
-  ) => {
-    let id=getCreds(recordingName).id;
-    logTestDescription(
-      `Deleting tracks from recording ${recordingName}`,
-      { id: id }
-    );
-    const params = { };
-    const url = processingApiPath(id.toString()+"/tracks");
-    cy.request(
-      {
-        method: "DELETE",
-        url: url,
-        body: params
-      }
-    ).then((response) => {
-     expect(response.status,"Check return statusCode is").to.equal(statusCode);
+  (recordingName: string, statusCode: number = 200) => {
+    const id = getCreds(recordingName).id;
+    logTestDescription(`Deleting tracks from recording ${recordingName}`, {
+      id: id,
     });
-  });
+    const params = {};
+    const url = processingApiPath(id.toString() + "/tracks");
+    cy.request({
+      method: "DELETE",
+      url: url,
+      body: params,
+    }).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode
+      );
+    });
+  }
+);
 
 Cypress.Commands.add(
   "processingApiTracksTagsPost",
@@ -121,8 +127,8 @@ Cypress.Commands.add(
     data: any = {},
     statusCode: number = 200
   ) => {
-    let id=getCreds(recordingName).id;
-    let trackId=getCreds(trackName).id;
+    const id = getCreds(recordingName).id;
+    const trackId = getCreds(trackName).id;
     logTestDescription(
       `Adding tracktag '${what}' for recording ${recordingName}`,
       { id: id, trackId: trackId, what: what, confidence: confidence }
@@ -130,42 +136,41 @@ Cypress.Commands.add(
     const params = {
       what: what,
       confidence: confidence,
-      data: JSON.stringify(data)
+      data: JSON.stringify(data),
     };
 
-    const url = processingApiPath(id.toString()+"/tracks/"+trackId.toString()+"/tags");
-    cy.request(
-      {
-        method: "POST",
-        url: url,
-        body: params,
-      }
-    ).then((response) => {
-     expect(response.status,"Check return statusCode is").to.equal(statusCode);
-    });
-  });
-
-  Cypress.Commands.add( "processingApiAlgorithmPost", ( algorithm: any) => {
-   logTestDescription(
-      `Getting id for algorithm ${JSON.stringify(algorithm)}`,
-      { algorithm: algorithm }
+    const url = processingApiPath(
+      id.toString() + "/tracks/" + trackId.toString() + "/tags"
     );
-    const params = {
-      algorithm: JSON.stringify(algorithm)
-    };
-
-    const url = processingApiPath("algorithm");
-    cy.request(
-      {
-        method: "POST",
-        url: url,
-        body: params
-      }
-    ).then((response) => {
-      cy.wrap(response.body.algorithmId);
+    cy.request({
+      method: "POST",
+      url: url,
+      body: params,
+    }).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode
+      );
     });
-  });
+  }
+);
 
+Cypress.Commands.add("processingApiAlgorithmPost", (algorithm: any) => {
+  logTestDescription(`Getting id for algorithm ${JSON.stringify(algorithm)}`, {
+    algorithm: algorithm,
+  });
+  const params = {
+    algorithm: JSON.stringify(algorithm),
+  };
+
+  const url = processingApiPath("algorithm");
+  cy.request({
+    method: "POST",
+    url: url,
+    body: params,
+  }).then((response) => {
+    cy.wrap(response.body.algorithmId);
+  });
+});
 
 Cypress.Commands.add(
   "processingApiCheck",
@@ -190,20 +195,25 @@ Cypress.Commands.add(
     const url = processingApiPath("", params);
     cy.request({ url: url }).then((response) => {
       if (statusCode === 200) {
-        if (response.body.recording!==undefined) {
+        if (response.body.recording !== undefined) {
           saveJobKeyByName(recordingName, response.body.recording.jobKey);
         }
-        if (expectedRecording===undefined) {
-          expect(response.body.recording,"Expect response to contain no recordings").to.be.undefined;
+        if (expectedRecording === undefined) {
+          expect(
+            response.body.recording,
+            "Expect response to contain no recordings"
+          ).to.be.undefined;
         } else {
-          expect(response.body.recording,"Expect response to contain a recording").to.exist;
-        };
+          expect(
+            response.body.recording,
+            "Expect response to contain a recording"
+          ).to.exist;
+        }
         checkTreeStructuresAreEqualExcept(
           expectedRecording,
           response.body.recording,
           excludeCheckOn
         );
-      
       } else {
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages).to.contain(
@@ -263,11 +273,10 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-
-    logTestDescription(
-      `Update recording ${recordingNameOrId}`,
-      { recording: recordingNameOrId, updates: updates }
-    );
+    logTestDescription(`Update recording ${recordingNameOrId}`, {
+      recording: recordingNameOrId,
+      updates: updates,
+    });
 
     let recordingId: string;
     if (additionalChecks["useRawRecordingId"] === true) {
@@ -276,17 +285,17 @@ Cypress.Commands.add(
       recordingId = getCreds(recordingNameOrId).id.toString();
     }
 
-    const url = v1ApiPath(`recordings/${recordingId}`)
+    const url = v1ApiPath(`recordings/${recordingId}`);
 
     const params = {
-      updates: JSON.stringify(updates)
+      updates: JSON.stringify(updates),
     };
 
     makeAuthorizedRequestWithStatus(
       {
         method: "PATCH",
         url: url,
-        body: params
+        body: params,
       },
       userName,
       statusCode
@@ -295,7 +304,8 @@ Cypress.Commands.add(
         expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
     });
-  });
+  }
+);
 
 Cypress.Commands.add(
   "apiRecordingDelete",
@@ -391,43 +401,50 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(`Check recording needs-tag, biased to ${deviceNameOrId} `, {
-      device: deviceNameOrId,
-    });
+    logTestDescription(
+      `Check recording needs-tag, biased to ${deviceNameOrId} `,
+      {
+        device: deviceNameOrId,
+      }
+    );
 
-    let params: any={};
-    if (deviceNameOrId!==undefined) {
+    let params: any = {};
+    if (deviceNameOrId !== undefined) {
       if (additionalChecks["useRawDeviceId"] === true) {
         params = { deviceId: deviceNameOrId };
       } else {
-        params = { deviceId: getCreds(deviceNameOrId).id.toString()};
+        params = { deviceId: getCreds(deviceNameOrId).id.toString() };
       }
     }
-    const url = v1ApiPath(`recordings/needs-tag`,params);
+    const url = v1ApiPath(`recordings/needs-tag`, params);
 
     makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url: url
+        url: url,
       },
       userName,
       statusCode
     ).then((response) => {
-      let expectedRecording:ApiRecordingNeedsTagReturned;
+      let expectedRecording: ApiRecordingNeedsTagReturned;
       if (statusCode === 200) {
-        if (expectedRecordings.length>0) {
-          if (additionalChecks["doNotValidate"]!=true) {
+        if (expectedRecordings.length > 0) {
+          if (additionalChecks["doNotValidate"] != true) {
             //find returned recording in expectedRecordings
-            let recordingIds="";
+            let recordingIds = "";
             expectedRecordings.forEach((recording) => {
-              recordingIds=recordingIds+recording.RecordingId.toString()+", ";
-              if(recording.RecordingId == response.body.rows[0].RecordingId) {
-                expectedRecording=recording;
+              recordingIds =
+                recordingIds + recording.RecordingId.toString() + ", ";
+              if (recording.RecordingId == response.body.rows[0].RecordingId) {
+                expectedRecording = recording;
               }
             });
-            expect(expectedRecording,`Recording ID ${response.body.rows[0].RecordingId} should be in list (${recordingIds})`).to.exist;
-       
-            //Verify result matches expected 
+            expect(
+              expectedRecording,
+              `Recording ID ${response.body.rows[0].RecordingId} should be in list (${recordingIds})`
+            ).to.exist;
+
+            //Verify result matches expected
             checkTreeStructuresAreEqualExcept(
               expectedRecording,
               response.body.rows[0],
@@ -437,7 +454,10 @@ Cypress.Commands.add(
         } else {
           //TODO: Issue 100 workaround. Remove when fixed
           //expect(response.body.rows.length,"Expect no returned recordings").to.equal(0);
-          expect(response.body.rows[0].RecordingId,"Expect dummy recording with id of 0").to.equal(0);
+          expect(
+            response.body.rows[0].RecordingId,
+            "Expect dummy recording with id of 0"
+          ).to.equal(0);
         }
       } else {
         if (additionalChecks["message"] !== undefined) {
@@ -449,7 +469,6 @@ Cypress.Commands.add(
     });
   }
 );
-
 
 Cypress.Commands.add(
   "apiRecordingThumbnailCheck",
@@ -480,9 +499,12 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        expect(response.body.length,"Returned file has length>0").to.be.gt(0);
-        if (additionalChecks["type"]=="PNG") {
-          expect(response.body.slice(1,4),"Expect PNG file signature").to.equal("PNG");
+        expect(response.body.length, "Returned file has length>0").to.be.gt(0);
+        if (additionalChecks["type"] == "PNG") {
+          expect(
+            response.body.slice(1, 4),
+            "Expect PNG file signature"
+          ).to.equal("PNG");
         }
       } else {
         if (additionalChecks["message"] !== undefined) {
@@ -597,8 +619,8 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiRecordingsQueryCheck", 
-    (
+  "apiRecordingsQueryCheck",
+  (
     userName: string,
     query: any,
     expectedRecordings: ApiRecordingReturned[] = undefined,
@@ -606,19 +628,19 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    let params=removeUndefinedParams(query);
-    params["where"]=JSON.stringify(query["where"]);
+    const params = removeUndefinedParams(query);
+    params["where"] = JSON.stringify(query["where"]);
 
     logTestDescription(
       `Query recordings where '${JSON.stringify(params["where"])}'`,
-      {user: userName, params: params }
+      { user: userName, params: params }
     );
 
-    const url = v1ApiPath("recordings",params);
+    const url = v1ApiPath("recordings", params);
     makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url: url
+        url: url,
       },
       userName,
       statusCode
@@ -637,36 +659,105 @@ Cypress.Commands.add(
         }
       }
     });
-});
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingsReportCheck",
+  (
+    userName: string,
+    query: any,
+    expectedResults: ApiRecordingColumns[] = [],
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    const params = removeUndefinedParams(query);
+    params["where"] = JSON.stringify(query["where"]);
+
+    logTestDescription(
+      `Generate report for recordings where '${JSON.stringify(
+        params["where"]
+      )}'`,
+      { user: userName, params: params }
+    );
+
+    const url = v1ApiPath("recordings/report", params);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (statusCode === 200) {
+        const allrows = response.body.split(/\r?\n/);
+        const columns = allrows[0].split(",");
+        const rows = allrows.slice(1);
+
+        expect(JSON.stringify(columns), "CSV columns match expected").to.equal(
+          JSON.stringify(ApiRecordingColumnNames)
+        );
+
+        expect(
+          rows.length,
+          `Expect ${expectedResults.length} results to be returned`
+        ).to.equal(expectedResults.length);
+
+        for (let count = 0; count < expectedResults.length; count++) {
+          const columns = rows[count].split(",");
+          for (
+            let column = 0;
+            column < ApiRecordingColumnNames.length;
+            column++
+          ) {
+            expect(
+              columns[column],
+              `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
+            ).to.equal(expectedResults[count][ApiRecordingColumnNames[column]]);
+          }
+        }
+      } else {
+        if (additionalChecks["message"] !== undefined) {
+          expect(response.body.messages).to.contain(
+            additionalChecks["message"]
+          );
+        }
+      }
+    });
+  }
+);
 
 Cypress.Commands.add(
   "apiRecordingsCountCheck",
-    (
+  (
     userName: string,
     query: any,
     expectedCount: number,
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    let params=removeUndefinedParams(query);
-    params["where"]=JSON.stringify(query["where"]);
+    const params = removeUndefinedParams(query);
+    params["where"] = JSON.stringify(query["where"]);
 
     logTestDescription(
       `Query recording count where '${JSON.stringify(params["where"])}'`,
-      {user: userName, params: params }
+      { user: userName, params: params }
     );
 
-    const url = v1ApiPath("recordings/count",params);
+    const url = v1ApiPath("recordings/count", params);
     makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url: url
+        url: url,
       },
       userName,
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        expect(response.body.count,"Recording count should be").to.equal(expectedCount);
+        expect(response.body.count, "Recording count should be").to.equal(
+          expectedCount
+        );
         cy.wrap(response.body.count);
       } else {
         if (additionalChecks["message"] !== undefined) {
@@ -676,7 +767,8 @@ Cypress.Commands.add(
         }
       }
     });
-});
+  }
+);
 
 Cypress.Commands.add(
   "apiReprocess",
@@ -689,23 +781,26 @@ Cypress.Commands.add(
   ) => {
     logTestDescription(
       `Mark recordings for reprocess '${JSON.stringify(recordingIds)}'`,
-      {user: userName, recordingIds: recordingIds }
+      { user: userName, recordingIds: recordingIds }
     );
-    const params=  { recordings: recordingIds };
+    const params = { recordings: recordingIds };
 
     const url = v1ApiPath("reprocess");
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: url,
-        body: params
+        body: params,
       },
       userName,
       statusCode
     ).then((response) => {
-      if (expectedReprocessed!==undefined) {
-        expect(response.body.reprocessed.length, "Number of reprocessed expected to be").to.equal(expectedReprocessed.length);
-        expectedReprocessed.forEach((reprocessed:any) => {
+      if (expectedReprocessed !== undefined) {
+        expect(
+          response.body.reprocessed.length,
+          "Number of reprocessed expected to be"
+        ).to.equal(expectedReprocessed.length);
+        expectedReprocessed.forEach((reprocessed: any) => {
           expect(response.body.reprocessed).to.contain(reprocessed);
         });
       }
@@ -713,8 +808,11 @@ Cypress.Commands.add(
         expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
       if (additionalChecks["fail"] !== undefined) {
-        expect(response.body.fail.length, "Number of fail expected to be").to.equal(additionalChecks["fail"].length);
-        additionalChecks["fail"].forEach((fail:any) => {
+        expect(
+          response.body.fail.length,
+          "Number of fail expected to be"
+        ).to.equal(additionalChecks["fail"].length);
+        additionalChecks["fail"].forEach((fail: any) => {
           expect(response.body.fail).to.contain(fail);
         });
       }
@@ -722,5 +820,5 @@ Cypress.Commands.add(
         expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
     });
-  });
-
+  }
+);

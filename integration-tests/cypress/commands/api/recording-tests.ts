@@ -4,11 +4,10 @@
 import { getTestName } from "../names";
 import {
   v1ApiPath,
-  processingApiPath,
   getCreds,
   DEFAULT_DATE,
   makeAuthorizedRequest,
-  removeUndefinedParams
+  removeUndefinedParams,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { convertToDate } from "../server";
@@ -21,10 +20,12 @@ import {
   ApiRecordingStation,
   ApiRecordingTrack,
   ApiDeviceIdAndName,
-  ApiRecordingNeedsTagReturned
+  ApiRecordingNeedsTagReturned,
+  ApiRecordingColumns,
 } from "../types";
 
 import { HTTP_OK200, NOT_NULL } from "../constants";
+const BASE_URL = "http://test.site";
 
 let lastUsedTime = DEFAULT_DATE;
 
@@ -296,7 +297,7 @@ Cypress.Commands.add(
     }).then((response) => {
       let recordingIds = [];
       const recordings = response.body.rows;
-      recordingIds = recordings.map((recording) => recording.id);
+      recordingIds = recordings.map((recording: any) => recording.id);
       cy.wrap(recordingIds);
     });
   }
@@ -398,21 +399,92 @@ export function TestCreateExpectedNeedsTagData(
   expected.recordingJWT = NOT_NULL;
   expected.tagJWT = NOT_NULL;
   expected.tracks = [];
-  inputRecording.metadata.tracks.forEach((track) => {
+  inputRecording.metadata.tracks.forEach((track: any) => {
     expected.tracks.push({
       TrackId: NOT_NULL,
       data: {
         start_s: track.start_s,
-        end_s: track.end_s
+        end_s: track.end_s,
       },
-      needsTagging: true
+      needsTagging: true,
     });
   });
-
 
   return expected;
 }
 
+export function TestCreateExpectedRecordingColumns(
+  recordingName: string,
+  deviceName: string,
+  groupName: string,
+  stationName: string,
+  inputRecording: ApiRecordingSet
+): ApiRecordingColumns {
+  const inputTrackData = inputRecording.metadata;
+  const expected: ApiRecordingColumns = {};
+
+  expected.Id = getCreds(recordingName).id.toString();
+  expected.Type = inputRecording.type;
+  expected.Group = getTestName(groupName);
+  expected.Device = getTestName(deviceName);
+  if (stationName !== undefined) {
+    expected.Station = getTestName(stationName);
+  } else {
+    expected.Station = "";
+  }
+  expected.Date = new Date(inputRecording.recordingDateTime).toLocaleDateString(
+    "en-CA"
+  );
+  expected.Time = new Date(
+    inputRecording.recordingDateTime
+  ).toLocaleTimeString();
+  expected.Latitude = inputRecording.location[0].toString();
+  expected.Longitude = inputRecording.location[1].toString();
+  expected.Duration = inputRecording.duration.toString();
+  expected.BatteryPercent = (inputRecording.batteryLevel || "").toString();
+  expected.Comment = inputRecording.comment || "";
+  if (inputTrackData !== undefined && inputTrackData.tracks !== undefined) {
+    expected["Track Count"] = inputTrackData.tracks.length.toString();
+    expected["Automatic Track Tags"] = inputTrackData.tracks
+      .map((track) => track.confident_tag)
+      .join(";");
+  } else {
+    expected["Track Count"] = "0";
+    expected["Automatic Track Tags"] = "";
+  }
+  expected["Human Track Tags"] = "";
+  expected["Recording Tags"] = "";
+  expected.URL =
+    BASE_URL + "/recording/" + getCreds(recordingName).id.toString();
+  if (
+    inputRecording &&
+    inputRecording.additionalMetadata &&
+    inputRecording.additionalMetadata.analysis &&
+    inputRecording.additionalMetadata.analysis.cacophony_index
+  ) {
+    expected["Cacophony Index"] =
+      inputRecording.additionalMetadata.analysis.cacophony_index
+        .map((ci: any) => ci.index_percent)
+        .join(";");
+  } else {
+    expected["Cacophony Index"] = "";
+  }
+  if (
+    inputRecording &&
+    inputRecording.additionalMetadata &&
+    inputRecording.additionalMetadata.analysis &&
+    inputRecording.additionalMetadata.analysis.species_identify
+  ) {
+    expected["Species Classification"] =
+      inputRecording.additionalMetadata.analysis.species_identify
+        .map((si: any) => si.species + ": " + si.begin_s.toString())
+        .join(";");
+  } else {
+    expected["Species Classification"] = "";
+  }
+
+  return expected;
+}
 export function TestCreateExpectedRecordingData(
   template: ApiRecordingReturned,
   recordingName: string,
@@ -430,8 +502,9 @@ export function TestCreateExpectedRecordingData(
 
   const group = { groupname: getTestName(groupName) };
 
-  const station: ApiRecordingStation = null;
+  let station: ApiRecordingStation = null;
   if (stationName) {
+    station = {};
     station.name = getTestName(stationName);
     station.location = getCreds(stationName).location;
     expected.StationId = getCreds(stationName).id;
@@ -443,24 +516,46 @@ export function TestCreateExpectedRecordingData(
   expected.Device = device;
   expected.Group = group;
   expected.type = inputRecording.type;
-  if(inputRecording.type=='thermalRaw') { 
-    expected.rawMimeType="application/x-cptv";
-  } else { 
-    expected.rawMimeType="audio/mpeg";
+  if (inputRecording.type == "thermalRaw") {
+    expected.rawMimeType = "application/x-cptv";
+  } else {
+    expected.rawMimeType = "audio/mpeg";
   }
-  if(inputRecording.duration!==undefined) expected.duration = inputRecording.duration;
-  if(inputRecording.recordingDateTime!==undefined) expected.recordingDateTime = inputRecording.recordingDateTime;
-  if(inputRecording.version!==undefined) expected.version = inputRecording.version;
-  if(inputRecording.comment!==undefined) expected.comment = inputRecording.comment;
-  if(inputRecording.additionalMetadata!==undefined) expected.additionalMetadata = inputRecording.additionalMetadata;
-  if(inputRecording.batteryLevel!==undefined) expected.batteryLevel = inputRecording.batteryLevel;
-  if(inputRecording.batteryCharging!==undefined) expected.batteryCharging = inputRecording.batteryCharging;
-  if(inputRecording.airplaneModeOn!==undefined) expected.airplaneModeOn = inputRecording.airplaneModeOn;
-  if (inputRecording.relativeToDusk !== undefined) expected.relativeToDusk = inputRecording.relativeToDusk; 
-  if (inputRecording.relativeToDawn !== undefined) expected.relativeToDawn = inputRecording.relativeToDawn;
+  if (inputRecording.duration !== undefined) {
+    expected.duration = inputRecording.duration;
+  }
+  if (inputRecording.recordingDateTime !== undefined) {
+    expected.recordingDateTime = inputRecording.recordingDateTime;
+  }
+  if (inputRecording.version !== undefined) {
+    expected.version = inputRecording.version;
+  }
+  if (inputRecording.comment !== undefined) {
+    expected.comment = inputRecording.comment;
+  }
+  if (inputRecording.additionalMetadata !== undefined) {
+    expected.additionalMetadata = inputRecording.additionalMetadata;
+  }
+  if (inputRecording.batteryLevel !== undefined) {
+    expected.batteryLevel = inputRecording.batteryLevel;
+  }
+  if (inputRecording.batteryCharging !== undefined) {
+    expected.batteryCharging = inputRecording.batteryCharging;
+  }
+  if (inputRecording.airplaneModeOn !== undefined) {
+    expected.airplaneModeOn = inputRecording.airplaneModeOn;
+  }
+  if (inputRecording.relativeToDusk !== undefined) {
+    expected.relativeToDusk = inputRecording.relativeToDusk;
+  }
+  if (inputRecording.relativeToDawn !== undefined) {
+    expected.relativeToDawn = inputRecording.relativeToDawn;
+  }
   //TODO: filehash not in returned values - issue 87
   //expected.fileHash=inputRecording.fileHash;
-  if (inputRecording.location!==undefined) expected.location = { type: "Point", coordinates: inputRecording.location };
+  if (inputRecording.location !== undefined) {
+    expected.location = { type: "Point", coordinates: inputRecording.location };
+  }
   expected.GroupId = getCreds(groupName).id;
   expected.Station = station;
   expected.Tags = [];
@@ -468,7 +563,7 @@ export function TestCreateExpectedRecordingData(
   if (inputTrackData && inputTrackData.tracks) {
     inputTrackData.tracks.forEach((track: any) => {
       const newTrack: ApiRecordingTrack = {};
-      if(track.confident_tag!==undefined) {
+      if (track.confident_tag !== undefined) {
         newTrack.TrackTags = [
           {
             what: track.confident_tag,
