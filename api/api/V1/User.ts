@@ -20,16 +20,16 @@ import { validateFields } from "../middleware";
 import auth from "../auth";
 import models from "../../models";
 import responseUtil from "./responseUtil";
-import { body, param, matchedData, oneOf } from "express-validator";
+import { body, param, matchedData } from "express-validator";
 import { ClientError } from "../customErrors";
 import { Application, NextFunction, Request, Response } from "express";
 import config from "../../config";
 import { User } from "../../models/User";
-import { validNameOf, validPasswordOf } from "../validation-middleware";
+import {anyOf, validNameOf, validPasswordOf } from "../validation-middleware";
 import {
   extractJwtAuthorisedSuperAdminUser,
-  extractJwtAuthorisedUser,
-  extractUserByName,
+  extractJwtAuthorizedUser,
+  extractUserByName, fetchUnauthorizedOptionalUserByNameOrId,
 } from "../extract-middleware";
 
 export default function (app: Application, baseUrl: string) {
@@ -59,8 +59,9 @@ export default function (app: Application, baseUrl: string) {
       validPasswordOf(body("password")),
       body("endUserAgreement").isInt().optional(),
     ]),
-    async (request: Request, Response: Response, next: NextFunction) => {
-      if (!(await models.User.freeUsername(request.body.username))) {
+    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
+    (request: Request, response: Response, next: NextFunction) => {
+      if (response.locals.user) {
         return next(new ClientError("Username in use"));
       } else {
         next();
@@ -80,6 +81,7 @@ export default function (app: Application, baseUrl: string) {
         email: request.body.email,
         endUserAgreement: request.body.endUserAgreement,
       });
+      // FIXME extract userData without db call
       const userData = await user.getDataValues();
       return responseUtil.send(response, {
         statusCode: 200,
@@ -106,23 +108,21 @@ export default function (app: Application, baseUrl: string) {
    */
   app.patch(
     apiUrl,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       // FIXME - Could be "At least one of" with nicer error messages?
-      oneOf(
-        [
-          validNameOf(body("username")),
-          body("email").isEmail(),
-          validPasswordOf(body("password")),
-          body("endUserAgreement").isInt(),
-        ],
-        "Must provide at least one of: username; email; password; endUserAgreement."
+      anyOf(
+        validNameOf(body("username")),
+        validNameOf(body("userName")),
+        body("email").isEmail(),
+        validPasswordOf(body("password")),
+        body("endUserAgreement").isInt(),
       ),
     ]),
     async (request: Request, Response: Response, next: NextFunction) => {
       if (
-        request.body.username &&
-        !(await models.User.freeUsername(request.body.username))
+          (request.body.username || request.body.userName) &&
+        !(await models.User.freeUsername(request.body.username || request.body.userName))
       ) {
         return next(new ClientError("Username in use"));
       } else {
@@ -163,10 +163,11 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:userName`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([validNameOf(param("userName"))]),
     extractUserByName("params", "userName"),
     // FIXME - should a regular user be able to get user information for any other user?
+    // FIXME - map user info
     async (request, response) => {
       return responseUtil.send(response, {
         statusCode: 200,
@@ -196,6 +197,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     async (request, response) => {
       const users = await models.User.getAll({});
+      // FIXME - map user info
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],

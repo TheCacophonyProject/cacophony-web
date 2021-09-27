@@ -27,7 +27,7 @@ import { RecordingPermission } from "../../models/Recording";
 import {
   parseJSONField,
   extractRecording,
-  extractJwtAuthorisedUser,
+  extractJwtAuthorizedUser,
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
@@ -64,7 +64,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       body("tag")
         .custom(jsonSchemaOf(TagData))
@@ -98,7 +98,7 @@ export default function (app: Application, baseUrl: string) {
   // Delete a tag
   app.delete(
     apiUrl,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([idOf(body("tagId"))]),
     // Can we guarantee that when a recording is deleted, all its tags are deleted too?
 

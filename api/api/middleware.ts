@@ -509,7 +509,9 @@ const checkForUnknownFields = (
   req: Request
 ): { unknownFields: string[]; suggestions: Record<string, string> } => {
   const allowedFieldsKnown = validators.reduce((fields, rule) => {
-    if (rule.builder) {
+    if (rule.fieldNames) {
+      fields.push(...rule.fieldNames);
+    } else if (rule.builder) {
       for (const field of rule.builder.fields) {
         fields.push(field);
       }
@@ -629,7 +631,7 @@ export const validateFields = (
       // log.info("Validation errors %s", validationErrors);
       if (!validationErrors.isEmpty()) {
         log.warning(
-          "%s",
+          "VALIDATION ERRORS: %s",
           validationErrors
             .array()
             .map((item) => JSON.stringify(item))

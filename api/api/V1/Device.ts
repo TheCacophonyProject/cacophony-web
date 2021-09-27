@@ -25,23 +25,15 @@ import { Application, Response, Request, NextFunction } from "express";
 import { ClientError } from "../customErrors";
 import logger from "../../logging";
 import {
-  extractGroupByName,
-  extractGroupByNameOrId,
-  extractUserByNameOrId,
-  extractJwtAuthorisedUser,
-  extractDeviceForRequestingUser,
+  extractJwtAuthorizedUser,
   extractJwtAuthorisedDevice,
-  extractDevicesForRequestingUser,
-  extractDeviceForRequestingUserWithAdminPermissions,
-  extractDeviceByNameForRequestingUser,
-  extractAuthenticatedRequiredDeviceInGroup,
-  extractUnauthenticatedRequiredDeviceInGroup,
-  extractUnauthenticatedRequiredDeviceById,
-  extractAuthenticatedRequiredDeviceById,
-  extractUnauthenticatedRequiredGroupByNameOrId,
-  extractAdminAuthenticatedRequiredDeviceById,
-  extractOptionalUserById,
-  extractOptionalUserByNameOrId,
+  fetchAuthorizedRequiredDeviceInGroup,
+  fetchAuthorizedRequiredDeviceById,
+  fetchUnauthorizedRequiredGroupByNameOrId,
+  fetchAdminAuthorizedRequiredDeviceById,
+  fetchUnauthorizedOptionalUserById,
+  fetchUnauthorizedOptionalUserByNameOrId,
+  fetchAuthorizedRequiredDevices,
 } from "../extract-middleware";
 import {
   booleanOf,
@@ -55,6 +47,26 @@ import {
 } from "../validation-middleware";
 import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
+
+export const mapDeviceResponse = (device: Device, viewAsSuperUser: boolean): ApiDeviceResponse =>
+    ({
+          deviceName: device.devicename,
+          id: device.id,
+          groupName: device.Group.groupname,
+          groupId: device.GroupId,
+          active: device.active,
+          saltId: device.saltId,
+          admin:
+              viewAsSuperUser ||
+              (
+                  (device as any).Group?.Users[0]?.GroupUsers ||
+                  (device as any).Users[0]?.DeviceUsers
+              )?.admin || false,
+        }
+    );
+
+export const mapDevicesResponse = (devices: Device[], viewAsSuperUser: boolean): ApiDeviceResponse[] =>
+  devices.map((device) => mapDeviceResponse(device, viewAsSuperUser));
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/devices`;
@@ -86,7 +98,7 @@ export default function (app: Application, baseUrl: string) {
       validPasswordOf(body("password")),
       idOf(body("saltId")).optional(),
     ]),
-    extractUnauthenticatedRequiredGroupByNameOrId(body("group")),
+    fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
     async (request: Request, response: Response) => {
       const device = await models.Device.create({
@@ -161,31 +173,16 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     apiUrl,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
       query("onlyActive").default(true).isBoolean().toBoolean(),
     ]),
-    extractDevicesForRequestingUser,
+    // FIXME
+    fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
-      // TODO: If requested by super-user - set isAdmin on all devices.
-      const devicesResponse: ApiDeviceResponse[] = response.locals.devices.map(
-        (device) => ({
-          deviceName: device.devicename,
-          id: device.id,
-          groupName: device.Group.groupname,
-          groupId: device.GroupId,
-          active: device.active,
-          saltId: device.saltId,
-          isAdmin:
-            (
-              (device as any).Group?.Users[0]?.GroupUsers ||
-              (device as any).Users[0]?.DeviceUsers
-            )?.admin || false,
-        })
-      );
       return responseUtil.send(response, {
-        devices: devicesResponse,
+        devices: mapDevicesResponse(response.locals.devices, response.locals.viewAsSuperUser),
         statusCode: 200,
         messages: ["Completed get devices query."],
       });
@@ -225,34 +222,19 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceName/in-group/:groupIdOrName`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
       nameOf(param("deviceName")),
     ]),
-    extractAuthenticatedRequiredDeviceInGroup(
+    fetchAuthorizedRequiredDeviceInGroup(
       param("deviceName"),
       param("groupIdOrName")
     ),
     async (request: Request, response: Response) => {
-      const device: Device = response.locals.device;
-      // TODO - map device response helper?
-      const deviceReturn: ApiDeviceResponse = {
-        id: device.id,
-        deviceName: device.devicename,
-        groupName: device.Group.groupname,
-        saltId: device.saltId,
-        groupId: device.GroupId,
-        active: device.active,
-        isAdmin:
-            (
-                (device as any).Group?.Users[0]?.GroupUsers ||
-                (device as any).Users[0]?.DeviceUsers
-            )?.admin || false,
-      };
       return responseUtil.send(response, {
         statusCode: 200,
-        device: deviceReturn,
+        device: mapDeviceResponse(response.locals.device, response.locals.viewAsSuperUser),
         messages: ["Request successful"],
       });
     }
@@ -284,10 +266,10 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/users`,
+    extractJwtAuthorizedUser,
     validateFields([idOf(query("deviceId"))]),
-
     // Should this require admin access to the device?
-    extractAdminAuthenticatedRequiredDeviceById(query("deviceId")),
+    fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
     async (request: Request, response: Response) => {
       const users = (
         await response.locals.device.users(response.locals.requestUser, [
@@ -297,7 +279,7 @@ export default function (app: Application, baseUrl: string) {
       ).map((user) => ({
         userName: user.username,
         id: user.id,
-        isAdmin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
+        admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
         relation: (user as any).DeviceUsers ? "device" : "group",
       }));
 
@@ -328,7 +310,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/users`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       anyOf(
           nameOf(body("username")),
@@ -338,8 +320,8 @@ export default function (app: Application, baseUrl: string) {
       idOf(body("deviceId")),
       booleanOf(body("admin")),
     ]),
-    extractOptionalUserById(body("userId")),
-    extractOptionalUserByNameOrId(body(["username", "userName"])),
+    fetchUnauthorizedOptionalUserById(body("userId")),
+    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
     (request: Request, response: Response, next: NextFunction) => {
       // Check that we found the user through one of the methods.
       if (!response.locals.user) {
@@ -347,7 +329,7 @@ export default function (app: Application, baseUrl: string) {
       }
       next();
     },
-    extractAdminAuthenticatedRequiredDeviceById(body("deviceId")),
+    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
     async (request, response) => {
       const added = await models.Device.addUserToDevice(
         response.locals.device,
@@ -381,13 +363,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.delete(
     `${apiUrl}/users`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       idOf(body("deviceId")),
       anyOf(nameOf(body("username")), idOf(body("userId"))),
     ]),
-    extractOptionalUserById(body("userId")),
-    extractOptionalUserByNameOrId(body("username")),
+    fetchUnauthorizedOptionalUserById(body("userId")),
+    fetchUnauthorizedOptionalUserByNameOrId(body("username")),
     (request: Request, response: Response, next: NextFunction) => {
       // Check that we found the user through one of the methods.
       if (!response.locals.user) {
@@ -395,7 +377,7 @@ export default function (app: Application, baseUrl: string) {
       }
       next();
     },
-    extractAdminAuthenticatedRequiredDeviceById(body("deviceId")),
+    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
     async function (request: Request, response: Response) {
       const removed = await models.Device.removeUserFromDevice(
         response.locals.device,
@@ -440,9 +422,8 @@ export default function (app: Application, baseUrl: string) {
       validNameOf(body("newName")),
       validPasswordOf(body("newPassword")),
     ]),
-    extractUnauthenticatedRequiredGroupByNameOrId(body("newGroup")),
+    fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
-      logger.warning("Request device %s", response.locals.requestDevice);
       const device = await (response.locals.requestDevice as Device).reRegister(
         request.body.newName,
         response.locals.group,
@@ -483,13 +464,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceId/cacophony-index`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
     ]),
-    extractAuthenticatedRequiredDeviceById(param("deviceId")),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const cacophonyIndex = await models.Device.getCacophonyIndex(
         response.locals.requestUser,
@@ -524,13 +505,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:deviceId/cacophony-index-histogram`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
     ]),
-    extractAuthenticatedRequiredDeviceById(param("deviceId")),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const cacophonyIndex = await models.Device.getCacophonyIndexHistogram(
         response.locals.requestUser,

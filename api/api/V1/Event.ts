@@ -25,10 +25,9 @@ import { Application, Response, Request, NextFunction } from "express";
 import { errors, powerEventsPerDevice } from "./eventUtil";
 import {
   extractJwtAuthorisedDevice,
-  extractJwtAuthorisedUser,
-  extractOptionalEventDetailSnapshot,
-  extractAuthenticatedRequiredDeviceById,
-  extractAuthenticatedOptionalDeviceById,
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedOptionalDeviceById, extractOptionalEventDetailSnapshotById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import EventDatesSchema from "../../../types/jsonSchemas/api/event/EventDates.schema.json";
@@ -36,6 +35,7 @@ import EventDescriptionSchema from "../../../types/jsonSchemas/api/event/EventDe
 import { EventDescription } from "@typedefs/api/event";
 import logger from "../../logging";
 import { booleanOf, anyOf, idOf, integerOf } from "../validation-middleware";
+import {ClientError} from "../customErrors";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -44,7 +44,7 @@ const uploadEvent = async (
   response: Response,
   next: NextFunction
 ) => {
-  let detailsId = request.body.eventDetailId;
+  let detailsId = response.locals.detailsnapshot?.id;
   if (!detailsId) {
     const description: EventDescription = request.body.description;
     const detail = await models.DetailSnapshot.getOrCreateMatching(
@@ -63,10 +63,7 @@ const uploadEvent = async (
   try {
     await models.Event.bulkCreate(eventList);
   } catch (exception) {
-    return responseUtil.send(response, {
-      statusCode: 500,
-      messages: ["Failed to record events.", exception.message],
-    });
+    return next(new ClientError(`Failed to record events. ${exception.message}`));
   }
   return responseUtil.send(response, {
     statusCode: 200,
@@ -131,9 +128,17 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedDevice,
     validateFields(commonEventFields),
     // Extract required resources
-
-    // FIXME - technically, should validate event detail snapshot against device here?
-    extractOptionalEventDetailSnapshot("body", "eventDetailId"),
+      extractOptionalEventDetailSnapshotById(body("eventDetailId")),
+      async (request: Request, response: Response, next: NextFunction) => {
+        // eventDetailId is optional, but if it is supplied we need to make sure it exists
+        if (request.body.eventDetailId && !response.locals.detailsnapshot) {
+          return next(new ClientError(
+              `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
+              403
+          ));
+        }
+        next();
+      },
     // Finally, upload event(s)
     uploadEvent
   );
@@ -165,12 +170,22 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     `${apiUrl}/device/:deviceId`,
     // Validate session
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     // Validate fields
     validateFields([idOf(param("deviceId")), ...commonEventFields]),
     // Extract required resources
-    extractOptionalEventDetailSnapshot("body", "eventDetailId"),
-    extractAuthenticatedRequiredDeviceById(param("deviceId")),
+    extractOptionalEventDetailSnapshotById(body("eventDetailId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // eventDetailId is optional, but if it is supplied we need to make sure it exists
+      if (request.body.eventDetailId && !response.locals.detailsnapshot) {
+        return next(new ClientError(
+            `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
+            403
+        ));
+      }
+      next();
+    },
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
     uploadEvent
   );
 
@@ -198,7 +213,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     apiUrl,
     // Validate session
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     // Validate request structure
     validateFields([
       query("startTime")
@@ -216,9 +231,18 @@ export default function (app: Application, baseUrl: string) {
       booleanOf(query("latest")).optional(),
     ]),
     // Extract required resources
-
-    // TODO(jon): Check that this works without a deviceId
-    extractAuthenticatedOptionalDeviceById(query("deviceId")),
+    fetchAuthorizedOptionalDeviceById(query("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // deviceId is optional, but if it is supplied we need to make sure that the user
+      // is allowed to access it.
+      if (request.query.deviceId && !response.locals.device) {
+        return next(new ClientError(
+            `Could not find a device with an id of '${request.query.deviceId} for user`,
+            403
+        ));
+      }
+      next();
+    },
     // Check permissions on resources
     // Extract device if any, and check that user has permissions to access it
     async (request: Request, response: Response) => {
@@ -305,7 +329,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/errors`,
     // Authenticate the session
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     // Validate request structure
     validateFields([
       query("startTime").isISO8601({ strict: true }).optional(),
@@ -315,7 +339,18 @@ export default function (app: Application, baseUrl: string) {
       query("limit").isInt().optional().toInt(),
     ]),
     // Extract required resources
-    extractAuthenticatedOptionalDeviceById(query("deviceId")),
+    fetchAuthorizedOptionalDeviceById(query("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // deviceId is optional, but if it is supplied we need to make sure that the user
+      // is allowed to access it.
+      if (request.query.deviceId && !response.locals.device) {
+        return next(new ClientError(
+            `Could not find a device with an id of '${request.query.deviceId} for user`,
+            403
+        ));
+      }
+      next();
+    },
     async (request: Request, response: Response) => {
       const query = request.query;
 
@@ -364,7 +399,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/powerEvents`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       query("deviceId")
         .isInt()
@@ -373,7 +408,19 @@ export default function (app: Application, baseUrl: string) {
         .withMessage(expectedTypeOf("integer")),
     ]),
     // Extract required resources
-    extractAuthenticatedOptionalDeviceById(query("deviceId")),
+    fetchAuthorizedOptionalDeviceById(query("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // FIXME - can this be incorporated into our fetch logic?
+      // deviceId is optional, but if it is supplied we need to make sure that the user
+      // is allowed to access it.
+      if (request.query.deviceId && !response.locals.device) {
+        return next(new ClientError(
+            `Could not find a device with an id of '${request.query.deviceId} for user`,
+            403
+        ));
+      }
+      next();
+    },
     async (request: Request, response: Response) => {
       logger.info(
         "Get power events for %s at time %s",

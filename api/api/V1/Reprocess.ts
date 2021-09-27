@@ -21,7 +21,7 @@ import { body, param } from "express-validator";
 
 import { reprocessRecording, StatusCode } from "./recordingUtil";
 import { Application, Response, Request } from "express";
-import { extractJwtAuthorisedUser } from "../extract-middleware";
+import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import responseUtil from "./responseUtil";
 
@@ -42,7 +42,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/:id`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     // FIXME - recording permissions checking should happen here?
 
@@ -73,7 +73,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     apiUrl,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     // FIXME - Should this be a JSON schema of something?
     validateFields([middleware.parseJSON("recordings", body)]),
     async (request: Request, response: Response) => {

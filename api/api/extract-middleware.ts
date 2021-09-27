@@ -85,11 +85,12 @@ const extractJwtAuthenticatedEntity =
 
       return next();
     } catch (e) {
+      logger.error("HERE %s", e);
       return next(e);
     }
   };
 
-export const extractJwtAuthorisedUser = extractJwtAuthenticatedEntity(["user"]);
+export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
 export const extractJwtAuthorisedSuperAdminUser = extractJwtAuthenticatedEntity(
   ["user"],
   undefined,
@@ -739,13 +740,20 @@ type ModelGetter<T> = (
   id2: string,
   context?: any
 ) => Promise<ModelStaticCommon<T> | ClientError | null>;
+
+type ModelsGetter<T> = (
+    id: string,
+    id2: string,
+    context?: any
+) => Promise<ModelStaticCommon<T>[] | ClientError | null>;
+
 export const extractTheModel =
   <T>(
     modelType: ModelStaticCommon<T>,
     required: boolean,
     byName: boolean,
     byId: boolean,
-    modelGetter: ModelGetter<T>,
+    modelGetter: ModelGetter<T> | ModelsGetter<T>,
     primary: ValidationChain,
     secondary?: ValidationChain
   ) =>
@@ -756,11 +764,11 @@ export const extractTheModel =
       return next();
     }
     const id2 = extractValFromRequest(request, secondary);
-    response.locals.onlyActive =
-      (request.query.onlyActive &&
-        Boolean(request.query.onlyActive) !== false) ||
-      (request.query["only-active"] &&
-        Boolean(request.query["only-active"]) !== false);
+    response.locals.onlyActive = true; // Default to only showing active devices.
+    if (("onlyActive" in request.query && Boolean(request.query.onlyActive) === false) ||
+      ("only-active" in request.query && Boolean(request.query["only-active"]) === false)) {
+      response.locals.onlyActive = false;
+    }
 
     let model;
     try {
@@ -772,13 +780,14 @@ export const extractTheModel =
       return next(model);
     } else if (model === null) {
       if (required) {
+        const forUser = !!response.locals.requestUser;
         if (byName && byId) {
           // TODO - provide better error messages in the case the group (id2) doesn't exist?
           return next(
             new ClientError(
               `Could not find a ${modelName} with an name or id of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }`,403
+              }${forUser ? " for user": ""}`,403
             )
           );
         } else if (byId) {
@@ -786,7 +795,7 @@ export const extractTheModel =
             new ClientError(
               `Could not find a ${modelName} with an id of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }`,
+              }${forUser ? " for user": ""}`,
               403
             )
           );
@@ -795,15 +804,25 @@ export const extractTheModel =
             new ClientError(
               `Could not find a ${modelName} with a name of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }`,
+              }${forUser ? " for user": ""}`,
               403
             )
+          );
+        } else {
+          return next(
+              new ClientError(
+                  `Could not find any ${modelTypeNamePlural(modelType)}${forUser ? " for user": ""}`,
+                  403
+              )
           );
         }
       }
     } else {
-      //console.log(model.Group);
-      response.locals[modelName] = model;
+      if (Array.isArray(model)) {
+        response.locals[modelTypeNamePlural(modelType)] = model;
+      } else {
+        response.locals[modelName] = model;
+      }
     }
     next();
   };
@@ -826,6 +845,24 @@ export const extractRequiredModel = <T>(
     secondary
   );
 
+export const extractRequiredModels = <T>(
+    modelType: ModelStaticCommon<T>,
+    byName: boolean,
+    byId: boolean,
+    modelsGetter: ModelsGetter<T>,
+    primary?: ValidationChain,
+    secondary?: ValidationChain
+) =>
+    extractTheModel(
+        modelType,
+        true,
+        byName,
+        byId,
+        modelsGetter,
+        primary,
+        secondary
+    );
+
 export const extractOptionalModel = <T>(
   modelType: ModelStaticCommon<T>,
   byName: boolean,
@@ -844,6 +881,71 @@ export const extractOptionalModel = <T>(
     secondary
   );
 
+const getDevices = (forRequestUser: boolean = false, asAdmin: boolean) => (unused1?: string, unused2?: string, context?: any): Promise<ModelStaticCommon<Device>[] | ClientError | null> => {
+  let getDeviceOptions;
+  if (forRequestUser) {
+    if (context && context.requestUser) {
+      // Insert request user constraints
+      getDeviceOptions = getIncludeForUser(
+          context,
+          getDeviceInclude({}, {}),
+          asAdmin
+      );
+    } else {
+      return Promise.resolve(
+          new ClientError("No authorizing user specified")
+      );
+    }
+  } else {
+    getDeviceOptions = {
+      where: {},
+      include: [
+        {
+          model: models.Group,
+          required: true,
+          where: {},
+        },
+      ],
+    };
+  }
+
+  if (context.onlyActive) {
+    (getDeviceOptions as any).where.active = true;
+  }
+  //console.dir(getDeviceOptions, {depth: 5});
+  return models.Device.findAll(getDeviceOptions);
+};
+
+const getGroups = (forRequestUser: boolean = false, asAdmin: boolean) => (unused1?: string, unused2?: string, context?: any): Promise<ModelStaticCommon<Group>[] | ClientError | null> => {
+  let getGroupOptions;
+  if (forRequestUser) {
+    if (context && context.requestUser) {
+      // Insert request user constraints
+      getGroupOptions = getIncludeForUser(
+          context,
+          getGroupInclude({}, context.requestUser.id) as any,
+          asAdmin
+      );
+    } else {
+      return Promise.resolve(
+          new ClientError("No authorizing user specified")
+      );
+    }
+  } else {
+    getGroupOptions = {
+      where: {},
+      include: [
+        {
+          model: models.Group,
+          required: true,
+          where: {},
+        },
+      ],
+    };
+  }
+  return models.Group.findAll(getGroupOptions);
+};
+
 const getDevice =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
   (
@@ -855,13 +957,6 @@ const getDevice =
     const groupIsId =
       groupNameOrId && !isNaN(parseInt(groupNameOrId));
 
-    logger.warning(
-      "%s, %s, %s, %s",
-      deviceNameOrId,
-      groupNameOrId,
-      deviceIsId,
-      groupIsId
-    );
     let deviceWhere;
     let groupWhere = {};
     if (deviceIsId && groupIsId) {
@@ -924,6 +1019,8 @@ const getDevice =
       };
     }
 
+    // FIXME - When re-registering we can actually have two devices in the same group with the same name - but one
+    //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
       (getDeviceOptions as any).where.active = true;
     }
@@ -960,6 +1057,7 @@ const getGroup =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
   (
     groupNameOrId?: string,
+    unusedParam?: string,
     context?: any
   ): Promise<ModelStaticCommon<Group> | ClientError | null> => {
     // @ts-ignore
@@ -980,6 +1078,7 @@ const getGroup =
       if (context && context.requestUser) {
         // Insert request user constraints
         getGroupOptions = getIncludeForUser(context, getGroupInclude, asAdmin);
+        getGroupOptions.where = groupWhere;
       } else {
         return Promise.resolve(
           new ClientError("No authorizing user specified")
@@ -991,7 +1090,7 @@ const getGroup =
       };
     }
 
-    logger.info("%s", getGroupOptions);
+    logger.warning("!! %s", getGroupOptions);
     return models.Group.findOne(getGroupOptions);
   };
 
@@ -1024,14 +1123,23 @@ const getUser =
     });
   };
 
+const getUnauthorizedGenericModelById =
+    <T>(modelType: ModelStaticCommon<T>) =>
+        <T>(
+            id: string
+        ): Promise<ModelStaticCommon<T> | ClientError | null> => {
+          return modelType.findByPk(id);
+        };
+
 const getDeviceUnauthenticated = getDevice();
 const getDeviceForRequestUser = getDevice(true);
 const getDeviceForRequestUserAsAdmin = getDevice(true, true);
+const getDevicesForRequestUser = getDevices(true, false);
 const getGroupUnauthenticated = getGroup();
 const getGroupForRequestUser = getGroup(true);
 const getGroupForRequestUserAsAdmin = getGroup(true, true);
 
-export const extractAuthenticatedRequiredDeviceInGroup = (
+export const fetchAuthorizedRequiredDeviceInGroup = (
   deviceNameOrId: ValidationChain,
   groupNameOrId: ValidationChain
 ) =>
@@ -1043,6 +1151,18 @@ export const extractAuthenticatedRequiredDeviceInGroup = (
     deviceNameOrId,
     groupNameOrId
   );
+
+export const fetchAuthorizedRequiredDevicesInGroup = (
+    groupNameOrId: ValidationChain
+) =>
+    extractRequiredModels(
+        models.Device,
+        true,
+        true,
+        getDevicesForRequestUser,
+        groupNameOrId
+    );
+
 export const extractUnauthenticatedRequiredDeviceById = (
   deviceId: ValidationChain
 ) =>
@@ -1087,7 +1207,7 @@ export const extractUnauthenticatedOptionalDeviceById = (
     getDeviceUnauthenticated,
     deviceId
   );
-export const extractAuthenticatedRequiredDeviceById = (
+export const fetchAuthorizedRequiredDeviceById = (
   deviceId: ValidationChain
 ) =>
   extractRequiredModel(
@@ -1098,7 +1218,7 @@ export const extractAuthenticatedRequiredDeviceById = (
     deviceId
   );
 
-export const extractAdminAuthenticatedRequiredDeviceById = (
+export const fetchAdminAuthorizedRequiredDeviceById = (
   deviceId: ValidationChain
 ) =>
   extractRequiredModel(
@@ -1109,7 +1229,7 @@ export const extractAdminAuthenticatedRequiredDeviceById = (
     deviceId
   );
 
-export const extractAuthenticatedOptionalDeviceById = (
+export const fetchAuthorizedOptionalDeviceById = (
   deviceId: ValidationChain
 ) =>
   extractOptionalModel(
@@ -1121,7 +1241,7 @@ export const extractAuthenticatedOptionalDeviceById = (
   );
 
 // TODO Check this with the 2040 group...
-export const extractUnauthenticatedRequiredGroupByNameOrId = (
+export const fetchUnauthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>
   extractRequiredModel(
@@ -1132,7 +1252,18 @@ export const extractUnauthenticatedRequiredGroupByNameOrId = (
     groupNameOrId
   );
 
-export const extractAuthenticatedRequiredGroupByNameOrId = (
+export const fetchUnauthorizedOptionalGroupByNameOrId = (
+    groupNameOrId: ValidationChain
+) =>
+    extractOptionalModel(
+        models.Group,
+        true,
+        true,
+        getGroupUnauthenticated,
+        groupNameOrId
+    );
+
+export const fetchAuthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>
   extractRequiredModel(
@@ -1143,7 +1274,7 @@ export const extractAuthenticatedRequiredGroupByNameOrId = (
     groupNameOrId
   );
 
-export const extractAdminAuthenticatedRequiredGroupByNameOrId = (
+export const fetchAdminAuthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>
   extractRequiredModel(
@@ -1154,7 +1285,7 @@ export const extractAdminAuthenticatedRequiredGroupByNameOrId = (
     groupNameOrId
   );
 
-export const extractUnauthenticatedRequiredGroupById = (
+export const fetchUnauthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain
 ) =>
   extractRequiredModel(
@@ -1165,7 +1296,7 @@ export const extractUnauthenticatedRequiredGroupById = (
     groupNameOrId
   );
 
-export const extractAuthenticatedRequiredGroupById = (
+export const fetchAuthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain
 ) =>
   extractRequiredModel(
@@ -1176,7 +1307,7 @@ export const extractAuthenticatedRequiredGroupById = (
     groupNameOrId
   );
 
-export const extractAdminAuthenticatedRequiredGroupById = (
+export const fetchAdminAuthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain
 ) =>
   extractRequiredModel(
@@ -1187,16 +1318,6 @@ export const extractAdminAuthenticatedRequiredGroupById = (
     groupNameOrId
   );
 
-export const extractUnauthenticatedOptionalGroupByNameOrId = (
-  groupNameOrId: ValidationChain
-) =>
-  extractOptionalModel(
-    models.Group,
-    true,
-    true,
-    getGroupUnauthenticated,
-    groupNameOrId
-  );
 
 export const extractRequiredUserByNameOrEmailOrId = (
   userNameOrEmailOrId: ValidationChain
@@ -1208,11 +1329,19 @@ export const extractOptionalUserByNameOrEmailOrId = (
 ) =>
   extractOptionalModel(models.User, true, true, getUser(), userNameOrEmailOrId);
 
-export const extractOptionalUserByNameOrId = (userNameOrId: ValidationChain) =>
+export const fetchUnauthorizedOptionalUserByNameOrId = (userNameOrId: ValidationChain) =>
   extractOptionalModel(models.User, true, true, getUser(), userNameOrId);
 
-export const extractOptionalUserById = (userId: ValidationChain) =>
+export const fetchUnauthorizedRequiredUserByNameOrId = (userNameOrId: ValidationChain) =>
+    extractRequiredModel(models.User, true, true, getUser(), userNameOrId);
+
+export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
   extractOptionalModel(models.User, false, true, getUser(), userId);
 
 export const extractRequiredUserById = (userId: ValidationChain) =>
   extractRequiredModel(models.User, false, true, getUser(), userId);
+
+export const fetchAuthorizedRequiredDevices = extractRequiredModels(models.Device, false, false, getDevices(true, false));
+export const fetchAuthorizedRequiredGroups = extractRequiredModels(models.Group, false, false, getGroups(true, false));
+
+export const extractOptionalEventDetailSnapshotById = (detailId: ValidationChain) => extractOptionalModel(models.DetailSnapshot, false, true, getUnauthorizedGenericModelById(models.DetailSnapshot), detailId);

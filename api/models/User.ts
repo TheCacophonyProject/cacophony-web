@@ -340,7 +340,6 @@ export default function (
     if (this.hasGlobalRead()) {
       return true;
     }
-    logger.warning("HERE");
     if (await this.canDirectlyAccessDevice(device)) {
       return true;
     }

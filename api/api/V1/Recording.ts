@@ -33,7 +33,7 @@ import jwt from "jsonwebtoken";
 import config from "../../config";
 import { ClientError } from "../customErrors";
 import log from "../../logging";
-import { extractJwtAuthorisedUser } from "../extract-middleware";
+import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { integerOf } from "../validation-middleware";
 
 export default (app: Application, baseUrl: string) => {
@@ -239,7 +239,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/visits`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       middleware.parseJSON("where", query).optional(),
       integerOf(query("offset")).optional(),

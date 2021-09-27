@@ -33,7 +33,7 @@ import {
 import { generateVisits } from "./monitoringVisit";
 import responseUtil from "./responseUtil";
 import { query } from "express-validator";
-import { extractJwtAuthorisedUser } from "../extract-middleware";
+import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import logger from "../../logging";
 
@@ -142,7 +142,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/page`,
     // Validate session
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       query("page-size")
         .exists()

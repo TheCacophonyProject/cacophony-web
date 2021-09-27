@@ -26,7 +26,15 @@ import {
   extractGroupByNameOrId,
   parseJSONField,
   extractUserByNameOrId,
-  extractJwtAuthorisedUser,
+  extractJwtAuthorizedUser,
+  fetchUnauthorizedRequiredGroupByNameOrId,
+  fetchUnauthorizedOptionalGroupByNameOrId,
+  fetchAuthorizedRequiredGroupByNameOrId,
+  fetchAdminAuthorizedRequiredGroupByNameOrId,
+  fetchUnauthorizedOptionalUserById,
+  fetchUnauthorizedOptionalUserByNameOrId,
+  fetchUnauthorizedRequiredUserByNameOrId,
+  fetchAuthorizedRequiredDevices, fetchAuthorizedRequiredDeviceInGroup, fetchAuthorizedRequiredDevicesInGroup, fetchAuthorizedRequiredGroups,
 } from "../extract-middleware";
 import logger from "../../logging";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
@@ -40,6 +48,7 @@ import {
   validNameOf,
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
+import {mapDevicesResponse} from "./Device";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
@@ -61,20 +70,23 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    extractJwtAuthorisedUser,
-    validateFields([validNameOf(body("groupname"))]),
+    extractJwtAuthorizedUser,
+    validateFields([
+        anyOf(
+            validNameOf(body("groupname")),
+            validNameOf(body("groupName"))
+        )
+    ]),
+    fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
     async (request: Request, response: Response, next: NextFunction) => {
-      const existingGroup = await models.Group.getFromName(
-        request.body.groupname
-      );
-      if (existingGroup !== null) {
-        return next(new ClientError("Group name in use", 400));
+      if (response.locals.group) {
+        return next(new ClientError("Group name in use", 422));
       }
       next();
     },
     async (request: Request, response: Response) => {
       const newGroup = await models.Group.create({
-        groupname: request.body.groupname,
+        groupname: request.body.groupname || request.body.groupName,
       });
       await newGroup.addUser(response.locals.requestUser.id, {
         through: { admin: true },
@@ -118,22 +130,16 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     apiUrl,
-    extractJwtAuthorisedUser,
-    // FIXME deprecate this where query!  Realistically, do we ever use it?
+    extractJwtAuthorizedUser,
     validateFields([
-      middleware.parseJSON("where", query).optional(),
       query("view-mode").optional().equals("user"),
     ]),
+    fetchAuthorizedRequiredGroups,
     async (request: Request, response: Response) => {
-      const groups = await models.Group.query(
-        request.query.where || {},
-        response.locals.requestUser,
-        response.locals.viewAsSuperAdmin
-      );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        groups,
+        groups: response.locals.groups,
       });
     }
   );
@@ -170,13 +176,12 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
       query("view-mode").optional().equals("user"),
     ]),
-    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
-    auth.userHasAccessToGroup,
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       // FIXME - We are likely returning way too much and the kitchen sink information here
       // Who uses this function?
@@ -194,7 +199,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/devices Retrieves all active devices for a group.
+   * @api {get} /api/v1/groups/{groupIdOrName}/devices Retrieves all devices for a group (only active devices by default).
    * @apiName GetDevicesForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view devices that belong
@@ -216,23 +221,20 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/devices`,
-    extractJwtAuthorisedUser,
-    validateFields([nameOrIdOf(param("groupIdOrName"))]),
-    // FIXME - combine
-    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
-    auth.userHasAccessToGroup,
+    extractJwtAuthorizedUser,
+    validateFields([
+        nameOrIdOf(param("groupIdOrName")),
+        anyOf(
+            query("onlyActive").optional().isBoolean().toBoolean(),
+            query("only-active").optional().isBoolean().toBoolean(),
+        ),
+    ]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    fetchAuthorizedRequiredDevicesInGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      // FIXME - should active devices be a request flag?
-      const devices = await response.locals.group.getDevices({
-        where: { active: true },
-        attributes: ["id", "devicename"],
-      });
       return responseUtil.send(response, {
         statusCode: 200,
-        devices: devices.map(({ id, devicename }) => ({
-          id,
-          deviceName: devicename,
-        })),
+        devices: mapDevicesResponse(response.locals.devices, response.locals.viewAsSuperUser),
         messages: ["Got devices for group"],
       });
     }
@@ -263,11 +265,10 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/users`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([nameOrIdOf(param("groupIdOrName"))]),
-    // FIXME - combine
-    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
-    auth.userHasAccessToGroup,
+      // FIXME - should this be only visible to group admins?
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const users = await response.locals.group.getUsers({
         attributes: ["id", "username"],
@@ -277,8 +278,7 @@ export default function (app: Application, baseUrl: string) {
         users: users.map(({ username, id, GroupUsers }) => ({
           userName: username,
           id,
-          isGroupAdmin: GroupUsers.admin,
-          relation: "group",
+          admin: GroupUsers.admin
         })),
         messages: ["Got users for group"],
       });
@@ -306,18 +306,16 @@ export default function (app: Application, baseUrl: string) {
   // TODO(jon): Would be nicer as /api/v1/groups/:groupName/users or something
   app.post(
     `${apiUrl}/users`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(nameOf(body("username")), idOf(body("userId"))),
+      anyOf(nameOf(body("username")), nameOf(body("userName")), idOf(body("userId"))),
       booleanOf(body("admin")),
     ]),
     // Extract required resources to validate permissions.
-    // FIXME - combine
-    extractGroupByNameOrId("body", "group", "groupId"),
-    auth.userHasAdminAccessToGroup,
+    fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    extractUserByNameOrId("body", "username", "userId"),
+    fetchUnauthorizedRequiredUserByNameOrId(body(["username", "userName", "userId"])),
     async (request, response) => {
       const action = await models.Group.addUserToGroup(
         response.locals.group,
@@ -347,17 +345,15 @@ export default function (app: Application, baseUrl: string) {
    */
   app.delete(
     `${apiUrl}/users`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(nameOf(body("username")), idOf(body("userId"))),
+      anyOf(nameOf(body("username")), nameOf(body("userName")), idOf(body("userId"))),
     ]),
     // Extract required resources to check permissions
-    extractGroupByNameOrId("body", "group", "groupId"),
-    // Check user permissions for resources
-    auth.userHasAdminAccessToGroup,
+    fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    extractUserByNameOrId("body", "username", "userId"),
+    fetchUnauthorizedRequiredUserByNameOrId(body(["username", "userName", "userId"])),
     async (request, response) => {
       const removed = await models.Group.removeUserFromGroup(
         response.locals.group,
@@ -404,7 +400,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:groupIdOrName/stations`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       body("stations")
         .exists()
@@ -413,10 +409,10 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
     ]),
     // Extract required resources
-    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
-    // Check permissions
-    auth.userHasAdminAccessToGroup,
+    fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     // Extract further non-dependent resources:
+
+    // FIXME - make this take body("stations") form
     parseJSONField("body", "stations"),
     async (request, response) => {
       const stationsUpdated = await models.Group.addStationsToGroup(
@@ -476,11 +472,9 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/:groupIdOrName/stations`,
-    extractJwtAuthorisedUser,
+    extractJwtAuthorizedUser,
     validateFields([nameOrIdOf(param("groupIdOrName"))]),
-    // FIXME - combine
-    extractGroupByNameOrId("params", "groupIdOrName", "groupIdOrName"),
-    auth.userHasAccessToGroup,
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       // FIXME - A flag to only get non-retired stations?
       const stations = await response.locals.group.getStations();

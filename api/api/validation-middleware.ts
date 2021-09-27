@@ -2,16 +2,14 @@ import { ClientError } from "./customErrors";
 import models from "../models";
 import { Request, Response, NextFunction } from "express";
 import {
-  body,
-  Location,
   oneOf,
   Result,
   ValidationChain,
 } from "express-validator";
 import { expectedTypeOf } from "./middleware";
 import { Middleware } from "express-validator/src/base";
-import exp from "constants";
 import { extractValFromRequest } from "./extract-middleware";
+import logger from "../logging";
 
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
@@ -36,7 +34,7 @@ export const checkDeviceNameIsUniqueInGroup =
   };
 
 export const idOf = (field: ValidationChain): ValidationChain =>
-  field.isInt().toInt().withMessage(expectedTypeOf("integer"));
+  field.exists().isInt().toInt().withMessage(expectedTypeOf("integer"));
 
 export const integerOf = idOf;
 
@@ -86,7 +84,10 @@ export const anyOf = (
   } else {
     message = `Expected one of ${fieldNames.map((f) => `'${f}'`).join(", ")}`;
   }
-  return oneOf(fields, message);
+  const oneOfChain = oneOf(fields, message);
+  // Make the fieldNames available so that they can be added to the list of known allowed field names
+  Object.assign(oneOfChain, {fieldNames});
+  return oneOfChain;
 };
 
 const intOrString = (val: number | string, { req, location, path }) => {
