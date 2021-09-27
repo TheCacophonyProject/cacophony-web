@@ -427,9 +427,12 @@ describe("Recordings report using where", () => {
     );
 
     cy.log("type");
-    cy.apiRecordingsReportCheck("rreGroupAdmin", { where: { type: "audio" } }, [
-      expectedRecording3,
-    ]);
+    cy.apiRecordingsReportCheck(
+      "rreGroupAdmin",
+      { where: { type: "audio" } },
+      [expectedRecording3],
+      EXCLUDE_COLUMNS
+    );
 
     cy.log("processingState");
     cy.apiRecordingsReportCheck(
