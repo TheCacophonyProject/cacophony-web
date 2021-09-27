@@ -12,6 +12,9 @@ import {
 } from "../../../commands/types";
 
 describe("Devices add / view / remove users", () => {
+  const superuser = getCreds("superuser")["name"];
+  const suPassword = getCreds("superuser")["password"];
+
   const groupAdmin = "Harold-groupAdmin";
   const groupMember = "Henry-groupMember";
   const deviceAdmin = "Hermert-deviceAdmin";
@@ -25,8 +28,6 @@ describe("Devices add / view / remove users", () => {
   const userC = "Candy";
   const userD = "Dylan";
   const camera2 = "second_H_camera";
-  const superuser = "admin_test";
-  const suPassword = "admin_test";
   let deviceMemberDetails: ApiDeviceUsersUser;
   let deviceAdminDetails: ApiDeviceUsersUser;
   let groupAdminDetails: ApiDeviceUsersUser;
@@ -171,7 +172,7 @@ describe("Devices add / view / remove users", () => {
   });
 
   //Do not run against a live server as we don't have superuser login
-  if (Cypress.env("test_using_default_superuser") == true) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Superuser can add/remove user to/from device", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
 

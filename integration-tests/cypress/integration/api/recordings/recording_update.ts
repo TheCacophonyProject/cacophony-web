@@ -15,93 +15,98 @@ import {
   TestCreateRecordingData,
 } from "../../../commands/api/recording-tests";
 
-const templateExpectedRecording: ApiRecordingReturned = {
-  id: 892972,
-  rawMimeType: "application/x-cptv",
-  fileMimeType: null,
-  processingState: "FINISHED",
-  duration: 15.6666666666667,
-  recordingDateTime: "2021-07-17T20:13:17.248Z",
-  relativeToDawn: null,
-  relativeToDusk: null,
-  location: { type: "Point", coordinates: [-45.29115, 169.30845] },
-  version: "345",
-  batteryLevel: null,
-  batteryCharging: null,
-  airplaneModeOn: null,
-  type: "thermalRaw",
-  additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-  GroupId: 246,
-  StationId: 25,
-  comment: "This is a comment",
-  processing: null,
-};
-
-const templateRecording: ApiRecordingSet = {
-  type: "thermalRaw",
-  fileHash: null,
-  duration: 40,
-  recordingDateTime: "2021-01-01T00:00:00.000Z",
-  //TODO: workaround for issue 81 - imprecise locations by default.  Values chosen to avoid issue
-  location: [-45.00045, 169.00065],
-  version: "346",
-  batteryCharging: null,
-  batteryLevel: null,
-  airplaneModeOn: null,
-  additionalMetadata: {
-    algorithm: 31144,
-    previewSecs: 6,
-    totalFrames: 142,
-  },
-  metadata: {
-    algorithm: { model_name: "master" },
-    tracks: [
-      { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
-    ],
-  },
-  comment: "This is a comment2",
-  processingState: "FINISHED",
-};
-
-const EXCLUDE_IDS = [".Tracks[].TrackTags[].TrackId", ".Tracks[].id"];
-
-//TODO: Issue i98 - only comments and additional metadata succeed at update
-//location causes server error
-//all others rejected with bad request
-const fieldUpdates = {
-  //rawMimeType: "application/test",
-  //fileMimeType: "application/test2",
-  //duration: 20,
-  //recordingDateTime: "2020-01-01T00:00:00.000Z",
-  //relativeToDawn: 1000,
-  //relativeToDusk: -1000,
-  //version: "346",
-  //batteryLevel: 87,
-  //batteryCharging: "CHARGING",
-  //airplaneModeOn: true,
-  //type: "audio"
-  comment: "This is a new comment",
-  // add newFields, change algorythm, set previewSecs to null, leave totalFrames unchanged
-  additionalMetadata: {
-    newField: "newValue",
-    newField2: "newValue2",
-    algorithm: 99999,
-    previewSecs: null,
-  },
-  location: [-46.29105, 170.30835],
-};
-
 describe("Update recordings", () => {
+  //Do not validate IDs 
+  const EXCLUDE_IDS = [".Tracks[].TrackTags[].TrackId", ".Tracks[].id"];
+
+  const templateExpectedRecording: ApiRecordingReturned = {
+    id: 892972,
+    rawMimeType: "application/x-cptv",
+    fileMimeType: null,
+    processingState: "FINISHED",
+    duration: 15.6666666666667,
+    recordingDateTime: "2021-07-17T20:13:17.248Z",
+    relativeToDawn: null,
+    relativeToDusk: null,
+    location: { type: "Point", coordinates: [-45.29115, 169.30845] },
+    version: "345",
+    batteryLevel: null,
+    batteryCharging: null,
+    airplaneModeOn: null,
+    type: "thermalRaw",
+    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
+    GroupId: 246,
+    StationId: 25,
+    comment: "This is a comment",
+    processing: null,
+  };
+  
+  const templateRecording: ApiRecordingSet = {
+    type: "thermalRaw",
+    fileHash: null,
+    duration: 40,
+    recordingDateTime: "2021-01-01T00:00:00.000Z",
+    //TODO: workaround for issue 81 - imprecise locations by default.  Values chosen to avoid issue
+    location: [-45.00045, 169.00065],
+    version: "346",
+    batteryCharging: null,
+    batteryLevel: null,
+    airplaneModeOn: null,
+    additionalMetadata: {
+      algorithm: 31144,
+      previewSecs: 6,
+      totalFrames: 142,
+    },
+    metadata: {
+      algorithm: { model_name: "master" },
+      tracks: [
+        { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+      ],
+    },
+    comment: "This is a comment2",
+    processingState: "FINISHED",
+  };
+  
+  //TODO: Issue 98 - only comments and additional metadata succeed at update
+  //location causes server error
+  //all others rejected with bad request
+  const fieldUpdates = {
+    //rawMimeType: "application/test",
+    //fileMimeType: "application/test2",
+    //duration: 20,
+    //recordingDateTime: "2020-01-01T00:00:00.000Z",
+    //relativeToDawn: 1000,
+    //relativeToDusk: -1000,
+    //version: "346",
+    //batteryLevel: 87,
+    //batteryCharging: "CHARGING",
+    //airplaneModeOn: true,
+    //type: "audio"
+    comment: "This is a new comment",
+    // add newFields, change algorythm, set previewSecs to null, leave totalFrames unchanged
+    additionalMetadata: {
+      newField: "newValue",
+      newField2: "newValue2",
+      algorithm: 99999,
+      previewSecs: null,
+    },
+    location: [-46.29105, 170.30835],
+  };
+  
   before(() => {
+    //Create group1, admin and 2 devices
     cy.testCreateUserGroupAndDevice("ruGroupAdmin", "ruGroup", "ruCamera1");
     cy.apiDeviceAdd("ruCamera1b", "ruGroup");
     cy.apiUserAdd("ruGroupMember");
+    cy.apiGroupUserAdd("ruGroupAdmin", "ruGroupMember", "ruGroup", true);
+
+    //Device1 admin and member
     cy.apiUserAdd("ruDeviceAdmin");
     cy.apiUserAdd("ruDeviceMember");
-    cy.apiGroupUserAdd("ruGroupAdmin", "ruGroupMember", "ruGroup", true);
     cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceAdmin", "ruCamera1", true);
     cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceMember", "ruCamera1", true);
 
+    //Second group with admin and device
     cy.testCreateUserGroupAndDevice("ruGroup2Admin", "ruGroup2", "ruCamera2");
   });
 

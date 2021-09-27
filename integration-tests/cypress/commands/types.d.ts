@@ -63,9 +63,9 @@ export interface ApiDeviceInGroupDevice {
 export interface ApiDeviceQueryDevice {
   devicename: string;
   groupname: string;
-  id: number;
+  id?: number;
   saltId?: number;
-  Group: {
+  Group?: {
     groupname: string;
   };
 }

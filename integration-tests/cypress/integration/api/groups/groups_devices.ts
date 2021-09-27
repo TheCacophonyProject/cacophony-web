@@ -8,12 +8,12 @@ import { HTTP_OK200 } from "../../../commands/constants";
 import { HTTP_Forbidden } from "../../../commands/constants";
 import { HTTP_Unprocessable } from "../../../commands/constants";
 
-const ADMIN = true;
-const NOT_ADMIN = false;
-let expectedDevice: ApiGroupsDevice;
-let expectedDevice1b: ApiGroupsDevice;
-
 describe("Groups - get devices for group", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+  let expectedDevice: ApiGroupsDevice;
+  let expectedDevice1b: ApiGroupsDevice;
+  
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gdGroupAdmin", "gdGroup", "gdCamera").then(

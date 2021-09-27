@@ -6,8 +6,6 @@ import {
   // HTTP_Forbidden,
   HTTP_OK200,
   //NOT_NULL,
-  superuser,
-  suPassword,
 } from "../../../commands/constants";
 
 import { ApiRecordingColumns, ApiRecordingSet } from "../../../commands/types";
@@ -19,155 +17,164 @@ import {
   TestCreateRecordingData,
 } from "../../../commands/api/recording-tests";
 
-const templateRecording1: ApiRecordingSet = {
-  type: "thermalRaw",
-  fileHash: null,
-  duration: 15.6666666666667,
-  recordingDateTime: "2021-07-17T20:13:17.248Z",
-  location: [-45.29115, 169.30845],
-  version: "345",
-  batteryCharging: null,
-  batteryLevel: null,
-  airplaneModeOn: null,
-  additionalMetadata: {
-    algorithm: 31143,
-    previewSecs: 5,
-    totalFrames: 141,
-  },
-  metadata: {
-    algorithm: { model_name: "master" },
-    tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
-  },
-  comment: "This is a comment",
-  processingState: "FINISHED",
-};
-
-const templateRecording2: ApiRecordingSet = {
-  type: "thermalRaw",
-  fileHash: null,
-  duration: 40,
-  recordingDateTime: "2021-01-01T00:00:00.000Z",
-  //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
-  location: [-45.00045, 169.00065],
-  version: "346",
-  batteryCharging: null,
-  batteryLevel: null,
-  airplaneModeOn: null,
-  additionalMetadata: {
-    algorithm: 31144,
-    previewSecs: 6,
-    totalFrames: 142,
-  },
-  metadata: {
-    algorithm: { model_name: "master" },
-    tracks: [
-      { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
-    ],
-  },
-  comment: "This is a comment2",
-  processingState: "CORRUPT",
-};
-
-const templateRecording3: ApiRecordingSet = {
-  type: "audio",
-  fileHash: null,
-  duration: 60,
-  recordingDateTime: "2021-08-24T01:35:00.000Z",
-  relativeToDawn: null,
-  relativeToDusk: -17219,
-  //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
-  location: [-43.53345, 172.64745],
-  version: "1.8.1",
-  batteryCharging: "DISCHARGING",
-  batteryLevel: 87,
-  airplaneModeOn: false,
-  additionalMetadata: {
-    normal: "0",
-    "SIM IMEI": "990006964660319",
-    analysis: {
-      cacophony_index: [
-        { end_s: 20, begin_s: 0, index_percent: 80.8 },
-        { end_s: 40, begin_s: 20, index_percent: 77.1 },
-        { end_s: 60, begin_s: 40, index_percent: 71.6 },
-      ],
-      species_identify: [
-        { end_s: 6, begin_s: 3, species: "morepork", liklihood: 1 },
-        { end_s: 14, begin_s: 11, species: "morepork", liklihood: 0.38 },
-        { end_s: 23, begin_s: 21, species: "morepork", liklihood: 1 },
-        { end_s: 29, begin_s: 27, species: "morepork", liklihood: 1 },
-        { end_s: 38, begin_s: 30, species: "morepork", liklihood: 1 },
-        { end_s: 46, begin_s: 42, species: "morepork", liklihood: 1 },
-        { end_s: 54, begin_s: 45, species: "morepork", liklihood: 1 },
-        { end_s: 59.8, begin_s: 56.8, species: "morepork", liklihood: 1 },
-      ],
-      cacophony_index_version: "2020-01-20_A",
-      processing_time_seconds: 50.7,
-      species_identify_version: "2021-02-01",
-    },
-    "SIM state": "SIM_STATE_READY",
-    "Auto Update": false,
-    "Flight Mode": false,
-    "Phone model": "SM-G900V",
-    amplification: 1.0721460589601806,
-    SimOperatorName: "Verizon",
-    "Android API Level": 23,
-    "Phone manufacturer": "samsung",
-    "App has root access": false,
-  },
-  comment: null,
-  processingState: "analyse",
-};
-
-const templateRecording4: ApiRecordingSet = {
-  type: "thermalRaw",
-  fileHash: null,
-  duration: 40,
-  recordingDateTime: "2021-01-01T00:00:00.000Z",
-  //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
-  location: [-45.00045, 169.00065],
-  version: "346",
-  batteryCharging: null,
-  batteryLevel: null,
-  airplaneModeOn: null,
-  additionalMetadata: {
-    algorithm: 31144,
-    previewSecs: 6,
-    totalFrames: 142,
-  },
-  metadata: {
-    algorithm: { model_name: "master" },
-    tracks: [{ start_s: 2, end_s: 5 }],
-  },
-  comment: "This is a comment2",
-  processingState: "FINISHED",
-};
-
-//TODO: Travis does not handle timezones well. So ignoring datetime for now as in report we have no idea
-//what timezone data is in
-const EXCLUDE_COLUMNS = ["Date", "Time"];
-
-const recording1 = TestCreateRecordingData(templateRecording1);
-let expectedRecording1: ApiRecordingColumns;
-const recording2 = TestCreateRecordingData(templateRecording2);
-let expectedRecording2: ApiRecordingColumns;
-const recording3 = TestCreateRecordingData(templateRecording3);
-let expectedRecording3: ApiRecordingColumns;
-const recording4 = TestCreateRecordingData(templateRecording4);
-let expectedRecording4: ApiRecordingColumns;
-
-const expectedRecording: ApiRecordingColumns[] = [];
-
 describe("Recordings report using where", () => {
+  const superuser = getCreds("superuser")["name"];
+  const suPassword = getCreds("superuser")["password"];
+
+  const templateRecording1: ApiRecordingSet = {
+    type: "thermalRaw",
+    fileHash: null,
+    duration: 15.6666666666667,
+    recordingDateTime: "2021-07-17T20:13:17.248Z",
+    location: [-45.29115, 169.30845],
+    version: "345",
+    batteryCharging: null,
+    batteryLevel: null,
+    airplaneModeOn: null,
+    additionalMetadata: {
+      algorithm: 31143,
+      previewSecs: 5,
+      totalFrames: 141,
+    },
+    metadata: {
+      algorithm: { model_name: "master" },
+      tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
+    },
+    comment: "This is a comment",
+    processingState: "FINISHED",
+  };
+  
+  const templateRecording2: ApiRecordingSet = {
+    type: "thermalRaw",
+    fileHash: null,
+    duration: 40,
+    recordingDateTime: "2021-01-01T00:00:00.000Z",
+    //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
+    location: [-45.00045, 169.00065],
+    version: "346",
+    batteryCharging: null,
+    batteryLevel: null,
+    airplaneModeOn: null,
+    additionalMetadata: {
+      algorithm: 31144,
+      previewSecs: 6,
+      totalFrames: 142,
+    },
+    metadata: {
+      algorithm: { model_name: "master" },
+      tracks: [
+        { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+      ],
+    },
+    comment: "This is a comment2",
+    processingState: "CORRUPT",
+  };
+  
+  const templateRecording3: ApiRecordingSet = {
+    type: "audio",
+    fileHash: null,
+    duration: 60,
+    recordingDateTime: "2021-08-24T01:35:00.000Z",
+    relativeToDawn: null,
+    relativeToDusk: -17219,
+    //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
+    location: [-43.53345, 172.64745],
+    version: "1.8.1",
+    batteryCharging: "DISCHARGING",
+    batteryLevel: 87,
+    airplaneModeOn: false,
+    additionalMetadata: {
+      normal: "0",
+      "SIM IMEI": "990006964660319",
+      analysis: {
+        cacophony_index: [
+          { end_s: 20, begin_s: 0, index_percent: 80.8 },
+          { end_s: 40, begin_s: 20, index_percent: 77.1 },
+          { end_s: 60, begin_s: 40, index_percent: 71.6 },
+        ],
+        species_identify: [
+          { end_s: 6, begin_s: 3, species: "morepork", liklihood: 1 },
+          { end_s: 14, begin_s: 11, species: "morepork", liklihood: 0.38 },
+          { end_s: 23, begin_s: 21, species: "morepork", liklihood: 1 },
+          { end_s: 29, begin_s: 27, species: "morepork", liklihood: 1 },
+          { end_s: 38, begin_s: 30, species: "morepork", liklihood: 1 },
+          { end_s: 46, begin_s: 42, species: "morepork", liklihood: 1 },
+          { end_s: 54, begin_s: 45, species: "morepork", liklihood: 1 },
+          { end_s: 59.8, begin_s: 56.8, species: "morepork", liklihood: 1 },
+        ],
+        cacophony_index_version: "2020-01-20_A",
+        processing_time_seconds: 50.7,
+        species_identify_version: "2021-02-01",
+      },
+      "SIM state": "SIM_STATE_READY",
+      "Auto Update": false,
+      "Flight Mode": false,
+      "Phone model": "SM-G900V",
+      amplification: 1.0721460589601806,
+      SimOperatorName: "Verizon",
+      "Android API Level": 23,
+      "Phone manufacturer": "samsung",
+      "App has root access": false,
+    },
+    comment: null,
+    processingState: "analyse",
+  };
+  
+  const templateRecording4: ApiRecordingSet = {
+    type: "thermalRaw",
+    fileHash: null,
+    duration: 40,
+    recordingDateTime: "2021-01-01T00:00:00.000Z",
+    //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
+    location: [-45.00045, 169.00065],
+    version: "346",
+    batteryCharging: null,
+    batteryLevel: null,
+    airplaneModeOn: null,
+    additionalMetadata: {
+      algorithm: 31144,
+      previewSecs: 6,
+      totalFrames: 142,
+    },
+    metadata: {
+      algorithm: { model_name: "master" },
+      tracks: [{ start_s: 2, end_s: 5 }],
+    },
+    comment: "This is a comment2",
+    processingState: "FINISHED",
+  };
+  
+  //TODO: Travis does not handle timezones well. So ignoring datetime for now as in report we have no idea
+  //what timezone data is in
+  const EXCLUDE_COLUMNS = ["Date", "Time"];
+
+  //Four sets of recording parameters to set and query  
+  const recording1 = TestCreateRecordingData(templateRecording1);
+  let expectedRecording1: ApiRecordingColumns;
+  const recording2 = TestCreateRecordingData(templateRecording2);
+  let expectedRecording2: ApiRecordingColumns;
+  const recording3 = TestCreateRecordingData(templateRecording3);
+  let expectedRecording3: ApiRecordingColumns;
+  const recording4 = TestCreateRecordingData(templateRecording4);
+  let expectedRecording4: ApiRecordingColumns;
+
+  //CSV file structure to compate against the returned report
+  const expectedRecording: ApiRecordingColumns[] = [];
+
   before(() => {
+    //Create group, 2 devices, admin and member
     cy.testCreateUserGroupAndDevice("rreGroupAdmin", "rreGroup", "rreCamera1");
     cy.apiDeviceAdd("rreCamera1b", "rreGroup");
     cy.apiUserAdd("rreGroupMember");
+    cy.apiGroupUserAdd("rreGroupAdmin", "rreGroupMember", "rreGroup", true);
+
+    //Device admin and member fore device1
     cy.apiUserAdd("rreDeviceAdmin");
     cy.apiUserAdd("rreDeviceMember");
-    cy.apiGroupUserAdd("rreGroupAdmin", "rreGroupMember", "rreGroup", true);
     cy.apiDeviceUserAdd("rreGroupAdmin", "rreDeviceAdmin", "rreCamera1", true);
     cy.apiDeviceUserAdd("rreGroupAdmin", "rreDeviceMember", "rreCamera1", true);
 
+    //Group2 with admin and device
     cy.testCreateUserGroupAndDevice(
       "rreGroup2Admin",
       "rreGroup2",
@@ -220,6 +227,7 @@ describe("Recordings report using where", () => {
         recording3
       );
     });
+    //Recording 4 with a human tag
     cy.apiRecordingAdd(
       "rreCamera1b",
       recording4,
@@ -607,7 +615,7 @@ describe("Recordings report using where", () => {
   });
 
   //TODO: Issue 102 - FAILS.  view-mode is ignored
-  if (Cypress.env("test_using_default_superuser") == true) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
     it.skip("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
       cy.apiDeviceUserAdd(

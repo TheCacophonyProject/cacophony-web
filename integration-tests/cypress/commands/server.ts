@@ -47,23 +47,27 @@ export function convertToDate(timeOrDate: Date | string): Date {
 
 interface ApiCreds {
   name: string;
+  password: string;
   headers: {
     authorization: any;
   };
   jwt: string;
+  jobKey: string;
   id: number;
   location: ApiLocation;
-  jobKey: string;
 }
 
 export function saveIdOnly(name: string, id: number) {
   const creds = {
-    name,
+    name: name,
+    password: "",
     headers: {
       authorization: "",
     },
     jwt: "",
-    id,
+    jobKey: "",
+    id: id,
+    location: undefined
   };
   Cypress.env("testCreds")[name] = creds;
 }
@@ -82,23 +86,28 @@ export function saveCreds(
   id = 0
 ) {
   const creds = {
-    name,
+    name: name,
+    password: "",
     headers: {
       authorization: response.body.token,
     },
     jwt: response.body.token,
     jobKey: response.body.jobKey,
-    id,
+    id: id,
+    location: response.body.location
   };
   Cypress.env("testCreds")[name] = creds;
 }
 
 export function saveStation(location: ApiLocation, name: string, id = 0) {
   const creds = {
-    name,
+    name: name,
+    password: "",
     headers: {},
+    jwt: "",
+    jobKey: "",
+    id: id,
     location: location,
-    id,
   };
   Cypress.env("testCreds")[name] = creds;
 }

@@ -6,14 +6,19 @@ import {
   HTTP_Unprocessable,
 } from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
+import { getCreds } from "../../../commands/server";
 
 describe("Authentication", () => {
+  const superuser = getCreds("superuser")["name"];
+  const suPassword = getCreds("superuser")["password"];
+
   const group1 = "first_group";
   const group2 = "second_group";
   const userA = "Alice";
   const userB = "Barbara";
   const camera1 = "first_camera";
   const camera2 = "second_camera";
+
 
   before(() => {
     cy.testCreateUserGroupAndDevice(userA, group1, camera1);
@@ -110,11 +115,11 @@ describe("Authentication", () => {
   });
 
   //Do not run against a live server as we don't have superuser login
-  if (Cypress.env("test_using_default_superuser") == true) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Superuser can authenticate as another user and receive their permissions", () => {
-      cy.apiSignInAs(null, null, "admin_test", "admin_test");
-      //admin_test authenticates as Bruce
-      cy.apiAuthenticateAs("admin_test", userB);
+      cy.apiSignInAs(null, null, superuser, suPassword);
+      //superuser authenticates as Bruce
+      cy.apiAuthenticateAs(superuser, userB);
       //verify each user gets their own data
       cy.testGroupUserCheckAccess(userB + "_on_behalf", group2);
       //vefiry user cannot see items outside their group (i.e. are not super_user)

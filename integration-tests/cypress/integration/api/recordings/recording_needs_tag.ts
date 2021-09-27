@@ -6,8 +6,6 @@ import {
   // HTTP_Forbidden,
   HTTP_OK200,
   NOT_NULL,
-  superuser,
-  suPassword,
 } from "../../../commands/constants";
 
 import {
@@ -22,60 +20,72 @@ import {
   TestCreateRecordingData,
 } from "../../../commands/api/recording-tests";
 
-const templateExpectedRecording: ApiRecordingNeedsTagReturned = {
-  DeviceId: 49,
-  RecordingId: 34,
-  duration: 40,
-  fileSize: 1,
-  recordingJWT: NOT_NULL,
-  tagJWT: NOT_NULL,
-  tracks: [],
-};
-
-const templateRecording: ApiRecordingSet = {
-  type: "thermalRaw",
-  fileHash: null,
-  duration: 40,
-  recordingDateTime: "2021-01-01T00:00:00.000Z",
-  location: [-45, 169],
-  version: "346",
-  batteryCharging: null,
-  batteryLevel: null,
-  airplaneModeOn: null,
-  additionalMetadata: {
-    algorithm: 31144,
-    previewSecs: 6,
-    totalFrames: 142,
-  },
-  metadata: {
-    algorithm: { model_name: "master" },
-    tracks: [
-      { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
-    ],
-  },
-  comment: "This is a comment2",
-  processingState: "FINSIHED",
-};
-
-let dev_env = false;
-let doNotValidate = true;
-
-const recording1 = TestCreateRecordingData(templateRecording);
-let expectedRecording1: ApiRecordingNeedsTagReturned;
 
 describe("Recording needs-tag (power-tagger)", () => {
+  const superuser = getCreds("superuser")["name"];
+  const suPassword = getCreds("superuser")["password"];
+
+  const templateExpectedRecording: ApiRecordingNeedsTagReturned = {
+    DeviceId: 49,
+    RecordingId: 34,
+    duration: 40,
+    fileSize: 1,
+    recordingJWT: NOT_NULL,
+    tagJWT: NOT_NULL,
+    tracks: [],
+  };
+
+  const templateRecording: ApiRecordingSet = {
+    type: "thermalRaw",
+    fileHash: null,
+    duration: 40,
+    recordingDateTime: "2021-01-01T00:00:00.000Z",
+    location: [-45, 169],
+    version: "346",
+    batteryCharging: null,
+    batteryLevel: null,
+    airplaneModeOn: null,
+    additionalMetadata: {
+      algorithm: 31144,
+      previewSecs: 6,
+      totalFrames: 142,
+    },
+    metadata: {
+      algorithm: { model_name: "master" },
+      tracks: [
+        { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+      ],
+    },
+    comment: "This is a comment2",
+    processingState: "FINSIHED",
+  };
+
+  let dev_env = false;
+  let doNotValidate = true;
+  
+  const recording1 = TestCreateRecordingData(templateRecording);
+  let expectedRecording1: ApiRecordingNeedsTagReturned;
+
   before(() => {
+    //Create group1 with admin and device
     cy.testCreateUserGroupAndDevice("rntGroupAdmin", "rntGroup", "rntCamera1");
     cy.apiDeviceAdd("rntCamera1b", "rntGroup");
+
+    //Create user not associated with any devices
     cy.apiUserAdd("rntNonMember");
 
+    //Create second group, admin & device
     cy.testCreateUserGroupAndDevice(
       "rntGroup2Admin",
       "rntGroup2",
       "rntCamera2"
     );
 
-    if (Cypress.env("test_using_default_superuser") == true) {
+    //When running on dev we know what recordings are present so can validate 
+    //all paramters.  
+    //When running on test we cannot control what data is present so just validate that the 
+    //API calls work
+    if (Cypress.env("running_in_a_dev_environment") == true) {
       dev_env = true;
       doNotValidate = false;
       cy.apiSignInAs(null, null, superuser, suPassword);
@@ -85,12 +95,14 @@ describe("Recording needs-tag (power-tagger)", () => {
         "Warning: validating returned returned data presence but not parameter values"
       );
       cy.log(
-        "Enable test_using_default_superuser to allow value checks (only on dev)"
+        "Enable running_in_a_dev_environment to allow value checks (only on dev)"
       );
     }
   });
 
   beforeEach(() => {
+    //If running on dev, delete any recordings already present so that we know
+    //what requires tagging
     if (dev_env == true) {
       cy.testDeleteRecordingsInState(superuser, "thermalRaw", undefined);
       cy.testDeleteRecordingsInState(superuser, "audio", undefined);
@@ -123,30 +135,35 @@ describe("Recording needs-tag (power-tagger)", () => {
     });
   });
 
-  it("Does not return recordings not needing tagging", () => {
-    cy.log("Add a recording in group1");
-    cy.apiRecordingAdd(
-      "rntCamera1",
-      recording1,
-      undefined,
-      "rntRecording2"
-    ).then(() => {
-      cy.log("Add a user tag to theis recording");
-      cy.testUserTagRecording(
-        getCreds("rntRecording2").id,
-        0,
-        "rntGroupAdmin",
-        "possum"
+  //cannot run without SU credentials as we need to ensure no recordings that need tagging are present
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    it("Does not return recordings not needing tagging", () => {
+      cy.log("Add a recording in group1");
+      cy.apiRecordingAdd(
+        "rntCamera1",
+        recording1,
+        undefined,
+        "rntRecording2"
       ).then(() => {
-        cy.log("Verify this recording not returned");
+        cy.log("Add a user tag to theis recording");
+        cy.testUserTagRecording(
+          getCreds("rntRecording2").id,
+          0,
+          "rntGroupAdmin",
+          "possum"
+        ).then(() => {
+          cy.log("Verify this recording not returned");
         cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, []);
+        });
       });
     });
-  });
+  } else {
+    it.skip("DISABLED: Does not return recordings not needing tagging")
+  };
 
   //TODO: Isssue 100 - test fails, returns a recording with all 0's / blanks when no recording available
   //TODO: apiRecordingNeedsTagCheck has a workaround which needs removing when this is fixed
-  if (Cypress.env("test_using_default_superuser") == true) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
     it.skip("Can handle no returned matches", () => {
       cy.log("Verify non-member can view this recording");
       cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, []);

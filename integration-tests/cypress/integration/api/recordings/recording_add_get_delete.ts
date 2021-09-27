@@ -14,62 +14,66 @@ import {
   TestCreateRecordingData,
 } from "../../../commands/api/recording-tests";
 
-const templateExpectedRecording: ApiRecordingReturned = {
-  id: 892972,
-  rawMimeType: "application/x-cptv",
-  fileMimeType: null,
-  processingState: "FINISHED",
-  duration: 15.6666666666667,
-  recordingDateTime: "2021-07-17T20:13:17.248Z",
-  relativeToDawn: null,
-  relativeToDusk: null,
-  location: { type: "Point", coordinates: [-45.29115, 169.30845] },
-  version: "345",
-  batteryLevel: null,
-  batteryCharging: null,
-  airplaneModeOn: null,
-  type: "thermalRaw",
-  additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-  GroupId: 246,
-  StationId: 25,
-  comment: "This is a comment",
-  processing: null,
-};
-
-const templateRecording: ApiRecordingSet = {
-  type: "thermalRaw",
-  fileHash: null,
-  duration: 15.6666666666667,
-  recordingDateTime: "2021-07-17T20:13:17.248Z",
-  location: [-45.29115, 169.30845],
-  version: "345",
-  batteryCharging: null,
-  batteryLevel: null,
-  airplaneModeOn: null,
-  additionalMetadata: {
-    algorithm: 31143,
-    previewSecs: 5,
-    totalFrames: 141,
-  },
-  metadata: {
-    algorithm: { model_name: "master" },
-    tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
-  },
-  comment: "This is a comment",
-  processingState: "FINISHED",
-};
-
 describe("Recordings (thermal): add, get, delete", () => {
+  const templateExpectedRecording: ApiRecordingReturned = {
+    id: 892972,
+    rawMimeType: "application/x-cptv",
+    fileMimeType: null,
+    processingState: "FINISHED",
+    duration: 15.6666666666667,
+    recordingDateTime: "2021-07-17T20:13:17.248Z",
+    relativeToDawn: null,
+    relativeToDusk: null,
+    location: { type: "Point", coordinates: [-45.29115, 169.30845] },
+    version: "345",
+    batteryLevel: null,
+    batteryCharging: null,
+    airplaneModeOn: null,
+    type: "thermalRaw",
+    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
+    GroupId: 246,
+    StationId: 25,
+    comment: "This is a comment",
+    processing: null,
+  };
+  
+  const templateRecording: ApiRecordingSet = {
+    type: "thermalRaw",
+    fileHash: null,
+    duration: 15.6666666666667,
+    recordingDateTime: "2021-07-17T20:13:17.248Z",
+    location: [-45.29115, 169.30845],
+    version: "345",
+    batteryCharging: null,
+    batteryLevel: null,
+    airplaneModeOn: null,
+    additionalMetadata: {
+      algorithm: 31143,
+      previewSecs: 5,
+      totalFrames: 141,
+    },
+    metadata: {
+      algorithm: { model_name: "master" },
+      tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
+    },
+    comment: "This is a comment",
+    processingState: "FINISHED",
+  };
+  
   before(() => {
+    //Create group1 with 2 devices, admin and member
     cy.testCreateUserGroupAndDevice("raGroupAdmin", "raGroup", "raCamera1");
     cy.apiDeviceAdd("raCamera1b", "raGroup");
     cy.apiUserAdd("raGroupMember");
+
+    //Add admin & member to Camer1
     cy.apiUserAdd("raDeviceAdmin");
     cy.apiUserAdd("raDeviceMember");
     cy.apiGroupUserAdd("raGroupAdmin", "raGroupMember", "raGroup", true);
     cy.apiDeviceUserAdd("raGroupAdmin", "raDeviceAdmin", "raCamera1", true);
     cy.apiDeviceUserAdd("raGroupAdmin", "raDeviceMember", "raCamera1", true);
 
+    //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice("raGroup2Admin", "raGroup2", "raCamera2");
   });
 

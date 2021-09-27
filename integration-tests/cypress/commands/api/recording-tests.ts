@@ -25,7 +25,7 @@ import {
 } from "../types";
 
 import { HTTP_OK200, NOT_NULL } from "../constants";
-const BASE_URL = "http://test.site";
+const BASE_URL = Cypress.env("base-url-returned-in-links");
 
 let lastUsedTime = DEFAULT_DATE;
 

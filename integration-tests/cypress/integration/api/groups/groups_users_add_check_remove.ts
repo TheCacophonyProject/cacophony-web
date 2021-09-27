@@ -8,12 +8,12 @@ import { HTTP_OK200 } from "../../../commands/constants";
 import { HTTP_Unprocessable } from "../../../commands/constants";
 import { HTTP_Forbidden } from "../../../commands/constants";
 
-const ADMIN = true;
-const NOT_ADMIN = false;
-let expectedGuAdminUser: ApiGroupsUserReturned;
-let expectedGuAdminUser2: ApiGroupsUserReturned;
-
 describe("Groups - add, check and remove users", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+  let expectedGuAdminUser: ApiGroupsUserReturned;
+  let expectedGuAdminUser2: ApiGroupsUserReturned;
+  
   before(() => {
     cy.testCreateUserGroupAndDevice("guGroupAdmin", "guGroup", "guCamera").then(
       () => {

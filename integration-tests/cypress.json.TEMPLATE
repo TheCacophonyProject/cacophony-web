@@ -3,7 +3,8 @@
   "env" : {
     "cacophony-api-server": "http://localhost:1080", 
     "cacophony-processing-api-server": "http://localhost:2008",
+    "base-url-returned-in-links": "http://test.site",
     "testCreds" : {},
-    "test_using_default_superuser" : true
+    "running_in_a_dev_environment" : true
   }
 }

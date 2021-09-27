@@ -11,23 +11,24 @@ import { getCreds } from "../../../commands/server";
 
 import { HTTP_OK200 } from "../../../commands/constants";
 import { HTTP_Unprocessable } from "../../../commands/constants";
-//import { HTTP_Forbidden } from "../../../commands/constants";
-
-const ADMIN = true;
-const NOT_ADMIN = false;
-let expectedGroup: ApiGroupReturned;
-let expectedGroupAdminUser: ApiGroupUserRelation;
-let expectedGroupAdminGroupUser: ApiGroupUser;
-let expectedGroupMemberUser: ApiGroupUserRelation;
-let expectedGroupMemberGroupUser: ApiGroupUser;
-let expectedDevice: ApiDeviceIdAndName;
-let expectedDevice1b: ApiDeviceIdAndName;
-const EXCLUDE_CREATED_UPDATED_AT = [
-  "[].Users[].GroupUsers.createdAt",
-  "[].Users[].GroupUsers.updatedAt",
-];
 
 describe("Groups - add, get group", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+  let expectedGroup: ApiGroupReturned;
+  let expectedGroupAdminUser: ApiGroupUserRelation;
+  let expectedGroupAdminGroupUser: ApiGroupUser;
+  let expectedGroupMemberUser: ApiGroupUserRelation;
+  let expectedGroupMemberGroupUser: ApiGroupUser;
+  let expectedDevice: ApiDeviceIdAndName;
+  let expectedDevice1b: ApiDeviceIdAndName;
+
+  //do not validate createdAt or updatedAt values
+  const EXCLUDE_CREATED_UPDATED_AT = [
+    "[].Users[].GroupUsers.createdAt",
+    "[].Users[].GroupUsers.updatedAt",
+  ];
+  
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gaGroupAdmin", "gaGroup", "gaCamera").then(

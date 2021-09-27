@@ -2,14 +2,16 @@
 
 import {
   HTTP_Unprocessable,
-  superuser,
-  suPassword,
 } from "../../../commands/constants";
+
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 import { ApiDeviceQueryDevice } from "../../../commands/types";
 
 describe("Devices/query", () => {
+  const superuser = getCreds("superuser")["name"];
+  const suPassword = getCreds("superuser")["password"];
+
   const groupAdmin = "Fredrick-groupAdmin";
   const groupMember = "Faustus-groupMember";
   const deviceMember = "Felicity-deviceMember";
@@ -160,7 +162,7 @@ describe("Devices/query", () => {
   });
 
   //Do not run against a live server as we don't have superuser login
-  if (Cypress.env("test_using_default_superuser") == true) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user should see any device", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
 
