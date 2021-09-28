@@ -132,6 +132,7 @@ export default {
       recordingsCount: 0,
       visitsCount: 0,
       groupId: null,
+      group: null,
       recordingQueryFinal: {},
       visitsQueryFinal: {},
       users: [],
@@ -151,10 +152,7 @@ export default {
     isGroupAdmin() {
       return (
         (this.currentUser && this.currentUser.isSuperUser) ||
-        this.users.some(
-          (user) =>
-            user.userName === this.currentUser.username && user.isGroupAdmin
-        )
+        this.group && this.group.admin
       );
     },
     tabNames() {
@@ -214,6 +212,7 @@ export default {
         },
       });
     }
+    this.group = await api.groups.getGroup(this.groupName);
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
     if (!this.limitedView) {
       await Promise.all([
@@ -260,6 +259,7 @@ export default {
           if (status === 403) {
             this.limitedView = true;
           } else {
+            console.log("Users", result.users);
             this.users = result.users;
           }
         } catch (e) {
@@ -273,8 +273,8 @@ export default {
       if (!this.limitedView) {
         try {
           const { result } = await api.groups.getGroup(this.groupName);
-          if (result.groups.length !== 0) {
-            this.groupId = result.groups[0].id;
+
+            this.groupId = result.group.id;
             this.recordingQueryFinal = this.recordingQuery();
             {
               const { result } = await api.recording.queryCount(
@@ -284,10 +284,10 @@ export default {
                 this.recordingsCount = result.count;
               }
             }
-          } else {
-            this.limitedView = true;
-            await this.fetchRecordingCount();
-          }
+          //} else {
+          //  this.limitedView = true;
+            //await this.fetchRecordingCount();
+          //}
         } catch (e) {
           this.recordingsCountLoading = false;
         }
@@ -322,8 +322,7 @@ export default {
       this.visitsCountLoading = true;
       try {
         const { result } = await api.groups.getGroup(this.groupName);
-        if (result.groups.length !== 0) {
-          this.groupId = result.groups[0].id;
+          this.groupId = result.group.id;
           this.visitsQueryFinal = this.visitsQuery();
           {
             const { result } = await api.monitoring.queryVisitPage({
@@ -334,7 +333,6 @@ export default {
             });
             this.visitsCount = `${result.params.pagesEstimate}`;
           }
-        }
       } catch (e) {
         this.visitsCountLoading = false;
       }
@@ -363,28 +361,21 @@ export default {
             // ...
           }
         } else {
+          // FIXME: Do we still need this branch?  I feel like maybe not.
           const { result } = await api.device.getDevices();
-          const myDevices = result.devices.rows.filter((device) => {
-            return (
-              device.Users.length !== 0 &&
-              device.Users.find((user) => user.id === this.currentUser.id) !==
-                undefined
-            );
-          });
-          for (const device of myDevices) {
+          for (const device of result.devices) {
             const rec = await api.recording.latestForDevice(device.id);
             if (
               rec.result.count &&
               rec.result.rows[0].Group.groupname === this.groupName
             ) {
-              device.inGroup = true;
+              (device as any).inGroup = true;
             }
           }
-          this.devices = myDevices
-            .filter((device) => device.inGroup)
+          this.devices = result.devices
+            .filter((device) => (device as any).inGroup)
             .map((device) => ({
               ...device,
-              deviceName: device.devicename,
               isHealthy: true,
               type: null,
             }));

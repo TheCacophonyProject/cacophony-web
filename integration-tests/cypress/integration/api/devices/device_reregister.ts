@@ -2,6 +2,7 @@
 
 import {
   HTTP_BadRequest,
+  HTTP_Forbidden,
   HTTP_Unprocessable,
 } from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
@@ -34,9 +35,9 @@ describe("Device reregister", () => {
         saltId: getCreds("RR_cam1").id,
         deviceName: getTestName("RR_cam1"),
         active: false,
-        isAdmin: true,
+        admin: true,
         groupName: getTestName("RR_group1"),
-        groupId: getCreds("RR_group1").id
+        groupId: getCreds("RR_group1").id,
       };
     });
 
@@ -47,9 +48,9 @@ describe("Device reregister", () => {
         saltId: getCreds("RR_cam1").id,
         deviceName: getTestName("RR_cam1b"),
         active: true,
-        isAdmin: true,
+        admin: true,
         groupName: getTestName("RR_group1"),
-        groupId: getCreds("RR_group1").id
+        groupId: getCreds("RR_group1").id,
       };
       //verify old device is not present and new one is
       cy.apiDevicesCheck("RR_user1", [expectedDevice1b]);
@@ -72,9 +73,9 @@ describe("Device reregister", () => {
           saltId: getCreds("RR_cam2").id,
           deviceName: getTestName("RR_cam2"),
           active: false,
-          isAdmin: true,
+          admin: true,
           groupName: getTestName("RR_group2"),
-          groupId: getCreds("RR_group2").id
+          groupId: getCreds("RR_group2").id,
         };
       }
     );
@@ -89,9 +90,9 @@ describe("Device reregister", () => {
         saltId: getCreds("RR_cam2").id,
         deviceName: getTestName("RR_cam2"),
         active: true,
-        isAdmin: true,
+        admin: true,
         groupName: getTestName("RR_group2b"),
-        groupId: getCreds("RR_group2b").id
+        groupId: getCreds("RR_group2b").id,
       };
       cy.log("verify new device listed in 2nd group");
       cy.apiDevicesCheck("RR_user2b", [expectedDevice2b]);
@@ -112,9 +113,9 @@ describe("Device reregister", () => {
           saltId: getCreds("RR_cam3").id,
           deviceName: getTestName("RR_cam3"),
           active: false,
-          isAdmin: true,
+          admin: true,
           groupName: getTestName("RR_group3"),
-          groupId: getCreds("RR_group3").id
+          groupId: getCreds("RR_group3").id,
         };
       }
     );
@@ -129,9 +130,9 @@ describe("Device reregister", () => {
         saltId: getCreds("RR_cam3b").id,
         deviceName: getTestName("RR_cam3b"),
         active: true,
-        isAdmin: true,
+        admin: true,
         groupName: getTestName("RR_group3b"),
-        groupId: getCreds("RR_group3b").id
+        groupId: getCreds("RR_group3b").id,
       };
       cy.log("verify new device listed in 2nd group");
       cy.apiDevicesCheck("RR_user3b", [expectedDevice3b]);
@@ -151,9 +152,9 @@ describe("Device reregister", () => {
           saltId: getCreds("RR_cam5a").id,
           deviceName: getTestName("RR_cam5a"),
           active: true,
-          isAdmin: true,
+          admin: true,
           groupName: getTestName("RR_group5"),
-          groupId: getCreds("RR_group5").id
+          groupId: getCreds("RR_group5").id,
         };
       }
     );
@@ -246,8 +247,8 @@ describe("Device reregister", () => {
         groupName: getTestName("RR_group7"),
         saltId: getCreds("RR_cam7").id,
         groupId: getCreds("RR_group7").id,
-        isAdmin: true,
-        active: true
+        admin: true,
+        active: true,
       };
       cy.apiDevicesCheck("RR_user7", [expectedDevice1]);
 
@@ -260,8 +261,8 @@ describe("Device reregister", () => {
         groupId: getCreds("RR_group7").id,
         saltId: getCreds("RR_cam7").id,
         id: getCreds("RR_cam7").id,
-        isAdmin: true,
-        active: true
+        admin: true,
+        active: true,
       };
       cy.apiDevicesCheck("RR_user7", [expectedDevice2]);
     });
@@ -270,19 +271,21 @@ describe("Device reregister", () => {
   it("Reregistered device can keep specified salt id", () => {
     cy.testCreateUserAndGroup("RR_user8", "RR_group8").then(() => {
       cy.apiDeviceAdd("specify salt", "RR_group8", 9997);
-      cy.apiDeviceReregister("specify salt", "specify salt2", "RR_group8").then(() => {
-        cy.log("Test with Salt Id = device id by default");
-        const expectedDevice2: ApiDeviceResponse = {
-          deviceName: getTestName("specify salt2"),
-          id: getCreds("specify salt2").id, // Unchecked and unknown
-          active: true,
-          isAdmin: true,
-          saltId: 9997,
-          groupName: getTestName("RR_group8"),
-          groupId: getCreds("RR_group8").id,
-        };
-        cy.apiDevicesCheck("RR_user8", [expectedDevice2]);
-      });
+      cy.apiDeviceReregister("specify salt", "specify salt2", "RR_group8").then(
+        () => {
+          cy.log("Test with Salt Id = device id by default");
+          const expectedDevice2: ApiDeviceResponse = {
+            deviceName: getTestName("specify salt2"),
+            id: getCreds("specify salt2").id, // Unchecked and unknown
+            active: true,
+            admin: true,
+            saltId: 9997,
+            groupName: getTestName("RR_group8"),
+            groupId: getCreds("RR_group8").id,
+          };
+          cy.apiDevicesCheck("RR_user8", [expectedDevice2]);
+        }
+      );
     });
   });
 
@@ -323,7 +326,7 @@ describe("Device reregister", () => {
       "invalid-group",
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HTTP_BadRequest
+      HTTP_Forbidden
     );
   });
 

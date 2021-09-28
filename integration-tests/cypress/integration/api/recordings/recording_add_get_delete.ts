@@ -725,7 +725,5 @@ describe("Recordings (thermal): add, get, delete", () => {
     //TODO: where to start!!!!
   });
 
-  it.skip("Deleted recording deletes associated tracks, tracktags and tags", () => {
-
-  });
+  it.skip("Deleted recording deletes associated tracks, tracktags and tags", () => {});
 });

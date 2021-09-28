@@ -5,7 +5,7 @@ import {
   // HTTP_Unprocessable,
   // HTTP_Forbidden,
   // HTTP_OK200,
-  NOT_NULL
+  NOT_NULL,
 } from "../../../commands/constants";
 
 import { ApiRecordingReturned, ApiRecordingSet } from "../../../commands/types";
@@ -26,29 +26,41 @@ const EXCLUDE_IDS = [
 
 //TODO: DeviceId is here but not in Recording (get).  Inconsistent.  Remove here or add there
 const templateExpectedRecording: ApiRecordingReturned = {
-  Device: {devicename: "cy_raCamera1_f9a1b6a1", id: 844},
+  Device: { devicename: "cy_raCamera1_f9a1b6a1", id: 844 },
   DeviceId: NOT_NULL,
-  Group: {groupname: "cy_raGroup_f9a1b6a1"},
+  Group: { groupname: "cy_raGroup_f9a1b6a1" },
   GroupId: 504,
   Station: null,
   StationId: null,
   Tags: [],
-  Tracks: [{
-    TrackTags: [{what: "cat", automatic: true, TrackId: 1, confidence: 0.9, UserId: null, data: "master", User: null}],
-    data: {start_s: 2, end_s: 5},
-    id: 1
-  }],
+  Tracks: [
+    {
+      TrackTags: [
+        {
+          what: "cat",
+          automatic: true,
+          TrackId: 1,
+          confidence: 0.9,
+          UserId: null,
+          data: "master",
+          User: null,
+        },
+      ],
+      data: { start_s: 2, end_s: 5 },
+      id: 1,
+    },
+  ],
   batteryLevel: null,
   duration: 15.6666666666667,
   fileMimeType: null,
   id: 1264,
-  location: {type: "Point", coordinates: []},
+  location: { type: "Point", coordinates: [] },
   processing: null,
   processingState: "FINISHED",
   rawFileKey: NOT_NULL,
   rawMimeType: "application/x-cptv",
   recordingDateTime: "2021-07-17T20:13:17.248Z",
-  type: "thermalRaw"
+  type: "thermalRaw",
 };
 
 //TODO: Issue ##. Several parameters not propogated to returned recordings query (but present in /recording (get)).  Commented out here
@@ -59,20 +71,20 @@ const templateRecording1: ApiRecordingSet = {
   duration: 15.6666666666667,
   recordingDateTime: "2021-07-17T20:13:17.248Z",
   location: [-45.29115, 169.30845],
-//  version: "345",
-//  batteryCharging: null,
+  //  version: "345",
+  //  batteryCharging: null,
   batteryLevel: null,
-//  airplaneModeOn: null,
-//  additionalMetadata: {
-//    algorithm: 31143,
-//    previewSecs: 5,
-//    totalFrames: 141,
-//  },
+  //  airplaneModeOn: null,
+  //  additionalMetadata: {
+  //    algorithm: 31143,
+  //    previewSecs: 5,
+  //    totalFrames: 141,
+  //  },
   metadata: {
     algorithm: { model_name: "master" },
     tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
   },
-//  comment: "This is a comment",
+  //  comment: "This is a comment",
   processingState: "FINISHED",
 };
 
@@ -93,14 +105,16 @@ const templateRecording2: ApiRecordingSet = {
   },
   metadata: {
     algorithm: { model_name: "master" },
-    tracks: [{ start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 }],
+    tracks: [
+      { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+    ],
   },
   comment: "This is a comment2",
   processingState: "CORRUPT",
 };
 
 const templateRecording3: ApiRecordingSet = {
- type: "audio",
+  type: "audio",
   fileHash: null,
   duration: 60,
   recordingDateTime: "2021-08-24T01:35:00.000Z",
@@ -163,43 +177,77 @@ describe("Recordings query using where", () => {
     cy.intercept("POST", "recordings").as("addRecording");
 
     //add some recordings to query
-    cy.apiRecordingAdd("rqCamera1", recording1, undefined, "rqRecording1").then(() => {
-        expectedRecording1 = TestCreateExpectedRecordingData( templateExpectedRecording, "rqRecording1", "rqCamera1", "rqGroup", null, recording1);
+    cy.apiRecordingAdd("rqCamera1", recording1, undefined, "rqRecording1").then(
+      () => {
+        expectedRecording1 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "rqRecording1",
+          "rqCamera1",
+          "rqGroup",
+          null,
+          recording1
+        );
         cy.log(JSON.stringify(expectedRecording1));
-    });
-    cy.apiRecordingAdd("rqCamera1", recording2, undefined, "rqRecording2").then(() => {
-        expectedRecording2 = TestCreateExpectedRecordingData( templateExpectedRecording, "rqRecording2", "rqCamera1", "rqGroup", null, recording2);
-    });
-    cy.apiRecordingAdd("rqCamera1", recording3, undefined, "rqRecording3").then(() => {
-        expectedRecording3 = TestCreateExpectedRecordingData( templateExpectedRecording, "rqRecording3", "rqCamera1", "rqGroup", null, recording3);
-    });
+      }
+    );
+    cy.apiRecordingAdd("rqCamera1", recording2, undefined, "rqRecording2").then(
+      () => {
+        expectedRecording2 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "rqRecording2",
+          "rqCamera1",
+          "rqGroup",
+          null,
+          recording2
+        );
+      }
+    );
+    cy.apiRecordingAdd("rqCamera1", recording3, undefined, "rqRecording3").then(
+      () => {
+        expectedRecording3 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "rqRecording3",
+          "rqCamera1",
+          "rqGroup",
+          null,
+          recording3
+        );
+      }
+    );
   });
 
   it("Group admin can query device's recordings", () => {
-
     cy.log("Check recording can be viewed correctly");
-    cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {id: getCreds("rqRecording1").id}}, [expectedRecording1], EXCLUDE_IDS);
+    cy.apiRecordingsQueryCheck(
+      "rqGroupAdmin",
+      { where: { id: getCreds("rqRecording1").id } },
+      [expectedRecording1],
+      EXCLUDE_IDS
+    );
     cy.log("Check recording count can be viewed correctly");
-    cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {id: getCreds("rqRecording1").id}}, 1);
-
+    cy.apiRecordingsCountCheck(
+      "rqGroupAdmin",
+      { where: { id: getCreds("rqRecording1").id } },
+      1
+    );
   });
 
   it.skip("Group member can query device's recordings", () => {});
-  
+
   it.skip("Device admin can query device's recordings", () => {});
-    
+
   it.skip("Device member can query device's recordings", () => {});
-  
+
   it.skip("Device member can query device's recordings", () => {});
-    
+
   it.skip("Non member cannot view devices recordings", () => {});
-    
+
   it.skip("Can handle no returned matches", () => {});
-    
+
   it.skip("Paging works as expected", () => {});
-  
+
   it.skip("Can query by all vali single parameters", () => {});
-    
+
   it.skip("Can query by multiple parameters", () => {});
 
   it.skip("Can limit query by tags and tagmode", () => {});
@@ -211,6 +259,4 @@ describe("Recordings query using where", () => {
   it.skip("Can handle invalid queries", () => {});
 
   it.skip("Can handle invalid parameters", () => {});
-  
 });
-

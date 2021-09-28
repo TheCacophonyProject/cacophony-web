@@ -5,7 +5,7 @@ export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 import { format as urlFormat } from "url";
 
 import { NOT_NULL } from "./constants";
-import {ApiLocation} from "./types";
+import { ApiLocation } from "./types";
 
 export function apiPath(): string {
   return Cypress.env("cacophony-api-server");
@@ -19,7 +19,10 @@ export function v1ApiPath(page: string, queryParams: any = {}): string {
   return `${Cypress.env("cacophony-api-server")}${urlpage}`;
 }
 
-export function processingApiPath(page: string, queryParams: any = {}): string {
+export function processingApiPath(
+  page: string = "",
+  queryParams: any = {}
+): string {
   const urlpage = urlFormat({
     pathname: `/api/fileProcessing/${page}`,
     query: queryParams,
@@ -70,17 +73,16 @@ export function saveIdOnly(name: string, id: number) {
 
 export function saveJobKeyById(id: number, jobKey: string) {
   //TODO must be a better way to find this entry
-  const entries=Cypress.env("testCreds");
-  let creds:ApiCreds;
-  for (let entry in entries) {
-    if(entries[entry].id==id) {
-      creds=entries[entry];
+  const entries = Cypress.env("testCreds");
+  let creds: ApiCreds;
+  for (const entry in entries) {
+    if (entries[entry].id == id) {
+      creds = entries[entry];
     }
   }
-  creds.jobKey=jobKey;
+  creds.jobKey = jobKey;
   Cypress.env("testCreds")[creds.name] = creds;
 }
-
 
 export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
@@ -103,20 +105,15 @@ export function saveCreds(
   Cypress.env("testCreds")[name] = creds;
 }
 
-  export function saveStation(
-    location: ApiLocation,
-    name: string,
-    id = 0
-  ) {
-    const creds = {
-      name,
-      headers: {
-      },
-      location: location,
-      id,
-    };
-    Cypress.env("testCreds")[name] = creds;
-  }
+export function saveStation(location: ApiLocation, name: string, id = 0) {
+  const creds = {
+    name,
+    headers: {},
+    location: location,
+    id,
+  };
+  Cypress.env("testCreds")[name] = creds;
+}
 
 export function makeAuthorizedRequestWithStatus(
   requestDetails: Partial<Cypress.RequestOptions>,
@@ -346,12 +343,31 @@ export function checkTreeStructuresAreEqualExcept(
               ).to.be.within(expectedTime - 60000, expectedTime + 60000);
             } else {
               //otherwise, check the values are as expected
-              expect(
-                containingStruct[containedKeys[count]],
-                `Expected ${prettyElementName} should equal ${JSON.stringify(
-                  containedStruct[containedKeys[count]]
-                )}`
-              ).to.equal(containedStruct[containedKeys[count]]);
+              const testVal = containingStruct[containedKeys[count]];
+              if (typeof testVal === "number" && !(testVal % 1 === 0)) {
+                // This is a floating point value, and we might have some precision issues, so allow a small
+                // 'epsilon' value of fuzziness when testing equality:
+                const EPSILON = 0.000001;
+                expect(
+                  testVal,
+                  `Expected ${prettyElementName} should be more than ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.be.gt(containedStruct[containedKeys[count]] - EPSILON);
+                expect(
+                  testVal,
+                  `Expected ${prettyElementName} should be less than ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.be.lt(containedStruct[containedKeys[count]] + EPSILON);
+              } else {
+                expect(
+                  containingStruct[containedKeys[count]],
+                  `Expected ${prettyElementName} should equal ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.equal(containedStruct[containedKeys[count]]);
+              }
             }
           }
         }
@@ -376,7 +392,7 @@ function isArrayOrHash(theObject: any) {
   );
 }
 
-export function removeUndefinedParams(jsStruct: any):any {
+export function removeUndefinedParams(jsStruct: any): any {
   const resultStruct = {};
   for (const [key, val] of Object.entries(jsStruct)) {
     if (val !== undefined) {

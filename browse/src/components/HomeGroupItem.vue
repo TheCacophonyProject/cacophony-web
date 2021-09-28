@@ -3,15 +3,14 @@
     :to="{ path: 'recordings', query: recordingsPageQuery }"
     class="d-flex justify-content-between align-items-center"
   >
-    {{ group.groupname }}
+    {{ group.groupName }}
     <b-badge v-if="count > 0" pill variant="primary" class="ml-auto">
       {{ count }}
     </b-badge>
   </b-list-group-item>
 </template>
 
-<script>
-import { mapState } from "vuex";
+<script lang="ts">
 import recordingsApi from "../api/Recording.api";
 
 export default {
@@ -28,9 +27,6 @@ export default {
     };
   },
   computed: {
-    ...mapState({
-      groups: (state) => state.Groups.groups,
-    }),
     recordingsPageQuery() {
       return {
         group: this.group.id,

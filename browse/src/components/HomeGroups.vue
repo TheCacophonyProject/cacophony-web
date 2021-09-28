@@ -17,7 +17,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { ApiGroupResponse } from "@typedefs/api/group";
 import HomeGroupItem from "./HomeGroupItem.vue";
 
 export default {
@@ -31,9 +32,9 @@ export default {
   },
   computed: {
     orderedGroups: {
-      get() {
-        return [...this.groups].sort((a, b) => {
-          return a.groupname.toLowerCase() < b.groupname.toLowerCase() ? -1 : 1;
+      get(): ApiGroupResponse[] {
+        return [...this.groups].sort((a: ApiGroupResponse, b: ApiGroupResponse) => {
+          return a.groupName.toLowerCase() < b.groupName.toLowerCase() ? -1 : 1;
         });
       },
     },

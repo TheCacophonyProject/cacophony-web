@@ -165,7 +165,12 @@ describe("Recordings - processing tests", () => {
   before(() => {
     cy.testCreateUserGroupAndDevice("rpGroupAdmin", "rpGroup", "rpCamera1");
     cy.apiDeviceAdd("rpCamera1b", "rpGroup");
-    cy.apiAlertAdd( "rpGroupAdmin", "rpAlert1b", [{ tag: "possum", automatic: true }], "rpCamera1b");
+    cy.apiAlertAdd(
+      "rpGroupAdmin",
+      "rpAlert1b",
+      [{ tag: "possum", automatic: true }],
+      "rpCamera1b"
+    );
 
     cy.testCreateUserGroupAndDevice("rpGroup2Admin", "rpGroup2", "rpCamera2");
 
@@ -182,13 +187,30 @@ describe("Recordings - processing tests", () => {
     delete recording1.processingState;
     let expectedRecording1: ApiRecordingReturned;
     cy.log("Add recording as device");
-    cy.apiRecordingAdd( "rpCamera1", recording1, "oneframe.cptv", "rpRecording1").then(() => {
-      expectedRecording1 = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording1", "rpCamera1", "rpGroup", null, recording1);
+    cy.apiRecordingAdd(
+      "rpCamera1",
+      recording1,
+      "oneframe.cptv",
+      "rpRecording1"
+    ).then(() => {
+      expectedRecording1 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rpRecording1",
+        "rpCamera1",
+        "rpGroup",
+        null,
+        recording1
+      );
 
       cy.log("Check recording status is 'analyse'");
       expectedRecording1.processingState = "analyse";
       expectedRecording1.processing = null;
-      cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording1", expectedRecording1, EXCLUDE_IDS);
+      cy.apiRecordingCheck(
+        "rpGroupAdmin",
+        "rpRecording1",
+        expectedRecording1,
+        EXCLUDE_IDS
+      );
     });
   });
 
@@ -201,35 +223,88 @@ describe("Recordings - processing tests", () => {
     let expectedProcessing1: ApiRecordingForProcessing;
 
     cy.log("Add recording as device");
-    cy.apiRecordingAdd( "rpCamera1", recording1, "oneframe.cptv", "rpRecording1").then(() => {
-      expectedRecording1 = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording1", "rpCamera1", "rpGroup", null, recording1);
-      expectedProcessing1 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording1", "rpCamera1", "rpGroup", null, recording1);
+    cy.apiRecordingAdd(
+      "rpCamera1",
+      recording1,
+      "oneframe.cptv",
+      "rpRecording1"
+    ).then(() => {
+      expectedRecording1 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rpRecording1",
+        "rpCamera1",
+        "rpGroup",
+        null,
+        recording1
+      );
+      expectedProcessing1 = TestCreateExpectedProcessingData(
+        templateExpectedProcessing,
+        "rpRecording1",
+        "rpCamera1",
+        "rpGroup",
+        null,
+        recording1
+      );
 
       cy.log("Check recording status is 'analyse'");
       expectedRecording1.processingState = "analyse";
       expectedRecording1.processing = null;
-      cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording1", expectedRecording1, EXCLUDE_IDS);
+      cy.apiRecordingCheck(
+        "rpGroupAdmin",
+        "rpRecording1",
+        expectedRecording1,
+        EXCLUDE_IDS
+      );
 
       cy.log("Send for processing (tracking)");
       expectedProcessing1.processingStartTime = NOT_NULL;
       expectedProcessing1.updatedAt = NOT_NULL;
-      cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing1, EXCLUDE_KEYS);
+      cy.processingApiCheck(
+        "thermalRaw",
+        "analyse",
+        expectedProcessing1,
+        EXCLUDE_KEYS
+      );
 
       cy.log("Check status");
-      expectedRecording1b = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording1", "rpCamera1", "rpGroup", null, recording1);
+      expectedRecording1b = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rpRecording1",
+        "rpCamera1",
+        "rpGroup",
+        null,
+        recording1
+      );
       expectedRecording1b.processingState = "analyse";
       expectedRecording1b.processing = true;
-      cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording1", expectedRecording1b, EXCLUDE_IDS);
+      cy.apiRecordingCheck(
+        "rpGroupAdmin",
+        "rpRecording1",
+        expectedRecording1b,
+        EXCLUDE_IDS
+      );
 
       cy.log("Mark processing as done");
-      cy.processingApiPost ( "rpRecording1",  true, {}, true, undefined);
+      cy.processingApiPost("rpRecording1", true, {}, true, undefined);
 
       cy.log("Check status (FINISHED)");
-      expectedRecording1c = TestCreateExpectedRecordingData( templateExpectedRecording, "rpRecording1", "rpCamera1", "rpGroup", null, recording1);
+      expectedRecording1c = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rpRecording1",
+        "rpCamera1",
+        "rpGroup",
+        null,
+        recording1
+      );
       expectedRecording1c.processingState = "FINISHED";
       expectedRecording1c.processing = false;
-      expectedRecording1c.Tracks=[];
-      cy.apiRecordingCheck( "rpGroupAdmin", "rpRecording1", expectedRecording1c, EXCLUDE_IDS);
+      expectedRecording1c.Tracks = [];
+      cy.apiRecordingCheck(
+        "rpGroupAdmin",
+        "rpRecording1",
+        expectedRecording1c,
+        EXCLUDE_IDS
+      );
 
       cy.log("Check status (FINISHED)");
     });
@@ -242,20 +317,68 @@ describe("Recordings - processing tests", () => {
     recording3.recordingDateTime = "2020-01-01T00:03:00.000Z";
     recording4.recordingDateTime = "2021-01-01T00:03:00.000Z";
     recording5.recordingDateTime = "2020-01-01T00:04:00.000Z";
-    cy.apiRecordingAdd( "rpCamera1", recording3, "oneframe.cptv", "rpRecording3"
+    cy.apiRecordingAdd(
+      "rpCamera1",
+      recording3,
+      "oneframe.cptv",
+      "rpRecording3"
     ).then(() => {
-      cy.apiRecordingAdd( "rpCamera1", recording4, "oneframe.cptv", "rpRecording4"
+      cy.apiRecordingAdd(
+        "rpCamera1",
+        recording4,
+        "oneframe.cptv",
+        "rpRecording4"
       ).then(() => {
-        cy.apiRecordingAdd( "rpCamera1", recording5, "oneframe.cptv", "rpRecording5"
+        cy.apiRecordingAdd(
+          "rpCamera1",
+          recording5,
+          "oneframe.cptv",
+          "rpRecording5"
         ).then(() => {
-          const expectedProcessing3 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording3", "rpCamera1", "rpGroup", null, recording3);
-          const expectedProcessing4 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording4", "rpCamera1", "rpGroup", null, recording4);
-          const expectedProcessing5 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording5", "rpCamera1", "rpGroup", null, recording5);
+          const expectedProcessing3 = TestCreateExpectedProcessingData(
+            templateExpectedProcessing,
+            "rpRecording3",
+            "rpCamera1",
+            "rpGroup",
+            null,
+            recording3
+          );
+          const expectedProcessing4 = TestCreateExpectedProcessingData(
+            templateExpectedProcessing,
+            "rpRecording4",
+            "rpCamera1",
+            "rpGroup",
+            null,
+            recording4
+          );
+          const expectedProcessing5 = TestCreateExpectedProcessingData(
+            templateExpectedProcessing,
+            "rpRecording5",
+            "rpCamera1",
+            "rpGroup",
+            null,
+            recording5
+          );
 
           cy.log("Check recordings ordered by recordingDateTime (3,5,4)");
-          cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing3, EXCLUDE_KEYS);
-          cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing5, EXCLUDE_KEYS);
-          cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing4, EXCLUDE_KEYS);
+          cy.processingApiCheck(
+            "thermalRaw",
+            "analyse",
+            expectedProcessing3,
+            EXCLUDE_KEYS
+          );
+          cy.processingApiCheck(
+            "thermalRaw",
+            "analyse",
+            expectedProcessing5,
+            EXCLUDE_KEYS
+          );
+          cy.processingApiCheck(
+            "thermalRaw",
+            "analyse",
+            expectedProcessing4,
+            EXCLUDE_KEYS
+          );
 
           //TODO: repeat for each stage of processing
         });
@@ -273,24 +396,92 @@ describe("Recordings - processing tests", () => {
     recording7.recordingDateTime = "2021-01-01T00:08:00.000Z";
     recording8.recordingDateTime = "2021-01-01T00:07:00.000Z";
     recording9.recordingDateTime = "2021-01-01T00:06:00.000Z";
-    cy.apiRecordingAdd( "rpCamera1", recording6, "oneframe.cptv", "rpRecording6").then(() => {
-      cy.apiRecordingAdd( "rpCamera1b", recording7, "oneframe.cptv", "rpRecording7").then(() => {
-        cy.apiRecordingAdd( "rpCamera1", recording8, "oneframe.cptv", "rpRecording8").then(() => {
-          cy.apiRecordingAdd( "rpCamera1b", recording9, "oneframe.cptv", "rpRecording9").then(() => {
-            const expectedProcessing6 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording6", "rpCamera1", "rpGroup", null, recording6);
-            const expectedProcessing7 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording7", "rpCamera1b", "rpGroup", null, recording7);
+    cy.apiRecordingAdd(
+      "rpCamera1",
+      recording6,
+      "oneframe.cptv",
+      "rpRecording6"
+    ).then(() => {
+      cy.apiRecordingAdd(
+        "rpCamera1b",
+        recording7,
+        "oneframe.cptv",
+        "rpRecording7"
+      ).then(() => {
+        cy.apiRecordingAdd(
+          "rpCamera1",
+          recording8,
+          "oneframe.cptv",
+          "rpRecording8"
+        ).then(() => {
+          cy.apiRecordingAdd(
+            "rpCamera1b",
+            recording9,
+            "oneframe.cptv",
+            "rpRecording9"
+          ).then(() => {
+            const expectedProcessing6 = TestCreateExpectedProcessingData(
+              templateExpectedProcessing,
+              "rpRecording6",
+              "rpCamera1",
+              "rpGroup",
+              null,
+              recording6
+            );
+            const expectedProcessing7 = TestCreateExpectedProcessingData(
+              templateExpectedProcessing,
+              "rpRecording7",
+              "rpCamera1b",
+              "rpGroup",
+              null,
+              recording7
+            );
             expectedProcessing7.hasAlert = true;
-            const expectedProcessing8 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording8", "rpCamera1", "rpGroup", null, recording8);
-            const expectedProcessing9 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording9", "rpCamera1b", "rpGroup", null, recording9);
+            const expectedProcessing8 = TestCreateExpectedProcessingData(
+              templateExpectedProcessing,
+              "rpRecording8",
+              "rpCamera1",
+              "rpGroup",
+              null,
+              recording8
+            );
+            const expectedProcessing9 = TestCreateExpectedProcessingData(
+              templateExpectedProcessing,
+              "rpRecording9",
+              "rpCamera1b",
+              "rpGroup",
+              null,
+              recording9
+            );
             expectedProcessing9.hasAlert = true;
 
             cy.log(
               "Check recordings ordered by alerts first, oldest first (9,7,8,6)"
             );
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing9, EXCLUDE_KEYS);
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing7, EXCLUDE_KEYS);
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing8, EXCLUDE_KEYS);
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing6, EXCLUDE_KEYS);
+            cy.processingApiCheck(
+              "thermalRaw",
+              "analyse",
+              expectedProcessing9,
+              EXCLUDE_KEYS
+            );
+            cy.processingApiCheck(
+              "thermalRaw",
+              "analyse",
+              expectedProcessing7,
+              EXCLUDE_KEYS
+            );
+            cy.processingApiCheck(
+              "thermalRaw",
+              "analyse",
+              expectedProcessing8,
+              EXCLUDE_KEYS
+            );
+            cy.processingApiCheck(
+              "thermalRaw",
+              "analyse",
+              expectedProcessing6,
+              EXCLUDE_KEYS
+            );
 
             //TODO: repeat for each stage of processing
           });
@@ -308,22 +499,90 @@ describe("Recordings - processing tests", () => {
     recording11.recordingDateTime = "2021-01-01T00:08:00.000Z";
     recording12.recordingDateTime = "2021-01-01T00:07:00.000Z";
     recording13.recordingDateTime = "2021-01-01T00:06:00.000Z";
-    cy.apiRecordingAdd( "rpCamera1", recording10, "oneframe.cptv", "rpRecording10").then(() => {
-      cy.apiRecordingAdd( "rpCamera1", recording11, "60sec-audio.mp4", "rpRecording11").then(() => {
-        cy.apiRecordingAdd( "rpCamera1", recording12, "oneframe.cptv", "rpRecording12").then(() => {
-          cy.apiRecordingAdd( "rpCamera1", recording13, "60sec-audio.mp4", "rpRecording13").then(() => {
-            const expectedProcessing10 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording10", "rpCamera1", "rpGroup", null, recording10);
-            const expectedProcessing11 = TestCreateExpectedProcessingData( templateExpectedAudioProcessing, "rpRecording11", "rpCamera1", "rpGroup", null, recording11);
-            const expectedProcessing12 = TestCreateExpectedProcessingData( templateExpectedProcessing, "rpRecording12", "rpCamera1", "rpGroup", null, recording12);
-            const expectedProcessing13 = TestCreateExpectedProcessingData( templateExpectedAudioProcessing, "rpRecording13", "rpCamera1", "rpGroup", null, recording13);
+    cy.apiRecordingAdd(
+      "rpCamera1",
+      recording10,
+      "oneframe.cptv",
+      "rpRecording10"
+    ).then(() => {
+      cy.apiRecordingAdd(
+        "rpCamera1",
+        recording11,
+        "60sec-audio.mp4",
+        "rpRecording11"
+      ).then(() => {
+        cy.apiRecordingAdd(
+          "rpCamera1",
+          recording12,
+          "oneframe.cptv",
+          "rpRecording12"
+        ).then(() => {
+          cy.apiRecordingAdd(
+            "rpCamera1",
+            recording13,
+            "60sec-audio.mp4",
+            "rpRecording13"
+          ).then(() => {
+            const expectedProcessing10 = TestCreateExpectedProcessingData(
+              templateExpectedProcessing,
+              "rpRecording10",
+              "rpCamera1",
+              "rpGroup",
+              null,
+              recording10
+            );
+            const expectedProcessing11 = TestCreateExpectedProcessingData(
+              templateExpectedAudioProcessing,
+              "rpRecording11",
+              "rpCamera1",
+              "rpGroup",
+              null,
+              recording11
+            );
+            const expectedProcessing12 = TestCreateExpectedProcessingData(
+              templateExpectedProcessing,
+              "rpRecording12",
+              "rpCamera1",
+              "rpGroup",
+              null,
+              recording12
+            );
+            const expectedProcessing13 = TestCreateExpectedProcessingData(
+              templateExpectedAudioProcessing,
+              "rpRecording13",
+              "rpCamera1",
+              "rpGroup",
+              null,
+              recording13
+            );
 
             cy.log(
               "Check recordings ordered by oldest first with audio and thermal in different queues"
             );
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing12, EXCLUDE_KEYS);
-            cy.processingApiCheck( "thermalRaw", "analyse", expectedProcessing10, EXCLUDE_KEYS);
-            cy.processingApiCheck( "audio", "analyse", expectedProcessing13, EXCLUDE_KEYS);
-            cy.processingApiCheck( "audio", "analyse", expectedProcessing11, EXCLUDE_KEYS);
+            cy.processingApiCheck(
+              "thermalRaw",
+              "analyse",
+              expectedProcessing12,
+              EXCLUDE_KEYS
+            );
+            cy.processingApiCheck(
+              "thermalRaw",
+              "analyse",
+              expectedProcessing10,
+              EXCLUDE_KEYS
+            );
+            cy.processingApiCheck(
+              "audio",
+              "analyse",
+              expectedProcessing13,
+              EXCLUDE_KEYS
+            );
+            cy.processingApiCheck(
+              "audio",
+              "analyse",
+              expectedProcessing11,
+              EXCLUDE_KEYS
+            );
 
             //TODO: repeat for each stage of processing once GP's changes are integrated
           });
@@ -347,7 +606,7 @@ describe("Recordings - processing tests", () => {
   });
 
   it("No files to process handled correctly", () => {
-    cy.processingApiCheck( "thermalRaw", "analyse", undefined, EXCLUDE_KEYS);
+    cy.processingApiCheck("thermalRaw", "analyse", undefined, EXCLUDE_KEYS);
     cy.processingApiCheck("audio", "analyse", undefined, EXCLUDE_KEYS);
   });
 
@@ -355,21 +614,41 @@ describe("Recordings - processing tests", () => {
 
   it("Recordings in other states not picked up for preocessing", () => {
     const recording14 = TestCreateRecordingData(templateRecording);
-    recording14.processingState="FINIHED";
+    recording14.processingState = "FINIHED";
     const recording15 = TestCreateRecordingData(templateRecording);
-    recording15.processingState="CORRUPT";
+    recording15.processingState = "CORRUPT";
     const recording16 = TestCreateRecordingData(templateRecording);
-    recording16.processingState="analyse.failed";
+    recording16.processingState = "analyse.failed";
     cy.log("Add recording as device");
-    cy.apiRecordingAdd( "rpCamera1", recording14, "oneframe.cptv", "rpRecording14").then(() => {
-      cy.apiRecordingAdd( "rpCamera1", recording15, "oneframe.cptv", "rpRecording15").then(() => {
-        cy.apiRecordingAdd( "rpCamera1", recording16, "oneframe.cptv", "rpRecording16").then(() => {
-          cy.log("Check none of above (non-'analyze') recordings are picked up for processing");
-          cy.processingApiCheck( "thermalRaw", "analyse", undefined, EXCLUDE_KEYS);
+    cy.apiRecordingAdd(
+      "rpCamera1",
+      recording14,
+      "oneframe.cptv",
+      "rpRecording14"
+    ).then(() => {
+      cy.apiRecordingAdd(
+        "rpCamera1",
+        recording15,
+        "oneframe.cptv",
+        "rpRecording15"
+      ).then(() => {
+        cy.apiRecordingAdd(
+          "rpCamera1",
+          recording16,
+          "oneframe.cptv",
+          "rpRecording16"
+        ).then(() => {
+          cy.log(
+            "Check none of above (non-'analyze') recordings are picked up for processing"
+          );
+          cy.processingApiCheck(
+            "thermalRaw",
+            "analyse",
+            undefined,
+            EXCLUDE_KEYS
+          );
         });
       });
     });
-
   });
-
 });

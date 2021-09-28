@@ -29,7 +29,7 @@ const EXCLUDE_CREATED_UPDATED_AT = [
   "[].Users[].GroupUsers.updatedAt",
 ];
 
-describe("Groups - query groups", () => {
+describe.skip("Groups - query groups", () => {
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gqGroupAdmin", "gqGroup", "gqCamera").then(
@@ -59,7 +59,7 @@ describe("Groups - query groups", () => {
         expectedGroupAdminGroupUser = {
           id: getCreds("gqGroupAdmin").id,
           username: getTestName("gqGroupAdmin"),
-          isAdmin: true,
+          admin: true,
         };
       }
     );
@@ -87,7 +87,7 @@ describe("Groups - query groups", () => {
       expectedGroup2AdminGroupUser = {
         id: getCreds("gqGroupAdmin").id,
         username: getTestName("gqGroupAdmin"),
-        isAdmin: true,
+        admin: true,
       };
     });
 
@@ -121,7 +121,7 @@ describe("Groups - query groups", () => {
       expectedGroupMemberGroupUser = {
         id: getCreds("gqGroupMember").id,
         username: getTestName("gqGroupMember"),
-        isAdmin: false,
+        admin: false,
       };
     });
 
@@ -212,7 +212,7 @@ describe("Groups - query groups", () => {
           {
             id: getCreds("gqGroupAdmin3").id,
             username: getTestName("gqGroupAdmin3"),
-            isAdmin: true,
+            admin: true,
           },
         ],
       };

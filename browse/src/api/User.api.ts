@@ -25,7 +25,7 @@ function persistUser(
   userId,
   acceptedEUA
 ) {
-  localStorage.setItem("username", username);
+  localStorage.setItem("userName", username);
   localStorage.setItem("JWT", token);
   localStorage.setItem("email", email);
   localStorage.setItem("globalPermission", globalPermission);
@@ -34,12 +34,12 @@ function persistUser(
 }
 
 function persistFields(data) {
-  for (var key in data) {
+  for (const key in data) {
     localStorage.setItem(key, data[key]);
   }
 }
 function logout() {
-  localStorage.removeItem("username");
+  localStorage.removeItem("userName");
   localStorage.removeItem("userId");
   localStorage.removeItem("JWT");
   localStorage.removeItem("email");
@@ -65,6 +65,8 @@ function getEUAVersion() {
 async function token() {
   // Params must include where (stringified JSON), limit, offset
   // Params can also include tagMode, tags, order
+
+  // FIXME - does this endpoint exist anymore?
   const { result, success } = await CacophonyApi.post("/token");
   if (!success) {
     throw "Failed to get token";

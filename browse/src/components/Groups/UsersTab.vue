@@ -73,7 +73,7 @@
         data-cy="users-table"
       >
         <template v-slot:cell(admin)="data">
-          {{ data.item.isGroupAdmin ? "Yes" : "No" }}
+          {{ data.item.admin ? "Yes" : "No" }}
         </template>
 
         <template v-slot:cell(controls)="data">

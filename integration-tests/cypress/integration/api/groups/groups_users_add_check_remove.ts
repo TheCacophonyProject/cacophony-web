@@ -1,17 +1,17 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { ApiGroupsUserReturned } from "../../../commands/types";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 
 import { HTTP_OK200 } from "../../../commands/constants";
 import { HTTP_Unprocessable } from "../../../commands/constants";
 import { HTTP_Forbidden } from "../../../commands/constants";
+import { ApiGroupUserRelationshipResponse } from "@typedefs/api/group";
 
 const ADMIN = true;
 const NOT_ADMIN = false;
-let expectedGuAdminUser: ApiGroupsUserReturned;
-let expectedGuAdminUser2: ApiGroupsUserReturned;
+let expectedGuAdminUser: ApiGroupUserRelationshipResponse;
+let expectedGuAdminUser2: ApiGroupUserRelationshipResponse;
 
 describe("Groups - add, check and remove users", () => {
   before(() => {
@@ -20,7 +20,7 @@ describe("Groups - add, check and remove users", () => {
         expectedGuAdminUser = {
           userName: getTestName("guGroupAdmin"),
           id: getCreds("guGroupAdmin").id,
-          isGroupAdmin: ADMIN,
+          admin: ADMIN,
         };
       }
     );
@@ -32,7 +32,7 @@ describe("Groups - add, check and remove users", () => {
       expectedGuAdminUser2 = {
         userName: getTestName("guGroup2Admin"),
         id: getCreds("guGroup2Admin").id,
-        isGroupAdmin: ADMIN,
+        admin: ADMIN,
       };
     });
     cy.apiUserAdd("guDeviceAdmin");
@@ -43,10 +43,10 @@ describe("Groups - add, check and remove users", () => {
   });
 
   it("Group admin can add, view and remove a new user", () => {
-    const expectedTestUser: ApiGroupsUserReturned = {
+    const expectedTestUser: ApiGroupUserRelationshipResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
-      isGroupAdmin: ADMIN,
+      admin: ADMIN,
     };
 
     cy.log("add the user");
@@ -66,10 +66,10 @@ describe("Groups - add, check and remove users", () => {
   });
 
   it("Group member cannot add, or remove a user but can view", () => {
-    const expectedTestUser: ApiGroupsUserReturned = {
+    const expectedTestUser: ApiGroupUserRelationshipResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
-      isGroupAdmin: NOT_ADMIN,
+      admin: NOT_ADMIN,
     };
 
     cy.log("add a non admin user (to run the test)");
@@ -157,15 +157,15 @@ describe("Groups - add, check and remove users", () => {
     );
   });
 
-  it("Attempt to add or remove non-existant user fails nicely", () => {
-    cy.log("check cannot add non-existanct user");
+  it("Attempt to add or remove non-existent user fails nicely", () => {
+    cy.log("check cannot add non-existent user");
     cy.apiGroupUserAdd(
       "guGroupAdmin",
       "IDontExist",
       "guGroup",
       NOT_ADMIN,
       true,
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
 
     //TODO: This test fails - returns SUCCESS. Issue 75
@@ -173,49 +173,49 @@ describe("Groups - add, check and remove users", () => {
     //cy.apiGroupUserRemove("guGroupAdmin", "guTestUser2", "guGroup", HTTP_Unprocessable);
 
     cy.log(
-      "check that connot remove non-existant user (user not registered in system"
+      "check that cannot remove non-existent user (user not registered in system)"
     );
     cy.apiGroupUserRemove(
       "guGroupAdmin",
       "IDontExist",
       "guGroup",
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
   });
 
-  it("Attempt to add view or remove user from non-existant group fails nicely", () => {
-    cy.log("check cannot add user to non-existanct group");
+  it("Attempt to add view or remove user from non-existent group fails nicely", () => {
+    cy.log("check cannot add user to non-existent group");
     cy.apiGroupUserAdd(
       "guGroupAdmin",
       "guTestUser",
       "ThisGroupDoesNotExist",
       NOT_ADMIN,
       true,
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
 
-    cy.log("check that cannot view a non existant group");
+    cy.log("check that cannot view a non existent group");
     cy.apiGroupUsersCheck(
       "guGroupAdmin",
       "ThisGroupDoesNotExist",
       [],
       [],
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
 
     cy.log(
-      "check that connot remove non-existant user (user not registered in system)"
+      "check that cannot remove non-existent user (user not registered in system)"
     );
     cy.apiGroupUserRemove(
       "guGroupAdmin",
       "guTestUser",
       "ThisGroupDoesNotExist",
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
   });
 
   it("Can view users using groupId (as well as groupName)", () => {
-    cy.log("check that cannot view a non existant group");
+    cy.log("check that cannot view a non existent group");
     cy.apiGroupUsersCheck(
       "guGroupAdmin",
       getCreds("guGroup").id.toString(),
@@ -227,15 +227,15 @@ describe("Groups - add, check and remove users", () => {
   });
 
   it("Can update admin/member status of existing user", () => {
-    const expectedTestNonAdminUser: ApiGroupsUserReturned = {
+    const expectedTestNonAdminUser: ApiGroupUserRelationshipResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
-      isGroupAdmin: NOT_ADMIN,
+      admin: NOT_ADMIN,
     };
-    const expectedTestAdminUser: ApiGroupsUserReturned = {
+    const expectedTestAdminUser: ApiGroupUserRelationshipResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
-      isGroupAdmin: ADMIN,
+      admin: ADMIN,
     };
 
     cy.log("add the user");

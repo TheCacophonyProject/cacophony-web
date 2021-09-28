@@ -15,7 +15,6 @@ export default {
   addTrackTag,
   deleteTrackTag,
   replaceTrackTag,
-  needsTag,
   makeApiQuery,
   latestForDevice,
 };
@@ -444,7 +443,7 @@ interface RecordingToTag {
   tracks: Track[];
 }
 
-function needsTag(biasToDeviceId?: DeviceId): Promise<RecordingToTag> {
+const needsTag = async (biasToDeviceId?: DeviceId): Promise<FetchResult<RecordingToTag>> =>{
   let requestUri = `${apiPath}/needs-tag`;
   if (biasToDeviceId != null) {
     requestUri += `?deviceId=${biasToDeviceId}`;

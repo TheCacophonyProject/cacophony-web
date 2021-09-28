@@ -46,7 +46,7 @@ describe("Devices list", () => {
         groupName: getTestName(group),
         groupId: getCreds(group).id,
         active: true,
-        isAdmin: true,
+        admin: true,
       };
       expectedDeviceMemberView = {
         id: getCreds(camera).id,
@@ -54,8 +54,8 @@ describe("Devices list", () => {
         active: true,
         groupName: getTestName(group),
         groupId: getCreds(group).id,
-        isAdmin: false,
-        saltId: getCreds(camera).id
+        admin: false,
+        saltId: getCreds(camera).id,
       };
     });
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
@@ -71,7 +71,7 @@ describe("Devices list", () => {
         groupId: getCreds(group2).id,
         groupName: getTestName(group2),
         active: true,
-        isAdmin: true,
+        admin: true,
       };
     });
 
@@ -86,16 +86,16 @@ describe("Devices list", () => {
         groupName: getTestName(group3),
         groupId: getCreds(group3).id,
         active: false,
-        isAdmin: true,
+        admin: true,
       };
       expectedDevice4AdminView = {
         id: getCreds(camera4).id,
         saltId: getCreds(camera4).id,
         deviceName: getTestName(camera4),
         active: true,
-        isAdmin: true,
+        admin: true,
         groupName: getTestName(group3),
-        groupId: getCreds(group3).id
+        groupId: getCreds(group3).id,
       };
     });
   });
@@ -110,7 +110,7 @@ describe("Devices list", () => {
         saltId: getCreds(camera2).id,
         deviceName: getTestName(camera2),
         active: true,
-        isAdmin: true,
+        admin: true,
         groupName: getTestName(group3),
         groupId: getCreds(group3).id,
       };

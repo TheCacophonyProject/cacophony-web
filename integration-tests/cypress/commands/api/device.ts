@@ -8,15 +8,9 @@ import {
   checkRequestFails,
   makeAuthorizedRequestWithStatus,
   sortArrayOn,
-  sortArrayOnTwoKeys,
 } from "../server";
 import { logTestDescription } from "../descriptions";
-import {
-  ApiDeviceInGroupDevice,
-  ApiDevicesDevice,
-  ApiDeviceUsersUser,
-} from "../types";
-import { TestDeviceAndGroup } from "@typedefs/api/device";
+import { ApiDevicesDevice, ApiDeviceUsersUser } from "../types";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 Cypress.Commands.add(
@@ -199,7 +193,7 @@ function checkDeviceMatchesExpected(
   expect(device.deviceName).to.equal(expectedDevice.deviceName);
   expect(device.groupId).to.equal(expectedDevice.groupId);
   expect(device.active).to.equal(expectedDevice.active);
-  expect(device.isAdmin).to.equal(expectedDevice.isAdmin);
+  expect(device.admin).to.equal(expectedDevice.admin);
 }
 
 Cypress.Commands.add(
@@ -253,8 +247,8 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    groupName: string,
-    groupId: number,
+    groupName: string | null,
+    groupId: number | null,
     expectedDevice: ApiDeviceResponse,
     params: any = {},
     statusCode: number = 200
@@ -301,7 +295,7 @@ Cypress.Commands.add(
         expect(device.id).to.equal(getCreds(deviceName).id);
         expect(device.deviceName).to.equal(getTestName(deviceName));
         expect(device.groupName).to.equal(getTestName(groupName));
-        expect(device.isAdmin).to.equal(expectedDevice.isAdmin);
+        expect(device.admin).to.equal(expectedDevice.admin);
       }
     });
   }

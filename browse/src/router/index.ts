@@ -224,11 +224,12 @@ function createRouter() {
         return next();
       }
     } else if (isLoggedIn && !acceptedEUA) {
+      // FIXME - nextUrl seems busted
       if (to.name !== "endUserAgreement") {
         return next({
           name: "endUserAgreement",
           query: {
-            nextUrl: to.fullPath,
+            nextUrl: from.fullPath,
           },
         });
       } else {

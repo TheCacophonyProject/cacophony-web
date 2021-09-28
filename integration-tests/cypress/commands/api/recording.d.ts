@@ -12,9 +12,9 @@ declare namespace Cypress {
   interface Chainable {
     /** Check the values returned by /api/fileProcessing (get)
      * specify type and processingState (state)
-     * Verfiy that the recording data matched the expectedRecording
+     * Verify that the recording data matched the expectedRecording
      * Optionally: check for a non-200 statusCode
-     * Optionally: check for a retuened error message (additionalChecks.message)
+     * Optionally: check for a returned error message (additionalChecks.message)
      */
     processingApiCheck(
       type: string,
@@ -25,20 +25,20 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-     /** Post to /api/fileProcessing 'done' endpoint
-       * recordingId and jobkey is looked up using recordingName
-       * other parameters are passed to the endpoint transparently
-       * Optionally: check for a non-200 statusCode
-       */
+    /** Post to /api/fileProcessing 'done' endpoint
+     * recordingId and jobkey is looked up using recordingName
+     * other parameters are passed to the endpoint transparently
+     * Optionally: check for a non-200 statusCode
+     */
 
-    processingApiPost (
-    recordingName: string,
-    success: boolean,
-    result: any,
-    complete: boolean,
-    newProcessedFileKey: string,
-    statusCode?: number
-  ):any;
+    processingApiPost(
+      recordingName: string,
+      success: boolean,
+      result: any,
+      complete: boolean,
+      newProcessedFileKey: string,
+      statusCode?: number
+    ): any;
     /**
      * upload a single recording to for a particular camera using deviceId and user credentials
      * Optionally, save the id against provided recordingName
@@ -54,7 +54,7 @@ declare namespace Cypress {
     ): Cypress.Chainable<RecordingId>;
 
     /**
-     * upload a single recording to for a particular camera using devicename and groupname and user credentials
+     * upload a single recording to for a particular camera using deviceName and groupName and user credentials
      * Optionally, save the id against provided recordingName
      */
     apiRecordingAddOnBehalfUsingGroup(
@@ -101,7 +101,7 @@ declare namespace Cypress {
     /* Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
      * Verfiy that the recording data matched the expectedRecordings
      * Optionally: check for a non-200 statusCode
-     * Optionally: check returned messages for addditionalChecks["message"]
+     * Optionally: check returned messages for additionalChecks["message"]
      */
     apiRecordingsQueryCheck(
       userName: string,
@@ -113,9 +113,9 @@ declare namespace Cypress {
     ): any;
 
     /* Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
-     * Verfiy that the recording data matched the expectedRecordings
+     * Verify that the recording data matched the expectedRecordings
      * Optionally: check for a non-200 statusCode
-     * Optionally: check returned messages for addditionalChecks["message"]
+     * Optionally: check returned messages for additionalChecks["message"]
      */
     apiRecordingsCountCheck(
       userName: string,
@@ -138,12 +138,15 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Mark a list fo recordings (recordingIds[]) for reprocessing
+    /* Mark a list of recordings (recordingIds[]) for reprocessing
      * Optionally: check for a non-200 statusCode
-     * Optionally: check for the returned list of reporocessed ids (expectedReprocessed)
-     * Optionally: check fot the returned list of failed ids (additionalChecks["fail"])
-     * Optioanlly: check for a returned error message (additionalChecks["message"])
+     * Optionally: check for a returned error message (additionalChecks["message"])
      */
-    apiReprocess ( userName: string, recordingIds: number[], expectedReprocessed?: number[], statusCode?: number, additionalChecks?: any):any;
+    apiReprocess(
+      userName: string,
+      recordingIds: number[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
   }
 }

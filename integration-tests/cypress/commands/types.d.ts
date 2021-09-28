@@ -5,7 +5,6 @@ import { ApiAlertCondition } from "@typedefs/api/alerts";
  ********************************************************************/
 // from api/v1/alerts (get)
 
-
 export interface ApiAlert {
   id: number;
   name: string;
@@ -58,7 +57,7 @@ export interface ApiDeviceInGroupDevice {
   id: number;
   deviceName: string;
   groupName: string;
-  isAdmin: boolean;
+  admin: boolean;
 }
 
 /*******************************************************************
@@ -91,14 +90,14 @@ export interface ApiUserNameAndId {
 export interface ApiGroupUser {
   username: string;
   id: number;
-  isAdmin: boolean;
+  admin: boolean;
 }
 
 // api/v1/devices/.../in-group (get)
 export interface ApiDeviceUser {
   userName: string;
   id: number;
-  isAdmin: boolean;
+  admin: boolean;
 }
 
 //from api/v1/groups/users (get)
@@ -134,14 +133,14 @@ export interface ApiUserNameAndId {
 export interface ApiGroupUser {
   username: string;
   id: number;
-  isAdmin: boolean;
+  admin: boolean;
 }
 
 // api/v1/devices/.../in-group (get)
 export interface ApiDeviceUser {
   userName: string;
   id: number;
-  isAdmin: boolean;
+  admin: boolean;
 }
 
 //from api/v1/groups/users (get)

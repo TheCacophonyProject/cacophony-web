@@ -13,7 +13,7 @@ declare namespace Cypress {
     checkVisits(
       userName: string,
       deviceName: string,
-      expectedVisits: (import("../types").TestComparableVisit)[]
+      expectedVisits: import("../types").TestComparableVisit[]
     ): Chainable<Element>;
 
     /**

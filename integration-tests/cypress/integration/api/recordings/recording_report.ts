@@ -1,14 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  // HTTP_Unprocessable,
-  // HTTP_BadRequest,
-  // HTTP_Unprocessable,
-  // HTTP_Forbidden,
-  // HTTP_OK200,
-} from "../../../commands/constants";
-
-
-
+import // HTTP_Unprocessable,
+// HTTP_BadRequest,
+// HTTP_Unprocessable,
+// HTTP_Forbidden,
+// HTTP_OK200,
+"../../../commands/constants";
 
 describe("Recording report", () => {
   before(() => {
@@ -22,10 +18,7 @@ describe("Recording report", () => {
     cy.apiDeviceUserAdd("rrGroupAdmin", "rrDeviceMember", "rrCamera1", true);
 
     cy.testCreateUserGroupAndDevice("rrGroup2Admin", "rrGroup2", "rrCamera2");
-
   });
 
-  it.skip("TODO: write tests for recording reports", () => { });
-
+  it.skip("TODO: write tests for recording reports", () => {});
 });
-

@@ -38,8 +38,9 @@ import {
   fetchUnauthorizedOptionalUserByNameOrId,
 } from "../extract-middleware";
 import logger from "../../logging";
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
-export const mapUser = (user: User) => ({
+export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
   userName: user.username,
   firstName: user.firstName,

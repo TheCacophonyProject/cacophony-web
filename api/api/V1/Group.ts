@@ -52,6 +52,15 @@ import {
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
+import { Group } from "models/Group";
+import {ApiGroupResponse, ApiGroupUserRelationshipResponse } from "@typedefs/api/group";
+
+const mapGroup = (group: Group, viewAsSuperAdmin: boolean): ApiGroupResponse => ({
+  id: group.id,
+  groupName: group.groupname,
+  admin: (group as any).Users[0].GroupUsers.admin || viewAsSuperAdmin,
+});
+const mapGroups = (groups: Group[], viewAsSuperAdmin: boolean): ApiGroupResponse[] => groups.map(group => mapGroup(group, viewAsSuperAdmin));
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
@@ -134,10 +143,11 @@ export default function (app: Application, baseUrl: string) {
     validateFields([query("view-mode").optional().equals("user")]),
     fetchAuthorizedRequiredGroups,
     async (request: Request, response: Response) => {
+      const groups: ApiGroupResponse[] = mapGroups(response.locals.groups, response.locals.viewAsSuperUser);
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        groups: response.locals.groups,
+        groups,
       });
     }
   );
@@ -181,17 +191,10 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      // FIXME - We are likely returning way too much and the kitchen sink information here
-      // Who uses this function?
-      const groups = await models.Group.query(
-        { id: response.locals.group.id },
-        response.locals.requestUser,
-        response.locals.viewAsSuperAdmin
-      );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        groups,
+        group: mapGroup(response.locals.group, response.locals.viewAsSuperUser),
       });
     }
   );

@@ -36,7 +36,7 @@ describe("Authentication", () => {
       camera2,
       group1,
       "p" + getTestName(camera1),
-        HTTP_AuthorizationError
+      HTTP_AuthorizationError
     );
   });
 
@@ -45,7 +45,7 @@ describe("Authentication", () => {
       camera1,
       group2,
       "p" + getTestName(camera1),
-        HTTP_AuthorizationError
+      HTTP_AuthorizationError
     );
   });
 
@@ -111,7 +111,9 @@ describe("Authentication", () => {
       cy.apiAuthenticateAs("admin_test", userB);
       cy.log("verify each user gets their own data");
       cy.testGroupUserCheckAccess(userB + "_on_behalf", group2);
-      cy.log("verify user cannot see items outside their group (i.e. are not super_user)");
+      cy.log(
+        "verify user cannot see items outside their group (i.e. are not super_user)"
+      );
       cy.testGroupUserCheckAccess(userB + "_on_behalf", group1, false);
     });
   } else {
@@ -123,5 +125,4 @@ describe("Authentication", () => {
     //verify non superuser userA cannot authenticte as userB
     cy.apiAuthenticateAs(userA, userB, HTTP_Forbidden);
   });
-
 });

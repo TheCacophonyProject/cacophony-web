@@ -5,7 +5,7 @@ import {
   // HTTP_Unprocessable,
   // HTTP_Forbidden,
   // HTTP_OK200,
-  NOT_NULL
+  NOT_NULL,
 } from "../../../commands/constants";
 
 import { ApiRecordingReturned, ApiRecordingSet } from "../../../commands/types";
@@ -56,7 +56,9 @@ const templateRecording: ApiRecordingSet = {
   },
   metadata: {
     algorithm: { model_name: "master" },
-    tracks: [{ start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 }],
+    tracks: [
+      { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+    ],
   },
   comment: "This is a comment2",
   processingState: "FINSIHED",
@@ -77,25 +79,21 @@ describe("Update recordings", () => {
     cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceMember", "ruCamera1", true);
 
     cy.testCreateUserGroupAndDevice("ruGroup2Admin", "ruGroup2", "ruCamera2");
-
   });
 
   it.skip("Group admin can update recording", () => {});
 
   it.skip("Group member can update recording", () => {});
-  
+
   it.skip("Device admin can update recording", () => {});
-    
+
   it.skip("Device member can update recording", () => {});
-  
+
   it.skip("Non member cannot update recording", () => {});
-    
+
   it.skip("Can handle no matching recording", () => {});
 
   it.skip("Can update all supported parameters", () => {});
 
   it.skip("Candles unsupported parameters and values correctly", () => {});
-
-
 });
-

@@ -57,7 +57,7 @@ describe("Groups - add, get group", () => {
         expectedGroupAdminGroupUser = {
           id: getCreds("gaGroupAdmin").id,
           username: getTestName("gaGroupAdmin"),
-          isAdmin: true,
+          admin: true,
         };
       }
     );
@@ -92,7 +92,7 @@ describe("Groups - add, get group", () => {
       expectedGroupMemberGroupUser = {
         id: getCreds("gaGroupMember").id,
         username: getTestName("gaGroupMember"),
-        isAdmin: false,
+        admin: false,
       };
     });
 
@@ -123,7 +123,7 @@ describe("Groups - add, get group", () => {
       const expectedTestGroupGroupUser = {
         id: getCreds("gaTestUser").id,
         username: getTestName("gaTestUser"),
-        isAdmin: true,
+        admin: true,
       };
       expectedTestGroup = {
         id: getCreds("gaTestGroup1").id,
@@ -190,34 +190,29 @@ describe("Groups - add, get group", () => {
   });
 
   it("Non member cannot query", () => {
-    //TODO: This behaviou ris inconsistent with other API endpoints.  Most return 403 to requests the user has
-    // no permission for. Thuis one returns 200 and an empty result. Issue
     cy.log("Valid user with no access to this group");
-    //    cy.apiGroupCheck("gaTestUser", "gaGroup", [], [], HTTP_Forbidden);
-    cy.apiGroupCheck("gaTestUser", "gaGroup", [], [], HTTP_OK200);
+    cy.apiGroupCheck("gaTestUser", "gaGroup", [], [], HTTP_Forbidden);
 
-    cy.log("Device admin with no group-level permisssions");
-    //    cy.apiGroupCheck("gaDeviceAdmin", "gaGroup", [], [], HTTP_Forbidden);
-    cy.apiGroupCheck("gaDeviceAdmin", "gaGroup", [], [], HTTP_OK200);
+    cy.log("Device admin with no group-level permissions");
+    cy.apiGroupCheck("gaDeviceAdmin", "gaGroup", [], [], HTTP_Forbidden);
 
     cy.log("Valid user with no access to this group using groupId");
-    //    cy.apiGroupCheck("gaTestUser", getCreds("gaGroup").id.toString(), [], [], HTTP_Forbidden, {useRawGroupName: true});
     cy.apiGroupCheck(
       "gaTestUser",
       getCreds("gaGroup").id.toString(),
       [],
       [],
-      HTTP_OK200,
+      HTTP_Forbidden,
       { useRawGroupName: true }
     );
   });
 
   it("Query nonexistant group handled correctly", () => {
-    cy.apiGroupCheck("gaGroupAdmin", "IDontExist", [], [], HTTP_Unprocessable, {
+    cy.apiGroupCheck("gaGroupAdmin", "IDontExist", [], [], HTTP_Forbidden, {
       useRawGroupName: true,
     });
 
-    cy.apiGroupCheck("gaGroupAdmin", "9999999", [], [], HTTP_Unprocessable, {
+    cy.apiGroupCheck("gaGroupAdmin", "9999999", [], [], HTTP_Forbidden, {
       useRawGroupName: true,
     });
   });

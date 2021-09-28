@@ -8,6 +8,9 @@ declare namespace Cypress {
   type ApiGroupsDevice = import("../types").ApiGroupsDevice;
   type ApiStationData = import("../types").ApiStationData;
   type ApiStationDataReturned = import("../types").ApiStationDataReturned;
+  //type ApiDeviceResponse = import("../../../../types/api/device").ApiDeviceResponse;
+  type ApiGroupUserRelationshipResponse =
+    import("../../../../types/api/group").ApiGroupUserRelationshipResponse;
 
   interface Chainable {
     /**
@@ -68,7 +71,7 @@ declare namespace Cypress {
     apiGroupDevicesCheck(
       userName: string,
       groupNameOrId: any,
-      expectedDevices: ApiGroupsDevice[],
+      expectedDevices: ApiDeviceResponse[],
       excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any
@@ -101,7 +104,7 @@ declare namespace Cypress {
     apiGroupUsersCheck(
       userName: string,
       groupName: string,
-      expectedUsers: ApiGroupsUserReturned[],
+      expectedUsers: ApiGroupUserRelationshipResponse[],
       excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any

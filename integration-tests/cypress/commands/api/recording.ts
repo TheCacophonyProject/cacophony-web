@@ -11,11 +11,10 @@ import {
   saveIdOnly,
   saveJobKeyById,
   checkTreeStructuresAreEqualExcept,
-  removeUndefinedParams
+  removeUndefinedParams,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { ApiRecordingSet, ApiRecordingReturned } from "../types";
-
 
 Cypress.Commands.add(
   "processingApiPost",
@@ -27,13 +26,13 @@ Cypress.Commands.add(
     newProcessedFileKey: string,
     statusCode: number = 200
   ) => {
-    let id=getCreds(recordingName).id;
-    let jobKey=getCreds(recordingName).jobKey;
-   logTestDescription(
-      `Processing 'done' for recording ${recordingName}`,
-      { id: id, result: result }
-    );
-    const params = { 
+    const id = getCreds(recordingName).id;
+    const jobKey = getCreds(recordingName).jobKey;
+    logTestDescription(`Processing 'done' for recording ${recordingName}`, {
+      id: id,
+      result: result,
+    });
+    const params = {
       id: id,
       jobKey: jobKey,
       success: success,
@@ -41,18 +40,19 @@ Cypress.Commands.add(
       complete: complete,
       newProcessedFileKey: newProcessedFileKey,
     };
-  
+
     const url = processingApiPath("");
-    cy.request(
-      {
-        method: "PUT",
-        url: url,
-        body: params
-      }
-    ).then((response) => {
-     expect(response.status,"Check return statusCode is").to.equal(statusCode);
+    cy.request({
+      method: "PUT",
+      url: url,
+      body: params,
+    }).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode
+      );
     });
-  });
+  }
+);
 
 Cypress.Commands.add(
   "processingApiCheck",
@@ -66,25 +66,28 @@ Cypress.Commands.add(
   ) => {
     logTestDescription(
       `Request recording ${type}  in state '${state} for processing'`,
-      { type: type, state: state }
+      { type, state }
     );
 
     const params = {
-      type: type,
-      state: state,
+      type,
+      state,
     };
     const url = processingApiPath("", params);
-    cy.request({ url: url }).then((response) => {
+    cy.log(`URL: ${url}`);
+    cy.request({ url }).then((response) => {
       if (statusCode === 200) {
-        if (response.body.recording!==undefined) {
-          saveJobKeyById(response.body.recording.id, response.body.recording.jobKey);
+        if (response.body.recording !== undefined) {
+          saveJobKeyById(
+            response.body.recording.id,
+            response.body.recording.jobKey
+          );
         }
         checkTreeStructuresAreEqualExcept(
           expectedRecording,
           response.body.recording,
           excludeCheckOn
         );
-      
       } else {
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages).to.contain(
@@ -321,8 +324,8 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiRecordingsQueryCheck", 
-    (
+  "apiRecordingsQueryCheck",
+  (
     userName: string,
     query: any,
     expectedRecordings: ApiRecordingReturned[] = undefined,
@@ -330,19 +333,19 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    let params=removeUndefinedParams(query);
-    params["where"]=JSON.stringify(query["where"]);
+    const params = removeUndefinedParams(query);
+    params["where"] = JSON.stringify(query["where"]);
 
     logTestDescription(
       `Query recordings where '${JSON.stringify(params["where"])}'`,
-      {user: userName, params: params }
+      { user: userName, params: params }
     );
 
-    const url = v1ApiPath("recordings",params);
+    const url = v1ApiPath("recordings", params);
     makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url: url
+        url: url,
       },
       userName,
       statusCode
@@ -361,36 +364,39 @@ Cypress.Commands.add(
         }
       }
     });
-});
+  }
+);
 
 Cypress.Commands.add(
   "apiRecordingsCountCheck",
-    (
+  (
     userName: string,
     query: any,
     expectedCount: number,
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    let params=removeUndefinedParams(query);
-    params["where"]=JSON.stringify(query["where"]);
+    const params = removeUndefinedParams(query);
+    params["where"] = JSON.stringify(query["where"]);
 
     logTestDescription(
       `Query recording count where '${JSON.stringify(params["where"])}'`,
-      {user: userName, params: params }
+      { user: userName, params: params }
     );
 
-    const url = v1ApiPath("recordings/count",params);
+    const url = v1ApiPath("recordings/count", params);
     makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url: url
+        url: url,
       },
       userName,
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        expect(response.body.count,"Recording count should be").to.equal(expectedCount);
+        expect(response.body.count, "Recording count should be").to.equal(
+          expectedCount
+        );
         cy.wrap(response.body.count);
       } else {
         if (additionalChecks["message"] !== undefined) {
@@ -400,51 +406,36 @@ Cypress.Commands.add(
         }
       }
     });
-});
+  }
+);
 
 Cypress.Commands.add(
   "apiReprocess",
   (
     userName: string,
     recordingIds: number[],
-    expectedReprocessed: number[] = undefined,
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
     logTestDescription(
       `Mark recordings for reprocess '${JSON.stringify(recordingIds)}'`,
-      {user: userName, recordingIds: recordingIds }
+      { user: userName, recordingIds: recordingIds }
     );
-    const params=  { recordings: recordingIds };
+    const params = { recordings: recordingIds };
 
     const url = v1ApiPath("reprocess");
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: url,
-        body: params
+        body: params,
       },
       userName,
       statusCode
     ).then((response) => {
-      if (expectedReprocessed!==undefined) {
-        expect(response.body.reprocessed.length, "Number of reprocessed expected to be").to.equal(expectedReprocessed.length);
-        expectedReprocessed.forEach((reprocessed:any) => {
-          expect(response.body.reprocessed).to.contain(reprocessed);
-        });
-      }
-      if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages).to.contain(additionalChecks["message"]);
-      }
-      if (additionalChecks["fail"] !== undefined) {
-        expect(response.body.fail.length, "Number of fail expected to be").to.equal(additionalChecks["fail"].length);
-        additionalChecks["fail"].forEach((fail:any) => {
-          expect(response.body.fail).to.contain(fail);
-        });
-      }
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
     });
-  });
-
+  }
+);

@@ -5,7 +5,7 @@ import {
   // HTTP_Unprocessable,
   // HTTP_Forbidden,
   // HTTP_OK200,
-  NOT_NULL
+  NOT_NULL,
 } from "../../../commands/constants";
 
 import { ApiRecordingReturned, ApiRecordingSet } from "../../../commands/types";
@@ -56,7 +56,9 @@ const templateRecording: ApiRecordingSet = {
   },
   metadata: {
     algorithm: { model_name: "master" },
-    tracks: [{ start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 }],
+    tracks: [
+      { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+    ],
   },
   comment: "This is a comment2",
   processingState: "FINSIHED",
@@ -71,11 +73,14 @@ describe("Recording needs-tag (power-tagger)", () => {
     cy.apiDeviceAdd("rntCamera1b", "rntGroup");
     cy.apiUserAdd("rntNonMember");
 
-    cy.testCreateUserGroupAndDevice("rntGroup2Admin", "rntGroup2", "rntCamera2");
-
+    cy.testCreateUserGroupAndDevice(
+      "rntGroup2Admin",
+      "rntGroup2",
+      "rntCamera2"
+    );
   });
 
-  it.skip("Non-member can view a recording", () => { });
+  it.skip("Non-member can view a recording", () => {});
 
   it.skip("Can handle no returned matches", () => {});
 
@@ -84,6 +89,4 @@ describe("Recording needs-tag (power-tagger)", () => {
   it.skip("Bias towards deviceId works as expected", () => {});
 
   it.skip("Invalid parameters handled correctly", () => {});
-
 });
-

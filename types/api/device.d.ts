@@ -2,7 +2,7 @@ import {DeviceId, GroupId, SaltId} from "./common";
 import {ApiUserResponse} from "./user";
 
 export interface ApiDeviceUserRelationshipResponse extends ApiUserResponse {
-  isAdmin: boolean;
+  admin: boolean;
   relation: "group" | "device";
 }
 
@@ -13,6 +13,6 @@ export interface ApiDeviceResponse {
   id: DeviceId;
   saltId: SaltId;
   active: boolean;
-  isAdmin: boolean;
+  admin: boolean;
   users?: ApiDeviceUserRelationshipResponse[]
 }

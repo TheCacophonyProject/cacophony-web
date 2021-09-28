@@ -124,6 +124,9 @@ import GroupAdd from "@/components/Groups/GroupAdd.vue";
 import { LatLng, latLng, latLngBounds } from "leaflet";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { mapState } from "vuex";
+import { ApiGroupResponse } from "@typedefs/api/group";
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import { ApiDeviceResponse } from "@typedefs/api/device";
 
 interface GroupsForLocation {
   location: LatLng;
@@ -131,7 +134,7 @@ interface GroupsForLocation {
 }
 
 interface GroupsViewData {
-  groups: any[];
+  groups: ApiGroupResponse[];
   isLoading: boolean;
   locationsLoading: boolean;
   showGroupsWithNoDevices: boolean;
@@ -167,7 +170,7 @@ export default {
   },
   computed: {
     ...mapState({
-      currentUser: (state) => (state as any).User.userData,
+      currentUser: (state): ApiLoggedInUserResponse => (state as any).User.userData,
     }),
     hasGroups(): boolean {
       return this.groups.length !== 0;
@@ -195,51 +198,57 @@ export default {
       this.locationsLoading = true;
       {
         // TODO(jon): Error handling.
-        const groups = {};
+
+        interface GroupInfo {
+          Devices: ApiDeviceResponse[];
+          groupName: string;
+          userCount: number
+          initialDeviceCount: number;
+          deviceCount: number;
+          deviceOnly: boolean;
+        };
+
+        const groups: Record<number, GroupInfo> = {};
+
         try {
           const { result } = await api.device.getDevices();
-          const myDevices = result.devices.rows.filter((device) => {
-            return (
-              device.Users.length !== 0 &&
-              device.Users.find((user) => user.id === this.currentUser.id) !==
-                undefined
-            );
-          });
+          console.log("Devices", result);
           // FIXME(jon): Quick hack for the issue that we can't currently get the group for a deviceId via the api.
           //  get the latest recording for a device, and that contains it.  Will fail if device has no recordings.
-          for (const device of myDevices) {
-            const rec = await api.recording.latestForDevice(device.id);
-            if (rec.result.rows.length) {
-              const entry = rec.result.rows[0];
-              groups[entry.GroupId] = groups[entry.GroupId] || {
+          for (const device of result.devices) {
+            const {groupName, groupId} = device;
+              groups[groupId] = groups[groupId] || {
                 Devices: [],
-                groupName: entry.Group.groupname,
+                groupName,
                 userCount: 1,
                 initialDeviceCount: 0,
                 deviceCount: 0,
                 deviceOnly: true,
               };
-              groups[entry.GroupId].Devices.push(device);
-              groups[entry.GroupId].initialDeviceCount =
-                groups[entry.GroupId].Devices.length;
-              groups[entry.GroupId].deviceCount =
-                groups[entry.GroupId].Devices.length;
+              groups[groupId].Devices.push(device);
+              groups[groupId].initialDeviceCount =
+                groups[groupId].Devices.length;
+              groups[groupId].deviceCount =
+                groups[groupId].Devices.length;
               // Now we should be able to show the groups for those devices.
-            }
+
           }
         } catch (e) {
           // ....
+          console.log(e);
         }
         try {
           const { result } = await api.groups.getGroups();
+          console.log("Groups", result);
           // Groups are always ordered alphabetically.
           // TODO(jon): Maybe also show groups that have devices with issues here?
-          const tempGroups = result.groups.map(
-            ({ groupname, GroupUsers, Devices }) => ({
-              groupName: groupname,
-              deviceCount: Devices.length === 0 ? 0 : false,
-              initialDeviceCount: Devices.length,
-              userCount: GroupUsers.length,
+          const tempGroups = result.groups.map(({ groupName }) => ({
+              groupName,
+              Devices: [],
+              deviceCount: 0,//FIXME Devices.length === 0 ? 0 : false,
+              initialDeviceCount: 0, // FIXME //Devices.length,
+              userCount: 0,// FIXME GroupUsers.length,
+              deviceOnly: false,
             })
           );
 
@@ -319,6 +328,7 @@ export default {
             .catch(() => {});
         } catch (error) {
           // Do something with the error.
+          console.log(error);
         }
       }
       this.isLoading = false;

@@ -1,7 +1,8 @@
 import CacophonyApi from "./CacophonyApi";
 import * as querystring from "querystring";
 import { shouldViewAsSuperUser } from "@/utils";
-import recording, { DeviceId } from "./Recording.api";
+import recording, {DeviceId, FetchResult} from "./Recording.api";
+import {ApiDeviceResponse} from "@typedefs/api/device";
 
 export default {
   getDevices,
@@ -26,13 +27,13 @@ export interface UserDetails {
   admin: boolean;
 }
 
-function getDevices() {
+function getDevices(): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/devices${shouldViewAsSuperUser() ? "" : "?view-mode=user"}`
   );
 }
 
-function getDevice(groupName: string, deviceName: string) {
+function getDevice(groupName: string, deviceName: string): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${deviceName}/in-group/${groupName}`
   );

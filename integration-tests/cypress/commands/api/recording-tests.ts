@@ -8,7 +8,7 @@ import {
   getCreds,
   DEFAULT_DATE,
   makeAuthorizedRequest,
-  removeUndefinedParams
+  removeUndefinedParams,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { convertToDate } from "../server";
@@ -411,18 +411,38 @@ export function TestCreateExpectedRecordingData(
   expected.id = getCreds(recordingName).id;
   expected.Device = device;
   expected.Group = group;
-  if(inputRecording.duration!==undefined) expected.duration = inputRecording.duration;
-  if(inputRecording.version!==undefined) expected.version = inputRecording.version;
-  if(inputRecording.comment!==undefined) expected.comment = inputRecording.comment;
-  if(inputRecording.additionalMetadata!==undefined) expected.additionalMetadata = inputRecording.additionalMetadata;
-  if(inputRecording.batteryLevel!==undefined) expected.batteryLevel = inputRecording.batteryLevel;
-  if(inputRecording.batteryCharging!==undefined) expected.batteryCharging = inputRecording.batteryCharging;
-  if(inputRecording.airplaneModeOn!==undefined) expected.airplaneModeOn = inputRecording.airplaneModeOn;
-  if (inputRecording.relativeToDusk !== undefined) expected.relativeToDusk = inputRecording.relativeToDusk; 
-  if (inputRecording.relativeToDawn !== undefined) expected.relativeToDawn = inputRecording.relativeToDawn;
+  if (inputRecording.duration !== undefined) {
+    expected.duration = inputRecording.duration;
+  }
+  if (inputRecording.version !== undefined) {
+    expected.version = inputRecording.version;
+  }
+  if (inputRecording.comment !== undefined) {
+    expected.comment = inputRecording.comment;
+  }
+  if (inputRecording.additionalMetadata !== undefined) {
+    expected.additionalMetadata = inputRecording.additionalMetadata;
+  }
+  if (inputRecording.batteryLevel !== undefined) {
+    expected.batteryLevel = inputRecording.batteryLevel;
+  }
+  if (inputRecording.batteryCharging !== undefined) {
+    expected.batteryCharging = inputRecording.batteryCharging;
+  }
+  if (inputRecording.airplaneModeOn !== undefined) {
+    expected.airplaneModeOn = inputRecording.airplaneModeOn;
+  }
+  if (inputRecording.relativeToDusk !== undefined) {
+    expected.relativeToDusk = inputRecording.relativeToDusk;
+  }
+  if (inputRecording.relativeToDawn !== undefined) {
+    expected.relativeToDawn = inputRecording.relativeToDawn;
+  }
   //TODO: filehash not in returned values - issue 87
   //expected.fileHash=inputRecording.fileHash;
-  if (inputRecording.location!==undefined) expected.location = { type: "Point", coordinates: inputRecording.location };
+  if (inputRecording.location !== undefined) {
+    expected.location = { type: "Point", coordinates: inputRecording.location };
+  }
   expected.GroupId = getCreds(groupName).id;
   expected.Station = station;
   expected.Tags = [];

@@ -1,4 +1,5 @@
 import api from "../../api";
+import {ApiLoggedInUserResponse} from "@typedefs/api/user";
 
 const state = {
   isLoggingIn: false,
@@ -6,7 +7,7 @@ const state = {
   JWT: localStorage.getItem("JWT"),
   userData: {
     id: Number(localStorage.getItem("userId")),
-    username: localStorage.getItem("username"),
+    username: localStorage.getItem("userName"),
     email: localStorage.getItem("email"),
     globalPermission: getGlobalPermission(),
     isSuperUser: isSuperUser(),
@@ -20,7 +21,7 @@ const state = {
 };
 
 function getGlobalPermission() {
-  var globalPermission = localStorage.getItem("globalPermission");
+  const globalPermission = localStorage.getItem("globalPermission");
   if (["write", "read", "off"].includes(globalPermission)) {
     return globalPermission;
   }
@@ -55,6 +56,7 @@ const actions = {
       payload.password
     );
     if (success) {
+      const userData: ApiLoggedInUserResponse  = result.userData;
       if (result.userData.globalPermission === "write") {
         // Persist super user settings so that we can switch user views.
         localStorage.setItem(
@@ -63,7 +65,7 @@ const actions = {
         );
       }
       api.user.persistUser(
-        result.userData.username,
+        result.userData.userName,
         result.token,
         result.userData.email,
         result.userData.globalPermission,
@@ -75,7 +77,7 @@ const actions = {
   },
   async LOGIN_OTHER({ commit }, result) {
     api.user.persistUser(
-      result.userData.username,
+      result.userData.userName,
       result.token,
       result.userData.email,
       result.userData.globalPermission,
@@ -97,7 +99,7 @@ const actions = {
     );
     if (success) {
       api.user.persistUser(
-        result.userData.username,
+        result.userData.userName,
         result.token,
         result.userData.email,
         result.userData.globalPermission,
@@ -157,10 +159,10 @@ const mutations = {
     localStorage.removeItem("superUserCreds");
     state.errorMessage = data.messages || data.message;
   },
-  receiveLogin(state, data) {
-    state.JWT = data.token;
-    state.userData = data.userData;
-    state.userData.acceptedEUA = data.userData.endUserAgreement;
+  receiveLogin(state, {userData, token}: { userData: ApiLoggedInUserResponse, token: string }) {
+    state.JWT = token;
+    state.userData = userData;
+    state.userData.acceptedEUA = userData.endUserAgreement;
   },
   updateFields(state, data) {
     for (var key in data) {

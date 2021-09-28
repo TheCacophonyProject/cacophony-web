@@ -40,7 +40,7 @@ export default {
    * @param {boolean} suppressGlobalMessaging: ability to suppress the global messaging and handle it at a component level. Ideally the option might be passed down from the component but for now we're setting the preference in the API layer. Not ideal, could be improved.
    * @returns {Promise<{result: *, success: boolean, status: number}>}
    */
-  post: async (endpoint, body, suppressGlobalMessaging) =>
+  post: async (endpoint: string, body?: any, suppressGlobalMessaging = false) =>
     fetchJsonWithMethod(endpoint, "POST", body, suppressGlobalMessaging),
 
   /**
@@ -61,6 +61,6 @@ export default {
    * @param {*} [body] - An object to go in the request body that will be sent as JSON.
    * @returns {Promise<{result: *, success: boolean, status: number}>}
    */
-  delete: async (endpoint, body) =>
+  delete: async (endpoint: string, body?: any) =>
     fetchJsonWithMethod(endpoint, "DELETE", body),
 };

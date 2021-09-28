@@ -2,7 +2,7 @@
 
 import { addSeconds } from "../../../commands/api/recording-tests";
 
-describe("Visits : times and recording groupings", () => {
+describe.skip("Visits : times and recording groupings", () => {
   const Dee = "Dee_Visits";
   const group = "VisitTests";
 

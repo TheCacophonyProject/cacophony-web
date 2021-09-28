@@ -5,7 +5,7 @@ import {
   // HTTP_Unprocessable,
   // HTTP_Forbidden,
   // HTTP_OK200,
-  NOT_NULL
+  NOT_NULL,
 } from "../../../commands/constants";
 
 import { ApiRecordingReturned, ApiRecordingSet } from "../../../commands/types";
@@ -56,7 +56,9 @@ const templateRecording: ApiRecordingSet = {
   },
   metadata: {
     algorithm: { model_name: "master" },
-    tracks: [{ start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 }],
+    tracks: [
+      { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+    ],
   },
   comment: "This is a comment2",
   processingState: "FINSIHED",
@@ -77,39 +79,45 @@ describe("Recording thumbnails", () => {
     cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceMember", "rtCamera1", true);
 
     cy.testCreateUserGroupAndDevice("rtGroup2Admin", "rtGroup2", "rtCamera2");
-
   });
 
   it.skip("Thumbnail generated as expected", () => {
-    cy.apiRecordingAdd("rtCamera1", recording1, undefined, "rtRecording1").then(() => {
-        expectedRecording1 = TestCreateExpectedRecordingData( templateExpectedRecording, "rtRecording1", "rtCamera1", "rtGroup", null, recording1);
-    });
+    cy.apiRecordingAdd("rtCamera1", recording1, undefined, "rtRecording1").then(
+      () => {
+        expectedRecording1 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "rtRecording1",
+          "rtCamera1",
+          "rtGroup",
+          null,
+          recording1
+        );
+      }
+    );
 
     //Pick up for tracking /api/fileProcessing
-    
+
     //Tracking done (with thumbnail location)
-    
+
     //Check thumbnail data in recording
     //TODO: Write apiRecordingThumbnailGet wrapper
-    
+
     //Get thumbnail
   });
 
   it.skip("Group admin can view device's thumbnail", () => {});
 
   it.skip("Group member can query device's thumbnail", () => {});
-  
+
   it.skip("Device admin can query device's thumbnail", () => {});
-    
+
   it.skip("Device member can query device's thumbnail", () => {});
-  
+
   it.skip("Non member cannot view devices thumbnail", () => {});
-    
+
   it.skip("Can handle no returned matches", () => {});
 
   it.skip("Thumbnail generator can handle recording with no thumbnail data", () => {});
 
   it.skip("Get thumbnail can handle recording with no thumbnail file", () => {});
-
 });
-

@@ -1,10 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_Unprocessable
-} from "../../../commands/constants";
+import { HTTP_BadRequest, HTTP_Forbidden } from "../../../commands/constants";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 import {
@@ -73,10 +69,9 @@ describe("Devices add / view / remove users", () => {
       };
       expectedDeviceInGroupUserView = {
         id: getCreds(camera).id,
-        devicename: getTestName(camera),
+        deviceName: getTestName(camera),
         groupName: getTestName(group),
-        userIsAdmin: false,
-        users: null,
+        admin: false,
       };
     });
     cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
@@ -309,13 +304,7 @@ describe("Devices add / view / remove users", () => {
 
   it("Invalid usernames rejected", () => {
     // add non existent user to device
-    cy.apiDeviceUserAdd(
-      groupAdmin,
-      "bad-user",
-      camera,
-      false,
-      HTTP_BadRequest
-    );
+    cy.apiDeviceUserAdd(groupAdmin, "bad-user", camera, false, HTTP_BadRequest);
 
     // remove non existent user from device
     cy.apiDeviceUserRemove(groupAdmin, "bad-user", camera, HTTP_BadRequest);

@@ -2,7 +2,8 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiCreateStationData = import("@typedefs/api/station").ApiCreateStationData;
+  type ApiCreateStationData =
+    import("@typedefs/api/station").ApiCreateStationData;
   interface Chainable {
     // to be run straight after an apiRecordingAdd
     // check that the recording has been assigned the right station name. sS

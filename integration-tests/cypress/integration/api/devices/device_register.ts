@@ -2,7 +2,12 @@
 
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
-import { HTTP_BadRequest, HTTP_Unprocessable } from "../../../commands/constants";
+import {
+  HTTP_BadRequest,
+  HTTP_Forbidden,
+  HTTP_OK200,
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 
 describe("Device register", () => {
   const camsGroup = "cams";
@@ -32,6 +37,15 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "GotYa",
       camsGroup,
+      KEEP_SALT_ID,
+      GENERATE_PASSWORD,
+      GENERATE_UNIQUE_NAME,
+      LOG,
+      HTTP_BadRequest
+    );
+    cy.apiDeviceAdd(
+      "gotya",
+      otherCams,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
@@ -99,32 +113,25 @@ describe("Device register", () => {
 
   it("If not specified on register saltId = deviceId", () => {
     const expectedDevice = {
-      devicename: getTestName("defaultcam"),
-      groupname: getTestName(camsGroup),
+      deviceName: getTestName("defaultcam"),
+      groupName: getTestName(camsGroup),
       saltId: getCreds("defaultcam").id,
+      id: getCreds("defaultcam").id,
+      groupId: getCreds(camsGroup).id,
+      active: true,
+      admin: true,
     };
-
-    const testDevice = {
-      ...expectedDevice
-    };
-    delete testDevice.saltId;
 
     //Test with Salt Id = device id by default
-    cy.apiDevicesCheck("Anita", [testDevice], null, [expectedDevice]);
-  });
-
-  it("Can register a device and specify salt id", () => {
-    cy.apiDeviceAdd("specify salt", camsGroup, 9998);
-    const expectedDevice = {
-      devicename: getTestName("specify salt"),
-      groupname: getTestName(camsGroup),
-      saltId: 9998,
-    };
-    const testDevice = {
-      ...expectedDevice
-    };
-    delete testDevice.saltId;
-    cy.apiDevicesCheck("Anita", [testDevice], null, [expectedDevice]);
+    cy.apiDeviceInGroupCheck(
+      "Anita",
+      "defaultcam",
+      camsGroup,
+      null,
+      expectedDevice,
+      null,
+      HTTP_OK200
+    );
   });
 
   it("When registering a device must specify a valid password", () => {
@@ -168,7 +175,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
       LOG,
-      HTTP_BadRequest
+      HTTP_Forbidden
     );
   });
 

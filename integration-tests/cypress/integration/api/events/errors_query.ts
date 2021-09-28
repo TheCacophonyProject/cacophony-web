@@ -2,7 +2,11 @@
 
 import { getTestName } from "../../../commands/names";
 //import { getCreds } from "../../../commands/server";
-import { HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable } from "../../../commands/constants";
+import {
+  HTTP_BadRequest,
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 import {
   ApiEventErrorSimilar,
   ApiEventError,
@@ -381,7 +385,14 @@ describe("Events - query errors", () => {
       expectedCategoryError5,
     ]);
     cy.log("Cannot check errors on camera not in our group");
-    cy.apiEventsErrorsCheck("erGroupAdmin", "erOtherGroupCamera", {}, [], [], HTTP_Forbidden);
+    cy.apiEventsErrorsCheck(
+      "erGroupAdmin",
+      "erOtherGroupCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
   });
 
   it("Device admin can only request events by deviceId from within their device", () => {
@@ -394,8 +405,22 @@ describe("Events - query errors", () => {
     ]);
 
     cy.log("Cannot check errors on camera not assigned to us");
-    cy.apiEventsErrorsCheck("erDeviceAdmin", "erOtherCamera", {}, [], [], HTTP_Forbidden);
-    cy.apiEventsErrorsCheck("erDeviceAdmin", "erOtherGroupCamera", {}, [], [], HTTP_Forbidden);
+    cy.apiEventsErrorsCheck(
+      "erDeviceAdmin",
+      "erOtherCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
+    cy.apiEventsErrorsCheck(
+      "erDeviceAdmin",
+      "erOtherGroupCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
   });
 
   //TODO: time filtering not working (issue 71).

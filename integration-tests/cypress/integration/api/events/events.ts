@@ -4,7 +4,11 @@ import { EventTypes } from "../../../commands/api/events";
 import { getTestName } from "../../../commands/names";
 import { getCreds } from "../../../commands/server";
 
-import { HTTP_BadRequest, HTTP_Unprocessable } from "../../../commands/constants";
+import {
+  HTTP_BadRequest,
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+} from "../../../commands/constants";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; //do not check eventId or createdAt time
 
@@ -234,7 +238,7 @@ describe("Events - add event as a device", () => {
       [time1],
       9999999,
       true,
-      HTTP_BadRequest
+      HTTP_Forbidden
     );
   });
 

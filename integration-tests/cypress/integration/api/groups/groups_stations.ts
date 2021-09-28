@@ -429,19 +429,19 @@ describe("Groups - add/update/query/remove stations from group", () => {
       "ThisGroupDoesNotExist",
       [station3a],
       undefined,
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
     cy.apiGroupsStationsCheck(
       "gsGroupAdmin",
       "ThisGroupDoesNotExist",
       [],
       undefined,
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
   });
 
   it("Invalid stations parameters handled correctly", () => {
-    let badStation: ApiStationData = { name: "hello", lat: null, lng: 172 };
+    let badStation: any = { name: "hello", lat: null, lng: 172 };
     cy.apiGroupStationsUpdate(
       "gsGroupAdmin",
       "gsGroup",
@@ -514,14 +514,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
     );
 
     badStation = { name: "hello", lat: -45, lng: 172, randomParameter: true };
-    //unexpected parameters ignored
-    //cy.apiGroupStationsUpdate("gsGroupAdmin","gsGroup",[badStation],undefined,HTTP_Unprocessable);
     cy.apiGroupStationsUpdate(
       "gsGroupAdmin",
       "gsGroup",
       [badStation],
       undefined,
-      HTTP_OK200
+      HTTP_Unprocessable
     );
 
     //but a valid one still works

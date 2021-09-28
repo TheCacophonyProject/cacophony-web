@@ -979,7 +979,9 @@ const getDevices =
       };
     }
 
+
     if (context.onlyActive) {
+      (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
       (getDeviceOptions as any).where.active = true;
     }
     //console.dir(getDeviceOptions, {depth: 5});
@@ -999,7 +1001,7 @@ const getGroups =
         // Insert request user constraints
         getGroupOptions = getIncludeForUser(
           context,
-          getGroupInclude({}, context.requestUser.id) as any,
+          getGroupInclude,
           asAdmin
         );
       } else {
@@ -1242,6 +1244,9 @@ const getGroup =
     } else {
       groupWhere = { groupname: groupNameOrId };
     }
+
+    // FIXME - Return whether or not the current requesting user is an admin of this group.
+
     let getGroupOptions;
     if (forRequestUser) {
       if (context && context.requestUser) {

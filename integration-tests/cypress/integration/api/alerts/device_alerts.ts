@@ -6,7 +6,8 @@ import { ApiAlertCondition } from "@typedefs/api/alerts";
 import {
   HTTP_BadRequest,
   HTTP_Forbidden,
-  HTTP_OK200, HTTP_Unprocessable
+  HTTP_OK200,
+  HTTP_Unprocessable,
 } from "../../../commands/constants";
 
 describe("Devices alerts", () => {

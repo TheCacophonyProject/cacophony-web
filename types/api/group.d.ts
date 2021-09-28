@@ -2,10 +2,11 @@ import {GroupId} from "./common";
 import {ApiUserResponse} from "./user";
 
 export interface ApiGroupUserRelationshipResponse extends ApiUserResponse {
-    isAdmin: boolean;
+    admin: boolean;
 }
 
 export interface ApiGroupResponse {
-    groupId: GroupId;
+    id: GroupId;
     groupName: string;
+    admin: boolean;
 }

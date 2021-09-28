@@ -7,11 +7,12 @@ import { getCreds } from "../../../commands/server";
 import { HTTP_OK200 } from "../../../commands/constants";
 import { HTTP_Forbidden } from "../../../commands/constants";
 import { HTTP_Unprocessable } from "../../../commands/constants";
+import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 const ADMIN = true;
 const NOT_ADMIN = false;
-let expectedDevice: ApiGroupsDevice;
-let expectedDevice1b: ApiGroupsDevice;
+let expectedDevice: ApiDeviceResponse;
+let expectedDevice1b: ApiDeviceResponse;
 
 describe("Groups - get devices for group", () => {
   before(() => {
@@ -21,6 +22,11 @@ describe("Groups - get devices for group", () => {
         expectedDevice = {
           id: getCreds("gdCamera").id,
           deviceName: getTestName("gdCamera"),
+          saltId: getCreds("gdCamera").id,
+          groupName: getTestName("gdGroup"),
+          groupId: getCreds("gdGroup").id,
+          active: true,
+          admin: true,
         };
       }
     );
@@ -33,6 +39,11 @@ describe("Groups - get devices for group", () => {
       expectedDevice1b = {
         id: getCreds("gdCamera1b").id,
         deviceName: getTestName("gdCamera1b"),
+        saltId: getCreds("gdCamera1b").id,
+        groupName: getTestName("gdGroup"),
+        groupId: getCreds("gdGroup").id,
+        active: true,
+        admin: true,
       };
     });
 
@@ -57,13 +68,15 @@ describe("Groups - get devices for group", () => {
 
     cy.log("Check member can view group's devices");
     cy.apiGroupDevicesCheck("gdGroupMember", "gdGroup", [
-      expectedDevice,
-      expectedDevice1b,
+      { ...expectedDevice, admin: false },
+      { ...expectedDevice1b, admin: false },
     ]);
   });
 
   it("Non group members cannot view devices", () => {
-    cy.log("Check device-only user cannot view groups devies");
+    cy.log(
+      "Check device-only user cannot view groups devices, but can see their own devices in group"
+    );
     cy.apiGroupDevicesCheck("gdDeviceAdmin", "gdGroup", [], [], HTTP_Forbidden);
 
     cy.log("Check unrelated user cannot view group's devices");
@@ -85,7 +98,10 @@ describe("Groups - get devices for group", () => {
     cy.apiGroupDevicesCheck(
       "gdGroupMember",
       getCreds("gdGroup").id,
-      [expectedDevice, expectedDevice1b],
+      [
+        { ...expectedDevice, admin: false },
+        { ...expectedDevice1b, admin: false },
+      ],
       [],
       HTTP_OK200,
       { useRawGroupName: true }
@@ -93,18 +109,21 @@ describe("Groups - get devices for group", () => {
   });
 
   it("Lists only active devices", () => {
-    let expectedDevice4a: ApiDevicesDevice;
-    let expectedDevice4b: ApiDevicesDevice;
-    let expectedGroupDevice4b: ApiGroupsDevice;
+    let expectedDevice4a: ApiDeviceResponse;
+    let expectedDevice4b: ApiDeviceResponse;
+    let expectedGroupDevice4b: ApiDeviceResponse;
 
     cy.log("Register a camera for the test");
     cy.testCreateUserAndGroup("gdUser4", "gdGroup4");
     cy.apiDeviceAdd("gdCam4a", "gdGroup4").then(() => {
       expectedDevice4a = {
         id: getCreds("gdCam4a").id,
-        devicename: getTestName("gdCam4a"),
+        deviceName: getTestName("gdCam4a"),
+        saltId: getCreds("gdCam4a").id,
+        groupName: getTestName("gdGroup4"),
+        groupId: getCreds("gdGroup4").id,
         active: false,
-        Users: [],
+        admin: true,
       };
     });
 
@@ -113,12 +132,20 @@ describe("Groups - get devices for group", () => {
       expectedGroupDevice4b = {
         id: getCreds("gdCam4b").id,
         deviceName: getTestName("gdCam4b"),
+        saltId: getCreds("gdCam4a").id,
+        groupName: getTestName("gdGroup4"),
+        groupId: getCreds("gdGroup4").id,
+        active: true,
+        admin: true,
       };
       expectedDevice4b = {
         id: getCreds("gdCam4b").id,
-        devicename: getTestName("gdCam4b"),
+        deviceName: getTestName("gdCam4b"),
+        saltId: getCreds("gdCam4a").id,
+        groupName: getTestName("gdGroup4"),
+        groupId: getCreds("gdGroup4").id,
         active: true,
-        Users: [],
+        admin: true,
       };
 
       cy.log(
@@ -134,14 +161,9 @@ describe("Groups - get devices for group", () => {
   });
 
   it("Handles non-existant group correctly", () => {
-    cy.apiGroupDevicesCheck(
-      "gdUser4",
-      "IDoNotExist",
-      [],
-      [],
-      HTTP_Unprocessable,
-      { useRawGroupName: true }
-    );
+    cy.apiGroupDevicesCheck("gdUser4", "IDoNotExist", [], [], HTTP_Forbidden, {
+      useRawGroupName: true,
+    });
   });
 
   it("Handles group with no devices correctly", () => {

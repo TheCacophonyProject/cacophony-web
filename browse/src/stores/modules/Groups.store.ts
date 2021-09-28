@@ -1,6 +1,11 @@
 import api from "../../api";
+import {ApiGroupResponse} from "@typedefs/api/group";
 
-const state = {
+const state: {
+  groups: ApiGroupResponse[],
+  currentGroup: ApiGroupResponse | null,
+  fetched: boolean
+} = {
   groups: [],
   currentGroup: null,
   fetched: false,
@@ -10,9 +15,11 @@ const getters = {};
 
 async function _getGroup(groupName, commit) {
   const { result } = await api.groups.getGroup(groupName);
-  const group = result.groups[0];
+  const group = result.group;
   commit("setCurrentGroup", group);
-  commit("receiveGroups", result.groups);
+
+  // FIXME - Not sure this should be here
+  commit("receiveGroups", result.group);
 }
 
 const actions = {

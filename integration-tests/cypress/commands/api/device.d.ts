@@ -2,8 +2,10 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiDeviceResponse = import("../../../../types/api/device").ApiDeviceResponse;
-  type ApiDeviceUserRelationshipResponse = import("../../../../types/api/device").ApiDeviceUserRelationshipResponse;
+  type ApiDeviceResponse =
+    import("../../../../types/api/device").ApiDeviceResponse;
+  type ApiDeviceUserRelationshipResponse =
+    import("../../../../types/api/device").ApiDeviceUserRelationshipResponse;
 
   interface Chainable {
     /**
@@ -48,7 +50,6 @@ declare namespace Cypress {
       statusCode?: number
     ): any;
 
-
     // FIXME - Maybe remove?
     /**
      * Same as apiDevicesCheck but check the expected items are on the list, rather than the only things on the list
@@ -69,8 +70,8 @@ declare namespace Cypress {
     apiDeviceInGroupCheck(
       userName: string,
       deviceName: string,
-      groupName: string,
-      groupId: number,
+      groupName: string | null,
+      groupId: number | null,
       expectedDevices: ApiDeviceResponse,
       params?: any,
       statusCode?: number
