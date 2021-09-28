@@ -48,24 +48,29 @@ import {
 import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 
-export const mapDeviceResponse = (device: Device, viewAsSuperUser: boolean): ApiDeviceResponse =>
-    ({
-          deviceName: device.devicename,
-          id: device.id,
-          groupName: device.Group.groupname,
-          groupId: device.GroupId,
-          active: device.active,
-          saltId: device.saltId,
-          admin:
-              viewAsSuperUser ||
-              (
-                  (device as any).Group?.Users[0]?.GroupUsers ||
-                  (device as any).Users[0]?.DeviceUsers
-              )?.admin || false,
-        }
-    );
+export const mapDeviceResponse = (
+  device: Device,
+  viewAsSuperUser: boolean
+): ApiDeviceResponse => ({
+  deviceName: device.devicename,
+  id: device.id,
+  groupName: device.Group.groupname,
+  groupId: device.GroupId,
+  active: device.active,
+  saltId: device.saltId,
+  admin:
+    viewAsSuperUser ||
+    (
+      (device as any).Group?.Users[0]?.GroupUsers ||
+      (device as any).Users[0]?.DeviceUsers
+    )?.admin ||
+    false,
+});
 
-export const mapDevicesResponse = (devices: Device[], viewAsSuperUser: boolean): ApiDeviceResponse[] =>
+export const mapDevicesResponse = (
+  devices: Device[],
+  viewAsSuperUser: boolean
+): ApiDeviceResponse[] =>
   devices.map((device) => mapDeviceResponse(device, viewAsSuperUser));
 
 export default function (app: Application, baseUrl: string) {
@@ -91,10 +96,7 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     validateFields([
       nameOf(body("group")),
-      anyOf(
-          validNameOf(body("devicename")),
-          validNameOf(body("deviceName")),
-      ),
+      anyOf(validNameOf(body("devicename")), validNameOf(body("deviceName"))),
       validPasswordOf(body("password")),
       idOf(body("saltId")).optional(),
     ]),
@@ -182,7 +184,10 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
       return responseUtil.send(response, {
-        devices: mapDevicesResponse(response.locals.devices, response.locals.viewAsSuperUser),
+        devices: mapDevicesResponse(
+          response.locals.devices,
+          response.locals.viewAsSuperUser
+        ),
         statusCode: 200,
         messages: ["Completed get devices query."],
       });
@@ -234,7 +239,10 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       return responseUtil.send(response, {
         statusCode: 200,
-        device: mapDeviceResponse(response.locals.device, response.locals.viewAsSuperUser),
+        device: mapDeviceResponse(
+          response.locals.device,
+          response.locals.viewAsSuperUser
+        ),
         messages: ["Request successful"],
       });
     }
@@ -313,9 +321,9 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       anyOf(
-          nameOf(body("username")),
-          nameOf(body("userName")),
-          idOf(body("userId"))
+        nameOf(body("username")),
+        nameOf(body("userName")),
+        idOf(body("userId"))
       ),
       idOf(body("deviceId")),
       booleanOf(body("admin")),

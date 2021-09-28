@@ -97,11 +97,13 @@ const checkS3Connection = (): Promise<void> => {
         )?.get("queryCount");
 
         const dbQueryTime = (
-            asyncLocalStorage.getStore() as Map<string, any>
+          asyncLocalStorage.getStore() as Map<string, any>
         )?.get("queryTime");
 
         return `${req.method} ${req.url} => Status(${res.statusCode}) ${
-          dbQueryCount ? `(${dbQueryCount} DB queries over ${dbQueryTime}ms) ` : ""
+          dbQueryCount
+            ? `(${dbQueryCount} DB queries over ${dbQueryTime}ms) `
+            : ""
         }[${(res as any).responseTime}ms]`;
       },
     })

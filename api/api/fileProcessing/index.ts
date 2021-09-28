@@ -4,6 +4,7 @@ import middleware, {
   parseJSON,
   parseJSONInternal,
   expectedTypeOf,
+  validateFields,
 } from "../middleware";
 import log from "../../logging";
 import { body, param, query, oneOf } from "express-validator";
@@ -11,7 +12,7 @@ import models from "../../models";
 import recordingUtil, {
   finishedProcessingRecording,
 } from "../V1/recordingUtil";
-import { Application, Request, Response } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import {
   Recording,
   RecordingProcessingState,
@@ -23,6 +24,8 @@ import {
 import { ClassifierRawResult } from "@typedefs/api/fileProcessing";
 import ClassifierRawResultSchema from "../../../types/jsonSchemas/api/fileProcessing/ClassifierRawResult.schema.json";
 import { jsonSchemaOf } from "../schema-validation";
+import { anyOf, booleanOf, idOf } from "../validation-middleware";
+import { ClientError } from "../customErrors";
 
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";
@@ -195,48 +198,38 @@ export default function (app: Application) {
    */
   app.put(
     apiUrl,
-    [
-      body("id")
-        .isInt()
-        .toInt()
-        .bail()
-        .custom(async (id) => {
-          const recording = await models.Recording.findOne({
-            where: { id },
-          });
-          log.info("recording %s", recording);
-          return recording;
-        }),
-      body("jobKey")
-        .exists()
-        .custom((jobKey, { req }) => {
-          return (req.body.id as Recording).get("jobKey") === jobKey;
-        }),
-      body("success").isBoolean().toBoolean(),
-      oneOf([
-        body("result").isEmpty(),
-        body("result").custom(parseJSONInternal),
-      ]),
-    ],
-    middleware.requestWrapper(async (request: Request, response: Response) => {
-      const { id, result, complete, newProcessedFileKey, success, jobKey } =
-        request.body;
-
-      const recording: Recording | null = await models.Recording.findOne({
-        where: { id },
+    validateFields([
+      idOf(body("id")),
+      body("jobKey").exists(),
+      booleanOf(body("success")),
+      booleanOf(body("complete")),
+      body("result").custom(parseJSONInternal).optional(),
+    ]),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // FIXME fetchUnauthorizedRequiredRecording
+      const recording = await models.Recording.findOne({
+        where: { id: request.body.id },
       });
       if (!recording) {
-        return response.status(400).json({
-          messages: [`Recording ${id} not found for jobKey ${jobKey}`],
-        });
+        return next(
+          new ClientError(
+            `Recording ${request.body.id} not found for jobKey ${request.body.jobKey}`,
+            400
+          )
+        );
+      } else {
+        if (recording.jobKey !== request.body.jobKey) {
+          return next(
+            new ClientError("'jobKey' given did not match the database..", 400)
+          );
+        }
+        response.locals.recording = recording;
+        next();
       }
-
-      // Check that jobKey is correct.
-      if (jobKey != recording.get("jobKey")) {
-        return response.status(400).json({
-          messages: ["'jobKey' given did not match the database.."],
-        });
-      }
+    },
+    async (request: Request, response: Response) => {
+      const { result, complete, newProcessedFileKey, success } = request.body;
+      const recording = response.locals.recording;
       const prevState = recording.processingState;
       if (success) {
         if (newProcessedFileKey) {
@@ -253,6 +246,7 @@ export default function (app: Application) {
         recording.set("processingState", nextJob);
         // Process extra data from file processing
         if (result && result.fieldUpdates) {
+          // FIXME - station matching happens in here, move it out.
           await recording.mergeUpdate(result.fieldUpdates);
         }
         await recording.save();
@@ -295,7 +289,7 @@ export default function (app: Application) {
           messages: ["Processing failed."],
         });
       }
-    })
+    }
   );
 
   /**

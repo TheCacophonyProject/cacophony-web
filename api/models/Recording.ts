@@ -44,6 +44,8 @@ import { TrackTag } from "./TrackTag";
 import { Station, StationId } from "./Station";
 import { tryToMatchRecordingToStation } from "../api/V1/recordingUtil";
 import { RecordingId } from "@typedefs/api/common";
+import logging from "../logging";
+import { type } from "os";
 
 type SqlString = string;
 
@@ -252,7 +254,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getActiveTracksTagsAndTagger: () => Promise<any>;
   getUserPermissions: (user: User) => Promise<RecordingPermission[]>;
 
-  reprocess: (user: User) => Promise<Recording>;
+  reprocess: () => Promise<Recording>;
   mergeUpdate: (updates: any) => Promise<void>;
   filterData: (options: any) => void;
   // NOTE: Implicitly created by sequelize associations (along with other
@@ -559,9 +561,9 @@ export default function (
         "The user does not have permission to view this file"
       );
     }
-    recording.filterData(
-      Recording.makeFilterOptions(user, options.filterOptions)
-    );
+    // recording.filterData(
+    //   Recording.makeFilterOptions(user, options.filterOptions)
+    // );
     return recording;
   };
 
@@ -597,9 +599,9 @@ export default function (
       return null;
     }
 
-    recording.filterData(
-      Recording.makeFilterOptions(null, options.filterOptions)
-    );
+    // recording.filterData(
+    //   Recording.makeFilterOptions(null, options.filterOptions)
+    // );
     return recording;
   };
 
@@ -992,6 +994,8 @@ from (
     const tags = await this.getTags();
     if (tags.length > 0) {
       const meta = this.additionalMetadata || {};
+      // FIXME What happens if we reprocess more than once?
+      //  :We lose initial archived tags.
       meta["oldTags"] = tags;
       this.additionalMetadata = meta;
       await this.save();
@@ -1079,11 +1083,16 @@ from (
         ["id", "DESC"],
       ];
     }
+
+    if (typeof where === "string") {
+      where = JSON.parse(where);
+    }
+    const recordingPermissions = await recordingsFor(user, viewAsSuperAdmin);
     this.query = {
       where: {
         [Op.and]: [
           where, // User query
-          await recordingsFor(user, viewAsSuperAdmin),
+          recordingPermissions,
           Sequelize.literal(
             Recording.queryBuilder.handleTagMode(tagMode, tags)
           ),

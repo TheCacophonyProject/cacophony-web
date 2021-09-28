@@ -45,6 +45,7 @@ const PERMISSIONS: readonly string[] = Object.freeze([
 ]);
 
 export type UserId = number;
+export type EndUserAgreementVersion = number;
 
 export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
@@ -97,6 +98,7 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   email: string;
   groups: Group[];
   globalPermission: GlobalPermission;
+  endUserAgreement: EndUserAgreementVersion;
 }
 
 export interface UserStatic extends ModelStaticCommon<User> {

@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import log from "../logging";
 import { format } from "util";
-import {asyncLocalStorage} from "../Server";
+import { asyncLocalStorage } from "../Server";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function errorHandler(err: Error, request, response, next) {
@@ -28,22 +28,23 @@ function errorHandler(err: Error, request, response, next) {
   ) {
     err = new ClientError(err.message, 422); // Convert invalid JSON body error to UnprocessableEntity
   }
+  const session = asyncLocalStorage.getStore();
+  let requestId;
+  if (session) {
+    requestId = (session as Map<string, any>).get("requestId").split("-")[0];
+  }
   if (err instanceof CustomError) {
     log.warning(err.toString());
     return response.status(err.statusCode).json({
       ...err.toJson(),
-      requestId: (asyncLocalStorage.getStore() as Map<string, any>).get(
-          "requestId",
-      ).split('-')[0]
+      requestId,
     });
   }
   log.error("%s, %s", err.toString(), err.stack);
   response.status(500).json({
     message: `Internal server error: ${err.name}: ${err.message}.`,
     errorType: "server",
-    requestId: (asyncLocalStorage.getStore() as Map<string, any>).get(
-        "requestId",
-    ).split("-")[0]
+    requestId,
   });
 }
 

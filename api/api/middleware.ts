@@ -614,29 +614,23 @@ export const validateFields = (
         response.locals.token &&
         (response.locals.token as DecodedJWTToken)._type;
       const requestId =
-        (response.locals.user && response.locals.user.get("username")) ||
-        (response.locals.device && response.locals.device.get("devicename")) ||
+        (response.locals.user && response.locals.user.username) ||
+        (response.locals.device && response.locals.device.devicename) ||
         (requester && (response.locals.token as DecodedJWTToken).id) ||
         "unknown";
 
       // TODO: At this point *if* we have errors, we may want to lookup the username or devicename?
 
       log.info(
-        "%s (%s: %s)",
+        "%s (%s: %s%s)",
         logMessage,
         requester || "unauthenticated",
-        requestId
+        requestId,
+        response.locals.viewAsSuperUser ? "::SUPER_USER" : ""
       );
       const validationErrors = validationResult(request);
       // log.info("Validation errors %s", validationErrors);
       if (!validationErrors.isEmpty()) {
-        log.warning(
-          "VALIDATION ERRORS: %s",
-          validationErrors
-            .array()
-            .map((item) => JSON.stringify(item))
-            .join(", ")
-        );
         return next(new customErrors.ValidationError(validationErrors));
       } else {
         return next();

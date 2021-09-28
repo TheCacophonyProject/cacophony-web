@@ -501,13 +501,16 @@ async function query(
   builder.query.distinct = true;
   const result = await models.Recording.findAndCountAll(builder.get());
 
+  // FIXME: Removed less location precision.  Look at addressing this
+  //  if and when we use the public recording feature.
+
   // This gives less location precision if the user isn't admin.
-  const filterOptions = models.Recording.makeFilterOptions(
-    request.user,
-    request.filterOptions
-  );
+  // const filterOptions = models.Recording.makeFilterOptions(
+  //   request.user,
+  //   request.filterOptions
+  // );
   result.rows = result.rows.map((rec) => {
-    rec.filterData(filterOptions);
+    //rec.filterData(filterOptions);
     return handleLegacyTagFieldsForGetOnRecording(rec);
   });
   return result;
@@ -551,10 +554,10 @@ async function reportRecordings(request: RecordingQuery) {
   //  of properties...
   const result: any[] = await models.Recording.findAll(builder.get());
 
-  const filterOptions = models.Recording.makeFilterOptions(
-    request.user,
-    request.filterOptions
-  );
+  // const filterOptions = models.Recording.makeFilterOptions(
+  //   request.user,
+  //   request.filterOptions
+  // );
 
   const audioFileNames = new Map();
   const audioEvents: Map<
@@ -618,7 +621,7 @@ async function reportRecordings(request: RecordingQuery) {
   const out = [labels];
 
   for (const r of result) {
-    r.filterData(filterOptions);
+    //r.filterData(filterOptions);
 
     const automatic_track_tags = new Set();
     const human_track_tags = new Set();
@@ -877,89 +880,6 @@ function handleLegacyTagFieldsForGetOnRecording(recording) {
   return recording;
 }
 
-export enum StatusCode {
-  Success = 1,
-  Fail = 2,
-  Both = 3,
-}
-
-// reprocessAll expects request.body.recordings to be a list of recording_ids
-// will mark each recording to be reprocessed
-async function reprocessAll(request, response) {
-  const recordings = request.body.recordings;
-  const responseMessage = {
-    statusCode: 200,
-    messages: [],
-    reprocessed: [],
-    fail: [],
-  };
-
-  let status = 0;
-  for (let i = 0; i < recordings.length; i++) {
-    const resp = await reprocessRecording(request.user, recordings[i]);
-    if (resp.statusCode != 200) {
-      status = status | StatusCode.Fail;
-      responseMessage.messages.push(resp.messages[0]);
-      responseMessage.statusCode = resp.statusCode;
-      responseMessage.fail.push(resp.recordingId);
-    } else {
-      responseMessage.reprocessed.push(resp.recordingId);
-      status = status | StatusCode.Success;
-    }
-  }
-  responseMessage.messages.splice(0, 0, getReprocessMessage(status));
-  responseUtil.send(response, responseMessage);
-  return;
-}
-
-function getReprocessMessage(status) {
-  switch (status) {
-    case StatusCode.Success:
-      return "All recordings scheduled for reprocessing";
-    case StatusCode.Fail:
-      return "Recordings could not be scheduled for reprocessing";
-    case StatusCode.Both:
-      return "Some recordings could not be scheduled for reprocessing";
-    default:
-      return "";
-  }
-}
-
-// reprocessRecording marks supplied recording_id for reprocessing,
-// under supplied user privileges
-export async function reprocessRecording(user, recording_id) {
-  const recording = await models.Recording.get(
-    user,
-    recording_id,
-    RecordingPermission.UPDATE
-  );
-
-  if (!recording) {
-    return {
-      statusCode: 400,
-      messages: ["No such recording: " + recording_id],
-      recordingId: recording_id,
-    };
-  }
-
-  await recording.reprocess(user);
-
-  return {
-    statusCode: 200,
-    messages: ["Recording scheduled for reprocessing"],
-    recordingId: recording_id,
-  };
-}
-
-// reprocess a recording defined by request.user and request.params.id
-async function reprocess(request, response: Response) {
-  const responseInfo = await reprocessRecording(
-    request.user,
-    request.params.id
-  );
-  responseUtil.send(response, responseInfo);
-}
-
 async function tracksFromMeta(recording: Recording, metadata: any) {
   if (!("tracks" in metadata)) {
     return;
@@ -1040,10 +960,10 @@ async function queryVisits(request: RecordingQuery): Promise<{
   builder.query.distinct = true;
 
   const devSummary = new DeviceSummary();
-  const filterOptions = models.Recording.makeFilterOptions(
-    request.user,
-    request.filterOptions
-  );
+  // const filterOptions = models.Recording.makeFilterOptions(
+  //   request.user,
+  //   request.filterOptions
+  // );
   let numRecordings = 0;
   let remainingVisits = requestVisits;
   let totalCount, recordings, gotAllRecordings;
@@ -1063,9 +983,9 @@ async function queryVisits(request: RecordingQuery): Promise<{
       break;
     }
 
-    for (const rec of recordings) {
-      rec.filterData(filterOptions);
-    }
+    // for (const rec of recordings) {
+    //   rec.filterData(filterOptions);
+    // }
     devSummary.generateVisits(recordings, request.query.offset || 0);
 
     if (!gotAllRecordings) {
@@ -1760,8 +1680,6 @@ export default {
   get,
   delete_,
   addTag,
-  reprocess,
-  reprocessAll,
   tracksFromMeta,
   updateMetadata,
   queryVisits,

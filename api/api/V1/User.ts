@@ -25,12 +25,31 @@ import { ClientError } from "../customErrors";
 import { Application, NextFunction, Request, Response } from "express";
 import config from "../../config";
 import { User } from "../../models/User";
-import {anyOf, validNameOf, validPasswordOf } from "../validation-middleware";
+import {
+  anyOf,
+  integerOf,
+  validNameOf,
+  validPasswordOf,
+} from "../validation-middleware";
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
-  extractUserByName, fetchUnauthorizedOptionalUserByNameOrId,
+  extractUserByName,
+  fetchUnauthorizedOptionalUserByNameOrId,
 } from "../extract-middleware";
+import logger from "../../logging";
+
+export const mapUser = (user: User) => ({
+  id: user.id,
+  userName: user.username,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  globalPermission: user.globalPermission,
+  endUserAgreement: user.endUserAgreement,
+});
+
+export const mapUsers = (users: User[]) => users.map(mapUser);
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
@@ -74,20 +93,18 @@ export default function (app: Application, baseUrl: string) {
         next();
       }
     },
-    async (request, response) => {
+    async (request: Request, response: Response) => {
       const user: User = await models.User.create({
         username: request.body.username,
         password: request.body.password,
         email: request.body.email,
         endUserAgreement: request.body.endUserAgreement,
       });
-      // FIXME extract userData without db call
-      const userData = await user.getDataValues();
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new user."],
         token: `JWT ${auth.createEntityJWT(user)}`,
-        userData: userData,
+        userData: mapUser(user),
       });
     }
   );
@@ -110,19 +127,20 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
-      // FIXME - Could be "At least one of" with nicer error messages?
       anyOf(
         validNameOf(body("username")),
         validNameOf(body("userName")),
         body("email").isEmail(),
         validPasswordOf(body("password")),
-        body("endUserAgreement").isInt(),
+        integerOf(body("endUserAgreement"))
       ),
     ]),
     async (request: Request, Response: Response, next: NextFunction) => {
       if (
-          (request.body.username || request.body.userName) &&
-        !(await models.User.freeUsername(request.body.username || request.body.userName))
+        (request.body.username || request.body.userName) &&
+        !(await models.User.freeUsername(
+          request.body.username || request.body.userName
+        ))
       ) {
         return next(new ClientError("Username in use"));
       } else {
@@ -172,7 +190,7 @@ export default function (app: Application, baseUrl: string) {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        userData: await response.locals.user.getDataValues(),
+        userData: mapUser(response.locals.user),
       });
     }
   );
@@ -197,11 +215,10 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     async (request, response) => {
       const users = await models.User.getAll({});
-      // FIXME - map user info
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        usersList: users,
+        usersList: mapUsers(users),
       });
     }
   );

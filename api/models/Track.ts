@@ -20,6 +20,7 @@ import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { TrackTag, TrackTagId } from "./TrackTag";
 import { Recording } from "./Recording";
+import logging from "../logging";
 
 export type TrackId = number;
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
@@ -76,9 +77,10 @@ export default function (
 
   //add or replace a tag, such that this track only has 1 animal tag by this user
   //and no duplicate tags
-  Track.replaceTag = async function (trackId, tag: TrackTag) {
+  Track.replaceTag = async (trackId: TrackId, tag: TrackTag) => {
     const track = await Track.findByPk(trackId);
     if (!track) {
+      // FIXME - Move to API validation layer
       throw new ClientError("No track found for " + trackId);
     }
     return sequelize.transaction(async function (t) {
@@ -87,25 +89,26 @@ export default function (
           UserId: tag.UserId,
           automatic: tag.automatic,
           TrackId: trackId,
+          what: tag.what,
         },
         transaction: t,
       });
-
-      const existingTag = trackTags.find(function (uTag) {
-        return uTag.what == tag.what;
-      });
+      const existingTag = trackTags.find(
+        (uTag: TrackTag) => uTag.what === tag.what
+      );
       if (existingTag) {
         return;
       } else if (trackTags.length > 0 && !tag.isAdditionalTag()) {
-        const existingAnimalTags = trackTags.filter(function (uTag) {
-          return !uTag.isAdditionalTag();
-        });
+        const existingAnimalTags = trackTags.filter(
+          (uTag) => !uTag.isAdditionalTag()
+        );
 
         for (let i = 0; i < existingAnimalTags.length; i++) {
-          await existingAnimalTags[i].destroy();
+          await existingAnimalTags[i].destroy({ transaction: t });
         }
       }
-      await tag.save();
+      await tag.save({ transaction: t });
+      return tag;
     });
   };
 

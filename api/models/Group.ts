@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import Sequelize, { Op } from "sequelize";
-import AllModels, { ModelCommon, ModelStaticCommon } from "./index";
+import models, { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
 import { CreateStationData, Station, StationId } from "./Station";
 import { Recording } from "./Recording";
@@ -145,7 +145,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   // should be assigned to any of our stations.
 
   // Get recordings for group starting at date:
-  const builder = await new AllModels.Recording.queryBuilder().init(authUser, {
+  const builder = await new models.Recording.queryBuilder().init(authUser, {
     // Group id, and after date
     GroupId: group.id,
     recordingDateTime: {
@@ -154,8 +154,9 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   });
   builder.query.distinct = true;
   delete builder.query.limit;
-  const recordingsFromStartDate: Recording[] =
-    await AllModels.Recording.findAll(builder.get());
+  const recordingsFromStartDate: Recording[] = await models.Recording.findAll(
+    builder.get()
+  );
   const recordingOpPromises = [];
   // Find matching recordings to apply stations to from `applyToRecordingsFromDate`
   for (const recording of recordingsFromStartDate) {

@@ -17,6 +17,7 @@ import { Op } from "sequelize";
 import { Device } from "models/Device";
 import { UserId } from "@typedefs/api/common";
 import { Group } from "models/Group";
+import { Recording } from "models/Recording";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -305,6 +306,62 @@ const getDeviceInclude =
         },
         required: false,
         where: { id: requestUserId },
+      },
+    ],
+  });
+
+const getRecordingInclude =
+  (recordingsWhere: any, groupWhere: any, deviceWhere: any) =>
+  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+    where: {
+      ...recordingsWhere,
+      [Op.or]: [
+        { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
+        { "$Device.Users.DeviceUsers.UserId$": { [Op.ne]: null } },
+      ],
+    },
+    // TODO - RecordingAttributes
+    //attributes: deviceAttributes,
+    include: [
+      {
+        model: models.Group,
+        attributes: ["id", "groupname"],
+        required: false,
+        where: groupWhere,
+        include: [
+          {
+            model: models.User,
+            attributes: ["id"],
+            required: false,
+            through: {
+              where: {
+                ...useAdminAccess,
+              },
+              attributes: ["admin", "UserId"],
+            },
+            where: { id: requestUserId },
+          },
+        ],
+      },
+      {
+        model: models.Device,
+        attributes: ["id", "devicename"],
+        required: false,
+        where: deviceWhere,
+        include: [
+          {
+            model: models.User,
+            attributes: ["id"],
+            required: false,
+            through: {
+              where: {
+                ...useAdminAccess,
+              },
+              attributes: ["admin", "UserId"],
+            },
+            where: { id: requestUserId },
+          },
+        ],
       },
     ],
   });
@@ -742,9 +799,9 @@ type ModelGetter<T> = (
 ) => Promise<ModelStaticCommon<T> | ClientError | null>;
 
 type ModelsGetter<T> = (
-    id: string,
-    id2: string,
-    context?: any
+  id: string,
+  id2: string,
+  context?: any
 ) => Promise<ModelStaticCommon<T>[] | ClientError | null>;
 
 export const extractTheModel =
@@ -765,8 +822,12 @@ export const extractTheModel =
     }
     const id2 = extractValFromRequest(request, secondary);
     response.locals.onlyActive = true; // Default to only showing active devices.
-    if (("onlyActive" in request.query && Boolean(request.query.onlyActive) === false) ||
-      ("only-active" in request.query && Boolean(request.query["only-active"]) === false)) {
+    if (
+      ("onlyActive" in request.query &&
+        Boolean(request.query.onlyActive) === false) ||
+      ("only-active" in request.query &&
+        Boolean(request.query["only-active"]) === false)
+    ) {
       response.locals.onlyActive = false;
     }
 
@@ -787,7 +848,8 @@ export const extractTheModel =
             new ClientError(
               `Could not find a ${modelName} with an name or id of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user": ""}`,403
+              }${forUser ? " for user" : ""}`,
+              403
             )
           );
         } else if (byId) {
@@ -795,7 +857,7 @@ export const extractTheModel =
             new ClientError(
               `Could not find a ${modelName} with an id of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user": ""}`,
+              }${forUser ? " for user" : ""}`,
               403
             )
           );
@@ -804,16 +866,18 @@ export const extractTheModel =
             new ClientError(
               `Could not find a ${modelName} with a name of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user": ""}`,
+              }${forUser ? " for user" : ""}`,
               403
             )
           );
         } else {
           return next(
-              new ClientError(
-                  `Could not find any ${modelTypeNamePlural(modelType)}${forUser ? " for user": ""}`,
-                  403
-              )
+            new ClientError(
+              `Could not find any ${modelTypeNamePlural(modelType)}${
+                forUser ? " for user" : ""
+              }`,
+              403
+            )
           );
         }
       }
@@ -846,22 +910,22 @@ export const extractRequiredModel = <T>(
   );
 
 export const extractRequiredModels = <T>(
-    modelType: ModelStaticCommon<T>,
-    byName: boolean,
-    byId: boolean,
-    modelsGetter: ModelsGetter<T>,
-    primary?: ValidationChain,
-    secondary?: ValidationChain
+  modelType: ModelStaticCommon<T>,
+  byName: boolean,
+  byId: boolean,
+  modelsGetter: ModelsGetter<T>,
+  primary?: ValidationChain,
+  secondary?: ValidationChain
 ) =>
-    extractTheModel(
-        modelType,
-        true,
-        byName,
-        byId,
-        modelsGetter,
-        primary,
-        secondary
-    );
+  extractTheModel(
+    modelType,
+    true,
+    byName,
+    byId,
+    modelsGetter,
+    primary,
+    secondary
+  );
 
 export const extractOptionalModel = <T>(
   modelType: ModelStaticCommon<T>,
@@ -881,70 +945,176 @@ export const extractOptionalModel = <T>(
     secondary
   );
 
-const getDevices = (forRequestUser: boolean = false, asAdmin: boolean) => (unused1?: string, unused2?: string, context?: any): Promise<ModelStaticCommon<Device>[] | ClientError | null> => {
-  let getDeviceOptions;
-  if (forRequestUser) {
-    if (context && context.requestUser) {
-      // Insert request user constraints
-      getDeviceOptions = getIncludeForUser(
+const getDevices =
+  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (
+    unused1?: string,
+    unused2?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Device>[] | ClientError | null> => {
+    let getDeviceOptions;
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getDeviceOptions = getIncludeForUser(
           context,
           getDeviceInclude({}, {}),
           asAdmin
-      );
-    } else {
-      return Promise.resolve(
+        );
+      } else {
+        return Promise.resolve(
           new ClientError("No authorizing user specified")
-      );
+        );
+      }
+    } else {
+      getDeviceOptions = {
+        where: {},
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            where: {},
+          },
+        ],
+      };
     }
-  } else {
-    getDeviceOptions = {
-      where: {},
-      include: [
-        {
-          model: models.Group,
-          required: true,
-          where: {},
-        },
-      ],
-    };
-  }
 
-  if (context.onlyActive) {
-    (getDeviceOptions as any).where.active = true;
-  }
-  //console.dir(getDeviceOptions, {depth: 5});
-  return models.Device.findAll(getDeviceOptions);
-};
+    if (context.onlyActive) {
+      (getDeviceOptions as any).where.active = true;
+    }
+    //console.dir(getDeviceOptions, {depth: 5});
+    return models.Device.findAll(getDeviceOptions);
+  };
 
-const getGroups = (forRequestUser: boolean = false, asAdmin: boolean) => (unused1?: string, unused2?: string, context?: any): Promise<ModelStaticCommon<Group>[] | ClientError | null> => {
-  let getGroupOptions;
-  if (forRequestUser) {
-    if (context && context.requestUser) {
-      // Insert request user constraints
-      getGroupOptions = getIncludeForUser(
+const getGroups =
+  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (
+    unused1?: string,
+    unused2?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Group>[] | ClientError | null> => {
+    let getGroupOptions;
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getGroupOptions = getIncludeForUser(
           context,
           getGroupInclude({}, context.requestUser.id) as any,
           asAdmin
-      );
-    } else {
-      return Promise.resolve(
+        );
+      } else {
+        return Promise.resolve(
           new ClientError("No authorizing user specified")
-      );
+        );
+      }
+    } else {
+      getGroupOptions = {
+        where: {},
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            where: {},
+          },
+        ],
+      };
     }
-  } else {
-    getGroupOptions = {
-      where: {},
-      include: [
-        {
-          model: models.Group,
-          required: true,
-          where: {},
-        },
-      ],
+    return models.Group.findAll(getGroupOptions);
+  };
+
+const getRecording =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    recordingId: string,
+    usused: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
+    const recordingWhere = {
+      id: parseInt(recordingId),
     };
-  }
-  return models.Group.findAll(getGroupOptions);
-};
+
+    let getRecordingOptions;
+    const groupWhere = {};
+    const deviceWhere = {};
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getRecordingOptions = getIncludeForUser(
+          context,
+          getRecordingInclude(recordingWhere, groupWhere, deviceWhere),
+          asAdmin
+        );
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getRecordingOptions = {
+        where: recordingWhere,
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            where: groupWhere,
+          },
+          {
+            model: models.Device,
+            required: true,
+            where: deviceWhere,
+          },
+        ],
+      };
+    }
+    return models.Recording.findOne(getRecordingOptions);
+  };
+
+const getRecordings =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    recordingIds: string,
+    usused: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Recording>[] | ClientError> => {
+    const recordingWhere = {
+      id: { [Op.in]: recordingIds },
+    };
+
+    let getRecordingOptions;
+    const groupWhere = {};
+    const deviceWhere = {};
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getRecordingOptions = getIncludeForUser(
+          context,
+          getRecordingInclude(recordingWhere, groupWhere, deviceWhere),
+          asAdmin
+        );
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getRecordingOptions = {
+        where: recordingWhere,
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            where: groupWhere,
+          },
+          {
+            model: models.Device,
+            required: true,
+            where: deviceWhere,
+          },
+        ],
+      };
+    }
+    return models.Recording.findAll(getRecordingOptions);
+  };
 
 const getDevice =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
@@ -954,24 +1124,23 @@ const getDevice =
     context?: any
   ): Promise<ModelStaticCommon<Device> | ClientError | null> => {
     const deviceIsId = !isNaN(parseInt(deviceNameOrId));
-    const groupIsId =
-      groupNameOrId && !isNaN(parseInt(groupNameOrId));
+    const groupIsId = groupNameOrId && !isNaN(parseInt(groupNameOrId));
 
     let deviceWhere;
     let groupWhere = {};
     if (deviceIsId && groupIsId) {
       deviceWhere = {
-          id: parseInt(deviceNameOrId),
-          GroupId: parseInt(groupNameOrId),
+        id: parseInt(deviceNameOrId),
+        GroupId: parseInt(groupNameOrId),
       };
     } else if (deviceIsId && groupNameOrId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
-        "$Group.groupname$": groupNameOrId
+        "$Group.groupname$": groupNameOrId,
       };
     } else if (deviceIsId && !groupNameOrId) {
       deviceWhere = {
-        id: parseInt(deviceNameOrId)
+        id: parseInt(deviceNameOrId),
       };
     } else if (groupIsId) {
       deviceWhere = {
@@ -986,7 +1155,7 @@ const getDevice =
     }
     if (groupIsId) {
       groupWhere = {
-        id: parseInt(groupNameOrId)
+        id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
       groupWhere = { groupname: groupNameOrId };
@@ -1089,8 +1258,6 @@ const getGroup =
         where: groupWhere,
       };
     }
-
-    logger.warning("!! %s", getGroupOptions);
     return models.Group.findOne(getGroupOptions);
   };
 
@@ -1124,17 +1291,20 @@ const getUser =
   };
 
 const getUnauthorizedGenericModelById =
-    <T>(modelType: ModelStaticCommon<T>) =>
-        <T>(
-            id: string
-        ): Promise<ModelStaticCommon<T> | ClientError | null> => {
-          return modelType.findByPk(id);
-        };
+  <T>(modelType: ModelStaticCommon<T>) =>
+  <T>(id: string): Promise<ModelStaticCommon<T> | ClientError | null> => {
+    return modelType.findByPk(id);
+  };
 
 const getDeviceUnauthenticated = getDevice();
 const getDeviceForRequestUser = getDevice(true);
+
 const getDeviceForRequestUserAsAdmin = getDevice(true, true);
 const getDevicesForRequestUser = getDevices(true, false);
+const getRecordingForRequestUserAsAdmin = getRecording(true, true);
+const getRecordingForRequestUser = getRecording(true, false);
+const getRecordingsForRequestUserAsAdmin = getRecordings(true, true);
+const getRecordingsForRequestUser = getRecordings(true, false);
 const getGroupUnauthenticated = getGroup();
 const getGroupForRequestUser = getGroup(true);
 const getGroupForRequestUserAsAdmin = getGroup(true, true);
@@ -1153,15 +1323,15 @@ export const fetchAuthorizedRequiredDeviceInGroup = (
   );
 
 export const fetchAuthorizedRequiredDevicesInGroup = (
-    groupNameOrId: ValidationChain
+  groupNameOrId: ValidationChain
 ) =>
-    extractRequiredModels(
-        models.Device,
-        true,
-        true,
-        getDevicesForRequestUser,
-        groupNameOrId
-    );
+  extractRequiredModels(
+    models.Device,
+    true,
+    true,
+    getDevicesForRequestUser,
+    groupNameOrId
+  );
 
 export const extractUnauthenticatedRequiredDeviceById = (
   deviceId: ValidationChain
@@ -1207,9 +1377,7 @@ export const extractUnauthenticatedOptionalDeviceById = (
     getDeviceUnauthenticated,
     deviceId
   );
-export const fetchAuthorizedRequiredDeviceById = (
-  deviceId: ValidationChain
-) =>
+export const fetchAuthorizedRequiredDeviceById = (deviceId: ValidationChain) =>
   extractRequiredModel(
     models.Device,
     false,
@@ -1229,9 +1397,7 @@ export const fetchAdminAuthorizedRequiredDeviceById = (
     deviceId
   );
 
-export const fetchAuthorizedOptionalDeviceById = (
-  deviceId: ValidationChain
-) =>
+export const fetchAuthorizedOptionalDeviceById = (deviceId: ValidationChain) =>
   extractOptionalModel(
     models.Device,
     false,
@@ -1253,15 +1419,15 @@ export const fetchUnauthorizedRequiredGroupByNameOrId = (
   );
 
 export const fetchUnauthorizedOptionalGroupByNameOrId = (
-    groupNameOrId: ValidationChain
+  groupNameOrId: ValidationChain
 ) =>
-    extractOptionalModel(
-        models.Group,
-        true,
-        true,
-        getGroupUnauthenticated,
-        groupNameOrId
-    );
+  extractOptionalModel(
+    models.Group,
+    true,
+    true,
+    getGroupUnauthenticated,
+    groupNameOrId
+  );
 
 export const fetchAuthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
@@ -1318,7 +1484,6 @@ export const fetchAdminAuthorizedRequiredGroupById = (
     groupNameOrId
   );
 
-
 export const extractRequiredUserByNameOrEmailOrId = (
   userNameOrEmailOrId: ValidationChain
 ) =>
@@ -1329,11 +1494,13 @@ export const extractOptionalUserByNameOrEmailOrId = (
 ) =>
   extractOptionalModel(models.User, true, true, getUser(), userNameOrEmailOrId);
 
-export const fetchUnauthorizedOptionalUserByNameOrId = (userNameOrId: ValidationChain) =>
-  extractOptionalModel(models.User, true, true, getUser(), userNameOrId);
+export const fetchUnauthorizedOptionalUserByNameOrId = (
+  userNameOrId: ValidationChain
+) => extractOptionalModel(models.User, true, true, getUser(), userNameOrId);
 
-export const fetchUnauthorizedRequiredUserByNameOrId = (userNameOrId: ValidationChain) =>
-    extractRequiredModel(models.User, true, true, getUser(), userNameOrId);
+export const fetchUnauthorizedRequiredUserByNameOrId = (
+  userNameOrId: ValidationChain
+) => extractRequiredModel(models.User, true, true, getUser(), userNameOrId);
 
 export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
   extractOptionalModel(models.User, false, true, getUser(), userId);
@@ -1341,7 +1508,70 @@ export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
 export const extractRequiredUserById = (userId: ValidationChain) =>
   extractRequiredModel(models.User, false, true, getUser(), userId);
 
-export const fetchAuthorizedRequiredDevices = extractRequiredModels(models.Device, false, false, getDevices(true, false));
-export const fetchAuthorizedRequiredGroups = extractRequiredModels(models.Group, false, false, getGroups(true, false));
+export const fetchAdminAuthorizedRequiredRecordingById = (
+  recordingId: ValidationChain
+) =>
+  extractRequiredModel(
+    models.Recording,
+    false,
+    true,
+    getRecordingForRequestUserAsAdmin,
+    recordingId
+  );
 
-export const extractOptionalEventDetailSnapshotById = (detailId: ValidationChain) => extractOptionalModel(models.DetailSnapshot, false, true, getUnauthorizedGenericModelById(models.DetailSnapshot), detailId);
+export const fetchAuthorizedRequiredRecordingById = (
+  recordingId: ValidationChain
+) =>
+  extractRequiredModel(
+    models.Recording,
+    false,
+    true,
+    getRecordingForRequestUser,
+    recordingId
+  );
+
+export const fetchAdminAuthorizedRequiredRecordingsByIds = (
+  recordingIds: ValidationChain
+) =>
+  extractRequiredModels(
+    models.Recording,
+    false,
+    true,
+    getRecordingsForRequestUserAsAdmin,
+    recordingIds
+  );
+
+export const fetchAuthorizedRequiredRecordingsByIds = (
+  recordingIds: ValidationChain
+) =>
+  extractRequiredModels(
+    models.Recording,
+    false,
+    true,
+    getRecordingsForRequestUser,
+    recordingIds
+  );
+
+export const fetchAuthorizedRequiredDevices = extractRequiredModels(
+  models.Device,
+  false,
+  false,
+  getDevices(true, false)
+);
+export const fetchAuthorizedRequiredGroups = extractRequiredModels(
+  models.Group,
+  false,
+  false,
+  getGroups(true, false)
+);
+
+export const extractOptionalEventDetailSnapshotById = (
+  detailId: ValidationChain
+) =>
+  extractOptionalModel(
+    models.DetailSnapshot,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.DetailSnapshot),
+    detailId
+  );

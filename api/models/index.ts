@@ -59,14 +59,14 @@ const IS_DEBUG = config.server.loggerLevel === "debug";
         requestQueryCount
       );
 
-        let requestQueryTime =
-            (asyncLocalStorage.getStore() as Map<string, any>)?.get("queryTime") ||
-            0;
-        requestQueryTime += timeMs;
-        (asyncLocalStorage.getStore() as Map<string, any>)?.set(
-            "queryTime",
-            requestQueryTime
-        );
+      let requestQueryTime =
+        (asyncLocalStorage.getStore() as Map<string, any>)?.get("queryTime") ||
+        0;
+      requestQueryTime += timeMs;
+      (asyncLocalStorage.getStore() as Map<string, any>)?.set(
+        "queryTime",
+        requestQueryTime
+      );
       if (timeMs > (config.database.slowQueryLogThresholdMs || 1000)) {
         log.warning("Slow query: %s [%d]ms", msg, timeMs);
       }

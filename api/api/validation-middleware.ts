@@ -1,11 +1,7 @@
 import { ClientError } from "./customErrors";
 import models from "../models";
 import { Request, Response, NextFunction } from "express";
-import {
-  oneOf,
-  Result,
-  ValidationChain,
-} from "express-validator";
+import { oneOf, Result, ValidationChain } from "express-validator";
 import { expectedTypeOf } from "./middleware";
 import { Middleware } from "express-validator/src/base";
 import { extractValFromRequest } from "./extract-middleware";
@@ -86,7 +82,7 @@ export const anyOf = (
   }
   const oneOfChain = oneOf(fields, message);
   // Make the fieldNames available so that they can be added to the list of known allowed field names
-  Object.assign(oneOfChain, {fieldNames});
+  Object.assign(oneOfChain, { fieldNames });
   return oneOfChain;
 };
 

@@ -34,7 +34,10 @@ import {
   fetchUnauthorizedOptionalUserById,
   fetchUnauthorizedOptionalUserByNameOrId,
   fetchUnauthorizedRequiredUserByNameOrId,
-  fetchAuthorizedRequiredDevices, fetchAuthorizedRequiredDeviceInGroup, fetchAuthorizedRequiredDevicesInGroup, fetchAuthorizedRequiredGroups,
+  fetchAuthorizedRequiredDevices,
+  fetchAuthorizedRequiredDeviceInGroup,
+  fetchAuthorizedRequiredDevicesInGroup,
+  fetchAuthorizedRequiredGroups,
 } from "../extract-middleware";
 import logger from "../../logging";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
@@ -48,7 +51,7 @@ import {
   validNameOf,
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
-import {mapDevicesResponse} from "./Device";
+import { mapDevicesResponse } from "./Device";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
@@ -72,10 +75,7 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
-        anyOf(
-            validNameOf(body("groupname")),
-            validNameOf(body("groupName"))
-        )
+      anyOf(validNameOf(body("groupname")), validNameOf(body("groupName"))),
     ]),
     fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -131,9 +131,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     apiUrl,
     extractJwtAuthorizedUser,
-    validateFields([
-      query("view-mode").optional().equals("user"),
-    ]),
+    validateFields([query("view-mode").optional().equals("user")]),
     fetchAuthorizedRequiredGroups,
     async (request: Request, response: Response) => {
       return responseUtil.send(response, {
@@ -223,18 +221,21 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/devices`,
     extractJwtAuthorizedUser,
     validateFields([
-        nameOrIdOf(param("groupIdOrName")),
-        anyOf(
-            query("onlyActive").optional().isBoolean().toBoolean(),
-            query("only-active").optional().isBoolean().toBoolean(),
-        ),
+      nameOrIdOf(param("groupIdOrName")),
+      anyOf(
+        query("onlyActive").optional().isBoolean().toBoolean(),
+        query("only-active").optional().isBoolean().toBoolean()
+      ),
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredDevicesInGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       return responseUtil.send(response, {
         statusCode: 200,
-        devices: mapDevicesResponse(response.locals.devices, response.locals.viewAsSuperUser),
+        devices: mapDevicesResponse(
+          response.locals.devices,
+          response.locals.viewAsSuperUser
+        ),
         messages: ["Got devices for group"],
       });
     }
@@ -267,7 +268,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/users`,
     extractJwtAuthorizedUser,
     validateFields([nameOrIdOf(param("groupIdOrName"))]),
-      // FIXME - should this be only visible to group admins?
+    // FIXME - should this be only visible to group admins?
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const users = await response.locals.group.getUsers({
@@ -278,7 +279,7 @@ export default function (app: Application, baseUrl: string) {
         users: users.map(({ username, id, GroupUsers }) => ({
           userName: username,
           id,
-          admin: GroupUsers.admin
+          admin: GroupUsers.admin,
         })),
         messages: ["Got users for group"],
       });
@@ -309,13 +310,19 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(nameOf(body("username")), nameOf(body("userName")), idOf(body("userId"))),
+      anyOf(
+        nameOf(body("username")),
+        nameOf(body("userName")),
+        idOf(body("userId"))
+      ),
       booleanOf(body("admin")),
     ]),
     // Extract required resources to validate permissions.
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByNameOrId(body(["username", "userName", "userId"])),
+    fetchUnauthorizedRequiredUserByNameOrId(
+      body(["username", "userName", "userId"])
+    ),
     async (request, response) => {
       const action = await models.Group.addUserToGroup(
         response.locals.group,
@@ -348,12 +355,18 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(nameOf(body("username")), nameOf(body("userName")), idOf(body("userId"))),
+      anyOf(
+        nameOf(body("username")),
+        nameOf(body("userName")),
+        idOf(body("userId"))
+      ),
     ]),
     // Extract required resources to check permissions
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByNameOrId(body(["username", "userName", "userId"])),
+    fetchUnauthorizedRequiredUserByNameOrId(
+      body(["username", "userName", "userId"])
+    ),
     async (request, response) => {
       const removed = await models.Group.removeUserFromGroup(
         response.locals.group,

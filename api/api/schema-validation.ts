@@ -96,7 +96,7 @@ export const jsonSchemaOf =
       try {
         val = JSON.parse(val);
         // FIXME: Store back the parsed JSON - test this case!
-        // req[location][requestPath] = val;
+        req[location][requestPath] = val;
       } catch (e) {
         throw new ClientError("Malformed json");
       }

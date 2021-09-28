@@ -27,7 +27,8 @@ import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,
-  fetchAuthorizedOptionalDeviceById, extractOptionalEventDetailSnapshotById,
+  fetchAuthorizedOptionalDeviceById,
+  extractOptionalEventDetailSnapshotById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import EventDatesSchema from "../../../types/jsonSchemas/api/event/EventDates.schema.json";
@@ -35,7 +36,7 @@ import EventDescriptionSchema from "../../../types/jsonSchemas/api/event/EventDe
 import { EventDescription } from "@typedefs/api/event";
 import logger from "../../logging";
 import { booleanOf, anyOf, idOf, integerOf } from "../validation-middleware";
-import {ClientError} from "../customErrors";
+import { ClientError } from "../customErrors";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -63,7 +64,9 @@ const uploadEvent = async (
   try {
     await models.Event.bulkCreate(eventList);
   } catch (exception) {
-    return next(new ClientError(`Failed to record events. ${exception.message}`));
+    return next(
+      new ClientError(`Failed to record events. ${exception.message}`)
+    );
   }
   return responseUtil.send(response, {
     statusCode: 200,
@@ -128,17 +131,19 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedDevice,
     validateFields(commonEventFields),
     // Extract required resources
-      extractOptionalEventDetailSnapshotById(body("eventDetailId")),
-      async (request: Request, response: Response, next: NextFunction) => {
-        // eventDetailId is optional, but if it is supplied we need to make sure it exists
-        if (request.body.eventDetailId && !response.locals.detailsnapshot) {
-          return next(new ClientError(
-              `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
-              403
-          ));
-        }
-        next();
-      },
+    extractOptionalEventDetailSnapshotById(body("eventDetailId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // eventDetailId is optional, but if it is supplied we need to make sure it exists
+      if (request.body.eventDetailId && !response.locals.detailsnapshot) {
+        return next(
+          new ClientError(
+            `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
+            403
+          )
+        );
+      }
+      next();
+    },
     // Finally, upload event(s)
     uploadEvent
   );
@@ -178,10 +183,12 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       // eventDetailId is optional, but if it is supplied we need to make sure it exists
       if (request.body.eventDetailId && !response.locals.detailsnapshot) {
-        return next(new ClientError(
+        return next(
+          new ClientError(
             `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
             403
-        ));
+          )
+        );
       }
       next();
     },
@@ -236,10 +243,12 @@ export default function (app: Application, baseUrl: string) {
       // deviceId is optional, but if it is supplied we need to make sure that the user
       // is allowed to access it.
       if (request.query.deviceId && !response.locals.device) {
-        return next(new ClientError(
+        return next(
+          new ClientError(
             `Could not find a device with an id of '${request.query.deviceId} for user`,
             403
-        ));
+          )
+        );
       }
       next();
     },
@@ -344,10 +353,12 @@ export default function (app: Application, baseUrl: string) {
       // deviceId is optional, but if it is supplied we need to make sure that the user
       // is allowed to access it.
       if (request.query.deviceId && !response.locals.device) {
-        return next(new ClientError(
+        return next(
+          new ClientError(
             `Could not find a device with an id of '${request.query.deviceId} for user`,
             403
-        ));
+          )
+        );
       }
       next();
     },
@@ -414,10 +425,12 @@ export default function (app: Application, baseUrl: string) {
       // deviceId is optional, but if it is supplied we need to make sure that the user
       // is allowed to access it.
       if (request.query.deviceId && !response.locals.device) {
-        return next(new ClientError(
+        return next(
+          new ClientError(
             `Could not find a device with an id of '${request.query.deviceId} for user`,
             403
-        ));
+          )
+        );
       }
       next();
     },

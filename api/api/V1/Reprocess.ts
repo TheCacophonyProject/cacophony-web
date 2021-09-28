@@ -16,14 +16,21 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { validateFields } from "../middleware";
+import middleware, { expectedTypeOf, validateFields } from "../middleware";
 import { body, param } from "express-validator";
 
-import { reprocessRecording, StatusCode } from "./recordingUtil";
 import { Application, Response, Request } from "express";
-import { extractJwtAuthorizedUser } from "../extract-middleware";
+import {
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredRecordingById,
+  fetchAuthorizedRequiredRecordingsByIds,
+} from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import responseUtil from "./responseUtil";
+import { NextFunction } from "express-serve-static-core";
+import { ClientError } from "../customErrors";
+import { arrayOf, jsonSchemaOf } from "../schema-validation";
+import RecordingIdSchema from "../../../types/jsonSchemas/api/common/RecordingId.schema.json";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
@@ -44,16 +51,13 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    // FIXME - recording permissions checking should happen here?
-
-    // FIXME - Any user can ask for all their recordings to be reprocessed at once
-    //  This is a good way for us to get DDOS'd
+    fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
-      const responseInfo = await reprocessRecording(
-        response.locals.requestUser,
-        request.params.id
-      );
-      responseUtil.send(response, responseInfo);
+      await response.locals.recording.reprocess();
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Recording reprocessed"],
+      });
     }
   );
 
@@ -74,50 +78,34 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     extractJwtAuthorizedUser,
-    // FIXME - Should this be a JSON schema of something?
-    validateFields([middleware.parseJSON("recordings", body)]),
-    async (request: Request, response: Response) => {
-      // FIXME Simplify
-      const recordings = request.body.recordings;
-      const responseMessage = {
-        statusCode: 200,
-        messages: [],
-        reprocessed: [],
-        fail: [],
-      };
-
-      let status = 0;
-      for (let i = 0; i < recordings.length; i++) {
-        // FIXME - Pull out user privileges check
-        const resp = await reprocessRecording(
-          response.locals.requestUser,
-          recordings[i]
+    validateFields([
+      body("recordings")
+        .exists()
+        .withMessage(expectedTypeOf("RecordingId[]"))
+        .bail()
+        .custom(jsonSchemaOf(arrayOf(RecordingIdSchema))),
+    ]),
+    // FIXME - Should we only allow this for admin users?
+    fetchAuthorizedRequiredRecordingsByIds(body("recordings")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // FIXME: Anyone who can see a recording can ask for it to be reprocessed
+      //  currently, but should be with the exception of users with globalRead permissions?
+      const recordings = response.locals.recordings;
+      if (recordings.length !== request.body.recordings.length) {
+        return next(
+          new ClientError(
+            "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",
+            403
+          )
         );
-        if (resp.statusCode !== 200) {
-          status = status | StatusCode.Fail;
-          responseMessage.messages.push(resp.messages[0]);
-          responseMessage.statusCode = resp.statusCode;
-          responseMessage.fail.push(resp.recordingId);
-        } else {
-          responseMessage.reprocessed.push(resp.recordingId);
-          status = status | StatusCode.Success;
-        }
       }
-
-      function getReprocessMessage(status) {
-        switch (status) {
-          case StatusCode.Success:
-            return "All recordings scheduled for reprocessing";
-          case StatusCode.Fail:
-            return "Recordings could not be scheduled for reprocessing";
-          case StatusCode.Both:
-            return "Some recordings could not be scheduled for reprocessing";
-          default:
-            return "";
-        }
+      for (const recording of recordings) {
+        await recording.reprocess();
       }
-      responseMessage.messages.splice(0, 0, getReprocessMessage(status));
-      responseUtil.send(response, responseMessage);
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Recordings scheduled for reprocessing"],
+      });
     }
   );
 };

@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import e, { Application } from "express";
+import e, { Application, Request, Response } from "express";
 import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import recordingUtil, { RecordingQuery } from "./recordingUtil";
@@ -34,7 +34,7 @@ import config from "../../config";
 import { ClientError } from "../customErrors";
 import log from "../../logging";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
-import { integerOf } from "../validation-middleware";
+import { idOf, integerOf } from "../validation-middleware";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
@@ -291,21 +291,19 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     apiUrl,
     [auth.authenticateUser, middleware.viewMode(), ...queryValidators],
-    middleware.requestWrapper(
-      async (request: e.Request, response: e.Response) => {
-        const result = await recordingUtil.query(
-          request as unknown as RecordingQuery
-        );
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          limit: request.query.limit,
-          offset: request.query.offset,
-          count: result.count,
-          rows: result.rows,
-        });
-      }
-    )
+    middleware.requestWrapper(async (request: Request, response: Response) => {
+      const result = await recordingUtil.query(
+        request as unknown as RecordingQuery
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        limit: request.query.limit,
+        offset: request.query.offset,
+        count: result.count,
+        rows: result.rows,
+      });
+    })
   );
 
   /**
@@ -328,10 +326,21 @@ export default (app: Application, baseUrl: string) => {
     middleware.requestWrapper(
       async (request: RecordingQuery, response: e.Response) => {
         const user = request.user;
+        let userWhere = request.query.where;
+        if (typeof userWhere === "string") {
+          try {
+            userWhere = JSON.parse(userWhere);
+          } catch (e) {
+            responseUtil.send(response, {
+              statusCode: 400,
+              messages: ["Malformed JSON"],
+            });
+          }
+        }
         const countQuery = {
           where: {
             [Op.and]: [
-              request.query.where, // User query
+              userWhere, // User query
             ],
           },
           include: [
@@ -766,32 +775,37 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replaceTag`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-      body("what"),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("what").exists().isString(),
       body("confidence").isFloat().toFloat(),
       body("automatic").isBoolean().toBoolean(),
       middleware.parseJSON("data", body).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    ]),
+    // FIXME - validate that the user has (tagging) permissions for this recording?
+    // FIXME - extract valid track for trackId on recording with id
+    async (request: Request, response: Response) => {
+      const requestUser = response.locals.requestUser;
       const newTag = models.TrackTag.build({
         what: request.body.what,
         confidence: request.body.confidence,
         automatic: request.body.automatic,
         data: request.body.data ? request.body.data : "",
-        UserId: request.user.id,
+        UserId: requestUser.id,
         TrackId: request.params.trackId,
       }) as TrackTag;
-
-      await models.Track.replaceTag(request.params.trackId, newTag);
+      const tag = await models.Track.replaceTag(
+        Number(request.params.trackId),
+        newTag
+      );
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag added."],
-        trackTagId: newTag.id,
+        trackTagId: tag.id,
       });
-    })
+    }
   );
 
   /**
