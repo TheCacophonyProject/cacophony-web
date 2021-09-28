@@ -371,12 +371,16 @@ function isArrayOrHash(theObject: any) {
 }
 
 export function removeUndefinedParams(jsStruct: any): any {
-  const keys = Object.keys(jsStruct);
-  const resultStruct = {};
-  for (let count = 0; count < keys.length; count++) {
-    if (jsStruct[keys[count]] !== undefined) {
-      resultStruct[keys[count]] = jsStruct[keys[count]];
+  if (jsStruct !== undefined && jsStruct !== null) {
+    const keys = Object.keys(jsStruct);
+    const resultStruct = {};
+    for (let count = 0; count < keys.length; count++) {
+      if (jsStruct[keys[count]] !== undefined) {
+        resultStruct[keys[count]] = jsStruct[keys[count]];
+      }
     }
+    return resultStruct;
+  } else {
+    return jsStruct;
   }
-  return resultStruct;
 }

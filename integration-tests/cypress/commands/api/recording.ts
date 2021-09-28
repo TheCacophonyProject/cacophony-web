@@ -743,7 +743,9 @@ Cypress.Commands.add(
     additionalChecks: any = {}
   ) => {
     const params = removeUndefinedParams(query);
-    params["where"] = JSON.stringify(query["where"]);
+    if (query["where"]) {
+      params["where"] = JSON.stringify(query["where"]);
+    }
 
     logTestDescription(
       `Query recording count where '${JSON.stringify(params["where"])}'`,
@@ -760,9 +762,11 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        expect(response.body.count, "Recording count should be").to.equal(
-          expectedCount
-        );
+        if (expectedCount !== undefined) {
+          expect(response.body.count, "Recording count should be").to.equal(
+            expectedCount
+          );
+        }
         cy.wrap(response.body.count);
       } else {
         if (additionalChecks["message"] !== undefined) {

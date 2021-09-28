@@ -32,17 +32,34 @@ let lastUsedTime = DEFAULT_DATE;
 Cypress.Commands.add(
   "testDeleteRecordingsInState",
   (superuser: string, type: string, state: string) => {
-    cy.testGetRecordingIdsForQuery(superuser, {
-      type: type,
-      processingState: state,
-    }).then((recordingIds) => {
-      recordingIds.forEach((recordingId) => {
-        cy.apiRecordingDelete(superuser, recordingId.toString(), HTTP_OK200, {
-          useRawRecordingId: true,
-        });
-      });
+    cy.apiRecordingsCountCheck(
+      superuser,
+      {
+        type: type,
+        processingState: state,
+      },
+      undefined
+    ).then((count) => {
+      //query returns up to 300 entries - so run once per 300 in the count
+      for (let processed = 0; processed < count; processed = processed + 300) {
+        cy.testGetRecordingIdsForQuery(superuser, {
+          type: type,
+          processingState: state,
+        }).then((recordingIds) => {
+          recordingIds.forEach((recordingId) => {
+            cy.apiRecordingDelete(
+              superuser,
+              recordingId.toString(),
+              HTTP_OK200,
+              {
+                useRawRecordingId: true,
+              }
+            );
+          });
 
-      cy.log(JSON.stringify(recordingIds));
+          cy.log(JSON.stringify(recordingIds));
+        });
+      }
     });
   }
 );

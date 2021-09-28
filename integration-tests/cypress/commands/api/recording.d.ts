@@ -229,7 +229,7 @@ declare namespace Cypress {
       expectedCount: number,
       statusCode?: number,
       additionalChecks?: any
-    ): number;
+    ): Cypress.Chainable<number>;
 
     /* Delete a single recording using api/v1/recordings/{id} DELETE
      * Optionally: check for a non-200 statusCode
