@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
-import { checkResponse } from "../../../commands/server";
-import { getNewIdentity } from "../../../commands/names";
+import { checkResponse } from "@commands/server";
+import { getNewIdentity } from "@commands/names";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 
 import {
@@ -8,7 +8,7 @@ import {
   HTTP_Forbidden,
   HTTP_OK200,
   HTTP_Unprocessable,
-} from "../../../commands/constants";
+} from "@commands/constants";
 
 describe("Devices alerts", () => {
   const POSSUM_ALERT: ApiAlertCondition[] = [

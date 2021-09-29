@@ -1,11 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
-import { getTestName } from "../../../commands/names";
-import {
-  makeAuthorizedRequest,
-  v1ApiPath,
-  getCreds,
-} from "../../../commands/server";
-import { ApiDevicesDevice } from "../../../commands/types";
+import { getTestName } from "@commands/names";
+import { makeAuthorizedRequest, v1ApiPath, getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe("Devices list", () => {

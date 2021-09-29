@@ -24,7 +24,7 @@ import { Application, Request, Response } from "express";
 import { validNameOf, validPasswordOf } from "../validation-middleware";
 import {
   extractJwtAuthorisedSuperAdminUser,
-  extractRequiredUserByNameOrEmailOrId,
+  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
 } from "../extract-middleware";
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
@@ -61,7 +61,7 @@ export default function (app: Application) {
       // FIXME - How about not sending our passwords in the clear eh?
       validPasswordOf(body("password")),
     ]),
-    extractRequiredUserByNameOrEmailOrId(
+    fetchUnauthorizedRequiredUserByNameOrEmailOrId(
       body(["username", "userName", "nameOrEmail", "email"])
     ),
     async (request: Request, response: Response) => {
@@ -119,7 +119,7 @@ export default function (app: Application) {
     "/admin_authenticate_as_other_user",
     extractJwtAuthorisedSuperAdminUser,
     validateFields([validNameOf(body("name"))]),
-    extractRequiredUserByNameOrEmailOrId(body("name")),
+    fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("name")),
     async (request: Request, response: Response) => {
       const token = auth.createEntityJWT(response.locals.user);
       const {

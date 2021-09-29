@@ -1,10 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
-import { logTestDescription } from "../../../commands/descriptions";
-import { ApiDeviceInGroupDevice } from "../../../commands/types";
-import { HTTP_BadRequest, HTTP_Forbidden } from "../../../commands/constants";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
+import { logTestDescription } from "@commands/descriptions";
+import { HTTP_Forbidden } from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe("Device in group", () => {

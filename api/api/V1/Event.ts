@@ -28,7 +28,7 @@ import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedOptionalDeviceById,
-  extractOptionalEventDetailSnapshotById,
+  fetchOptionalEventDetailSnapshotById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import EventDatesSchema from "@schemas/api/event/EventDates.schema.json";
@@ -61,7 +61,7 @@ const uploadEvent = async (
       // If we just have a device JWT id, get the actual device at this point.
       device = await models.Device.findByPk(device.id);
     }
-    await device.update({lastConnectionTime: new Date()});
+    await device.update({ lastConnectionTime: new Date() });
   }
 
   const eventList = request.body.dateTimes.map((dateTime) => ({
@@ -140,7 +140,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedDevice,
     validateFields(commonEventFields),
     // Extract required resources
-    extractOptionalEventDetailSnapshotById(body("eventDetailId")),
+    fetchOptionalEventDetailSnapshotById(body("eventDetailId")),
     async (request: Request, response: Response, next: NextFunction) => {
       // eventDetailId is optional, but if it is supplied we need to make sure it exists
       if (request.body.eventDetailId && !response.locals.detailsnapshot) {
@@ -188,7 +188,7 @@ export default function (app: Application, baseUrl: string) {
     // Validate fields
     validateFields([idOf(param("deviceId")), ...commonEventFields]),
     // Extract required resources
-    extractOptionalEventDetailSnapshotById(body("eventDetailId")),
+    fetchOptionalEventDetailSnapshotById(body("eventDetailId")),
     async (request: Request, response: Response, next: NextFunction) => {
       // eventDetailId is optional, but if it is supplied we need to make sure it exists
       if (request.body.eventDetailId && !response.locals.detailsnapshot) {

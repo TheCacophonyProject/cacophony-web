@@ -101,139 +101,6 @@ export const extractJwtAuthorisedDevice = extractJwtAuthenticatedEntity([
   "device",
 ]);
 
-const extractModel =
-  <T>(
-    modelType: ModelStaticCommon<T>,
-    location: Location,
-    key: string,
-    stopOnFailure = true,
-    forRequestUser = false,
-    requiresAdminPermissions = false,
-    byName = false
-  ) =>
-  async (
-    request: Request,
-    response: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    const id = request[location][key];
-    const byNameOrId = byName ? "name" : "id";
-    if (!id) {
-      if (stopOnFailure) {
-        return next(
-          new ClientError(
-            `Could not find a ${modelType.name} with ${byNameOrId} of '${id}'`,
-            400
-          )
-        );
-      } else {
-        return next();
-      }
-    }
-    const modelName = modelTypeName(modelType);
-    logger.info("Get %s %s for %s", byNameOrId, id, modelName);
-
-    // FIXME - Since we have the users' jwt token, in theory we don't even need to extract the user first, right?
-    //  Except to see if they have global read permission etc.  But we could fallback to that, or incorporate it into the
-    //  query.
-
-    const { requestUser } = response.locals;
-    let options;
-    const accessTypeIsReadonly = !requiresAdminPermissions; //request.method === "GET";
-    const accessType = accessTypeIsReadonly ? "read" : "write";
-    if (forRequestUser) {
-      if (requestUser) {
-        const hasAccess = accessTypeIsReadonly
-          ? "hasGlobalRead"
-          : "hasGlobalWrite";
-
-        // If we're a regular user, and we're doing something other than a GET, we really should be an admin
-        // of the resource we're grabbing?
-
-        const requestingWithSuperAdminPermissions =
-          response.locals.viewAsSuperUser && requestUser[hasAccess]();
-
-        if (!requestingWithSuperAdminPermissions) {
-          const useAdminAccess = accessType === "write" ? { admin: true } : {};
-          // Then check that the user can access the device.
-          if (modelName === "device") {
-            options = getDeviceInclude(useAdminAccess, requestUser.id);
-          } else {
-            return next(
-              new ClientError(`Unhandled model for user ${modelName}`)
-            );
-          }
-        } else {
-          // Don't add any permission constraints when getting the resource
-          log.info(
-            `Accessing ${modelName} ${id} by ${requestUser.username} as super-admin`
-          );
-        }
-      } else {
-        return next(
-          new ClientError(`No user specified for ${modelName}.`, 422)
-        );
-      }
-    }
-    let model = null;
-    try {
-      if (!byName) {
-        if (modelName === "device") {
-          model = await modelType.findOne({
-            where: {
-              id,
-              [Op.or]: [
-                { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
-                { "$Users.DeviceUsers.UserId$": { [Op.ne]: null } },
-              ],
-            },
-            ...options,
-          });
-        } else {
-          model = await modelType.findByPk(id, options);
-        }
-      } else {
-        if (modelName === "device") {
-          model = await models.Device.findOne({
-            where: {
-              devicename: id,
-              GroupId: response.locals.group.id,
-              [Op.or]: [
-                { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
-                { "$Users.DeviceUsers.UserId$": { [Op.ne]: null } },
-              ],
-            },
-            ...options,
-          });
-        } else {
-          // FIXME - permissions for user?
-          if (!modelType.getFromName) {
-            return next(
-              new Error(`${modelName} does not support 'getFromName'`)
-            );
-          }
-          model = await modelType.getFromName(id);
-        }
-      }
-    } catch (e) {
-      return next(e);
-    }
-    if (model === null) {
-      // NOTE: If the device doesn't exist, call it an authorization error too, so that users
-      //  can't infer the existence of resources by id.
-      log.info(
-        `Attempted unauthorized ${accessType} attempt of ${modelName} ${id} by ${requestUser.username} (${requestUser.id})`
-      );
-      return next(
-        new AuthorizationError(
-          `User is not authorized to ${accessType} ${modelName} ${id}`
-        )
-      );
-    }
-    response.locals[modelTypeName(modelType)] = model;
-    next();
-  };
-
 const deviceAttributes = [
   "id",
   "devicename",
@@ -366,272 +233,16 @@ const getRecordingInclude =
     ],
   });
 
-const extractModels =
-  <T>(
-    modelType: ModelStaticCommon<T>,
-    forRequestUser = false,
-    requiresAdminPermissions = false
-  ) =>
-  async (
-    request: Request,
-    response: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    const onlyActive =
-      request.query.onlyActive && Boolean(request.query.onlyActive) !== false;
-    const modelName = modelTypeName(modelType);
-    // FIXME - Since we have the users' jwt token, in theory we don't even need to extract the user first, right?
-    //  Except to see if they have global read permission etc.  But we could fallback to that, or incorporate it into the
-    //  query.
-
-    const { requestUser } = response.locals;
-    let options: any = {
-      include: [
-        {
-          model: models.Group,
-          attributes: ["groupname"],
-        },
-      ],
-    };
-    const accessTypeIsReadonly = !requiresAdminPermissions; //request.method === "GET";
-    const accessType = accessTypeIsReadonly ? "read" : "write";
-    if (forRequestUser) {
-      if (requestUser) {
-        const hasAccess = accessTypeIsReadonly
-          ? "hasGlobalRead"
-          : "hasGlobalWrite";
-
-        // If we're a regular user, and we're doing something other than a GET, we really should be an admin
-        // of the resource we're grabbing?
-
-        const requestingWithSuperAdminPermissions =
-          response.locals.viewAsSuperUser && requestUser[hasAccess]();
-
-        if (!requestingWithSuperAdminPermissions) {
-          const useAdminAccess = accessType === "write" ? { admin: true } : {};
-          // Then check that the user can access the device.
-          if (modelName === "device") {
-            options = getDeviceInclude(useAdminAccess, requestUser.id);
-          } else {
-            return next(
-              new ClientError(`Unhandled model for user ${modelName}`)
-            );
-          }
-        } else {
-          // Don't add any permission constraints when getting the resource
-          log.info(
-            `Accessing ${modelName} by ${requestUser.username} as super-admin`
-          );
-        }
-      } else {
-        return next(
-          new ClientError(`No user specified for ${modelName}.`, 422)
-        );
-      }
-    }
-
-    if (onlyActive) {
-      options.where = { active: true };
-    }
-    if (modelName === "device") {
-      options.where = options.where || {};
-      options.where[Op.or] = [
-        { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
-        { "$Users.DeviceUsers.UserId$": { [Op.ne]: null } },
-      ];
-    }
-
-    let model = [];
-    try {
-      model = await modelType.findAll(options);
-    } catch (e) {
-      return next(e);
-    }
-    response.locals[modelTypeNamePlural(modelType)] = model;
-    next();
-  };
-
-const extractModelByName =
-  <T>(
-    modelType: ModelStaticCommon<T>,
-    location: Location,
-    key: string,
-    stopOnFailure = true
-  ) =>
-  async (
-    request: Request,
-    response: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    const name = request[location][key];
-    if (!name) {
-      if (stopOnFailure) {
-        return next(
-          new ClientError(
-            format(
-              "Could not find a %s with a name of '%s'",
-              modelType.name,
-              name
-            ),
-            400
-          )
-        );
-      } else {
-        return next();
-      }
-    }
-    const modelName = modelTypeName(modelType);
-    logger.info("Get name %s for %s", name, modelName);
-    if (!modelType.getFromName) {
-      return next(new Error(`${modelName} does not support 'getFromName'`));
-    }
-    const model = await modelType.getFromName(name);
-    if (model === null) {
-      if (stopOnFailure) {
-        return next(
-          new ClientError(
-            format(
-              "Could not find a %s with a name of '%s'",
-              modelType.name,
-              name
-            ),
-            400
-          )
-        );
-      } else {
-        return next();
-      }
-    }
-    response.locals[modelName] = model;
-    next();
-  };
-
-export const extractRecording = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) => extractModel(models.Recording, location, key, stopOnFailure);
-export const extractDevice = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) => extractModel(models.Device, location, key, stopOnFailure);
-export const extractDeviceForRequestingUser = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) => extractModel(models.Device, location, key, stopOnFailure, true);
-
-export const extractDevicesForRequestingUser = extractModels(
-  models.Device,
-  true
-);
-
-export const extractDeviceForRequestingUserWithAdminPermissions = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) => extractModel(models.Device, location, key, stopOnFailure, true, true);
-
-export const extractDeviceByNameForRequestingUserWithAdminPermissions = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) =>
-  extractModel(models.Device, location, key, stopOnFailure, true, true, true);
-
-export const extractDeviceByNameForRequestingUser = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) =>
-  extractModel(models.Device, location, key, stopOnFailure, true, false, true);
-
-export const extractOptionalDeviceForRequestingUser = (
-  location: Location,
-  key: string
-) => extractModel(models.Device, location, key, false, true);
-export const extractUser = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) => extractModel(models.User, location, key, stopOnFailure);
-export const extractGroupByName = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) => extractModelByName(models.Group, location, key, stopOnFailure);
-
-export const extractDeviceByName =
-  (location: Location, key: string, stopOnFailure = true) =>
-  async (
-    request: Request,
-    response: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    const name = request[location][key];
-    if (!name) {
-      if (stopOnFailure) {
-        return next(
-          new ClientError(
-            format("Could not find a %s with a name of '%s'", "device", name),
-            400
-          )
-        );
-      } else {
-        return next();
-      }
-    }
-    if (!response.locals.group) {
-      return next(
-        new ClientError(`No group specified for device with name ${name}`, 400)
-      );
-    }
-    const device = await models.Device.findOne({
-      where: {
-        devicename: request.params.deviceName,
-        GroupId: response.locals.group.id,
-      },
-      // include: [
-      //   {
-      //     model: models.User,
-      //     attributes: ["id", "username"],
-      //   },
-      // ],
-    });
-    if (device === null) {
-      if (stopOnFailure) {
-        return next(
-          new ClientError(
-            format("Could not find a device with a name of '%s'", name),
-            400
-          )
-        );
-      } else {
-        return next();
-      }
-    }
-    response.locals.device = device;
-    next();
-  };
-
-export const extractEventDetailSnapshot = (
-  location: Location,
-  key: string,
-  stopOnFailure = true
-) => extractModel(models.DetailSnapshot, location, key, stopOnFailure);
-export const extractOptionalEventDetailSnapshot = (
-  location: Location,
-  key: string
-) => extractModel(models.DetailSnapshot, location, key, false);
 export const parseJSONField =
-  (location: Location, key: string) =>
+  (field: ValidationChain) =>
   (request: Request, response: Response, next: NextFunction) => {
-    if (request[location][key]) {
-      let value = request[location][key];
+    let value = extractValFromRequest(request, field);
+    const location = extractFieldLocationFromRequest(request, field);
+    const key = extractFieldNameFromRequest(request, field);
+    if (value) {
       if (typeof value === "string") {
         try {
-          value = JSON.parse(request[location][key]);
+          value = JSON.parse(value);
         } catch (e) {
           return next(
             new ClientError(`Malformed JSON for '${location}.${key}'`)
@@ -645,137 +256,6 @@ export const parseJSONField =
     }
     next();
   };
-
-export const extractViewMode = (
-  request: Request,
-  response: Response,
-  next: NextFunction
-) => {
-  // This only makes sense if the user is a super-user, which we can check
-  response.locals.viewAsSuperUser = false;
-  if (request.query["view-mode"] !== "user") {
-    const globalPermissions = (response.locals.requestUser as User)
-      .globalPermission;
-    response.locals.viewAsSuperUser = globalPermissions !== "off";
-  }
-  next();
-};
-
-export const extractGroupByNameOrId = (
-  location: Location,
-  nameKey: string,
-  idKey: string | number,
-  stopOnFailure = true
-) => {
-  return extractModelNameOrId(
-    models.Group,
-    location,
-    nameKey,
-    idKey,
-    stopOnFailure
-  );
-};
-
-export const extractUserByNameOrId = (
-  location: Location,
-  nameKey: string,
-  idKey: string | number,
-  stopOnFailure = true
-) => {
-  return extractModelNameOrId(
-    models.User,
-    location,
-    nameKey,
-    idKey,
-    stopOnFailure
-  );
-};
-
-export const extractUserByName = (
-  location: Location,
-  nameKey: string,
-  stopOnFailure = true
-) => {
-  return extractModelByName(models.User, location, nameKey, stopOnFailure);
-};
-
-export const extractModelNameOrId =
-  <T>(
-    modelType: ModelStaticCommon<T>,
-    location: Location,
-    nameKey: string,
-    idKey: string | number,
-    stopOnFailure
-  ) =>
-  async (request: Request, response: Response, next: NextFunction) => {
-    const id = request[location][idKey];
-    const name = request[location][nameKey];
-    if (!id && !name) {
-      if (!id) {
-        return next(
-          new ClientError(
-            `Could not find a ${modelType.name} with an id of '${id}'`
-          )
-        );
-      }
-      if (!name) {
-        return next(
-          new ClientError(
-            `Could not find a ${modelType.name} with a name of '${name}'`
-          )
-        );
-      }
-    }
-    let model;
-    const modelName = modelTypeName(modelType);
-    if (id && Number(id) == id) {
-      logger.info("Get id %s for %s", id, modelName);
-      model = await modelType.findByPk(id);
-    }
-    if (!model && name) {
-      logger.info("Get name %s for %s", name, modelName);
-      if (!modelType.getFromName) {
-        logger.info(`${modelName} does not support 'getFromName'`);
-        return next(new Error(`${modelName} does not support 'getFromName'`));
-      }
-      model = await modelType.getFromName(name);
-    }
-    if (model === null) {
-      if (stopOnFailure) {
-        if (id) {
-          return next(
-            new ClientError(
-              `Could not find a ${modelType.name} with an id of '${name}'`
-            )
-          );
-        } else if (name) {
-          return next(
-            new ClientError(
-              `Could not find a ${modelType.name} with a name of '${name}'`
-            )
-          );
-        }
-      } else {
-        return next();
-      }
-    }
-    response.locals[modelName] = model;
-    next();
-  };
-
-// extractModelByName
-// extractModelById
-// extractModelsByNameOrId
-
-// extractModelForRequestUserByNameOrId
-// extractModelsForRequestUserByNameOrId
-
-// extractDeviceInGroupForRequestUserByNameOrId
-// extractDevicesForRequestUserByNameOrId
-
-// extractModel
-// extractOptionalModel
-//type ModelGetter<T> = (id: string, id2: string, forRequestUser: boolean) => Promise<ModelStaticCommon<T> | null>;
 
 export const extractValFromRequest = (
   request: Request,
@@ -792,6 +272,30 @@ export const extractValFromRequest = (
   }
 };
 
+const extractFieldNameFromRequest = (
+    request: Request,
+    valGetter?: ValidationChain
+): string | undefined => {
+  if (valGetter) {
+    const location = (valGetter.builder as any).locations[0];
+    // If fields is an array, take the first one that exists.
+    for (const field of (valGetter.builder as any).fields) {
+      if (request[location][field]) {
+        return field;
+      }
+    }
+  }
+};
+
+const extractFieldLocationFromRequest = (
+    request: Request,
+    valGetter?: ValidationChain
+): string | undefined => {
+  if (valGetter) {
+    return (valGetter.builder as any).locations[0];
+  }
+};
+
 type ModelGetter<T> = (
   id: string,
   id2: string,
@@ -804,7 +308,7 @@ type ModelsGetter<T> = (
   context?: any
 ) => Promise<ModelStaticCommon<T>[] | ClientError | null>;
 
-export const extractTheModel =
+export const fetchModel =
   <T>(
     modelType: ModelStaticCommon<T>,
     required: boolean,
@@ -891,7 +395,7 @@ export const extractTheModel =
     next();
   };
 
-export const extractRequiredModel = <T>(
+export const fetchRequiredModel = <T>(
   modelType: ModelStaticCommon<T>,
   byName: boolean,
   byId: boolean,
@@ -899,7 +403,7 @@ export const extractRequiredModel = <T>(
   primary: ValidationChain,
   secondary?: ValidationChain
 ) =>
-  extractTheModel(
+  fetchModel(
     modelType,
     true,
     byName,
@@ -909,7 +413,7 @@ export const extractRequiredModel = <T>(
     secondary
   );
 
-export const extractRequiredModels = <T>(
+export const fetchRequiredModels = <T>(
   modelType: ModelStaticCommon<T>,
   byName: boolean,
   byId: boolean,
@@ -917,7 +421,7 @@ export const extractRequiredModels = <T>(
   primary?: ValidationChain,
   secondary?: ValidationChain
 ) =>
-  extractTheModel(
+  fetchModel(
     modelType,
     true,
     byName,
@@ -927,7 +431,7 @@ export const extractRequiredModels = <T>(
     secondary
   );
 
-export const extractOptionalModel = <T>(
+export const fetchOptionalModel = <T>(
   modelType: ModelStaticCommon<T>,
   byName: boolean,
   byId: boolean,
@@ -935,7 +439,7 @@ export const extractOptionalModel = <T>(
   primary: ValidationChain,
   secondary?: ValidationChain
 ) =>
-  extractTheModel(
+  fetchModel(
     modelType,
     false,
     byName,
@@ -991,7 +495,7 @@ const getDevices =
       (getDeviceOptions as any).where.active = true;
     }
     //console.dir(getDeviceOptions, {depth: 5});
-    return models.Device.findAll(getDeviceOptions);
+    return models.Device.findAll({ ...getDeviceOptions, order: ["devicename"] });
   };
 
 const getGroups =
@@ -1005,11 +509,7 @@ const getGroups =
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
-        getGroupOptions = getIncludeForUser(
-          context,
-          getGroupInclude,
-          asAdmin
-        );
+        getGroupOptions = getIncludeForUser(context, getGroupInclude, asAdmin);
       } else {
         return Promise.resolve(
           new ClientError("No authorizing user specified")
@@ -1027,7 +527,7 @@ const getGroups =
         // ],
       };
     }
-    return models.Group.findAll(getGroupOptions);
+    return models.Group.findAll({ ...getGroupOptions, order: ["groupname"] });
   };
 
 const getRecording =
@@ -1121,7 +621,7 @@ const getRecordings =
         ],
       };
     }
-    return models.Recording.findAll(getRecordingOptions);
+    return models.Recording.findAll({ ...getRecordingOptions, order: ["recordingDateTime"] });
   };
 
 const getDevice =
@@ -1131,8 +631,13 @@ const getDevice =
     groupNameOrId?: string,
     context?: any
   ): Promise<ModelStaticCommon<Device> | ClientError | null> => {
-    const deviceIsId = !isNaN(parseInt(deviceNameOrId)) && parseInt(deviceNameOrId).toString() === String(deviceNameOrId);
-    const groupIsId = groupNameOrId && !isNaN(parseInt(groupNameOrId)) && parseInt(groupNameOrId).toString() === String(groupNameOrId);
+    const deviceIsId =
+      !isNaN(parseInt(deviceNameOrId)) &&
+      parseInt(deviceNameOrId).toString() === String(deviceNameOrId);
+    const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
     let deviceWhere;
     let groupWhere = {};
@@ -1278,11 +783,13 @@ const getUser =
     userNameOrEmailOrId: string
   ): Promise<ModelStaticCommon<User> | ClientError | null> => {
     // @ts-ignore
-    const userIsId = !isNaN(parseInt(userNameOrEmailOrId)) && parseInt(userNameOrEmailOrId).toString() === String(userNameOrEmailOrId);
+    const userIsId =
+      !isNaN(parseInt(userNameOrEmailOrId)) &&
+      parseInt(userNameOrEmailOrId).toString() === String(userNameOrEmailOrId);
     let userWhere;
     if (userIsId) {
       userWhere = {
-        id: parseInt(userNameOrEmailOrId)
+        id: parseInt(userNameOrEmailOrId),
       };
     } else {
       userWhere = {
@@ -1320,7 +827,7 @@ export const fetchAuthorizedRequiredDeviceInGroup = (
   deviceNameOrId: ValidationChain,
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Device,
     true,
     true,
@@ -1332,7 +839,7 @@ export const fetchAuthorizedRequiredDeviceInGroup = (
 export const fetchAuthorizedRequiredDevicesInGroup = (
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModels(
+  fetchRequiredModels(
     models.Device,
     true,
     true,
@@ -1343,7 +850,7 @@ export const fetchAuthorizedRequiredDevicesInGroup = (
 export const extractUnauthenticatedRequiredDeviceById = (
   deviceId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Device,
     false,
     true,
@@ -1354,7 +861,7 @@ export const extractUnauthenticatedRequiredDeviceInGroup = (
   deviceNameOrId: ValidationChain,
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Device,
     true,
     true,
@@ -1366,7 +873,7 @@ export const extractUnauthenticatedOptionalDeviceInGroup = (
   deviceNameOrId: ValidationChain,
   groupNameOrId: ValidationChain
 ) =>
-  extractOptionalModel(
+  fetchOptionalModel(
     models.Device,
     true,
     true,
@@ -1377,7 +884,7 @@ export const extractUnauthenticatedOptionalDeviceInGroup = (
 export const extractUnauthenticatedOptionalDeviceById = (
   deviceId: ValidationChain
 ) =>
-  extractOptionalModel(
+  fetchOptionalModel(
     models.Device,
     false,
     true,
@@ -1385,7 +892,7 @@ export const extractUnauthenticatedOptionalDeviceById = (
     deviceId
   );
 export const fetchAuthorizedRequiredDeviceById = (deviceId: ValidationChain) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Device,
     false,
     true,
@@ -1396,7 +903,7 @@ export const fetchAuthorizedRequiredDeviceById = (deviceId: ValidationChain) =>
 export const fetchAdminAuthorizedRequiredDeviceById = (
   deviceId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Device,
     false,
     true,
@@ -1405,7 +912,7 @@ export const fetchAdminAuthorizedRequiredDeviceById = (
   );
 
 export const fetchAuthorizedOptionalDeviceById = (deviceId: ValidationChain) =>
-  extractOptionalModel(
+  fetchOptionalModel(
     models.Device,
     false,
     true,
@@ -1417,7 +924,7 @@ export const fetchAuthorizedOptionalDeviceById = (deviceId: ValidationChain) =>
 export const fetchUnauthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Group,
     true,
     true,
@@ -1428,7 +935,7 @@ export const fetchUnauthorizedRequiredGroupByNameOrId = (
 export const fetchUnauthorizedOptionalGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>
-  extractOptionalModel(
+  fetchOptionalModel(
     models.Group,
     true,
     true,
@@ -1439,7 +946,7 @@ export const fetchUnauthorizedOptionalGroupByNameOrId = (
 export const fetchAuthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Group,
     true,
     true,
@@ -1450,7 +957,7 @@ export const fetchAuthorizedRequiredGroupByNameOrId = (
 export const fetchAdminAuthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Group,
     true,
     true,
@@ -1461,7 +968,7 @@ export const fetchAdminAuthorizedRequiredGroupByNameOrId = (
 export const fetchUnauthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Group,
     false,
     true,
@@ -1472,7 +979,7 @@ export const fetchUnauthorizedRequiredGroupById = (
 export const fetchAuthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Group,
     false,
     true,
@@ -1483,7 +990,7 @@ export const fetchAuthorizedRequiredGroupById = (
 export const fetchAdminAuthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Group,
     false,
     true,
@@ -1491,34 +998,27 @@ export const fetchAdminAuthorizedRequiredGroupById = (
     groupNameOrId
   );
 
-export const extractRequiredUserByNameOrEmailOrId = (
+export const fetchUnauthorizedRequiredUserByNameOrEmailOrId = (
   userNameOrEmailOrId: ValidationChain
 ) =>
-  extractRequiredModel(models.User, true, true, getUser(), userNameOrEmailOrId);
-
-export const extractOptionalUserByNameOrEmailOrId = (
-  userNameOrEmailOrId: ValidationChain
-) =>
-  extractOptionalModel(models.User, true, true, getUser(), userNameOrEmailOrId);
+  fetchRequiredModel(models.User, true, true, getUser(), userNameOrEmailOrId);
 
 export const fetchUnauthorizedOptionalUserByNameOrId = (
   userNameOrId: ValidationChain
-) => extractOptionalModel(models.User, true, true, getUser(), userNameOrId);
+) => fetchOptionalModel(models.User, true, true, getUser(), userNameOrId);
 
 export const fetchUnauthorizedRequiredUserByNameOrId = (
   userNameOrId: ValidationChain
-) => extractRequiredModel(models.User, true, true, getUser(), userNameOrId);
+) => fetchRequiredModel(models.User, true, true, getUser(), userNameOrId);
 
 export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
-  extractOptionalModel(models.User, false, true, getUser(), userId);
+  fetchOptionalModel(models.User, false, true, getUser(), userId);
 
-export const extractRequiredUserById = (userId: ValidationChain) =>
-  extractRequiredModel(models.User, false, true, getUser(), userId);
 
 export const fetchAdminAuthorizedRequiredRecordingById = (
   recordingId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Recording,
     false,
     true,
@@ -1529,7 +1029,7 @@ export const fetchAdminAuthorizedRequiredRecordingById = (
 export const fetchAuthorizedRequiredRecordingById = (
   recordingId: ValidationChain
 ) =>
-  extractRequiredModel(
+  fetchRequiredModel(
     models.Recording,
     false,
     true,
@@ -1540,7 +1040,7 @@ export const fetchAuthorizedRequiredRecordingById = (
 export const fetchAdminAuthorizedRequiredRecordingsByIds = (
   recordingIds: ValidationChain
 ) =>
-  extractRequiredModels(
+  fetchRequiredModels(
     models.Recording,
     false,
     true,
@@ -1551,7 +1051,7 @@ export const fetchAdminAuthorizedRequiredRecordingsByIds = (
 export const fetchAuthorizedRequiredRecordingsByIds = (
   recordingIds: ValidationChain
 ) =>
-  extractRequiredModels(
+  fetchRequiredModels(
     models.Recording,
     false,
     true,
@@ -1559,23 +1059,23 @@ export const fetchAuthorizedRequiredRecordingsByIds = (
     recordingIds
   );
 
-export const fetchAuthorizedRequiredDevices = extractRequiredModels(
+export const fetchAuthorizedRequiredDevices = fetchRequiredModels(
   models.Device,
   false,
   false,
   getDevices(true, false)
 );
-export const fetchAuthorizedRequiredGroups = extractRequiredModels(
+export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
   models.Group,
   false,
   false,
   getGroups(true, false)
 );
 
-export const extractOptionalEventDetailSnapshotById = (
+export const fetchOptionalEventDetailSnapshotById = (
   detailId: ValidationChain
 ) =>
-  extractOptionalModel(
+  fetchOptionalModel(
     models.DetailSnapshot,
     false,
     true,

@@ -1,15 +1,14 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import {
-  ApiStationData,
-  ApiStationDataReturned,
-} from "../../../commands/types";
-import { getCreds } from "../../../commands/server";
+import { ApiStationDataReturned } from "@commands/types";
+import { getCreds } from "@commands/server";
 
-import { HTTP_OK200 } from "../../../commands/constants";
-import { HTTP_Forbidden } from "../../../commands/constants";
-import { HTTP_Unprocessable } from "../../../commands/constants";
-import { NOT_NULL } from "../../../commands/constants";
+import {
+  HTTP_OK200,
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+  NOT_NULL,
+} from "@commands/constants";
 
 const ADMIN = true;
 const NOT_ADMIN = false;

@@ -1,16 +1,15 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { EventTypes } from "../../../commands/api/events";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
-import { ApiEventReturned } from "../../../commands/types";
+import { EventTypes } from "@commands/api/events";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
+import { ApiEventReturned } from "@commands/types";
 
 import {
   HTTP_Unprocessable,
   HTTP_OK200,
   HTTP_Forbidden,
-  HTTP_BadRequest,
-} from "../../../commands/constants";
+} from "@commands/constants";
 
 const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values
 

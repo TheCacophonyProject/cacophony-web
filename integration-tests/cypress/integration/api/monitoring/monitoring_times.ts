@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { addSeconds } from "../../../commands/api/recording-tests";
+import { addSeconds } from "@commands/api/recording-tests";
 
 describe("Monitoring : times and recording groupings", () => {
   const Dexter = "Dexter";

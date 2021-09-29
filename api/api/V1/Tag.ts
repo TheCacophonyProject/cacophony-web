@@ -25,8 +25,7 @@ import { Application, Request, Response } from "express";
 import { RecordingPermission } from "@models/Recording";
 import {
   parseJSONField,
-  extractRecording,
-  extractJwtAuthorizedUser,
+  extractJwtAuthorizedUser, fetchAuthorizedRequiredRecordingById,
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
@@ -70,12 +69,19 @@ export default function (app: Application, baseUrl: string) {
         .withMessage(expectedTypeOf("ApiTagData")),
       idOf(body("recordingId")),
     ]),
-    parseJSONField("body", "tag"),
+    parseJSONField(body("tag")),
     // We want a recording that this user has permissions for, and has permissions to tag.
-    extractRecording("body", "recordingId"),
+    fetchAuthorizedRequiredRecordingById(body("recordingId")),
+
+    // The rules for who can tag a recording are:
+    // Anyone with direct access via a group or device
+    // Anyone with superuser write access
+
+    // Not anyone with only superuser read access
+    // Not anyone with only public access
+
     async function (request: Request, response: Response) {
       // FIXME - Come back to this
-      // HERE we're doing aquisition and permissions checking in one step - maybe this should be the norm?
       const recording = await models.Recording.get(
         response.locals.requestUser,
         request.body.recordingId,

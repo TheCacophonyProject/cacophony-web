@@ -1,21 +1,14 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  // HTTP_Unprocessable,
-  // HTTP_BadRequest,
-  // HTTP_Unprocessable,
-  // HTTP_Forbidden,
-  // HTTP_OK200,
-  NOT_NULL,
-} from "../../../commands/constants";
+import { NOT_NULL } from "@commands/constants";
 
-import { ApiRecordingReturned, ApiRecordingSet } from "../../../commands/types";
+import { ApiRecordingReturned, ApiRecordingSet } from "@commands/types";
 
-import { getCreds } from "../../../commands/server";
+import { getCreds } from "@commands/server";
 
 import {
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
-} from "../../../commands/api/recording-tests";
+} from "@commands/api/recording-tests";
 
 //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
 const EXCLUDE_IDS = [

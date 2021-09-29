@@ -499,7 +499,9 @@ export const expectedTypeOf =
 
 export const isIntArray = (val) => {
   if (Array.isArray(val)) {
-    return !(val as string[]).some((v) => isNaN(parseInt(v)) || parseInt(v).toString() !== String(v));
+    return !(val as string[]).some(
+      (v) => isNaN(parseInt(v)) || parseInt(v).toString() !== String(v)
+    );
   }
   return !(isNaN(parseInt(val)) || parseInt(val).toString() !== String(val));
 };

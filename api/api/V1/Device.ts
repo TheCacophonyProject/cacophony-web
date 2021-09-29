@@ -51,24 +51,38 @@ import { ApiDeviceResponse } from "@typedefs/api/device";
 export const mapDeviceResponse = (
   device: Device,
   viewAsSuperUser: boolean
-): ApiDeviceResponse => ({
-  deviceName: device.devicename,
-  id: device.id,
-  groupName: device.Group.groupname,
-  groupId: device.GroupId,
-  location: device.location && { lat: parseInt(device.location), lng: parseInt(device.location) },
-  active: device.active,
-  saltId: device.saltId,
-  public: device.public,
-  lastConnectionTime: device.lastConnectionTime && device.lastConnectionTime.toISOString(),
-  admin:
-    viewAsSuperUser ||
-    (
-      (device as any).Group?.Users[0]?.GroupUsers ||
-      (device as any).Users[0]?.DeviceUsers
-    )?.admin ||
-    false,
-});
+): ApiDeviceResponse => {
+  const mapped: ApiDeviceResponse = {
+    deviceName: device.devicename,
+    id: device.id,
+    groupName: device.Group.groupname,
+    groupId: device.GroupId,
+    active: device.active,
+    saltId: device.saltId,
+    admin:
+      viewAsSuperUser ||
+      (
+        (device as any).Group?.Users[0]?.GroupUsers ||
+        (device as any).Users[0]?.DeviceUsers
+      )?.admin ||
+      false,
+  };
+  if (device.lastConnectionTime) {
+    mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
+  }
+  if (device.location) {
+    const {coordinates} = device.location;
+    mapped.location = {
+      lat: coordinates[0],
+      lng: coordinates[1],
+    };
+  }
+  if (device.public) {
+    mapped.public = true;
+  }
+
+  return mapped;
+};
 
 export const mapDevicesResponse = (
   devices: Device[],
@@ -182,8 +196,8 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       query("view-mode").optional().equals("user"),
       anyOf(
-          query("onlyActive").optional().isBoolean().toBoolean(),
-          query("only-active").optional().isBoolean().toBoolean()
+        query("onlyActive").optional().isBoolean().toBoolean(),
+        query("only-active").optional().isBoolean().toBoolean()
       ),
     ]),
     // FIXME

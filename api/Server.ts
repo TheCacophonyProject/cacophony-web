@@ -1,4 +1,4 @@
-import moduleAlias from 'module-alias';
+import moduleAlias from "module-alias";
 moduleAlias.addAliases({
   "@": __dirname,
   "@typedefs": __dirname + "/../types",
@@ -6,7 +6,7 @@ moduleAlias.addAliases({
   "@models": __dirname + "/models",
   "@config": __dirname + "/config.js",
   "@log": __dirname + "/logging.js",
-  "@schemas":  __dirname + "/../types/jsonSchemas",
+  "@schemas": __dirname + "/../types/jsonSchemas",
 });
 
 import { Application, NextFunction, Request, Response } from "express";
@@ -28,7 +28,6 @@ import { promisify } from "util";
 import { AsyncLocalStorage } from "async_hooks";
 import { performance } from "perf_hooks";
 import { v4 as uuidv4 } from "uuid";
-
 
 export const asyncLocalStorage = new AsyncLocalStorage();
 const asyncExec = promisify(exec);

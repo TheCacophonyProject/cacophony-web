@@ -8,7 +8,7 @@
         "baseUrl": ".",
         "paths": {
             "@typedefs/*":  ["../types/*"],
-            "@/commands/*": ["./cypress/commands/*"],
+            "@commands/*": ["./cypress/commands/*"],
             "@/*": ["./cypress/*"],
         }
     },

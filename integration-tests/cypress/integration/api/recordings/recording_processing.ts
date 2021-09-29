@@ -1,13 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  //  HTTP_Unprocessable,
-  //  HTTP_BadRequest,
-  //HTTP_Forbidden,
-  //  HTTP_OK200,
-  NOT_NULL,
-  superuser,
-  suPassword,
-} from "../../../commands/constants";
+import { NOT_NULL, superuser, suPassword } from "@commands/constants";
 
 //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
 const EXCLUDE_IDS = [
@@ -20,7 +12,7 @@ import {
   ApiRecordingReturned,
   ApiRecordingSet,
   ApiRecordingForProcessing,
-} from "../../../commands/types";
+} from "@commands/types";
 
 import {
   TestCreateExpectedRecordingData,

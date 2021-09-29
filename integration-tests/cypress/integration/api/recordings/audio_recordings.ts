@@ -1,12 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Unprocessable,
-  HTTP_BadRequest,
-  //HTTP_Forbidden,
-  //HTTP_OK200,
-} from "../../../commands/constants";
+import { HTTP_Unprocessable, HTTP_BadRequest } from "@commands/constants";
 
-//TODO: workaround for issue 81 - imprecide locations by default.  Remove when fixed.
+//TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
 const EXCLUDE_IDS = [
   ".Tracks[].TrackTags[].TrackId",
   ".Tracks[].id",
@@ -16,12 +11,12 @@ import {
   ApiRecordingReturned,
   ApiRecordingSet,
   ApiLocation,
-} from "../../../commands/types";
+} from "@commands/types";
 
 import {
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
-} from "../../../commands/api/recording-tests";
+} from "@commands/api/recording-tests";
 
 const templateExpectedRecording: ApiRecordingReturned = {
   // TODO: Issue 87.  Filehash missing on returned values

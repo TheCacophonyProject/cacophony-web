@@ -1,9 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_AuthorizationError,
-  HTTP_Forbidden,
-} from "../../../commands/constants";
-import { getTestName } from "../../../commands/names";
+import { HTTP_AuthorizationError, HTTP_Forbidden } from "@commands/constants";
+import { getTestName } from "@commands/names";
 
 describe("Authentication", () => {
   const group1 = "first_group";

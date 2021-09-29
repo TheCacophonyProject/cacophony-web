@@ -14,8 +14,9 @@ export interface ApiDeviceResponse {
   saltId: SaltId;
   active: boolean;
   admin: boolean;
-  public: boolean;
-  lastConnectionTime: IsoFormattedDateString;
+
+  public?: boolean; // Assumed to be private unless otherwise specified.
+  lastConnectionTime?: IsoFormattedDateString;
   location?: LatLng;
   users?: ApiDeviceUserRelationshipResponse[]
 }

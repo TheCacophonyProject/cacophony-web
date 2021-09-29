@@ -4,9 +4,9 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_Unprocessable,
-} from "../../../commands/constants";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
+} from "@commands/constants";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe("Device reregister", () => {

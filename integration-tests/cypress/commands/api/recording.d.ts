@@ -4,8 +4,6 @@
 declare namespace Cypress {
   type ApiRecordingSet = import("../types").ApiRecordingSet;
   type ApiRecordingReturned = import("../types").ApiRecordingReturned;
-  type ApiRecordingDataMetadata = import("../types").ApiRecordingDataMetadata;
-  type Interception = import("cypress/types/net-stubbing").Interception;
   type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
   type RecordingId = number;
 

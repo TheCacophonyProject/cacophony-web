@@ -5,13 +5,13 @@ import {
   ApiGroupUserRelation,
   ApiDeviceIdAndName,
   ApiGroupUser,
-} from "../../../commands/types";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
+} from "@commands/types";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
 
-import { HTTP_OK200 } from "../../../commands/constants";
-import { HTTP_Unprocessable } from "../../../commands/constants";
-import { HTTP_Forbidden } from "../../../commands/constants";
+import { HTTP_OK200 } from "@commands/constants";
+import { HTTP_Unprocessable } from "@commands/constants";
+import { HTTP_Forbidden } from "@commands/constants";
 
 const ADMIN = true;
 const NOT_ADMIN = false;

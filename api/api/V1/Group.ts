@@ -45,14 +45,21 @@ import {
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
 import { Group } from "models/Group";
-import {ApiGroupResponse } from "@typedefs/api/group";
+import { ApiGroupResponse } from "@typedefs/api/group";
 
-const mapGroup = (group: Group, viewAsSuperAdmin: boolean): ApiGroupResponse => ({
+const mapGroup = (
+  group: Group,
+  viewAsSuperAdmin: boolean
+): ApiGroupResponse => ({
   id: group.id,
   groupName: group.groupname,
   admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
 });
-const mapGroups = (groups: Group[], viewAsSuperAdmin: boolean): ApiGroupResponse[] => groups.map(group => mapGroup(group, viewAsSuperAdmin));
+const mapGroups = (
+  groups: Group[],
+  viewAsSuperAdmin: boolean
+): ApiGroupResponse[] =>
+  groups.map((group) => mapGroup(group, viewAsSuperAdmin));
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
@@ -135,7 +142,10 @@ export default function (app: Application, baseUrl: string) {
     validateFields([query("view-mode").optional().equals("user")]),
     fetchAuthorizedRequiredGroups,
     async (request: Request, response: Response) => {
-      const groups: ApiGroupResponse[] = mapGroups(response.locals.groups, response.locals.viewAsSuperUser);
+      const groups: ApiGroupResponse[] = mapGroups(
+        response.locals.groups,
+        response.locals.viewAsSuperUser
+      );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
@@ -419,9 +429,7 @@ export default function (app: Application, baseUrl: string) {
     // Extract required resources
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     // Extract further non-dependent resources:
-
-    // FIXME - make this take body("stations") form
-    parseJSONField("body", "stations"),
+    parseJSONField(body("stations")),
     async (request, response) => {
       const stationsUpdated = await models.Group.addStationsToGroup(
         response.locals.requestUser,

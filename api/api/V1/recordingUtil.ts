@@ -71,7 +71,7 @@ import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Tag } from "@models/Tag";
 import { RecordingId, TrackTagId } from "@typedefs/api/common";
 import { ApiTagData } from "@typedefs/api/tag";
-import {Device} from "@models/Device";
+import { Device } from "@models/Device";
 
 let CptvDecoder;
 (async () => {
@@ -366,7 +366,13 @@ async function createThumbnail(
     .toBuffer();
   return { data: img, meta: thumbMeta };
 }
-const makeUploadHandler = util.multipartUpload("raw", async (uploadingDevice: Device, data: any, key: string): Promise<Recording> => {
+const makeUploadHandler = util.multipartUpload(
+  "raw",
+  async (
+    uploadingDevice: Device,
+    data: any,
+    key: string
+  ): Promise<Recording> => {
     const recording = models.Recording.buildSafely(data);
 
     if (!uploadingDevice) {
@@ -475,7 +481,8 @@ const makeUploadHandler = util.multipartUpload("raw", async (uploadingDevice: De
       }
     }
     return recording;
-});
+  }
+);
 
 // Returns a promise for the recordings query specified in the
 // request.

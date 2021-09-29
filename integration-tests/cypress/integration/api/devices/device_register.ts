@@ -1,13 +1,13 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
 import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_OK200,
   HTTP_Unprocessable,
-} from "../../../commands/constants";
+} from "@commands/constants";
 
 describe("Device register", () => {
   const camsGroup = "cams";

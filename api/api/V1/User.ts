@@ -34,8 +34,7 @@ import {
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
-  extractUserByName,
-  fetchUnauthorizedOptionalUserByNameOrId,
+  fetchUnauthorizedOptionalUserByNameOrId, fetchUnauthorizedRequiredUserByNameOrId,
 } from "../extract-middleware";
 import logger from "@log";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
@@ -173,9 +172,8 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  // FIXME - Make this username *or* id?
   /**
-   * @api {get} api/v1/users/:username Get details for a user
+   * @api {get} api/v1/users/:userNameOrId Get details for a user
    * @apiName GetUser
    * @apiGroup User
    *
@@ -187,12 +185,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:userName`,
+    `${apiUrl}/:userNameOrId`,
     extractJwtAuthorizedUser,
-    validateFields([validNameOf(param("userName"))]),
-    extractUserByName("params", "userName"),
+    validateFields([validNameOf(param("userNameOrId"))]),
+    fetchUnauthorizedRequiredUserByNameOrId(param("userNameOrId")),
     // FIXME - should a regular user be able to get user information for any other user?
-    // FIXME - map user info
     async (request, response) => {
       return responseUtil.send(response, {
         statusCode: 200,

@@ -1,12 +1,11 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { HTTP_BadRequest, HTTP_Forbidden } from "../../../commands/constants";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
-import {
-  ApiDeviceInGroupDevice,
-  ApiDeviceUsersUser,
-} from "../../../commands/types";
+import { HTTP_BadRequest, HTTP_Forbidden } from "@commands/constants";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
+import { ApiDeviceInGroupDevice, ApiDeviceUsersUser } from "@commands/types";
+import ApiDeviceResponse = Cypress.ApiDeviceResponse;
+import ApiDeviceUserRelationshipResponse = Cypress.ApiDeviceUserRelationshipResponse;
 
 describe("Devices add / view / remove users", () => {
   const groupAdmin = "Harold-groupAdmin";
@@ -24,14 +23,14 @@ describe("Devices add / view / remove users", () => {
   const camera2 = "second_H_camera";
   const superuser = "admin_test";
   const suPassword = "admin_test";
-  let deviceMemberDetails: ApiDeviceUsersUser;
-  let deviceAdminDetails: ApiDeviceUsersUser;
-  let groupAdminDetails: ApiDeviceUsersUser;
-  let groupMemberDetails: ApiDeviceUsersUser;
-  let userBDetails: ApiDeviceUsersUser;
-  let userCDetails: ApiDeviceUsersUser;
-  let userDDetails: ApiDeviceUsersUser;
-  let expectedDeviceInGroupUserView: ApiDeviceInGroupDevice;
+  let deviceMemberDetails: ApiDeviceUserRelationshipResponse;
+  let deviceAdminDetails: ApiDeviceUserRelationshipResponse;
+  let groupAdminDetails: ApiDeviceUserRelationshipResponse;
+  let groupMemberDetails: ApiDeviceUserRelationshipResponse;
+  let userBDetails: ApiDeviceUserRelationshipResponse;
+  let userCDetails: ApiDeviceUserRelationshipResponse;
+  let userDDetails: ApiDeviceUserRelationshipResponse;
+  let expectedDeviceInGroupUserView: ApiDeviceResponse;
 
   before(() => {
     cy.apiUserAdd(groupMember);
@@ -41,36 +40,35 @@ describe("Devices add / view / remove users", () => {
     cy.testCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
       deviceMemberDetails = {
         id: getCreds(deviceMember).id,
-        username: getTestName(deviceMember),
-        email: getTestName(deviceMember.toLowerCase()) + "@api.created.com",
+        userName: getTestName(deviceMember),
         relation: "device",
         admin: false,
       };
       deviceAdminDetails = {
         id: getCreds(deviceAdmin).id,
-        username: getTestName(deviceAdmin),
-        email: getTestName(deviceAdmin.toLowerCase()) + "@api.created.com",
+        userName: getTestName(deviceAdmin),
         relation: "device",
         admin: true,
       };
       groupAdminDetails = {
         id: getCreds(groupAdmin).id,
-        username: getTestName(groupAdmin),
-        email: getTestName(groupAdmin.toLowerCase()) + "@api.created.com",
+        userName: getTestName(groupAdmin),
         relation: "group",
         admin: true,
       };
       groupMemberDetails = {
         id: getCreds(groupMember).id,
-        username: getTestName(groupMember),
-        email: getTestName(groupMember.toLowerCase()) + "@api.created.com",
+        userName: getTestName(groupMember),
         relation: "group",
         admin: false,
       };
       expectedDeviceInGroupUserView = {
         id: getCreds(camera).id,
+        saltId: getCreds(camera).id,
         deviceName: getTestName(camera),
         groupName: getTestName(group),
+        groupId: getCreds(group).id,
+        active: true,
         admin: false,
       };
     });
@@ -80,8 +78,7 @@ describe("Devices add / view / remove users", () => {
     cy.apiUserAdd(userC).then(() => {
       userCDetails = {
         id: getCreds(userC).id,
-        username: getTestName(userC),
-        email: getTestName(userC.toLowerCase()) + "@api.created.com",
+        userName: getTestName(userC),
         relation: "device",
         admin: true,
       };
@@ -89,8 +86,7 @@ describe("Devices add / view / remove users", () => {
     cy.apiUserAdd(userD).then(() => {
       userDDetails = {
         id: getCreds(userD).id,
-        username: getTestName(userD),
-        email: getTestName(userD.toLowerCase()) + "@api.created.com",
+        userName: getTestName(userD),
         relation: "device",
         admin: true,
       };
@@ -98,8 +94,7 @@ describe("Devices add / view / remove users", () => {
     cy.testCreateUserGroupAndDevice(userB, group2, camera2).then(() => {
       userBDetails = {
         id: getCreds(userB).id,
-        username: getTestName(userB),
-        email: getTestName(userB.toLowerCase()) + "@api.created.com",
+        userName: getTestName(userB),
         relation: "group",
         admin: true,
       };

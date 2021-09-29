@@ -25,7 +25,7 @@ import config from "@config";
 import jsonwebtoken from "jsonwebtoken";
 import { param, query } from "express-validator";
 import { Application, Request, Response } from "express";
-import {extractJwtAuthorizedUser} from "../extract-middleware";
+import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { File } from "@models/File";
 
 export default (app: Application, baseUrl: string) => {
@@ -50,15 +50,15 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     [auth.authenticateUser],
-      extractJwtAuthorizedUser,
-      (request: Request, response: Response) => {
-          util.multipartUpload("f", async (uploader, data, key): Promise<File> => {
-              const dbRecord = models.File.buildSafely(data);
-              dbRecord.UserId = response.locals.requestUser.id;
-              dbRecord.fileKey = key;
-              return dbRecord;
-          });
-      }
+    extractJwtAuthorizedUser,
+    (request: Request, response: Response) => {
+      util.multipartUpload("f", async (uploader, data, key): Promise<File> => {
+        const dbRecord = models.File.buildSafely(data);
+        dbRecord.UserId = response.locals.requestUser.id;
+        dbRecord.fileKey = key;
+        return dbRecord;
+      });
+    }
   );
 
   /**

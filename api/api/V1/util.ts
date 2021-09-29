@@ -23,12 +23,19 @@ import log from "@log";
 import responseUtil from "./responseUtil";
 import modelsUtil from "@models/util/util";
 import crypto from "crypto";
-import { Request, Response} from "express";
+import { Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
-import models, {ModelCommon} from "@models";
+import models, { ModelCommon } from "@models";
 
-function multipartUpload(keyPrefix: string, buildRecord: <T>(uploadingDevice: Device | null, data: any, key: string) => Promise<ModelCommon<T>>) {
+function multipartUpload(
+  keyPrefix: string,
+  buildRecord: <T>(
+    uploadingDevice: Device | null,
+    data: any,
+    key: string
+  ) => Promise<ModelCommon<T>>
+) {
   return (request: Request, response: Response) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
@@ -157,12 +164,18 @@ function multipartUpload(keyPrefix: string, buildRecord: <T>(uploadingDevice: De
 
         data.filename = filename;
 
-        let uploadingDevice = response.locals.device || response.locals.requestDevice;
+        let uploadingDevice =
+          response.locals.device || response.locals.requestDevice;
         if (uploadingDevice) {
-          if (response.locals.requestDevice && !response.locals.requestDevice.devicename) {
-            uploadingDevice = await models.Device.findByPk(response.locals.requestDevice.id);
+          if (
+            response.locals.requestDevice &&
+            !response.locals.requestDevice.devicename
+          ) {
+            uploadingDevice = await models.Device.findByPk(
+              response.locals.requestDevice.id
+            );
             // Update the last connection time for the uploading device.
-            await uploadingDevice.update({lastConnectionTime: new Date()});
+            await uploadingDevice.update({ lastConnectionTime: new Date() });
           }
         }
 
@@ -171,7 +184,9 @@ function multipartUpload(keyPrefix: string, buildRecord: <T>(uploadingDevice: De
 
         if (uploadingDevice) {
           // Update the device location from the recording.
-          await uploadingDevice.update({location: (dbRecord as Recording).location});
+          await uploadingDevice.update({
+            location: (dbRecord as Recording).location,
+          });
         }
 
         await dbRecord.save();

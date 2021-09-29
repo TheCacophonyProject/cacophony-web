@@ -1,15 +1,13 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  //  HTTP_Unprocessable,
-  HTTP_BadRequest,
   NOT_NULL,
   superuser,
   suPassword,
   HTTP_Forbidden,
   HTTP_Unprocessable,
-} from "../../../commands/constants";
+} from "@commands/constants";
 
-import { getCreds } from "../../../commands/server";
+import { getCreds } from "@commands/server";
 
 //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
 const EXCLUDE_IDS = [
@@ -22,13 +20,13 @@ import {
   ApiRecordingReturned,
   ApiRecordingSet,
   ApiRecordingForProcessing,
-} from "../../../commands/types";
+} from "@commands/types";
 
 import {
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
   TestCreateExpectedProcessingData,
-} from "../../../commands/api/recording-tests";
+} from "@commands/api/recording-tests";
 
 const templateRecording: ApiRecordingSet = {
   type: "thermalRaw",

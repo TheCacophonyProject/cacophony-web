@@ -1,12 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { ApiGroupsDevice, ApiDevicesDevice } from "../../../commands/types";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
 
-import { HTTP_OK200 } from "../../../commands/constants";
-import { HTTP_Forbidden } from "../../../commands/constants";
-import { HTTP_Unprocessable } from "../../../commands/constants";
+import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 const ADMIN = true;

@@ -22,7 +22,11 @@ module.exports = {
       queryInterface.addColumn("Devices", "currentConfig", Sequelize.JSONB),
       queryInterface.addColumn("Devices", "newConfig", Sequelize.JSONB),
       queryInterface.addColumn("Devices", "location", Sequelize.STRING),
-      queryInterface.addColumn("Devices", "lastConnectionTime", Sequelize.STRING),
+      queryInterface.addColumn(
+        "Devices",
+        "lastConnectionTime",
+        Sequelize.STRING
+      ),
     ]);
   },
 };

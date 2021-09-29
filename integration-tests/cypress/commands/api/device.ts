@@ -12,6 +12,7 @@ import {
 import { logTestDescription } from "../descriptions";
 import { ApiDevicesDevice, ApiDeviceUsersUser } from "../types";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
+import ApiDeviceUserRelationshipResponse = Cypress.ApiDeviceUserRelationshipResponse;
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -306,7 +307,7 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    expectedUsers: ApiDeviceUsersUser[],
+    expectedUsers: ApiDeviceUserRelationshipResponse[],
     statusCode: number = 200
   ) => {
     logTestDescription(
@@ -337,7 +338,7 @@ Cypress.Commands.add(
 
         for (let index = 0; index < expectedUsers.length; index++) {
           expect(users[index].id).to.equal(expectedUsers[index].id);
-          expect(users[index].userName).to.equal(expectedUsers[index].username);
+          expect(users[index].userName).to.equal(expectedUsers[index].userName);
           expect(users[index].relation).to.equal(expectedUsers[index].relation);
           expect(users[index].admin).to.equal(expectedUsers[index].admin);
         }

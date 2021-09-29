@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import e, { Application, Request, Response } from "express";
+import e, {Application, NextFunction, Request, Response} from "express";
 import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import recordingUtil, { RecordingQuery } from "./recordingUtil";
@@ -36,9 +36,10 @@ import log from "@log";
 import {
     extractJwtAuthorisedDevice,
     extractJwtAuthorizedUser,
-    fetchAuthorizedRequiredDeviceById, fetchAuthorizedRequiredDeviceInGroup
+    fetchAuthorizedRequiredDeviceById,
+    fetchAuthorizedRequiredDeviceInGroup, fetchAuthorizedRequiredDevices,
 } from "../extract-middleware";
-import {idOf, integerOf, validNameOf} from "../validation-middleware";
+import { idOf, integerOf, validNameOf } from "../validation-middleware";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
@@ -115,11 +116,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiSuccess {Number} recordingId ID of the recording.
    * @apiuse V1ResponseError
    */
-  app.post(
-    apiUrl,
-    extractJwtAuthorisedDevice,
-    recordingUtil.makeUploadHandler
-  );
+  app.post(apiUrl, extractJwtAuthorisedDevice, recordingUtil.makeUploadHandler);
 
   /**
    * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a new recording on behalf of device using group
@@ -142,12 +139,15 @@ export default (app: Application, baseUrl: string) => {
 
   app.post(
     `${apiUrl}/device/:deviceName/group/:groupName`,
-      extractJwtAuthorizedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       validNameOf(param("groupName")),
       validNameOf(param("deviceName")),
     ]),
-      fetchAuthorizedRequiredDeviceInGroup(param("deviceName"), param("groupName")),
+    fetchAuthorizedRequiredDeviceInGroup(
+      param("deviceName"),
+      param("groupName")
+    ),
     recordingUtil.makeUploadHandler
   );
 
@@ -173,12 +173,10 @@ export default (app: Application, baseUrl: string) => {
 
   app.post(
     `${apiUrl}/device/:deviceId`,
-      extractJwtAuthorizedUser,
-      validateFields([
-          idOf(param("deviceId")),
-      ]),
-      fetchAuthorizedRequiredDeviceById(param("deviceId")),
-      recordingUtil.makeUploadHandler
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("deviceId"))]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    recordingUtil.makeUploadHandler
   );
 
   const queryValidators = Object.freeze([
@@ -216,13 +214,22 @@ export default (app: Application, baseUrl: string) => {
    * @apiuse V1ResponseError
    */
   app.post(
-    apiUrl + "/:deviceName",
-    [
-      auth.authenticateUser,
-      middleware.getDevice(param),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler)
+    `${apiUrl}/:deviceName`,
+        extractJwtAuthorizedUser,
+        validateFields([
+        validNameOf(param("deviceName"))
+    ]),
+    fetchAuthorizedRequiredDevices,
+      (request: Request, response: Response, next: NextFunction) => {
+        const targetDeviceName = request.params.deviceName;
+        const devices = response.locals.devices.filter(({deviceName}) => deviceName === targetDeviceName);
+        if (devices.length !== 1) {
+            return next(new ClientError(`Could not find unique device with name ${targetDeviceName} - try the /api/v1/recordings/device/:deviceName/group/:groupName endpoint.`));
+        }
+        response.locals.device = devices[0];
+        next();
+      },
+    recordingUtil.makeUploadHandler
   );
 
   // FIXME - Should we just delete this now?

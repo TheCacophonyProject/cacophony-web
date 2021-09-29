@@ -1,9 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import {
-  logTestDescription,
-  NO_LOG_MESSAGE,
-} from "../../../commands/descriptions";
+import { logTestDescription, NO_LOG_MESSAGE } from "@commands/descriptions";
 
 describe("Recording authorizations", () => {
   const admin = "Betty-groupAdmin";
