@@ -18,13 +18,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import middleware from "../middleware";
 import auth from "../auth";
-import models from "../../models";
+import models from "@models";
 import util from "./util";
 import responseUtil from "./responseUtil";
-import config from "../../config";
+import config from "@config";
 import jsonwebtoken from "jsonwebtoken";
 import { param, query } from "express-validator";
-import { Application } from "express";
+import { Application, Request, Response } from "express";
+import {extractJwtAuthorizedUser} from "../extract-middleware";
+import { File } from "@models/File";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/files`;
@@ -48,14 +50,15 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     [auth.authenticateUser],
-    middleware.requestWrapper(
-      util.multipartUpload("f", async (request, data, key) => {
-        const dbRecord = models.File.buildSafely(data);
-        dbRecord.UserId = request.user.id;
-        dbRecord.fileKey = key;
-        return dbRecord;
-      })
-    )
+      extractJwtAuthorizedUser,
+      (request: Request, response: Response) => {
+          util.multipartUpload("f", async (uploader, data, key): Promise<File> => {
+              const dbRecord = models.File.buildSafely(data);
+              dbRecord.UserId = response.locals.requestUser.id;
+              dbRecord.fileKey = key;
+              return dbRecord;
+          });
+      }
   );
 
   /**

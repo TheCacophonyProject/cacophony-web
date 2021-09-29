@@ -18,12 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { validateFields } from "../middleware";
 import auth from "../auth";
-import models from "../../models";
+import models from "@models";
 import responseUtil from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, Response, Request, NextFunction } from "express";
 import { ClientError } from "../customErrors";
-import logger from "../../logging";
+import logger from "@log";
 import {
   extractJwtAuthorizedUser,
   extractJwtAuthorisedDevice,
@@ -56,8 +56,11 @@ export const mapDeviceResponse = (
   id: device.id,
   groupName: device.Group.groupname,
   groupId: device.GroupId,
+  location: device.location && { lat: parseInt(device.location), lng: parseInt(device.location) },
   active: device.active,
   saltId: device.saltId,
+  public: device.public,
+  lastConnectionTime: device.lastConnectionTime && device.lastConnectionTime.toISOString(),
   admin:
     viewAsSuperUser ||
     (
@@ -81,7 +84,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName RegisterDevice
    * @apiGroup Device
    *
-   * @apiParam {String} devicename Unique (within group) device name.
+   * @apiParam {String} deviceName Unique (within group) device name.
    * @apiParam {String} password Password for the device.
    * @apiParam {String} group Name of group to assign the device to.
    * @apiParam {Integer} [saltId] Salt ID of device. Will be set as device id if not given.
@@ -178,7 +181,10 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
-      query("onlyActive").default(true).isBoolean().toBoolean(),
+      anyOf(
+          query("onlyActive").optional().isBoolean().toBoolean(),
+          query("only-active").optional().isBoolean().toBoolean()
+      ),
     ]),
     // FIXME
     fetchAuthorizedRequiredDevices,

@@ -13,3 +13,7 @@ export type DeviceId = number;
 export type SaltId = number;
 export type GroupId = number;
 export type EndUserAgreementVersion = number;
+export interface LatLng {
+    lat: number;
+    lng: number;
+}

@@ -9,10 +9,12 @@
         "allowSyntheticDefaultImports": true,
         "baseUrl": ".",
         "paths": {
-            "@/*": [
-                "src/*"
-            ],
-            "@typedefs/*":  ["../types/*"]
+            "@/*": ["src/*"],
+            "@api/*": ["src/api/*"],
+            "@api": ["src/api/index.ts"],
+            "@typedefs/*":  ["../types/*"],
+            "@config":  ["src/config.js"],
+            "@const":  ["src/const.ts"]
         },
     },
     "include": [

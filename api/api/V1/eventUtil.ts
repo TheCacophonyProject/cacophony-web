@@ -1,11 +1,11 @@
-import models from "../../models";
-import { Device } from "../../models/Device";
-import { Event } from "../../models/Event";
+import models from "@models";
+import { Device } from "@models/Device";
+import { Event } from "@models/Event";
 
-import { QueryOptions } from "../../models/Event";
+import { QueryOptions } from "@models/Event";
 import { groupSystemErrors } from "./systemError";
 import moment, { Moment } from "moment";
-import logger from "../../logging";
+import logger from "@log";
 export const errors = async (
   request: { query: any; res: any },
   admin?: boolean

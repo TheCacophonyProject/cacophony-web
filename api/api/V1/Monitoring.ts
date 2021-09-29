@@ -24,7 +24,6 @@ import middleware, {
   expectedTypeOf,
   isIntArray,
 } from "../middleware";
-import auth from "../auth";
 import { Application, Response, Request } from "express";
 import {
   calculateMonitoringPageCriteria,
@@ -35,7 +34,7 @@ import responseUtil from "./responseUtil";
 import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
-import logger from "../../logging";
+import logger from "@log";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;

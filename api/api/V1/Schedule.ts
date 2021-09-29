@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import middleware from "../middleware";
 import auth from "../auth";
 import { body, param } from "express-validator";
-import models from "../../models";
+import models from "@models";
 import responseUtil from "./responseUtil";
 import { Application, Response } from "express";
 

@@ -13,9 +13,9 @@
 
 <script>
 import config from "../../config";
-import userapi from "../../api/User.api";
+import userapi from "@api/User.api";
 import querystring from "querystring";
-import recordingsapi from "../../api/Recording.api";
+import recordingsapi from "@api/Recording.api";
 
 export default {
   name: "CsvDownload",

@@ -240,7 +240,7 @@ const deviceAttributes = [
   "location",
   "saltId",
   "GroupId",
-  "lastConnectionTime",
+  // FIXME - Use lastConnectionTime column.
   "active",
 ];
 
@@ -953,6 +953,18 @@ const getDevices =
     context?: any
   ): Promise<ModelStaticCommon<Device>[] | ClientError | null> => {
     let getDeviceOptions;
+
+    const allDevicesOptions = {
+      where: {},
+      include: [
+        {
+          model: models.Group,
+          required: true,
+          where: {},
+        },
+      ],
+    };
+
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
@@ -967,18 +979,12 @@ const getDevices =
         );
       }
     } else {
-      getDeviceOptions = {
-        where: {},
-        include: [
-          {
-            model: models.Group,
-            required: true,
-            where: {},
-          },
-        ],
-      };
+      getDeviceOptions = allDevicesOptions;
     }
 
+    if (!getDeviceOptions.where) {
+      getDeviceOptions = allDevicesOptions;
+    }
 
     if (context.onlyActive) {
       (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
@@ -1012,13 +1018,13 @@ const getGroups =
     } else {
       getGroupOptions = {
         where: {},
-        include: [
-          {
-            model: models.Group,
-            required: true,
-            where: {},
-          },
-        ],
+        // include: [
+        //   {
+        //     model: models.Group,
+        //     required: true,
+        //     where: {},
+        //   },
+        // ],
       };
     }
     return models.Group.findAll(getGroupOptions);
@@ -1125,8 +1131,8 @@ const getDevice =
     groupNameOrId?: string,
     context?: any
   ): Promise<ModelStaticCommon<Device> | ClientError | null> => {
-    const deviceIsId = !isNaN(parseInt(deviceNameOrId));
-    const groupIsId = groupNameOrId && !isNaN(parseInt(groupNameOrId));
+    const deviceIsId = !isNaN(parseInt(deviceNameOrId)) && parseInt(deviceNameOrId).toString() === String(deviceNameOrId);
+    const groupIsId = groupNameOrId && !isNaN(parseInt(groupNameOrId)) && parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
     let deviceWhere;
     let groupWhere = {};
@@ -1272,15 +1278,11 @@ const getUser =
     userNameOrEmailOrId: string
   ): Promise<ModelStaticCommon<User> | ClientError | null> => {
     // @ts-ignore
-    const userCouldBeNameOrId = !isNaN(parseInt(userNameOrEmailOrId));
+    const userIsId = !isNaN(parseInt(userNameOrEmailOrId)) && parseInt(userNameOrEmailOrId).toString() === String(userNameOrEmailOrId);
     let userWhere;
-    if (userCouldBeNameOrId) {
+    if (userIsId) {
       userWhere = {
-        [Op.or]: [
-          { id: parseInt(userNameOrEmailOrId) },
-          { username: userNameOrEmailOrId },
-          { email: userNameOrEmailOrId },
-        ],
+        id: parseInt(userNameOrEmailOrId)
       };
     } else {
       userWhere = {

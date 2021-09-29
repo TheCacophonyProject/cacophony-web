@@ -12,7 +12,7 @@
 <script>
 import SelectTagTypes from "./SelectTagTypes.vue";
 import SelectAnimal from "./SelectAnimal.vue";
-import DefaultLabels from "../../const.ts";
+import DefaultLabels from "../../const";
 
 export default {
   name: "SelectTags",

@@ -17,16 +17,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import sharp from "sharp";
 import zlib from "zlib";
-import { AlertStatic } from "../../models/Alert";
-import { AI_MASTER } from "../../models/TrackTag";
+import { AlertStatic } from "@models/Alert";
+import { AI_MASTER } from "@models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
 import urljoin from "url-join";
 import { ClientError } from "../customErrors";
-import config from "../../config";
-import log from "../../logging";
-import models from "../../models";
+import config from "@config";
+import models from "@models";
 import responseUtil from "./responseUtil";
 import util from "./util";
 import { Request, Response } from "express";
@@ -38,11 +37,11 @@ import {
   RecordingProcessingState,
   RecordingType,
   TagMode,
-} from "../../models/Recording";
-import { Event, QueryOptions } from "../../models/Event";
-import { User } from "../../models/User";
+} from "@models/Recording";
+import { Event, QueryOptions } from "@models/Event";
+import { User } from "@models/User";
 import { Order } from "sequelize";
-import { FileId } from "../../models/File";
+import { FileId } from "@models/File";
 import {
   DeviceSummary,
   DeviceVisitMap,
@@ -50,11 +49,11 @@ import {
   VisitEvent,
   VisitSummary,
 } from "./Visits";
-import { Station } from "../../models/Station";
-import modelsUtil from "../../models/util/util";
-import { dynamicImportESM } from "../../dynamic-import-esm";
+import { Station } from "@models/Station";
+import modelsUtil from "@models/util/util";
+import { dynamicImportESM } from "@/dynamic-import-esm";
 import Sequelize from "sequelize";
-import logger from "../../logging";
+import log from "@log";
 import {
   ClassifierModelDescription,
   ClassifierRawResult,
@@ -67,11 +66,17 @@ import { GetObjectOutput } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
 import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
 import SendData = ManagedUpload.SendData;
-import { Track } from "../../models/Track";
-import { DetailSnapshotId } from "../../models/DetailSnapshot";
-import { Tag } from "../../models/Tag";
+import { Track } from "@models/Track";
+import { DetailSnapshotId } from "@models/DetailSnapshot";
+import { Tag } from "@models/Tag";
 import { RecordingId, TrackTagId } from "@typedefs/api/common";
 import { ApiTagData } from "@typedefs/api/tag";
+import {Device} from "@models/Device";
+
+let CptvDecoder;
+(async () => {
+  CptvDecoder = (await dynamicImportESM("cptv-decoder")).CptvDecoder;
+})();
 
 // @ts-ignore
 export interface RecordingQuery extends Request {
@@ -210,7 +215,7 @@ async function getCPTVFrame(
   let finished = false;
   let currentFrame = 0;
   let frame;
-  logger.info("Extracting frame #%d for thumbnail", frameNumber);
+  log.info("Extracting frame #%d for thumbnail", frameNumber);
   while (!finished) {
     frame = await decoder.getNextFrame();
     if (frame && frame.meta.isBackgroundFrame) {
@@ -361,13 +366,12 @@ async function createThumbnail(
     .toBuffer();
   return { data: img, meta: thumbMeta };
 }
-
-function makeUploadHandler(mungeData?: (any) => any) {
-  return util.multipartUpload("raw", async (request, data, key) => {
-    if (mungeData) {
-      data = mungeData(data);
-    }
+const makeUploadHandler = util.multipartUpload("raw", async (uploadingDevice: Device, data: any, key: string): Promise<Recording> => {
     const recording = models.Recording.buildSafely(data);
+
+    if (!uploadingDevice) {
+      log.error("No uploading device");
+    }
 
     // Add the filehash if present
     if (data.fileHash) {
@@ -386,7 +390,6 @@ function makeUploadHandler(mungeData?: (any) => any) {
         .catch((err) => {
           return err;
         });
-      const { CptvDecoder } = await dynamicImportESM("cptv-decoder");
       const decoder = new CptvDecoder();
       const metadata = await decoder.getBytesMetadata(
         new Uint8Array(fileData.Body)
@@ -437,20 +440,17 @@ function makeUploadHandler(mungeData?: (any) => any) {
 
     recording.rawFileKey = key;
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
-    recording.DeviceId = request.device.id;
-    recording.GroupId = request.device.GroupId;
+    recording.DeviceId = uploadingDevice.id;
+    recording.GroupId = uploadingDevice.GroupId;
     const matchingStation = await tryToMatchRecordingToStation(recording);
     if (matchingStation) {
       recording.StationId = matchingStation.id;
     }
 
-    if (typeof request.device.public === "boolean") {
-      recording.public = request.device.public;
+    if (typeof uploadingDevice.public === "boolean") {
+      recording.public = uploadingDevice.public;
     }
 
-    await recording.validate();
-    // NOTE: The documentation for save() claims that it also does validation,
-    //  so not sure if we really need the call to validate() here.
     await recording.save();
     if (data.metadata) {
       await tracksFromMeta(recording, data.metadata);
@@ -475,8 +475,7 @@ function makeUploadHandler(mungeData?: (any) => any) {
       }
     }
     return recording;
-  });
-}
+});
 
 // Returns a promise for the recordings query specified in the
 // request.
@@ -1584,7 +1583,7 @@ const calculateTags = (
     multipleAnimalConfidence > MULTIPLE_ANIMAL_CONFIDENCE;
 
   if (hasMultipleAnimals) {
-    logger.debug(
+    log.debug(
       "multiple animals detected, (%d)",
       multipleAnimalConfidence.toFixed(2)
     );

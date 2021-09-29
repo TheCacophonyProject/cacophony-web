@@ -1,4 +1,4 @@
-import {DeviceId, GroupId, SaltId} from "./common";
+import {DeviceId, GroupId, IsoFormattedDateString, LatLng, SaltId} from "./common";
 import {ApiUserResponse} from "./user";
 
 export interface ApiDeviceUserRelationshipResponse extends ApiUserResponse {
@@ -14,5 +14,8 @@ export interface ApiDeviceResponse {
   saltId: SaltId;
   active: boolean;
   admin: boolean;
+  public: boolean;
+  lastConnectionTime: IsoFormattedDateString;
+  location?: LatLng;
   users?: ApiDeviceUserRelationshipResponse[]
 }

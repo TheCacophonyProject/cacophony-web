@@ -1,4 +1,4 @@
-import api from "../../api";
+import api from "@api";
 import {ApiLoggedInUserResponse} from "@typedefs/api/user";
 
 const state = {
@@ -7,7 +7,7 @@ const state = {
   JWT: localStorage.getItem("JWT"),
   userData: {
     id: Number(localStorage.getItem("userId")),
-    username: localStorage.getItem("userName"),
+    userName: localStorage.getItem("userName"),
     email: localStorage.getItem("email"),
     globalPermission: getGlobalPermission(),
     isSuperUser: isSuperUser(),

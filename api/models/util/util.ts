@@ -17,14 +17,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import AWS from "aws-sdk";
-import log from "../../logging";
+import log from "@log";
 import fs from "fs";
 import mime from "mime";
-import config from "../../config";
+import config from "@config";
 import Sequelize from "sequelize";
-import { User } from "../User";
-import { ModelStaticCommon } from "../index";
-import { ClientError } from "../../api/customErrors";
+import { User } from "@models/User";
+import { ModelStaticCommon } from "@models";
+import { ClientError } from "@api/customErrors";
 
 const Op = Sequelize.Op;
 interface QueryResult<T> {

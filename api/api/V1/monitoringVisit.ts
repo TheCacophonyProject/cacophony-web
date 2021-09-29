@@ -1,9 +1,9 @@
 import moment, { Moment } from "moment";
 import { MonitoringPageCriteria } from "./monitoringPage";
-import models from "../../models";
-import { Recording } from "../../models/Recording";
+import models from "@models";
+import { Recording } from "@models/Recording";
 import { getTrackTag, unidentifiedTags } from "./Visits";
-import { User } from "../../models/User";
+import { User } from "@models/User";
 import { ClientError } from "../customErrors";
 
 const MINUTE = 60;

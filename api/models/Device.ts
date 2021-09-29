@@ -37,7 +37,10 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   groupname: string;
   saltId: number;
   active: boolean;
+  public: boolean;
+  lastConnectionTime: Date | null;
   password?: string;
+  location?: string;
   comparePassword: (password: string) => Promise<boolean>;
   reRegister: (
     devicename: string,
@@ -114,7 +117,7 @@ export default function (
       allowNull: false,
     },
     location: {
-      type: DataTypes.STRING,
+      type: DataTypes.GEOMETRY,
     },
     lastConnectionTime: {
       type: DataTypes.DATE,
@@ -122,12 +125,6 @@ export default function (
     public: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-    },
-    currentConfig: {
-      type: DataTypes.JSONB,
-    },
-    newConfig: {
-      type: DataTypes.JSONB,
     },
     saltId: {
       type: DataTypes.INTEGER,

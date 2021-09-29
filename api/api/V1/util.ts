@@ -19,13 +19,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import moment from "moment";
 import { v4 as uuidv4 } from "uuid";
 import multiparty from "multiparty";
-import log from "../../logging";
+import log from "@log";
 import responseUtil from "./responseUtil";
-import modelsUtil from "../../models/util/util";
+import modelsUtil from "@models/util/util";
 import crypto from "crypto";
+import { Request, Response} from "express";
+import { Recording } from "@models/Recording";
+import { Device } from "@models/Device";
+import models, {ModelCommon} from "@models";
 
-function multipartUpload(keyPrefix, buildRecord) {
-  return (request, response) => {
+function multipartUpload(keyPrefix: string, buildRecord: <T>(uploadingDevice: Device | null, data: any, key: string) => Promise<ModelCommon<T>>) {
+  return (request: Request, response: Response) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;
@@ -97,7 +101,7 @@ function multipartUpload(keyPrefix, buildRecord) {
         return;
       }
 
-      let dbRecord;
+      let dbRecord: any;
       try {
         // Wait for the upload to complete.
         const uploadResult = await upload;
@@ -153,9 +157,23 @@ function multipartUpload(keyPrefix, buildRecord) {
 
         data.filename = filename;
 
+        let uploadingDevice = response.locals.device || response.locals.requestDevice;
+        if (uploadingDevice) {
+          if (response.locals.requestDevice && !response.locals.requestDevice.devicename) {
+            uploadingDevice = await models.Device.findByPk(response.locals.requestDevice.id);
+            // Update the last connection time for the uploading device.
+            await uploadingDevice.update({lastConnectionTime: new Date()});
+          }
+        }
+
         // Store a record for the upload.
-        dbRecord = await buildRecord(request, data, key);
-        await dbRecord.validate();
+        dbRecord = await buildRecord(uploadingDevice || null, data, key);
+
+        if (uploadingDevice) {
+          // Update the device location from the recording.
+          await uploadingDevice.update({location: (dbRecord as Recording).location});
+        }
+
         await dbRecord.save();
       } catch (err) {
         responseUtil.serverError(response, err);

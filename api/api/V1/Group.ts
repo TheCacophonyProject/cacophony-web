@@ -16,32 +16,24 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { validateFields } from "../middleware";
-import auth from "../auth";
-import models from "../../models";
+import { validateFields } from "../middleware";
+import models from "@models";
 import responseUtil from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  extractGroupByNameOrId,
   parseJSONField,
-  extractUserByNameOrId,
   extractJwtAuthorizedUser,
-  fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedOptionalGroupByNameOrId,
   fetchAuthorizedRequiredGroupByNameOrId,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
-  fetchUnauthorizedOptionalUserById,
-  fetchUnauthorizedOptionalUserByNameOrId,
   fetchUnauthorizedRequiredUserByNameOrId,
-  fetchAuthorizedRequiredDevices,
-  fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
 } from "../extract-middleware";
-import logger from "../../logging";
+import logger from "@log";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
-import ApiCreateStationDataSchema from "../../../types/jsonSchemas/api/station/ApiCreateStationData.schema.json";
+import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
 import {
   booleanOf,
   anyOf,
@@ -53,12 +45,12 @@ import {
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
 import { Group } from "models/Group";
-import {ApiGroupResponse, ApiGroupUserRelationshipResponse } from "@typedefs/api/group";
+import {ApiGroupResponse } from "@typedefs/api/group";
 
 const mapGroup = (group: Group, viewAsSuperAdmin: boolean): ApiGroupResponse => ({
   id: group.id,
   groupName: group.groupname,
-  admin: (group as any).Users[0].GroupUsers.admin || viewAsSuperAdmin,
+  admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
 });
 const mapGroups = (groups: Group[], viewAsSuperAdmin: boolean): ApiGroupResponse[] => groups.map(group => mapGroup(group, viewAsSuperAdmin));
 

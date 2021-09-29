@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { Application } from "express";
 import fs from "fs";
 import path from "path";
-import logger from "../../logging";
+import logger from "@log";
 
 export default function (app: Application) {
   const excludedFiles = [

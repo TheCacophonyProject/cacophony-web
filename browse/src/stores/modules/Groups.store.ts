@@ -1,4 +1,4 @@
-import api from "../../api";
+import api from "@api";
 import {ApiGroupResponse} from "@typedefs/api/group";
 
 const state: {

@@ -12,7 +12,14 @@
         "baseUrl": ".",
         "resolveJsonModule": true,
         "paths": {
-            "@typedefs/*":  ["../types/*"]
+            "@/*": ["./*"],
+            "@typedefs/*":  ["../types/*"],
+            "@schemas/*":  ["../types/jsonSchemas/*"],
+            "@api/*":  ["./api/*"],
+            "@models/*":  ["./models/*"],
+            "@models":  ["./models/index.ts"],
+            "@config":  ["./config.ts"],
+            "@log":  ["./logging.ts"]
         }
     },
     "include": [

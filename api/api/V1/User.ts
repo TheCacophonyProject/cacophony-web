@@ -18,13 +18,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { validateFields } from "../middleware";
 import auth from "../auth";
-import models from "../../models";
+import models from "@models";
 import responseUtil from "./responseUtil";
 import { body, param, matchedData } from "express-validator";
 import { ClientError } from "../customErrors";
 import { Application, NextFunction, Request, Response } from "express";
-import config from "../../config";
-import { User } from "../../models/User";
+import config from "@config";
+import { User } from "@models/User";
 import {
   anyOf,
   integerOf,
@@ -37,7 +37,7 @@ import {
   extractUserByName,
   fetchUnauthorizedOptionalUserByNameOrId,
 } from "../extract-middleware";
-import logger from "../../logging";
+import logger from "@log";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
@@ -159,7 +159,13 @@ export default function (app: Application, baseUrl: string) {
       }
     },
     async (request: Request, response: Response) => {
-      await response.locals.requestUser.update(matchedData(request));
+      // map matchedData to db fields.
+      const dataToUpdate = matchedData(request);
+      if (dataToUpdate.userName) {
+        dataToUpdate.username = dataToUpdate.userName;
+        delete dataToUpdate.userName;
+      }
+      await response.locals.requestUser.update(dataToUpdate);
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated user."],

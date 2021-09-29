@@ -17,13 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware";
-import auth from "../auth";
 import { body } from "express-validator";
-import models from "../../models";
+import models from "@models";
 import recordingUtil from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import { Application, Request, Response } from "express";
-import { RecordingPermission } from "../../models/Recording";
+import { RecordingPermission } from "@models/Recording";
 import {
   parseJSONField,
   extractRecording,
@@ -31,7 +30,7 @@ import {
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
-import TagData from "../../../types/jsonSchemas/api/tag/ApiTagData.schema.json";
+import TagData from "@schemas/api/tag/ApiTagData.schema.json";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;

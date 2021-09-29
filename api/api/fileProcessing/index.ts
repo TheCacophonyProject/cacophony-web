@@ -1,14 +1,13 @@
 import responseUtil from "../V1/responseUtil";
 import middleware, {
   getRecordingById,
-  parseJSON,
   parseJSONInternal,
   expectedTypeOf,
   validateFields,
 } from "../middleware";
-import log from "../../logging";
+import log from "@log";
 import { body, param, query, oneOf } from "express-validator";
-import models from "../../models";
+import models from "@models";
 import recordingUtil, {
   finishedProcessingRecording,
 } from "../V1/recordingUtil";
@@ -17,14 +16,12 @@ import {
   Recording,
   RecordingProcessingState,
   RecordingType,
-} from "../../models/Recording";
+} from "@models/Recording";
 
-// TODO(jon): Part of our build process can make this generate JSONschema, and then
-//  we can validate that in our middleware.  We can also use that to generate better docs.
 import { ClassifierRawResult } from "@typedefs/api/fileProcessing";
-import ClassifierRawResultSchema from "../../../types/jsonSchemas/api/fileProcessing/ClassifierRawResult.schema.json";
+import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRawResult.schema.json";
 import { jsonSchemaOf } from "../schema-validation";
-import { anyOf, booleanOf, idOf } from "../validation-middleware";
+import { booleanOf, idOf } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 
 export default function (app: Application) {

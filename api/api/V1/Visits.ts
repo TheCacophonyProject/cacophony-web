@@ -11,12 +11,12 @@ All tracks of a recording always belong to the same visit
 
 // FIXME - This file seems to be in the wrong place - this folder is full of API endpoints...
 
-import { Recording } from "../../models/Recording";
-import { TrackTag } from "../../models/TrackTag";
-import { Track } from "../../models/Track";
-import { AI_MASTER } from "../../models/TrackTag";
+import { Recording } from "@models/Recording";
+import { TrackTag } from "@models/TrackTag";
+import { Track } from "@models/Track";
+import { AI_MASTER } from "@models/TrackTag";
 import moment, { Moment } from "moment";
-import { Event } from "../../models/Event";
+import { Event } from "@models/Event";
 
 let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;

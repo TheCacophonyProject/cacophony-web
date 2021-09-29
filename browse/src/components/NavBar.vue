@@ -186,7 +186,6 @@ export default {
       return false;
     },
     userName() {
-      //debugger;
       return this.$store.state.User.userData.userName;
     },
     globalPermission() {
@@ -236,7 +235,7 @@ export default {
     },
     superUserName() {
       const creds = superUserCreds();
-      return creds && creds.username;
+      return creds && creds.userName;
     },
     logout() {
       this.$store.dispatch("User/LOGOUT");

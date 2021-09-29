@@ -58,7 +58,7 @@
 </template>
 
 <script>
-import api from "../../api";
+import api from "@api";
 import { mapState } from "vuex";
 import BasicTags from "../Audio/BasicTags.vue";
 import CustomTags from "../Audio/CustomTags.vue";

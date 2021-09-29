@@ -6,7 +6,7 @@ export const consoleTransport = new winston.transports.Console({
   level: config.server.loggerLevel,
   format: format.combine(
     format((info) => {
-      const asyncStore = asyncLocalStorage.getStore() as Map<string, string>;
+      const asyncStore = asyncLocalStorage && asyncLocalStorage.getStore() as Map<string, string>;
       if (asyncStore) {
         const requestId = asyncStore.get("requestId");
         if (requestId) {

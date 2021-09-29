@@ -1,3 +1,14 @@
+import moduleAlias from 'module-alias';
+moduleAlias.addAliases({
+  "@": __dirname,
+  "@typedefs": __dirname + "/../types",
+  "@api": __dirname + "/api",
+  "@models": __dirname + "/models",
+  "@config": __dirname + "/config.js",
+  "@log": __dirname + "/logging.js",
+  "@schemas":  __dirname + "/../types/jsonSchemas",
+});
+
 import { Application, NextFunction, Request, Response } from "express";
 import express from "express";
 import passport from "passport";
@@ -5,7 +16,7 @@ import process from "process";
 import http from "http";
 import config from "./config";
 import models from "./models";
-import log, { consoleTransport } from "./logging";
+import log, { consoleTransport } from "@log";
 import customErrors from "./api/customErrors";
 import modelsUtil from "./models/util/util";
 import initialiseApi from "./api/V1";
@@ -17,6 +28,7 @@ import { promisify } from "util";
 import { AsyncLocalStorage } from "async_hooks";
 import { performance } from "perf_hooks";
 import { v4 as uuidv4 } from "uuid";
+
 
 export const asyncLocalStorage = new AsyncLocalStorage();
 const asyncExec = promisify(exec);

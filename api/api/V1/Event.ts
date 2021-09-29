@@ -17,8 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware";
-import models from "../../models";
-import { QueryOptions } from "../../models/Event";
+import models from "@models";
+import { QueryOptions } from "@models/Event";
 import responseUtil from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, Response, Request, NextFunction } from "express";
@@ -31,10 +31,10 @@ import {
   extractOptionalEventDetailSnapshotById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
-import EventDatesSchema from "../../../types/jsonSchemas/api/event/EventDates.schema.json";
-import EventDescriptionSchema from "../../../types/jsonSchemas/api/event/EventDescription.schema.json";
+import EventDatesSchema from "@schemas/api/event/EventDates.schema.json";
+import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json";
 import { EventDescription } from "@typedefs/api/event";
-import logger from "../../logging";
+import logger from "@log";
 import { booleanOf, anyOf, idOf, integerOf } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 
@@ -54,7 +54,16 @@ const uploadEvent = async (
     );
     detailsId = detail.id;
   }
-  const device = response.locals.device || response.locals.requestDevice;
+  let device = response.locals.device || response.locals.requestDevice;
+  if (response.locals.requestDevice) {
+    // The device is connecting directly, so update the last connected time.
+    if (!device.devicename) {
+      // If we just have a device JWT id, get the actual device at this point.
+      device = await models.Device.findByPk(device.id);
+    }
+    await device.update({lastConnectionTime: new Date()});
+  }
+
   const eventList = request.body.dateTimes.map((dateTime) => ({
     DeviceId: device.id,
     EventDetailId: detailsId,

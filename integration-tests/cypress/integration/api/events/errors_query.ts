@@ -1,17 +1,17 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "../../../commands/names";
+import { getTestName } from "@/commands/names";
 //import { getCreds } from "../../../commands/server";
 import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_Unprocessable,
-} from "../../../commands/constants";
+} from "@/commands/constants";
 import {
   ApiEventErrorSimilar,
   ApiEventError,
   ApiEventErrorCategory,
-} from "../../../commands/types";
+} from "@/commands/types";
 
 //
 // This test set checks for errors reported against device services

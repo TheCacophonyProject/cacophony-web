@@ -21,20 +21,24 @@ import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import recordingUtil, { RecordingQuery } from "./recordingUtil";
 import responseUtil from "./responseUtil";
-import models from "../../models";
+import models from "@models";
 // @ts-ignore
 import * as csv from "fast-csv";
 import { body, param, query } from "express-validator";
-import { RecordingPermission } from "../../models/Recording";
-import { TrackTag } from "../../models/TrackTag";
-import { Track } from "../../models/Track";
+import { RecordingPermission } from "@models/Recording";
+import { TrackTag } from "@models/TrackTag";
+import { Track } from "@models/Track";
 import { Op } from "sequelize";
 import jwt from "jsonwebtoken";
-import config from "../../config";
+import config from "@config";
 import { ClientError } from "../customErrors";
-import log from "../../logging";
-import { extractJwtAuthorizedUser } from "../extract-middleware";
-import { idOf, integerOf } from "../validation-middleware";
+import log from "@log";
+import {
+    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedUser,
+    fetchAuthorizedRequiredDeviceById, fetchAuthorizedRequiredDeviceInGroup
+} from "../extract-middleware";
+import {idOf, integerOf, validNameOf} from "../validation-middleware";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
@@ -113,12 +117,12 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     apiUrl,
-    [auth.authenticateDevice],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler())
+    extractJwtAuthorisedDevice,
+    recordingUtil.makeUploadHandler
   );
 
   /**
-   * @api {post} /api/v1/recordings/device/:devicename/group/:groupname Add a new recording on behalf of device using group
+   * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a new recording on behalf of device using group
    * @apiName PostRecordingOnBehalfUsingGroup
    * @apiGroup Recordings
    * @apiDescription Called by a user to upload raw thermal video on behalf of a device.
@@ -137,25 +141,25 @@ export default (app: Application, baseUrl: string) => {
    */
 
   app.post(
-    `${apiUrl}/device/:devicename/group/:groupname`,
-    [
-      auth.authenticateUser,
-      middleware.setGroupName(param),
-      middleware.getDevice(param),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler())
+    `${apiUrl}/device/:deviceName/group/:groupName`,
+      extractJwtAuthorizedUser,
+    validateFields([
+      validNameOf(param("groupName")),
+      validNameOf(param("deviceName")),
+    ]),
+      fetchAuthorizedRequiredDeviceInGroup(param("deviceName"), param("groupName")),
+    recordingUtil.makeUploadHandler
   );
 
   /**
-   * @api {post} /api/v1/recordings/device/:deviceID Add a new recording on behalf of device
+   * @api {post} /api/v1/recordings/device/:deviceId Add a new recording on behalf of device
    * @apiName PostRecordingOnBehalf
    * @apiGroup Recordings
    * @apiDescription Called by a user to upload raw thermal video on behalf of a device.
    * The user must have permission to view videos from the device or the call will return an
    * error.
    *
-   * @apiParam {String} deviceID ID of the device to upload on behalf of. If you don't have access to the ID the devicename can be used instead in it's place.
+   * @apiParam {String} deviceId ID of the device to upload on behalf of. If you don't have access to the ID the devicename can be used instead in it's place.
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse RecordingParams
@@ -168,13 +172,13 @@ export default (app: Application, baseUrl: string) => {
    */
 
   app.post(
-    `${apiUrl}/device/:deviceID`,
-    [
-      auth.authenticateUser,
-      middleware.getDevice(param, "deviceID"),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler())
+    `${apiUrl}/device/:deviceId`,
+      extractJwtAuthorizedUser,
+      validateFields([
+          idOf(param("deviceId")),
+      ]),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      recordingUtil.makeUploadHandler
   );
 
   const queryValidators = Object.freeze([
@@ -212,13 +216,13 @@ export default (app: Application, baseUrl: string) => {
    * @apiuse V1ResponseError
    */
   app.post(
-    apiUrl + "/:devicename",
+    apiUrl + "/:deviceName",
     [
       auth.authenticateUser,
       middleware.getDevice(param),
       auth.userCanAccessDevices,
     ],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler())
+    middleware.requestWrapper(recordingUtil.makeUploadHandler)
   );
 
   // FIXME - Should we just delete this now?

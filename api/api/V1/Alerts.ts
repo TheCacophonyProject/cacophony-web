@@ -17,12 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware";
-import models from "../../models";
+import models from "@models";
 import responseUtil from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
-import ApiAlertConditionSchema from "../../../types/jsonSchemas/api/alerts/ApiAlertCondition.schema.json";
+import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,

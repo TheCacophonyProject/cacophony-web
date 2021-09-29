@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { expectedTypeOf, validateFields } from "../middleware";
+import { expectedTypeOf, validateFields } from "../middleware";
 import { body, param } from "express-validator";
 
 import { Application, Response, Request } from "express";
@@ -30,7 +30,8 @@ import responseUtil from "./responseUtil";
 import { NextFunction } from "express-serve-static-core";
 import { ClientError } from "../customErrors";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
-import RecordingIdSchema from "../../../types/jsonSchemas/api/common/RecordingId.schema.json";
+import { uniq as dedupe } from "lodash";
+import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
@@ -91,7 +92,8 @@ export default (app: Application, baseUrl: string) => {
       // FIXME: Anyone who can see a recording can ask for it to be reprocessed
       //  currently, but should be with the exception of users with globalRead permissions?
       const recordings = response.locals.recordings;
-      if (recordings.length !== request.body.recordings.length) {
+      // NOTE: Dedupe array when length checking in case the user specified the same recordingId more than once.
+      if (recordings.length !== dedupe(request.body.recordings).length) {
         return next(
           new ClientError(
             "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",
