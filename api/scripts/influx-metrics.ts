@@ -6,6 +6,8 @@ import { program } from "commander";
 import { Client } from "pg";
 import moment from "moment";
 import os from "os";
+import models from "../models";
+import { RecordingProcessingState } from "../models/Recording";
 
 let Config;
 
@@ -61,7 +63,7 @@ async function measureProcessingWaitTime(influx, pgClient) {
   const res = await pgQuery(
     pgClient,
     `select "createdAt" from "Recordings"
-    where "processingState" = 'analyse'
+    where "processingState" in ('analyse', 'tracking')
     order by "createdAt" asc limit 1`
   );
 
@@ -78,15 +80,15 @@ async function measureProcessingWaitTime(influx, pgClient) {
   });
 }
 
-const countStates = [
-  "CORRUPT",
-  "analyse",
-  "analyse.failed",
-  "toMp3",
-  "toMp3.failed",
-  "reprocess",
-  "reprocess.failed",
-];
+const countStates = Object.values(RecordingProcessingState).filter(
+  (state) => state != RecordingProcessingState.Finished
+) as string[];
+countStates.push(
+  ...countStates
+    .filter((state) => state != RecordingProcessingState.Corrupt)
+    .map((state) => `${state}.failed`)
+);
+
 const stateCountMeasurement = "processing_state_count";
 
 async function stateCount(influx, pgClient) {
@@ -105,11 +107,11 @@ async function stateCount(influx, pgClient) {
 const inPast24Measurement = "in_past_24";
 
 async function inPast24(influx, pgClient) {
-  const thermalRawQuery = `SELECT COUNT(id) FROM "Recordings" 
-    WHERE "recordingDateTime" > (NOW() - INTERVAL '1 day') 
+  const thermalRawQuery = `SELECT COUNT(id) FROM "Recordings"
+    WHERE "recordingDateTime" > (NOW() - INTERVAL '1 day')
     AND TYPE = 'thermalRaw'`;
-  const audioQuery = `SELECT COUNT(id) FROM "Recordings" 
-    WHERE "recordingDateTime" > (NOW() - INTERVAL '1 day') 
+  const audioQuery = `SELECT COUNT(id) FROM "Recordings"
+    WHERE "recordingDateTime" > (NOW() - INTERVAL '1 day')
     AND TYPE = 'audio'`;
 
   const fields = {

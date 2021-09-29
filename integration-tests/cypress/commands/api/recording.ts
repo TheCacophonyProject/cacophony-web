@@ -282,9 +282,13 @@ function addTracksToRecording(
   tags?: string[]
 ): void {
   data.metadata = {
-    algorithm: {
-      model_name: model,
-    },
+    algorithm: { tracker_version: 10 },
+    models: [
+      {
+        id: 1,
+        name: model,
+      },
+    ],
     tracks: [],
   };
 
@@ -299,8 +303,13 @@ function addTracksToRecording(
       return {
         start_s: track.start_s || 2 + count * 10,
         end_s: track.end_s || 8 + count * 10,
-        confident_tag: tag,
-        confidence: 0.9,
+        predictions: [
+          {
+            model_id: 1,
+            confident_tag: tag,
+            confidence: 0.9,
+          },
+        ],
       };
     });
     count++;
@@ -308,8 +317,12 @@ function addTracksToRecording(
     data.metadata.tracks.push({
       start_s: 2,
       end_s: 8,
-      confident_tag: "possum",
-      confidence: 0.5,
+      predictions: [
+        {
+          confident_tag: "possum",
+          confidence: 0.5,
+        },
+      ],
     });
   }
 }

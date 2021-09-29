@@ -416,8 +416,9 @@ function makeUploadHandler(mungeData?: (any) => any) {
     }
 
     await recording.save();
+    let tracked = false;
     if (data.metadata) {
-      await tracksFromMeta(recording, data.metadata);
+      tracked = await tracksFromMeta(recording, data.metadata);
     }
     if (data.processingState) {
       recording.processingState = data.processingState;
@@ -429,9 +430,14 @@ function makeUploadHandler(mungeData?: (any) => any) {
       }
     } else {
       if (!fileIsCorrupt) {
-        recording.processingState = models.Recording.uploadedState(
-          data.type as RecordingType
-        );
+        if (tracked && recording.type != RecordingType.Audio) {
+          recording.processingState = RecordingProcessingState.AnalyseThermal;
+          // already have done tracking pi skip to analyse state
+        } else {
+          recording.processingState = models.Recording.uploadedState(
+            data.type as RecordingType
+          );
+        }
       } else {
         // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
         log.warning("File was corrupt, don't queue for processing");
@@ -936,33 +942,64 @@ async function reprocess(request, response: Response) {
 
 async function tracksFromMeta(recording: Recording, metadata: any) {
   if (!("tracks" in metadata)) {
-    return;
+    return false;
   }
   try {
     const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
       "algorithm",
       metadata["algorithm"]
     );
-    const model = {
-      name: "unknown",
-      algorithmId: algorithmDetail.id,
-    };
-    if ("model_name" in metadata["algorithm"]) {
-      model["name"] = metadata["algorithm"]["model_name"];
-    }
+
     for (const trackMeta of metadata["tracks"]) {
       const track = await recording.createTrack({
         data: trackMeta,
         AlgorithmId: algorithmDetail.id,
       });
-      if ("confident_tag" in trackMeta) {
-        model["all_class_confidences"] = trackMeta["all_class_confidences"];
-        await track.addTag(
-          trackMeta["confident_tag"],
-          trackMeta["confidence"],
-          true,
-          model
-        );
+      if (!("predictions" in trackMeta)) {
+        continue;
+      }
+      for (const prediction of trackMeta["predictions"]) {
+        let modelName = "unknown";
+        if (prediction.model_id) {
+          if (metadata.models) {
+            const model = metadata.models.find(
+              (model) => model.id == prediction.model_id
+            );
+            if (model) {
+              modelName = model.name;
+            }
+          }
+        }
+
+        const tag_data = { name: modelName };
+        if (prediction.clarity) {
+          tag_data["clarity"] = prediction["clarity"];
+        }
+        if (prediction.classify_time) {
+          tag_data["classify_time"] = prediction["classify_time"];
+        }
+        if (prediction.prediction_frames) {
+          tag_data["prediction_frames"] = prediction["prediction_frames"];
+        }
+        if (prediction.predictions) {
+          tag_data["predictions"] = prediction["predictions"];
+        }
+        if (prediction.label) {
+          tag_data["raw_tag"] = prediction["label"];
+        }
+        if (prediction.all_class_confidences) {
+          tag_data["all_class_confidences"] =
+            prediction["all_class_confidences"];
+        }
+        if (prediction.all_class_confidences) {
+          tag_data["all_class_confidences"] =
+            prediction["all_class_confidences"];
+        }
+        let tag = "unidentified";
+        if (prediction.confident_tag) {
+          tag = prediction["confident_tag"];
+        }
+        await track.addTag(tag, prediction["confidence"], true, tag_data);
       }
     }
   } catch (err) {
@@ -971,6 +1008,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       err.toString()
     );
   }
+  return true;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
