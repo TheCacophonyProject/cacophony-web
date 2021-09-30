@@ -107,7 +107,8 @@ const deviceAttributes = [
   "location",
   "saltId",
   "GroupId",
-  // FIXME - Use lastConnectionTime column.
+  "lastConnectionTime",
+  "public",
   "active",
 ];
 
@@ -273,8 +274,8 @@ export const extractValFromRequest = (
 };
 
 const extractFieldNameFromRequest = (
-    request: Request,
-    valGetter?: ValidationChain
+  request: Request,
+  valGetter?: ValidationChain
 ): string | undefined => {
   if (valGetter) {
     const location = (valGetter.builder as any).locations[0];
@@ -288,8 +289,8 @@ const extractFieldNameFromRequest = (
 };
 
 const extractFieldLocationFromRequest = (
-    request: Request,
-    valGetter?: ValidationChain
+  request: Request,
+  valGetter?: ValidationChain
 ): string | undefined => {
   if (valGetter) {
     return (valGetter.builder as any).locations[0];
@@ -402,16 +403,7 @@ export const fetchRequiredModel = <T>(
   modelGetter: ModelGetter<T>,
   primary: ValidationChain,
   secondary?: ValidationChain
-) =>
-  fetchModel(
-    modelType,
-    true,
-    byName,
-    byId,
-    modelGetter,
-    primary,
-    secondary
-  );
+) => fetchModel(modelType, true, byName, byId, modelGetter, primary, secondary);
 
 export const fetchRequiredModels = <T>(
   modelType: ModelStaticCommon<T>,
@@ -421,15 +413,7 @@ export const fetchRequiredModels = <T>(
   primary?: ValidationChain,
   secondary?: ValidationChain
 ) =>
-  fetchModel(
-    modelType,
-    true,
-    byName,
-    byId,
-    modelsGetter,
-    primary,
-    secondary
-  );
+  fetchModel(modelType, true, byName, byId, modelsGetter, primary, secondary);
 
 export const fetchOptionalModel = <T>(
   modelType: ModelStaticCommon<T>,
@@ -439,15 +423,7 @@ export const fetchOptionalModel = <T>(
   primary: ValidationChain,
   secondary?: ValidationChain
 ) =>
-  fetchModel(
-    modelType,
-    false,
-    byName,
-    byId,
-    modelGetter,
-    primary,
-    secondary
-  );
+  fetchModel(modelType, false, byName, byId, modelGetter, primary, secondary);
 
 const getDevices =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
@@ -495,7 +471,10 @@ const getDevices =
       (getDeviceOptions as any).where.active = true;
     }
     //console.dir(getDeviceOptions, {depth: 5});
-    return models.Device.findAll({ ...getDeviceOptions, order: ["devicename"] });
+    return models.Device.findAll({
+      ...getDeviceOptions,
+      order: ["devicename"],
+    });
   };
 
 const getGroups =
@@ -621,7 +600,10 @@ const getRecordings =
         ],
       };
     }
-    return models.Recording.findAll({ ...getRecordingOptions, order: ["recordingDateTime"] });
+    return models.Recording.findAll({
+      ...getRecordingOptions,
+      order: ["recordingDateTime"],
+    });
   };
 
 const getDevice =
@@ -755,9 +737,6 @@ const getGroup =
     } else {
       groupWhere = { groupname: groupNameOrId };
     }
-
-    // FIXME - Return whether or not the current requesting user is an admin of this group.
-
     let getGroupOptions;
     if (forRequestUser) {
       if (context && context.requestUser) {
@@ -1014,7 +993,6 @@ export const fetchUnauthorizedRequiredUserByNameOrId = (
 export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
   fetchOptionalModel(models.User, false, true, getUser(), userId);
 
-
 export const fetchAdminAuthorizedRequiredRecordingById = (
   recordingId: ValidationChain
 ) =>
@@ -1034,6 +1012,17 @@ export const fetchAuthorizedRequiredRecordingById = (
     false,
     true,
     getRecordingForRequestUser,
+    recordingId
+  );
+
+export const fetchUnauthorizedRequiredRecordingById = (
+  recordingId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Recording,
+    false,
+    true,
+    getRecording(false, false),
     recordingId
   );
 

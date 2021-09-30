@@ -27,14 +27,15 @@ import { Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
+import { type } from "os";
 
 function multipartUpload(
   keyPrefix: string,
-  buildRecord: <T>(
+  onSaved: <T>(
     uploadingDevice: Device | null,
     data: any,
     key: string
-  ) => Promise<ModelCommon<T>>
+  ) => Promise<ModelCommon<T> | string>
 ) {
   return (request: Request, response: Response) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
@@ -108,7 +109,7 @@ function multipartUpload(
         return;
       }
 
-      let dbRecord: any;
+      let dbRecordOrFileKey: any;
       try {
         // Wait for the upload to complete.
         const uploadResult = await upload;
@@ -180,21 +181,24 @@ function multipartUpload(
         }
 
         // Store a record for the upload.
-        dbRecord = await buildRecord(uploadingDevice || null, data, key);
+        dbRecordOrFileKey = await onSaved(uploadingDevice || null, data, key);
 
         if (uploadingDevice) {
           // Update the device location from the recording.
           await uploadingDevice.update({
-            location: (dbRecord as Recording).location,
+            location: (dbRecordOrFileKey as Recording).location,
           });
         }
-
-        await dbRecord.save();
+        if (typeof dbRecordOrFileKey !== "string") {
+          await dbRecordOrFileKey.save();
+          responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
+        } else {
+          responseUtil.validRecordingUpload(response, dbRecordOrFileKey);
+        }
       } catch (err) {
         responseUtil.serverError(response, err);
         return;
       }
-      responseUtil.validRecordingUpload(response, dbRecord.id);
     });
 
     form.parse(request);

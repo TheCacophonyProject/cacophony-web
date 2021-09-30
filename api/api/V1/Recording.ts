@@ -16,16 +16,22 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import e, {Application, NextFunction, Request, Response} from "express";
+import e, { Application, NextFunction, Request, Response } from "express";
 import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
-import recordingUtil, { RecordingQuery } from "./recordingUtil";
+import recordingUtil, {
+    handleLegacyTagFieldsForGet,
+    handleLegacyTagFieldsForGetOnRecording,
+    RecordingQuery, reportRecordings,
+    reportVisits,
+    signedToken,
+} from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import models from "@models";
 // @ts-ignore
 import * as csv from "fast-csv";
 import { body, param, query } from "express-validator";
-import { RecordingPermission } from "@models/Recording";
+import { Recording, RecordingPermission } from "@models/Recording";
 import { TrackTag } from "@models/TrackTag";
 import { Track } from "@models/Track";
 import { Op } from "sequelize";
@@ -34,12 +40,22 @@ import config from "@config";
 import { ClientError } from "../customErrors";
 import log from "@log";
 import {
-    extractJwtAuthorisedDevice,
-    extractJwtAuthorizedUser,
-    fetchAuthorizedRequiredDeviceById,
-    fetchAuthorizedRequiredDeviceInGroup, fetchAuthorizedRequiredDevices,
+  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredDeviceInGroup,
+  fetchAuthorizedRequiredDevices,
+  fetchAuthorizedRequiredRecordingById,
+  fetchUnauthorizedRequiredRecordingById,
+  parseJSONField,
 } from "../extract-middleware";
-import { idOf, integerOf, validNameOf } from "../validation-middleware";
+import {
+  booleanOf,
+  idOf,
+  integerOf,
+  validNameOf,
+} from "../validation-middleware";
+import util from "@api/V1/util";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
@@ -181,8 +197,8 @@ export default (app: Application, baseUrl: string) => {
 
   const queryValidators = Object.freeze([
     middleware.parseJSON("where", query).optional(),
-    query("offset").isInt().toInt().optional(),
-    query("limit").isInt().toInt().optional(),
+    integerOf(query("offset")).optional(),
+    integerOf(query("limit")).optional(),
     middleware.parseJSON("order", query).optional(),
     middleware.parseArray("tags", query).optional(),
     query("tagMode")
@@ -215,20 +231,24 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     `${apiUrl}/:deviceName`,
-        extractJwtAuthorizedUser,
-        validateFields([
-        validNameOf(param("deviceName"))
-    ]),
+    extractJwtAuthorizedUser,
+    validateFields([validNameOf(param("deviceName"))]),
     fetchAuthorizedRequiredDevices,
-      (request: Request, response: Response, next: NextFunction) => {
-        const targetDeviceName = request.params.deviceName;
-        const devices = response.locals.devices.filter(({deviceName}) => deviceName === targetDeviceName);
-        if (devices.length !== 1) {
-            return next(new ClientError(`Could not find unique device with name ${targetDeviceName} - try the /api/v1/recordings/device/:deviceName/group/:groupName endpoint.`));
-        }
-        response.locals.device = devices[0];
-        next();
-      },
+    (request: Request, response: Response, next: NextFunction) => {
+      const targetDeviceName = request.params.deviceName;
+      const devices = response.locals.devices.filter(
+        ({ deviceName }) => deviceName === targetDeviceName
+      );
+      if (devices.length !== 1) {
+        return next(
+          new ClientError(
+            `Could not find unique device with name ${targetDeviceName} - try the /api/v1/recordings/device/:deviceName/group/:groupName endpoint.`
+          )
+        );
+      }
+      response.locals.device = devices[0];
+      next();
+    },
     recordingUtil.makeUploadHandler
   );
 
@@ -255,6 +275,7 @@ export default (app: Application, baseUrl: string) => {
       middleware.parseJSON("where", query).optional(),
       integerOf(query("offset")).optional(),
       integerOf(query("limit")).optional(),
+      query("view-mode").optional().equals("user"),
       middleware.parseJSON("order", query).optional(),
       middleware.parseArray("tags", query).optional(),
       query("tagMode")
@@ -264,9 +285,11 @@ export default (app: Application, baseUrl: string) => {
         }),
       middleware.parseJSON("filterOptions", query).optional(),
     ]),
-    async (request: e.Request, response: e.Response) => {
+    async (request: Request, response: Response) => {
       const result = await recordingUtil.queryVisits(
-        request as unknown as RecordingQuery
+          response.locals.requestUser.id,
+        response.locals.viewAsSuperUser,
+        request.query as unknown as RecordingQuery
       );
       responseUtil.send(response, {
         statusCode: 200,
@@ -301,10 +324,17 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     apiUrl,
-    [auth.authenticateUser, middleware.viewMode(), ...queryValidators],
-    middleware.requestWrapper(async (request: Request, response: Response) => {
+    extractJwtAuthorizedUser,
+    validateFields([
+        query("view-mode").optional().equals("user"),
+        ...queryValidators
+    ]),
+    async (request: Request, response: Response) => {
+        // FIXME Stop allowing arbitrary where queries
       const result = await recordingUtil.query(
-        request as unknown as RecordingQuery
+          response.locals.requesetUser.id,
+        response.locals.viewAsSuperUser,
+        request.query as unknown as RecordingQuery
       );
       responseUtil.send(response, {
         statusCode: 200,
@@ -314,7 +344,7 @@ export default (app: Application, baseUrl: string) => {
         count: result.count,
         rows: result.rows,
       });
-    })
+    }
   );
 
   /**
@@ -333,10 +363,11 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/count`,
-    [auth.authenticateUser, middleware.viewMode(), ...queryValidators],
-    middleware.requestWrapper(
-      async (request: RecordingQuery, response: e.Response) => {
-        const user = request.user;
+      extractJwtAuthorizedUser,
+    validateFields([...queryValidators]),
+
+      async (request: Request, response: Response) => {
+        const user = response.locals.requestUser;
         let userWhere = request.query.where;
         if (typeof userWhere === "string") {
           try {
@@ -369,8 +400,8 @@ export default (app: Application, baseUrl: string) => {
             },
           ],
         };
-        if (request.body.viewAsSuperAdmin && user.hasGlobalRead()) {
-          // Dont' filter on user if the user has global read permissons.
+        if (response.locals.viewAsSuperUser && user.hasGlobalRead()) {
+          // Dont' filter on user if the user has global read permissions.
           delete countQuery.include[0].include;
         }
         const count = await models.Recording.count(countQuery);
@@ -380,7 +411,6 @@ export default (app: Application, baseUrl: string) => {
           count,
         });
       }
-    )
   );
 
   /**
@@ -398,9 +428,11 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/needs-tag`,
-    [auth.authenticateUser, query("deviceId").isInt().toInt().optional()],
-    middleware.requestWrapper(
-      async (request: e.Request, response: e.Response) => {
+      extractJwtAuthorizedUser,
+    validateFields([
+        idOf(query("deviceId")).optional()
+    ]),
+      async (request: Request, response: Response) => {
         // NOTE: We only return the minimum set of fields we need to play back
         //  a recording, show tracks in the UI, and have the user add a tag.
         //  Generate a short-lived JWT token for each recording we return, keyed
@@ -423,7 +455,6 @@ export default (app: Application, baseUrl: string) => {
           rows: [result],
         });
       }
-    )
   );
 
   /**
@@ -446,22 +477,28 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/report`,
-    [
-      auth.paramOrHeader,
+      extractJwtAuthorizedUser,
+    validateFields([
       query("type").isString().optional().isIn(["recordings", "visits"]),
       ...queryValidators,
       query("audiobait").isBoolean().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    ]),
+    async (request: Request, response: Response) => {
       // 10 minute timeout because the query can take a while to run
       // when the result set is large.
-      const rows = await recordingUtil.report(request);
+        let rows;
+        if (request.query.type == "visits") {
+            rows = reportVisits(response.locals.requestuser.id, response.locals.viewAsSuperUser, request.query as unknown as RecordingQuery);
+        } else {
+            rows = reportRecordings(response.locals.requestuser.id, response.locals.viewAsSuperUser, request.query as unknown as RecordingQuery);
+        }
+
       response.status(200).set({
         "Content-Type": "text/csv",
         "Content-Disposition": "attachment; filename=recordings.csv",
       });
       csv.writeToStream(response, rows);
-    })
+    }
   );
 
   /**
@@ -486,25 +523,52 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/:id`,
-    [
-      auth.authenticateUser,
-      param("id").isInt(),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      // FIXME Does anyone use filterOptions?
       middleware.parseJSON("filterOptions", query).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const { recording, rawSize, rawJWT, cookedSize, cookedJWT } =
-        await recordingUtil.get(request);
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request, response) => {
+      // FIXME Also look at storing fileSize in the DB, so we don't have to pull it out from object store!
+      const recording = response.locals.recording.get({ plain: true });
+      recording.Tags = recording.Tags.map(handleLegacyTagFieldsForGet);
+      const data: any = {
+        recording: handleLegacyTagFieldsForGetOnRecording(recording),
+      };
+
+      if (recording.fileKey) {
+        data.cookedJWT = signedToken(
+          recording.fileKey,
+          recording.getFileName(),
+          recording.fileMimeType
+        );
+        data.cookedSize = await util.getS3ObjectFileSize(recording.fileKey);
+      }
+
+      if (recording.rawFileKey) {
+        data.rawJWT = signedToken(
+          recording.rawFileKey,
+          recording.getRawFileName(),
+          recording.rawMimeType
+        );
+        data.rawSize = await util.getS3ObjectFileSize(recording.rawFileKey);
+      }
+
+      delete data.recording.rawFileKey;
+      delete data.recording.fileKey;
 
       responseUtil.send(response, {
         statusCode: 200,
         messages: [],
         recording: recording,
-        rawSize: rawSize,
-        fileSize: cookedSize,
-        downloadFileJWT: cookedJWT,
-        downloadRawJWT: rawJWT,
+        rawSize: data.rawSize,
+        fileSize: data.cookedSize,
+        downloadFileJWT: data.cookedJWT,
+        downloadRawJWT: data.rawJWT,
       });
-    })
+    }
   );
 
   /**
@@ -518,17 +582,10 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/:id/thumbnail`,
-    [param("id").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const rec = await models.Recording.findByPk(request.params.id, {
-        attributes: ["rawFileKey", "id"],
-      });
-      if (!rec) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to get recording."],
-        });
-      }
+    validateFields([idOf(param("id"))]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const rec = response.locals.recording;
       const mimeType = "image/png";
       const filename = `${rec.id}-thumb.png`;
 
@@ -556,7 +613,7 @@ export default (app: Application, baseUrl: string) => {
             messages: ["No thumbnail exists"],
           });
         });
-    })
+    }
   );
   /**
    * @api {delete} /api/v1/recordings/:id Delete an existing recording
@@ -570,10 +627,34 @@ export default (app: Application, baseUrl: string) => {
    */
   app.delete(
     `${apiUrl}/:id`,
-    [auth.authenticateUser, param("id").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      return recordingUtil.delete_(request, response);
-    })
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    async (request: Request, response: Response) => {
+      const deleted: Recording = await models.Recording.deleteOne(
+        response.locals.requestUser,
+        Number(request.params.id)
+      );
+      if (deleted === null) {
+        return responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["Failed to delete recording."],
+        });
+      }
+      if (deleted.rawFileKey) {
+        await util.deleteS3Object(deleted.rawFileKey).catch((err) => {
+          log.warning(err);
+        });
+      }
+      if (deleted.fileKey) {
+        await util.deleteS3Object(deleted.fileKey).catch((err) => {
+          log.warning(err);
+        });
+      }
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Deleted recording."],
+      });
+    }
   );
 
   /**
@@ -600,15 +681,17 @@ export default (app: Application, baseUrl: string) => {
    */
   app.patch(
     `${apiUrl}/:id`,
-    [
-      auth.authenticateUser,
-      param("id").isInt(),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      // FIXME - JSON schema for allowed updates?
       middleware.parseJSON("updates", body),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    ]),
+    async (request, response) => {
+      // FIXME - should fetch recording with permissions in middleware
       const updated = await models.Recording.updateOne(
-        request.user,
-        request.params.id,
+        response.locals.requestUser,
+        Number(request.params.id),
         request.body.updates
       );
 
@@ -623,7 +706,7 @@ export default (app: Application, baseUrl: string) => {
           messages: ["Failed to update recordings."],
         });
       }
-    })
+    }
   );
 
   /**
@@ -645,26 +728,15 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     `${apiUrl}/:id/tracks`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      // FIXME - JSON schema for update data?
       middleware.parseJSON("data", body),
       middleware.parseJSON("algorithm", body).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.get(
-        request.user,
-        request.params.id,
-        RecordingPermission.UPDATE
-      );
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
       // FIXME(jon): This incomplete JSON string looks dodge.
       const algorithm = request.body.algorithm
         ? request.body.algorithm
@@ -674,7 +746,7 @@ export default (app: Application, baseUrl: string) => {
         algorithm
       );
 
-      const track = await recording.createTrack({
+      const track = await response.locals.recording.createTrack({
         data: request.body.data,
         AlgorithmId: algorithmDetail.id,
       });
@@ -685,7 +757,7 @@ export default (app: Application, baseUrl: string) => {
         trackId: track.id,
         algorithmId: track.AlgorithmId,
       });
-    })
+    }
   );
 
   /**
@@ -704,22 +776,12 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/:id/tracks`,
-    [auth.authenticateUser, param("id").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.get(
-        request.user,
-        request.params.id,
-        RecordingPermission.VIEW
-      );
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-
-      const tracks = await recording.getActiveTracksTagsAndTagger();
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const tracks =
+        await response.locals.recording.getActiveTracksTagsAndTagger();
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["OK."],
@@ -728,7 +790,7 @@ export default (app: Application, baseUrl: string) => {
           return t;
         }),
       });
-    })
+    }
   );
 
   /**
@@ -743,14 +805,19 @@ export default (app: Application, baseUrl: string) => {
    */
   app.delete(
     `${apiUrl}/:id/tracks/:trackId`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const track = await loadTrack(request, response);
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id")), idOf(param("trackId"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request, response) => {
+      // FIXME - Extract track in middleware
+      const track = await response.locals.recording.getTrack(
+        request.params.trackId
+      );
       if (!track) {
+        responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["No such track."],
+        });
         return;
       }
       await track.destroy();
@@ -758,7 +825,7 @@ export default (app: Application, baseUrl: string) => {
         statusCode: 200,
         messages: ["Track deleted."],
       });
-    })
+    }
   );
 
   /**
@@ -839,17 +906,19 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/tags`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-      body("what"),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("what").exists().isString(),
       body("confidence").isFloat().toFloat(),
-      body("automatic").isBoolean().toBoolean(),
+      booleanOf(body("automatic")),
       body("tagJWT").optional().isString(),
-      middleware.parseJSON("data", body).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+      body("data").optional().isJSON(),
+    ]),
+    parseJSONField(body("data")),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
       let track;
       if (request.body.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users' recording
@@ -857,11 +926,13 @@ export default (app: Application, baseUrl: string) => {
         track = await loadTrackForTagJWT(request, response);
       } else {
         // Otherwise, just check that the user can update this track.
-        track = await loadTrack(request, response);
+        const track = await response.locals.recording.getTrack(
+          request.params.trackId
+        );
         if (!track) {
           responseUtil.send(response, {
-            statusCode: 401,
-            messages: ["Track not found"],
+            statusCode: 400,
+            messages: ["No such track."],
           });
           return;
         }
@@ -871,14 +942,14 @@ export default (app: Application, baseUrl: string) => {
         request.body.confidence,
         request.body.automatic,
         request.body.data ? request.body.data : "",
-        request.user.id
+        response.locals.requestUser.id
       );
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag added."],
         trackTagId: tag.id,
       });
-    })
+    }
   );
 
   /**
@@ -893,26 +964,30 @@ export default (app: Application, baseUrl: string) => {
    */
   app.delete(
     `${apiUrl}/:id/tracks/:trackId/tags/:trackTagId`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-      param("trackTagId").isInt().toInt(),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      idOf(param("trackTagId")),
       query("tagJWT").isString().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request, response) => {
       let track;
       if (request.query.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users' recording
         // update permissions.
         track = await loadTrackForTagJWT(request, response);
       } else {
+        // FIXME - fetch in middleware
         // Otherwise, just check that the user can update this track.
-        track = await loadTrack(request, response);
+        const track = await response.locals.recording.getTrack(
+          request.params.trackId
+        );
         if (!track) {
           responseUtil.send(response, {
-            statusCode: 401,
-            messages: ["Track not found"],
+            statusCode: 400,
+            messages: ["No such track."],
           });
           return;
         }
@@ -933,10 +1008,10 @@ export default (app: Application, baseUrl: string) => {
         statusCode: 200,
         messages: ["Track tag deleted."],
       });
-    })
+    }
   );
 
-  // FIXME - These functions don't belong here
+  // FIXME - This function doesn't belong here
   async function loadTrackForTagJWT(request, response): Promise<Track> {
     let jwtDecoded;
     const tagJWT = request.body.tagJWT || request.query.tagJWT;
@@ -977,31 +1052,5 @@ export default (app: Application, baseUrl: string) => {
       });
       return;
     }
-  }
-
-  async function loadTrack(request, response): Promise<Track> {
-    const recording = await models.Recording.get(
-      request.user,
-      request.params.id,
-      RecordingPermission.UPDATE
-    );
-    if (!recording) {
-      responseUtil.send(response, {
-        statusCode: 400,
-        messages: ["No such recording."],
-      });
-      return;
-    }
-
-    const track = await recording.getTrack(request.params.trackId);
-    if (!track) {
-      responseUtil.send(response, {
-        statusCode: 400,
-        messages: ["No such track."],
-      });
-      return;
-    }
-
-    return track;
   }
 };

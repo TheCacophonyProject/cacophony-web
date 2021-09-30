@@ -71,7 +71,7 @@ export const mapDeviceResponse = (
     mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
   }
   if (device.location) {
-    const {coordinates} = device.location;
+    const { coordinates } = device.location;
     mapped.location = {
       lat: coordinates[0],
       lng: coordinates[1],
@@ -200,7 +200,6 @@ export default function (app: Application, baseUrl: string) {
         query("only-active").optional().isBoolean().toBoolean()
       ),
     ]),
-    // FIXME
     fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
       return responseUtil.send(response, {

@@ -40,7 +40,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   public: boolean;
   lastConnectionTime: Date | null;
   password?: string;
-  location?: { type: "Point", coordinates: [ number, number ]};
+  location?: { type: "Point"; coordinates: [number, number] };
   comparePassword: (password: string) => Promise<boolean>;
   reRegister: (
     devicename: string,

@@ -69,7 +69,7 @@ import SendData = ManagedUpload.SendData;
 import { Track } from "@models/Track";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Tag } from "@models/Tag";
-import { RecordingId, TrackTagId } from "@typedefs/api/common";
+import { RecordingId, TrackTagId, UserId } from "@typedefs/api/common";
 import { ApiTagData } from "@typedefs/api/tag";
 import { Device } from "@models/Device";
 
@@ -79,9 +79,8 @@ let CptvDecoder;
 })();
 
 // @ts-ignore
-export interface RecordingQuery extends Request {
-  user: User;
-  query: {
+export interface RecordingQuery {
+
     where: null | any;
     tagMode: null | TagMode;
     tags: null | string[];
@@ -91,8 +90,8 @@ export interface RecordingQuery extends Request {
     distinct: boolean;
     type: string;
     audiobait: null | boolean;
-  };
-  filterOptions: null | any;
+
+  //filterOptions: null | any;
 }
 
 // How close is a station allowed to be to another station?
@@ -458,28 +457,36 @@ const makeUploadHandler = util.multipartUpload(
     }
 
     await recording.save();
+    let tracked = false;
     if (data.metadata) {
-      await tracksFromMeta(recording, data.metadata);
+      tracked = await tracksFromMeta(recording, data.metadata);
     }
     if (data.processingState) {
       recording.processingState = data.processingState;
+
       if (
-        recording.processingState ==
+        recording.processingState ===
         models.Recording.finishedState(data.type as RecordingType)
       ) {
         await sendAlerts(recording.id);
       }
     } else {
       if (!fileIsCorrupt) {
-        recording.processingState = models.Recording.uploadedState(
-          data.type as RecordingType
-        );
+        if (tracked && recording.type !== RecordingType.Audio) {
+          recording.processingState = RecordingProcessingState.AnalyseThermal;
+          // already have done tracking pi skip to analyse state
+        } else {
+          recording.processingState = models.Recording.uploadedState(
+            data.type as RecordingType
+          );
+        }
       } else {
         // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
         log.warning("File was corrupt, don't queue for processing");
         recording.processingState = RecordingProcessingState.Corrupt;
       }
     }
+    await recording.save();
     return recording;
   }
 );
@@ -487,22 +494,24 @@ const makeUploadHandler = util.multipartUpload(
 // Returns a promise for the recordings query specified in the
 // request.
 async function query(
-  request: RecordingQuery,
+  requestUserId: UserId,
+  viewAsSuperUser: boolean,
+  query: RecordingQuery,
   type?
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
-    request.query.where.type = type;
+    query.where.type = type;
   }
 
   const builder = await new models.Recording.queryBuilder().init(
-    request.user,
-    request.query.where,
-    request.query.tagMode,
-    request.query.tags,
-    request.query.offset,
-    request.query.limit,
-    request.query.order,
-    request.body.viewAsSuperAdmin
+    requestUserId,
+    query.where,
+    query.tagMode,
+    query.tags,
+    query.offset,
+    query.limit,
+    query.order,
+    viewAsSuperUser
   );
   builder.query.distinct = true;
   const result = await models.Recording.findAndCountAll(builder.get());
@@ -524,24 +533,18 @@ async function query(
 
 // Returns a promise for report rows for a set of recordings. Takes
 // the same parameters as query() above.
-async function report(request: RecordingQuery) {
-  if (request.query.type == "visits") {
-    return reportVisits(request);
-  }
-  return reportRecordings(request);
-}
-
-async function reportRecordings(request: RecordingQuery) {
-  const includeAudiobait: boolean = request.query.audiobait;
+export async function reportRecordings(userId: UserId, viewAsSuperUser: boolean, query: RecordingQuery) {
+  const includeAudiobait: boolean = query.audiobait;
   const builder = (
     await new models.Recording.queryBuilder().init(
-      request.user,
-      request.query.where,
-      request.query.tagMode,
-      request.query.tags,
-      request.query.offset,
-      request.query.limit,
-      request.query.order
+      userId,
+      query.where,
+      query.tagMode,
+      query.tags,
+      query.offset,
+      query.limit,
+      query.order,
+      viewAsSuperUser,
     )
   )
     .addColumn("comment")
@@ -759,29 +762,19 @@ async function get(request, type?: RecordingType) {
   };
 
   if (recording.fileKey) {
-    data.cookedJWT = jsonwebtoken.sign(
-      {
-        _type: "fileDownload",
-        key: recording.fileKey,
-        filename: recording.getFileName(),
-        mimeType: recording.fileMimeType,
-      },
-      config.server.passportSecret,
-      { expiresIn: 60 * 10 }
+    data.cookedJWT = signedToken(
+      recording.fileKey,
+      recording.getFileName(),
+      recording.fileMimeType
     );
     data.cookedSize = await util.getS3ObjectFileSize(recording.fileKey);
   }
 
   if (recording.rawFileKey) {
-    data.rawJWT = jsonwebtoken.sign(
-      {
-        _type: "fileDownload",
-        key: recording.rawFileKey,
-        filename: recording.getRawFileName(),
-        mimeType: recording.rawMimeType,
-      },
-      config.server.passportSecret,
-      { expiresIn: 60 * 10 }
+    data.rawJWT = signedToken(
+      recording.rawFileKey,
+      recording.getRawFileName(),
+      recording.rawMimeType
     );
     data.rawSize = await util.getS3ObjectFileSize(recording.rawFileKey);
   }
@@ -792,31 +785,17 @@ async function get(request, type?: RecordingType) {
   return data;
 }
 
-async function delete_(request, response) {
-  const deleted: Recording = await models.Recording.deleteOne(
-    request.user,
-    request.params.id
+export function signedToken(key, file, mimeType) {
+  return jsonwebtoken.sign(
+    {
+      _type: "fileDownload",
+      key: key,
+      filename: file,
+      mimeType: mimeType,
+    },
+    config.server.passportSecret,
+    { expiresIn: 60 * 10 }
   );
-  if (deleted === null) {
-    return responseUtil.send(response, {
-      statusCode: 400,
-      messages: ["Failed to delete recording."],
-    });
-  }
-  if (deleted.rawFileKey) {
-    util.deleteS3Object(deleted.rawFileKey).catch((err) => {
-      log.warning(err);
-    });
-  }
-  if (deleted.fileKey) {
-    util.deleteS3Object(deleted.fileKey).catch((err) => {
-      log.warning(err);
-    });
-  }
-  responseUtil.send(response, {
-    statusCode: 200,
-    messages: ["Deleted recording."],
-  });
 }
 
 function guessRawMimeType(type, filename) {
@@ -874,13 +853,13 @@ function moveLegacyField(o: object, oldName: string, newName: string): object {
   return o;
 }
 
-function handleLegacyTagFieldsForGet(tag) {
+export function handleLegacyTagFieldsForGet(tag) {
   tag.animal = tag.what;
   tag.event = tag.detail;
   return tag;
 }
 
-function handleLegacyTagFieldsForGetOnRecording(recording) {
+export function handleLegacyTagFieldsForGetOnRecording(recording) {
   recording = recording.get({ plain: true });
   recording.Tags = recording.Tags.map(handleLegacyTagFieldsForGet);
   return recording;
@@ -888,33 +867,64 @@ function handleLegacyTagFieldsForGetOnRecording(recording) {
 
 async function tracksFromMeta(recording: Recording, metadata: any) {
   if (!("tracks" in metadata)) {
-    return;
+    return false;
   }
   try {
     const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
       "algorithm",
       metadata["algorithm"]
     );
-    const model = {
-      name: "unknown",
-      algorithmId: algorithmDetail.id,
-    };
-    if ("model_name" in metadata["algorithm"]) {
-      model["name"] = metadata["algorithm"]["model_name"];
-    }
+
     for (const trackMeta of metadata["tracks"]) {
       const track = await recording.createTrack({
         data: trackMeta,
         AlgorithmId: algorithmDetail.id,
       });
-      if ("confident_tag" in trackMeta) {
-        model["all_class_confidences"] = trackMeta["all_class_confidences"];
-        await track.addTag(
-          trackMeta["confident_tag"],
-          trackMeta["confidence"],
-          true,
-          model
-        );
+      if (!("predictions" in trackMeta)) {
+        continue;
+      }
+      for (const prediction of trackMeta["predictions"]) {
+        let modelName = "unknown";
+        if (prediction.model_id) {
+          if (metadata.models) {
+            const model = metadata.models.find(
+              (model) => model.id == prediction.model_id
+            );
+            if (model) {
+              modelName = model.name;
+            }
+          }
+        }
+
+        const tag_data = { name: modelName };
+        if (prediction.clarity) {
+          tag_data["clarity"] = prediction["clarity"];
+        }
+        if (prediction.classify_time) {
+          tag_data["classify_time"] = prediction["classify_time"];
+        }
+        if (prediction.prediction_frames) {
+          tag_data["prediction_frames"] = prediction["prediction_frames"];
+        }
+        if (prediction.predictions) {
+          tag_data["predictions"] = prediction["predictions"];
+        }
+        if (prediction.label) {
+          tag_data["raw_tag"] = prediction["label"];
+        }
+        if (prediction.all_class_confidences) {
+          tag_data["all_class_confidences"] =
+            prediction["all_class_confidences"];
+        }
+        if (prediction.all_class_confidences) {
+          tag_data["all_class_confidences"] =
+            prediction["all_class_confidences"];
+        }
+        let tag = "unidentified";
+        if (prediction.confident_tag) {
+          tag = prediction["confident_tag"];
+        }
+        await track.addTag(tag, prediction["confidence"], true, tag_data);
       }
     }
   } catch (err) {
@@ -923,6 +933,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       err.toString()
     );
   }
+  return true;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -932,7 +943,7 @@ async function updateMetadata(recording: any, metadata: any) {
 
 // Returns a promise for the recordings visits query specified in the
 // request.
-async function queryVisits(request: RecordingQuery): Promise<{
+async function queryVisits(userId: UserId, viewAsSuperUser: boolean, query: RecordingQuery): Promise<{
   visits: Visit[];
   summary: DeviceSummary;
   hasMoreVisits: boolean;
@@ -943,25 +954,25 @@ async function queryVisits(request: RecordingQuery): Promise<{
 }> {
   const maxVisitQueryResults = 5000;
   const requestVisits =
-    request.query.limit == null
+    query.limit == null
       ? maxVisitQueryResults
-      : (request.query.limit as number);
+      : (query.limit as number);
 
   const queryMax = maxVisitQueryResults * 2;
   let queryLimit = queryMax;
-  if (request.query.limit) {
-    queryLimit = Math.min(request.query.limit * 2, queryMax);
+  if (query.limit) {
+    queryLimit = Math.min(query.limit * 2, queryMax);
   }
 
   const builder = await new models.Recording.queryBuilder().init(
-    request.user,
-    request.query.where,
-    request.query.tagMode,
-    request.query.tags,
-    request.query.offset,
+    userId,
+    query.where,
+    query.tagMode,
+    query.tags,
+    query.offset,
     queryLimit,
     null,
-    request.body.viewAsSuperAdmin
+    viewAsSuperUser
   );
   builder.query.distinct = true;
 
@@ -992,7 +1003,7 @@ async function queryVisits(request: RecordingQuery): Promise<{
     // for (const rec of recordings) {
     //   rec.filterData(filterOptions);
     // }
-    devSummary.generateVisits(recordings, request.query.offset || 0);
+    devSummary.generateVisits(recordings, query.offset || 0);
 
     if (!gotAllRecordings) {
       devSummary.checkForCompleteVisits();
@@ -1017,7 +1028,7 @@ async function queryVisits(request: RecordingQuery): Promise<{
       continue;
     }
     const events = await models.Event.query(
-      request.user,
+      userId,
       devVisits.startTime.clone().startOf("day").toISOString(),
       devVisits.endTime.toISOString(),
       parseInt(devId),
@@ -1125,8 +1136,8 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
   return device_summary_out;
 }
 
-async function reportVisits(request: RecordingQuery) {
-  const results = await queryVisits(request);
+export async function reportVisits(userId: UserId, viewAsSuperUser: boolean, request: RecordingQuery) {
+  const results = await queryVisits(userId, viewAsSuperUser, request);
   const out = reportDeviceVisits(results.summary.deviceMap);
   const recordingUrlBase = config.server.recording_url_base || "";
   out.push([]);
@@ -1304,12 +1315,13 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
   return await models.Recording.findByPk(id, query);
 }
 
-async function sendAlerts(recID: number) {
+async function sendAlerts(recID: RecordingId) {
   const recording = await getRecordingForVisit(recID);
   const recVisit = new Visit(recording, 0);
   recVisit.completeVisit();
   let matchedTrack, matchedTag;
   // find any ai master tags that match the visit tag
+  log.warning("MATCHES %s", recVisit.what);
   for (const track of recording.Tracks) {
     matchedTag = track.TrackTags.find(
       (tag) => tag.data == AI_MASTER && recVisit.what == tag.what
@@ -1320,9 +1332,9 @@ async function sendAlerts(recID: number) {
     }
   }
   if (!matchedTag) {
+    log.warning("NO MATCH");
     return;
   }
-
   const alerts = await (models.Alert as AlertStatic).getActiveAlerts(
     recording.DeviceId,
     matchedTag
@@ -1682,9 +1694,7 @@ export const finishedProcessingRecording = async (
 export default {
   makeUploadHandler,
   query,
-  report,
   get,
-  delete_,
   addTag,
   tracksFromMeta,
   updateMetadata,
@@ -1692,4 +1702,5 @@ export default {
   saveThumbnailInfo,
   sendAlerts,
   getThumbnail,
+  signedToken,
 };

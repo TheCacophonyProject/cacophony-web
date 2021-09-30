@@ -49,13 +49,13 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     apiUrl,
-    [auth.authenticateUser],
     extractJwtAuthorizedUser,
     (request: Request, response: Response) => {
       util.multipartUpload("f", async (uploader, data, key): Promise<File> => {
         const dbRecord = models.File.buildSafely(data);
         dbRecord.UserId = response.locals.requestUser.id;
         dbRecord.fileKey = key;
+        await dbRecord.save();
         return dbRecord;
       });
     }

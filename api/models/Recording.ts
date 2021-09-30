@@ -43,7 +43,7 @@ import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
 import { Station, StationId } from "./Station";
 import { tryToMatchRecordingToStation } from "../api/V1/recordingUtil";
-import { RecordingId } from "@typedefs/api/common";
+import { RecordingId, UserId } from "@typedefs/api/common";
 import logging from "../logging";
 import { type } from "os";
 
@@ -94,6 +94,7 @@ export enum RecordingPermission {
 
 export enum RecordingProcessingState {
   Corrupt = "CORRUPT",
+  Tracking = "tracking",
   AnalyseThermal = "analyse",
   Finished = "FINISHED",
   ToMp3 = "toMp3",
@@ -111,7 +112,7 @@ interface RecordingQueryBuilder {
   new (): RecordingQueryBuilder;
   findInclude: (modelType: ModelStaticCommon<any>) => Includeable[];
   init: (
-    user: User,
+    user: UserId,
     where: any,
     tagMode?: TagMode,
     tags?: string[], // AcceptableTag[]
@@ -626,6 +627,7 @@ export default function (
     id: RecordingId,
     updates: any
   ): Promise<boolean> {
+    // FIXME - Move this permissions stuff to API layer
     for (const key in updates) {
       if (!apiUpdatableFields.includes(key)) {
         return false;
@@ -654,7 +656,8 @@ export default function (
   };
 
   // local
-  const recordingsFor = async function (user: User, viewAsSuperAdmin = true) {
+  const recordingsFor = async function (userId: UserId, viewAsSuperAdmin = true) {
+    const user = models.User.findByPk(userId);
     if (viewAsSuperAdmin && user.hasGlobalRead()) {
       return null;
     }
@@ -708,7 +711,7 @@ from (
         (select tId as "TrackId" from
           (
            -- TrackTags for Tracks that have *only* TrackTags that were automatically set.
-           (select distinct("TrackId") as tId from "TrackTags" where automatic is true) as a
+           (select distinct("TrackId") as tId from "TrackTags" where automatic is true and "TrackTags"."archivedAt" IS NULL) as a
              left outer join
                (select distinct("TrackId") from "TrackTags" where automatic is false) as b
              on a.tId = b."TrackId"
@@ -718,13 +721,13 @@ from (
       -- All the recordings that have Tracks but no TrackTags
       (select "RecordingId" from "Tracks"
         left outer join "TrackTags" on "Tracks".id = "TrackTags"."TrackId"
-        where "TrackTags".id is null and "Tracks"."archivedAt" is null
+        where "TrackTags".id is null and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" IS NULL
       )
     ) as e on e."RecordingId" = "Recordings".id ${
       biasDeviceId !== undefined ? ` where "DeviceId" = ${biasDeviceId}` : ""
     } order by RANDOM() limit 1)
   as f left outer join "Tracks" on f."RId" = "Tracks"."RecordingId" and "Tracks"."archivedAt" is null
-  left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null
+  left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" is null
 ) as g;`);
 
     // NOTE: We bundle everything we need into this one specialised request.
@@ -881,6 +884,9 @@ from (
         include: [
           {
             model: models.TrackTag,
+            where: {
+              archivedAt: null,
+            },
             include: [
               {
                 model: models.User,
@@ -890,6 +896,7 @@ from (
             attributes: {
               exclude: ["UserId"],
             },
+            required: false,
           },
         ],
       });
@@ -1006,18 +1013,11 @@ from (
         RecordingId: this.id,
       },
     });
+    const tracks = await this.getTracks();
+    for (const track of tracks) {
+      await track.archiveTags();
+    }
 
-    models.Track.update(
-      {
-        archivedAt: Date.now(),
-      },
-      {
-        where: {
-          RecordingId: this.id,
-          archivedAt: null,
-        },
-      }
-    );
     await this.update({
       processingStartTime: null,
       processingEndTime: null,
@@ -1045,14 +1045,14 @@ from (
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
 
   Recording.queryBuilder.prototype.init = async function (
-    user,
-    where,
-    tagMode,
-    tags,
-    offset,
-    limit,
-    order,
-    viewAsSuperAdmin = true
+    userId: UserId,
+    where: any,
+    tagMode?: TagMode,
+    tags?: string[], // AcceptableTag[]
+    offset?: number,
+    limit?: number,
+    order?: any,
+    viewAsSuperUser?: boolean
   ) {
     if (!where) {
       where = {};
@@ -1087,7 +1087,7 @@ from (
     if (typeof where === "string") {
       where = JSON.parse(where);
     }
-    const recordingPermissions = await recordingsFor(user, viewAsSuperAdmin);
+    const recordingPermissions = await recordingsFor(userId, viewAsSuperUser);
     this.query = {
       where: {
         [Op.and]: [
@@ -1150,6 +1150,9 @@ from (
         include: [
           {
             model: models.TrackTag,
+            where: {
+              archivedAt: null,
+            },
             attributes: [
               "what",
               "automatic",
@@ -1314,7 +1317,7 @@ from (
     tags?: (TagMode | AcceptableTag)[],
     tagTypeSql?
   ) => {
-    let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
+    let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags"."archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
     if (tags) {
       sql += ` AND (${Recording.queryBuilder.selectByTagWhat(
         tags,
@@ -1488,6 +1491,7 @@ from (
 
   Recording.processingStates = {
     thermalRaw: [
+      RecordingProcessingState.Tracking,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,
     ],
@@ -1502,7 +1506,7 @@ from (
     if (type == RecordingType.Audio) {
       return RecordingProcessingState.ToMp3;
     } else {
-      return RecordingProcessingState.AnalyseThermal;
+      return RecordingProcessingState.Tracking;
     }
   };
   Recording.finishedState = function (type: RecordingType) {

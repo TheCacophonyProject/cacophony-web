@@ -23,6 +23,7 @@ import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRaw
 import { jsonSchemaOf } from "../schema-validation";
 import { booleanOf, idOf } from "../validation-middleware";
 import { ClientError } from "../customErrors";
+import util from "../V1/util";
 
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";
@@ -34,6 +35,9 @@ export default function (app: Application) {
    *
    * @apiParam {String} type Type of recording.
    * @apiParam {String} state Processing state.
+   * @apiSuccess {recording} requested
+   * @apiSuccess {String} signed url to download the raw file
+
    */
   app.get(
     apiUrl,
@@ -68,12 +72,34 @@ export default function (app: Application) {
         );
         return response.status(204).json();
       } else {
+        const rawJWT = recordingUtil.signedToken(
+          recording.rawFileKey,
+          recording.getRawFileName(),
+          recording.rawMimeType
+        );
         return response.status(200).json({
           recording: (recording as any).dataValues,
+          rawJWT,
         });
       }
     })
   );
+
+  /**
+   * @api {put} /api/fileProcessing/processed Upload a processed file to the db
+   * @apiName PostProcessedFile
+   * @apiGroup FileProcessing
+
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {String} fileKey of uploaded file
+   *
+   * @apiUse V1ResponseError
+   */
+  app.post(`${apiUrl}/processed`, () => {
+    util.multipartUpload("file", async (uploader, data, key) => {
+      return key;
+    });
+  });
 
   // Add tracks
 
@@ -190,7 +216,6 @@ export default function (app: Application) {
    * @apiParam {String} jobKey Key given when requesting the job.
    * @apiParam {Boolean} success If the job was finished successfully.
    * @apiParam {JSON} [result] Result of the file processing
-   * @apiParam {Boolean} complete true if the processing is complete, or false if file will be processed further.
    * @apiParam {String} [newProcessedFileKey] LeoFS Key of the new file.
    */
   app.put(
@@ -199,14 +224,10 @@ export default function (app: Application) {
       idOf(body("id")),
       body("jobKey").exists(),
       booleanOf(body("success")),
-      booleanOf(body("complete")),
       body("result").custom(parseJSONInternal).optional(),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
-      // FIXME fetchUnauthorizedRequiredRecording
-      const recording = await models.Recording.findOne({
-        where: { id: request.body.id },
-      });
+      const recording = await models.Recording.findByPk(request.body.id);
       if (!recording) {
         return next(
           new ClientError(
@@ -217,7 +238,7 @@ export default function (app: Application) {
       } else {
         if (recording.jobKey !== request.body.jobKey) {
           return next(
-            new ClientError("'jobKey' given did not match the database..", 400)
+            new ClientError("'jobKey' given did not match the database.", 400)
           );
         }
         response.locals.recording = recording;
@@ -225,22 +246,23 @@ export default function (app: Application) {
       }
     },
     async (request: Request, response: Response) => {
-      const { result, complete, newProcessedFileKey, success } = request.body;
+      const { result, newProcessedFileKey, success } = request.body;
       const recording = response.locals.recording;
       const prevState = recording.processingState;
       if (success) {
         if (newProcessedFileKey) {
           recording.set("fileKey", newProcessedFileKey);
         }
-        if (complete) {
-          recording.set({
-            jobKey: null,
-            processing: false,
-            processingEndTime: new Date().toISOString(),
-          });
-        }
         const nextJob = recording.getNextState();
-        recording.set("processingState", nextJob);
+        const complete =
+          nextJob == models.Recording.finishedState(recording.type);
+        recording.set({
+          jobKey: null,
+          processing: false,
+          processingState: nextJob,
+          processingEndTime: new Date().toISOString(),
+        });
+
         // Process extra data from file processing
         if (result && result.fieldUpdates) {
           // FIXME - station matching happens in here, move it out.
@@ -248,26 +270,25 @@ export default function (app: Application) {
         }
         await recording.save();
         if (recording.type === RecordingType.ThermalRaw) {
-          if (recording.processingState == RecordingProcessingState.Finished) {
-            if (
-              recording.additionalMetadata &&
-              "thumbnail_region" in recording.additionalMetadata
-            ) {
-              const region = recording.additionalMetadata["thumbnail_region"];
-              const result = await recordingUtil.saveThumbnailInfo(
-                recording,
-                region
+          if (
+            complete &&
+            recording.additionalMetadata &&
+            "thumbnail_region" in recording.additionalMetadata
+          ) {
+            const region = recording.additionalMetadata["thumbnail_region"];
+            const result = await recordingUtil.saveThumbnailInfo(
+              recording,
+              region
+            );
+            if (!result.hasOwnProperty("Key")) {
+              log.warning(
+                "Failed to upload thumbnail for %s",
+                `${recording.rawFileKey}-thumb`
               );
-              if (!result.hasOwnProperty("Key")) {
-                log.warning(
-                  "Failed to upload thumbnail for %s",
-                  `${recording.rawFileKey}-thumb`
-                );
-                log.error("Reason: %s", (result as Error).message);
-              }
+              log.error("Reason: %s", (result as Error).message);
             }
           }
-          if (prevState != RecordingProcessingState.Reprocess) {
+          if (complete && prevState !== RecordingProcessingState.Reprocess) {
             await recordingUtil.sendAlerts(recording.id);
           }
         }
@@ -516,6 +537,47 @@ export default function (app: Application) {
         statusCode: 200,
         messages: ["Algorithm key retrieved."],
         algorithmId: algorithm.id,
+      });
+    })
+  );
+
+  /**
+   * @api {get} /api/v1/recordings/:id/tracks Get tracks for recording
+   * @apiName GetTracks
+   * @apiGroup Tracks
+   * @apiDescription Get all tracks for a given recording and their tags.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {JSON} tracks Array with elements containing id,
+   * algorithm, data and tags fields.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/tracks`,
+    param("id").isInt().toInt(),
+
+    middleware.requestWrapper(async (request, response) => {
+      const recording = await models.Recording.findOne({
+        where: { id: request.params.id },
+      });
+
+      if (!recording) {
+        responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["No such recording."],
+        });
+        return;
+      }
+
+      const tracks = await recording.getActiveTracksTagsAndTagger();
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["OK."],
+        tracks: tracks.map((t) => {
+          delete t.dataValues.RecordingId;
+          return t;
+        }),
       });
     })
   );

@@ -135,7 +135,7 @@ const checkThatStationsAreNotTooCloseTogether = (
 };
 
 const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
-  authUser: User,
+  authUserId: UserId,
   group: Group,
   fromDate: Date,
   stations: Station[]
@@ -145,7 +145,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   // should be assigned to any of our stations.
 
   // Get recordings for group starting at date:
-  const builder = await new models.Recording.queryBuilder().init(authUser, {
+  const builder = await new models.Recording.queryBuilder().init(authUserId, {
     // Group id, and after date
     GroupId: group.id,
     recordingDateTime: {
@@ -222,7 +222,7 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
   getIdFromName: (groupname: string) => Promise<GroupId | null>;
 
   addStationsToGroup: (
-    authUser: User,
+    authUserId: UserId,
     group: Group,
     stationsToAdd: CreateStationData[],
     applyToRecordingsFromDate: Date | undefined
@@ -316,7 +316,7 @@ export default function (sequelize, DataTypes): GroupStatic {
    *
    */
   Group.addStationsToGroup = async function (
-    authUser,
+    authUserId: UserId,
     group,
     stationsToAdd,
     applyToRecordingsFromDate
@@ -347,7 +347,7 @@ export default function (sequelize, DataTypes): GroupStatic {
     const retiredStations = retireMissingStations(
       existingStations,
       newStationsByName,
-      authUser.id
+      authUserId
     );
 
     for (const station of existingStations) {
@@ -369,7 +369,7 @@ export default function (sequelize, DataTypes): GroupStatic {
         stationToAddOrUpdate = new models.Station({
           name: newStation.name,
           location: [newStation.lat, newStation.lng],
-          lastUpdatedById: authUser.id,
+          lastUpdatedById: authUserId,
         });
         addedOrUpdatedStations.push(stationToAddOrUpdate);
         stationOpsPromises.push(
@@ -390,7 +390,7 @@ export default function (sequelize, DataTypes): GroupStatic {
             newStation.lat,
             newStation.lng,
           ];
-          stationToAddOrUpdate.lastUpdatedById = authUser.id;
+          stationToAddOrUpdate.lastUpdatedById = authUserId;
           addedOrUpdatedStations.push(stationToAddOrUpdate);
           stationOpsPromises.push(stationToAddOrUpdate.save());
         }
@@ -403,7 +403,7 @@ export default function (sequelize, DataTypes): GroupStatic {
       // After adding stations, we need to apply any station matches to recordings from a start date:
       updatedRecordings =
         await updateExistingRecordingsForGroupWithMatchingStationsFromDate(
-          authUser,
+          authUserId,
           group,
           applyToRecordingsFromDate,
           allStations

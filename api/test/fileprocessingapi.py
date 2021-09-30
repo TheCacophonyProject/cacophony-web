@@ -21,7 +21,7 @@ class FileProcessingAPI:
             return Recording(id_, data, None)
         raise_specific_exception(r)
 
-    def put(self, recording, success, complete, updates=None, new_object_key=None):
+    def put(self, recording, success, complete=False, updates=None, new_object_key=None):
         post_data = {
             "id": recording.id_,
             "jobKey": recording["jobKey"],

@@ -1,0 +1,4 @@
+#
+# cron.d/cacophony-api-influx-metrics
+# every minute
+* * * * * root (cd /srv/cacophony/api/scripts/ && node influx-metrics.js) 2>&1 | logger --tag report-errors

@@ -38,6 +38,9 @@ sudo -i -u postgres psql cacophonytest -f /app/api/test/db-seed.sql
 
 echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
 
+echo "---- update npm packages ----"
+npm i
+
 echo "---- Compiling JSON schemas ----"
 cd ../types && npm run generate-schemas
 cd ../api

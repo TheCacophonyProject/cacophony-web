@@ -25,7 +25,8 @@ import { Application, Request, Response } from "express";
 import { RecordingPermission } from "@models/Recording";
 import {
   parseJSONField,
-  extractJwtAuthorizedUser, fetchAuthorizedRequiredRecordingById,
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredRecordingById,
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";

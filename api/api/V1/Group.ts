@@ -432,7 +432,7 @@ export default function (app: Application, baseUrl: string) {
     parseJSONField(body("stations")),
     async (request, response) => {
       const stationsUpdated = await models.Group.addStationsToGroup(
-        response.locals.requestUser,
+        response.locals.requestUser.id,
         response.locals.group,
         response.locals.stations,
         request.body.fromDate

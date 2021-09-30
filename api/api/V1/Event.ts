@@ -273,7 +273,7 @@ export default function (app: Application, baseUrl: string) {
       }
 
       const result = await models.Event.query(
-        response.locals.requestUser,
+        response.locals.requestUser.id,
         query.startTime as string,
         query.endTime as string,
         query.deviceId as unknown as number,

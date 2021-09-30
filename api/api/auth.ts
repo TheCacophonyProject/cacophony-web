@@ -49,8 +49,12 @@ export interface DecodedJWTToken {
   id: number;
 }
 
-export const getVerifiedJWT = (req): string | object | DecodedJWTToken => {
-  const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(req);
+export const getVerifiedJWT = (request: Request): string | object | DecodedJWTToken => {
+  let token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
+  if (token) {
+    // allow taking the jwt from the query params.
+    token = request.query.jwt;
+  }
   if (!token) {
     throw new customErrors.AuthenticationError("Could not find JWT token.");
   }

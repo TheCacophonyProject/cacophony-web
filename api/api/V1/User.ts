@@ -34,7 +34,8 @@ import {
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
-  fetchUnauthorizedOptionalUserByNameOrId, fetchUnauthorizedRequiredUserByNameOrId,
+  fetchUnauthorizedOptionalUserByNameOrId,
+  fetchUnauthorizedRequiredUserByNameOrId,
 } from "../extract-middleware";
 import logger from "@log";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";

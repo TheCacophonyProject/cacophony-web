@@ -1,4 +1,4 @@
-// Config instructions: Fill out required fields and save as 'config.js'
+// Config instructions: Fill out required fields and save as 'app.js'
 
 const server = {
   // General server settings
@@ -55,12 +55,30 @@ const smtpDetails = {
   // }
 };
 
+const influx = {
+  host: "",
+  database: "",
+  username: "",
+  password: "",
+};
+
 exports.smtpDetails = smtpDetails;
 exports.server = server;
 exports.fileProcessing = fileProcessing;
 exports.database = database;
 exports.s3Local = s3Local;
 exports.s3Archive = s3Achive;
+exports.influx = influx;
 
 // This is needed because Sequelize looks for development by default when using db:migrate
 exports.development = database;
+
+exports.default = {
+  smtpDetails: exports.smtpDetails,
+  server: exports.server,
+  s3Local: exports.s3Local,
+  s3Archive: exports.s3Archive,
+  fileProcessing: exports.fileProcessing,
+  database: exports.database,
+  influx: exports.influx,
+};

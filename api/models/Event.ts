@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { DeviceId, Device } from "./Device";
-import { User } from "./User";
+import {User, UserId} from "./User";
 import { DetailSnapShot } from "./DetailSnapshot";
 import logger from "../logging";
 
@@ -53,7 +53,7 @@ export interface QueryOptions {
 
 export interface EventStatic extends ModelStaticCommon<Event> {
   query: (
-    user: User,
+    userId: UserId,
     startTime: string | null | undefined,
     endTime: string | null | undefined,
     deviceId: DeviceId | null | undefined,
@@ -96,7 +96,7 @@ export default function (sequelize, DataTypes) {
    * arguments given.
    */
   Event.query = async function (
-    user,
+    userId: UserId,
     startTime,
     endTime,
     deviceId,
@@ -141,7 +141,7 @@ export default function (sequelize, DataTypes) {
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
-
+    const user = models.User.findByPk(userId);
     return this.findAndCountAll({
       where: {
         [Op.and]: [

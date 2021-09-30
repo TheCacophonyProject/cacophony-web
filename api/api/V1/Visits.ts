@@ -371,9 +371,9 @@ class Visit {
   }
 
   mostCommonTag(): TrackTag | null {
-    // from all events in a visit, get the tag with the highest occurence that
-    // isnt unidentified, preferring human tags over ai
-    // returns [boolean desciribing if human tag, the tag]
+    // from all events in a visit, get the tag with the highest occurrence that
+    // isn't unidentified, preferring human tags over ai
+    // returns [boolean describing if human tag, the tag]
     const tagCount = this.tagCount;
     const sortedKeys = Object.keys(tagCount).sort(function (a, b) {
       const count_a = tagCount[a];

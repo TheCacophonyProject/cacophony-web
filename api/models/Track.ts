@@ -42,6 +42,7 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
 }
 export interface TrackStatic extends ModelStaticCommon<Track> {
   replaceTag: (id: TrackId, tag: TrackTag) => Promise<any>;
+  archiveTags: () => Promise<any>;
 }
 
 export default function (
@@ -145,5 +146,19 @@ export default function (
     return trackTag;
   };
 
+  // Archives tags for reprocessing
+  Track.prototype.archiveTags = async function () {
+    models.TrackTag.update(
+      {
+        archivedAt: Date.now(),
+      },
+      {
+        where: {
+          TrackId: this.id,
+          automatic: true,
+        },
+      }
+    );
+  };
   return Track;
 }

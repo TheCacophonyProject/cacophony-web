@@ -271,7 +271,7 @@ async function getRecordings(
   const order = [["recordingDateTime", "ASC"]];
 
   const builder = await new models.Recording.queryBuilder().init(
-    user,
+    user.id,
     where,
     null,
     null,
