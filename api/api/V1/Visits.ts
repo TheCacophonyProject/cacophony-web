@@ -17,6 +17,7 @@ import { Track } from "@models/Track";
 import { AI_MASTER } from "@models/TrackTag";
 import moment, { Moment } from "moment";
 import { Event } from "@models/Event";
+import logging from "@log";
 
 let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;
@@ -375,6 +376,7 @@ class Visit {
     // isn't unidentified, preferring human tags over ai
     // returns [boolean describing if human tag, the tag]
     const tagCount = this.tagCount;
+    logging.warning("tags %s", tagCount);
     const sortedKeys = Object.keys(tagCount).sort(function (a, b) {
       const count_a = tagCount[a];
       const count_b = tagCount[b];
@@ -405,6 +407,7 @@ class Visit {
   completeVisit() {
     // assign the visit a tag based on the most common tag that isn't unidentified
     const trackTag = this.mostCommonTag();
+    logging.warning("Most common tag %s", trackTag.what);
     this.what = trackTag ? trackTag.what : null;
     for (const event of this.events) {
       event.assumedTag = trackTag ? trackTag.what : null;
