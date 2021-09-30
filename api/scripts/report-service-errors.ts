@@ -11,10 +11,8 @@ async function main() {
   const endDate = moment().tz(config.timeZone);
   const startDate = moment().tz(config.timeZone).subtract(24, "hours");
   const query = {
-    endTime: endDate.toDate(),
-    startTime: startDate.toDate(),
-    offset: null,
-    limit: null,
+    endTime: endDate.toDate().toISOString(),
+    startTime: startDate.toDate().toISOString(),
   };
   const serviceErrors = await errors(
     { query: query, res: { locals: { requestUser: null } } },

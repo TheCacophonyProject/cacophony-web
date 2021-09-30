@@ -365,7 +365,7 @@ async function createThumbnail(
     .toBuffer();
   return { data: img, meta: thumbMeta };
 }
-const makeUploadHandler = util.multipartUpload(
+export const uploadRawRecording = util.multipartUpload(
   "raw",
   async (
     uploadingDevice: Device,
@@ -1692,7 +1692,6 @@ export const finishedProcessingRecording = async (
 };
 
 export default {
-  makeUploadHandler,
   query,
   get,
   addTag,

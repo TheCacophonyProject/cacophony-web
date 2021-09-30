@@ -24,7 +24,7 @@ import recordingUtil, {
     handleLegacyTagFieldsForGetOnRecording,
     RecordingQuery, reportRecordings,
     reportVisits,
-    signedToken,
+    signedToken, uploadRawRecording,
 } from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import models from "@models";
@@ -132,7 +132,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiSuccess {Number} recordingId ID of the recording.
    * @apiuse V1ResponseError
    */
-  app.post(apiUrl, extractJwtAuthorisedDevice, recordingUtil.makeUploadHandler);
+  app.post(apiUrl, extractJwtAuthorisedDevice, uploadRawRecording);
 
   /**
    * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a new recording on behalf of device using group
@@ -164,7 +164,7 @@ export default (app: Application, baseUrl: string) => {
       param("deviceName"),
       param("groupName")
     ),
-    recordingUtil.makeUploadHandler
+    uploadRawRecording
   );
 
   /**
@@ -192,7 +192,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("deviceId"))]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    recordingUtil.makeUploadHandler
+    uploadRawRecording
   );
 
   const queryValidators = Object.freeze([
@@ -249,7 +249,7 @@ export default (app: Application, baseUrl: string) => {
       response.locals.device = devices[0];
       next();
     },
-    recordingUtil.makeUploadHandler
+    uploadRawRecording
   );
 
   // FIXME - Should we just delete this now?

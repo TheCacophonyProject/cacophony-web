@@ -271,12 +271,12 @@ export default function (app: Application, baseUrl: string) {
       if (query.type) {
         options = { eventType: query.type } as QueryOptions;
       }
-
+      logger.warning("Query events");
       const result = await models.Event.query(
         response.locals.requestUser.id,
         query.startTime as string,
         query.endTime as string,
-        query.deviceId as unknown as number,
+        Number(query.deviceId),
         offset,
         query.limit as unknown as number,
         query.latest as unknown as boolean,
@@ -352,9 +352,9 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       query("startTime").isISO8601({ strict: true }).optional(),
       query("endTime").isISO8601({ strict: true }).optional(),
-      query("deviceId").isInt().optional().toInt(),
-      query("offset").isInt().optional().toInt(),
-      query("limit").isInt().optional().toInt(),
+      idOf(query("deviceId")).optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
     ]),
     // Extract required resources
     fetchAuthorizedOptionalDeviceById(query("deviceId")),

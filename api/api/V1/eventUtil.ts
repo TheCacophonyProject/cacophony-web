@@ -1,28 +1,39 @@
 import models from "@models";
-import { Device } from "@models/Device";
+import {Device, DeviceId} from "@models/Device";
 import { Event } from "@models/Event";
 
 import { QueryOptions } from "@models/Event";
 import { groupSystemErrors } from "./systemError";
 import moment, { Moment } from "moment";
 import logger from "@log";
+import { IsoFormattedDateString } from "@/../types/api/common";
 export const errors = async (
-  request: { query: any; res: any },
+  request: {
+    query: {
+      limit?: number,
+      offset?: number,
+      startTime?: IsoFormattedDateString,
+      endTime?: IsoFormattedDateString,
+      deviceId?: DeviceId,
+    };
+    res: any
+  },
   admin?: boolean
 ) => {
   const query = request.query;
-  const options = {} as QueryOptions;
-  options.eventType = "systemError";
-  options.admin = admin === true;
-  options.useCreatedDate = true;
+  const options = {
+    eventType: "systemError",
+    admin: admin === true,
+    useCreatedDate: true
+  } as QueryOptions;
 
   const result = await models.Event.query(
-    request.res.locals.requestUser,
-    query.startTime as unknown as string,
-    query.endTime as unknown as string,
-    query.deviceId as unknown as number,
-    query.offset as unknown as number,
-    query.limit as unknown as number,
+    request.res.locals.requestUser.id,
+    query.startTime,
+    query.endTime,
+    query.deviceId,
+    query.offset,
+    query.limit,
     false,
     options
   );

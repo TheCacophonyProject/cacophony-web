@@ -46,25 +46,25 @@ export interface Event extends Sequelize.Model, ModelCommon<Event> {
 }
 
 export interface QueryOptions {
-  eventType: string | string[];
-  admin: boolean;
-  useCreatedDate: boolean;
+  eventType?: string | string[];
+  admin?: boolean;
+  useCreatedDate?: boolean;
 }
 
 export interface EventStatic extends ModelStaticCommon<Event> {
   query: (
     userId: UserId,
-    startTime: string | null | undefined,
-    endTime: string | null | undefined,
-    deviceId: DeviceId | null | undefined,
-    offset: number | null | undefined,
-    limit: number | null | undefined,
-    latest: boolean | null | undefined,
+    startTime?: string,
+    endTime?: string,
+    deviceId?: DeviceId,
+    offset?: number,
+    limit?: number,
+    latest?: boolean,
     options?: QueryOptions
   ) => Promise<{ rows: Event[]; count: number }>;
   latestEvents: (
-    user: User,
-    deviceId: DeviceId | null | undefined,
+    userId: UserId,
+    deviceId?: DeviceId,
     options?: QueryOptions
   ) => Promise<Event[]>;
 }
@@ -141,7 +141,8 @@ export default function (sequelize, DataTypes) {
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
-    const user = models.User.findByPk(userId);
+    const user = await models.User.findByPk(userId);
+    logger.warning("Got user %s", user);
     return this.findAndCountAll({
       where: {
         [Op.and]: [
@@ -172,7 +173,7 @@ export default function (sequelize, DataTypes) {
   /**
    * Return the latest event of each type grouped by device id
    */
-  Event.latestEvents = async function (user, deviceId, options) {
+  Event.latestEvents = async function (userId, deviceId, options) {
     const where: any = {};
 
     if (deviceId) {
@@ -193,7 +194,7 @@ export default function (sequelize, DataTypes) {
       ["DeviceId", "DESC"],
       ["dateTime", "DESC"],
     ];
-
+    const user = await models.User.findByPk(userId);
     return this.findAll({
       where: {
         [Op.and]: [
