@@ -6,12 +6,12 @@ import { getCreds } from "@commands/server";
 import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
-const ADMIN = true;
-const NOT_ADMIN = false;
-let expectedDevice: ApiDeviceResponse;
-let expectedDevice1b: ApiDeviceResponse;
-
 describe("Groups - get devices for group", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+  let expectedDevice: ApiDeviceResponse;
+  let expectedDevice1b: ApiDeviceResponse;
+
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gdGroupAdmin", "gdGroup", "gdCamera").then(

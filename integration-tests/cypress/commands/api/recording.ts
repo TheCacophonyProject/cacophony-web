@@ -9,15 +9,23 @@ import {
   getCreds,
   makeAuthorizedRequestWithStatus,
   saveIdOnly,
-  saveJobKeyById,
+  saveJobKeyByName,
   checkTreeStructuresAreEqualExcept,
   removeUndefinedParams,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { ApiRecordingSet, ApiRecordingReturned } from "../types";
+import {
+  ApiRecordingSet,
+  ApiRecordingReturned,
+  ApiRecordingNeedsTagReturned,
+  ApiRecordingColumns,
+} from "../types";
+import { ApiRecordingColumnNames } from "../constants";
+
+// 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
 Cypress.Commands.add(
-  "processingApiPost",
+  "processingApiPut",
   (
     recordingName: string,
     success: boolean,
@@ -55,10 +63,121 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "processingApiTracksPost",
+  (
+    trackName: string,
+    recordingName: string,
+    data: any,
+    algorithmId: number,
+    statusCode: number = 200
+  ) => {
+    const id = getCreds(recordingName).id;
+    logTestDescription(`Adding tracks for recording ${recordingName}`, {
+      id: id,
+      data: data,
+      algorithmId: algorithmId,
+    });
+    const params = {
+      data: JSON.stringify(data),
+      algorithmId: algorithmId,
+    };
+
+    const url = processingApiPath(id.toString() + "/tracks");
+    cy.request({
+      method: "POST",
+      url: url,
+      body: params,
+    }).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode
+      );
+      saveIdOnly(trackName, response.body.trackId);
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "processingApiTracksDelete",
+  (recordingName: string, statusCode: number = 200) => {
+    const id = getCreds(recordingName).id;
+    logTestDescription(`Deleting tracks from recording ${recordingName}`, {
+      id: id,
+    });
+    const params = {};
+    const url = processingApiPath(id.toString() + "/tracks");
+    cy.request({
+      method: "DELETE",
+      url: url,
+      body: params,
+    }).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode
+      );
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "processingApiTracksTagsPost",
+  (
+    trackName: string,
+    recordingName: string,
+    what: any,
+    confidence: number,
+    data: any = {},
+    statusCode: number = 200
+  ) => {
+    const id = getCreds(recordingName).id;
+    const trackId = getCreds(trackName).id;
+    logTestDescription(
+      `Adding tracktag '${what}' for recording ${recordingName}`,
+      { id: id, trackId: trackId, what: what, confidence: confidence }
+    );
+    const params = {
+      what: what,
+      confidence: confidence,
+      data: JSON.stringify(data),
+    };
+
+    const url = processingApiPath(
+      id.toString() + "/tracks/" + trackId.toString() + "/tags"
+    );
+    cy.request({
+      method: "POST",
+      url: url,
+      body: params,
+    }).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode
+      );
+    });
+  }
+);
+
+Cypress.Commands.add("processingApiAlgorithmPost", (algorithm: any) => {
+  logTestDescription(`Getting id for algorithm ${JSON.stringify(algorithm)}`, {
+    algorithm: algorithm,
+  });
+  const params = {
+    algorithm: JSON.stringify(algorithm),
+  };
+
+  const url = processingApiPath("algorithm");
+  cy.request({
+    method: "POST",
+    url: url,
+    body: params,
+  }).then((response) => {
+    cy.wrap(response.body.algorithmId);
+  });
+});
+
+Cypress.Commands.add(
   "processingApiCheck",
   (
     type: string,
     state: string,
+    recordingName: string,
     expectedRecording: any,
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
@@ -78,10 +197,18 @@ Cypress.Commands.add(
     cy.request({ url }).then((response) => {
       if (statusCode === 200) {
         if (response.body.recording !== undefined) {
-          saveJobKeyById(
-            response.body.recording.id,
-            response.body.recording.jobKey
-          );
+          saveJobKeyByName(recordingName, response.body.recording.jobKey);
+        }
+        if (expectedRecording === undefined) {
+          expect(
+            response.body.recording,
+            "Expect response to contain no recordings"
+          ).to.be.undefined;
+        } else {
+          expect(
+            response.body.recording,
+            "Expect response to contain a recording"
+          ).to.exist;
         }
         checkTreeStructuresAreEqualExcept(
           expectedRecording,
@@ -133,6 +260,49 @@ Cypress.Commands.add(
         expect(x.response.body.messages).to.contain(
           additionalChecks["message"]
         );
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingUpdate",
+  (
+    userName: string,
+    recordingNameOrId: string,
+    updates: any,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(`Update recording ${recordingNameOrId}`, {
+      recording: recordingNameOrId,
+      updates: updates,
+    });
+
+    let recordingId: string;
+    if (additionalChecks["useRawRecordingId"] === true) {
+      recordingId = recordingNameOrId;
+    } else {
+      recordingId = getCreds(recordingNameOrId).id.toString();
+    }
+
+    const url = v1ApiPath(`recordings/${recordingId}`);
+
+    const params = {
+      updates: JSON.stringify(updates),
+    };
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "PATCH",
+        url: url,
+        body: params,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
     });
   }
@@ -211,6 +381,132 @@ Cypress.Commands.add(
           response.body.recording,
           excludeCheckOn
         );
+      } else {
+        if (additionalChecks["message"] !== undefined) {
+          expect(response.body.messages).to.contain(
+            additionalChecks["message"]
+          );
+        }
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingNeedsTagCheck",
+  (
+    userName: string,
+    deviceNameOrId: string,
+    expectedRecordings: ApiRecordingNeedsTagReturned[],
+    excludeCheckOn: string[] = [],
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(
+      `Check recording needs-tag, biased to ${deviceNameOrId} `,
+      {
+        device: deviceNameOrId,
+      }
+    );
+
+    let params: any = {};
+    if (deviceNameOrId !== undefined) {
+      if (additionalChecks["useRawDeviceId"] === true) {
+        params = { deviceId: deviceNameOrId };
+      } else {
+        params = { deviceId: getCreds(deviceNameOrId).id.toString() };
+      }
+    }
+    const url = v1ApiPath(`recordings/needs-tag`, params);
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      let expectedRecording: ApiRecordingNeedsTagReturned;
+      if (statusCode === 200) {
+        if (expectedRecordings.length > 0) {
+          if (additionalChecks["doNotValidate"] != true) {
+            //find returned recording in expectedRecordings
+            let recordingIds = "";
+            expectedRecordings.forEach((recording) => {
+              recordingIds =
+                recordingIds + recording.RecordingId.toString() + ", ";
+              if (recording.RecordingId == response.body.rows[0].RecordingId) {
+                expectedRecording = recording;
+              }
+            });
+            expect(
+              expectedRecording,
+              `Recording ID ${response.body.rows[0].RecordingId} should be in list (${recordingIds})`
+            ).to.exist;
+
+            //Verify result matches expected
+            checkTreeStructuresAreEqualExcept(
+              expectedRecording,
+              response.body.rows[0],
+              excludeCheckOn
+            );
+          }
+        } else {
+          //TODO: Issue 100 workaround. Remove when fixed
+          //expect(response.body.rows.length,"Expect no returned recordings").to.equal(0);
+          expect(
+            response.body.rows[0].RecordingId,
+            "Expect dummy recording with id of 0"
+          ).to.equal(0);
+        }
+      } else {
+        if (additionalChecks["message"] !== undefined) {
+          expect(response.body.messages).to.contain(
+            additionalChecks["message"]
+          );
+        }
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingThumbnailCheck",
+  (
+    userName: string,
+    recordingNameOrId: string,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(`Check thumbnail for recording ${recordingNameOrId} `, {
+      recordingName: recordingNameOrId,
+    });
+
+    let recordingId: string;
+    if (additionalChecks["useRawRecordingId"] === true) {
+      recordingId = recordingNameOrId;
+    } else {
+      recordingId = getCreds(recordingNameOrId).id.toString();
+    }
+    const url = v1ApiPath(`recordings/${recordingId}/thumbnail`);
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (statusCode === 200) {
+        expect(response.body.length, "Returned file has length>0").to.be.gt(0);
+        if (additionalChecks["type"] == "PNG") {
+          expect(
+            response.body.slice(1, 4),
+            "Expect PNG file signature"
+          ).to.equal("PNG");
+        }
       } else {
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages).to.contain(
@@ -368,6 +664,77 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiRecordingsReportCheck",
+  (
+    userName: string,
+    query: any,
+    expectedResults: ApiRecordingColumns[] = [],
+    excludeCheckOn: string[] = [],
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    const params = removeUndefinedParams(query);
+    params["where"] = JSON.stringify(query["where"]);
+
+    logTestDescription(
+      `Generate report for recordings where '${JSON.stringify(
+        params["where"]
+      )}'`,
+      { user: userName, params: params }
+    );
+
+    const url = v1ApiPath("recordings/report", params);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (statusCode === 200) {
+        const allrows = response.body.split(/\r?\n/);
+        const columns = allrows[0].split(",");
+        const rows = allrows.slice(1);
+
+        expect(JSON.stringify(columns), "CSV columns match expected").to.equal(
+          JSON.stringify(ApiRecordingColumnNames)
+        );
+
+        expect(
+          rows.length,
+          `Expect ${expectedResults.length} results to be returned`
+        ).to.equal(expectedResults.length);
+
+        for (let count = 0; count < expectedResults.length; count++) {
+          const columns = rows[count].split(",");
+          for (
+            let column = 0;
+            column < ApiRecordingColumnNames.length;
+            column++
+          ) {
+            if (excludeCheckOn.indexOf(ApiRecordingColumnNames[column]) == -1) {
+              expect(
+                columns[column],
+                `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
+              ).to.equal(
+                expectedResults[count][ApiRecordingColumnNames[column]]
+              );
+            }
+          }
+        }
+      } else {
+        if (additionalChecks["message"] !== undefined) {
+          expect(response.body.messages).to.contain(
+            additionalChecks["message"]
+          );
+        }
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
   "apiRecordingsCountCheck",
   (
     userName: string,
@@ -377,7 +744,9 @@ Cypress.Commands.add(
     additionalChecks: any = {}
   ) => {
     const params = removeUndefinedParams(query);
-    params["where"] = JSON.stringify(query["where"]);
+    if (query["where"]) {
+      params["where"] = JSON.stringify(query["where"]);
+    }
 
     logTestDescription(
       `Query recording count where '${JSON.stringify(params["where"])}'`,
@@ -394,9 +763,11 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        expect(response.body.count, "Recording count should be").to.equal(
-          expectedCount
-        );
+        if (expectedCount !== undefined) {
+          expect(response.body.count, "Recording count should be").to.equal(
+            expectedCount
+          );
+        }
         cy.wrap(response.body.count);
       } else {
         if (additionalChecks["message"] !== undefined) {
@@ -433,198 +804,30 @@ Cypress.Commands.add(
       userName,
       statusCode
     ).then((response) => {
+      if (expectedReprocessed !== undefined) {
+        expect(
+          response.body.reprocessed.length,
+          "Number of reprocessed expected to be"
+        ).to.equal(expectedReprocessed.length);
+        expectedReprocessed.forEach((reprocessed: any) => {
+          expect(response.body.reprocessed).to.contain(reprocessed);
+        });
+      }
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages).to.contain(additionalChecks["message"]);
+      }
+      if (additionalChecks["fail"] !== undefined) {
+        expect(
+          response.body.fail.length,
+          "Number of fail expected to be"
+        ).to.equal(additionalChecks["fail"].length);
+        additionalChecks["fail"].forEach((fail: any) => {
+          expect(response.body.fail).to.contain(fail);
+        });
+      }
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
     });
   }
 );
-
-///////
-type IsoFormattedDateString = string;
-
-interface TrackData {
-  start_s?: number;
-  end_s?: number;
-  confident_tag?: string;
-  confidence?: number;
-}
-
-interface AlgorithmMetadata {
-  model_name?: string;
-}
-
-interface ThermalRecordingMetaData {
-  algorithm?: AlgorithmMetadata;
-  tracks: TrackData[];
-}
-
-interface ThermalRecordingData {
-  type: "thermalRaw";
-  recordingDateTime: IsoFormattedDateString;
-  duration: number;
-  comment?: string;
-  batteryLevel?: number;
-  batteryCharging?: string;
-  airplaneModeOn?: boolean;
-  version?: string;
-  additionalMetadata?: JSON;
-  metadata?: ThermalRecordingMetaData;
-  location?: number[];
-  processingState?: string;
-}
-
-function makeRecordingDataFromDetails(
-    details: ApiThermalRecordingInfo
-): ThermalRecordingData {
-  const data: ThermalRecordingData = {
-    type: "thermalRaw",
-    recordingDateTime: "",
-    duration: 12,
-    comment: "uploaded by cypress",
-  };
-
-  if (details.duration) {
-    data.duration = details.duration;
-  }
-
-  data.recordingDateTime = getDateForRecordings(details).toISOString();
-
-  if (!details.noTracks) {
-    const model = details.model ? details.model : "Master";
-    addTracksToRecording(data, model, details.tracks, details.tags);
-  }
-
-  if (details.lat && details.lng) {
-    data.location = [details.lat, details.lng];
-  }
-  if (details.processingState) {
-    data.processingState = details.processingState;
-  }
-  return data;
-}
-
-function getDateForRecordings(details: ApiThermalRecordingInfo): Date {
-  let date = lastUsedTime;
-
-  if (details.time) {
-    date = convertToDate(details.time);
-  } else if (details.minsLater || details.secsLater) {
-    let secs = 0;
-    if (details.minsLater) {
-      secs += details.minsLater * 60;
-    }
-    if (details.secsLater) {
-      secs += details.secsLater;
-    }
-    date = new Date(date.getTime() + secs * 1000);
-  } else {
-    // add a minute anyway so we don't get two overlapping recordings on the same camera
-    const MINUTE = 60;
-    date = new Date(date.getTime() + MINUTE * 1000);
-  }
-
-  lastUsedTime = date;
-  return date;
-}
-
-function addTracksToRecording(
-    data: ThermalRecordingData,
-    model: string,
-    trackDetails?: ApiTrackInfo[],
-    tags?: string[]
-): void {
-  data.metadata = {
-    algorithm: { tracker_version: 10 },
-    models: [
-      {
-        id: 1,
-        name: model,
-      },
-    ],
-    tracks: [],
-  };
-
-  if (tags && !trackDetails) {
-    trackDetails = tags.map((tag) => ({ tag }));
-  }
-
-  if (trackDetails) {
-    let count = 0;
-    data.metadata.tracks = trackDetails.map((track) => {
-      const tag = track.tag ? track.tag : "possum";
-      return {
-        start_s: track.start_s || 2 + count * 10,
-        end_s: track.end_s || 8 + count * 10,
-        predictions: [
-          {
-            model_id: 1,
-            confident_tag: tag,
-            confidence: 0.9,
-          },
-        ],
-      };
-    });
-    count++;
-  } else {
-    data.metadata.tracks.push({
-      start_s: 2,
-      end_s: 8,
-      predictions: [
-        {
-          confident_tag: "possum",
-          confidence: 0.5,
-        },
-      ],
-    });
-  }
-}
-
-
-Cypress.Commands.add(
-    "apiCheckDeviceHasRecordings",
-    (userName, deviceName, count) => {
-      const user = getCreds(userName);
-      const camera = getCreds(deviceName);
-      const params = {
-        where: JSON.stringify({ DeviceId: camera.id }),
-      };
-      const fullUrl = v1ApiPath("recordings", params);
-
-      cy.request({
-        url: fullUrl,
-        headers: user.headers,
-      }).then((request) => {
-        expect(request.body.count).to.equal(count);
-      });
-    }
-);
-
-export function checkRecording(
-    userName: string,
-    recordingId: number,
-    checkFunction: any
-) {
-  cy.log(`recording id is ${recordingId}`);
-  makeAuthorizedRequest(
-      {
-        url: v1ApiPath(`recordings`),
-      },
-      userName
-  ).then((response) => {
-    let recordings = response.body.rows;
-    if (recordingId !== 0) {
-      recordings = recordings.filter((x) => x.id == recordingId);
-    }
-    if (recordings.length > 0) {
-      checkFunction(recordings[0]);
-    } else {
-      expect(recordings.length).equal(1);
-    }
-  });
-}
-
-export function addSeconds(initialTime: Date, secondsToAdd: number): Date {
-  const AS_MILLISECONDS = 1000;
-  return new Date(initialTime.getTime() + secondsToAdd * AS_MILLISECONDS);
-}

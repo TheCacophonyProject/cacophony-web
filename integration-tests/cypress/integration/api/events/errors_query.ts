@@ -15,12 +15,12 @@ import {
 //
 //
 
-const ADMIN = true;
-const NOT_ADMIN = false;
-const DEVICE_NOT_SPECIFIED = undefined;
-const DEFINED = []; // will verify that 'patterns' is present (undefined will verify that it is absent)
-
 describe("Events - query errors", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+  const DEVICE_NOT_SPECIFIED = undefined;
+  const DEFINED = []; // will verify that 'patterns' is present (undefined will verify that it is absent)
+
   let expectedSimilar1: ApiEventErrorSimilar;
   let expectedSimilar2: ApiEventErrorSimilar;
   let expectedSimilar3: ApiEventErrorSimilar;

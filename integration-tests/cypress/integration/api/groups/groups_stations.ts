@@ -10,69 +10,71 @@ import {
   NOT_NULL,
 } from "@commands/constants";
 
-const ADMIN = true;
-const NOT_ADMIN = false;
-const EXCLUDE_CREATED_UPDATED_ID = ["[].createdAt", "[].updatedAt", "[].id"];
-
-const station1a = { name: "station1", lat: -45.1, lng: 172.1 };
-const station1b = { name: "station1", lat: -45.2, lng: 172.1 };
-const station2a = { name: "station2", lat: -45.1, lng: 172.2 };
-const station2b = { name: "station2", lat: -45.2, lng: 172.2 };
-const station3a = { name: "station3", lat: -45.1, lng: 172.3 };
-
-//TODO: These coordinates are back to front.  Issue 73. Reverse once database & API are corrected. Should be X,Y
-const expectedStation1a: ApiStationDataReturned = {
-  id: 0,
-  name: "station1",
-  location: { type: "Point", coordinates: [-45.1, 172.1] },
-  lastUpdatedById: 0,
-  createdAt: null,
-  retiredAt: null,
-  updatedAt: null,
-  GroupId: null,
-};
-const expectedStation1b: ApiStationDataReturned = {
-  id: 0,
-  name: "station1",
-  location: { type: "Point", coordinates: [-45.2, 172.1] },
-  lastUpdatedById: 0,
-  createdAt: null,
-  retiredAt: null,
-  updatedAt: null,
-  GroupId: null,
-};
-const expectedStation2a: ApiStationDataReturned = {
-  id: 0,
-  name: "station2",
-  location: { type: "Point", coordinates: [-45.1, 172.2] },
-  lastUpdatedById: 0,
-  createdAt: null,
-  retiredAt: null,
-  updatedAt: null,
-  GroupId: null,
-};
-const expectedStation2b: ApiStationDataReturned = {
-  id: 0,
-  name: "station2",
-  location: { type: "Point", coordinates: [-45.2, 172.2] },
-  lastUpdatedById: 0,
-  createdAt: null,
-  retiredAt: null,
-  updatedAt: null,
-  GroupId: null,
-};
-const expectedStation3a: ApiStationDataReturned = {
-  id: 0,
-  name: "station3",
-  location: { type: "Point", coordinates: [-45.1, 172.3] },
-  lastUpdatedById: 0,
-  createdAt: null,
-  retiredAt: null,
-  updatedAt: null,
-  GroupId: null,
-};
-
 describe("Groups - add/update/query/remove stations from group", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+
+  //do not validate updatedAt or createdAt values
+  const EXCLUDE_CREATED_UPDATED_ID = ["[].createdAt", "[].updatedAt", "[].id"];
+
+  const station1a = { name: "station1", lat: -45.1, lng: 172.1 };
+  const station1b = { name: "station1", lat: -45.2, lng: 172.1 };
+  const station2a = { name: "station2", lat: -45.1, lng: 172.2 };
+  const station2b = { name: "station2", lat: -45.2, lng: 172.2 };
+  const station3a = { name: "station3", lat: -45.1, lng: 172.3 };
+
+  //TODO: These coordinates are back to front.  Issue 73. Reverse once database & API are corrected. Should be X,Y
+  const expectedStation1a: ApiStationDataReturned = {
+    id: 0,
+    name: "station1",
+    location: { type: "Point", coordinates: [-45.1, 172.1] },
+    lastUpdatedById: 0,
+    createdAt: null,
+    retiredAt: null,
+    updatedAt: null,
+    GroupId: null,
+  };
+  const expectedStation1b: ApiStationDataReturned = {
+    id: 0,
+    name: "station1",
+    location: { type: "Point", coordinates: [-45.2, 172.1] },
+    lastUpdatedById: 0,
+    createdAt: null,
+    retiredAt: null,
+    updatedAt: null,
+    GroupId: null,
+  };
+  const expectedStation2a: ApiStationDataReturned = {
+    id: 0,
+    name: "station2",
+    location: { type: "Point", coordinates: [-45.1, 172.2] },
+    lastUpdatedById: 0,
+    createdAt: null,
+    retiredAt: null,
+    updatedAt: null,
+    GroupId: null,
+  };
+  const expectedStation2b: ApiStationDataReturned = {
+    id: 0,
+    name: "station2",
+    location: { type: "Point", coordinates: [-45.2, 172.2] },
+    lastUpdatedById: 0,
+    createdAt: null,
+    retiredAt: null,
+    updatedAt: null,
+    GroupId: null,
+  };
+  const expectedStation3a: ApiStationDataReturned = {
+    id: 0,
+    name: "station3",
+    location: { type: "Point", coordinates: [-45.1, 172.3] },
+    lastUpdatedById: 0,
+    createdAt: null,
+    retiredAt: null,
+    updatedAt: null,
+    GroupId: null,
+  };
+
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gsGroupAdmin", "gsGroup", "gsCamera").then(

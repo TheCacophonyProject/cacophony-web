@@ -6,12 +6,12 @@ import { getCreds } from "@commands/server";
 import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
 import { ApiGroupUserRelationshipResponse } from "@typedefs/api/group";
 
-const ADMIN = true;
-const NOT_ADMIN = false;
-let expectedGuAdminUser: ApiGroupUserRelationshipResponse;
-let expectedGuAdminUser2: ApiGroupUserRelationshipResponse;
-
 describe("Groups - add, check and remove users", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+  let expectedGuAdminUser: ApiGroupUserRelationshipResponse;
+  let expectedGuAdminUser2: ApiGroupUserRelationshipResponse;
+
   before(() => {
     cy.testCreateUserGroupAndDevice("guGroupAdmin", "guGroup", "guCamera").then(
       () => {

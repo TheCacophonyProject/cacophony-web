@@ -3,6 +3,9 @@ import { HTTP_AuthorizationError, HTTP_Forbidden } from "@commands/constants";
 import { getTestName } from "@commands/names";
 
 describe("Authentication", () => {
+  const superuser = getCreds("superuser")["name"];
+  const suPassword = getCreds("superuser")["password"];
+
   const group1 = "first_group";
   const group2 = "second_group";
   const userA = "Alice";
@@ -101,12 +104,12 @@ describe("Authentication", () => {
   });
 
   //Do not run against a live server as we don't have superuser login
-  if (Cypress.env("test_using_default_superuser") == true) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Superuser can authenticate as another user and receive their permissions", () => {
-      cy.apiSignInAs(null, null, "admin_test", "admin_test");
-      cy.log("admin_test authenticates as Bruce");
-      cy.apiAuthenticateAs("admin_test", userB);
-      cy.log("verify each user gets their own data");
+      cy.apiSignInAs(null, null, superuser, suPassword);
+      //superuser authenticates as Bruce
+      cy.apiAuthenticateAs(superuser, userB);
+      //verify each user gets their own data
       cy.testGroupUserCheckAccess(userB + "_on_behalf", group2);
       cy.log(
         "verify user cannot see items outside their group (i.e. are not super_user)"

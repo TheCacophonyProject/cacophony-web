@@ -50,38 +50,33 @@ export function convertToDate(timeOrDate: Date | string): Date {
 
 interface ApiCreds {
   name: string;
+  password: string;
   headers: {
     authorization: any;
   };
   jwt: string;
+  jobKey: string;
   id: number;
   location: ApiLocation;
-  jobKey: string;
 }
 
 export function saveIdOnly(name: string, id: number) {
   const creds = {
-    name,
+    name: name,
+    password: "",
     headers: {
       authorization: "",
     },
     jwt: "",
-    id,
+    jobKey: "",
+    id: id,
+    location: undefined,
   };
   Cypress.env("testCreds")[name] = creds;
 }
 
-export function saveJobKeyById(id: number, jobKey: string) {
-  //TODO must be a better way to find this entry
-  const entries = Cypress.env("testCreds");
-  let creds: ApiCreds;
-  for (const entry in entries) {
-    if (entries[entry].id == id) {
-      creds = entries[entry];
-    }
-  }
-  creds.jobKey = jobKey;
-  Cypress.env("testCreds")[creds.name] = creds;
+export function saveJobKeyByName(name: string, jobKey: string) {
+  Cypress.env("testCreds")[name].jobKey = jobKey;
 }
 
 export function getCreds(userName: string): ApiCreds {
@@ -94,23 +89,28 @@ export function saveCreds(
   id = 0
 ) {
   const creds = {
-    name,
+    name: name,
+    password: "",
     headers: {
       authorization: response.body.token,
     },
     jwt: response.body.token,
     jobKey: response.body.jobKey,
-    id,
+    id: id,
+    location: response.body.location,
   };
   Cypress.env("testCreds")[name] = creds;
 }
 
 export function saveStation(location: ApiLocation, name: string, id = 0) {
   const creds = {
-    name,
+    name: name,
+    password: "",
     headers: {},
+    jwt: "",
+    jobKey: "",
+    id: id,
     location: location,
-    id,
   };
   Cypress.env("testCreds")[name] = creds;
 }
@@ -393,11 +393,15 @@ function isArrayOrHash(theObject: any) {
 }
 
 export function removeUndefinedParams(jsStruct: any): any {
-  const resultStruct = {};
+  if (jsStruct !== undefined && jsStruct !== null) {
+    const resultStruct = {};
   for (const [key, val] of Object.entries(jsStruct)) {
-    if (val !== undefined) {
-      resultStruct[key] = val;
+      if (val !== undefined) {
+        resultStruct[key] = val;
+      }
     }
+    return resultStruct;
+  } else {
+    return jsStruct;
   }
-  return resultStruct;
 }

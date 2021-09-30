@@ -11,24 +11,25 @@ import { getCreds } from "@commands/server";
 
 import { HTTP_OK200, HTTP_Unprocessable } from "@commands/constants";
 
-const ADMIN = true;
-const NOT_ADMIN = false;
-let expectedGroup: ApiGroupReturned;
-let expectedGroup2: ApiGroupReturned;
-let expectedGroupAdminUser: ApiGroupUserRelation;
-let expectedGroupAdminGroupUser: ApiGroupUser;
-let expectedGroup2AdminUser: ApiGroupUserRelation;
-let expectedGroup2AdminGroupUser: ApiGroupUser;
-let expectedGroupMemberUser: ApiGroupUserRelation;
-let expectedGroupMemberGroupUser: ApiGroupUser;
-let expectedDevice: ApiDeviceIdAndName;
-let expectedDevice1b: ApiDeviceIdAndName;
-const EXCLUDE_CREATED_UPDATED_AT = [
-  "[].Users[].GroupUsers.createdAt",
-  "[].Users[].GroupUsers.updatedAt",
-];
+describe("Groups - query groups", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+  let expectedGroup: ApiGroupReturned;
+  let expectedGroup2: ApiGroupReturned;
+  let expectedGroupAdminUser: ApiGroupUserRelation;
+  let expectedGroupAdminGroupUser: ApiGroupUser;
+  let expectedGroup2AdminUser: ApiGroupUserRelation;
+  let expectedGroup2AdminGroupUser: ApiGroupUser;
+  let expectedGroupMemberUser: ApiGroupUserRelation;
+  let expectedGroupMemberGroupUser: ApiGroupUser;
+  let expectedDevice: ApiDeviceIdAndName;
+  let expectedDevice1b: ApiDeviceIdAndName;
 
-describe.skip("Groups - query groups", () => {
+  //do not validate createdAt or updatedAt values
+  const EXCLUDE_CREATED_UPDATED_AT = [
+    "[].Users[].GroupUsers.createdAt",
+    "[].Users[].GroupUsers.updatedAt",
+  ];
   before(() => {
     //admin user, group and device
     cy.testCreateUserGroupAndDevice("gqGroupAdmin", "gqGroup", "gqCamera").then(

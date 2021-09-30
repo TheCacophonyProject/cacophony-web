@@ -99,7 +99,7 @@ Cypress.Commands.add(
       User: {
         id: getCreds(userName).id,
         username: getTestName(userName),
-        email: getTestName(userName) + "@api.created.com",
+        email: getTestName(userName).toLowerCase() + "@api.created.com",
       },
       Device: {
         id: getCreds(deviceName).id,

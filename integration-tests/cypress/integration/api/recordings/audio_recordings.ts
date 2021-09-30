@@ -1,12 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 import { HTTP_Unprocessable, HTTP_BadRequest } from "@commands/constants";
 
-//TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
-const EXCLUDE_IDS = [
-  ".Tracks[].TrackTags[].TrackId",
-  ".Tracks[].id",
-  ".location.coordinates",
-];
 import {
   ApiRecordingReturned,
   ApiRecordingSet,
@@ -18,110 +12,124 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 
-const templateExpectedRecording: ApiRecordingReturned = {
-  // TODO: Issue 87.  Filehash missing on returned values
-  // fileHash: null,
-  id: 204771,
-  //"rawMimeType":"audio/mp4",
-  rawMimeType: "video/mp4",
-  fileMimeType: null,
-  processingState: "FINISHED",
-  duration: 60,
-  recordingDateTime: "2021-08-24T01:35:00.000Z",
-  relativeToDawn: null,
-  relativeToDusk: -17219,
-  location: { type: "Point", coordinates: [-43.53345, 172.64745] },
-  version: "1.8.1",
-  batteryLevel: 87,
-  batteryCharging: "DISCHARGING",
-  airplaneModeOn: false,
-  type: "audio",
-  additionalMetadata: {
-    normal: "0",
-    "SIM IMEI": "990006964660319",
-    analysis: {
-      cacophony_index: [
-        { end_s: 20, begin_s: 0, index_percent: 80.8 },
-        { end_s: 40, begin_s: 20, index_percent: 77.1 },
-        { end_s: 60, begin_s: 40, index_percent: 71.6 },
-      ],
-      species_identify: [],
-      cacophony_index_version: "2020-01-20_A",
-      processing_time_seconds: 50.7,
-      species_identify_version: "2021-02-01",
-    },
-    "SIM state": "SIM_STATE_READY",
-    "Auto Update": false,
-    "Flight Mode": false,
-    "Phone model": "SM-G900V",
-    amplification: 1.0721460589601806,
-    SimOperatorName: "Verizon",
-    "Android API Level": 23,
-    "Phone manufacturer": "samsung",
-    "App has root access": false,
-  },
-  GroupId: 389,
-  StationId: null,
-  comment: null,
-  processing: null,
-  Group: { groupname: "mattb-audio" },
-  Station: null,
-  Tags: [],
-  Tracks: [],
-  Device: { devicename: "mattb-s5", id: 2023 },
-};
-
-const templateRecording: ApiRecordingSet = {
-  type: "audio",
-  fileHash: null,
-  duration: 60,
-  recordingDateTime: "2021-08-24T01:35:00.000Z",
-  relativeToDawn: null,
-  relativeToDusk: -17219,
-  location: [-43.53345, 172.64745],
-  version: "1.8.1",
-  batteryCharging: "DISCHARGING",
-  batteryLevel: 87,
-  airplaneModeOn: false,
-  additionalMetadata: {
-    normal: "0",
-    "SIM IMEI": "990006964660319",
-    analysis: {
-      cacophony_index: [
-        { end_s: 20, begin_s: 0, index_percent: 80.8 },
-        { end_s: 40, begin_s: 20, index_percent: 77.1 },
-        { end_s: 60, begin_s: 40, index_percent: 71.6 },
-      ],
-      species_identify: [],
-      cacophony_index_version: "2020-01-20_A",
-      processing_time_seconds: 50.7,
-      species_identify_version: "2021-02-01",
-    },
-    "SIM state": "SIM_STATE_READY",
-    "Auto Update": false,
-    "Flight Mode": false,
-    "Phone model": "SM-G900V",
-    amplification: 1.0721460589601806,
-    SimOperatorName: "Verizon",
-    "Android API Level": 23,
-    "Phone manufacturer": "samsung",
-    "App has root access": false,
-  },
-  comment: null,
-  processingState: "FINISHED",
-};
-
 describe("Recordings - audio recording parameter tests", () => {
+  //do not validate ID parameters
+  const EXCLUDE_IDS = [
+    ".Tracks[].TrackTags[].TrackId",
+    ".Tracks[].id",
+    //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
+    ".location.coordinates",
+    //TODO: workaround for issue 88, inconsistent mime type for audio (audio/mpeg vs video/mp4)
+    ".rawMimeType",
+  ];
+
+  const templateExpectedRecording: ApiRecordingReturned = {
+    // TODO: Issue 87.  Filehash missing on returned values
+    // fileHash: null,
+    id: 204771,
+    rawMimeType: "audio/mp4",
+    //rawMimeType: "video/mp4",
+    fileMimeType: null,
+    processingState: "FINISHED",
+    duration: 60,
+    recordingDateTime: "2021-08-24T01:35:00.000Z",
+    relativeToDawn: null,
+    relativeToDusk: -17219,
+    location: { type: "Point", coordinates: [-43.53345, 172.64745] },
+    version: "1.8.1",
+    batteryLevel: 87,
+    batteryCharging: "DISCHARGING",
+    airplaneModeOn: false,
+    type: "audio",
+    additionalMetadata: {
+      normal: "0",
+      "SIM IMEI": "990006964660319",
+      analysis: {
+        cacophony_index: [
+          { end_s: 20, begin_s: 0, index_percent: 80.8 },
+          { end_s: 40, begin_s: 20, index_percent: 77.1 },
+          { end_s: 60, begin_s: 40, index_percent: 71.6 },
+        ],
+        species_identify: [],
+        cacophony_index_version: "2020-01-20_A",
+        processing_time_seconds: 50.7,
+        species_identify_version: "2021-02-01",
+      },
+      "SIM state": "SIM_STATE_READY",
+      "Auto Update": false,
+      "Flight Mode": false,
+      "Phone model": "SM-G900V",
+      amplification: 1.0721460589601806,
+      SimOperatorName: "Verizon",
+      "Android API Level": 23,
+      "Phone manufacturer": "samsung",
+      "App has root access": false,
+    },
+    GroupId: 389,
+    StationId: null,
+    comment: null,
+    processing: null,
+    Group: { groupname: "mattb-audio" },
+    Station: null,
+    Tags: [],
+    Tracks: [],
+    Device: { devicename: "mattb-s5", id: 2023 },
+  };
+
+  const templateRecording: ApiRecordingSet = {
+    type: "audio",
+    fileHash: null,
+    duration: 60,
+    recordingDateTime: "2021-08-24T01:35:00.000Z",
+    relativeToDawn: null,
+    relativeToDusk: -17219,
+    location: [-43.53345, 172.64745],
+    version: "1.8.1",
+    batteryCharging: "DISCHARGING",
+    batteryLevel: 87,
+    airplaneModeOn: false,
+    additionalMetadata: {
+      normal: "0",
+      "SIM IMEI": "990006964660319",
+      analysis: {
+        cacophony_index: [
+          { end_s: 20, begin_s: 0, index_percent: 80.8 },
+          { end_s: 40, begin_s: 20, index_percent: 77.1 },
+          { end_s: 60, begin_s: 40, index_percent: 71.6 },
+        ],
+        species_identify: [],
+        cacophony_index_version: "2020-01-20_A",
+        processing_time_seconds: 50.7,
+        species_identify_version: "2021-02-01",
+      },
+      "SIM state": "SIM_STATE_READY",
+      "Auto Update": false,
+      "Flight Mode": false,
+      "Phone model": "SM-G900V",
+      amplification: 1.0721460589601806,
+      SimOperatorName: "Verizon",
+      "Android API Level": 23,
+      "Phone manufacturer": "samsung",
+      "App has root access": false,
+    },
+    comment: null,
+    processingState: "FINISHED",
+  };
+
   before(() => {
+    //Create group1 with Admin, Member and 2 devices
     cy.testCreateUserGroupAndDevice("rarGroupAdmin", "rarGroup", "rarDevice1");
     cy.apiDeviceAdd("rarDevice1b", "rarGroup");
     cy.apiUserAdd("rarGroupMember");
+
+    //Add device admin and member to Device1
     cy.apiUserAdd("rarDeviceAdmin");
     cy.apiUserAdd("rarDeviceMember");
     cy.apiGroupUserAdd("rarGroupAdmin", "rarGroupMember", "rarGroup", true);
     cy.apiDeviceUserAdd("rarGroupAdmin", "rarDeviceAdmin", "rarDevice1", true);
     cy.apiDeviceUserAdd("rarGroupAdmin", "rarDeviceMember", "rarDevice1", true);
 
+    //Create Group2 with admin & device
     cy.testCreateUserGroupAndDevice(
       "rarGroup2Admin",
       "rarGroup2",

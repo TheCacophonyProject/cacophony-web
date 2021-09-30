@@ -312,6 +312,30 @@ export interface ApiRecordingSet {
   processingState?: string;
 }
 
+// api/recordings/report
+// also defined as an array in constants - update in both places
+export interface ApiRecordingColumns {
+  Id?: string;
+  Type?: string;
+  Group?: string;
+  Device?: string;
+  Station?: string;
+  Date?: string;
+  Time?: string;
+  Latitude?: string;
+  Longitude?: string;
+  Duration?: string;
+  BatteryPercent?: string;
+  Comment?: string;
+  "Track Count"?: string;
+  "Automatic Track Tags"?: string;
+  "Human Track Tags"?: string;
+  "Recording Tags"?: string;
+  URL?: string;
+  "Cacophony Index"?: string;
+  "Species Classification"?: string;
+}
+
 export interface ApiRecordingReturned {
   id: number;
   fileHash?: string;
@@ -320,24 +344,43 @@ export interface ApiRecordingReturned {
   processingState: string;
   duration: number;
   recordingDateTime: string;
-  relativeToDawn: number;
-  relativeToDusk: number;
+  relativeToDawn?: number;
+  relativeToDusk?: number;
   location: ApiLocation;
-  version: string;
-  batteryLevel: number;
-  batteryCharging: string;
-  airplaneModeOn: boolean;
+  version?: string;
+  batteryLevel?: number;
+  batteryCharging?: string;
+  airplaneModeOn?: boolean;
   type: string;
-  additionalMetadata: ApiThermalAdditionalMetadata | any;
+  additionalMetadata?: ApiThermalAdditionalMetadata | any;
   GroupId: number;
   StationId: number;
-  comment: string;
+  comment?: string;
   processing: boolean;
   Group?: { groupname: string };
   Station?: ApiRecordingStation;
   Tags?: ApiRecordingTag[];
   Tracks?: ApiRecordingTrack[];
   Device?: ApiDeviceIdAndName;
+  //fields in fileProcessing API but not api/vi
+  DeviceId?: string;
+  rawFileKey?: string;
+}
+
+export interface ApiRecordingNeedsTagReturned {
+  DeviceId: number;
+  RecordingId: number;
+  duration: number;
+  fileSize: number;
+  recordingJWT: string;
+  tagJWT: string;
+  tracks: ApiRecordingNeedsTagTrack[];
+}
+
+export interface ApiRecordingNeedsTagTrack {
+  TrackId: number;
+  data: { end_s: number; start_s: number };
+  needsTagging: boolean;
 }
 
 // from api/v1/recordings (get)
@@ -392,9 +435,9 @@ export interface ApiRecordingThumbnailRegion {
 
 //from api/v1/recordings (get)
 export interface ApiRecordingTrack {
-  id: number;
-  data: ApiRecordingTrackData;
-  TrackTags: ApiRecordingTrackTag[];
+  id?: number;
+  data?: ApiRecordingTrackData;
+  TrackTags?: ApiRecordingTrackTag[];
 }
 
 //from api/v1/recordings (get)
@@ -450,8 +493,8 @@ export interface TestThermalRecordingInfo {
 
 // from api/v1/recording (get)
 export interface ApiRecordingStation {
-  name: string;
-  location: ApiLocation;
+  name?: string;
+  location?: ApiLocation;
 }
 
 // from api/v1/groups/<>/stations (post)
