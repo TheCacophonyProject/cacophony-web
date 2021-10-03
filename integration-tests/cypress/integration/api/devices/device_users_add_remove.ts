@@ -3,7 +3,6 @@
 import { HTTP_BadRequest, HTTP_Forbidden } from "@commands/constants";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import { ApiDeviceInGroupDevice, ApiDeviceUsersUser } from "@commands/types";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiDeviceUserRelationshipResponse = Cypress.ApiDeviceUserRelationshipResponse;
 

@@ -51,7 +51,7 @@ export async function powerEventsPerDevice(
   options.admin = admin === true;
   options.useCreatedDate = false;
   const result = await models.Event.latestEvents(
-    request.res.locals.requestUser,
+    request.res.locals.requestUser.id,
     query.deviceId,
     options
   );

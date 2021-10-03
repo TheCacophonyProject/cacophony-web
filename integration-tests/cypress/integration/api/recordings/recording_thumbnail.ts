@@ -1,12 +1,14 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { ApiRecordingReturned, ApiRecordingSet } from "@commands/types";
+import {ApiRecordingForProcessing, ApiRecordingReturned, ApiRecordingSet } from "@commands/types";
 
 import {
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
   TestCreateExpectedProcessingData,
 } from "@commands/api/recording-tests";
+import { getCreds } from "@commands/server";
+import {HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200, NOT_NULL } from "@commands/constants";
 
 describe("Recording thumbnails", () => {
   const superuser = getCreds("superuser")["name"];
