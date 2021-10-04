@@ -29,6 +29,7 @@
         "./**/*.ts",
         "./*.ts",
         "../types/**/*.ts",
+        "../types/**/*.js",
         "../types/**/*.json"
     ],
     "exclude": [

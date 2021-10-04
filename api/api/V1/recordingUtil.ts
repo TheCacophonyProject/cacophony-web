@@ -26,17 +26,10 @@ import urljoin from "url-join";
 import { ClientError } from "../customErrors";
 import config from "@config";
 import models from "@models";
-import responseUtil from "./responseUtil";
 import util from "./util";
-import { Request, Response } from "express";
 import {
-  AcceptableTag,
   AudioRecordingMetadata,
-  Recording,
-  RecordingPermission,
-  RecordingProcessingState,
-  RecordingType,
-  TagMode,
+  Recording
 } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
@@ -70,8 +63,10 @@ import { Track } from "@models/Track";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Tag } from "@models/Tag";
 import { RecordingId, TrackTagId, UserId } from "@typedefs/api/common";
-import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { AcceptableTag } from "@typedefs/api/consts";
 import { Device } from "@models/Device";
+import { RecordingPermission, RecordingProcessingState, RecordingType, TagMode } from "@typedefs/api/consts";
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 
 let CptvDecoder;
 (async () => {

@@ -1,6 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+import { ApiAuthenticateAccess } from "@commands/types";
 import { getTestName } from "../names";
 import {
   apiPath,
@@ -8,8 +9,6 @@ import {
   saveCreds,
   expectRequestHasFailed,
 } from "../server";
-import { ApiAuthenticateAccess } from "../types";
-
 Cypress.Commands.add(
   "apiSignInAs",
   (

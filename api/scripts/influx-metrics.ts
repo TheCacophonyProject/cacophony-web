@@ -6,8 +6,7 @@ import { program } from "commander";
 import { Client } from "pg";
 import moment from "moment";
 import os from "os";
-import models from "../models";
-import { RecordingProcessingState } from "../models/Recording";
+import { RecordingProcessingState } from "../../types/api/consts";
 
 let Config;
 

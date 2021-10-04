@@ -23,18 +23,14 @@ import recordingUtil, {
   reportRecordings,
   reportVisits,
   signedToken,
-  uploadRawRecording,
+  uploadRawRecording
 } from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import models from "@models";
 // @ts-ignore
 import * as csv from "fast-csv";
 import { body, param, query } from "express-validator";
-import {
-  Recording,
-  RecordingPermission,
-  RecordingProcessingState,
-} from "@models/Recording";
+import { Recording, VideoRecordingMetadata } from "@models/Recording";
 import { TrackTag } from "@models/TrackTag";
 import { Track } from "@models/Track";
 import { Op } from "sequelize";
@@ -50,20 +46,46 @@ import {
   fetchAuthorizedRequiredDevices,
   fetchAuthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredRecordingById,
-  parseJSONField,
+  parseJSONField
 } from "../extract-middleware";
-import {
-  booleanOf,
-  idOf,
-  integerOf,
-  validNameOf,
-} from "../validation-middleware";
+import { booleanOf, idOf, integerOf, validNameOf } from "../validation-middleware";
 import util from "@api/V1/util";
-import { ApiRecordingResponse } from "@typedefs/api/recording";
+import {
+  ApiAudioRecordingMetadataResponse,
+  ApiAudioRecordingResponse, ApiRecordingResponse,
+  ApiThermalRecordingMetadataResponse,
+  ApiThermalRecordingResponse
+} from "@typedefs/api/recording";
 import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
-import {Validator} from "jsonschema";
+import { Validator } from "jsonschema";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { ApiTrackResponse } from "@typedefs/api/track";
+import { Tag } from "@models/Tag";
+import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 
-const mapRecordingResponse = (recording: Recording): ApiRecordingResponse => {
+const mapTrack = (track: Track): ApiTrackResponse => ({
+  id: track.id,
+  start: track.data.start_s,
+  end: track.data.end_s,
+  tags: [],
+});
+
+const mapTracks = (tracks: Track[]): ApiTrackResponse[] => tracks.map(mapTrack);
+
+const mapTag = (tag: Tag): ApiRecordingTagResponse => ({
+    automatic: tag.automatic,
+    confidence: tag.confidence,
+  detail: tag.detail,
+  id: tag.id,
+  recordingId: tag.recordingId,
+  taggerId: tag.taggerId,
+  version: tag.version,
+  what: tag.what
+});
+
+const mapTags = (tags: Tag[]): ApiRecordingTagResponse[] => tags.map(mapTag);
+
+const mapRecordingResponse = (recording: Recording): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
   if (recording.Tags && recording.Tags.length) {
     for (const tag of recording.Tags) {
       // FIXME - Does this make any sense?
@@ -71,37 +93,46 @@ const mapRecordingResponse = (recording: Recording): ApiRecordingResponse => {
       // tag.event = tag.detail;
     }
   }
-
-  return {
-    additionalMetadata: {
-      previewSecs: undefined,
-      thumbnailRegion: { frameNumber: 0, height: 0, width: 0, x: 0, y: 0 },
-      totalFrames: 0,
-      trackingTime: undefined,
+  const commonRecording: ApiRecordingResponse = {
+    id: recording.id,
+    deviceId: recording.DeviceId,
+    duration: recording.duration,
+    location: recording.location && {
+      lat: (recording.location as { coordinates: [number, number] }).coordinates[0],
+      lng: (recording.location as { coordinates: [number, number] }).coordinates[1],
     },
-    airplaneModeOn: undefined,
-    batteryCharging: undefined,
-    batteryLevel: undefined,
-    comment: undefined,
-    deviceId: 0,
-    deviceName: "",
-    duration: 0,
-    groupId: 0,
-    groupName: "",
-    id: 0,
-    location: undefined,
-    processing: false,
-    processingState: "",
-    recordingDateTime: "",
-    relativeToDawn: undefined,
-    relativeToDusk: undefined,
-    stationId: undefined,
-    stationName: undefined,
-    tags: [],
-    tracks: [],
-    type: undefined,
-    version: undefined,
+    comment: recording.comment || undefined,
+    deviceName: recording.Device?.devicename,
+    groupId: recording.GroupId,
+    groupName: recording.Group?.groupname,
+    processing: recording.processing || undefined,
+    processingState: recording.processingState,
+    recordingDateTime: recording.recordingDateTime,
+    stationId: recording.StationId || undefined,
+    stationName: recording.Station?.name,
+    type: recording.type,
+    tags: recording.Tags,
+    tracks: recording.Tracks && mapTracks(recording.Tracks),
   };
+  if (recording.type === RecordingType.ThermalRaw) {
+    return {
+      ...commonRecording,
+      type: recording.type,
+      additionalMetadata: recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
+    };
+  } else if (recording.type === RecordingType.Audio) {
+    return {
+      ...commonRecording,
+      additionalMetadata: recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map metadata
+      airplaneModeOn: recording.airplaneModeOn || undefined,
+      batteryCharging: recording.batteryCharging || undefined,
+      batteryLevel: recording.batteryLevel || undefined,
+      relativeToDawn: recording.relativeToDawn || undefined,
+      relativeToDusk: recording.relativeToDusk || undefined,
+      type: recording.type,
+      version: undefined,
+    };
+  }
 };
 
 export default (app: Application, baseUrl: string) => {

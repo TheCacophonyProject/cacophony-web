@@ -14,8 +14,6 @@ import recordingUtil, {
 import { Application, NextFunction, Request, Response } from "express";
 import {
   Recording,
-  RecordingProcessingState,
-  RecordingType,
 } from "@models/Recording";
 
 import { ClassifierRawResult } from "@typedefs/api/fileProcessing";
@@ -24,6 +22,7 @@ import { jsonSchemaOf } from "../schema-validation";
 import { booleanOf, idOf } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import util from "../V1/util";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";

@@ -1,5 +1,10 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 
+// from api/v1/authenticate/token (POST)
+export interface ApiAuthenticateAccess {
+  devices: string;
+}
+
 /*******************************************************************
  * ALERT definitions
  ********************************************************************/

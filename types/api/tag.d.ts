@@ -1,4 +1,5 @@
 import {RecordingId, TagId, UserId} from "./common";
+import { AcceptableTag } from "./consts";
 
 export interface ApiRecordingTagRequest {
   detail: string;
@@ -17,14 +18,4 @@ export interface ApiRecordingTagResponse {
   what?: AcceptableTag;
   automatic?: boolean;
   version?: number;
-}
-
-export enum AcceptableTag {
-  Cool = "cool",
-  RequiresReview = "requires review",
-  InteractionWithTrap = "interaction with trap",
-  MissedTrack = "missed track",
-  MultipleAnimals = "multiple animals",
-  TrappedInTrap = "trapped in trap",
-  MissedRecording = "missed recording",
 }
