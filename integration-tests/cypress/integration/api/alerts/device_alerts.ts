@@ -87,8 +87,7 @@ describe("Devices alerts", () => {
     cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
   });
 
-  //FIXME
-  it.skip("Can receive an alert", () => {
+  it("Can receive an alert", () => {
     const usera = getNewIdentity("andrew");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
@@ -134,8 +133,7 @@ describe("Devices alerts", () => {
     cy.testEventsCheckAgainstExpected(usera.name, usera.camera, "event1");
   });
 
-  //FIXME
-  it.skip("No possum alert is sent for a rat", () => {
+  it("No possum alert is sent for a rat", () => {
     const usera = getNewIdentity("alfreda");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
@@ -214,8 +212,7 @@ describe("Devices alerts", () => {
     cy.testEventsCheckAgainstExpected(usera.name, camera2, null, 0);
   });
 
-  //FIXME
-  it.skip("Recording with multiple tags - majority tag alerts", () => {
+  it("Recording with multiple tags - majority tag alerts", () => {
     const usera = getNewIdentity("aaron");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
@@ -264,8 +261,7 @@ describe("Devices alerts", () => {
     cy.testEventsCheckAgainstExpected(usera.name, usera.camera, "event1d");
   });
 
-  //FIXME
-  it.skip("Recording with multiple tags - minority tag does not alert", () => {
+  it("Recording with multiple tags - minority tag does not alert", () => {
     const usera = getNewIdentity("aaron");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
@@ -345,8 +341,7 @@ describe("Devices alerts", () => {
     cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
   });
 
-  //FIXME
-  it.skip("Alerts for recording uploaded on behalf using deviceId", () => {
+  it("Alerts for recording uploaded on behalf using deviceId", () => {
     const usera = getNewIdentity("albert");
     const userb = getNewIdentity("barbera");
 
@@ -404,8 +399,7 @@ describe("Devices alerts", () => {
     );
   });
 
-  //FIXME
-  it.skip("Alerts for recording uploaded on behalf using devicename and groupname", () => {
+  it("Alerts for recording uploaded on behalf using devicename and groupname", () => {
     const usera = getNewIdentity("andrea");
     const userb = getNewIdentity("bruce");
 
@@ -464,8 +458,7 @@ describe("Devices alerts", () => {
     );
   });
 
-  //FIXME
-  it.skip("Can generate and report multiple events", () => {
+  it("Can generate and report multiple events", () => {
     const usera = getNewIdentity("aida");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 

@@ -264,15 +264,25 @@ function addTracksToRecording(
   tags?: string[]
 ): void {
   data.metadata = {
-    algorithm: {
-      model_name: model,
-    },
+    algorithm: { tracker_version: 10 },
+    models: [
+      {
+        id: 1,
+        name: model,
+      }
+    ],
     tracks: [],
   };
 
   if (tags && !trackDetails) {
     trackDetails = tags.map((confident_tag) => ({
-      confident_tag,
+      predictions: [
+        {
+          confident_tag: confident_tag,
+          confidence: 0.9,
+          model_id: 1
+        }
+      ],
       start_s: undefined,
       end_s: undefined,
     }));
@@ -281,12 +291,17 @@ function addTracksToRecording(
   if (trackDetails) {
     let count = 0;
     data.metadata.tracks = trackDetails.map((track) => {
-      const tag = track.confident_tag ? track.confident_tag : "possum";
+      const tag = track.predictions[0].confident_tag ? track.predictions[0].confident_tag : "possum";
       return {
         start_s: track.start_s || 2 + count * 10,
         end_s: track.end_s || 8 + count * 10,
-        confident_tag: tag,
-        confidence: 0.9,
+        predictions: [
+          {
+            model_id: 1,
+            confident_tag: tag,
+            confidence: 0.9,
+          },
+        ],
       };
     });
     count++;
@@ -294,8 +309,13 @@ function addTracksToRecording(
     data.metadata.tracks.push({
       start_s: 2,
       end_s: 8,
-      confident_tag: "possum",
-      confidence: 0.5,
+      predictions: [
+        {
+          model_id: 1,
+          confident_tag: "possum",
+          confidence: 0.5,
+        },
+      ],
     });
   }
 }
@@ -463,7 +483,8 @@ export function TestCreateExpectedRecordingColumns(
   if (inputTrackData !== undefined && inputTrackData.tracks !== undefined) {
     expected["Track Count"] = inputTrackData.tracks.length.toString();
     expected["Automatic Track Tags"] = inputTrackData.tracks
-      .map((track) => track.confident_tag)
+      //.map((track) => track.confident_tag)
+      .map((track) => track.predictions)
       .join(";");
   } else {
     expected["Track Count"] = "0";
@@ -517,66 +538,70 @@ export function TestCreateExpectedRecordingData(
     devicename: getTestName(deviceName),
   };
 
-  const group = { groupname: getTestName(groupName) };
+  const group = {
+    id: getCreds(groupName).id,
+    groupname: getTestName(groupName)
+  };
 
   let station: ApiRecordingStation = null;
   if (stationName) {
     station = {};
     station.name = getTestName(stationName);
     station.location = getCreds(stationName).location;
-    expected.StationId = getCreds(stationName).id;
+    //expected.StationId = getCreds(stationName).id;
   } else {
-    expected.StationId = null;
+    //expected.StationId = null;
   }
 
   expected.id = getCreds(recordingName).id;
-  expected.Device = device;
-  expected.Group = group;
-  expected.type = inputRecording.type;
-  if (inputRecording.type == "thermalRaw") {
-    expected.rawMimeType = "application/x-cptv";
-  } else {
-    expected.rawMimeType = "audio/mpeg";
-  }
+  expected.deviceId = device.id;
+  expected.deviceName = device.devicename;
+  expected.groupId = group.id;
+  expected.groupName = group.groupname;
+  // expected.type = inputRecording.type;
+  // if (inputRecording.type == "thermalRaw") {
+  //   expected.rawMimeType = "application/x-cptv";
+  // } else {
+  //   expected.rawMimeType = "audio/mpeg";
+  // }
   if (inputRecording.duration !== undefined) {
     expected.duration = inputRecording.duration;
   }
   if (inputRecording.recordingDateTime !== undefined) {
     expected.recordingDateTime = inputRecording.recordingDateTime;
   }
-  if (inputRecording.version !== undefined) {
-    expected.version = inputRecording.version;
-  }
-  if (inputRecording.comment !== undefined) {
-    expected.comment = inputRecording.comment;
-  }
+  //if (inputRecording.version !== undefined) {
+  //  expected.version = inputRecording.version;
+  // }
+  //if (inputRecording.comment !== undefined) {
+  //  expected.comment = inputRecording.comment;
+  //}
   if (inputRecording.additionalMetadata !== undefined) {
     expected.additionalMetadata = inputRecording.additionalMetadata;
   }
-  if (inputRecording.batteryLevel !== undefined) {
-    expected.batteryLevel = inputRecording.batteryLevel;
-  }
-  if (inputRecording.batteryCharging !== undefined) {
-    expected.batteryCharging = inputRecording.batteryCharging;
-  }
-  if (inputRecording.airplaneModeOn !== undefined) {
-    expected.airplaneModeOn = inputRecording.airplaneModeOn;
-  }
-  if (inputRecording.relativeToDusk !== undefined) {
-    expected.relativeToDusk = inputRecording.relativeToDusk;
-  }
-  if (inputRecording.relativeToDawn !== undefined) {
-    expected.relativeToDawn = inputRecording.relativeToDawn;
-  }
+  //if (inputRecording.batteryLevel !== undefined) {
+  //  expected.batteryLevel = inputRecording.batteryLevel;
+  //}
+  //if (inputRecording.batteryCharging !== undefined) {
+  //  expected.batteryCharging = inputRecording.batteryCharging;
+  //}
+  //if (inputRecording.airplaneModeOn !== undefined) {
+  //  expected.airplaneModeOn = inputRecording.airplaneModeOn;
+  // }
+  //if (inputRecording.relativeToDusk !== undefined) {
+  //  expected.relativeToDusk = inputRecording.relativeToDusk;
+  //}
+  //if (inputRecording.relativeToDawn !== undefined) {
+  //  expected.relativeToDawn = inputRecording.relativeToDawn;
+  //}
   //TODO: filehash not in returned values - issue 87
   //expected.fileHash=inputRecording.fileHash;
-  if (inputRecording.location !== undefined) {
-    expected.location = { type: "Point", coordinates: inputRecording.location };
-  }
-  expected.GroupId = getCreds(groupName).id;
-  expected.Station = station;
-  expected.Tags = [];
-  expected.Tracks = [];
+  //if (inputRecording.location !== undefined) {
+  //  expected.location = { type: "Point", coordinates: inputRecording.location };
+  //}
+  //expected.Station = station;
+  expected.tags = [];
+  expected.tracks = [];
   if (inputTrackData && inputTrackData.tracks) {
     inputTrackData.tracks.forEach((track: any) => {
       const newTrack: ApiRecordingTrack = {};
@@ -595,7 +620,7 @@ export function TestCreateExpectedRecordingData(
       }
       newTrack.data = { start_s: track.start_s, end_s: track.end_s };
       newTrack.id = -99;
-      expected.Tracks.push(newTrack);
+      expected.tracks.push(newTrack);
     });
   }
 

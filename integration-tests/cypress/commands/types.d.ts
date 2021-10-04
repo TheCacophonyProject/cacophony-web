@@ -406,14 +406,16 @@ export interface ApiRecordingTag {
 }
 
 // from api/v1/recordings (post)
-export interface ApiRecordingAlogrithm {
+export interface ApiRecordingAlgorithm {
   model_name?: string;
+  tracker_version?: number;
 }
 
 // from api/v1/recordings (post)
 export interface ApiRecordingDataMetadata {
   tracks?: ApiTrackSet[];
-  algorithm?: ApiRecordingAlogrithm;
+  models?: ApiRecordingModel[];
+  algorithm?: ApiRecordingAlgorithm;
 }
 
 // from api/v1/recordings (get)
@@ -456,10 +458,16 @@ export interface ApiTrackSet {
   positions?: number[][];
   start_s: number;
   end_s: number;
-  confident_tag?: string;
-  confidence?: number;
+  predictions: [
+    {
+      model_id: number;
+      confident_tag?: string;
+      confidence?: number;
+    },
+  ],
   all_class_confidences?: any;
 }
+
 
 //from api/v1/recordings (get)
 export interface ApiRecordingTrackTag {
@@ -474,7 +482,9 @@ export interface ApiRecordingTrackTag {
 
 // from api/v1/recordings (get)
 export interface ApiRecordingModel {
-  classify_time: number;
+  classify_time?: number;
+  name: string;
+  id: number;
 }
 
 //Simplified test version of above structures for generic recordings
