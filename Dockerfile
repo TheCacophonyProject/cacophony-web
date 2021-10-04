@@ -24,7 +24,7 @@ COPY docker-entrypoint.sh /
 
 COPY api ./api
 
-COPY ../types ./types
+COPY types ./types
 
 RUN cd api && npm install
 
