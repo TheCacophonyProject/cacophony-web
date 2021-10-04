@@ -192,6 +192,11 @@ class IsoFormattedDateStringParser implements SubNodeParser {
 
                 const subdirNames = typedefFile.replace(".d.ts", "").split("/");
                 const p = [];
+                try {
+                    await fs.access(`./jsonSchemas`);
+                } catch (e) {
+                    await fs.mkdir(`./jsonSchemas`);
+                }
                 if (subdirNames.length) {
                     while (p.length < subdirNames.length) {
                         p.push(subdirNames[p.length]);

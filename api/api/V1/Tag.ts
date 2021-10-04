@@ -30,7 +30,7 @@ import {
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
-import TagData from "@schemas/api/tag/ApiTagData.schema.json";
+import TagData from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
