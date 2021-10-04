@@ -1,5 +1,5 @@
 import models from "@models";
-import {Device, DeviceId} from "@models/Device";
+import { Device, DeviceId } from "@models/Device";
 import { Event } from "@models/Event";
 
 import { QueryOptions } from "@models/Event";
@@ -10,13 +10,13 @@ import { IsoFormattedDateString } from "@/../types/api/common";
 export const errors = async (
   request: {
     query: {
-      limit?: number,
-      offset?: number,
-      startTime?: IsoFormattedDateString,
-      endTime?: IsoFormattedDateString,
-      deviceId?: DeviceId,
+      limit?: number;
+      offset?: number;
+      startTime?: IsoFormattedDateString;
+      endTime?: IsoFormattedDateString;
+      deviceId?: DeviceId;
     };
-    res: any
+    res: any;
   },
   admin?: boolean
 ) => {
@@ -24,7 +24,7 @@ export const errors = async (
   const options = {
     eventType: "systemError",
     admin: admin === true,
-    useCreatedDate: true
+    useCreatedDate: true,
   } as QueryOptions;
 
   const result = await models.Event.query(

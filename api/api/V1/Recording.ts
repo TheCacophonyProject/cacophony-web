@@ -16,22 +16,25 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import e, { Application, NextFunction, Request, Response } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import middleware, { validateFields } from "../middleware";
-import auth from "../auth";
 import recordingUtil, {
-    handleLegacyTagFieldsForGet,
-    handleLegacyTagFieldsForGetOnRecording,
-    RecordingQuery, reportRecordings,
-    reportVisits,
-    signedToken, uploadRawRecording,
+  RecordingQuery,
+  reportRecordings,
+  reportVisits,
+  signedToken,
+  uploadRawRecording,
 } from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import models from "@models";
 // @ts-ignore
 import * as csv from "fast-csv";
 import { body, param, query } from "express-validator";
-import { Recording, RecordingPermission } from "@models/Recording";
+import {
+  Recording,
+  RecordingPermission,
+  RecordingProcessingState,
+} from "@models/Recording";
 import { TrackTag } from "@models/TrackTag";
 import { Track } from "@models/Track";
 import { Op } from "sequelize";
@@ -56,6 +59,50 @@ import {
   validNameOf,
 } from "../validation-middleware";
 import util from "@api/V1/util";
+import { ApiRecordingResponse } from "@typedefs/api/recording";
+import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
+import {Validator} from "jsonschema";
+
+const mapRecordingResponse = (recording: Recording): ApiRecordingResponse => {
+  if (recording.Tags && recording.Tags.length) {
+    for (const tag of recording.Tags) {
+      // FIXME - Does this make any sense?
+      // tag.animal = tag.what;
+      // tag.event = tag.detail;
+    }
+  }
+
+  return {
+    additionalMetadata: {
+      previewSecs: undefined,
+      thumbnailRegion: { frameNumber: 0, height: 0, width: 0, x: 0, y: 0 },
+      totalFrames: 0,
+      trackingTime: undefined,
+    },
+    airplaneModeOn: undefined,
+    batteryCharging: undefined,
+    batteryLevel: undefined,
+    comment: undefined,
+    deviceId: 0,
+    deviceName: "",
+    duration: 0,
+    groupId: 0,
+    groupName: "",
+    id: 0,
+    location: undefined,
+    processing: false,
+    processingState: "",
+    recordingDateTime: "",
+    relativeToDawn: undefined,
+    relativeToDusk: undefined,
+    stationId: undefined,
+    stationName: undefined,
+    tags: [],
+    tracks: [],
+    type: undefined,
+    version: undefined,
+  };
+};
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
@@ -287,7 +334,7 @@ export default (app: Application, baseUrl: string) => {
     ]),
     async (request: Request, response: Response) => {
       const result = await recordingUtil.queryVisits(
-          response.locals.requestUser.id,
+        response.locals.requestUser.id,
         response.locals.viewAsSuperUser,
         request.query as unknown as RecordingQuery
       );
@@ -326,13 +373,13 @@ export default (app: Application, baseUrl: string) => {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
-        query("view-mode").optional().equals("user"),
-        ...queryValidators
+      query("view-mode").optional().equals("user"),
+      ...queryValidators,
     ]),
     async (request: Request, response: Response) => {
-        // FIXME Stop allowing arbitrary where queries
+      // FIXME Stop allowing arbitrary where queries
       const result = await recordingUtil.query(
-          response.locals.requesetUser.id,
+        response.locals.requestUser.id,
         response.locals.viewAsSuperUser,
         request.query as unknown as RecordingQuery
       );
@@ -363,54 +410,60 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/count`,
-      extractJwtAuthorizedUser,
-    validateFields([...queryValidators]),
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("type").optional().isIn(["thermalRaw", "audio"]),
+      query("processingState")
+        .optional()
+        .isIn(Object.values(RecordingProcessingState)),
+      ...queryValidators,
+    ]),
 
-      async (request: Request, response: Response) => {
-        const user = response.locals.requestUser;
-        let userWhere = request.query.where;
-        if (typeof userWhere === "string") {
-          try {
-            userWhere = JSON.parse(userWhere);
-          } catch (e) {
-            responseUtil.send(response, {
-              statusCode: 400,
-              messages: ["Malformed JSON"],
-            });
-          }
+    async (request: Request, response: Response) => {
+      const user = response.locals.requestUser;
+      let userWhere = request.query.where;
+      if (typeof userWhere === "string") {
+        try {
+          userWhere = JSON.parse(userWhere);
+        } catch (e) {
+          responseUtil.send(response, {
+            statusCode: 400,
+            messages: ["Malformed JSON"],
+          });
         }
-        const countQuery = {
-          where: {
-            [Op.and]: [
-              userWhere, // User query
-            ],
-          },
-          include: [
-            {
-              model: models.Group,
-              include: [
-                {
-                  model: models.User,
-                  where: {
-                    [Op.and]: [{ id: user.id }],
-                  },
-                },
-              ],
-              required: true,
-            },
-          ],
-        };
-        if (response.locals.viewAsSuperUser && user.hasGlobalRead()) {
-          // Dont' filter on user if the user has global read permissions.
-          delete countQuery.include[0].include;
-        }
-        const count = await models.Recording.count(countQuery);
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          count,
-        });
       }
+      const countQuery = {
+        where: {
+          [Op.and]: [
+            userWhere, // User query
+          ],
+        },
+        include: [
+          {
+            model: models.Group,
+            include: [
+              {
+                model: models.User,
+                where: {
+                  [Op.and]: [{ id: user.id }],
+                },
+              },
+            ],
+            required: true,
+          },
+        ],
+      };
+      if (response.locals.viewAsSuperUser && user.hasGlobalRead()) {
+        // Dont' filter on user if the user has global read permissions.
+        delete countQuery.include[0].include;
+      }
+      const count = await models.Recording.count(countQuery);
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        count,
+      });
+    }
   );
 
   /**
@@ -428,33 +481,31 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/needs-tag`,
-      extractJwtAuthorizedUser,
-    validateFields([
-        idOf(query("deviceId")).optional()
-    ]),
-      async (request: Request, response: Response) => {
-        // NOTE: We only return the minimum set of fields we need to play back
-        //  a recording, show tracks in the UI, and have the user add a tag.
-        //  Generate a short-lived JWT token for each recording we return, keyed
-        //  to that recording.  Only return a single recording at a time.
-        //
-        let result;
-        if (!request.query.deviceId) {
-          result = await models.Recording.getRecordingWithUntaggedTracks();
-        } else {
-          // NOTE: Optionally, the returned recordings can be biased to be from
-          //  a preferred deviceId, to handle the case where we'd like a series
-          //  of random recordings to tag constrained to a single device.
-          result = await models.Recording.getRecordingWithUntaggedTracks(
-            Number(request.query.deviceId)
-          );
-        }
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          rows: [result],
-        });
+    extractJwtAuthorizedUser,
+    validateFields([idOf(query("deviceId")).optional()]),
+    async (request: Request, response: Response) => {
+      // NOTE: We only return the minimum set of fields we need to play back
+      //  a recording, show tracks in the UI, and have the user add a tag.
+      //  Generate a short-lived JWT token for each recording we return, keyed
+      //  to that recording.  Only return a single recording at a time.
+      //
+      let result;
+      if (!request.query.deviceId) {
+        result = await models.Recording.getRecordingWithUntaggedTracks();
+      } else {
+        // NOTE: Optionally, the returned recordings can be biased to be from
+        //  a preferred deviceId, to handle the case where we'd like a series
+        //  of random recordings to tag constrained to a single device.
+        result = await models.Recording.getRecordingWithUntaggedTracks(
+          Number(request.query.deviceId)
+        );
       }
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        rows: [result],
+      });
+    }
   );
 
   /**
@@ -477,7 +528,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/report`,
-      extractJwtAuthorizedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       query("type").isString().optional().isIn(["recordings", "visits"]),
       ...queryValidators,
@@ -486,12 +537,20 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       // 10 minute timeout because the query can take a while to run
       // when the result set is large.
-        let rows;
-        if (request.query.type == "visits") {
-            rows = reportVisits(response.locals.requestuser.id, response.locals.viewAsSuperUser, request.query as unknown as RecordingQuery);
-        } else {
-            rows = reportRecordings(response.locals.requestuser.id, response.locals.viewAsSuperUser, request.query as unknown as RecordingQuery);
-        }
+      let rows;
+      if (request.query.type == "visits") {
+        rows = reportVisits(
+          response.locals.requestuser.id,
+          response.locals.viewAsSuperUser,
+          request.query as unknown as RecordingQuery
+        );
+      } else {
+        rows = reportRecordings(
+          response.locals.requestuser.id,
+          response.locals.viewAsSuperUser,
+          request.query as unknown as RecordingQuery
+        );
+      }
 
       response.status(200).set({
         "Content-Type": "text/csv",
@@ -530,43 +589,48 @@ export default (app: Application, baseUrl: string) => {
       middleware.parseJSON("filterOptions", query).optional(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request, response) => {
+    async (request: Request, response: Response) => {
       // FIXME Also look at storing fileSize in the DB, so we don't have to pull it out from object store!
-      const recording = response.locals.recording.get({ plain: true });
-      recording.Tags = recording.Tags.map(handleLegacyTagFieldsForGet);
-      const data: any = {
-        recording: handleLegacyTagFieldsForGetOnRecording(recording),
-      };
-
-      if (recording.fileKey) {
-        data.cookedJWT = signedToken(
-          recording.fileKey,
-          recording.getFileName(),
-          recording.fileMimeType
+      const recordingItem = response.locals.recording;
+      let rawJWT;
+      let cookedJWT;
+      let rawSize;
+      let cookedSize;
+      if (recordingItem.fileKey) {
+        cookedJWT = signedToken(
+            recordingItem.fileKey,
+            recordingItem.getFileName(),
+            recordingItem.fileMimeType
         );
-        data.cookedSize = await util.getS3ObjectFileSize(recording.fileKey);
-      }
-
-      if (recording.rawFileKey) {
-        data.rawJWT = signedToken(
-          recording.rawFileKey,
-          recording.getRawFileName(),
-          recording.rawMimeType
+        cookedSize = await util.getS3ObjectFileSize(
+            recordingItem.fileKey
         );
-        data.rawSize = await util.getS3ObjectFileSize(recording.rawFileKey);
       }
+      if (recordingItem.rawFileKey) {
+        rawJWT = signedToken(
+            recordingItem.rawFileKey,
+            recordingItem.getRawFileName(),
+            recordingItem.rawMimeType
+        );
+        rawSize = await util.getS3ObjectFileSize(
+            recordingItem.rawFileKey
+        );
+      }
+      const recording = mapRecordingResponse(response.locals.recording);
 
-      delete data.recording.rawFileKey;
-      delete data.recording.fileKey;
+      if (!config.productionEnv) {
+        const JsonSchema = new Validator();
+        console.assert(JsonSchema.validate(recording, ApiRecordingResponseSchema).valid);
+      }
 
       responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        recording: recording,
-        rawSize: data.rawSize,
-        fileSize: data.cookedSize,
-        downloadFileJWT: data.cookedJWT,
-        downloadRawJWT: data.rawJWT,
+        recording,
+        rawSize: rawSize,
+        fileSize: cookedSize,
+        downloadFileJWT: cookedJWT,
+        downloadRawJWT: rawJWT,
       });
     }
   );

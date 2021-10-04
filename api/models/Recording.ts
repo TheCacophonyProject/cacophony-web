@@ -656,7 +656,10 @@ export default function (
   };
 
   // local
-  const recordingsFor = async function (userId: UserId, viewAsSuperAdmin = true) {
+  const recordingsFor = async function (
+    userId: UserId,
+    viewAsSuperAdmin = true
+  ) {
     const user = await models.User.findByPk(userId);
     if (viewAsSuperAdmin && user.hasGlobalRead()) {
       return null;

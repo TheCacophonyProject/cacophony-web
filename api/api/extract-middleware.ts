@@ -509,11 +509,71 @@ const getGroups =
     return models.Group.findAll({ ...getGroupOptions, order: ["groupname"] });
   };
 
+const getRecordingRelationships = (recordingQuery: any): any => {
+  recordingQuery.attributes = [
+    "id",
+    "type",
+    "duration",
+    "recordingDateTime",
+    "location",
+    "relativeToDawn",
+    "relativeToDusk",
+      "public",
+      "rawMimeType",
+      "fileMimeType",
+      "processingState",
+      "processing",
+      "comment",
+      "GroupId",
+      "StationId",
+      "rawFileKey",
+      "fileKey",
+      "additionalMetadata",
+      "batteryLevel",
+      "processingStartTime",
+    "processingEndTime",
+  ];
+  recordingQuery.include = recordingQuery.include || [];
+  recordingQuery.include.push({
+    model: models.Tag,
+    // FIXME - Work out what other attributes to return here.
+    attributes: ["id", "what", "detail", "taggerId"],
+    include: [
+      {
+        model: models.User,
+        as: "tagger",
+        required: false,
+        attributes: ["username"],
+      },
+    ],
+    required: false,
+  });
+  recordingQuery.include.push({
+    model: models.Track,
+    attributes: ["id", "data"],
+    required: false,
+    include: [
+      {
+        model: models.TrackTag,
+        required: false,
+        // FIXME - Work out what other attributes to return here.
+        attributes: ["id", "what", "automatic"],
+      },
+    ],
+  });
+  recordingQuery.include.push({
+    model: models.Station,
+    attributes: ["name"],
+    required: false,
+  });
+  return recordingQuery;
+};
+
 const getRecording =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
   (
     recordingId: string,
-    usused: string,
+    unused: string,
     context?: any
   ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
     const recordingWhere = {
@@ -538,7 +598,6 @@ const getRecording =
       }
     } else {
       getRecordingOptions = {
-        where: recordingWhere,
         include: [
           {
             model: models.Group,
@@ -553,6 +612,8 @@ const getRecording =
         ],
       };
     }
+    getRecordingOptions.where = recordingWhere;
+    getRecordingOptions = getRecordingRelationships(getRecordingOptions);
     return models.Recording.findOne(getRecordingOptions);
   };
 
@@ -600,6 +661,7 @@ const getRecordings =
         ],
       };
     }
+    getRecordingOptions = getRecordingRelationships(getRecordingOptions);
     return models.Recording.findAll({
       ...getRecordingOptions,
       order: ["recordingDateTime"],
@@ -686,6 +748,7 @@ const getDevice =
     // FIXME - When re-registering we can actually have two devices in the same group with the same name - but one
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
+      (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
       (getDeviceOptions as any).where.active = true;
     }
     //console.dir(getDeviceOptions, {depth: 5});

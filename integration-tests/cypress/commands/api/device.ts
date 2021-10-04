@@ -333,7 +333,7 @@ Cypress.Commands.add(
         // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
         // sort users and expected users to ensure order is the same
         const users = sortArrayOn(response.body.rows, "userName");
-        expectedUsers = sortArrayOn(expectedUsers, "username");
+        expectedUsers = sortArrayOn(expectedUsers, "userName");
         expect(users.length).to.equal(expectedUsers.length);
 
         for (let index = 0; index < expectedUsers.length; index++) {
@@ -410,8 +410,7 @@ Cypress.Commands.add(
         url: v1ApiPath("devices/users"),
         body: {
           deviceId: getCreds(device).id,
-          admin: "false",
-          username: fullName,
+          userName: fullName,
         },
       },
       deviceAdminUser,

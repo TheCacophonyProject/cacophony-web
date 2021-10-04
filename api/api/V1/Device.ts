@@ -381,7 +381,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} username name of the user to delete from the device.
+   * @apiParam {String} userName name of the user to delete from the device.
    * @apiParam {Number} deviceId ID of the device.
    *
    * @apiUse V1ResponseSuccess
@@ -393,10 +393,14 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(body("deviceId")),
-      anyOf(nameOf(body("username")), idOf(body("userId"))),
+      anyOf(
+        nameOf(body("username")),
+        nameOf(body("userName")),
+        idOf(body("userId"))
+      ),
     ]),
     fetchUnauthorizedOptionalUserById(body("userId")),
-    fetchUnauthorizedOptionalUserByNameOrId(body("username")),
+    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
     (request: Request, response: Response, next: NextFunction) => {
       // Check that we found the user through one of the methods.
       if (!response.locals.user) {

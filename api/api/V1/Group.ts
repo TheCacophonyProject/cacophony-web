@@ -114,8 +114,6 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {JSON} where [Sequelize where conditions](http://docs.sequelizejs.com/manual/tutorial/querying.html#where) for query.
-   *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {ApiGroup[]} groups Array of ApiGroup[]
    * @apiSuccess {Number} groups.id Identifier of the group

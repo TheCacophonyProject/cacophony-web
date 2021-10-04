@@ -70,7 +70,7 @@ import { Track } from "@models/Track";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Tag } from "@models/Tag";
 import { RecordingId, TrackTagId, UserId } from "@typedefs/api/common";
-import { ApiTagData } from "@typedefs/api/tag";
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { Device } from "@models/Device";
 
 let CptvDecoder;
@@ -80,16 +80,15 @@ let CptvDecoder;
 
 // @ts-ignore
 export interface RecordingQuery {
-
-    where: null | any;
-    tagMode: null | TagMode;
-    tags: null | string[];
-    offset: null | number;
-    limit: null | number;
-    order: null | Order;
-    distinct: boolean;
-    type: string;
-    audiobait: null | boolean;
+  where: null | any;
+  tagMode: null | TagMode;
+  tags: null | string[];
+  offset: null | number;
+  limit: null | number;
+  order: null | Order;
+  distinct: boolean;
+  type: string;
+  audiobait: null | boolean;
 
   //filterOptions: null | any;
 }
@@ -533,7 +532,11 @@ async function query(
 
 // Returns a promise for report rows for a set of recordings. Takes
 // the same parameters as query() above.
-export async function reportRecordings(userId: UserId, viewAsSuperUser: boolean, query: RecordingQuery) {
+export async function reportRecordings(
+  userId: UserId,
+  viewAsSuperUser: boolean,
+  query: RecordingQuery
+) {
   const includeAudiobait: boolean = query.audiobait;
   const builder = (
     await new models.Recording.queryBuilder().init(
@@ -544,7 +547,7 @@ export async function reportRecordings(userId: UserId, viewAsSuperUser: boolean,
       query.offset,
       query.limit,
       query.order,
-      viewAsSuperUser,
+      viewAsSuperUser
     )
   )
     .addColumn("comment")
@@ -817,7 +820,7 @@ function guessRawMimeType(type, filename) {
 const addTag = async (
   user: User | null,
   recording: Recording,
-  tag: ApiTagData
+  tag: ApiRecordingTagRequest
 ): Promise<Tag> => {
   if (!recording) {
     throw new ClientError("No such recording.");
@@ -826,7 +829,7 @@ const addTag = async (
   tag = handleLegacyTagFieldsForCreate(tag);
 
   const tagInstance = models.Tag.buildSafely(tag);
-  tagInstance.RecordingId = recording.id;
+  tagInstance.recordingId = recording.id;
   if (user) {
     tagInstance.taggerId = user.id;
   }
@@ -834,10 +837,10 @@ const addTag = async (
   return tagInstance;
 };
 
-function handleLegacyTagFieldsForCreate(tag: object): ApiTagData {
+function handleLegacyTagFieldsForCreate(tag: any): ApiRecordingTagRequest {
   tag = moveLegacyField(tag, "animal", "what");
   tag = moveLegacyField(tag, "event", "detail");
-  return tag as ApiTagData;
+  return tag as ApiRecordingTagRequest;
 }
 
 function moveLegacyField(o: object, oldName: string, newName: string): object {
@@ -943,7 +946,11 @@ async function updateMetadata(recording: any, metadata: any) {
 
 // Returns a promise for the recordings visits query specified in the
 // request.
-async function queryVisits(userId: UserId, viewAsSuperUser: boolean, query: RecordingQuery): Promise<{
+async function queryVisits(
+  userId: UserId,
+  viewAsSuperUser: boolean,
+  query: RecordingQuery
+): Promise<{
   visits: Visit[];
   summary: DeviceSummary;
   hasMoreVisits: boolean;
@@ -954,9 +961,7 @@ async function queryVisits(userId: UserId, viewAsSuperUser: boolean, query: Reco
 }> {
   const maxVisitQueryResults = 5000;
   const requestVisits =
-    query.limit == null
-      ? maxVisitQueryResults
-      : (query.limit as number);
+    query.limit == null ? maxVisitQueryResults : (query.limit as number);
 
   const queryMax = maxVisitQueryResults * 2;
   let queryLimit = queryMax;
@@ -1136,7 +1141,11 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
   return device_summary_out;
 }
 
-export async function reportVisits(userId: UserId, viewAsSuperUser: boolean, request: RecordingQuery) {
+export async function reportVisits(
+  userId: UserId,
+  viewAsSuperUser: boolean,
+  request: RecordingQuery
+) {
   const results = await queryVisits(userId, viewAsSuperUser, request);
   const out = reportDeviceVisits(results.summary.deviceMap);
   const recordingUrlBase = config.server.recording_url_base || "";

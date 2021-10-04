@@ -49,7 +49,9 @@ export interface DecodedJWTToken {
   id: number;
 }
 
-export const getVerifiedJWT = (request: Request): string | object | DecodedJWTToken => {
+export const getVerifiedJWT = (
+  request: Request
+): string | object | DecodedJWTToken => {
   let token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
   if (!token) {
     // allow taking the jwt from the query params.

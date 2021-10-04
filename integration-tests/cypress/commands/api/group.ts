@@ -518,7 +518,7 @@ Cypress.Commands.add(
   (userName: string, groupName: string, testForSuccess: boolean = true) => {
     const user = getCreds(userName);
     const fullGroupname = getTestName(groupName);
-    const fullUrl = v1ApiPath("") + encodeURI("groups?where={}");
+    const fullUrl = v1ApiPath("groups");
 
     logTestDescription(
       `${userName} Check user '${userName}' can see group '${groupName}' `,
@@ -530,8 +530,8 @@ Cypress.Commands.add(
       url: fullUrl,
       headers: user.headers,
     }).then((request) => {
-      const allGroupNames = Object.keys(request.body.groups).map(
-        (key) => request.body.groups[key].groupname
+      const allGroupNames = request.body.groups.map(
+        (item) => item.groupName
       );
       if (testForSuccess == true) {
         expect(allGroupNames).to.contain(fullGroupname);

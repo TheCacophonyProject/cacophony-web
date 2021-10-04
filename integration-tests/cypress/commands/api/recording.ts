@@ -804,15 +804,6 @@ Cypress.Commands.add(
       userName,
       statusCode
     ).then((response) => {
-      if (expectedReprocessed !== undefined) {
-        expect(
-          response.body.reprocessed.length,
-          "Number of reprocessed expected to be"
-        ).to.equal(expectedReprocessed.length);
-        expectedReprocessed.forEach((reprocessed: any) => {
-          expect(response.body.reprocessed).to.contain(reprocessed);
-        });
-      }
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages).to.contain(additionalChecks["message"]);
       }

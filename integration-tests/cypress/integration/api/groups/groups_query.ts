@@ -11,7 +11,7 @@ import { getCreds } from "@commands/server";
 
 import { HTTP_OK200, HTTP_Unprocessable } from "@commands/constants";
 
-describe("Groups - query groups", () => {
+describe.skip("Groups - query groups", () => {
   const ADMIN = true;
   const NOT_ADMIN = false;
   let expectedGroup: ApiGroupReturned;

@@ -3,6 +3,7 @@ import * as querystring from "querystring";
 import { DeviceVisitMap } from "./visits";
 import * as moment from "moment";
 import { shouldViewAsSuperUser } from "@/utils";
+import { RecordingType } from "@typedefs/api/recording";
 
 export default {
   query,
@@ -46,8 +47,6 @@ export interface Location {
   type: "Point" | string;
   coordinates: [number, number];
 }
-
-export type RecordingType = "thermalRaw" | "audio";
 
 export interface RecordingInfo {
   id: RecordingId;

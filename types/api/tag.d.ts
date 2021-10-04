@@ -1,9 +1,20 @@
-export interface ApiTagData {
+import {RecordingId, TagId, UserId} from "./common";
+
+export interface ApiRecordingTagRequest {
   detail: string;
   confidence: number;
-  RecordingId?: number;//import("./common").RecordingId;
-  taggerId?: number;//import("./common").UserId;
-  what?: string;
+  what?: AcceptableTag;
+  automatic?: boolean;
+  version?: number;
+}
+
+export interface ApiRecordingTagResponse {
+  id: TagId;
+  detail: string;
+  confidence: number;
+  recordingId?: RecordingId;
+  taggerId?: UserId;
+  what?: AcceptableTag;
   automatic?: boolean;
   version?: number;
 }

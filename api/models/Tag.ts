@@ -22,15 +22,19 @@ import { User } from "./User";
 import Sequelize from "sequelize";
 import util from "./util/util";
 import { AcceptableTag, RecordingPermission } from "./Recording";
-import { ApiTagData } from "@typedefs/api/tag";
+import {
+  ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
+} from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
 
-export interface Tag extends ApiTagData, Sequelize.Model, ModelCommon<Tag> {
-  id: TagId;
-}
+export interface Tag
+  extends ApiRecordingTagResponse,
+    Sequelize.Model,
+    ModelCommon<Tag> {}
 
 export interface TagStatic extends ModelStaticCommon<Tag> {
-  buildSafely: (fields: ApiTagData) => Tag;
+  buildSafely: (fields: ApiRecordingTagRequest) => Tag;
   getFromId: (id: TagId, user: User, attributes: any) => Promise<Tag>;
   userGetAttributes: readonly string[];
   acceptableTags: Set<AcceptableTag>;
@@ -80,7 +84,7 @@ export default function (sequelize, DataTypes): TagStatic {
   //---------------
   const Recording = sequelize.models.Recording;
 
-  Tag.buildSafely = function (fields: ApiTagData) {
+  Tag.buildSafely = function (fields: ApiRecordingTagRequest) {
     return Tag.build(_.pick(fields, Tag.apiSettableFields));
   };
 
