@@ -1,14 +1,16 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import {ApiRecordingForProcessing, ApiRecordingReturned, ApiRecordingSet } from "@commands/types";
+import { ApiRecordingSet } from "@commands/types";
 
 import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
   TestCreateExpectedProcessingData,
+  TestCreateExpectedRecordingData,
+  TestCreateRecordingData
 } from "@commands/api/recording-tests";
 import { getCreds } from "@commands/server";
-import {HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200, NOT_NULL } from "@commands/constants";
+import { HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200, NOT_NULL } from "@commands/constants";
+import { ApiRecordingProcessingJob, ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recording thumbnails", () => {
   const superuser = getCreds("superuser")["name"];
@@ -25,26 +27,23 @@ describe("Recording thumbnails", () => {
     ".location.coordinates",
   ];
 
-  const templateExpectedRecording: ApiRecordingReturned = {
+  const templateExpectedRecording: ApiThermalRecordingResponse = {
+    deviceId: 0,
+    deviceName: "",
+    groupName: "",
+    tags: [],
+    tracks: [],
     id: 892972,
     rawMimeType: "application/x-cptv",
-    fileMimeType: null,
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
     duration: 15.6666666666667,
     recordingDateTime: "0121-07-17T01:13:17.248Z",
-    relativeToDawn: null,
-    relativeToDusk: null,
-    location: { type: "Point", coordinates: [-45, 169] },
-    version: "345",
-    batteryLevel: null,
-    batteryCharging: null,
-    airplaneModeOn: null,
-    type: "thermalRaw",
+    location: { lat: -45, lng: 169},
+    type: RecordingType.ThermalRaw,
     additionalMetadata: { algorithm: 31144, previewSecs: 6, totalFrames: 142 },
-    GroupId: 246,
-    StationId: 25,
+    groupId: 246,
     comment: "This is a comment",
-    processing: false,
+    processing: false
   };
 
   const templateRecording: ApiRecordingSet = {
@@ -70,26 +69,14 @@ describe("Recording thumbnails", () => {
     processingState: "analyse",
   };
 
-  const templateExpectedProcessing: ApiRecordingForProcessing = {
+  const templateExpectedProcessing: ApiRecordingProcessingJob = {
     id: 475,
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawFileKey: "raw/2021/09/07/4d08a991-27e8-49c0-8c5a-fcf1031a42b8",
-    rawMimeType: "application/x-cptv",
-    fileKey: null,
-    fileMimeType: null,
-    processingState: "analyse",
-    processingMeta: null,
-    GroupId: 66,
-    DeviceId: 99,
-    StationId: null,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    duration: 15.6666666666667,
-    location: { type: "Point", coordinates: [-45, 169] },
+    // processingMeta: null, // FIXME - check
     hasAlert: false,
     processingStartTime: NOT_NULL,
     processingEndTime: null,
-    processing: true,
     updatedAt: NOT_NULL,
   };
 
@@ -133,9 +120,6 @@ describe("Recording thumbnails", () => {
         const expectedProcessing01 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
           "rtRecording01",
-          "rtCamera1",
-          "rtGroup",
-          null,
           recording01
         );
         const expectedRecording01 = TestCreateExpectedRecordingData(
@@ -173,20 +157,20 @@ describe("Recording thumbnails", () => {
               0.9,
               { name: "master" }
             ).then(() => {
-              expectedRecording01.Tracks = [
+              expectedRecording01.tracks = [
                 {
-                  TrackTags: [
+                  tags: [
                     {
                       what: "possum",
                       automatic: true,
-                      TrackId: getCreds("rtTrack01").id,
+                      trackId: getCreds("rtTrack01").id,
                       confidence: 0.9,
-                      UserId: null,
                       data: "master",
-                      User: null,
+                      id: -1,
                     },
                   ],
-                  data: { start_s: 1, end_s: 4 },
+                  start: 1,
+                  end: 4,
                   id: 1,
                 },
               ];
@@ -211,7 +195,6 @@ describe("Recording thumbnails", () => {
                     },
                   },
                 },
-                true,
                 undefined
               );
 
@@ -306,9 +289,6 @@ describe("Recording thumbnails", () => {
         const expectedProcessing02 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
           "rtRecording02",
-          "rtCamera1",
-          "rtGroup",
-          null,
           recording02
         );
         const expectedRecording02 = TestCreateExpectedRecordingData(
@@ -346,26 +326,26 @@ describe("Recording thumbnails", () => {
               0.9,
               { name: "master" }
             ).then(() => {
-              expectedRecording02.Tracks = [
+              expectedRecording02.tracks = [
                 {
-                  TrackTags: [
+                  tags: [
                     {
                       what: "possum",
                       automatic: true,
-                      TrackId: getCreds("rtTrack02").id,
+                      trackId: getCreds("rtTrack02").id,
                       confidence: 0.9,
-                      UserId: null,
                       data: "master",
-                      User: null,
+                      id: -1
                     },
                   ],
-                  data: { start_s: 1, end_s: 4 },
+                  start: 1,
+                  end: 4,
                   id: 1,
                 },
               ];
 
               cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut("rtRecording02", true, {}, true, undefined);
+              cy.processingApiPut("rtRecording02", true, {}, undefined);
 
               cy.log("Check no thumbnail data present");
               cy.apiRecordingCheck(

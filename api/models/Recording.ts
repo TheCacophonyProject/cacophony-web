@@ -879,7 +879,7 @@ from (
 
   // Bulk update recording values. Any new additionalMetadata fields
   // will be merged.
-  Recording.prototype.mergeUpdate = async function (newValues): Promise<void> {
+  Recording.prototype.mergeUpdate = async function (newValues: any): Promise<void> {
     for (const [name, newValue] of Object.entries(newValues)) {
       if (name == "additionalMetadata") {
         this.mergeAdditionalMetadata(newValue);
@@ -897,7 +897,7 @@ from (
   };
 
   // Update additionalMetadata fields with new values supplied.
-  Recording.prototype.mergeAdditionalMetadata = function (newValues) {
+  Recording.prototype.mergeAdditionalMetadata = function (newValues: any) {
     this.additionalMetadata = { ...this.additionalMetadata, ...newValues };
   };
 
@@ -1435,7 +1435,7 @@ from (
     "batteryLevel",
     "airplaneModeOn",
     "additionalMetadata",
-    "processingMeta",
+    "processingMeta", // FIXME - Check this
     "comment",
     "StationId",
   ];

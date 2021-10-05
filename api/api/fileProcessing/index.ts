@@ -18,11 +18,18 @@ import {
 
 import { ClassifierRawResult } from "@typedefs/api/fileProcessing";
 import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRawResult.schema.json";
+import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json";
 import { jsonSchemaOf } from "../schema-validation";
 import { booleanOf, idOf } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import util from "../V1/util";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  fetchUnauthorizedRequiredEventDetailSnapshotById,
+  fetchUnauthorizedRequiredRecordingById,
+  fetchUnauthorizedRequiredTrackById, parseJSONField
+} from "@api/extract-middleware";
+import logger from "@log";
 
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";
@@ -223,8 +230,10 @@ export default function (app: Application) {
       idOf(body("id")),
       body("jobKey").exists(),
       booleanOf(body("success")),
-      body("result").custom(parseJSONInternal).optional(),
+      // FIXME - JSON schema validate this?
+      body("result").isJSON().optional(),
     ]),
+    parseJSONField(body("result")),
     async (request: Request, response: Response, next: NextFunction) => {
       const recording = await models.Recording.findByPk(request.body.id);
       if (!recording) {
@@ -245,7 +254,8 @@ export default function (app: Application) {
       }
     },
     async (request: Request, response: Response) => {
-      const { result, newProcessedFileKey, success } = request.body;
+      const { newProcessedFileKey, success } = request.body;
+      const result = response.locals.result;
       const recording = response.locals.recording;
       const prevState = recording.processingState;
       if (success) {
@@ -329,20 +339,15 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/tags`,
-    [middleware.parseJSON("tag", body), body("recordingId").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const options = {
-        include: [
-          { model: models.Device, where: {}, attributes: ["devicename", "id"] },
-        ],
-      };
-      const recording = await models.Recording.findByPk(
-        request.body.recordingId,
-        options
-      );
+    validateFields([
+      middleware.parseJSON("tag", body),
+      idOf(body("recordingId"))
+    ]),
+    fetchUnauthorizedRequiredRecordingById(body("recordingId")),
+    async (request, response) => {
       const tagInstance = await recordingUtil.addTag(
         null,
-        recording,
+        response.locals.recording,
         request.body.tag
       );
       responseUtil.send(response, {
@@ -350,7 +355,7 @@ export default function (app: Application) {
         messages: ["Added new tag."],
         tagId: tagInstance.id,
       });
-    })
+    }
   );
 
   /**
@@ -370,13 +375,17 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/metadata`,
-    [middleware.getRecordingById(body), middleware.parseJSON("metadata", body)],
-    middleware.requestWrapper(async (request) => {
+    validateFields([
+      idOf(body("id")),
+      middleware.parseJSON("metadata", body)
+    ]),
+    fetchUnauthorizedRequiredRecordingById(body("id")),
+    async (request: Request, response: Response) => {
       await recordingUtil.updateMetadata(
-        request.body.recording,
+        response.locals.recording.recording,
         request.body.metadata
       );
-    })
+    }
   );
 
   /**
@@ -396,30 +405,27 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/:id/tracks`,
-    [
-      param("id").isInt().toInt(),
-      middleware.parseJSON("data", body),
-      middleware.getDetailSnapshotById(body, "algorithmId"),
-    ],
-    middleware.requestWrapper(async (request: Request, response) => {
-      const recording = await models.Recording.findByPk(request.params.id);
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-      const track = await recording.createTrack({
+    validateFields([
+      idOf(param("id")),
+
+      // FIXME - We don't currently have tracks for audio recordings, but when we do we need to widen this check.
+      body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
+      idOf(body("algorithmId"))
+    ]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredEventDetailSnapshotById(body("algorithmId")),
+    async (request: Request, response) => {
+      const track = await response.locals.recording.createTrack({
         data: request.body.data,
         AlgorithmId: request.body.algorithmId,
       });
+      logger.warning("Create track %s", track.get({plain: true}));
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track added."],
         trackId: track.id,
       });
-    })
+    }
   );
 
   /**
@@ -434,25 +440,18 @@ export default function (app: Application) {
    */
   app.delete(
     `${apiUrl}/:id/tracks`,
-    [param("id").isInt().toInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.findByPk(request.params.id);
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-
-      const tracks = await recording.getTracks();
+    validateFields([
+      idOf(param("id"))
+    ]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const tracks = await response.locals.recording.getTracks();
       tracks.forEach((track) => track.destroy());
-
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Tracks cleared."],
       });
-    })
+    }
   );
 
   /**
@@ -471,33 +470,17 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/tags`,
-    [
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-      body("what"),
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("what").exists().isString(), // FIXME - Validate against valid tags?
       body("confidence").isFloat().toFloat(),
       middleware.parseJSON("data", body).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.findByPk(request.params.id);
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-
-      const track = await recording.getTrack(request.params.trackId);
-      if (!track) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such track."],
-        });
-        return;
-      }
-
-      const tag = await track.addTag(
+    ]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request: Request, response: Response) => {
+      const tag = await response.locals.track.addTag(
         request.body.what,
         request.body.confidence,
         true,
@@ -508,7 +491,7 @@ export default function (app: Application) {
         messages: ["Track tag added."],
         trackTagId: tag.id,
       });
-    })
+    }
   );
 
   /**

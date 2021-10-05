@@ -30,7 +30,7 @@ import models from "@models";
 // @ts-ignore
 import * as csv from "fast-csv";
 import { body, param, query } from "express-validator";
-import { Recording, VideoRecordingMetadata } from "@models/Recording";
+import { Recording } from "@models/Recording";
 import { TrackTag } from "@models/TrackTag";
 import { Track } from "@models/Track";
 import { Op } from "sequelize";
@@ -62,12 +62,50 @@ import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { Tag } from "@models/Tag";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
+import { ApiAutomaticTrackTagResponse, ApiHumanTrackTagResponse, ApiTrackTagResponse } from "@typedefs/api/trackTag";
+
+const mapTrackTag = (trackTag: TrackTag): ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse => {
+  log.warning("Track tags %s", trackTag.get({plain: true}));
+  let data = trackTag?.data;
+  if (data && typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch (e) {
+      // ...
+    }
+  }
+  try {
+    // FIXME - remove try..catch
+    const trackTagBase: ApiTrackTagResponse = {
+      confidence: trackTag.confidence,
+      createdAt: trackTag.createdAt?.toISOString(),
+      data: data as any, // FIXME - Probably returning a bit too much useless data to the front-end?
+      id: trackTag.id,
+      trackId: trackTag.TrackId,
+      updatedAt: trackTag.updatedAt?.toISOString(),
+      what: trackTag.what
+    };
+    if (trackTag.automatic) {
+      (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;
+      return trackTagBase as ApiAutomaticTrackTagResponse;
+    } else {
+      (trackTagBase as ApiHumanTrackTagResponse).automatic = false;
+      (trackTagBase as ApiHumanTrackTagResponse).userId = trackTag.UserId;
+      (trackTagBase as ApiHumanTrackTagResponse).userName = trackTag.User.username;
+      return trackTagBase as ApiHumanTrackTagResponse;
+    }
+  } catch (e) {
+    log.warning("%s", e);
+  }
+};
+
+const mapTrackTags = (trackTags: TrackTag[]): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] => trackTags.map(mapTrackTag);
 
 const mapTrack = (track: Track): ApiTrackResponse => ({
   id: track.id,
   start: track.data.start_s,
   end: track.data.end_s,
-  tags: [],
+  tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
 });
 
 const mapTracks = (tracks: Track[]): ApiTrackResponse[] => tracks.map(mapTrack);
@@ -85,6 +123,13 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => ({
 
 const mapTags = (tags: Tag[]): ApiRecordingTagResponse[] => tags.map(mapTag);
 
+const ifNotNull = (val: any | null) => {
+  if (val !== null) {
+    return val;
+  }
+  return undefined;
+};
+
 const mapRecordingResponse = (recording: Recording): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
   if (recording.Tags && recording.Tags.length) {
     for (const tag of recording.Tags) {
@@ -93,6 +138,7 @@ const mapRecordingResponse = (recording: Recording): ApiThermalRecordingResponse
       // tag.event = tag.detail;
     }
   }
+  //log.warning("Tracks %s", recording.Tracks[0].get({plain: true}));
   const commonRecording: ApiRecordingResponse = {
     id: recording.id,
     deviceId: recording.DeviceId,
@@ -101,17 +147,18 @@ const mapRecordingResponse = (recording: Recording): ApiThermalRecordingResponse
       lat: (recording.location as { coordinates: [number, number] }).coordinates[0],
       lng: (recording.location as { coordinates: [number, number] }).coordinates[1],
     },
-    comment: recording.comment || undefined,
+    rawMimeType: recording.rawMimeType,
+    comment: ifNotNull(recording.comment),
     deviceName: recording.Device?.devicename,
     groupId: recording.GroupId,
     groupName: recording.Group?.groupname,
-    processing: recording.processing || undefined,
+    processing: recording.processing || false,
     processingState: recording.processingState,
     recordingDateTime: recording.recordingDateTime,
-    stationId: recording.StationId || undefined,
+    stationId: ifNotNull(recording.StationId),
     stationName: recording.Station?.name,
     type: recording.type,
-    tags: recording.Tags,
+    tags: recording.Tags && mapTags(recording.Tags),
     tracks: recording.Tracks && mapTracks(recording.Tracks),
   };
   if (recording.type === RecordingType.ThermalRaw) {
@@ -123,14 +170,15 @@ const mapRecordingResponse = (recording: Recording): ApiThermalRecordingResponse
   } else if (recording.type === RecordingType.Audio) {
     return {
       ...commonRecording,
+      fileMimeType: recording.fileMimeType,
       additionalMetadata: recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map metadata
-      airplaneModeOn: recording.airplaneModeOn || undefined,
-      batteryCharging: recording.batteryCharging || undefined,
-      batteryLevel: recording.batteryLevel || undefined,
-      relativeToDawn: recording.relativeToDawn || undefined,
-      relativeToDusk: recording.relativeToDusk || undefined,
+      airplaneModeOn: ifNotNull(recording.airplaneModeOn),
+      batteryCharging: ifNotNull(recording.batteryCharging),
+      batteryLevel: ifNotNull(recording.batteryLevel),
+      relativeToDawn: ifNotNull(recording.relativeToDawn),
+      relativeToDusk: ifNotNull(recording.relativeToDusk),
       type: recording.type,
-      version: undefined,
+      version: recording.version
     };
   }
 };
@@ -268,7 +316,9 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     `${apiUrl}/device/:deviceId`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("deviceId"))]),
+    validateFields([
+      idOf(param("deviceId"))
+    ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     uploadRawRecording
   );
@@ -449,7 +499,6 @@ export default (app: Application, baseUrl: string) => {
         .isIn(Object.values(RecordingProcessingState)),
       ...queryValidators,
     ]),
-
     async (request: Request, response: Response) => {
       const user = response.locals.requestUser;
       let userWhere = request.query.where;
@@ -566,6 +615,9 @@ export default (app: Application, baseUrl: string) => {
       query("audiobait").isBoolean().optional(),
     ]),
     async (request: Request, response: Response) => {
+
+      // FIXME - deprecate and generate report client-side from other available API data.
+
       // 10 minute timeout because the query can take a while to run
       // when the result set is large.
       let rows;
@@ -724,24 +776,23 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
-      const deleted: Recording = await models.Recording.deleteOne(
-        response.locals.requestUser,
-        Number(request.params.id)
-      );
-      if (deleted === null) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to delete recording."],
-        });
+      let deleted = false;
+      const recording = response.locals.recording;
+      try {
+        await recording.destroy();
+        deleted = true;
+      } catch (e) {
+        // ..
       }
-      if (deleted.rawFileKey) {
-        await util.deleteS3Object(deleted.rawFileKey).catch((err) => {
+      if (deleted && recording.rawFileKey) {
+        await util.deleteS3Object(recording.rawFileKey).catch((err) => {
           log.warning(err);
         });
       }
-      if (deleted.fileKey) {
-        await util.deleteS3Object(deleted.fileKey).catch((err) => {
+      if (deleted && recording.fileKey) {
+        await util.deleteS3Object(recording.fileKey).catch((err) => {
           log.warning(err);
         });
       }
@@ -779,17 +830,19 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      // FIXME - JSON schema for allowed updates?
+      // FIXME - JSON schema for allowed updates.
       middleware.parseJSON("updates", body),
     ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
     async (request, response) => {
-      // FIXME - should fetch recording with permissions in middleware
-      const updated = await models.Recording.updateOne(
-        response.locals.requestUser,
-        Number(request.params.id),
-        request.body.updates
-      );
-
+      let updated = false;
+      try {
+        await response.locals.recording.update(request.body.updates);
+        updated = true;
+      } catch (e) {
+        // ..
+      }
+      // FIXME - If we got a recording, it's not clear why this would fail, other than a race condition?
       if (updated) {
         return responseUtil.send(response, {
           statusCode: 200,
@@ -798,7 +851,7 @@ export default (app: Application, baseUrl: string) => {
       } else {
         return responseUtil.send(response, {
           statusCode: 400,
-          messages: ["Failed to update recordings."],
+          messages: ["Failed to update recording."],
         });
       }
     }
@@ -1011,6 +1064,7 @@ export default (app: Application, baseUrl: string) => {
       body("tagJWT").optional().isString(),
       body("data").optional().isJSON(),
     ]),
+    // FIXME - JSON schema fo allowed data? At least a limit to how many chars etc?
     parseJSONField(body("data")),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {

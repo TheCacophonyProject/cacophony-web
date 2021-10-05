@@ -41,7 +41,7 @@ export interface ApiAlertConditions {
 // from api/v1/groups (get), api/v1/events (get), api/recordings (get)
 export interface ApiDeviceIdAndName {
   id: number;
-  devicename: string;
+  deviceName: string;
 }
 
 // from api/v1/groups/<>/devices (get)
@@ -458,13 +458,11 @@ export interface ApiTrackSet {
   positions?: number[][];
   start_s: number;
   end_s: number;
-  predictions: [
-    {
-      model_id: number;
-      confident_tag?: string;
-      confidence?: number;
-    },
-  ],
+  predictions: {
+    model_id: number;
+    confident_tag?: string;
+    confidence?: number;
+  }[],
   all_class_confidences?: any;
 }
 

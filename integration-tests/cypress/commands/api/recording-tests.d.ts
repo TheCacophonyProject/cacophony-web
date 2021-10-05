@@ -2,8 +2,9 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
-  type RecordingId = number;
+  // Avoiding redefinition in this namespace
+  type TestThermalRecordingInfoAlias = import("../types").TestThermalRecordingInfo;
+  type RecordingIdAlias = import("@typedefs/api/common").RecordingId;
 
   interface Chainable {
     /**
@@ -15,12 +16,12 @@ declare namespace Cypress {
      */
     testUploadRecording(
       deviceName: string,
-      details: TestThermalRecordingInfo,
+      details: TestThermalRecordingInfoAlias,
       recordingName?: string,
       fileName?: string,
       statusCode?: number,
       additionalChecks?: any
-    ): Cypress.Chainable<RecordingId>;
+    ): Cypress.Chainable<RecordingIdAlias>;
 
     /**
      * Upload a single recording to for a particular camera using pre-rolled test metadata
@@ -34,12 +35,12 @@ declare namespace Cypress {
       userName: string,
       deviceName: string,
       groupName: string,
-      details: TestThermalRecordingInfo,
+      details: TestThermalRecordingInfoAlias,
       recordingName?: string,
       fileName?: string,
       statusCode?: number,
       additionalChecks?: any
-    ): Cypress.Chainable<RecordingId>;
+    ): Cypress.Chainable<RecordingIdAlias>;
 
     /**
      * Upload a single recording to for a particular camera using pre-rolled test metadata
@@ -52,16 +53,16 @@ declare namespace Cypress {
     testUploadRecordingOnBehalfUsingDevice(
       userName: string,
       deviceName: string,
-      details: TestThermalRecordingInfo,
+      details: TestThermalRecordingInfoAlias,
       recordingName?: string,
       fileName?: string,
       statusCode?: number,
       additionalChecks?: any
-    ): Cypress.Chainable<RecordingId>;
+    ): Cypress.Chainable<RecordingIdAlias>;
 
     testAddRecordingThenUserTag(
       deviceName: string,
-      details: TestThermalRecordingInfo,
+      details: TestThermalRecordingInfoAlias,
       tagger: string,
       tag: string
     ): any;

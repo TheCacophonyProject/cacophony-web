@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { UserId as UserIdAlias } from "./User";
+import { User, UserId as UserIdAlias } from "./User";
 import { TrackId } from "./Track";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
@@ -37,9 +37,12 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   what: string;
   automatic: boolean;
   UserId: UserIdAlias;
+  User: User;
   confidence: number;
   data: string | TrackTagData;
   archivedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
 export default function (

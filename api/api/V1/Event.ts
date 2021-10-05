@@ -28,7 +28,7 @@ import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedOptionalDeviceById,
-  fetchOptionalEventDetailSnapshotById,
+  fetchUnAuthorizedOptionalEventDetailSnapshotById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import EventDatesSchema from "@schemas/api/event/EventDates.schema.json";
@@ -140,7 +140,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedDevice,
     validateFields(commonEventFields),
     // Extract required resources
-    fetchOptionalEventDetailSnapshotById(body("eventDetailId")),
+    fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
     async (request: Request, response: Response, next: NextFunction) => {
       // eventDetailId is optional, but if it is supplied we need to make sure it exists
       if (request.body.eventDetailId && !response.locals.detailsnapshot) {
@@ -188,7 +188,7 @@ export default function (app: Application, baseUrl: string) {
     // Validate fields
     validateFields([idOf(param("deviceId")), ...commonEventFields]),
     // Extract required resources
-    fetchOptionalEventDetailSnapshotById(body("eventDetailId")),
+    fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
     async (request: Request, response: Response, next: NextFunction) => {
       // eventDetailId is optional, but if it is supplied we need to make sure it exists
       if (request.body.eventDetailId && !response.locals.detailsnapshot) {

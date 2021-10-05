@@ -1,6 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+
 declare namespace Cypress {
   type ApiRecordingSet = import("../types").ApiRecordingSet;
   type ApiRecordingReturned = import("../types").ApiRecordingReturned;
@@ -9,6 +10,7 @@ declare namespace Cypress {
     import("../types").ApiRecordingNeedsTagReturned;
   type ApiRecordingDataMetadata = import("../types").ApiRecordingDataMetadata;
   type Interception = import("cypress/types/net-stubbing").Interception;
+  type ApiRecordingResponse = import("@typedefs/api/recording").ApiRecordingResponse;
   type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
   type RecordingId = number;
 
@@ -39,7 +41,6 @@ declare namespace Cypress {
       recordingName: string,
       success: boolean,
       result: any,
-      complete: boolean,
       newProcessedFileKey: string,
       statusCode?: number
     ): any;
@@ -137,7 +138,7 @@ declare namespace Cypress {
     apiRecordingCheck(
       userName: string,
       recordingNameOrId: string,
-      expectedRecording: ApiRecordingReturned,
+      expectedRecording: ApiRecordingResponse,
       excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any

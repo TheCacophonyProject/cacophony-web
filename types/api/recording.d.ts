@@ -2,6 +2,7 @@ import {DeviceId, GroupId, IsoFormattedDateString, LatLng, RecordingId, Seconds,
 import {ApiRecordingTagResponse} from "./tag";
 import {ApiTrackResponse} from "./track";
 import { RecordingProcessingState, RecordingType } from "./consts";
+import { DeviceBatteryChargeState } from "./device";
 
 export interface ApiRecordingResponse {
     id: RecordingId;
@@ -13,6 +14,7 @@ export interface ApiRecordingResponse {
     groupName: string;
     deviceId: DeviceId;
     deviceName: string;
+    // TODO - Should we return fileHash?  less useful for API consumers, perhaps just keep as implementation detail internally
     processing?: boolean;
     tags: ApiRecordingTagResponse[];
     tracks: ApiTrackResponse[];
@@ -20,14 +22,15 @@ export interface ApiRecordingResponse {
     stationId?: StationId;
     stationName?: string;
     comment?: string;
+    rawMimeType: string;
 }
 
 export interface ApiThermalRecordingMetadataResponse {
-  trackingTime: Seconds;
-  previewSecs: Seconds;
-  totalFrames: number;
-
-  thumbnailRegion: {
+  trackingTime?: Seconds;
+  previewSecs?: Seconds;
+  totalFrames?: number;
+  algorithm?: number;
+  thumbnailRegion?: {
     x: number;
     y: number;
     width: number;
@@ -39,7 +42,25 @@ export interface ApiThermalRecordingMetadataResponse {
 export interface ApiAudioRecordingMetadataResponse {
   analysis: {
     cacophony_index: CacophonyIndex[],
-  }
+    species_identify: { begin_s: Seconds, end_s: Seconds, species: string }[],
+    processing_time_seconds: Seconds;
+    cacophony_index_version: string;
+    species_identify_version: string;
+    speech_detection?: boolean;
+    speech_detection_version?: string;
+  };
+
+  normal: string;
+  "SIM IMEI": string;
+  "SIM state": string;
+  "Auto Update": boolean;
+  "Flight Mode": boolean;
+  "Phone model": string;
+  amplification: number;
+  SimOperatorName: string;
+  "Android API Level": number;
+  "Phone manufacturer": string;
+  "App has root access": boolean;
 }
 
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
@@ -54,12 +75,23 @@ interface CacophonyIndex {
 }
 
 export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
-  version?: number;
+  version?: string;
   batteryLevel?: number;
-  batteryCharging?: string;
+  batteryCharging?: DeviceBatteryChargeState;
   airplaneModeOn?: boolean;
   relativeToDawn?: number;
   relativeToDusk?: number;
   type: RecordingType.Audio;
+  fileMimeType?: string;
   additionalMetadata: ApiAudioRecordingMetadataResponse;
+}
+
+export interface ApiRecordingProcessingJob {
+  jobKey: string;
+  id: RecordingId;
+  type: RecordingType;
+  hasAlert: boolean;
+  updatedAt: IsoFormattedDateString;
+  processingStartTime?: IsoFormattedDateString;
+  processingEndTime?: IsoFormattedDateString;
 }

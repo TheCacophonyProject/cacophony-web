@@ -21,6 +21,7 @@ import {
   ApiRecordingColumns,
 } from "../types";
 import { ApiRecordingColumnNames } from "../constants";
+import { ApiRecordingResponse } from "@typedefs/api/recording";
 
 // 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
@@ -30,29 +31,27 @@ Cypress.Commands.add(
     recordingName: string,
     success: boolean,
     result: any,
-    complete: boolean,
     newProcessedFileKey: string,
     statusCode: number = 200
   ) => {
     const id = getCreds(recordingName).id;
     const jobKey = getCreds(recordingName).jobKey;
     logTestDescription(`Processing 'done' for recording ${recordingName}`, {
-      id: id,
-      result: result,
+      id,
+      result,
     });
     const params = {
-      id: id,
-      jobKey: jobKey,
-      success: success,
+      id,
+      jobKey,
+      success,
       result: JSON.stringify(result),
-      complete: complete,
       newProcessedFileKey: newProcessedFileKey,
     };
 
     const url = processingApiPath("");
     cy.request({
       method: "PUT",
-      url: url,
+      url,
       body: params,
     }).then((response) => {
       expect(response.status, "Check return statusCode is").to.equal(
@@ -73,19 +72,19 @@ Cypress.Commands.add(
   ) => {
     const id = getCreds(recordingName).id;
     logTestDescription(`Adding tracks for recording ${recordingName}`, {
-      id: id,
-      data: data,
+      id,
+      data,
       algorithmId: algorithmId,
     });
     const params = {
-      data: JSON.stringify(data),
+      data,
       algorithmId: algorithmId,
     };
 
     const url = processingApiPath(id.toString() + "/tracks");
     cy.request({
       method: "POST",
-      url: url,
+      url,
       body: params,
     }).then((response) => {
       expect(response.status, "Check return statusCode is").to.equal(
@@ -348,7 +347,7 @@ Cypress.Commands.add(
   (
     userName: string,
     recordingNameOrId: string,
-    expectedRecording: ApiRecordingReturned,
+    expectedRecording: ApiRecordingResponse,
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}

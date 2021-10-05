@@ -1,16 +1,14 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_Unprocessable, HTTP_BadRequest } from "@commands/constants";
+import { HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
 
-import {
-  ApiRecordingReturned,
-  ApiRecordingSet,
-  ApiLocation,
-} from "@commands/types";
+import { ApiLocation, ApiRecordingSet } from "@commands/types";
 
 import {
   TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
+  TestCreateRecordingData
 } from "@commands/api/recording-tests";
+import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recordings - audio recording parameter tests", () => {
   //do not validate ID parameters
@@ -18,29 +16,34 @@ describe("Recordings - audio recording parameter tests", () => {
     ".Tracks[].TrackTags[].TrackId",
     ".Tracks[].id",
     //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
-    ".location.coordinates",
     //TODO: workaround for issue 88, inconsistent mime type for audio (audio/mpeg vs video/mp4)
     ".rawMimeType",
   ];
 
-  const templateExpectedRecording: ApiRecordingReturned = {
-    // TODO: Issue 87.  Filehash missing on returned values
-    // fileHash: null,
-    id: 204771,
-    rawMimeType: "audio/mp4",
-    //rawMimeType: "video/mp4",
-    fileMimeType: null,
-    processingState: "FINISHED",
-    duration: 60,
-    recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDawn: null,
-    relativeToDusk: -17219,
-    location: { type: "Point", coordinates: [-43.53345, 172.64745] },
-    version: "1.8.1",
-    batteryLevel: 87,
-    batteryCharging: "DISCHARGING",
+  const templateExpectedRecording: ApiAudioRecordingResponse = {
     airplaneModeOn: false,
-    type: "audio",
+    batteryCharging: "DISCHARGING",
+    batteryLevel: 87,
+    deviceId: 2023,
+    deviceName: "mattb-s5",
+    duration: 60,
+    groupId: 389,
+    groupName: "mattb-audio",
+    id: 204771,
+    location: {
+      lat: -43.53345,
+      lng: 172.64745
+    },
+    rawMimeType: "",
+    fileMimeType: "",
+    processing: false,
+    processingState: RecordingProcessingState.Finished,
+    recordingDateTime: "2021-08-24T01:35:00.000Z",
+    relativeToDusk: -17219,
+    tags: [],
+    tracks: [],
+    type: RecordingType.Audio,
+    version: "1.8.1",
     additionalMetadata: {
       normal: "0",
       "SIM IMEI": "990006964660319",
@@ -64,16 +67,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "Android API Level": 23,
       "Phone manufacturer": "samsung",
       "App has root access": false,
-    },
-    GroupId: 389,
-    StationId: null,
-    comment: null,
-    processing: null,
-    Group: { groupname: "mattb-audio" },
-    Station: null,
-    Tags: [],
-    Tracks: [],
-    Device: { devicename: "mattb-s5", id: 2023 },
+    }
   };
 
   const templateRecording: ApiRecordingSet = {
@@ -81,7 +75,7 @@ describe("Recordings - audio recording parameter tests", () => {
     fileHash: null,
     duration: 60,
     recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDawn: null,
+    relativeToDawn: 1000,
     relativeToDusk: -17219,
     location: [-43.53345, 172.64745],
     version: "1.8.1",
@@ -112,7 +106,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "Phone manufacturer": "samsung",
       "App has root access": false,
     },
-    comment: null,
+    comment: "A comment",
     processingState: "FINISHED",
   };
 
@@ -139,7 +133,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
   it("Can upload an audio recording", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiAudioRecordingResponse;
 
     cy.log("Add recording as device");
     cy.apiRecordingAdd(
@@ -174,14 +168,14 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarRecording1",
       undefined,
       [],
-      HTTP_BadRequest
+      HTTP_Forbidden
     );
   });
 
   it("Duration handled correctly", () => {
     cy.log("Uses supplied duration");
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiRecordingReturned;
+    let expectedRecording2: ApiAudioRecordingResponse;
 
     recording2.duration = 45;
     cy.apiRecordingAdd(
@@ -212,7 +206,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it.skip("Can read duration from file if not supplied", () => {
     cy.log("Takes duration from recording if not specified");
     const recording13 = TestCreateRecordingData(templateRecording);
-    let expectedRecording13: ApiRecordingReturned;
+    let expectedRecording13: ApiAudioRecordingResponse;
 
     delete recording13.duration;
     cy.apiRecordingAdd(
@@ -258,7 +252,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it("RecordingDateTime takes correct values", () => {
     //can specify recordingDateTime
     const recording15 = TestCreateRecordingData(templateRecording);
-    let expectedRecording15: ApiRecordingReturned;
+    let expectedRecording15: ApiAudioRecordingResponse;
 
     recording15.recordingDateTime = new Date().toISOString();
     cy.apiRecordingAdd(
@@ -287,7 +281,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //can have blank recordingDateTime
     const recording16 = TestCreateRecordingData(templateRecording);
-    let expectedRecording16: ApiRecordingReturned;
+    let expectedRecording16: ApiAudioRecordingResponse;
 
     recording16.recordingDateTime = null;
     cy.apiRecordingAdd(
@@ -318,7 +312,7 @@ describe("Recordings - audio recording parameter tests", () => {
   //TODO: confirm audio files do not have dateTime embedded?
   it.skip("Can read recordingDateTime from file if not provided", () => {
     const recording7 = TestCreateRecordingData(templateRecording);
-    let expectedRecording7: ApiRecordingReturned;
+    let expectedRecording7: ApiAudioRecordingResponse;
 
     delete recording7.recordingDateTime;
     cy.apiRecordingAdd(
@@ -367,7 +361,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it.skip("Location parameters processed correctly", () => {
     //locations 0-180 degrees long and 0-89 lat accepted
     const recording11 = TestCreateRecordingData(templateRecording);
-    let expectedRecording11: ApiRecordingReturned;
+    let expectedRecording11: ApiAudioRecordingResponse;
     recording11.location = [89.0001, 179.0001];
 
     cy.apiRecordingAdd(
@@ -396,7 +390,7 @@ describe("Recordings - audio recording parameter tests", () => {
     //TODO Fails: Issue 81.  Locations on south pole or international date line cause server error
     //locations 180 degrees long (international date line west)
     const recording12 = TestCreateRecordingData(templateRecording);
-    let expectedRecording12: ApiRecordingReturned;
+    let expectedRecording12: ApiAudioRecordingResponse;
     recording12.location = [89, 180];
     cy.apiRecordingAdd(
       "rarDevice1",
@@ -423,7 +417,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //locations -179 to 0 degrees long and -89 to 0 lat accepted
     const recording13 = TestCreateRecordingData(templateRecording);
-    let expectedRecording13: ApiRecordingReturned;
+    let expectedRecording13: ApiAudioRecordingResponse;
     recording13.location = [-89, -179];
     cy.apiRecordingAdd(
       "rarDevice1",
@@ -450,7 +444,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //locations 181 to 360 degrees long (equivalent to -0 to -180 deg long)
     const recording14 = TestCreateRecordingData(templateRecording);
-    let expectedRecording14: ApiRecordingReturned;
+    let expectedRecording14: ApiAudioRecordingResponse;
     recording14.location = [-89, 359];
     cy.apiRecordingAdd(
       "rarDevice1",
@@ -477,7 +471,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //locations 360 degrees
     const recording15 = TestCreateRecordingData(templateRecording);
-    let expectedRecording15: ApiRecordingReturned;
+    let expectedRecording15: ApiAudioRecordingResponse;
     recording15.location = [90, 360];
     cy.apiRecordingAdd(
       "rarDevice1",
@@ -504,7 +498,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //locations 0 degrees - equator on meridian
     const recording16 = TestCreateRecordingData(templateRecording);
-    let expectedRecording16: ApiRecordingReturned;
+    let expectedRecording16: ApiAudioRecordingResponse;
     recording16.location = { type: "Point", coordinates: [0, 0] };
     cy.apiRecordingAdd(
       "rarDevice1",
@@ -531,7 +525,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //locations -180 degrees international date line east
     const recording17 = TestCreateRecordingData(templateRecording);
-    let expectedRecording17: ApiRecordingReturned;
+    let expectedRecording17: ApiAudioRecordingResponse;
     recording17.location = [-89, -180];
     cy.apiRecordingAdd(
       "rarDevice1",
@@ -590,11 +584,12 @@ describe("Recordings - audio recording parameter tests", () => {
     );
   });
 
-  it("Version handled correctly", () => {
+  it.skip("Version handled correctly", () => {
     //can specify version
     const recording21 = TestCreateRecordingData(templateRecording);
-    let expectedRecording21: ApiRecordingReturned;
+    let expectedRecording21: ApiAudioRecordingResponse;
 
+    // FIXME - it's not clear that version strings should be in the form "x.x.x"
     recording21.version = "A valid version string";
     cy.apiRecordingAdd(
       "rarDevice1",
@@ -621,7 +616,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //blank version
     const recording22 = TestCreateRecordingData(templateRecording);
-    let expectedRecording22: ApiRecordingReturned;
+    let expectedRecording22: ApiAudioRecordingResponse;
 
     recording22.version = null;
     cy.apiRecordingAdd(
@@ -649,7 +644,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //no version
     const recording23 = TestCreateRecordingData(templateRecording);
-    let expectedRecording23: ApiRecordingReturned;
+    let expectedRecording23: ApiAudioRecordingResponse;
 
     delete recording23.version;
     cy.apiRecordingAdd(
@@ -680,7 +675,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it("Comments handled correctly", () => {
     //can specify comments
     const recording24 = TestCreateRecordingData(templateRecording);
-    let expectedRecording24: ApiRecordingReturned;
+    let expectedRecording24: ApiAudioRecordingResponse;
 
     recording24.comment = "A valid comment string";
     cy.apiRecordingAdd(
@@ -708,7 +703,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //blank comments
     const recording25 = TestCreateRecordingData(templateRecording);
-    let expectedRecording25: ApiRecordingReturned;
+    let expectedRecording25: ApiAudioRecordingResponse;
 
     recording25.comment = null;
     cy.apiRecordingAdd(
@@ -725,6 +720,7 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording25
       );
+      delete expectedRecording25.comment;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording25",
@@ -736,7 +732,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     //no comment (optional)
     const recording26 = TestCreateRecordingData(templateRecording);
-    let expectedRecording26: ApiRecordingReturned;
+    let expectedRecording26: ApiAudioRecordingResponse;
 
     delete recording26.comment;
     cy.apiRecordingAdd(
@@ -753,7 +749,6 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording26
       );
-      expectedRecording26.comment = null;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording26",
@@ -767,7 +762,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it("File hash accepted correctly", () => {
     cy.log("Correct file hash accepted");
     const recording27 = TestCreateRecordingData(templateRecording);
-    let expectedRecording27: ApiRecordingReturned;
+    let expectedRecording27: ApiAudioRecordingResponse;
 
     recording27.fileHash = "c5d369b40ef6c1cde4a2cfb4eb74ab6a2aa0a1bf"; //shasum output for 60sec-audio.mp4
     cy.apiRecordingAdd(
@@ -808,7 +803,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Blank hash accepted");
     const recording29 = TestCreateRecordingData(templateRecording);
-    let expectedRecording29: ApiRecordingReturned;
+    let expectedRecording29: ApiAudioRecordingResponse;
 
     recording29.fileHash = null;
     cy.apiRecordingAdd(
@@ -836,7 +831,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("No hash accepted");
     const recording30 = TestCreateRecordingData(templateRecording);
-    let expectedRecording30: ApiRecordingReturned;
+    let expectedRecording30: ApiAudioRecordingResponse;
 
     recording30.fileHash = null;
     cy.apiRecordingAdd(
@@ -866,7 +861,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it("Additional metadata handled correctly", () => {
     cy.log("Any data accepted in additonalMetadata");
     const recording31 = TestCreateRecordingData(templateRecording);
-    let expectedRecording31: ApiRecordingReturned;
+    let expectedRecording31: ApiAudioRecordingResponse;
 
     recording31.additionalMetadata = { ICanSetAnyKey: "ToAnyValue" };
     cy.apiRecordingAdd(
@@ -894,7 +889,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Can handle lot of additionalMetadata");
     const recording32 = TestCreateRecordingData(templateRecording);
-    let expectedRecording32: ApiRecordingReturned;
+    let expectedRecording32: ApiAudioRecordingResponse;
 
     for (let count = 1; count < 200; count++) {
       recording32.additionalMetadata["key" + count.toString()] =
@@ -925,7 +920,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Can handle empty additionalMetadata");
     const recording33 = TestCreateRecordingData(templateRecording);
-    let expectedRecording33: ApiRecordingReturned;
+    let expectedRecording33: ApiAudioRecordingResponse;
 
     recording33.additionalMetadata = {};
     cy.apiRecordingAdd(
@@ -954,7 +949,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
   it.skip("Extracts additional metadata from recording if not provided", () => {
     const recording34 = TestCreateRecordingData(templateRecording);
-    let expectedRecording34: ApiRecordingReturned;
+    let expectedRecording34: ApiAudioRecordingResponse;
 
     delete recording34.additionalMetadata;
     cy.apiRecordingAdd(
@@ -1010,7 +1005,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it("Battery charging state accepted and returned correctly", () => {
     cy.log("Battery discharging");
     const recording35 = TestCreateRecordingData(templateRecording);
-    let expectedRecording35: ApiRecordingReturned;
+    let expectedRecording35: ApiAudioRecordingResponse;
     recording35.batteryLevel = 30;
     recording35.batteryCharging = "DISCHARGING";
 
@@ -1039,7 +1034,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Battery charging");
     const recording36 = TestCreateRecordingData(templateRecording);
-    let expectedRecording36: ApiRecordingReturned;
+    let expectedRecording36: ApiAudioRecordingResponse;
     recording36.batteryLevel = 32;
     recording36.batteryCharging = "CHARGING";
 
@@ -1068,7 +1063,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Battery data null");
     const recording37 = TestCreateRecordingData(templateRecording);
-    let expectedRecording37: ApiRecordingReturned;
+    let expectedRecording37: ApiAudioRecordingResponse;
     recording37.batteryLevel = null;
     recording37.batteryCharging = null;
 
@@ -1086,6 +1081,8 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording37
       );
+      delete expectedRecording37.batteryCharging;
+      delete expectedRecording37.batteryLevel;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording37",
@@ -1097,7 +1094,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Battery data fields absent (optional)");
     const recording38 = TestCreateRecordingData(templateRecording);
-    let expectedRecording38: ApiRecordingReturned;
+    let expectedRecording38: ApiAudioRecordingResponse;
     delete recording38.batteryLevel;
     delete recording38.batteryCharging;
 
@@ -1115,8 +1112,8 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording38
       );
-      expectedRecording38.batteryLevel = null;
-      expectedRecording38.batteryCharging = null;
+      delete expectedRecording38.batteryLevel;
+      delete expectedRecording38.batteryCharging;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording38",
@@ -1156,7 +1153,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it("Airplanemode accepted and returned correctly", () => {
     cy.log("airplanemode on");
     const recording39 = TestCreateRecordingData(templateRecording);
-    let expectedRecording39: ApiRecordingReturned;
+    let expectedRecording39: ApiAudioRecordingResponse;
     recording39.airplaneModeOn = true;
 
     cy.apiRecordingAdd(
@@ -1184,7 +1181,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("airplanemode off");
     const recording40 = TestCreateRecordingData(templateRecording);
-    let expectedRecording40: ApiRecordingReturned;
+    let expectedRecording40: ApiAudioRecordingResponse;
     recording40.airplaneModeOn = false;
 
     cy.apiRecordingAdd(
@@ -1212,7 +1209,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("airplanemode null");
     const recording41 = TestCreateRecordingData(templateRecording);
-    let expectedRecording41: ApiRecordingReturned;
+    let expectedRecording41: ApiAudioRecordingResponse;
     recording41.airplaneModeOn = null;
 
     cy.apiRecordingAdd(
@@ -1229,6 +1226,7 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording41
       );
+      delete expectedRecording41.airplaneModeOn;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording41",
@@ -1240,7 +1238,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("airplanemode not provided (optional)");
     const recording42 = TestCreateRecordingData(templateRecording);
-    let expectedRecording42: ApiRecordingReturned;
+    let expectedRecording42: ApiAudioRecordingResponse;
     delete recording42.airplaneModeOn;
 
     cy.apiRecordingAdd(
@@ -1257,7 +1255,7 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording42
       );
-      expectedRecording42.airplaneModeOn = null;
+      delete expectedRecording42.airplaneModeOn;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording42",
@@ -1285,7 +1283,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it("Relative to dawn, dusk take valid values", () => {
     cy.log("Daytime values");
     const recording46 = TestCreateRecordingData(templateRecording);
-    let expectedRecording46: ApiRecordingReturned;
+    let expectedRecording46: ApiAudioRecordingResponse;
     recording46.relativeToDawn = 21600;
     recording46.relativeToDusk = -21600;
 
@@ -1314,7 +1312,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Nighttime values");
     const recording47 = TestCreateRecordingData(templateRecording);
-    let expectedRecording47: ApiRecordingReturned;
+    let expectedRecording47: ApiAudioRecordingResponse;
     recording47.relativeToDawn = -21600;
     recording47.relativeToDusk = 21600;
 
@@ -1343,7 +1341,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Max / min values");
     const recording48 = TestCreateRecordingData(templateRecording);
-    let expectedRecording48: ApiRecordingReturned;
+    let expectedRecording48: ApiAudioRecordingResponse;
     recording48.relativeToDawn = -86399;
     recording48.relativeToDusk = 863992;
 
@@ -1372,7 +1370,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Zero values");
     const recording49 = TestCreateRecordingData(templateRecording);
-    let expectedRecording49: ApiRecordingReturned;
+    let expectedRecording49: ApiAudioRecordingResponse;
     recording49.relativeToDawn = 0;
     recording49.relativeToDusk = 0;
 
@@ -1401,7 +1399,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Null values");
     const recording50 = TestCreateRecordingData(templateRecording);
-    let expectedRecording50: ApiRecordingReturned;
+    let expectedRecording50: ApiAudioRecordingResponse;
     recording50.relativeToDawn = null;
     recording50.relativeToDusk = null;
 
@@ -1419,6 +1417,8 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording50
       );
+      delete expectedRecording50.relativeToDawn;
+      delete expectedRecording50.relativeToDusk;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording50",
@@ -1430,7 +1430,7 @@ describe("Recordings - audio recording parameter tests", () => {
 
     cy.log("Not provided (optional)");
     const recording51 = TestCreateRecordingData(templateRecording);
-    let expectedRecording51: ApiRecordingReturned;
+    let expectedRecording51: ApiAudioRecordingResponse;
     delete recording51.relativeToDawn;
     delete recording51.relativeToDusk;
 
@@ -1448,8 +1448,8 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording51
       );
-      expectedRecording51.relativeToDawn = null;
-      expectedRecording51.relativeToDusk = null;
+      delete expectedRecording51.relativeToDawn;
+      delete expectedRecording51.relativeToDusk;
 
       cy.apiRecordingCheck(
         "rarGroupAdmin",

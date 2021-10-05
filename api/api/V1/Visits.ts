@@ -407,7 +407,6 @@ class Visit {
   completeVisit() {
     // assign the visit a tag based on the most common tag that isn't unidentified
     const trackTag = this.mostCommonTag();
-    logging.warning("Most common tag %s", trackTag && trackTag.what);
     this.what = trackTag ? trackTag.what : null;
     for (const event of this.events) {
       event.assumedTag = trackTag ? trackTag.what : null;

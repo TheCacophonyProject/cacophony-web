@@ -1,22 +1,14 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  // HTTP_Unprocessable,
-  // HTTP_BadRequest,
-  HTTP_Unprocessable,
-  // HTTP_Forbidden,
-  HTTP_OK200,
-  NOT_NULL,
-} from "../../../commands/constants";
+import { HTTP_OK200, HTTP_Unprocessable, NOT_NULL } from "@commands/constants";
 
-import { ApiRecordingReturned, ApiRecordingSet } from "../../../commands/types";
+import { ApiRecordingSet } from "@commands/types";
 
-import { getCreds } from "../../../commands/server";
-import { getTestName } from "../../../commands/names";
+import { getCreds } from "@commands/server";
+import { getTestName } from "@commands/names";
 
-import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "../../../commands/api/recording-tests";
+import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
+import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];
@@ -25,50 +17,44 @@ describe("Recordings query using where", () => {
   //Do not validate IDs
   //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
   const EXCLUDE_IDS = [
-    "[].Tracks[].TrackTags[].TrackId",
-    "[].Tracks[].id",
+    "[].tracks[].tags[].trackId",
+    "[].tracks[].tags[].id",
+    "[].tracks[].id",
     "[].location.coordinates",
   ];
 
-  //TODO: DeviceId is here but not in Recording (get).  Inconsistent.  Remove here or add there
-  const templateExpectedRecording: ApiRecordingReturned = {
-    Device: { devicename: "cy_raCamera1_f9a1b6a1", id: 844 },
-    DeviceId: NOT_NULL,
-    Group: { groupname: "cy_raGroup_f9a1b6a1" },
-    GroupId: 504,
-    Station: null,
-    StationId: null,
-    Tags: [],
-    Tracks: [
+  const templateExpectedRecording: ApiThermalRecordingResponse = {
+    deviceName: "cy_raCamera1_f9a1b6a1",
+    deviceId: NOT_NULL as any,
+    groupName: "cy_raGroup_f9a1b6a1",
+    groupId: 504,
+    tags: [],
+    tracks: [
       {
-        TrackTags: [
+        tags: [
           {
             what: "cat",
             automatic: true,
-            TrackId: 1,
+            trackId: 1,
             confidence: 0.9,
-            UserId: null,
             data: "master",
-            User: null,
+            id: -1
           },
         ],
-        data: { start_s: 2, end_s: 5 },
+        start: 2,
+        end: 5,
         id: 1,
       },
     ],
     additionalMetadata: null,
     comment: null,
-    batteryLevel: null,
     duration: 15.6666666666667,
-    fileMimeType: null,
     id: 1264,
-    location: { type: "Point", coordinates: [] },
     processing: null,
-    processingState: "FINISHED",
-    rawFileKey: NOT_NULL,
+    processingState: RecordingProcessingState.Finished,
     rawMimeType: "application/x-cptv",
     recordingDateTime: "2021-07-17T20:13:17.248Z",
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
   };
 
   //TODO: Issue ##. Several parameters not propogated to returned recordings query (but present in /recording (get)).  Commented out here
@@ -90,7 +76,7 @@ describe("Recordings query using where", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
+      tracks: [{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1 }]}],
     },
     comment: "This is a comment",
     processingState: "FINISHED",
@@ -114,7 +100,7 @@ describe("Recordings query using where", () => {
     metadata: {
       algorithm: { model_name: "master" },
       tracks: [
-        { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+        { start_s: 1, end_s: 3, predictions: [{confident_tag: "possum", confidence: 0.8, model_id: 1 }]},
       ],
     },
     comment: "This is a comment2",
@@ -178,7 +164,7 @@ describe("Recordings query using where", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5 }],
+      tracks: [{ start_s: 2, end_s: 5, predictions: [] }],
     },
     comment: "This is a comment2",
     processingState: "FINISHED",
@@ -186,16 +172,16 @@ describe("Recordings query using where", () => {
 
   //Four recording templates for setting and their expected return values
   const recording1 = TestCreateRecordingData(templateRecording1);
-  let expectedRecording1: ApiRecordingReturned;
+  let expectedRecording1: ApiThermalRecordingResponse;
   const recording2 = TestCreateRecordingData(templateRecording2);
-  let expectedRecording2: ApiRecordingReturned;
+  let expectedRecording2: ApiThermalRecordingResponse;
   const recording3 = TestCreateRecordingData(templateRecording3);
-  let expectedRecording3: ApiRecordingReturned;
+  let expectedRecording3: ApiThermalRecordingResponse;
   const recording4 = TestCreateRecordingData(templateRecording4);
-  let expectedRecording4: ApiRecordingReturned;
+  let expectedRecording4: ApiThermalRecordingResponse;
 
   //Array of recordings for paging tests
-  const expectedRecording: ApiRecordingReturned[] = [];
+  const expectedRecording: ApiThermalRecordingResponse[] = [];
 
   before(() => {
     //Create group1 with admin, member and 2 devices
@@ -243,7 +229,7 @@ describe("Recordings query using where", () => {
             null,
             recording2
           );
-          expectedRecording2.processingState = "CORRUPT";
+          expectedRecording2.processingState = RecordingProcessingState.Corrupt;
 
           cy.apiRecordingAdd(
             "rqCamera1b",
@@ -259,7 +245,7 @@ describe("Recordings query using where", () => {
               null,
               recording3
             );
-            expectedRecording3.processingState = "analyse";
+            expectedRecording3.processingState = RecordingProcessingState.AnalyseThermal;
 
             cy.apiRecordingAdd(
               "rqCamera1b",
@@ -276,7 +262,7 @@ describe("Recordings query using where", () => {
                 recording4
               );
 
-              expectedRecording4.processingState = "FINISHED";
+              expectedRecording4.processingState = RecordingProcessingState.Finished;
               cy.testUserTagRecording(
                 getCreds("rqRecording4").id,
                 0,
@@ -284,18 +270,16 @@ describe("Recordings query using where", () => {
                 "possum"
               );
 
-              expectedRecording4.Tracks[0].TrackTags = [
+              expectedRecording4.tracks[0].tags = [
                 {
                   what: "possum",
                   automatic: false,
                   confidence: 0.7,
                   data: null,
-                  TrackId: -99,
-                  User: {
-                    username: getTestName("rqGroupAdmin"),
-                    id: getCreds("rqGroupAdmin").id,
-                  },
-                  UserId: getCreds("rqGroupAdmin").id,
+                  trackId: -99,
+                  id: -1,
+                  userName: getTestName("rqGroupAdmin"),
+                  userId: getCreds("rqGroupAdmin").id,
                 },
               ];
               //TODO: DEBUG!!!!! For some reason the recordings aren't fully available immediately.

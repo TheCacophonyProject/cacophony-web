@@ -15,16 +15,16 @@ import {
   TestThermalRecordingInfo,
   ApiTrackSet,
   ApiRecordingSet,
-  ApiRecordingReturned,
-  ApiRecordingForProcessing,
   ApiRecordingStation,
-  ApiRecordingTrack,
   ApiDeviceIdAndName,
   ApiRecordingNeedsTagReturned,
   ApiRecordingColumns,
 } from "../types";
 
 import { HTTP_OK200, NOT_NULL } from "../constants";
+import { ApiRecordingProcessingJob, ApiRecordingResponse } from "@typedefs/api/recording";
+import { ApiRecordingTagResponse } from "@typedefs/api/tag";
+import { ApiTrackResponse } from "@typedefs/api/track";
 const BASE_URL = Cypress.env("base-url-returned-in-links");
 
 let lastUsedTime = DEFAULT_DATE;
@@ -395,29 +395,12 @@ export function TestCreateRecordingData(
 }
 
 export function TestCreateExpectedProcessingData(
-  template: ApiRecordingForProcessing,
+  template: ApiRecordingProcessingJob,
   recordingName: string,
-  deviceName: string,
-  groupName: string,
-  stationName: string,
   inputRecording: any
-): ApiRecordingForProcessing {
+): ApiRecordingProcessingJob {
   const expected = JSON.parse(JSON.stringify(template));
-  const deviceId = getCreds(deviceName).id;
-  const groupId = getCreds(groupName).id;
-
-  if (stationName) {
-    expected.StationId = getCreds(stationName).id;
-  } else {
-    expected.StationId = null;
-  }
-
   expected.id = getCreds(recordingName).id;
-  expected.DeviceId = deviceId;
-  expected.GroupId = groupId;
-  expected.duration = inputRecording.duration;
-  expected.recordingDateTime = inputRecording.recordingDateTime;
-
   return expected;
 }
 
@@ -523,24 +506,25 @@ export function TestCreateExpectedRecordingColumns(
 
   return expected;
 }
-export function TestCreateExpectedRecordingData(
-  template: ApiRecordingReturned,
+
+export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
+  template: T,
   recordingName: string,
   deviceName: string,
   groupName: string,
   stationName: string,
   inputRecording: any
-): ApiRecordingReturned {
+): T {
   const inputTrackData = inputRecording.metadata;
   const expected = JSON.parse(JSON.stringify(template));
   const device: ApiDeviceIdAndName = {
     id: getCreds(deviceName).id,
-    devicename: getTestName(deviceName),
+    deviceName: getTestName(deviceName),
   };
 
   const group = {
     id: getCreds(groupName).id,
-    groupname: getTestName(groupName)
+    groupName: getTestName(groupName)
   };
 
   let station: ApiRecordingStation = null;
@@ -555,9 +539,9 @@ export function TestCreateExpectedRecordingData(
 
   expected.id = getCreds(recordingName).id;
   expected.deviceId = device.id;
-  expected.deviceName = device.devicename;
+  expected.deviceName = device.deviceName;
   expected.groupId = group.id;
-  expected.groupName = group.groupname;
+  expected.groupName = group.groupName;
   // expected.type = inputRecording.type;
   // if (inputRecording.type == "thermalRaw") {
   //   expected.rawMimeType = "application/x-cptv";
@@ -570,62 +554,66 @@ export function TestCreateExpectedRecordingData(
   if (inputRecording.recordingDateTime !== undefined) {
     expected.recordingDateTime = inputRecording.recordingDateTime;
   }
-  //if (inputRecording.version !== undefined) {
-  //  expected.version = inputRecording.version;
-  // }
-  //if (inputRecording.comment !== undefined) {
-  //  expected.comment = inputRecording.comment;
-  //}
+  if (inputRecording.version !== undefined) {
+   expected.version = inputRecording.version;
+  }
+  if (inputRecording.comment !== undefined) {
+   expected.comment = inputRecording.comment;
+  }
   if (inputRecording.additionalMetadata !== undefined) {
     expected.additionalMetadata = inputRecording.additionalMetadata;
   }
-  //if (inputRecording.batteryLevel !== undefined) {
-  //  expected.batteryLevel = inputRecording.batteryLevel;
-  //}
-  //if (inputRecording.batteryCharging !== undefined) {
-  //  expected.batteryCharging = inputRecording.batteryCharging;
-  //}
-  //if (inputRecording.airplaneModeOn !== undefined) {
-  //  expected.airplaneModeOn = inputRecording.airplaneModeOn;
-  // }
-  //if (inputRecording.relativeToDusk !== undefined) {
-  //  expected.relativeToDusk = inputRecording.relativeToDusk;
-  //}
-  //if (inputRecording.relativeToDawn !== undefined) {
-  //  expected.relativeToDawn = inputRecording.relativeToDawn;
-  //}
+  if (inputRecording.batteryLevel !== undefined) {
+   expected.batteryLevel = inputRecording.batteryLevel;
+  }
+  if (inputRecording.batteryCharging !== undefined) {
+   expected.batteryCharging = inputRecording.batteryCharging;
+  }
+  if (inputRecording.airplaneModeOn !== undefined) {
+   expected.airplaneModeOn = inputRecording.airplaneModeOn;
+  }
+  if (inputRecording.relativeToDusk !== undefined) {
+   expected.relativeToDusk = inputRecording.relativeToDusk;
+  }
+  if (inputRecording.relativeToDawn !== undefined) {
+   expected.relativeToDawn = inputRecording.relativeToDawn;
+  }
   //TODO: filehash not in returned values - issue 87
   //expected.fileHash=inputRecording.fileHash;
   //if (inputRecording.location !== undefined) {
   //  expected.location = { type: "Point", coordinates: inputRecording.location };
   //}
   //expected.Station = station;
-  expected.tags = [];
-  expected.tracks = [];
+  expected.tags = [] as ApiRecordingTagResponse[];
+  expected.tracks = [] as ApiTrackResponse[] ;
   if (inputTrackData && inputTrackData.tracks) {
     inputTrackData.tracks.forEach((track: any) => {
-      const newTrack: ApiRecordingTrack = {};
-      if (track.confident_tag !== undefined) {
-        newTrack.TrackTags = [
+      const newTrack: ApiTrackResponse = {
+        id: -99,
+        tags: [],
+        start: track.start_s,
+        end: track.end_s,
+      };
+      if (track.predictions.confident_tag !== undefined) {
+        newTrack.tags = [
           {
-            what: track.confident_tag,
+            what: track.predictions.confident_tag,
             automatic: true,
-            TrackId: -99,
+            trackId: -99,
             data: inputTrackData.algorithm.model_name,
-            confidence: track.confidence,
-            User: null,
-            UserId: null,
+            confidence: track.predictions.confidence,
+            id: 0,
+            createdAt: "",
+            updatedAt: ""
           },
         ];
       }
-      newTrack.data = { start_s: track.start_s, end_s: track.end_s };
-      newTrack.id = -99;
       expected.tracks.push(newTrack);
     });
   }
 
   //TODO: add handling of stations
-  //TODO: add handling of per-recordng tags
+  //TODO: add handling of per-recording tags
   //TODO: add handling of manual tags
   return removeUndefinedParams(expected);
 }

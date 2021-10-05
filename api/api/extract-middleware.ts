@@ -512,11 +512,13 @@ const getGroups =
 const getRecordingRelationships = (recordingQuery: any): any => {
   recordingQuery.attributes = [
     "id",
+    "DeviceId",
     "type",
     "duration",
     "recordingDateTime",
     "location",
     "relativeToDawn",
+    "airplaneModeOn",
     "relativeToDusk",
       "public",
       "rawMimeType",
@@ -530,6 +532,8 @@ const getRecordingRelationships = (recordingQuery: any): any => {
       "fileKey",
       "additionalMetadata",
       "batteryLevel",
+    "batteryCharging",
+    "version",
       "processingStartTime",
     "processingEndTime",
   ];
@@ -556,8 +560,12 @@ const getRecordingRelationships = (recordingQuery: any): any => {
       {
         model: models.TrackTag,
         required: false,
-        // FIXME - Work out what other attributes to return here.
-        attributes: ["id", "what", "automatic"],
+        attributes: ["id", "what", "automatic", "confidence", "data", "TrackId", "UserId"],
+        include: [{
+          model: models.User,
+          required: false,
+          attributes: ["username"]
+        }],
       },
     ],
   });
@@ -579,7 +587,7 @@ const getRecording =
     const recordingWhere = {
       id: parseInt(recordingId),
     };
-
+    logger.warning("Get recording %s %s", forRequestUser, asAdmin);
     let getRecordingOptions;
     const groupWhere = {};
     const deviceWhere = {};
@@ -612,7 +620,7 @@ const getRecording =
         ],
       };
     }
-    getRecordingOptions.where = recordingWhere;
+    getRecordingOptions.where = getRecordingOptions.where || recordingWhere;
     getRecordingOptions = getRecordingRelationships(getRecordingOptions);
     return models.Recording.findOne(getRecordingOptions);
   };
@@ -1124,7 +1132,7 @@ export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
   getGroups(true, false)
 );
 
-export const fetchOptionalEventDetailSnapshotById = (
+export const fetchUnAuthorizedOptionalEventDetailSnapshotById = (
   detailId: ValidationChain
 ) =>
   fetchOptionalModel(
@@ -1133,4 +1141,26 @@ export const fetchOptionalEventDetailSnapshotById = (
     true,
     getUnauthorizedGenericModelById(models.DetailSnapshot),
     detailId
+  );
+
+export const fetchUnauthorizedRequiredEventDetailSnapshotById = (
+  detailId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.DetailSnapshot,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.DetailSnapshot),
+    detailId
+  );
+
+export const fetchUnauthorizedRequiredTrackById = (
+  trackId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Track,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.Track),
+    trackId
   );

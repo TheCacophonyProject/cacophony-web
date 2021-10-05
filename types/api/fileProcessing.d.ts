@@ -60,6 +60,22 @@ interface RawTrack {
   message?: string;
 }
 
+export interface MinimalTrackRequestData {
+  tracker_version?: integer;
+  start_s: Seconds;
+  end_s: Seconds;
+
+  num_frames?: integer;
+  frame_start?: integer;
+  frame_end?: integer;
+  positions?: TrackFramePosition[];
+  predictions?: TrackClassification[];
+
+  // Fields used in api when calculating good tracks/tags
+  confidence?: FloatZeroToOne;
+  message?: string;
+}
+
 
 interface ClassifierModelDescription {
   id: integer;

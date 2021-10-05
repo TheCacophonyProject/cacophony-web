@@ -817,9 +817,6 @@ const addTag = async (
   recording: Recording,
   tag: ApiRecordingTagRequest
 ): Promise<Tag> => {
-  if (!recording) {
-    throw new ClientError("No such recording.");
-  }
   // If old tag fields are used, convert to new field names.
   tag = handleLegacyTagFieldsForCreate(tag);
 
@@ -1325,7 +1322,6 @@ async function sendAlerts(recID: RecordingId) {
   recVisit.completeVisit();
   let matchedTrack, matchedTag;
   // find any ai master tags that match the visit tag
-  log.warning("MATCHES %s", recVisit.what);
   for (const track of recording.Tracks) {
     matchedTag = track.TrackTags.find(
       (tag) => tag.data == AI_MASTER && recVisit.what == tag.what
@@ -1336,7 +1332,6 @@ async function sendAlerts(recID: RecordingId) {
     }
   }
   if (!matchedTag) {
-    log.warning("NO MATCH");
     return;
   }
   const alerts = await (models.Alert as AlertStatic).getActiveAlerts(

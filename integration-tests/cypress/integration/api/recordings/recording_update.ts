@@ -1,33 +1,37 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { ApiRecordingReturned, ApiRecordingSet } from "@commands/types";
+import { ApiRecordingSet } from "@commands/types";
 
-import { TestCreateRecordingData, TestCreateExpectedRecordingData } from "@commands/api/recording-tests";
+import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
+import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { HTTP_BadRequest, HTTP_Forbidden } from "@commands/constants";
 
 describe("Update recordings", () => {
   //Do not validate IDs
-  const EXCLUDE_IDS = [".Tracks[].TrackTags[].TrackId", ".Tracks[].id"];
+  const EXCLUDE_IDS = [
+    ".tracks[].tags[].trackId",
+    ".tracks[].tags[].id",
+    ".tracks[].id"
+  ];
 
-  const templateExpectedRecording: ApiRecordingReturned = {
+  const templateExpectedRecording: ApiThermalRecordingResponse = {
+    deviceId: 0,
+    deviceName: "",
+    groupName: "",
+    tags: [],
+    tracks: [],
     id: 892972,
     rawMimeType: "application/x-cptv",
-    fileMimeType: null,
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
-    relativeToDawn: null,
-    relativeToDusk: null,
-    location: { type: "Point", coordinates: [-45.29115, 169.30845] },
-    version: "345",
-    batteryLevel: null,
-    batteryCharging: null,
-    airplaneModeOn: null,
-    type: "thermalRaw",
+    location: { lat: -45.29115, lng: 169.30845 },
+    type: RecordingType.ThermalRaw,
     additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-    GroupId: 246,
-    StationId: 25,
+    groupId: 246,
     comment: "This is a comment",
-    processing: null,
+    processing: false
   };
 
   const templateRecording: ApiRecordingSet = {
@@ -35,7 +39,6 @@ describe("Update recordings", () => {
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
-    //TODO: workaround for issue 81 - imprecise locations by default.  Values chosen to avoid issue
     location: [-45.00045, 169.00065],
     version: "346",
     batteryCharging: null,
@@ -49,7 +52,7 @@ describe("Update recordings", () => {
     metadata: {
       algorithm: { model_name: "master" },
       tracks: [
-        { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+        { start_s: 1, end_s: 3, predictions: [{confident_tag: "possum", confidence: 0.8, model_id: 1}] },
       ],
     },
     comment: "This is a comment2",

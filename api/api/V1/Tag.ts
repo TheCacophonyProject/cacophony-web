@@ -74,23 +74,17 @@ export default function (app: Application, baseUrl: string) {
     // We want a recording that this user has permissions for, and has permissions to tag.
     fetchAuthorizedRequiredRecordingById(body("recordingId")),
 
+    // FIXME - may want to revisit these tagging rules
     // The rules for who can tag a recording are:
     // Anyone with direct access via a group or device
     // Anyone with superuser write access
 
     // Not anyone with only superuser read access
     // Not anyone with only public access
-
     async function (request: Request, response: Response) {
-      // FIXME - Come back to this
-      const recording = await models.Recording.get(
-        response.locals.requestUser,
-        request.body.recordingId,
-        RecordingPermission.TAG
-      );
       const tagInstance = await recordingUtil.addTag(
         response.locals.requestUser,
-        recording,
+        response.locals.recording,
         request.body.tag
       );
       responseUtil.send(response, {

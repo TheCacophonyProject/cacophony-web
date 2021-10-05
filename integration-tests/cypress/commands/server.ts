@@ -1,5 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+import type = Mocha.utils.type;
+
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 
 import { format as urlFormat } from "url";
@@ -289,24 +291,26 @@ export function checkTreeStructuresAreEqualExcept(
         }
       }
     } else {
-      //Not an array so mush be a hash
-      //check lengths are equal
       expect(
-        Object.keys(containingStruct).length,
-        `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
-          containingStruct
-        ).toString()}]`
-      ).to.equal(Object.keys(containedStruct).length);
+        typeof containingStruct,
+        `Expect result includes parameter ${prettyTreeSoFar} :::`
+      ).equal(typeof containedStruct);
+
+      // expect(
+      //   Object.keys(containingStruct).length,
+      //   `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
+      //     containingStruct
+      //   ).toString()}]`
+      // ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order
       const containedKeys: string[] = Object.keys(containedStruct).sort();
       const containingKeys: string[] = Object.keys(containingStruct).sort();
 
-      //itterate over hash
+      //iterate over hash
       for (let count = 0; count < containedKeys.length; count++) {
         const elementName = treeSoFar + "." + containedKeys[count];
         const prettyElementName = prettyTreeSoFar + "." + containedKeys[count];
-
         //check if we asked to ignore this parameter
         if (!excludeKeys.includes(elementName)) {
           expect(

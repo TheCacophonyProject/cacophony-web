@@ -5,13 +5,13 @@ interface ApiTrackTagResponse {
     id: TrackTagId;
     trackId: TrackId; // FIXME? Needed
     confidence: number;
-    data: string;
-    createdAt: IsoFormattedDateString;
-    updatedAt: IsoFormattedDateString;
+    data: any;
+    createdAt?: IsoFormattedDateString;
+    updatedAt?: IsoFormattedDateString;
     archivedAt?: IsoFormattedDateString; // FIXME - is this used?
 }
 
-export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse{
+export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
     automatic: false;
     userId: UserId;
     userName: string;

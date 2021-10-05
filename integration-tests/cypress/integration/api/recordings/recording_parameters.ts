@@ -1,49 +1,38 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_Unprocessable, HTTP_BadRequest } from "@commands/constants";
+import { HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
 
-import {
-  ApiRecordingReturned,
-  ApiRecordingSet,
-  ApiLocation,
-  ApiThermalAdditionalMetadata,
-} from "@commands/types";
+import { ApiLocation, ApiRecordingReturned, ApiRecordingSet, ApiThermalAdditionalMetadata } from "@commands/types";
 
-import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "@commands/api/recording-tests";
+import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
+import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recordings - parameter tests", () => {
   //Do not validate IDs
-  //TODO: workaround for issue 81 - imprecide locations by default.  Remove when fixed.
   const EXCLUDE_IDS = [
-    ".Tracks[].TrackTags[].TrackId",
-    ".Tracks[].id",
-    ".location.coordinates",
+    ".tracks[].tags[].trackId",
+    ".tracks[].id",
   ];
 
-  const templateExpectedRecording: ApiRecordingReturned = {
+  const templateExpectedRecording: ApiThermalRecordingResponse = {
+    deviceId: 0,
+    deviceName: "",
+    groupName: "",
+    tags: [],
+    tracks: [],
     id: 892972,
     // TODO: Issue 87.  Filehash missing on returned values
     // fileHash: null,
     rawMimeType: "application/x-cptv",
-    fileMimeType: null,
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
     duration: 16.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
-    relativeToDawn: null,
-    relativeToDusk: null,
-    location: { type: "Point", coordinates: [-45.29115, 169.30845] },
-    version: "345",
-    batteryLevel: null,
-    batteryCharging: null,
-    airplaneModeOn: null,
-    type: "thermalRaw",
+    location: { lat: -45.29115, lng: 169.30845 },
+    type: RecordingType.ThermalRaw,
     additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-    GroupId: 246,
-    StationId: 25,
+    groupId: 246,
     comment: "This is a comment",
-    processing: null,
+    processing: false
   };
 
   const templateRecording: ApiRecordingSet = {
@@ -52,10 +41,6 @@ describe("Recordings - parameter tests", () => {
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: [-45.29115, 169.30845],
-    version: "345",
-    batteryCharging: null,
-    batteryLevel: null,
-    airplaneModeOn: null,
     additionalMetadata: {
       algorithm: 31143,
       previewSecs: 5,
@@ -63,7 +48,7 @@ describe("Recordings - parameter tests", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
+      tracks: [{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}]}],
     },
     comment: "This is a comment",
     processingState: "FINISHED",
@@ -92,7 +77,7 @@ describe("Recordings - parameter tests", () => {
 
   it("Can upload a thermal recording", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log("Add recording as device");
     cy.apiRecordingAdd(
@@ -127,14 +112,14 @@ describe("Recordings - parameter tests", () => {
       "rpaRecording1",
       undefined,
       [],
-      HTTP_BadRequest
+      HTTP_Forbidden
     );
   });
 
   it.skip("Can upload recordings from 1 frame to 10 mins", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     recording1.duration = 1;
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log("Add 1sec recording as device");
     cy.apiRecordingAdd(
@@ -290,7 +275,7 @@ describe("Recordings - parameter tests", () => {
 
   it("Can read duration from file if not provided", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     delete recording1.duration;
     cy.apiRecordingAdd(
@@ -321,7 +306,7 @@ describe("Recordings - parameter tests", () => {
   it("RecordingDateTime takes correct values", () => {
     //can specify recordingDateTime
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     recording1.recordingDateTime = new Date().toISOString();
     cy.apiRecordingAdd(
@@ -350,7 +335,7 @@ describe("Recordings - parameter tests", () => {
 
     //can have blank recordingDateTime
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiRecordingReturned;
+    let expectedRecording2: ApiThermalRecordingResponse;
     recording2.recordingDateTime = null;
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -378,7 +363,7 @@ describe("Recordings - parameter tests", () => {
   });
   it("Can read recordingDateTime from file if not provided", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     delete recording1.recordingDateTime;
     cy.apiRecordingAdd(
@@ -427,7 +412,7 @@ describe("Recordings - parameter tests", () => {
   it.skip("Location parameters processed correctly", () => {
     //locations 0-180 degrees long and 0-89 lat accepted
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
     recording1.location = [89.0001, 179.0001];
 
     cy.apiRecordingAdd(
@@ -456,7 +441,7 @@ describe("Recordings - parameter tests", () => {
     //TODO Fails: Issue 81.  Locations on south pole or international date line cause server error
     //locations 180 degrees long (international date line west)
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiRecordingReturned;
+    let expectedRecording2: ApiThermalRecordingResponse;
     recording2.location = [89, 180];
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -483,7 +468,7 @@ describe("Recordings - parameter tests", () => {
 
     //locations -179 to 0 degrees long and -89 to 0 lat accepted
     const recording3 = TestCreateRecordingData(templateRecording);
-    let expectedRecording3: ApiRecordingReturned;
+    let expectedRecording3: ApiThermalRecordingResponse;
     recording3.location = [-89, -179];
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -510,7 +495,7 @@ describe("Recordings - parameter tests", () => {
 
     //locations 181 to 360 degrees long (equivalent to -0 to -180 deg long)
     const recording4 = TestCreateRecordingData(templateRecording);
-    let expectedRecording4: ApiRecordingReturned;
+    let expectedRecording4: ApiThermalRecordingResponse;
     recording4.location = [-89, 359];
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -537,7 +522,7 @@ describe("Recordings - parameter tests", () => {
 
     //locations 360 degrees
     const recording5 = TestCreateRecordingData(templateRecording);
-    let expectedRecording5: ApiRecordingReturned;
+    let expectedRecording5: ApiThermalRecordingResponse;
     recording5.location = [90, 360];
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -564,7 +549,7 @@ describe("Recordings - parameter tests", () => {
 
     //locations 0 degrees - equator on meridian
     const recording6 = TestCreateRecordingData(templateRecording);
-    let expectedRecording6: ApiRecordingReturned;
+    let expectedRecording6: ApiThermalRecordingResponse;
     recording6.location = { type: "Point", coordinates: [0, 0] };
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -591,7 +576,7 @@ describe("Recordings - parameter tests", () => {
 
     //locations -180 degrees international date line east
     const recording7 = TestCreateRecordingData(templateRecording);
-    let expectedRecording7: ApiRecordingReturned;
+    let expectedRecording7: ApiThermalRecordingResponse;
     recording7.location = [-89, -180];
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -653,7 +638,7 @@ describe("Recordings - parameter tests", () => {
   it("Version handled correctly", () => {
     //can specify version
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     recording1.version = "A valid version string";
     cy.apiRecordingAdd(
@@ -670,6 +655,9 @@ describe("Recordings - parameter tests", () => {
         null,
         recording1
       );
+      // NOTE: Version seems to only ever be set for audio recordings, so doesn't
+      //  really apply here
+      delete (expectedRecording1 as any).version;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording21",
@@ -681,9 +669,9 @@ describe("Recordings - parameter tests", () => {
 
     //blank version
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiRecordingReturned;
+    let expectedRecording2: ApiThermalRecordingResponse;
 
-    recording2.version = null;
+    delete recording2.version;
     cy.apiRecordingAdd(
       "rpaCamera1",
       recording2,
@@ -709,7 +697,7 @@ describe("Recordings - parameter tests", () => {
 
     //no version
     const recording3 = TestCreateRecordingData(templateRecording);
-    let expectedRecording3: ApiRecordingReturned;
+    let expectedRecording3: ApiThermalRecordingResponse;
 
     delete recording3.version;
     cy.apiRecordingAdd(
@@ -726,7 +714,6 @@ describe("Recordings - parameter tests", () => {
         null,
         recording3
       );
-      expectedRecording3.version = null;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording23",
@@ -740,7 +727,7 @@ describe("Recordings - parameter tests", () => {
   it("Comments handled correctly", () => {
     //can specify comments
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     recording1.comment = "A valid comment string";
     cy.apiRecordingAdd(
@@ -768,7 +755,7 @@ describe("Recordings - parameter tests", () => {
 
     //blank comments
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiRecordingReturned;
+    let expectedRecording2: ApiThermalRecordingResponse;
 
     recording2.comment = null;
     cy.apiRecordingAdd(
@@ -785,6 +772,7 @@ describe("Recordings - parameter tests", () => {
         null,
         recording2
       );
+      delete expectedRecording2.comment;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording25",
@@ -796,7 +784,7 @@ describe("Recordings - parameter tests", () => {
 
     //no comment (optional)
     const recording3 = TestCreateRecordingData(templateRecording);
-    let expectedRecording3: ApiRecordingReturned;
+    let expectedRecording3: ApiThermalRecordingResponse;
 
     delete recording3.comment;
     cy.apiRecordingAdd(
@@ -813,7 +801,7 @@ describe("Recordings - parameter tests", () => {
         null,
         recording3
       );
-      expectedRecording3.comment = null;
+      delete expectedRecording3.comment;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording26",
@@ -827,7 +815,7 @@ describe("Recordings - parameter tests", () => {
   it("File hash accepted correctly", () => {
     cy.log("Correct file hash accepted");
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     recording1.fileHash = "0add9e2337d1c6df3e6a52e797e6b995e433f0f0"; //shasum output for oneframe.cptv
     cy.apiRecordingAdd(
@@ -868,7 +856,7 @@ describe("Recordings - parameter tests", () => {
 
     cy.log("Blank hash accepted");
     const recording3 = TestCreateRecordingData(templateRecording);
-    let expectedRecording3: ApiRecordingReturned;
+    let expectedRecording3: ApiThermalRecordingResponse;
 
     recording3.fileHash = null;
     cy.apiRecordingAdd(
@@ -896,7 +884,7 @@ describe("Recordings - parameter tests", () => {
 
     cy.log("No hash accepted");
     const recording4 = TestCreateRecordingData(templateRecording);
-    let expectedRecording4: ApiRecordingReturned;
+    let expectedRecording4: ApiThermalRecordingResponse;
 
     recording4.fileHash = null;
     cy.apiRecordingAdd(
@@ -926,7 +914,7 @@ describe("Recordings - parameter tests", () => {
   it("Additional metadata handled correctly", () => {
     cy.log("Any data accepted in additonalMetadata");
     const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecording1: ApiRecordingReturned;
+    let expectedRecording1: ApiThermalRecordingResponse;
 
     recording1.additionalMetadata = {
       ICanSetAnyKey: "ToAnyValue",
@@ -956,7 +944,7 @@ describe("Recordings - parameter tests", () => {
 
     cy.log("Can handle lot of additionalMetadata");
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiRecordingReturned;
+    let expectedRecording2: ApiThermalRecordingResponse;
 
     for (let count = 1; count < 200; count++) {
       recording2.additionalMetadata["key" + count.toString()] =
@@ -987,7 +975,7 @@ describe("Recordings - parameter tests", () => {
 
     cy.log("Can handle empty additionalMetadata");
     const recording3 = TestCreateRecordingData(templateRecording);
-    let expectedRecording3: ApiRecordingReturned;
+    let expectedRecording3: ApiThermalRecordingResponse;
 
     recording3.additionalMetadata = {};
     cy.apiRecordingAdd(
@@ -1017,7 +1005,7 @@ describe("Recordings - parameter tests", () => {
       "Can handle missing additionalMetadata (optional) extracts it from cptv file if not provided"
     );
     const recording4 = TestCreateRecordingData(templateRecording);
-    let expectedRecording4: ApiRecordingReturned;
+    let expectedRecording4: ApiThermalRecordingResponse;
 
     delete recording4.additionalMetadata;
     cy.apiRecordingAdd(

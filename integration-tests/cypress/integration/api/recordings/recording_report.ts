@@ -1,21 +1,17 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  // HTTP_Unprocessable,
-  // HTTP_BadRequest,
   HTTP_Unprocessable,
-  // HTTP_Forbidden,
   HTTP_OK200,
-  //NOT_NULL,
-} from "../../../commands/constants";
+} from "@commands/constants";
 
-import { ApiRecordingColumns, ApiRecordingSet } from "../../../commands/types";
+import { ApiRecordingColumns, ApiRecordingSet } from "@commands/types";
 
-import { getCreds } from "../../../commands/server";
+import { getCreds } from "@commands/server";
 
 import {
   TestCreateExpectedRecordingColumns,
   TestCreateRecordingData,
-} from "../../../commands/api/recording-tests";
+} from "@commands/api/recording-tests";
 
 describe("Recordings report using where", () => {
   const superuser = getCreds("superuser")["name"];
@@ -38,7 +34,7 @@ describe("Recordings report using where", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5, confident_tag: "cat", confidence: 0.9 }],
+      tracks: [{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}] }],
     },
     comment: "This is a comment",
     processingState: "FINISHED",
@@ -63,7 +59,7 @@ describe("Recordings report using where", () => {
     metadata: {
       algorithm: { model_name: "master" },
       tracks: [
-        { start_s: 1, end_s: 3, confident_tag: "possum", confidence: 0.8 },
+        { start_s: 1, end_s: 3, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}] },
       ],
     },
     comment: "This is a comment2",
@@ -138,7 +134,7 @@ describe("Recordings report using where", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5 }],
+      tracks: [{ start_s: 2, end_s: 5, predictions: [] }],
     },
     comment: "This is a comment2",
     processingState: "FINISHED",
