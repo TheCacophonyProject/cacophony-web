@@ -401,8 +401,7 @@ export function TestCreateRecordingData(
 
 export function TestCreateExpectedProcessingData(
   template: ApiRecordingProcessingJob,
-  recordingName: string,
-  inputRecording: any
+  recordingName: string
 ): ApiRecordingProcessingJob {
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;

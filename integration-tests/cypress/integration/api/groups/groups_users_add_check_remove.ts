@@ -27,6 +27,7 @@ describe("Groups - add, check and remove users", () => {
       "guGroup2",
       "guCamera2"
     ).then(() => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       expectedGuAdminUser2 = {
         userName: getTestName("guGroup2Admin"),
         id: getCreds("guGroup2Admin").id,

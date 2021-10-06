@@ -1,4 +1,4 @@
-import {RecordingId, TagId, UserId} from "./common";
+import { RecordingId, TagId, UserId } from "./common";
 import { AcceptableTag } from "./consts";
 
 export interface ApiRecordingTagRequest {

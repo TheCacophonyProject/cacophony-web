@@ -259,7 +259,6 @@ export default {
           if (status === 403) {
             this.limitedView = true;
           } else {
-            console.log("Users", result.users);
             this.users = result.users;
           }
         } catch (e) {

@@ -147,6 +147,7 @@ const NZ_BOUNDS = latLngBounds([
   latLng(-47.5254414, 164.9880683),
 ]);
 
+// eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
 const isInNZ = (location: LatLng): boolean => {
   return NZ_BOUNDS.contains(location);
 };
@@ -213,7 +214,6 @@ export default {
 
         try {
           const { result } = await api.device.getDevices();
-          console.log("Devices", result);
           // FIXME(jon): Quick hack for the issue that we can't currently get the group for a deviceId via the api.
           //  get the latest recording for a device, and that contains it.  Will fail if device has no recordings.
           for (const device of result.devices) {
@@ -237,7 +237,7 @@ export default {
           );
         } catch (e) {
           // ....
-          console.log(e);
+          // console.log(e);
         }
         // try {
         //   const { result } = await api.groups.getGroups();

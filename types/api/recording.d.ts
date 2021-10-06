@@ -1,28 +1,36 @@
-import {DeviceId, GroupId, IsoFormattedDateString, LatLng, RecordingId, Seconds, StationId} from "./common";
-import {ApiRecordingTagResponse} from "./tag";
-import {ApiTrackResponse} from "./track";
+import {
+  DeviceId,
+  GroupId,
+  IsoFormattedDateString,
+  LatLng,
+  RecordingId,
+  Seconds,
+  StationId,
+} from "./common";
+import { ApiRecordingTagResponse } from "./tag";
+import { ApiTrackResponse } from "./track";
 import { RecordingProcessingState, RecordingType } from "./consts";
 import { DeviceBatteryChargeState } from "./device";
 
 export interface ApiRecordingResponse {
-    id: RecordingId;
-    processingState: RecordingProcessingState;
-    duration: Seconds;
-    recordingDateTime: IsoFormattedDateString;
-    type: RecordingType;
-    groupId: GroupId;
-    groupName: string;
-    deviceId: DeviceId;
-    deviceName: string;
-    // TODO - Should we return fileHash?  less useful for API consumers, perhaps just keep as implementation detail internally
-    processing?: boolean;
-    tags: ApiRecordingTagResponse[];
-    tracks: ApiTrackResponse[];
-    location?: LatLng;
-    stationId?: StationId;
-    stationName?: string;
-    comment?: string;
-    rawMimeType: string;
+  id: RecordingId;
+  processingState: RecordingProcessingState;
+  duration: Seconds;
+  recordingDateTime: IsoFormattedDateString;
+  type: RecordingType;
+  groupId: GroupId;
+  groupName: string;
+  deviceId: DeviceId;
+  deviceName: string;
+  // TODO - Should we return fileHash?  less useful for API consumers, perhaps just keep as implementation detail internally
+  processing?: boolean;
+  tags: ApiRecordingTagResponse[];
+  tracks: ApiTrackResponse[];
+  location?: LatLng;
+  stationId?: StationId;
+  stationName?: string;
+  comment?: string;
+  rawMimeType: string;
 }
 
 export interface ApiThermalRecordingMetadataResponse {
@@ -36,13 +44,13 @@ export interface ApiThermalRecordingMetadataResponse {
     width: number;
     height: number;
     frameNumber: number;
-  }
+  };
 }
 
 export interface ApiAudioRecordingMetadataResponse {
   analysis: {
-    cacophony_index: CacophonyIndex[],
-    species_identify: { begin_s: Seconds, end_s: Seconds, species: string }[],
+    cacophony_index: CacophonyIndex[];
+    species_identify: { begin_s: Seconds; end_s: Seconds; species: string }[];
     processing_time_seconds: Seconds;
     cacophony_index_version: string;
     species_identify_version: string;

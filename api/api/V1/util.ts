@@ -27,7 +27,6 @@ import { Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
-import { performance } from "perf_hooks";
 
 function multipartUpload(
   keyPrefix: string,

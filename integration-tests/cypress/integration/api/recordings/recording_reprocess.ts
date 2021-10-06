@@ -311,8 +311,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("pick up for processing");
         expectedProcessing1 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rrpRecording1",
-          recording1
+          "rrpRecording1"
         );
         expectedProcessing1.processingStartTime = NOT_NULL;
         expectedProcessing1.updatedAt = NOT_NULL;
@@ -668,8 +667,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("pick up for processing");
         expectedProcessing1 = TestCreateExpectedProcessingData(
           templateExpectedAudioProcessing,
-          "rrpRecording11",
-          recording1
+          "rrpRecording11"
         );
         expectedProcessing1.processingStartTime = NOT_NULL;
         expectedProcessing1.updatedAt = NOT_NULL;
@@ -750,8 +748,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("Send for processing");
         expectedProcessing18 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rrpRecording18",
-          recording18
+          "rrpRecording18"
         );
         expectedProcessing18.processingStartTime = NOT_NULL;
         expectedProcessing18.updatedAt = NOT_NULL;

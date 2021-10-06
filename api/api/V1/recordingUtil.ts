@@ -69,7 +69,6 @@ import {
   TagMode,
 } from "@typedefs/api/consts";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
-import { performance } from "perf_hooks";
 
 let CptvDecoder;
 (async () => {
@@ -1461,9 +1460,13 @@ const addAITrackTags = async (
   return Promise.all(trackTags);
 };
 
+// FIXME - unused - why?
 const calculateAndAddAIMasterTag = async (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   recording: Recording,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   rawTracks: RawTrack[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   tracks: Track[]
 ): Promise<TrackTagId> => {
   return 0;
@@ -1488,6 +1491,8 @@ const calculateTrackMovement = (track: RawTrack): number => {
   return Math.max(deltaX, deltaY);
 };
 
+// FIXME - unused
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const WALLABY_DEVICES = [949, 954, 956, 1176];
 
 // Tags to ignore when checking predictions
@@ -1645,6 +1650,7 @@ export const finishedProcessingRecording = async (
   prevState: RecordingProcessingState
 ): Promise<void> => {
   // See if we should tag the recording as having multiple animals
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, tags, hasMultipleAnimals] = calculateTags(classifierResult.tracks);
   if (hasMultipleAnimals) {
     await addTag(null, recording, {
@@ -1668,6 +1674,8 @@ export const finishedProcessingRecording = async (
   );
 
   // Add tags for those tracks
+  // FIXME - unused
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const trackTags = await addAITrackTags(
     recording,
     classifierResult.tracks,
@@ -1676,6 +1684,8 @@ export const finishedProcessingRecording = async (
   );
 
   // Calculate the AI_MASTER tag from the tracks provided, and add that
+  // FIXME - unused
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const masterTrackTagId = await calculateAndAddAIMasterTag(
     recording,
     classifierResult.tracks,

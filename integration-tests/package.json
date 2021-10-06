@@ -9,8 +9,8 @@
     "browse": "node ./node_modules/cypress/bin/cypress open --config-file cypress-browse.json",
     "release": "node ./node_modules/cypress/bin/cypress run $CYPRESS_RECORD",
     "performance:release": "node ./node_modules/cypress/bin/cypress run $CYPRESS_RECORD --config-file cypress-performance.json",
-    "lint": "eslint ./cypress --ext .ts && (../prettier-check.sh || (echo \"Please run '../prettier-fix.sh' to clean up formatting of files.\"; false))",
-    "lint:fix": "eslint ./cypress --fix --ext .ts && ../prettier-fix.sh"
+    "lint": "eslint ./cypress --ext .ts && (npx prettier --check ./**/*.ts || (echo \"Please run 'npm lint:fix' to clean up formatting of files.\"; false))",
+    "lint:fix": "eslint ./cypress --fix --ext .ts && npx prettier --write ./cypress/**/*.ts"
   },
   "dependencies": {
     "@types/form-data": "^2.5.0",

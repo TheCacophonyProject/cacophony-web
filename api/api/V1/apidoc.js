@@ -104,7 +104,7 @@
  *    "createdAt": "2021-05-19T02:45:02.379Z",
  *    "DeviceId": 2008,
  *    "EventDetail": {
- *      "type": "alert", 
+ *      "type": "alert",
  *      "details": {
  *        "foo": "bar",
  *        "foo2": "bar2"

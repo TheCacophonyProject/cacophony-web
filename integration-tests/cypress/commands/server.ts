@@ -1,6 +1,5 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-import type = Mocha.utils.type;
 
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 

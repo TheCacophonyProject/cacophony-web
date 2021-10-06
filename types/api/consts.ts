@@ -10,7 +10,6 @@ export enum RecordingPermission {
   UPDATE = "update",
 }
 
-
 export enum TagMode {
   Any = "any",
   UnTagged = "untagged",
@@ -23,7 +22,6 @@ export enum TagMode {
   HumanOnly = "human-only",
   AutomaticHuman = "automatic+human",
 }
-
 
 export enum RecordingProcessingState {
   Corrupt = "CORRUPT",

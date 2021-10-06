@@ -442,6 +442,7 @@ interface RecordingToTag {
   tracks: Track[];
 }
 
+// eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
 const needsTag = async (
   biasToDeviceId?: DeviceId
 ): Promise<FetchResult<RecordingToTag>> => {

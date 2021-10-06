@@ -18,6 +18,7 @@ script:
   # Run test checks
   - cd types
   - npm install
+  - npm run lint || travis_terminate 1;
   # Run browse checks
   - pwd
   - cd ../browse

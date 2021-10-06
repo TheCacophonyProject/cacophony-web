@@ -1,9 +1,26 @@
-declare module "*.json"
+declare module "*.json";
 
-import {integer, float, Seconds, FloatZeroToOne, IsoFormattedDateString } from "./common";
+import {
+  integer,
+  float,
+  Seconds,
+  FloatZeroToOne,
+  IsoFormattedDateString,
+} from "./common";
 
-type ClassificationClass = "bird" | "cat" | "false-positive" | "hedgehog" | "human"
-  | "leporidae" | "mustelid" | "possum" | "rodent" | "vehicle" | "wallaby" | "not";
+type ClassificationClass =
+  | "bird"
+  | "cat"
+  | "false-positive"
+  | "hedgehog"
+  | "human"
+  | "leporidae"
+  | "mustelid"
+  | "possum"
+  | "rodent"
+  | "vehicle"
+  | "wallaby"
+  | "not";
 // NOTE "not" is ignored..
 
 interface CameraThresholdConfig {
@@ -76,7 +93,6 @@ export interface MinimalTrackRequestData {
   message?: string;
 }
 
-
 interface ClassifierModelDescription {
   id: integer;
   name: string;
@@ -87,7 +103,7 @@ interface ClassifierModelDescription {
     default: integer;
     wallaby?: integer;
   };
-  ignored_tags: string[], // TODO - what can these be?
+  ignored_tags: string[]; // TODO - what can these be?
   thumbnail_model: boolean;
   classify_time: Seconds;
 }
@@ -106,7 +122,7 @@ export interface ClassifierRawResult {
     tracker_config: {
       background_calc: "preview";
       motion_config: {
-        camera_thresholds: Record<string, CameraThresholdConfig>,
+        camera_thresholds: Record<string, CameraThresholdConfig>;
         dynamic_thresh: boolean;
       };
       ignore_frames: integer;

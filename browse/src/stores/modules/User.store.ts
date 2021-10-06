@@ -56,6 +56,7 @@ const actions = {
       payload.password
     );
     if (success) {
+      // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
       const userData: ApiLoggedInUserResponse = result.userData;
       if (result.userData.globalPermission === "write") {
         // Persist super user settings so that we can switch user views.

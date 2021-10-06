@@ -16,11 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, {
-  validateFields,
-  expectedTypeOf,
-  isIntArray,
-} from "../middleware";
+import { validateFields, expectedTypeOf, isIntArray } from "../middleware";
 import { Application, Response, Request } from "express";
 import {
   calculateMonitoringPageCriteria,

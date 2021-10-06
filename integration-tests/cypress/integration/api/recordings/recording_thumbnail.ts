@@ -122,8 +122,7 @@ describe("Recording thumbnails", () => {
       ).then(() => {
         const expectedProcessing01 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rtRecording01",
-          recording01
+          "rtRecording01"
         );
         const expectedRecording01 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
@@ -287,8 +286,7 @@ describe("Recording thumbnails", () => {
       ).then(() => {
         const expectedProcessing02 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rtRecording02",
-          recording02
+          "rtRecording02"
         );
         const expectedRecording02 = TestCreateExpectedRecordingData(
           templateExpectedRecording,

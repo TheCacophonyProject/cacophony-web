@@ -1,10 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { HTTP_Unprocessable } from "@commands/constants";
-
-import { getTestName } from "@commands/names";
-import { getCreds } from "@commands/server";
-import ApiDeviceResponse = Cypress.ApiDeviceResponse;
+// import { HTTP_Unprocessable } from "@commands/constants";
+//
+// import { getTestName } from "@commands/names";
+// import { getCreds } from "@commands/server";
+// import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe.skip("Devices/query", () => {
   // const superuser = getCreds("superuser")["name"];

@@ -112,6 +112,7 @@ Cypress.Commands.add(
     deviceName: string,
     queryParams: any,
     expectedErrors: ApiEventErrorCategory[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}
@@ -298,6 +299,7 @@ Cypress.Commands.add(
     expectedEvents: ApiPowerEventReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     additionalChecks: any = {}
   ) => {
     logTestDescription(`Check for expected power events for ${deviceName} `, {

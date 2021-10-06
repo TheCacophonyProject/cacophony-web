@@ -1,7 +1,17 @@
-import {DeviceId, GroupId, IsoFormattedDateString, LatLng, SaltId} from "./common";
-import {ApiUserResponse} from "./user";
+import {
+  DeviceId,
+  GroupId,
+  IsoFormattedDateString,
+  LatLng,
+  SaltId,
+} from "./common";
+import { ApiUserResponse } from "./user";
 
-export type DeviceBatteryChargeState = "NOT_CHARGING" | "CHARGING" | "FULL" | "DISCHARGING";
+export type DeviceBatteryChargeState =
+  | "NOT_CHARGING"
+  | "CHARGING"
+  | "FULL"
+  | "DISCHARGING";
 
 export interface ApiDeviceUserRelationshipResponse extends ApiUserResponse {
   admin: boolean;
@@ -20,5 +30,5 @@ export interface ApiDeviceResponse {
   public?: boolean; // Assumed to be private unless otherwise specified.
   lastConnectionTime?: IsoFormattedDateString;
   location?: LatLng;
-  users?: ApiDeviceUserRelationshipResponse[]
+  users?: ApiDeviceUserRelationshipResponse[];
 }

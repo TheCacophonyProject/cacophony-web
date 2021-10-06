@@ -127,6 +127,7 @@ describe("Events - query power events", () => {
       GroupId: getCreds("peGroup").id,
       Group: peGroup,
     };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     peOtherGroupCameraDevice = {
       id: getCreds("peOtherGroupCamera").id,
       devicename: getTestName("peOtherGroupCamera"),

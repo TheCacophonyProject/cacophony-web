@@ -36,9 +36,7 @@ const asyncExec = promisify(exec);
 
 const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
   log.info("Checking if type schemas need recompilation");
-  const { stdout, stderr } = await asyncExec(
-    "cd ../types && node build-schemas.js"
-  );
+  const { stdout } = await asyncExec("cd ../types && node build-schemas.js");
   //const { stdout, stderr } = await asyncExec("cd ../types && npm run generate-schemas");
   log.info("Stdout: %s", stdout);
   return;
@@ -160,14 +158,23 @@ const checkS3Connection = (): Promise<void> => {
     await models.sequelize.authenticate();
     log.info("Connected to database.");
 
-    log.info(
-      "Preload super user permissions - note that if super-user permissions are changed externally, this API server must be manually reloaded to see the changes."
-    );
-    const superUsers = await models.User.findAll({
-      where: { globalPermission: { [Op.ne]: "off" } },
-    });
-    for (const superUser of superUsers) {
-      SuperUsers.set(superUser.id, superUser.globalPermission);
+    {
+      // We grab all the users with super user credentials, and store those
+      // credentials in a global map, so that we can avoid doing a db lookup to
+      // get the user from the user JWT token id on every request.  Usually a
+      // user id is all that is needed, with the exception of super user
+      // permissions, but since there are only a handful of super users, it's
+      // fine to preload and cache that information up front.
+      log.notice("Preload and cache super user permissions.");
+      log.notice(
+        "If super-user permissions are changed, manually restart API server."
+      );
+      const superUsers = await models.User.findAll({
+        where: { globalPermission: { [Op.ne]: "off" } },
+      });
+      for (const superUser of superUsers) {
+        SuperUsers.set(superUser.id, superUser.globalPermission);
+      }
     }
 
     await checkS3Connection();

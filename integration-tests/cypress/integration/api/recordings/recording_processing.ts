@@ -234,8 +234,7 @@ describe("Recordings - processing tests", () => {
         );
         expectedProcessing1 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording1",
-          recording1
+          "rpRecording1"
         );
 
         cy.log("Check recording status is 'analyse'");
@@ -332,18 +331,15 @@ describe("Recordings - processing tests", () => {
           ).then(() => {
             const expectedProcessing3 = TestCreateExpectedProcessingData(
               templateExpectedProcessing,
-              "rpRecording3",
-              recording3
+              "rpRecording3"
             );
             const expectedProcessing4 = TestCreateExpectedProcessingData(
               templateExpectedProcessing,
-              "rpRecording4",
-              recording4
+              "rpRecording4"
             );
             const expectedProcessing5 = TestCreateExpectedProcessingData(
               templateExpectedProcessing,
-              "rpRecording5",
-              recording5
+              "rpRecording5"
             );
 
             cy.log("Check recordings ordered by recordingDateTime (3,5,4)");
@@ -411,24 +407,20 @@ describe("Recordings - processing tests", () => {
             ).then(() => {
               const expectedProcessing6 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording6",
-                recording6
+                "rpRecording6"
               );
               const expectedProcessing7 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording7",
-                recording7
+                "rpRecording7"
               );
               expectedProcessing7.hasAlert = true;
               const expectedProcessing8 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording8",
-                recording8
+                "rpRecording8"
               );
               const expectedProcessing9 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording9",
-                recording9
+                "rpRecording9"
               );
               expectedProcessing9.hasAlert = true;
 
@@ -506,23 +498,19 @@ describe("Recordings - processing tests", () => {
             ).then(() => {
               const expectedProcessing10 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording10",
-                recording10
+                "rpRecording10"
               );
               const expectedProcessing11 = TestCreateExpectedProcessingData(
                 templateExpectedAudioProcessing,
-                "rpRecording11",
-                recording11
+                "rpRecording11"
               );
               const expectedProcessing12 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording12",
-                recording12
+                "rpRecording12"
               );
               const expectedProcessing13 = TestCreateExpectedProcessingData(
                 templateExpectedAudioProcessing,
-                "rpRecording13",
-                recording13
+                "rpRecording13"
               );
 
               cy.log(
@@ -574,8 +562,7 @@ describe("Recordings - processing tests", () => {
       ).then(() => {
         const expectedProcessing18 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording18",
-          recording18
+          "rpRecording18"
         );
         const expectedRecording18 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
@@ -683,8 +670,7 @@ describe("Recordings - processing tests", () => {
       ).then(() => {
         const expectedProcessing19 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording19",
-          recording19
+          "rpRecording19"
         );
         const expectedRecording19 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
@@ -823,8 +809,7 @@ describe("Recordings - processing tests", () => {
 
         const expectedProcessing20 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording20",
-          recording20
+          "rpRecording20"
         );
         expectedProcessing20.hasAlert = true;
 
@@ -915,8 +900,7 @@ describe("Recordings - processing tests", () => {
       ).then(() => {
         const expectedProcessing17 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording17",
-          recording17
+          "rpRecording17"
         );
         const expectedRecording17 = TestCreateExpectedRecordingData(
           templateExpectedAudioRecording,
@@ -1010,8 +994,7 @@ describe("Recordings - processing tests", () => {
         );
         expectedProcessing21 = TestCreateExpectedProcessingData(
           templateExpectedAudioProcessing,
-          "rpRecording21",
-          recording21
+          "rpRecording21"
         );
 
         cy.log("Check recording status is 'analyse'");
