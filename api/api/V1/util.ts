@@ -27,7 +27,7 @@ import { Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
-import { type } from "os";
+import { performance } from "perf_hooks";
 
 function multipartUpload(
   keyPrefix: string,
@@ -38,6 +38,7 @@ function multipartUpload(
   ) => Promise<ModelCommon<T> | string>
 ) {
   return (request: Request, response: Response) => {
+    const s = performance.now();
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;
@@ -113,6 +114,7 @@ function multipartUpload(
       try {
         // Wait for the upload to complete.
         const uploadResult = await upload;
+        // log.warning("Upload %s", performance.now() - s);
         if (uploadResult instanceof Error) {
           responseUtil.serverError(response, uploadResult);
           return;
@@ -172,6 +174,7 @@ function multipartUpload(
             response.locals.requestDevice &&
             !response.locals.requestDevice.devicename
           ) {
+            // We just have a device id, so get the actual device object to update.
             uploadingDevice = await models.Device.findByPk(
               response.locals.requestDevice.id
             );
@@ -181,7 +184,9 @@ function multipartUpload(
         }
 
         // Store a record for the upload.
+        const sss = performance.now();
         dbRecordOrFileKey = await onSaved(uploadingDevice || null, data, key);
+        // log.warning("Parsing and saving recording meta %s", performance.now() - sss);
 
         if (uploadingDevice) {
           // Update the device location from the recording.

@@ -45,10 +45,6 @@ describe("Recordings - reprocessing tests", () => {
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: [-45.29115, 169.30845],
-    version: "345",
-    batteryCharging: null,
-    batteryLevel: null,
-    airplaneModeOn: null,
     additionalMetadata: {
       algorithm: 31143,
       previewSecs: 5,
@@ -56,7 +52,7 @@ describe("Recordings - reprocessing tests", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}] }],
+      tracks: [], //{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}] }
     },
     comment: "This is a comment",
     processingState: "FINISHED",
@@ -77,7 +73,6 @@ describe("Recordings - reprocessing tests", () => {
     type: RecordingType.ThermalRaw,
     additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
-    stationId: 25,
     comment: "This is a comment",
     processing: false
   };
@@ -157,7 +152,6 @@ describe("Recordings - reprocessing tests", () => {
     fileHash: null,
     duration: 60,
     recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDawn: null,
     relativeToDusk: -17219,
     location: [-43.53345, 172.64745],
     version: "1.8.1",
@@ -188,7 +182,6 @@ describe("Recordings - reprocessing tests", () => {
       "Phone manufacturer": "samsung",
       "App has root access": false,
     },
-    comment: null,
     processingState: "FINISHED",
   };
 
@@ -560,7 +553,6 @@ describe("Recordings - reprocessing tests", () => {
         cy.apiReprocess(
           "rrpGroup2Admin",
           [getCreds("rrpRecording9").id],
-          undefined,
           HTTP_Forbidden
         );
 
@@ -613,6 +605,10 @@ describe("Recordings - reprocessing tests", () => {
           "rrpGroupAdmin",
           ["foo", "bar", 1] as unknown as number[],
           HTTP_Unprocessable
+      );
+      cy.apiReprocess(
+        "rrpGroupAdmin",
+        [getCreds("rrpRecording10").id]
       );
         cy.log(
           "Check valid recording is in reprocess, with existing tracks cleared"
@@ -824,7 +820,7 @@ describe("Recordings - reprocessing tests", () => {
                       automatic: true,
                       trackId: getCreds("rrpTrack18").id,
                       confidence: 0.9,
-                      data: "master",
+                      data: { name: "master" },
                       id: -1,
                     },
                   ],

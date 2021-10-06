@@ -39,9 +39,9 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
   getRecording: () => Promise<Recording>;
 
   TrackTags?: TrackTag[];
+  replaceTag: (tag: TrackTag) => Promise<any>;
 }
 export interface TrackStatic extends ModelStaticCommon<Track> {
-  replaceTag: (id: TrackId, tag: TrackTag) => Promise<any>;
   archiveTags: () => Promise<any>;
 }
 
@@ -78,12 +78,8 @@ export default function (
 
   //add or replace a tag, such that this track only has 1 animal tag by this user
   //and no duplicate tags
-  Track.replaceTag = async (trackId: TrackId, tag: TrackTag) => {
-    const track = await Track.findByPk(trackId);
-    if (!track) {
-      // FIXME - Move to API validation layer
-      throw new ClientError("No track found for " + trackId);
-    }
+  Track.prototype.replaceTag = async function(tag: TrackTag) {
+    const trackId = this.id;
     return sequelize.transaction(async function (t) {
       const trackTags = await models.TrackTag.findAll({
         where: {

@@ -270,7 +270,10 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/:groupIdOrName/users`,
     extractJwtAuthorizedUser,
-    validateFields([nameOrIdOf(param("groupIdOrName"))]),
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      query("view-mode").optional().equals("user"),
+    ]),
     // FIXME - should this be only visible to group admins?
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {

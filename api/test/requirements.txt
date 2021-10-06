@@ -1,6 +1,0 @@
-requests
-python-dateutil
-requests-toolbelt
-pytest
-attrs~=20.3.0
-black~=21.8b0

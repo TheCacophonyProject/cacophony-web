@@ -500,7 +500,8 @@ describe("Recordings report using where", () => {
     );
   });
 
-  it("Can limit query by tags and tagmode", () => {
+  it.skip("Can limit query by tags and tagmode", () => {
+    // FIXME
     cy.log("Tagged as possum");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",

@@ -67,6 +67,7 @@ import { AcceptableTag } from "@typedefs/api/consts";
 import { Device } from "@models/Device";
 import { RecordingPermission, RecordingProcessingState, RecordingType, TagMode } from "@typedefs/api/consts";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { performance } from "perf_hooks";
 
 let CptvDecoder;
 (async () => {
@@ -363,7 +364,7 @@ export const uploadRawRecording = util.multipartUpload(
   "raw",
   async (
     uploadingDevice: Device,
-    data: any,
+    data: any, // FIXME - At least partially validate this data
     key: string
   ): Promise<Recording> => {
     const recording = models.Recording.buildSafely(data);
@@ -380,6 +381,7 @@ export const uploadRawRecording = util.multipartUpload(
     let fileIsCorrupt = false;
     if (data.type === "thermalRaw") {
       // Read the file back out from s3 and decode/parse it.
+      const s = performance.now();
       const fileData = await modelsUtil
         .openS3()
         .getObject({
@@ -389,16 +391,23 @@ export const uploadRawRecording = util.multipartUpload(
         .catch((err) => {
           return err;
         });
-      const decoder = new CptvDecoder();
-      const metadata = await decoder.getBytesMetadata(
-        new Uint8Array(fileData.Body)
-      );
-      // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
-      fileIsCorrupt = await decoder.hasStreamError();
-      if (fileIsCorrupt) {
-        log.warning("CPTV Stream error: %s", await decoder.getStreamError());
+      const a = performance.now();
+      let metadata;
+      {
+        // TODO - see if this is faster with synthesised test cptv files
+
+        const decoder = new CptvDecoder();
+        metadata = await decoder.getBytesMetadata(
+          new Uint8Array(fileData.Body)
+        );
+        // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
+        fileIsCorrupt = await decoder.hasStreamError();
+        if (fileIsCorrupt) {
+          log.warning("CPTV Stream error: %s - mark as Corrupt and don't queue for processing", await decoder.getStreamError());
+        }
+        decoder.close();
       }
-      decoder.close();
+      // log.warning("load %s and decode %s, both %s", a - s, performance.now() - a, performance.now() - s);
 
       if (
         !data.hasOwnProperty("location") &&
@@ -441,7 +450,9 @@ export const uploadRawRecording = util.multipartUpload(
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
     recording.DeviceId = uploadingDevice.id;
     recording.GroupId = uploadingDevice.GroupId;
+    const ss = performance.now();
     const matchingStation = await tryToMatchRecordingToStation(recording);
+    // log.warning("Station matching %s", performance.now() - ss);
     if (matchingStation) {
       recording.StationId = matchingStation.id;
     }
@@ -476,7 +487,6 @@ export const uploadRawRecording = util.multipartUpload(
         }
       } else {
         // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
-        log.warning("File was corrupt, don't queue for processing");
         recording.processingState = RecordingProcessingState.Corrupt;
       }
     }
@@ -490,21 +500,28 @@ export const uploadRawRecording = util.multipartUpload(
 async function query(
   requestUserId: UserId,
   viewAsSuperUser: boolean,
-  query: RecordingQuery,
-  type?
+  where: any,
+  tagMode: any,
+  tags: string[],
+  limit: number,
+  offset: number,
+  order: any,
+  type: RecordingType
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
-    query.where.type = type;
+    where.type = type;
   }
+
+  // FIXME - Do this in extract-middleware as bulk recording extractor
 
   const builder = await new models.Recording.queryBuilder().init(
     requestUserId,
-    query.where,
-    query.tagMode,
-    query.tags,
-    query.offset,
-    query.limit,
-    query.order,
+    where,
+    tagMode,
+    tags,
+    offset,
+    limit,
+    order,
     viewAsSuperUser
   );
   builder.query.distinct = true;
@@ -530,18 +547,24 @@ async function query(
 export async function reportRecordings(
   userId: UserId,
   viewAsSuperUser: boolean,
-  query: RecordingQuery
+  where: any,
+  tagMode: any,
+  tags: any,
+  offset: number,
+  limit: number,
+  order: any,
+  includeAudiobait: boolean,
 ) {
-  const includeAudiobait: boolean = query.audiobait;
+
   const builder = (
     await new models.Recording.queryBuilder().init(
       userId,
-      query.where,
-      query.tagMode,
-      query.tags,
-      query.offset,
-      query.limit,
-      query.order,
+      where,
+      tagMode,
+      tags,
+      offset,
+      limit,
+      order,
       viewAsSuperUser
     )
   )
@@ -626,7 +649,6 @@ export async function reportRecordings(
   labels.push("URL", "Cacophony Index", "Species Classification");
 
   const out = [labels];
-
   for (const r of result) {
     //r.filterData(filterOptions);
 
@@ -666,7 +688,6 @@ export async function reportRecordings(
       formatTags(human_track_tags),
       formatTags(recording_tags),
     ];
-
     if (includeAudiobait) {
       let audioBaitName = "";
       let audioBaitTime = null;
@@ -941,7 +962,11 @@ async function updateMetadata(recording: any, metadata: any) {
 async function queryVisits(
   userId: UserId,
   viewAsSuperUser: boolean,
-  query: RecordingQuery
+  where: any,
+  tagMode: any,
+  tags: string[],
+  offset: number,
+  limit: number,
 ): Promise<{
   visits: Visit[];
   summary: DeviceSummary;
@@ -952,21 +977,16 @@ async function queryVisits(
   numVisits: number;
 }> {
   const maxVisitQueryResults = 5000;
-  const requestVisits =
-    query.limit == null ? maxVisitQueryResults : (query.limit as number);
-
+  const requestVisits = limit || maxVisitQueryResults;
   const queryMax = maxVisitQueryResults * 2;
-  let queryLimit = queryMax;
-  if (query.limit) {
-    queryLimit = Math.min(query.limit * 2, queryMax);
-  }
+  const queryLimit = Math.min(requestVisits * 2, queryMax);
 
   const builder = await new models.Recording.queryBuilder().init(
     userId,
-    query.where,
-    query.tagMode,
-    query.tags,
-    query.offset,
+    where,
+    tagMode,
+    tags,
+    offset,
     queryLimit,
     null,
     viewAsSuperUser
@@ -974,10 +994,6 @@ async function queryVisits(
   builder.query.distinct = true;
 
   const devSummary = new DeviceSummary();
-  // const filterOptions = models.Recording.makeFilterOptions(
-  //   request.user,
-  //   request.filterOptions
-  // );
   let numRecordings = 0;
   let remainingVisits = requestVisits;
   let totalCount, recordings, gotAllRecordings;
@@ -1000,7 +1016,7 @@ async function queryVisits(
     // for (const rec of recordings) {
     //   rec.filterData(filterOptions);
     // }
-    devSummary.generateVisits(recordings, query.offset || 0);
+    devSummary.generateVisits(recordings, offset || 0);
 
     if (!gotAllRecordings) {
       devSummary.checkForCompleteVisits();
@@ -1136,9 +1152,13 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
 export async function reportVisits(
   userId: UserId,
   viewAsSuperUser: boolean,
-  request: RecordingQuery
+  where: any,
+  tagMode: any,
+  tags: string[],
+  offset: number,
+  limit: number,
 ) {
-  const results = await queryVisits(userId, viewAsSuperUser, request);
+  const results = await queryVisits(userId, viewAsSuperUser, where, tagMode, tags, offset, limit);
   const out = reportDeviceVisits(results.summary.deviceMap);
   const recordingUrlBase = config.server.recording_url_base || "";
   out.push([]);

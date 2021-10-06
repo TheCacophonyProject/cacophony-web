@@ -38,6 +38,8 @@ export enum RecordingProcessingState {
   ToMp3Failed = "toMp3.failed",
   AnalyseFailed = "analyse.failed",
   ReprocessFailed = "reprocess.failed",
+
+  AnalyseTest = "analyse.test", // Value only used for testing, should not be processed.
 }
 
 export enum AcceptableTag {

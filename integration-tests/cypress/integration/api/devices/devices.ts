@@ -98,7 +98,7 @@ describe("Devices list", () => {
 
   //Do not run against a live server as we don't have superuser login
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    it("Super-user should see all devices including User details", () => {
+    it("Super-user should see all devices", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
 
       const expectedDevice2AdminView = {
@@ -107,8 +107,8 @@ describe("Devices list", () => {
         deviceName: getTestName(camera2),
         active: true,
         admin: true,
-        groupName: getTestName(group3),
-        groupId: getCreds(group3).id,
+        groupName: getTestName(group2),
+        groupId: getCreds(group2).id,
       };
 
       cy.apiDevicesCheckContains(superuser, [
@@ -121,9 +121,8 @@ describe("Devices list", () => {
   }
 
   //Do not run against a live server as we don't have superuser login
-  //TODO: FAILS - sees all devices
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    it.skip("Super-user 'as user' should see only their devices and users only where they are device admin", () => {
+    it("Super-user 'as user' should see only their devices and users only where they are device admin", () => {
       // note: if this test fails and does not clean up after itself, it will continue to fail until the superuser is removed from the old test devices
       cy.apiSignInAs(null, null, superuser, suPassword);
       // add superuser to group2

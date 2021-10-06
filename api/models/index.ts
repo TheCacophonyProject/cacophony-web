@@ -35,7 +35,7 @@ import { GroupUsersStatic } from "./GroupUsers";
 import { DeviceUsersStatic } from "./DeviceUsers";
 import { ScheduleStatic } from "./Schedule";
 import { StationStatic } from "./Station";
-import { asyncLocalStorage } from "../Server";
+import { asyncLocalStorage } from "@/Server";
 
 const basename = path.basename(module.filename);
 const dbConfig = config.database;
@@ -67,7 +67,7 @@ const IS_DEBUG = config.server.loggerLevel === "debug";
         "queryTime",
         requestQueryTime
       );
-      if (timeMs > (config.database.slowQueryLogThresholdMs || 1000)) {
+      if (timeMs > 15) {//(config.database.slowQueryLogThresholdMs || 1000)) {
         log.warning("Slow query: %s [%d]ms", msg, timeMs);
       }
     }

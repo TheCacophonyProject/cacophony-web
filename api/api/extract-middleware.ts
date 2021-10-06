@@ -9,15 +9,15 @@ import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
 import log from "../logging";
 import { modelTypeName, modelTypeNamePlural } from "./middleware";
-import { format } from "util";
-import { Location, ValidationChain } from "express-validator";
-import { AuthorizationError, ClientError } from "./customErrors";
+import { ValidationChain } from "express-validator";
+import { ClientError } from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
 import { UserId } from "@typedefs/api/common";
 import { Group } from "models/Group";
 import { Recording } from "models/Recording";
+import { SuperUsers } from "@/Server";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -54,21 +54,46 @@ const extractJwtAuthenticatedEntity =
         return next(new ClientError("Admin has to be a user", 403));
       }
 
-      let result;
-      try {
-        result = await lookupEntity(jwtDecoded);
-      } catch (e) {
-        return next(e);
+      const short = true;
+      if (short && type === "user" || type === "device") {
+        if (type === "user") {
+          const superUserPermissions = SuperUsers.get(jwtDecoded.id);
+          if (!superUserPermissions) {
+            response.locals.requestUser = {
+              id: jwtDecoded.id,
+              hasGlobalRead: () => false,
+              hasGlobalWrite: () => false,
+              globalPermission: "off"
+            };
+          } else {
+            response.locals.requestUser = {
+              id: jwtDecoded.id,
+              hasGlobalRead: () => true,
+              hasGlobalWrite: () => superUserPermissions === "write",
+              globalPermission: superUserPermissions,
+            };
+          }
+        } else if (type === "device") {
+          response.locals.requestDevice = { id: jwtDecoded.id };
+        }
       }
-      if (result === null) {
-        return next(
-          new ClientError(
-            `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`,
-            401
-          )
-        );
+      else {
+        let result;
+        try {
+          result = await lookupEntity(jwtDecoded);
+        } catch (e) {
+          return next(e);
+        }
+        if (result === null) {
+          return next(
+            new ClientError(
+              `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`,
+              401
+            )
+          );
+        }
+        response.locals[`request${upperFirst(type)}`] = result;
       }
-      response.locals[`request${upperFirst(type)}`] = result;
 
       response.locals.viewAsSuperUser = false;
       if (
@@ -587,7 +612,6 @@ const getRecording =
     const recordingWhere = {
       id: parseInt(recordingId),
     };
-    logger.warning("Get recording %s %s", forRequestUser, asAdmin);
     let getRecordingOptions;
     const groupWhere = {};
     const deviceWhere = {};

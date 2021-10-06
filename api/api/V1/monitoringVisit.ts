@@ -3,7 +3,7 @@ import { MonitoringPageCriteria } from "./monitoringPage";
 import models from "@models";
 import { Recording } from "@models/Recording";
 import { getTrackTag, unidentifiedTags } from "./Visits";
-import { User } from "@models/User";
+import { User, UserId } from "@models/User";
 import { ClientError } from "../customErrors";
 
 const MINUTE = 60;
@@ -204,7 +204,7 @@ interface VisitTrack {
 }
 
 export async function generateVisits(
-  user: User,
+  userId: UserId,
   search: MonitoringPageCriteria,
   viewAsSuperAdmin: boolean
 ) {
@@ -218,7 +218,7 @@ export async function generateVisits(
   );
 
   const recordings = await getRecordings(
-    user,
+    userId,
     search,
     search_start,
     search_end,
@@ -251,7 +251,7 @@ export async function generateVisits(
 }
 
 async function getRecordings(
-  user: User,
+  userId: UserId,
   params: MonitoringPageCriteria,
   from: Moment,
   until: Moment,
@@ -271,7 +271,7 @@ async function getRecordings(
   const order = [["recordingDateTime", "ASC"]];
 
   const builder = await new models.Recording.queryBuilder().init(
-    user.id,
+    userId,
     where,
     null,
     null,

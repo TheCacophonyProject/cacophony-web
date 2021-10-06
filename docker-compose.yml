@@ -20,5 +20,4 @@ services:
       # Exclude the following folders
       - /app/api/docker-base/
       - /app/api/node_modules/
-      - /app/api/test/
       - /app/api/sql/

@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
 import { HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
 
-import { ApiLocation, ApiRecordingReturned, ApiRecordingSet, ApiThermalAdditionalMetadata } from "@commands/types";
+import { ApiLocation, ApiRecordingSet, ApiThermalAdditionalMetadata } from "@commands/types";
 
 import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
@@ -11,6 +11,7 @@ describe("Recordings - parameter tests", () => {
   //Do not validate IDs
   const EXCLUDE_IDS = [
     ".tracks[].tags[].trackId",
+    ".tracks[].tags[].id",
     ".tracks[].id",
   ];
 

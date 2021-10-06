@@ -49,10 +49,9 @@ declare namespace Cypress {
       params?: any,
       statusCode?: number
     ): any;
-
-    // FIXME - Maybe remove?
+    
     /**
-     * Same as apiDevicesCheck but check the expected items are on the list, rather than the only things on the list
+     * Same as apiDevicesCheck but check the expected items are in the list, rather than the only things in the list
      */
     apiDevicesCheckContains(
       userName: string,

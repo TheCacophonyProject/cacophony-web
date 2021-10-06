@@ -35,7 +35,6 @@ describe("Recordings - audio recording parameter tests", () => {
       lng: 172.64745
     },
     rawMimeType: "",
-    fileMimeType: "",
     processing: false,
     processingState: RecordingProcessingState.Finished,
     recordingDateTime: "2021-08-24T01:35:00.000Z",

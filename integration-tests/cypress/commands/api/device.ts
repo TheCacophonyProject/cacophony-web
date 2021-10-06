@@ -190,11 +190,11 @@ function checkDeviceMatchesExpected(
   device: ApiDeviceResponse,
   expectedDevice: ApiDeviceResponse
 ) {
-  expect(device.groupName).to.equal(expectedDevice.groupName);
-  expect(device.deviceName).to.equal(expectedDevice.deviceName);
-  expect(device.groupId).to.equal(expectedDevice.groupId);
-  expect(device.active).to.equal(expectedDevice.active);
-  expect(device.admin).to.equal(expectedDevice.admin);
+  expect(device.groupName, "groupName").to.equal(expectedDevice.groupName);
+  expect(device.deviceName, "deviceName").to.equal(expectedDevice.deviceName);
+  expect(device.groupId, "groupId").to.equal(expectedDevice.groupId);
+  expect(device.active, "active").to.equal(expectedDevice.active);
+  expect(device.admin, "admin").to.equal(expectedDevice.admin);
 }
 
 Cypress.Commands.add(
@@ -227,16 +227,18 @@ Cypress.Commands.add(
         let devCount: number;
         //check each device in our expected list
         for (devCount = 0; devCount < expectedDevices.length; devCount++) {
-          let found = false;
           // is found somewhere in the actual list
-          devices.forEach(function (device: ApiDeviceResponse) {
-            // and contains the correct values
-            if (device.deviceName == expectedDevices[devCount].deviceName) {
-              found = true;
-              checkDeviceMatchesExpected(device, expectedDevices[devCount]);
-            }
-          });
-          expect(found).to.equal(true);
+
+          // Note that deviceNames only need to be unique within groups, so
+          // match on groupName also.
+          const found = devices.find(device => (
+            device.deviceName === expectedDevices[devCount].deviceName &&
+            device.groupName === expectedDevices[devCount].groupName
+          ));
+          if (found) {
+            checkDeviceMatchesExpected(found, expectedDevices[devCount]);
+          }
+          expect(found).to.not.equal(undefined);
         }
       }
     });

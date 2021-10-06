@@ -1396,6 +1396,7 @@ from (
     "StationId",
     "rawFileKey",
     "processing",
+    "comment"
   ];
 
   // Attributes returned when looking up a single recording.

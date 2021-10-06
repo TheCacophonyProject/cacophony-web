@@ -5,14 +5,15 @@ import { ApiRecordingSet } from "@commands/types";
 import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { HTTP_BadRequest, HTTP_Forbidden } from "@commands/constants";
+import { HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
 
 describe("Update recordings", () => {
   //Do not validate IDs
   const EXCLUDE_IDS = [
     ".tracks[].tags[].trackId",
     ".tracks[].tags[].id",
-    ".tracks[].id"
+    ".tracks[].id",
+    ".location"
   ];
 
   const templateExpectedRecording: ApiThermalRecordingResponse = {
@@ -40,10 +41,6 @@ describe("Update recordings", () => {
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
     location: [-45.00045, 169.00065],
-    version: "346",
-    batteryCharging: null,
-    batteryLevel: null,
-    airplaneModeOn: null,
     additionalMetadata: {
       algorithm: 31144,
       previewSecs: 6,
@@ -75,14 +72,14 @@ describe("Update recordings", () => {
     //airplaneModeOn: true,
     //type: "audio"
     comment: "This is a new comment",
-    // add newFields, change algorythm, set previewSecs to null, leave totalFrames unchanged
+    // add newFields, change algorithm, set previewSecs to null, leave totalFrames unchanged
     additionalMetadata: {
       newField: "newValue",
       newField2: "newValue2",
       algorithm: 99999,
       previewSecs: null,
     },
-    location: [-46.29105, 170.30835],
+    location: [-46.29115, 170.30835],
   };
 
   before(() => {
@@ -294,7 +291,7 @@ describe("Update recordings", () => {
       "ruGroupAdmin",
       "99999",
       fieldUpdates,
-      HTTP_BadRequest,
+      HTTP_Forbidden,
       { useRawRecordingId: true }
     );
   });
@@ -320,14 +317,14 @@ describe("Update recordings", () => {
         "ruGroupAdmin",
         "ruRecording06",
         { badField: "hello" },
-        HTTP_BadRequest
+        HTTP_Unprocessable
       );
       cy.log("Attempt to update field with invalid value");
       cy.apiRecordingUpdate(
         "ruGroupAdmin",
         "ruRecording06",
-        { additionalMetdata: "badValue" },
-        HTTP_BadRequest
+        { additionalMetadata: "badValue" },
+        HTTP_Unprocessable
       );
 
       cy.log("Check recording not updated");
@@ -358,8 +355,7 @@ function updateExpected(expectedRecording: any) {
   //expectedRecording.type= "audio";
   expectedRecording.comment = "This is a new comment";
   expectedRecording.location = {
-    type: "Point",
-    coordinates: [-46.29105, 170.30835],
+    lat: -46.29105, lng: 170.30835
   };
   //expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};
   //TODO: Issue 99 behaviour here and in fileProcessing inconsistent.  fileProcessing merges additionalMetedata here we replace it

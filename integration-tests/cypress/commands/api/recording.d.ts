@@ -2,6 +2,8 @@
 /// <reference types="cypress" />
 
 
+import { ApiAudioRecordingResponse, ApiThermalRecordingResponse } from "../../../../types/api/recording";
+
 declare namespace Cypress {
   type ApiRecordingSet = import("../types").ApiRecordingSet;
   type ApiRecordingReturned = import("../types").ApiRecordingReturned;
@@ -199,7 +201,7 @@ declare namespace Cypress {
     apiRecordingsQueryCheck(
       userName: string,
       query: any,
-      expectedRecordings?: ApiRecordingReturned[],
+      expectedRecordings?: (ApiThermalRecordingResponse | ApiAudioRecordingResponse)[],
       excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any

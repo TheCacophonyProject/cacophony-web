@@ -376,7 +376,6 @@ class Visit {
     // isn't unidentified, preferring human tags over ai
     // returns [boolean describing if human tag, the tag]
     const tagCount = this.tagCount;
-    logging.warning("tags %s", tagCount);
     const sortedKeys = Object.keys(tagCount).sort(function (a, b) {
       const count_a = tagCount[a];
       const count_b = tagCount[b];

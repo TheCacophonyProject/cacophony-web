@@ -16,12 +16,11 @@ import {
 import { logTestDescription, prettyLog } from "../descriptions";
 import {
   ApiRecordingSet,
-  ApiRecordingReturned,
   ApiRecordingNeedsTagReturned,
   ApiRecordingColumns,
 } from "../types";
 import { ApiRecordingColumnNames } from "../constants";
-import { ApiRecordingResponse } from "@typedefs/api/recording";
+import { ApiAudioRecordingResponse, ApiRecordingResponse, ApiThermalRecordingResponse } from "@typedefs/api/recording";
 
 // 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
@@ -623,7 +622,7 @@ Cypress.Commands.add(
   (
     userName: string,
     query: any,
-    expectedRecordings: ApiRecordingReturned[] = undefined,
+    expectedRecordings: (ApiAudioRecordingResponse | ApiThermalRecordingResponse)[] = undefined,
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}

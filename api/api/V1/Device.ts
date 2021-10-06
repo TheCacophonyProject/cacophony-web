@@ -455,7 +455,8 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
-      const device = await (response.locals.requestDevice as Device).reRegister(
+      const requestDevice = await models.Device.findByPk(response.locals.requestDevice.id);
+      const device = await requestDevice.reRegister(
         request.body.newName,
         response.locals.group,
         request.body.newPassword

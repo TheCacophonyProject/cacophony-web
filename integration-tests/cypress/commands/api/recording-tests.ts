@@ -466,8 +466,7 @@ export function TestCreateExpectedRecordingColumns(
   if (inputTrackData !== undefined && inputTrackData.tracks !== undefined) {
     expected["Track Count"] = inputTrackData.tracks.length.toString();
     expected["Automatic Track Tags"] = inputTrackData.tracks
-      //.map((track) => track.confident_tag)
-      .map((track) => track.predictions)
+      .map((track) => track.predictions.map(prediction => prediction.confident_tag))
       .join(";");
   } else {
     expected["Track Count"] = "0";
@@ -560,9 +559,6 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputRecording.comment !== undefined) {
    expected.comment = inputRecording.comment;
   }
-  if (inputRecording.additionalMetadata !== undefined) {
-    expected.additionalMetadata = inputRecording.additionalMetadata;
-  }
   if (inputRecording.batteryLevel !== undefined) {
    expected.batteryLevel = inputRecording.batteryLevel;
   }
@@ -577,6 +573,12 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   }
   if (inputRecording.relativeToDawn !== undefined) {
    expected.relativeToDawn = inputRecording.relativeToDawn;
+  }
+  if (inputRecording.fileMimeType !== undefined) {
+    expected.fileMimeType = inputRecording.fileMimeType;
+  }
+  if (inputRecording.additionalMetadata !== undefined) {
+    expected.additionalMetadata = JSON.parse(JSON.stringify(inputRecording.additionalMetadata));
   }
   //TODO: filehash not in returned values - issue 87
   //expected.fileHash=inputRecording.fileHash;
@@ -594,17 +596,15 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
         start: track.start_s,
         end: track.end_s,
       };
-      if (track.predictions.confident_tag !== undefined) {
+      if (track.predictions.length && track.predictions[0].confident_tag !== undefined) {
         newTrack.tags = [
           {
-            what: track.predictions.confident_tag,
+            what: track.predictions[0].confident_tag,
             automatic: true,
             trackId: -99,
-            data: inputTrackData.algorithm.model_name,
-            confidence: track.predictions.confidence,
+            data: { name: "unknown" }, // FIXME - get model name from track.predictions[0].model_id
+            confidence: track.predictions[0].confidence,
             id: 0,
-            createdAt: "",
-            updatedAt: ""
           },
         ];
       }

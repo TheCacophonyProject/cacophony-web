@@ -64,7 +64,7 @@ export interface ApiAudioRecordingMetadataResponse {
 }
 
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
-  additionalMetadata: ApiThermalRecordingMetadataResponse;
+  additionalMetadata?: ApiThermalRecordingMetadataResponse;
   type: RecordingType.ThermalRaw;
 }
 
@@ -83,7 +83,7 @@ export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
   relativeToDusk?: number;
   type: RecordingType.Audio;
   fileMimeType?: string;
-  additionalMetadata: ApiAudioRecordingMetadataResponse;
+  additionalMetadata?: ApiAudioRecordingMetadataResponse;
 }
 
 export interface ApiRecordingProcessingJob {
@@ -94,4 +94,10 @@ export interface ApiRecordingProcessingJob {
   updatedAt: IsoFormattedDateString;
   processingStartTime?: IsoFormattedDateString;
   processingEndTime?: IsoFormattedDateString;
+}
+
+export interface ApiRecordingUpdateRequest {
+  comment: string;
+  additionalMetadata: Record<string, any>;
+  location: [number, number];
 }

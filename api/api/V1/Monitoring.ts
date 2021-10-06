@@ -17,9 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import middleware, {
-  toIdArray,
-  toDate,
-  isInteger,
   validateFields,
   expectedTypeOf,
   isIntArray,
@@ -35,6 +32,7 @@ import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import logger from "@log";
+import models from "@models";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -187,10 +185,11 @@ export default function (app: Application, baseUrl: string) {
     ]),
     // Extract resources
     // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
+    //  Also don't require pulling out the user
     async (request: Request, response: Response) => {
-      const user: User = response.locals.requestUser;
+      const requestUser: User = await models.User.findByPk(response.locals.requestUser.id);
       const params: MonitoringParams = {
-        user,
+        user: requestUser,
         devices: request.query.devices as unknown[] as number[],
         groups: request.query.groups as unknown[] as number[],
         page: request.query.page as unknown as number,
@@ -211,7 +210,7 @@ export default function (app: Application, baseUrl: string) {
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
 
       const visits = await generateVisits(
-        user,
+        requestUser.id,
         searchDetails,
         viewAsSuperAdmin
       );

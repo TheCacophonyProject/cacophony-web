@@ -7,7 +7,7 @@ import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 
 import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import { ApiAudioRecordingResponse, ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
@@ -15,12 +15,12 @@ describe("Recordings query using where", () => {
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate IDs
-  //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
   const EXCLUDE_IDS = [
     "[].tracks[].tags[].trackId",
     "[].tracks[].tags[].id",
+    "[].tracks[].tags[].data",
     "[].tracks[].id",
-    "[].location.coordinates",
+    "[].additionalMetadata"
   ];
 
   const templateExpectedRecording: ApiThermalRecordingResponse = {
@@ -37,7 +37,7 @@ describe("Recordings query using where", () => {
             automatic: true,
             trackId: 1,
             confidence: 0.9,
-            data: "master",
+            data: { name: "master" },
             id: -1
           },
         ],
@@ -46,15 +46,45 @@ describe("Recordings query using where", () => {
         id: 1,
       },
     ],
-    additionalMetadata: null,
-    comment: null,
     duration: 15.6666666666667,
     id: 1264,
-    processing: null,
+    processing: false,
     processingState: RecordingProcessingState.Finished,
     rawMimeType: "application/x-cptv",
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     type: RecordingType.ThermalRaw,
+  };
+
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse = {
+    deviceName: "cy_raCamera1_f9a1b6a1",
+    deviceId: NOT_NULL as any,
+    groupName: "cy_raGroup_f9a1b6a1",
+    groupId: 504,
+    tags: [],
+    tracks: [
+      {
+        tags: [
+          {
+            what: "cat",
+            automatic: true,
+            trackId: 1,
+            confidence: 0.9,
+            data: { name: "master" },
+            id: -1
+          },
+        ],
+        start: 2,
+        end: 5,
+        id: 1,
+      },
+    ],
+    duration: 15.6666666666667,
+    id: 1264,
+    processing: false,
+    processingState: RecordingProcessingState.Finished,
+    rawMimeType: "audio/mpeg",
+    recordingDateTime: "2021-07-17T20:13:17.248Z",
+    type: RecordingType.Audio,
   };
 
   //TODO: Issue ##. Several parameters not propogated to returned recordings query (but present in /recording (get)).  Commented out here
@@ -65,10 +95,6 @@ describe("Recordings query using where", () => {
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: [-45.29115, 169.30845],
-    //  version: "345",
-    //  batteryCharging: null,
-    batteryLevel: null,
-    //  airplaneModeOn: null,
     additionalMetadata: {
       algorithm: 31143,
       previewSecs: 5,
@@ -88,10 +114,6 @@ describe("Recordings query using where", () => {
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
     location: [-45, 169],
-    //  version: "346",
-    //  batteryCharging: null,
-    batteryLevel: null,
-    //  airplaneModeOn: null,
     additionalMetadata: {
       algorithm: 31144,
       previewSecs: 6,
@@ -155,7 +177,6 @@ describe("Recordings query using where", () => {
     location: [-45, 169],
     //  version: "346",
     //  batteryCharging: null,
-    batteryLevel: null,
     //  airplaneModeOn: null,
     additionalMetadata: {
       algorithm: 31144,
@@ -176,7 +197,7 @@ describe("Recordings query using where", () => {
   const recording2 = TestCreateRecordingData(templateRecording2);
   let expectedRecording2: ApiThermalRecordingResponse;
   const recording3 = TestCreateRecordingData(templateRecording3);
-  let expectedRecording3: ApiThermalRecordingResponse;
+  let expectedRecording3: ApiAudioRecordingResponse;
   const recording4 = TestCreateRecordingData(templateRecording4);
   let expectedRecording4: ApiThermalRecordingResponse;
 
@@ -238,7 +259,7 @@ describe("Recordings query using where", () => {
             "rqRecording3"
           ).then(() => {
             expectedRecording3 = TestCreateExpectedRecordingData(
-              templateExpectedRecording,
+              templateExpectedAudioRecording,
               "rqRecording3",
               "rqCamera1b",
               "rqGroup",
@@ -275,7 +296,7 @@ describe("Recordings query using where", () => {
                   what: "possum",
                   automatic: false,
                   confidence: 0.7,
-                  data: null,
+                  data: "unknown",
                   trackId: -99,
                   id: -1,
                   userName: getTestName("rqGroupAdmin"),

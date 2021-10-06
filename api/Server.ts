@@ -26,8 +26,10 @@ import { exec } from "child_process";
 import { promisify } from "util";
 
 import { AsyncLocalStorage } from "async_hooks";
-import { performance } from "perf_hooks";
 import { v4 as uuidv4 } from "uuid";
+import { Op } from "sequelize";
+
+export const SuperUsers: Map<number, any> = new Map();
 
 export const asyncLocalStorage = new AsyncLocalStorage();
 const asyncExec = promisify(exec);
@@ -157,6 +159,15 @@ const checkS3Connection = (): Promise<void> => {
   try {
     await models.sequelize.authenticate();
     log.info("Connected to database.");
+
+    log.info("Preload super user permissions - note that if super-user permissions are changed externally, this API server must be manually reloaded to see the changes.");
+    const superUsers = await models.User.findAll({
+      where: { globalPermission: {[Op.ne]: "off"}}
+    });
+    for (const superUser of superUsers) {
+      SuperUsers.set(superUser.id, superUser.globalPermission);
+    }
+
     await checkS3Connection();
     await openHttpServer(app);
   } catch (error) {

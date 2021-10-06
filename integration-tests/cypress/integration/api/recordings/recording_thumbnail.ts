@@ -20,11 +20,10 @@ describe("Recording thumbnails", () => {
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
 
   //Do not validate IDs
-  //TODO: Issue 81 - enable checking of location once location inaccuracy issue is fixed
   const EXCLUDE_IDS = [
-    ".Tracks[].TrackTags[].TrackId",
-    ".Tracks[].id",
-    ".location.coordinates",
+    ".tracks[].tags[].trackId",
+    ".tracks[].tags[].id",
+    ".tracks[].id",
   ];
 
   const templateExpectedRecording: ApiThermalRecordingResponse = {
@@ -52,10 +51,6 @@ describe("Recording thumbnails", () => {
     duration: 40,
     recordingDateTime: "0121-01-01T00:00:00.000Z",
     location: [-45, 169],
-    version: "346",
-    batteryCharging: null,
-    batteryLevel: null,
-    airplaneModeOn: null,
     additionalMetadata: {
       algorithm: 31144,
       previewSecs: 6,
@@ -165,7 +160,7 @@ describe("Recording thumbnails", () => {
                       automatic: true,
                       trackId: getCreds("rtTrack01").id,
                       confidence: 0.9,
-                      data: "master",
+                      data: { name: "master" },
                       id: -1,
                     },
                   ],
@@ -258,6 +253,8 @@ describe("Recording thumbnails", () => {
     });
 
     //TODO: FAIL - Issue 97 - anyone can retrieve a thumbnail
+    // NOTE - This is by design so that thumbnails can be embedded in emails.
+    //  We consider thumbnails to be okay to leak, but can revisit this decision if needed.
     it.skip("Non member cannot view device's thumbnail", () => {
       cy.apiRecordingThumbnailCheck(
         "rtGroup2Admin",
@@ -270,10 +267,9 @@ describe("Recording thumbnails", () => {
       cy.apiRecordingThumbnailCheck(
         "rtGroup2Admin",
         "999999",
-        HTTP_BadRequest,
+        HTTP_Forbidden,
         {
           useRawRecordingId: true,
-          message: "Failed to get recording.",
         }
       );
     });
@@ -334,7 +330,7 @@ describe("Recording thumbnails", () => {
                       automatic: true,
                       trackId: getCreds("rtTrack02").id,
                       confidence: 0.9,
-                      data: "master",
+                      data: { name: "master" },
                       id: -1
                     },
                   ],

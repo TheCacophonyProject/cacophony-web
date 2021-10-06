@@ -30,8 +30,8 @@ function checkStationIs(userName: string, recId: number, station: string) {
     userName,
   });
   checkRecording(userName, recId, (recording) => {
-    if (recording.Station) {
-      expect(recording.Station.name).equals(station);
+    if (recording.stationName) {
+      expect(recording.stationName).equals(station);
     } else {
       expect("").equals(station);
     }
