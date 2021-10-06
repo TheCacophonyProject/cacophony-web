@@ -3,8 +3,9 @@ const http = require("http");
 
 (async function main() {
   const now = new Date();
-  const fiveMinutesFromNow = new Date(now.setMinutes(now.getMinutes() + 5));
-
+  const waitMins = 5;
+  const fiveMinutesFromNow = new Date(now.setMinutes(now.getMinutes() + waitMins));
+  console.log(`Waiting up to ${waitMins} minutes for API sever...`);
   const apiServerIsUp = async (url) => {
     return new Promise((resolve, reject) => {
       http
@@ -17,14 +18,12 @@ const http = require("http");
           });
         })
         .on("error", (err) => {
-          console.log("Error: " + err.message);
           reject(false);
         });
     });
   };
 
   while (new Date() < fiveMinutesFromNow) {
-    console.log("Checking if api is up");
     let up = false;
     try {
       up = await apiServerIsUp(
