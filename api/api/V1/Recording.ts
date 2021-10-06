@@ -818,8 +818,11 @@ export default (app: Application, baseUrl: string) => {
           return response.end(null, "binary");
         })
         .catch((err) => {
-          log.error("Error getting thumbnail from s3 %s", rec.id);
-          log.error(err.stack);
+          log.error(
+            "Error getting thumbnail from s3 %s: %s",
+            rec.id,
+            err.message
+          );
           return responseUtil.send(response, {
             statusCode: 400,
             messages: ["No thumbnail exists"],

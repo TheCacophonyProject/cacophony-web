@@ -25,9 +25,14 @@ const http = require("http");
 
   while (new Date() < fiveMinutesFromNow) {
     console.log("Checking if api is up");
-    const up = await apiServerIsUp(
-      "http://localhost:1080/api/v1/endUserAgreement/latest"
-    );
+    let up = false;
+    try {
+      up = await apiServerIsUp(
+        "http://localhost:1080/api/v1/endUserAgreement/latest"
+      );
+    } catch (e) {
+      // ...
+    }
     if (up) {
       process.exit(0);
     }

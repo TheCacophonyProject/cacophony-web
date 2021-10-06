@@ -3,7 +3,16 @@ import * as querystring from "querystring";
 import { DeviceVisitMap } from "./visits";
 import * as moment from "moment";
 import { shouldViewAsSuperUser } from "@/utils";
-import { RecordingType } from "@typedefs/api/recording";
+import { RecordingType } from "@typedefs/api/consts";
+import {
+  DeviceId,
+  RecordingId,
+  GroupId,
+  StationId,
+  TrackId,
+  TrackTagId,
+  UserId,
+} from "@typedefs/api/common";
 
 export default {
   query,
@@ -20,14 +29,6 @@ export default {
   latestForDevice,
 };
 
-export type DeviceId = number;
-export type RecordingId = number;
-export type TrackId = number;
-export type TagId = number;
-export type UserId = number;
-export type StationId = number;
-export type TrackTagId = number;
-export type GroupId = number;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
 export type JwtToken<T> = string;
 type UtcTimestamp = string;

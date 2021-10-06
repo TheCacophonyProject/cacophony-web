@@ -34,7 +34,7 @@ fi
 echo "---- Using config $CONFIG ----"
 
 ../node_modules/.bin/sequelize db:migrate --config $CONFIG
-sudo -i -u postgres psql cacophonytest -f /app/api/test/db-seed.sql
+sudo -i -u postgres psql cacophonytest -f /app/api/db-seed.sql
 
 echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
 

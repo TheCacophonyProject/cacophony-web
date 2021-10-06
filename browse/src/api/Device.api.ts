@@ -1,8 +1,9 @@
 import CacophonyApi from "./CacophonyApi";
 import * as querystring from "querystring";
 import { shouldViewAsSuperUser } from "@/utils";
-import recording, { DeviceId, FetchResult } from "./Recording.api";
+import recording, { FetchResult } from "./Recording.api";
 import { ApiDeviceResponse } from "@typedefs/api/device";
+import { DeviceId } from "@typedefs/api/common";
 
 export default {
   getDevices,
