@@ -1,11 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-import {
-  ApiAudioRecordingResponse,
-  ApiThermalRecordingResponse,
-} from "../../../../types/api/recording";
-
 declare namespace Cypress {
   type ApiRecordingSet = import("../types").ApiRecordingSet;
   type ApiRecordingReturned = import("../types").ApiRecordingReturned;
@@ -18,6 +13,9 @@ declare namespace Cypress {
     import("@typedefs/api/recording").ApiRecordingResponse;
   type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
   type RecordingId = number;
+
+  type ApiAudioRecordingResponse = import("@typedefs/api/recording").ApiAudioRecordingResponse;
+  type ApiThermalRecordingResponse = import("@typedefs/api/recording").ApiThermalRecordingResponse;
 
   interface Chainable {
     /** Check the values returned by /api/fileProcessing (get)

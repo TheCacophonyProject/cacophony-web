@@ -1,8 +1,6 @@
 node_modules
 apidoc/*
 testconfig.json
-.pytest_cache
-__pycache__
 /dist/
 ../.idea
 api/**/*.js
@@ -11,8 +9,8 @@ scripts/**/*.js
 models/**/*.js
 /*.js
 dockerstart.log
-test-cypress/cypress.json
 !dynamic-import-esm.js
 !.eslintrc.js
+!waitForApi.js
 test-cypress/cypress-performance.json
 *.iml

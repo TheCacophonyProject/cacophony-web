@@ -3,8 +3,8 @@
     "version": "1.0.0",
     "scripts": {
         "generate-schemas": "tsc && node build-schemas.js",
-        "lint": "eslint ./ --ext .ts,.js && (npx prettier --check ./**/*.ts ./**/*.js || (echo \"Please run 'npm lint:fix' to clean up formatting of files.\"; false))",
-        "lint:fix": "eslint ./ --fix --ext .ts,.js && npx prettier --write ./**/*.ts ./**/*.js"
+        "lint": "eslint ./ --ext .ts && (npx prettier --check ./**/*.ts || (echo \"Please run 'npm lint:fix' to clean up formatting of files.\"; false))",
+        "lint:fix": "eslint ./ --fix --ext .ts && npx prettier --write ./**/*.ts"
     },
     "dependencies": {
         "recursive-readdir": "^2.2.2",
