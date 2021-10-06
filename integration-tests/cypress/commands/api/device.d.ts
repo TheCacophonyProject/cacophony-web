@@ -49,7 +49,7 @@ declare namespace Cypress {
       params?: any,
       statusCode?: number
     ): any;
-    
+
     /**
      * Same as apiDevicesCheck but check the expected items are in the list, rather than the only things in the list
      */

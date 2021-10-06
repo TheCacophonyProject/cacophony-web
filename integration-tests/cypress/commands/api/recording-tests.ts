@@ -22,7 +22,10 @@ import {
 } from "../types";
 
 import { HTTP_OK200, NOT_NULL } from "../constants";
-import { ApiRecordingProcessingJob, ApiRecordingResponse } from "@typedefs/api/recording";
+import {
+  ApiRecordingProcessingJob,
+  ApiRecordingResponse,
+} from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 const BASE_URL = Cypress.env("base-url-returned-in-links");
@@ -269,7 +272,7 @@ function addTracksToRecording(
       {
         id: 1,
         name: model,
-      }
+      },
     ],
     tracks: [],
   };
@@ -280,8 +283,8 @@ function addTracksToRecording(
         {
           confident_tag: confident_tag,
           confidence: 0.9,
-          model_id: 1
-        }
+          model_id: 1,
+        },
       ],
       start_s: undefined,
       end_s: undefined,
@@ -291,7 +294,9 @@ function addTracksToRecording(
   if (trackDetails) {
     let count = 0;
     data.metadata.tracks = trackDetails.map((track) => {
-      const tag = track.predictions[0].confident_tag ? track.predictions[0].confident_tag : "possum";
+      const tag = track.predictions[0].confident_tag
+        ? track.predictions[0].confident_tag
+        : "possum";
       return {
         start_s: track.start_s || 2 + count * 10,
         end_s: track.end_s || 8 + count * 10,
@@ -466,7 +471,9 @@ export function TestCreateExpectedRecordingColumns(
   if (inputTrackData !== undefined && inputTrackData.tracks !== undefined) {
     expected["Track Count"] = inputTrackData.tracks.length.toString();
     expected["Automatic Track Tags"] = inputTrackData.tracks
-      .map((track) => track.predictions.map(prediction => prediction.confident_tag))
+      .map((track) =>
+        track.predictions.map((prediction) => prediction.confident_tag)
+      )
       .join(";");
   } else {
     expected["Track Count"] = "0";
@@ -523,7 +530,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
 
   const group = {
     id: getCreds(groupName).id,
-    groupName: getTestName(groupName)
+    groupName: getTestName(groupName),
   };
 
   let station: ApiRecordingStation = null;
@@ -554,31 +561,33 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
     expected.recordingDateTime = inputRecording.recordingDateTime;
   }
   if (inputRecording.version !== undefined) {
-   expected.version = inputRecording.version;
+    expected.version = inputRecording.version;
   }
   if (inputRecording.comment !== undefined) {
-   expected.comment = inputRecording.comment;
+    expected.comment = inputRecording.comment;
   }
   if (inputRecording.batteryLevel !== undefined) {
-   expected.batteryLevel = inputRecording.batteryLevel;
+    expected.batteryLevel = inputRecording.batteryLevel;
   }
   if (inputRecording.batteryCharging !== undefined) {
-   expected.batteryCharging = inputRecording.batteryCharging;
+    expected.batteryCharging = inputRecording.batteryCharging;
   }
   if (inputRecording.airplaneModeOn !== undefined) {
-   expected.airplaneModeOn = inputRecording.airplaneModeOn;
+    expected.airplaneModeOn = inputRecording.airplaneModeOn;
   }
   if (inputRecording.relativeToDusk !== undefined) {
-   expected.relativeToDusk = inputRecording.relativeToDusk;
+    expected.relativeToDusk = inputRecording.relativeToDusk;
   }
   if (inputRecording.relativeToDawn !== undefined) {
-   expected.relativeToDawn = inputRecording.relativeToDawn;
+    expected.relativeToDawn = inputRecording.relativeToDawn;
   }
   if (inputRecording.fileMimeType !== undefined) {
     expected.fileMimeType = inputRecording.fileMimeType;
   }
   if (inputRecording.additionalMetadata !== undefined) {
-    expected.additionalMetadata = JSON.parse(JSON.stringify(inputRecording.additionalMetadata));
+    expected.additionalMetadata = JSON.parse(
+      JSON.stringify(inputRecording.additionalMetadata)
+    );
   }
   //TODO: filehash not in returned values - issue 87
   //expected.fileHash=inputRecording.fileHash;
@@ -587,7 +596,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   //}
   //expected.Station = station;
   expected.tags = [] as ApiRecordingTagResponse[];
-  expected.tracks = [] as ApiTrackResponse[] ;
+  expected.tracks = [] as ApiTrackResponse[];
   if (inputTrackData && inputTrackData.tracks) {
     inputTrackData.tracks.forEach((track: any) => {
       const newTrack: ApiTrackResponse = {
@@ -596,7 +605,10 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
         start: track.start_s,
         end: track.end_s,
       };
-      if (track.predictions.length && track.predictions[0].confident_tag !== undefined) {
+      if (
+        track.predictions.length &&
+        track.predictions[0].confident_tag !== undefined
+      ) {
         newTrack.tags = [
           {
             what: track.predictions[0].confident_tag,

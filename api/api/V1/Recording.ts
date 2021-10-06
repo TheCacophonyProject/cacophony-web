@@ -17,13 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { Application, NextFunction, Request, Response } from "express";
-import middleware, { validateFields } from "../middleware";
+import { validateFields } from "../middleware";
 import recordingUtil, {
-  RecordingQuery,
   reportRecordings,
   reportVisits,
   signedToken,
-  uploadRawRecording
+  uploadRawRecording,
 } from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import models from "@models";
@@ -45,16 +44,23 @@ import {
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
   fetchAuthorizedRequiredRecordingById,
-  fetchUnauthorizedRequiredRecordingById, fetchUnauthorizedRequiredTrackById,
-  parseJSONField
+  fetchUnauthorizedRequiredRecordingById,
+  fetchUnauthorizedRequiredTrackById,
+  parseJSONField,
 } from "../extract-middleware";
-import { booleanOf, idOf, integerOf, validNameOf } from "../validation-middleware";
+import {
+  booleanOf,
+  idOf,
+  integerOf,
+  validNameOf,
+} from "../validation-middleware";
 import util from "@api/V1/util";
 import {
   ApiAudioRecordingMetadataResponse,
-  ApiAudioRecordingResponse, ApiRecordingResponse,
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
   ApiThermalRecordingMetadataResponse,
-  ApiThermalRecordingResponse
+  ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
@@ -63,10 +69,16 @@ import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { Tag } from "@models/Tag";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import { ApiAutomaticTrackTagResponse, ApiHumanTrackTagResponse, ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import {
+  ApiAutomaticTrackTagResponse,
+  ApiHumanTrackTagResponse,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
 import { jsonSchemaOf } from "@api/schema-validation";
 
-const mapTrackTag = (trackTag: TrackTag): ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse => {
+const mapTrackTag = (
+  trackTag: TrackTag
+): ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse => {
   let data = trackTag?.data;
   if (data && typeof data === "string") {
     try {
@@ -83,7 +95,7 @@ const mapTrackTag = (trackTag: TrackTag): ApiHumanTrackTagResponse | ApiAutomati
     id: trackTag.id,
     trackId: trackTag.TrackId,
     updatedAt: trackTag.updatedAt?.toISOString(),
-    what: trackTag.what
+    what: trackTag.what,
   };
   if (trackTag.automatic) {
     (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;
@@ -91,12 +103,16 @@ const mapTrackTag = (trackTag: TrackTag): ApiHumanTrackTagResponse | ApiAutomati
   } else {
     (trackTagBase as ApiHumanTrackTagResponse).automatic = false;
     (trackTagBase as ApiHumanTrackTagResponse).userId = trackTag.UserId;
-    (trackTagBase as ApiHumanTrackTagResponse).userName = trackTag.User.username;
+    (trackTagBase as ApiHumanTrackTagResponse).userName =
+      trackTag.User.username;
     return trackTagBase as ApiHumanTrackTagResponse;
   }
 };
 
-const mapTrackTags = (trackTags: TrackTag[]): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] => trackTags.map(mapTrackTag);
+const mapTrackTags = (
+  trackTags: TrackTag[]
+): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] =>
+  trackTags.map(mapTrackTag);
 
 const mapTrack = (track: Track): ApiTrackResponse => ({
   id: track.id,
@@ -108,14 +124,14 @@ const mapTrack = (track: Track): ApiTrackResponse => ({
 const mapTracks = (tracks: Track[]): ApiTrackResponse[] => tracks.map(mapTrack);
 
 const mapTag = (tag: Tag): ApiRecordingTagResponse => ({
-    automatic: tag.automatic,
-    confidence: tag.confidence,
+  automatic: tag.automatic,
+  confidence: tag.confidence,
   detail: tag.detail,
   id: tag.id,
   recordingId: tag.recordingId,
   taggerId: tag.taggerId,
   version: tag.version,
-  what: tag.what
+  what: tag.what,
 });
 
 const mapTags = (tags: Tag[]): ApiRecordingTagResponse[] => tags.map(mapTag);
@@ -127,7 +143,9 @@ const ifNotNull = (val: any | null) => {
   return undefined;
 };
 
-const mapRecordingResponse = (recording: Recording): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
+const mapRecordingResponse = (
+  recording: Recording
+): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
   if (recording.Tags && recording.Tags.length) {
     for (const tag of recording.Tags) {
       // FIXME - Does this make any sense?
@@ -140,8 +158,10 @@ const mapRecordingResponse = (recording: Recording): ApiThermalRecordingResponse
     deviceId: recording.DeviceId,
     duration: recording.duration,
     location: recording.location && {
-      lat: (recording.location as { coordinates: [number, number] }).coordinates[0],
-      lng: (recording.location as { coordinates: [number, number] }).coordinates[1],
+      lat: (recording.location as { coordinates: [number, number] })
+        .coordinates[0],
+      lng: (recording.location as { coordinates: [number, number] })
+        .coordinates[1],
     },
     rawMimeType: recording.rawMimeType,
     comment: ifNotNull(recording.comment),
@@ -161,20 +181,22 @@ const mapRecordingResponse = (recording: Recording): ApiThermalRecordingResponse
     return {
       ...commonRecording,
       type: recording.type,
-      additionalMetadata: recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
+      additionalMetadata:
+        recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
     };
   } else if (recording.type === RecordingType.Audio) {
     return {
       ...commonRecording,
       fileMimeType: ifNotNull(recording.fileMimeType),
-      additionalMetadata: recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map metadata?
+      additionalMetadata:
+        recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map metadata?
       airplaneModeOn: ifNotNull(recording.airplaneModeOn),
       batteryCharging: ifNotNull(recording.batteryCharging),
       batteryLevel: ifNotNull(recording.batteryLevel),
       relativeToDawn: ifNotNull(recording.relativeToDawn),
       relativeToDusk: ifNotNull(recording.relativeToDusk),
       type: recording.type,
-      version: recording.version
+      version: recording.version,
     };
   }
 };
@@ -312,9 +334,7 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     `${apiUrl}/device/:deviceId`,
     extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("deviceId"))
-    ]),
+    validateFields([idOf(param("deviceId"))]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     uploadRawRecording
   );
@@ -342,9 +362,7 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     `${apiUrl}/:deviceName`,
     extractJwtAuthorizedUser,
-    validateFields([
-      validNameOf(param("deviceName"))
-    ]),
+    validateFields([validNameOf(param("deviceName"))]),
     fetchAuthorizedRequiredDevices,
     (request: Request, response: Response, next: NextFunction) => {
       const targetDeviceName = request.params.deviceName;
@@ -413,7 +431,7 @@ export default (app: Application, baseUrl: string) => {
         request.query.tagMode,
         response.locals.tags || [],
         request.query.offset && parseInt(request.query.offset as string),
-        request.query.limit && parseInt(request.query.limit as string),
+        request.query.limit && parseInt(request.query.limit as string)
       );
       responseUtil.send(response, {
         statusCode: 200,
@@ -659,7 +677,6 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
     async (request: Request, response: Response) => {
-
       // FIXME - deprecate and generate report client-side from other available API data.
 
       // 10 minute timeout because the query can take a while to run
@@ -673,7 +690,7 @@ export default (app: Application, baseUrl: string) => {
           request.query.tagMode,
           response.locals.tags || [],
           request.query.offset && parseInt(request.query.offset as string),
-          request.query.limit && parseInt(request.query.limit as string),
+          request.query.limit && parseInt(request.query.limit as string)
         );
       } else {
         rows = await reportRecordings(
@@ -719,9 +736,7 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("id")),
-    ]),
+    validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       // FIXME Also look at storing fileSize in the DB, so we don't have to pull it out from object store!
@@ -732,29 +747,27 @@ export default (app: Application, baseUrl: string) => {
       let cookedSize;
       if (recordingItem.fileKey) {
         cookedJWT = signedToken(
-            recordingItem.fileKey,
-            recordingItem.getFileName(),
-            recordingItem.fileMimeType
+          recordingItem.fileKey,
+          recordingItem.getFileName(),
+          recordingItem.fileMimeType
         );
-        cookedSize = await util.getS3ObjectFileSize(
-            recordingItem.fileKey
-        );
+        cookedSize = await util.getS3ObjectFileSize(recordingItem.fileKey);
       }
       if (recordingItem.rawFileKey) {
         rawJWT = signedToken(
-            recordingItem.rawFileKey,
-            recordingItem.getRawFileName(),
-            recordingItem.rawMimeType
+          recordingItem.rawFileKey,
+          recordingItem.getRawFileName(),
+          recordingItem.rawMimeType
         );
-        rawSize = await util.getS3ObjectFileSize(
-            recordingItem.rawFileKey
-        );
+        rawSize = await util.getS3ObjectFileSize(recordingItem.rawFileKey);
       }
       const recording = mapRecordingResponse(response.locals.recording);
 
       if (!config.productionEnv) {
         const JsonSchema = new Validator();
-        console.assert(JsonSchema.validate(recording, ApiRecordingResponseSchema).valid);
+        console.assert(
+          JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
+        );
       }
 
       responseUtil.send(response, {
@@ -918,7 +931,7 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("id")),
       // FIXME - JSON schema for update data?
       body("data").isJSON(),
-      body("algorithm").isJSON().optional()
+      body("algorithm").isJSON().optional(),
     ]),
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),

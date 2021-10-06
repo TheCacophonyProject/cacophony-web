@@ -2,10 +2,13 @@
 
 import { ApiRecordingSet } from "@commands/types";
 
-import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
+import {
+  TestCreateExpectedRecordingData,
+  TestCreateRecordingData,
+} from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
+import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
 
 describe("Update recordings", () => {
   //Do not validate IDs
@@ -13,7 +16,7 @@ describe("Update recordings", () => {
     ".tracks[].tags[].trackId",
     ".tracks[].tags[].id",
     ".tracks[].id",
-    ".location"
+    ".location",
   ];
 
   const templateExpectedRecording: ApiThermalRecordingResponse = {
@@ -32,7 +35,7 @@ describe("Update recordings", () => {
     additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
     comment: "This is a comment",
-    processing: false
+    processing: false,
   };
 
   const templateRecording: ApiRecordingSet = {
@@ -49,7 +52,13 @@ describe("Update recordings", () => {
     metadata: {
       algorithm: { model_name: "master" },
       tracks: [
-        { start_s: 1, end_s: 3, predictions: [{confident_tag: "possum", confidence: 0.8, model_id: 1}] },
+        {
+          start_s: 1,
+          end_s: 3,
+          predictions: [
+            { confident_tag: "possum", confidence: 0.8, model_id: 1 },
+          ],
+        },
       ],
     },
     comment: "This is a comment2",
@@ -97,31 +106,30 @@ describe("Update recordings", () => {
 
     //Second group with admin and device
     cy.testCreateUserGroupAndDevice("ruGroup2Admin", "ruGroup2", "ruCamera2");
-
   });
 
   it("Group admin can update recording", () => {
     const recording01 = TestCreateRecordingData(templateRecording);
     cy.apiRecordingAdd(
-        "ruCamera1",
-        recording01,
-        "oneframe.cptv",
-        "ruRecording01"
+      "ruCamera1",
+      recording01,
+      "oneframe.cptv",
+      "ruRecording01"
     ).then(() => {
       let expectedRecording01 = TestCreateExpectedRecordingData(
-          templateExpectedRecording,
-          "ruRecording01",
-          "ruCamera1",
-          "ruGroup",
-          null,
-          recording01
+        templateExpectedRecording,
+        "ruRecording01",
+        "ruCamera1",
+        "ruGroup",
+        null,
+        recording01
       );
       cy.log("Check recording prior to update");
       cy.apiRecordingCheck(
-          "ruGroupAdmin",
-          "ruRecording01",
-          expectedRecording01,
-          EXCLUDE_IDS
+        "ruGroupAdmin",
+        "ruRecording01",
+        expectedRecording01,
+        EXCLUDE_IDS
       ).then(() => {
         cy.log("Update recording");
         cy.apiRecordingUpdate("ruGroupAdmin", "ruRecording01", fieldUpdates);
@@ -129,10 +137,10 @@ describe("Update recordings", () => {
 
         cy.log("Check recording after update");
         cy.apiRecordingCheck(
-            "ruGroupAdmin",
-            "ruRecording01",
-            expectedRecording01,
-            EXCLUDE_IDS
+          "ruGroupAdmin",
+          "ruRecording01",
+          expectedRecording01,
+          EXCLUDE_IDS
         );
       });
     });
@@ -141,25 +149,25 @@ describe("Update recordings", () => {
   it("Group member can update recording", () => {
     const recording02 = TestCreateRecordingData(templateRecording);
     cy.apiRecordingAdd(
-        "ruCamera1",
-        recording02,
-        "oneframe.cptv",
-        "ruRecording02"
+      "ruCamera1",
+      recording02,
+      "oneframe.cptv",
+      "ruRecording02"
     ).then(() => {
       let expectedRecording02 = TestCreateExpectedRecordingData(
-          templateExpectedRecording,
-          "ruRecording02",
-          "ruCamera1",
-          "ruGroup",
-          null,
-          recording02
+        templateExpectedRecording,
+        "ruRecording02",
+        "ruCamera1",
+        "ruGroup",
+        null,
+        recording02
       );
       cy.log("Check recording prior to update");
       cy.apiRecordingCheck(
-          "ruGroupMember",
-          "ruRecording02",
-          expectedRecording02,
-          EXCLUDE_IDS
+        "ruGroupMember",
+        "ruRecording02",
+        expectedRecording02,
+        EXCLUDE_IDS
       ).then(() => {
         cy.log("Update recording");
         cy.apiRecordingUpdate("ruGroupMember", "ruRecording02", fieldUpdates);
@@ -167,10 +175,10 @@ describe("Update recordings", () => {
 
         cy.log("Check recording after update");
         cy.apiRecordingCheck(
-            "ruGroupMember",
-            "ruRecording02",
-            expectedRecording02,
-            EXCLUDE_IDS
+          "ruGroupMember",
+          "ruRecording02",
+          expectedRecording02,
+          EXCLUDE_IDS
         );
       });
     });
@@ -355,7 +363,8 @@ function updateExpected(expectedRecording: any) {
   //expectedRecording.type= "audio";
   expectedRecording.comment = "This is a new comment";
   expectedRecording.location = {
-    lat: -46.29105, lng: 170.30835
+    lat: -46.29105,
+    lng: 170.30835,
   };
   //expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};
   //TODO: Issue 99 behaviour here and in fileProcessing inconsistent.  fileProcessing merges additionalMetedata here we replace it

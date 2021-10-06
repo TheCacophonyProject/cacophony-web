@@ -23,7 +23,6 @@ import responseUtil from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, Response, Request, NextFunction } from "express";
 import { ClientError } from "../customErrors";
-import logger from "@log";
 import {
   extractJwtAuthorizedUser,
   extractJwtAuthorisedDevice,
@@ -455,7 +454,9 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
-      const requestDevice = await models.Device.findByPk(response.locals.requestDevice.id);
+      const requestDevice = await models.Device.findByPk(
+        response.locals.requestDevice.id
+      );
       const device = await requestDevice.reRegister(
         request.body.newName,
         response.locals.group,

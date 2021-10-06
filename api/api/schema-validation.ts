@@ -1,6 +1,5 @@
 import { Validator } from "jsonschema";
 import { Schema, ValidationError } from "jsonschema/lib";
-import logger from "../logging";
 import { ClientError } from "./customErrors";
 
 export const JsonSchema = new Validator();
@@ -91,7 +90,7 @@ export const arrayOf = (schemaOriginal: Schema): Schema => {
 
 export const jsonSchemaOf =
   (schema: Schema) =>
-  (val: string | object, { location, path: requestPath, req }) => {
+  (val: string | object, { location, path: requestPath }) => {
     if (typeof val === "string") {
       try {
         val = JSON.parse(val);

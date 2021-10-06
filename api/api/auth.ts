@@ -16,8 +16,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import createServer = require("connect");
-import http from "http";
 import config from "../config";
 import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
@@ -25,9 +23,9 @@ import customErrors, { ClientError } from "./customErrors";
 import models, { ModelCommon } from "../models";
 import logger from "../logging";
 import { Request, Response, NextFunction } from "express";
-import { Group } from "models/Group";
-import { User } from "../models/User";
-import { Device } from "models/Device";
+import { Group } from "@models/Group";
+import { User } from "@models/User";
+import { Device } from "@models/Device";
 /*
  * Create a new JWT for a user or device.
  */
@@ -239,9 +237,7 @@ const authenticateAndExtractUserWithAccess = (access: {
   authenticateAndExtractModelForJWT(["user"], access);
 const authenticateAndExtractDevice: AuthenticateMiddleware =
   authenticateAndExtractModelForJWT(["device"]);
-const authenticateAndExtractAny: AuthenticateMiddleware =
-  authenticateAndExtractModelForJWT(null);
-
+authenticateAndExtractModelForJWT(null);
 const authenticateAccess = function (
   type: string[],
   access: Record<string, "r" | "w">

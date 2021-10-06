@@ -74,7 +74,13 @@ describe("Monitoring : tracks and tags", () => {
     const camera = "userTagged";
     cy.apiDeviceAdd(camera, group);
     cy.testUploadRecording(camera, {
-      tracks: [ {start_s: 0, end_s: 1, predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }]}],
+      tracks: [
+        {
+          start_s: 0,
+          end_s: 1,
+          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
+        },
+      ],
     }).thenUserTagAs(Damian, "rabbit");
     cy.checkMonitoringTags(Damian, camera, ["rabbit"]);
   });

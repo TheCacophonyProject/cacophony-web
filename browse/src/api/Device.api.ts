@@ -1,8 +1,8 @@
 import CacophonyApi from "./CacophonyApi";
 import * as querystring from "querystring";
 import { shouldViewAsSuperUser } from "@/utils";
-import recording, {DeviceId, FetchResult} from "./Recording.api";
-import {ApiDeviceResponse} from "@typedefs/api/device";
+import recording, { DeviceId, FetchResult } from "./Recording.api";
+import { ApiDeviceResponse } from "@typedefs/api/device";
 
 export default {
   getDevices,
@@ -33,7 +33,10 @@ function getDevices(): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   );
 }
 
-function getDevice(groupName: string, deviceName: string): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
+function getDevice(
+  groupName: string,
+  deviceName: string
+): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${deviceName}/in-group/${groupName}`
   );

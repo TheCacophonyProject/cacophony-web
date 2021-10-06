@@ -44,7 +44,13 @@ import { TrackTag } from "./TrackTag";
 import { Station, StationId } from "./Station";
 import { tryToMatchRecordingToStation } from "@api/V1/recordingUtil";
 import { RecordingId, UserId } from "@typedefs/api/common";
-import { RecordingPermission, RecordingProcessingState, RecordingType, TagMode, AcceptableTag } from "@typedefs/api/consts";
+import {
+  RecordingPermission,
+  RecordingProcessingState,
+  RecordingType,
+  TagMode,
+  AcceptableTag,
+} from "@typedefs/api/consts";
 import { DeviceBatteryChargeState } from "@typedefs/api/device";
 
 type SqlString = string;
@@ -55,7 +61,6 @@ const validTagModes = new Set([
   ...Object.values(TagMode),
   ...Object.values(AcceptableTag),
 ]);
-
 
 export const RecordingPermissions = new Set(Object.values(RecordingPermission));
 
@@ -879,7 +884,9 @@ from (
 
   // Bulk update recording values. Any new additionalMetadata fields
   // will be merged.
-  Recording.prototype.mergeUpdate = async function (newValues: any): Promise<void> {
+  Recording.prototype.mergeUpdate = async function (
+    newValues: any
+  ): Promise<void> {
     for (const [name, newValue] of Object.entries(newValues)) {
       if (name == "additionalMetadata") {
         this.mergeAdditionalMetadata(newValue);
@@ -1396,7 +1403,7 @@ from (
     "StationId",
     "rawFileKey",
     "processing",
-    "comment"
+    "comment",
   ];
 
   // Attributes returned when looking up a single recording.

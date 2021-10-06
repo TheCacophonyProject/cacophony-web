@@ -3,7 +3,8 @@
 
 declare namespace Cypress {
   // Avoiding redefinition in this namespace
-  type TestThermalRecordingInfoAlias = import("../types").TestThermalRecordingInfo;
+  type TestThermalRecordingInfoAlias =
+    import("../types").TestThermalRecordingInfo;
   type RecordingIdAlias = import("@typedefs/api/common").RecordingId;
 
   interface Chainable {

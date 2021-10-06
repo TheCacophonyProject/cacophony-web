@@ -5,7 +5,6 @@ import { Event } from "@models/Event";
 import { QueryOptions } from "@models/Event";
 import { groupSystemErrors } from "./systemError";
 import moment, { Moment } from "moment";
-import logger from "@log";
 import { IsoFormattedDateString } from "@/../types/api/common";
 export const errors = async (
   request: {

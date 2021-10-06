@@ -6,8 +6,14 @@ import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 
-import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
-import { ApiAudioRecordingResponse, ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import {
+  TestCreateExpectedRecordingData,
+  TestCreateRecordingData,
+} from "@commands/api/recording-tests";
+import {
+  ApiAudioRecordingResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
@@ -20,7 +26,7 @@ describe("Recordings query using where", () => {
     "[].tracks[].tags[].id",
     "[].tracks[].tags[].data",
     "[].tracks[].id",
-    "[].additionalMetadata"
+    "[].additionalMetadata",
   ];
 
   const templateExpectedRecording: ApiThermalRecordingResponse = {
@@ -38,7 +44,7 @@ describe("Recordings query using where", () => {
             trackId: 1,
             confidence: 0.9,
             data: { name: "master" },
-            id: -1
+            id: -1,
           },
         ],
         start: 2,
@@ -70,7 +76,7 @@ describe("Recordings query using where", () => {
             trackId: 1,
             confidence: 0.9,
             data: { name: "master" },
-            id: -1
+            id: -1,
           },
         ],
         start: 2,
@@ -102,7 +108,13 @@ describe("Recordings query using where", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1 }]}],
+      tracks: [
+        {
+          start_s: 2,
+          end_s: 5,
+          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
+        },
+      ],
     },
     comment: "This is a comment",
     processingState: "FINISHED",
@@ -122,7 +134,13 @@ describe("Recordings query using where", () => {
     metadata: {
       algorithm: { model_name: "master" },
       tracks: [
-        { start_s: 1, end_s: 3, predictions: [{confident_tag: "possum", confidence: 0.8, model_id: 1 }]},
+        {
+          start_s: 1,
+          end_s: 3,
+          predictions: [
+            { confident_tag: "possum", confidence: 0.8, model_id: 1 },
+          ],
+        },
       ],
     },
     comment: "This is a comment2",
@@ -266,7 +284,8 @@ describe("Recordings query using where", () => {
               null,
               recording3
             );
-            expectedRecording3.processingState = RecordingProcessingState.AnalyseThermal;
+            expectedRecording3.processingState =
+              RecordingProcessingState.AnalyseThermal;
 
             cy.apiRecordingAdd(
               "rqCamera1b",
@@ -283,7 +302,8 @@ describe("Recordings query using where", () => {
                 recording4
               );
 
-              expectedRecording4.processingState = RecordingProcessingState.Finished;
+              expectedRecording4.processingState =
+                RecordingProcessingState.Finished;
               cy.testUserTagRecording(
                 getCreds("rqRecording4").id,
                 0,

@@ -399,7 +399,7 @@ function isArrayOrHash(theObject: any) {
 export function removeUndefinedParams(jsStruct: any): any {
   if (jsStruct !== undefined && jsStruct !== null) {
     const resultStruct = {};
-  for (const [key, val] of Object.entries(jsStruct)) {
+    for (const [key, val] of Object.entries(jsStruct)) {
       if (val !== undefined) {
         resultStruct[key] = val;
       }

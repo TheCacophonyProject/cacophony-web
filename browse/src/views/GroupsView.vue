@@ -170,7 +170,8 @@ export default {
   },
   computed: {
     ...mapState({
-      currentUser: (state): ApiLoggedInUserResponse => (state as any).User.userData,
+      currentUser: (state): ApiLoggedInUserResponse =>
+        (state as any).User.userData,
     }),
     hasGroups(): boolean {
       return this.groups.length !== 0;
@@ -202,11 +203,11 @@ export default {
         interface GroupInfo {
           Devices: ApiDeviceResponse[];
           groupName: string;
-          userCount: number
+          userCount: number;
           initialDeviceCount: number;
           deviceCount: number;
           deviceOnly: boolean;
-        };
+        }
 
         const groups: Record<number, GroupInfo> = {};
 
@@ -216,28 +217,24 @@ export default {
           // FIXME(jon): Quick hack for the issue that we can't currently get the group for a deviceId via the api.
           //  get the latest recording for a device, and that contains it.  Will fail if device has no recordings.
           for (const device of result.devices) {
-            const {groupName, groupId} = device;
-              groups[groupId] = groups[groupId] || {
-                Devices: [],
-                groupName,
-                userCount: 1,
-                initialDeviceCount: 0,
-                deviceCount: 0,
-                deviceOnly: true,
-              };
-              groups[groupId].Devices.push(device);
-              groups[groupId].initialDeviceCount =
-                groups[groupId].Devices.length;
-              groups[groupId].deviceCount =
-                groups[groupId].Devices.length;
-              // Now we should be able to show the groups for those devices.
-
+            const { groupName, groupId } = device;
+            groups[groupId] = groups[groupId] || {
+              Devices: [],
+              groupName,
+              userCount: 1,
+              initialDeviceCount: 0,
+              deviceCount: 0,
+              deviceOnly: true,
+            };
+            groups[groupId].Devices.push(device);
+            groups[groupId].initialDeviceCount = groups[groupId].Devices.length;
+            groups[groupId].deviceCount = groups[groupId].Devices.length;
+            // Now we should be able to show the groups for those devices.
           }
 
           this.groups = Object.values(groups).sort((a, b) =>
-              a.groupName.localeCompare(b.groupName)
+            a.groupName.localeCompare(b.groupName)
           );
-
         } catch (e) {
           // ....
           console.log(e);

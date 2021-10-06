@@ -1,7 +1,6 @@
 import responseUtil from "../V1/responseUtil";
 import middleware, {
   getRecordingById,
-  parseJSONInternal,
   expectedTypeOf,
   validateFields,
 } from "../middleware";
@@ -12,9 +11,7 @@ import recordingUtil, {
   finishedProcessingRecording,
 } from "../V1/recordingUtil";
 import { Application, NextFunction, Request, Response } from "express";
-import {
-  Recording,
-} from "@models/Recording";
+import { Recording } from "@models/Recording";
 
 import { ClassifierRawResult } from "@typedefs/api/fileProcessing";
 import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRawResult.schema.json";
@@ -27,7 +24,8 @@ import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import {
   fetchUnauthorizedRequiredEventDetailSnapshotById,
   fetchUnauthorizedRequiredRecordingById,
-  fetchUnauthorizedRequiredTrackById, parseJSONField
+  fetchUnauthorizedRequiredTrackById,
+  parseJSONField,
 } from "@api/extract-middleware";
 import logger from "@log";
 
@@ -341,7 +339,7 @@ export default function (app: Application) {
     `${apiUrl}/tags`,
     validateFields([
       middleware.parseJSON("tag", body),
-      idOf(body("recordingId"))
+      idOf(body("recordingId")),
     ]),
     fetchUnauthorizedRequiredRecordingById(body("recordingId")),
     async (request, response) => {
@@ -375,10 +373,7 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/metadata`,
-    validateFields([
-      idOf(body("id")),
-      middleware.parseJSON("metadata", body)
-    ]),
+    validateFields([idOf(body("id")), middleware.parseJSON("metadata", body)]),
     fetchUnauthorizedRequiredRecordingById(body("id")),
     async (request: Request, response: Response) => {
       await recordingUtil.updateMetadata(
@@ -410,7 +405,7 @@ export default function (app: Application) {
 
       // FIXME - We don't currently have tracks for audio recordings, but when we do we need to widen this check.
       body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
-      idOf(body("algorithmId"))
+      idOf(body("algorithmId")),
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredEventDetailSnapshotById(body("algorithmId")),
@@ -419,7 +414,7 @@ export default function (app: Application) {
         data: request.body.data,
         AlgorithmId: request.body.algorithmId,
       });
-      logger.warning("Create track %s", track.get({plain: true}));
+      logger.warning("Create track %s", track.get({ plain: true }));
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track added."],
@@ -440,9 +435,7 @@ export default function (app: Application) {
    */
   app.delete(
     `${apiUrl}/:id/tracks`,
-    validateFields([
-      idOf(param("id"))
-    ]),
+    validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const tracks = await response.locals.recording.getTracks();

@@ -30,7 +30,6 @@ import {
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import TagData from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
-import { RecordingPermission } from "@typedefs/api/consts";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;

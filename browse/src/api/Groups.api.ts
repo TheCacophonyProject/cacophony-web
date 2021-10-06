@@ -1,7 +1,10 @@
 import CacophonyApi from "./CacophonyApi";
 import { shouldViewAsSuperUser } from "../utils";
-import {FetchResult} from "@/api/Recording.api";
-import {ApiGroupResponse, ApiGroupUserRelationshipResponse} from "@typedefs/api/group";
+import { FetchResult } from "@/api/Recording.api";
+import {
+  ApiGroupResponse,
+  ApiGroupUserRelationshipResponse,
+} from "@typedefs/api/group";
 
 function addNewGroup(groupName) {
   const suppressGlobalMessaging = true;
@@ -16,7 +19,7 @@ function addGroupUser(
   groupName,
   userName,
   isAdmin
-): Promise<{ success: boolean; status: number, result: any }> {
+): Promise<{ success: boolean; status: number; result: any }> {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
     "/api/v1/groups/users",
@@ -36,17 +39,21 @@ function removeGroupUser(groupName, userName) {
   });
 }
 
-function getGroup(groupName: string): Promise<FetchResult<{ group: ApiGroupResponse }>> {
+function getGroup(
+  groupName: string
+): Promise<FetchResult<{ group: ApiGroupResponse }>> {
   return CacophonyApi.get(`/api/v1/groups/${encodeURIComponent(groupName)}`);
 }
 
-function getGroups(): Promise<FetchResult<{ groups: ApiGroupResponse[]}>> {
+function getGroups(): Promise<FetchResult<{ groups: ApiGroupResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups${shouldViewAsSuperUser() ? "" : "?view-mode=user"}`
   );
 }
 
-function getUsersForGroup(groupNameOrId: string | number): Promise<FetchResult<{ users: ApiGroupUserRelationshipResponse[] }>> {
+function getUsersForGroup(
+  groupNameOrId: string | number
+): Promise<FetchResult<{ users: ApiGroupUserRelationshipResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/users`
   );

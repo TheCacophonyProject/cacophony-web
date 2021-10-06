@@ -1,8 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Unprocessable,
-  HTTP_OK200,
-} from "@commands/constants";
+import { HTTP_Unprocessable, HTTP_OK200 } from "@commands/constants";
 
 import { ApiRecordingColumns, ApiRecordingSet } from "@commands/types";
 
@@ -34,7 +31,13 @@ describe("Recordings report using where", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}] }],
+      tracks: [
+        {
+          start_s: 2,
+          end_s: 5,
+          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
+        },
+      ],
     },
     comment: "This is a comment",
     processingState: "FINISHED",
@@ -59,7 +62,11 @@ describe("Recordings report using where", () => {
     metadata: {
       algorithm: { model_name: "master" },
       tracks: [
-        { start_s: 1, end_s: 3, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}] },
+        {
+          start_s: 1,
+          end_s: 3,
+          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
+        },
       ],
     },
     comment: "This is a comment2",

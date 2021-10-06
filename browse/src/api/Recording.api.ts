@@ -442,13 +442,15 @@ interface RecordingToTag {
   tracks: Track[];
 }
 
-const needsTag = async (biasToDeviceId?: DeviceId): Promise<FetchResult<RecordingToTag>> =>{
+const needsTag = async (
+  biasToDeviceId?: DeviceId
+): Promise<FetchResult<RecordingToTag>> => {
   let requestUri = `${apiPath}/needs-tag`;
   if (biasToDeviceId != null) {
     requestUri += `?deviceId=${biasToDeviceId}`;
   }
   return CacophonyApi.get(requestUri);
-}
+};
 
 export function calculateFromTime(query: RecordingQuery): string {
   if (query.hasOwnProperty("from") && query.from && query.from.length > 0) {

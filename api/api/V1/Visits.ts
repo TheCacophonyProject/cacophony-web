@@ -17,7 +17,6 @@ import { Track } from "@models/Track";
 import { AI_MASTER } from "@models/TrackTag";
 import moment, { Moment } from "moment";
 import { Event } from "@models/Event";
-import logging from "@log";
 
 let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;

@@ -55,7 +55,7 @@ const extractJwtAuthenticatedEntity =
       }
 
       const short = true;
-      if (short && type === "user" || type === "device") {
+      if ((short && type === "user") || type === "device") {
         if (type === "user") {
           const superUserPermissions = SuperUsers.get(jwtDecoded.id);
           if (!superUserPermissions) {
@@ -63,7 +63,7 @@ const extractJwtAuthenticatedEntity =
               id: jwtDecoded.id,
               hasGlobalRead: () => false,
               hasGlobalWrite: () => false,
-              globalPermission: "off"
+              globalPermission: "off",
             };
           } else {
             response.locals.requestUser = {
@@ -76,8 +76,7 @@ const extractJwtAuthenticatedEntity =
         } else if (type === "device") {
           response.locals.requestDevice = { id: jwtDecoded.id };
         }
-      }
-      else {
+      } else {
         let result;
         try {
           result = await lookupEntity(jwtDecoded);
@@ -545,21 +544,21 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     "relativeToDawn",
     "airplaneModeOn",
     "relativeToDusk",
-      "public",
-      "rawMimeType",
-      "fileMimeType",
-      "processingState",
-      "processing",
-      "comment",
-      "GroupId",
-      "StationId",
-      "rawFileKey",
-      "fileKey",
-      "additionalMetadata",
-      "batteryLevel",
+    "public",
+    "rawMimeType",
+    "fileMimeType",
+    "processingState",
+    "processing",
+    "comment",
+    "GroupId",
+    "StationId",
+    "rawFileKey",
+    "fileKey",
+    "additionalMetadata",
+    "batteryLevel",
     "batteryCharging",
     "version",
-      "processingStartTime",
+    "processingStartTime",
     "processingEndTime",
   ];
   recordingQuery.include = recordingQuery.include || [];
@@ -585,12 +584,22 @@ const getRecordingRelationships = (recordingQuery: any): any => {
       {
         model: models.TrackTag,
         required: false,
-        attributes: ["id", "what", "automatic", "confidence", "data", "TrackId", "UserId"],
-        include: [{
-          model: models.User,
-          required: false,
-          attributes: ["username"]
-        }],
+        attributes: [
+          "id",
+          "what",
+          "automatic",
+          "confidence",
+          "data",
+          "TrackId",
+          "UserId",
+        ],
+        include: [
+          {
+            model: models.User,
+            required: false,
+            attributes: ["username"],
+          },
+        ],
       },
     ],
   });
@@ -1178,9 +1187,7 @@ export const fetchUnauthorizedRequiredEventDetailSnapshotById = (
     detailId
   );
 
-export const fetchUnauthorizedRequiredTrackById = (
-  trackId: ValidationChain
-) =>
+export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>
   fetchRequiredModel(
     models.Track,
     false,

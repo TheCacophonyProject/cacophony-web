@@ -462,10 +462,9 @@ export interface ApiTrackSet {
     model_id: number;
     confident_tag?: string;
     confidence?: number;
-  }[],
+  }[];
   all_class_confidences?: any;
 }
-
 
 //from api/v1/recordings (get)
 export interface ApiRecordingTrackTag {

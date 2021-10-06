@@ -31,7 +31,6 @@ import responseUtil from "./responseUtil";
 import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
-import logger from "@log";
 import models from "@models";
 
 export default function (app: Application, baseUrl: string) {
@@ -187,7 +186,9 @@ export default function (app: Application, baseUrl: string) {
     // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
     //  Also don't require pulling out the user
     async (request: Request, response: Response) => {
-      const requestUser: User = await models.User.findByPk(response.locals.requestUser.id);
+      const requestUser: User = await models.User.findByPk(
+        response.locals.requestUser.id
+      );
       const params: MonitoringParams = {
         user: requestUser,
         devices: request.query.devices as unknown[] as number[],

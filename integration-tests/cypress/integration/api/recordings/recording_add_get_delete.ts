@@ -3,7 +3,10 @@ import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 
-import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
+import {
+  TestCreateExpectedRecordingData,
+  TestCreateRecordingData,
+} from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
@@ -30,19 +33,23 @@ describe("Recordings (thermal): add, get, delete", () => {
     comment: "This is a comment",
     processing: false,
     tags: [],
-    tracks: [{
-      start: 2,
-      end: 5,
-      id: -99,
-      tags: [{
-        what: "cat",
-        data: { name: "unknown" },
-        automatic: true,
-        confidence: 0.9,
-        trackId: -99,
-        id: -99
-      }],
-    }]
+    tracks: [
+      {
+        start: 2,
+        end: 5,
+        id: -99,
+        tags: [
+          {
+            what: "cat",
+            data: { name: "unknown" },
+            automatic: true,
+            confidence: 0.9,
+            trackId: -99,
+            id: -99,
+          },
+        ],
+      },
+    ],
   };
 
   const templateRecording: ApiRecordingSet = {
@@ -57,7 +64,13 @@ describe("Recordings (thermal): add, get, delete", () => {
       totalFrames: 141,
     },
     metadata: {
-      tracks: [{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}] }],
+      tracks: [
+        {
+          start_s: 2,
+          end_s: 5,
+          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
+        },
+      ],
     },
     comment: "This is a comment",
     processingState: "FINISHED",
@@ -138,7 +151,7 @@ describe("Recordings (thermal): add, get, delete", () => {
           "raGroupMember",
           "raRecording1",
           expectedRecording1,
-         EXCLUDE_IDS
+          EXCLUDE_IDS
         );
       }
     );
@@ -253,7 +266,12 @@ describe("Recordings (thermal): add, get, delete", () => {
         recording1
       );
       cy.log("Check recording can be viewed correctly");
-      cy.apiRecordingCheck("raGroupAdmin", "raRecording1", expectedRecording1, EXCLUDE_IDS);
+      cy.apiRecordingCheck(
+        "raGroupAdmin",
+        "raRecording1",
+        expectedRecording1,
+        EXCLUDE_IDS
+      );
     });
 
     cy.log("Delete recording");
@@ -294,7 +312,7 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raGroupMember",
         "raRecording1",
         expectedRecording1,
-       EXCLUDE_IDS
+        EXCLUDE_IDS
       );
     });
 
@@ -415,7 +433,12 @@ describe("Recordings (thermal): add, get, delete", () => {
         recording1
       );
       cy.log("Check recording can be viewed correctly");
-      cy.apiRecordingCheck("raGroupAdmin", "raRecording1", expectedRecording1, EXCLUDE_IDS);
+      cy.apiRecordingCheck(
+        "raGroupAdmin",
+        "raRecording1",
+        expectedRecording1,
+        EXCLUDE_IDS
+      );
     });
 
     cy.log("Delete recording");

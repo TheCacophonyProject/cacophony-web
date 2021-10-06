@@ -1,11 +1,15 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
+import {
+  HTTP_BadRequest,
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+} from "@commands/constants";
 
 import { ApiLocation, ApiRecordingSet } from "@commands/types";
 
 import {
   TestCreateExpectedRecordingData,
-  TestCreateRecordingData
+  TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
@@ -32,7 +36,7 @@ describe("Recordings - audio recording parameter tests", () => {
     id: 204771,
     location: {
       lat: -43.53345,
-      lng: 172.64745
+      lng: 172.64745,
     },
     rawMimeType: "",
     processing: false,
@@ -66,7 +70,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "Android API Level": 23,
       "Phone manufacturer": "samsung",
       "App has root access": false,
-    }
+    },
   };
 
   const templateRecording: ApiRecordingSet = {

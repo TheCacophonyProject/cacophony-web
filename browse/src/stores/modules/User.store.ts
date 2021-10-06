@@ -1,5 +1,5 @@
 import api from "@api";
-import {ApiLoggedInUserResponse} from "@typedefs/api/user";
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
 const state = {
   isLoggingIn: false,
@@ -56,7 +56,7 @@ const actions = {
       payload.password
     );
     if (success) {
-      const userData: ApiLoggedInUserResponse  = result.userData;
+      const userData: ApiLoggedInUserResponse = result.userData;
       if (result.userData.globalPermission === "write") {
         // Persist super user settings so that we can switch user views.
         localStorage.setItem(
@@ -159,13 +159,16 @@ const mutations = {
     localStorage.removeItem("superUserCreds");
     state.errorMessage = data.messages || data.message;
   },
-  receiveLogin(state, {userData, token}: { userData: ApiLoggedInUserResponse, token: string }) {
+  receiveLogin(
+    state,
+    { userData, token }: { userData: ApiLoggedInUserResponse; token: string }
+  ) {
     state.JWT = token;
     state.userData = userData;
     state.userData.acceptedEUA = userData.endUserAgreement;
   },
   updateFields(state, data) {
-    for (var key in data) {
+    for (const key in data) {
       state.userData[key] = data[key];
     }
   },

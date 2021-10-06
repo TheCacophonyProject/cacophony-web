@@ -530,9 +530,7 @@ Cypress.Commands.add(
       url: fullUrl,
       headers: user.headers,
     }).then((request) => {
-      const allGroupNames = request.body.groups.map(
-        (item) => item.groupName
-      );
+      const allGroupNames = request.body.groups.map((item) => item.groupName);
       if (testForSuccess == true) {
         expect(allGroupNames).to.contain(fullGroupname);
       } else {

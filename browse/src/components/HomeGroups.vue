@@ -33,9 +33,13 @@ export default {
   computed: {
     orderedGroups: {
       get(): ApiGroupResponse[] {
-        return [...this.groups].sort((a: ApiGroupResponse, b: ApiGroupResponse) => {
-          return a.groupName.toLowerCase() < b.groupName.toLowerCase() ? -1 : 1;
-        });
+        return [...this.groups].sort(
+          (a: ApiGroupResponse, b: ApiGroupResponse) => {
+            return a.groupName.toLowerCase() < b.groupName.toLowerCase()
+              ? -1
+              : 1;
+          }
+        );
       },
     },
   },

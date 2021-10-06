@@ -152,7 +152,7 @@ export default {
     isGroupAdmin() {
       return (
         (this.currentUser && this.currentUser.isSuperUser) ||
-        this.group && this.group.admin
+        (this.group && this.group.admin)
       );
     },
     tabNames() {
@@ -274,19 +274,19 @@ export default {
         try {
           const { result } = await api.groups.getGroup(this.groupName);
 
-            this.groupId = result.group.id;
-            this.recordingQueryFinal = this.recordingQuery();
-            {
-              const { result } = await api.recording.queryCount(
-                this.recordingQuery()
-              );
-              if (result.count !== 0) {
-                this.recordingsCount = result.count;
-              }
+          this.groupId = result.group.id;
+          this.recordingQueryFinal = this.recordingQuery();
+          {
+            const { result } = await api.recording.queryCount(
+              this.recordingQuery()
+            );
+            if (result.count !== 0) {
+              this.recordingsCount = result.count;
             }
+          }
           //} else {
           //  this.limitedView = true;
-            //await this.fetchRecordingCount();
+          //await this.fetchRecordingCount();
           //}
         } catch (e) {
           this.recordingsCountLoading = false;
@@ -322,17 +322,17 @@ export default {
       this.visitsCountLoading = true;
       try {
         const { result } = await api.groups.getGroup(this.groupName);
-          this.groupId = result.group.id;
-          this.visitsQueryFinal = this.visitsQuery();
-          {
-            const { result } = await api.monitoring.queryVisitPage({
-              ...this.visitsQuery(),
-              days: "all",
-              perPage: 1,
-              page: 1,
-            });
-            this.visitsCount = `${result.params.pagesEstimate}`;
-          }
+        this.groupId = result.group.id;
+        this.visitsQueryFinal = this.visitsQuery();
+        {
+          const { result } = await api.monitoring.queryVisitPage({
+            ...this.visitsQuery(),
+            days: "all",
+            perPage: 1,
+            page: 1,
+          });
+          this.visitsCount = `${result.params.pagesEstimate}`;
+        }
       } catch (e) {
         this.visitsCountLoading = false;
       }

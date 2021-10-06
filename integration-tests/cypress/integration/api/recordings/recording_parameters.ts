@@ -1,9 +1,20 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
+import {
+  HTTP_BadRequest,
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+} from "@commands/constants";
 
-import { ApiLocation, ApiRecordingSet, ApiThermalAdditionalMetadata } from "@commands/types";
+import {
+  ApiLocation,
+  ApiRecordingSet,
+  ApiThermalAdditionalMetadata,
+} from "@commands/types";
 
-import { TestCreateExpectedRecordingData, TestCreateRecordingData } from "@commands/api/recording-tests";
+import {
+  TestCreateExpectedRecordingData,
+  TestCreateRecordingData,
+} from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
@@ -33,7 +44,7 @@ describe("Recordings - parameter tests", () => {
     additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
     comment: "This is a comment",
-    processing: false
+    processing: false,
   };
 
   const templateRecording: ApiRecordingSet = {
@@ -49,7 +60,13 @@ describe("Recordings - parameter tests", () => {
     },
     metadata: {
       algorithm: { model_name: "master" },
-      tracks: [{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}]}],
+      tracks: [
+        {
+          start_s: 2,
+          end_s: 5,
+          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
+        },
+      ],
     },
     comment: "This is a comment",
     processingState: "FINISHED",

@@ -10,7 +10,7 @@ import {
   sortArrayOn,
 } from "../server";
 import { logTestDescription } from "../descriptions";
-import { ApiDevicesDevice, ApiDeviceUsersUser } from "../types";
+import { ApiDevicesDevice } from "../types";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiDeviceUserRelationshipResponse = Cypress.ApiDeviceUserRelationshipResponse;
 
@@ -231,10 +231,11 @@ Cypress.Commands.add(
 
           // Note that deviceNames only need to be unique within groups, so
           // match on groupName also.
-          const found = devices.find(device => (
-            device.deviceName === expectedDevices[devCount].deviceName &&
-            device.groupName === expectedDevices[devCount].groupName
-          ));
+          const found = devices.find(
+            (device) =>
+              device.deviceName === expectedDevices[devCount].deviceName &&
+              device.groupName === expectedDevices[devCount].groupName
+          );
           if (found) {
             checkDeviceMatchesExpected(found, expectedDevices[devCount]);
           }

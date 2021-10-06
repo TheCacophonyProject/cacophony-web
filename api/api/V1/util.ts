@@ -38,7 +38,6 @@ function multipartUpload(
   ) => Promise<ModelCommon<T> | string>
 ) {
   return (request: Request, response: Response) => {
-    const s = performance.now();
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;
@@ -184,7 +183,6 @@ function multipartUpload(
         }
 
         // Store a record for the upload.
-        const sss = performance.now();
         dbRecordOrFileKey = await onSaved(uploadingDevice || null, data, key);
         // log.warning("Parsing and saving recording meta %s", performance.now() - sss);
 

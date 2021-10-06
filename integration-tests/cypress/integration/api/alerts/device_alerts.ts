@@ -4,7 +4,6 @@ import { getNewIdentity } from "@commands/names";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 
 import {
-  HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_OK200,
   HTTP_Unprocessable,

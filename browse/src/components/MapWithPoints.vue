@@ -150,9 +150,12 @@ export default {
     },
     mapBounds() {
       // Calculate the initial map bounds and zoom level from the set of lat/lng points
-      return this.mapLocations.length && latLngBounds([
-        this.mapLocations.map(({ location }) => location),
-      ]).pad(0.25);
+      return (
+        this.mapLocations.length &&
+        latLngBounds([this.mapLocations.map(({ location }) => location)]).pad(
+          0.25
+        )
+      );
     },
     mapLocations(): Point[] {
       return this.points.map(({ location, ...rest }) => ({

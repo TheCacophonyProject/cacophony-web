@@ -25,10 +25,8 @@ import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
   tryToMatchRecordingToStation,
-} from "../api/V1/recordingUtil";
-import { AuthorizationError } from "../api/customErrors";
+} from "@api/V1/recordingUtil";
 import { Device } from "./Device";
-import logger from "../logging";
 
 export type GroupId = number;
 

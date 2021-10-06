@@ -5,11 +5,19 @@ import { ApiRecordingSet } from "@commands/types";
 import {
   TestCreateExpectedProcessingData,
   TestCreateExpectedRecordingData,
-  TestCreateRecordingData
+  TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { getCreds } from "@commands/server";
-import { HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200, NOT_NULL } from "@commands/constants";
-import { ApiRecordingProcessingJob, ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import {
+  HTTP_BadRequest,
+  HTTP_Forbidden,
+  HTTP_OK200,
+  NOT_NULL,
+} from "@commands/constants";
+import {
+  ApiRecordingProcessingJob,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recording thumbnails", () => {
@@ -37,12 +45,12 @@ describe("Recording thumbnails", () => {
     processingState: RecordingProcessingState.Finished,
     duration: 15.6666666666667,
     recordingDateTime: "0121-07-17T01:13:17.248Z",
-    location: { lat: -45, lng: 169},
+    location: { lat: -45, lng: 169 },
     type: RecordingType.ThermalRaw,
     additionalMetadata: { algorithm: 31144, previewSecs: 6, totalFrames: 142 },
     groupId: 246,
     comment: "This is a comment",
-    processing: false
+    processing: false,
   };
 
   const templateRecording: ApiRecordingSet = {
@@ -264,14 +272,9 @@ describe("Recording thumbnails", () => {
     });
 
     it("Can handle no returned matches", () => {
-      cy.apiRecordingThumbnailCheck(
-        "rtGroup2Admin",
-        "999999",
-        HTTP_Forbidden,
-        {
-          useRawRecordingId: true,
-        }
-      );
+      cy.apiRecordingThumbnailCheck("rtGroup2Admin", "999999", HTTP_Forbidden, {
+        useRawRecordingId: true,
+      });
     });
 
     it("Thumbnail generator can handle recording with no thumbnail data", () => {
@@ -331,7 +334,7 @@ describe("Recording thumbnails", () => {
                       trackId: getCreds("rtTrack02").id,
                       confidence: 0.9,
                       data: { name: "master" },
-                      id: -1
+                      id: -1,
                     },
                   ],
                   start: 1,

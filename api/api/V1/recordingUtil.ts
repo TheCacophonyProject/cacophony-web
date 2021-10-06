@@ -27,10 +27,7 @@ import { ClientError } from "../customErrors";
 import config from "@config";
 import models from "@models";
 import util from "./util";
-import {
-  AudioRecordingMetadata,
-  Recording
-} from "@models/Recording";
+import { AudioRecordingMetadata, Recording } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
 import { Order } from "sequelize";
@@ -65,7 +62,12 @@ import { Tag } from "@models/Tag";
 import { RecordingId, TrackTagId, UserId } from "@typedefs/api/common";
 import { AcceptableTag } from "@typedefs/api/consts";
 import { Device } from "@models/Device";
-import { RecordingPermission, RecordingProcessingState, RecordingType, TagMode } from "@typedefs/api/consts";
+import {
+  RecordingPermission,
+  RecordingProcessingState,
+  RecordingType,
+  TagMode,
+} from "@typedefs/api/consts";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { performance } from "perf_hooks";
 
@@ -381,7 +383,6 @@ export const uploadRawRecording = util.multipartUpload(
     let fileIsCorrupt = false;
     if (data.type === "thermalRaw") {
       // Read the file back out from s3 and decode/parse it.
-      const s = performance.now();
       const fileData = await modelsUtil
         .openS3()
         .getObject({
@@ -391,7 +392,6 @@ export const uploadRawRecording = util.multipartUpload(
         .catch((err) => {
           return err;
         });
-      const a = performance.now();
       let metadata;
       {
         // TODO - see if this is faster with synthesised test cptv files
@@ -403,7 +403,10 @@ export const uploadRawRecording = util.multipartUpload(
         // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
         fileIsCorrupt = await decoder.hasStreamError();
         if (fileIsCorrupt) {
-          log.warning("CPTV Stream error: %s - mark as Corrupt and don't queue for processing", await decoder.getStreamError());
+          log.warning(
+            "CPTV Stream error: %s - mark as Corrupt and don't queue for processing",
+            await decoder.getStreamError()
+          );
         }
         decoder.close();
       }
@@ -450,7 +453,6 @@ export const uploadRawRecording = util.multipartUpload(
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
     recording.DeviceId = uploadingDevice.id;
     recording.GroupId = uploadingDevice.GroupId;
-    const ss = performance.now();
     const matchingStation = await tryToMatchRecordingToStation(recording);
     // log.warning("Station matching %s", performance.now() - ss);
     if (matchingStation) {
@@ -553,9 +555,8 @@ export async function reportRecordings(
   offset: number,
   limit: number,
   order: any,
-  includeAudiobait: boolean,
+  includeAudiobait: boolean
 ) {
-
   const builder = (
     await new models.Recording.queryBuilder().init(
       userId,
@@ -966,7 +967,7 @@ async function queryVisits(
   tagMode: any,
   tags: string[],
   offset: number,
-  limit: number,
+  limit: number
 ): Promise<{
   visits: Visit[];
   summary: DeviceSummary;
@@ -1156,9 +1157,17 @@ export async function reportVisits(
   tagMode: any,
   tags: string[],
   offset: number,
-  limit: number,
+  limit: number
 ) {
-  const results = await queryVisits(userId, viewAsSuperUser, where, tagMode, tags, offset, limit);
+  const results = await queryVisits(
+    userId,
+    viewAsSuperUser,
+    where,
+    tagMode,
+    tags,
+    offset,
+    limit
+  );
   const out = reportDeviceVisits(results.summary.deviceMap);
   const recordingUrlBase = config.server.recording_url_base || "";
   out.push([]);

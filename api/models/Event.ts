@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { DeviceId, Device } from "./Device";
-import { User, UserId } from "./User";
+import { UserId } from "./User";
 import { DetailSnapShot } from "./DetailSnapshot";
 import logger from "../logging";
 

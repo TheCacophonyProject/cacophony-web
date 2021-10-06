@@ -1,10 +1,10 @@
 import api from "@api";
-import {ApiGroupResponse} from "@typedefs/api/group";
+import { ApiGroupResponse } from "@typedefs/api/group";
 
 const state: {
-  groups: ApiGroupResponse[],
-  currentGroup: ApiGroupResponse | null,
-  fetched: boolean
+  groups: ApiGroupResponse[];
+  currentGroup: ApiGroupResponse | null;
+  fetched: boolean;
 } = {
   groups: [],
   currentGroup: null,

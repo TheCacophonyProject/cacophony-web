@@ -20,7 +20,6 @@ import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { TrackTag, TrackTagId } from "./TrackTag";
 import { Recording } from "./Recording";
-import logging from "../logging";
 
 export type TrackId = number;
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
@@ -49,8 +48,6 @@ export default function (
   sequelize: Sequelize.Sequelize,
   DataTypes
 ): TrackStatic {
-  const { ClientError } = require("../api/customErrors");
-
   const Track = sequelize.define("Track", {
     data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
@@ -78,7 +75,7 @@ export default function (
 
   //add or replace a tag, such that this track only has 1 animal tag by this user
   //and no duplicate tags
-  Track.prototype.replaceTag = async function(tag: TrackTag) {
+  Track.prototype.replaceTag = async function (tag: TrackTag) {
     const trackId = this.id;
     return sequelize.transaction(async function (t) {
       const trackTags = await models.TrackTag.findAll({

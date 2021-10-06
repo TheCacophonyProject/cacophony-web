@@ -1,5 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_Forbidden, HTTP_Unprocessable, NOT_NULL } from "@commands/constants";
+import {
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+  NOT_NULL,
+} from "@commands/constants";
 
 import { getCreds } from "@commands/server";
 
@@ -8,12 +12,12 @@ import { ApiRecordingSet } from "@commands/types";
 import {
   TestCreateExpectedProcessingData,
   TestCreateExpectedRecordingData,
-  TestCreateRecordingData
+  TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import {
   ApiAudioRecordingResponse,
   ApiRecordingProcessingJob,
-  ApiThermalRecordingResponse
+  ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
@@ -69,12 +73,12 @@ describe("Recordings - reprocessing tests", () => {
     processingState: RecordingProcessingState.Finished,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: {  lat: -45.29115, lng: 169.30845 },
+    location: { lat: -45.29115, lng: 169.30845 },
     type: RecordingType.ThermalRaw,
     additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
     comment: "This is a comment",
-    processing: false
+    processing: false,
   };
 
   const templateExpectedProcessing: ApiRecordingProcessingJob = {
@@ -84,8 +88,8 @@ describe("Recordings - reprocessing tests", () => {
     hasAlert: false,
     processingStartTime: NOT_NULL,
     updatedAt: NOT_NULL,
-//    processingState: "analyse.test", // FIXME
-//    processingMeta: null, // FIXME - check processing meta
+    //    processingState: "analyse.test", // FIXME
+    //    processingMeta: null, // FIXME - check processing meta
   };
 
   const templateExpectedAudioRecording: ApiAudioRecordingResponse = {
@@ -143,8 +147,8 @@ describe("Recordings - reprocessing tests", () => {
     hasAlert: false,
     processingStartTime: NOT_NULL,
     updatedAt: NOT_NULL,
-//    processingState: "analyse.test", // FIXME
-//    processingMeta: null, // FIXME - check processing meta
+    //    processingState: "analyse.test", // FIXME
+    //    processingMeta: null, // FIXME - check processing meta
   };
 
   const templateAudioRecording: ApiRecordingSet = {
@@ -283,12 +287,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Mark for reprocessing");
-        cy.apiReprocess(
-          "rrpGroupAdmin",
-          [
-            getCreds("rrpRecording1").id,
-          ]
-        );
+        cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording1").id]);
 
         cy.log("Check recording status - original track, tags deleted");
         expectedRecording2 = TestCreateExpectedRecordingData(
@@ -390,10 +389,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check admin can mark for reprocessing");
-        cy.apiReprocess(
-          "rrpGroupAdmin",
-          [getCreds("rrpRecording5").id],
-        );
+        cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording5").id]);
 
         cy.log("Check recording is in reprocess, with existing tracks cleared");
         expectedRecording5.processingState = RecordingProcessingState.Reprocess;
@@ -430,10 +426,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check group member can mark for reprocessing");
-        cy.apiReprocess(
-          "rrpGroupMember",
-          [getCreds("rrpRecording6").id],
-        );
+        cy.apiReprocess("rrpGroupMember", [getCreds("rrpRecording6").id]);
 
         cy.log("Check recording is in reprocess, with existing tracks cleared");
         expectedRecording6.processingState = RecordingProcessingState.Reprocess;
@@ -470,10 +463,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check admin can mark for reprocessing");
-        cy.apiReprocess(
-          "rrpDeviceAdmin",
-          [getCreds("rrpRecording7").id],
-        );
+        cy.apiReprocess("rrpDeviceAdmin", [getCreds("rrpRecording7").id]);
 
         cy.log("Check recording is in reprocess, with existing tracks cleared");
         expectedRecording7.processingState = RecordingProcessingState.Reprocess;
@@ -510,10 +500,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check group member can mark for reprocessing");
-        cy.apiReprocess(
-          "rrpDeviceMember",
-          [getCreds("rrpRecording8").id],
-        );
+        cy.apiReprocess("rrpDeviceMember", [getCreds("rrpRecording8").id]);
 
         cy.log("Check recording is in reprocess, with existing tracks cleared");
         expectedRecording8.processingState = RecordingProcessingState.Reprocess;
@@ -567,53 +554,51 @@ describe("Recordings - reprocessing tests", () => {
       });
     });
 
-  it("Failed reprocess requests handled correctly", () => {
-    const recording10 = TestCreateRecordingData(templateRecording);
-    recording10.processingState = "FINISHED";
-    let expectedRecording10: ApiThermalRecordingResponse;
+    it("Failed reprocess requests handled correctly", () => {
+      const recording10 = TestCreateRecordingData(templateRecording);
+      recording10.processingState = "FINISHED";
+      let expectedRecording10: ApiThermalRecordingResponse;
 
-    cy.log("Add recording as device");
-    cy.apiRecordingAdd(
+      cy.log("Add recording as device");
+      cy.apiRecordingAdd(
         "rrpCamera1",
         recording10,
         "oneframe.cptv",
         "rrpRecording10"
-    ).then(() => {
-      expectedRecording10 = TestCreateExpectedRecordingData(
+      ).then(() => {
+        expectedRecording10 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
           "rrpRecording10",
           "rrpCamera1",
           "rrpGroup",
           null,
           recording10
-      );
+        );
 
-      cy.log("Check cannot mark non-existent recording for reprocessing");
-      cy.apiReprocess("rrpGroupAdmin", [999999], HTTP_Forbidden);
+        cy.log("Check cannot mark non-existent recording for reprocessing");
+        cy.apiReprocess("rrpGroupAdmin", [999999], HTTP_Forbidden);
 
-      cy.log(
+        cy.log(
           "Check mix of valid and invalid recordings are rejected correctly"
-      );
-      cy.apiReprocess(
+        );
+        cy.apiReprocess(
           "rrpGroupAdmin",
           [999999, getCreds("rrpRecording10").id],
           HTTP_Forbidden
-      );
+        );
 
-      cy.log("Check that recordingIds array must be well formed");
-      cy.apiReprocess(
+        cy.log("Check that recordingIds array must be well formed");
+        cy.apiReprocess(
           "rrpGroupAdmin",
           ["foo", "bar", 1] as unknown as number[],
           HTTP_Unprocessable
-      );
-      cy.apiReprocess(
-        "rrpGroupAdmin",
-        [getCreds("rrpRecording10").id]
-      );
+        );
+        cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording10").id]);
         cy.log(
           "Check valid recording is in reprocess, with existing tracks cleared"
         );
-        expectedRecording10.processingState = RecordingProcessingState.Reprocess;
+        expectedRecording10.processingState =
+          RecordingProcessingState.Reprocess;
         expectedRecording10.processing = false;
         expectedRecording10.tracks = [];
         cy.apiRecordingCheck(
@@ -660,10 +645,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Mark for reprocessing");
-        cy.apiReprocess(
-          "rrpGroupAdmin",
-          [getCreds("rrpRecording11").id],
-        );
+        cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording11").id]);
 
         cy.log("Check recording status - original track, tags deleted");
         expectedRecording2 = TestCreateExpectedRecordingData(
@@ -763,10 +745,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check admin can mark for reprocessing");
-        cy.apiReprocess(
-          "rrpGroupAdmin",
-          [getCreds("rrpRecording18").id],
-        );
+        cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording18").id]);
 
         cy.log("Send for processing");
         expectedProcessing18 = TestCreateExpectedProcessingData(
@@ -796,7 +775,8 @@ describe("Recordings - reprocessing tests", () => {
 
             cy.log("Check tracks added to recording");
             expectedRecording18.processing = true;
-            expectedRecording18.processingState = RecordingProcessingState.Reprocess;
+            expectedRecording18.processingState =
+              RecordingProcessingState.Reprocess;
             expectedRecording18.tracks = [
               {
                 tags: [],
@@ -844,14 +824,10 @@ describe("Recordings - reprocessing tests", () => {
                 EXCLUDE_IDS
               ).then(() => {
                 cy.log("set processing to done and recheck tracks");
-                cy.processingApiPut(
-                  "rrpRecording18",
-                  true,
-                  {},
-                  undefined
-                );
+                cy.processingApiPut("rrpRecording18", true, {}, undefined);
                 expectedRecording18.processing = false;
-                expectedRecording18.processingState = RecordingProcessingState.Finished;
+                expectedRecording18.processingState =
+                  RecordingProcessingState.Finished;
                 cy.apiRecordingCheck(
                   "rrpGroupAdmin",
                   "rrpRecording18",
