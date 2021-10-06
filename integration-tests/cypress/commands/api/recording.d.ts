@@ -14,8 +14,10 @@ declare namespace Cypress {
   type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
   type RecordingId = number;
 
-  type ApiAudioRecordingResponse = import("@typedefs/api/recording").ApiAudioRecordingResponse;
-  type ApiThermalRecordingResponse = import("@typedefs/api/recording").ApiThermalRecordingResponse;
+  type ApiAudioRecordingResponse =
+    import("@typedefs/api/recording").ApiAudioRecordingResponse;
+  type ApiThermalRecordingResponse =
+    import("@typedefs/api/recording").ApiThermalRecordingResponse;
 
   interface Chainable {
     /** Check the values returned by /api/fileProcessing (get)

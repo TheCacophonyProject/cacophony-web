@@ -437,6 +437,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.stations,
         request.body.fromDate
       );
+      // FIXME - validate/formalize return type.
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Added stations to group."],
