@@ -1,6 +1,9 @@
 services:
   - docker
 
+before_install:
+  - echo $DOCKERHUB_TOKEN | docker login --username $DOCKERHUB_USER --password-stdin
+
 dist: bionic
 
 language: node_js

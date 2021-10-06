@@ -768,6 +768,9 @@ const getDevice =
           getDeviceInclude(deviceWhere, groupWhere),
           asAdmin
         );
+        if (!getDeviceOptions.where && deviceWhere) {
+          getDeviceOptions.where = deviceWhere;
+        }
       } else {
         return Promise.resolve(
           new ClientError("No authorizing user specified")
@@ -785,7 +788,6 @@ const getDevice =
         ],
       };
     }
-
     // FIXME - When re-registering we can actually have two devices in the same group with the same name - but one
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
@@ -814,9 +816,7 @@ const getIncludeForUser = (
     return includeFn(asAdmin ? { admin: true } : {}, context.requestUser.id);
   } else {
     // Don't add any permission constraints when getting the resource
-    log.info(
-      `Accessing model by ${context.requestUser.username} as super-admin`
-    );
+    log.info(`Accessing model by ${context.requestUser.id} as super-admin`);
     return {};
   }
 };

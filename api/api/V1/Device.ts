@@ -46,6 +46,7 @@ import {
 } from "../validation-middleware";
 import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
+import logging from "@log";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -297,6 +298,7 @@ export default function (app: Application, baseUrl: string) {
     // Should this require admin access to the device?
     fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
     async (request: Request, response: Response) => {
+      logging.warning("Device %s", response.locals.device.id);
       const users = (
         await response.locals.device.users(response.locals.requestUser, [
           "id",
