@@ -88,7 +88,6 @@
 </template>
 
 <script lang="ts">
-import { Location, Tag, Track, TrackTag } from "@/api/Recording.api";
 import RecordingSummary from "@/components/RecordingSummary.vue";
 import {
   toNZDateString,
@@ -103,11 +102,9 @@ import {
 } from "@typedefs/api/recording";
 import { LatLng } from "@typedefs/api/common";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import { ApiRecordingTrack } from "../../../integration-tests/cypress/commands/types";
 import {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
-  ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 

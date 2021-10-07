@@ -39,7 +39,7 @@
 
 <script lang="ts">
 import Spinner from "../components/Spinner.vue";
-import { RecordingQuery } from "../api/Recording.api";
+import { RecordingQuery } from "@api/Recording.api";
 import api from "../api";
 import DateRange from "../components/Analysis/DateRange.vue";
 import RecordingType from "../components/Analysis/RecordingType.vue";
@@ -112,7 +112,7 @@ export default {
     //   });
     // },
     allGroups: function () {
-      return this.$store.state.Groups.groups.map((group) => {
+      return this.groups.map((group) => {
         return {
           id: group.id,
           name: group.groupName,
