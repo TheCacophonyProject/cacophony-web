@@ -335,7 +335,7 @@ Cypress.Commands.add(
       if (statusCode === null || statusCode == 200) {
         // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
         // sort users and expected users to ensure order is the same
-        const users = sortArrayOn(response.body.rows, "userName");
+        const users = sortArrayOn(response.body.users, "userName");
         expectedUsers = sortArrayOn(expectedUsers, "userName");
         expect(users.length).to.equal(expectedUsers.length);
 

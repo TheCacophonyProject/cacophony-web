@@ -169,6 +169,8 @@ function multipartUpload(
         let uploadingDevice =
           response.locals.device || response.locals.requestDevice;
         if (uploadingDevice) {
+          // If it was the actual device uploading the recording, not a user
+          // on the devices' behalf, set the lastConnectionTime for the device.
           if (
             response.locals.requestDevice &&
             !response.locals.requestDevice.devicename
@@ -184,13 +186,22 @@ function multipartUpload(
 
         // Store a record for the upload.
         dbRecordOrFileKey = await onSaved(uploadingDevice || null, data, key);
-        // log.warning("Parsing and saving recording meta %s", performance.now() - sss);
-
         if (uploadingDevice) {
-          // Update the device location from the recording.
-          await uploadingDevice.update({
-            location: (dbRecordOrFileKey as Recording).location,
-          });
+          // Update the device location and lastRecordingTime from the recording data,
+          // if the recording time is *later* than the last recording time, or there
+          // is no last recording time
+          const thisRecordingTime = new Date(
+            (dbRecordOrFileKey as Recording).recordingDateTime
+          );
+          if (
+            !uploadingDevice.lastRecordingTime ||
+            uploadingDevice.lastRecordingTime < thisRecordingTime
+          ) {
+            await uploadingDevice.update({
+              location: (dbRecordOrFileKey as Recording).location,
+              lastRecordingTime: thisRecordingTime,
+            });
+          }
           if (uploadingDevice.kind === DeviceType.Unknown) {
             // If this is the first recording we've gotten from a device, we can set its type.
             const deviceType =

@@ -71,7 +71,7 @@ export default {
       logarithmic: false,
       introMessage: "",
       groups: [],
-      devices: [],
+      allDevices: [],
     };
   },
   computed: {
@@ -91,32 +91,25 @@ export default {
         this.$store.commit("User/updateAnalysisDatePref", value);
       },
     },
-
-    // FIXME
-    // devices: function () {
-    //   let devices;
-    //   if (this.showGroups === "all") {
-    //     devices = this.$store.state.Devices.devices;
-    //   } else {
-    //     for (const group of this.allGroups) {
-    //       if (group.id === this.showGroups) {
-    //         devices = group.devices;
-    //       }
-    //     }
-    //   }
-    //   return devices.map((device) => {
-    //     return {
-    //       id: device.id,
-    //       name: device.deviceName,
-    //     };
-    //   });
-    // },
+    devices: function () {
+      let devices = this.allDevices;
+      if (this.showGroups !== "all") {
+        devices = devices.filter(
+          (device) => device.groupId === this.showGroups
+        );
+      }
+      return devices.map((device) => {
+        return {
+          id: device.id,
+          name: device.deviceName,
+        };
+      });
+    },
     allGroups: function () {
       return this.groups.map((group) => {
         return {
           id: group.id,
           name: group.groupName,
-          devices: group.Devices,
         };
       });
     },
@@ -154,7 +147,7 @@ export default {
         },
       ] = await Promise.all([api.groups.getGroups(), api.device.getDevices()]);
       this.groups = groups;
-      this.devices = devices;
+      this.allDevices = devices;
       await this.getData();
       // eslint-disable-next-line no-empty
     } catch (e) {}
@@ -181,17 +174,24 @@ export default {
         }
 
         // Get all data (first 1000 rows)
-        let { result: allData } = await api.recording.query(searchParams);
+        let {
+          result: { rows, count },
+        } = await api.recording.query(searchParams);
         // Check whether all data was fetched
         // if not, run again with increased limit to get all rows
-        if (allData.count > limit) {
-          searchParams.limit = allData.count;
-          ({ result: allData } = await api.recording.query(searchParams));
+        if (count > limit) {
+          searchParams.limit = count;
+          ({
+            result: { rows, count },
+          } = await api.recording.query(searchParams));
         }
         // Count the number of recordings for each device
-        this.devices.map((device) => (this.deviceCount[device.id] = 0));
-        for (const row of allData.rows) {
-          this.deviceCount[row.DeviceId] += 1;
+        this.deviceCount = this.devices.reduce((acc, { id }) => {
+          acc[id] = 0;
+          return acc;
+        }, {});
+        for (const recording of rows) {
+          this.deviceCount[recording.deviceId] += 1;
         }
         // Create data and label variables
         const labels = [];
@@ -202,11 +202,11 @@ export default {
             data.push({
               id: device.id,
               count: this.deviceCount[device.id],
-              deviceName: device.deviceName,
+              deviceName: device.name,
             });
-            labels.push(device.deviceName);
+            labels.push(device.name);
           } else {
-            this.unused.push(device.deviceName);
+            this.unused.push(device.name);
           }
         }
 
@@ -227,7 +227,7 @@ export default {
         const colors = data.map(() => colorPicker());
         // Create dataset suitable for ChartJS
         this.data = {
-          labels: labels,
+          labels,
           datasets: [
             {
               data: data.map((item) => item.count),

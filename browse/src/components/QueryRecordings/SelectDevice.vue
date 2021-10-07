@@ -154,9 +154,7 @@ export default {
       try {
         const [
           {
-            result: {
-              devices: { rows: devices },
-            },
+            result: { devices },
           },
           {
             result: { groups },
@@ -167,20 +165,21 @@ export default {
         ]);
         this.devices = Object.freeze(
           devices
-            .map(({ id, devicename }) => ({
+            .map(({ id, deviceName }) => ({
               id: Number(id),
               type: "device",
-              name: devicename,
+              name: deviceName,
               uid: `device_${id}`,
             }))
             .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
         );
+        // FIXME - just load devices here, no need for groups
         this.groups = Object.freeze(
           groups
-            .map(({ id, groupname, Devices }) => ({
+            .map(({ id, groupName, Devices }) => ({
               id: Number(id),
               type: "group",
-              name: groupname,
+              name: groupName,
               devices: Devices,
               uid: `group_${id}`,
             }))

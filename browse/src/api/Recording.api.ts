@@ -13,6 +13,7 @@ import {
   TrackTagId,
   UserId,
 } from "@typedefs/api/common";
+import { ApiRecordingResponse } from "@typedefs/api/recording";
 
 export default {
   query,
@@ -257,7 +258,7 @@ const apiPath = "/api/v1/recordings";
 
 function query(
   queryParams: RecordingQuery
-): Promise<FetchResult<QueryResult<RecordingInfo>>> {
+): Promise<FetchResult<QueryResult<ApiRecordingResponse>>> {
   return CacophonyApi.get(
     `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
   );

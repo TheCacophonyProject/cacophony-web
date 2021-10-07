@@ -132,9 +132,11 @@ const deviceAttributes = [
   "saltId",
   "GroupId",
   "lastConnectionTime",
+  "lastRecordingTime",
   "public",
   "active",
   "kind",
+  "password", // Needed for auth, but not passed through when mapping to response.
 ];
 
 const getGroupInclude = (

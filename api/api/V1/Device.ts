@@ -47,7 +47,6 @@ import {
 import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import logging from "@log";
-import { DeviceType } from "@typedefs/api/consts";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -72,6 +71,9 @@ export const mapDeviceResponse = (
     };
     if (device.lastConnectionTime) {
       mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
+    }
+    if (device.lastRecordingTime) {
+      mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
     }
     if (device.location) {
       const { coordinates } = device.location;

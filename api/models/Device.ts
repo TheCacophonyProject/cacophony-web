@@ -40,6 +40,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   active: boolean;
   public: boolean;
   lastConnectionTime: Date | null;
+  lastRecordingTime: Date | null;
   password?: string;
   location?: { type: "Point"; coordinates: [number, number] };
   comparePassword: (password: string) => Promise<boolean>;
@@ -122,6 +123,9 @@ export default function (
       type: DataTypes.GEOMETRY,
     },
     lastConnectionTime: {
+      type: DataTypes.DATE,
+    },
+    lastRecordingTime: {
       type: DataTypes.DATE,
     },
     public: {

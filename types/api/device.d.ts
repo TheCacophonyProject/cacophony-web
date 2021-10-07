@@ -31,6 +31,7 @@ export interface ApiDeviceResponse {
 
   public?: boolean; // Assumed to be private unless otherwise specified.
   lastConnectionTime?: IsoFormattedDateString;
+  lastRecordingTime?: IsoFormattedDateString;
   location?: LatLng;
   users?: ApiDeviceUserRelationshipResponse[];
 }
