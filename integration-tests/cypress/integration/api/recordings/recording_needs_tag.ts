@@ -56,7 +56,7 @@ describe("Recording needs-tag (power-tagger)", () => {
       ],
     },
     comment: "This is a comment2",
-    processingState: "FINSIHED",
+    processingState: "FINISHED",
   };
 
   let dev_env = false;

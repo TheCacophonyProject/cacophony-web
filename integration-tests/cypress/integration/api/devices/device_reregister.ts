@@ -8,6 +8,7 @@ import {
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
+import { DeviceType } from "@typedefs/api/consts";
 
 describe("Device reregister", () => {
   const KEEP_DEVICE_NAME = false;
@@ -36,6 +37,7 @@ describe("Device reregister", () => {
         deviceName: getTestName("RR_cam1"),
         active: false,
         admin: true,
+        type: DeviceType.Unknown,
         groupName: getTestName("RR_group1"),
         groupId: getCreds("RR_group1").id,
       };
@@ -49,6 +51,7 @@ describe("Device reregister", () => {
         deviceName: getTestName("RR_cam1b"),
         active: true,
         admin: true,
+        type: DeviceType.Unknown,
         groupName: getTestName("RR_group1"),
         groupId: getCreds("RR_group1").id,
       };
@@ -74,6 +77,7 @@ describe("Device reregister", () => {
           deviceName: getTestName("RR_cam2"),
           active: false,
           admin: true,
+          type: DeviceType.Unknown,
           groupName: getTestName("RR_group2"),
           groupId: getCreds("RR_group2").id,
         };
@@ -91,6 +95,7 @@ describe("Device reregister", () => {
         deviceName: getTestName("RR_cam2"),
         active: true,
         admin: true,
+        type: DeviceType.Unknown,
         groupName: getTestName("RR_group2b"),
         groupId: getCreds("RR_group2b").id,
       };
@@ -114,6 +119,7 @@ describe("Device reregister", () => {
           deviceName: getTestName("RR_cam3"),
           active: false,
           admin: true,
+          type: DeviceType.Unknown,
           groupName: getTestName("RR_group3"),
           groupId: getCreds("RR_group3").id,
         };
@@ -131,6 +137,7 @@ describe("Device reregister", () => {
         deviceName: getTestName("RR_cam3b"),
         active: true,
         admin: true,
+        type: DeviceType.Unknown,
         groupName: getTestName("RR_group3b"),
         groupId: getCreds("RR_group3b").id,
       };
@@ -153,6 +160,7 @@ describe("Device reregister", () => {
           deviceName: getTestName("RR_cam5a"),
           active: true,
           admin: true,
+          type: DeviceType.Unknown,
           groupName: getTestName("RR_group5"),
           groupId: getCreds("RR_group5").id,
         };
@@ -249,6 +257,7 @@ describe("Device reregister", () => {
         groupId: getCreds("RR_group7").id,
         admin: true,
         active: true,
+        type: DeviceType.Unknown,
       };
       cy.apiDevicesCheck("RR_user7", [expectedDevice1]);
 
@@ -263,6 +272,7 @@ describe("Device reregister", () => {
         id: getCreds("RR_cam7").id,
         admin: true,
         active: true,
+        type: DeviceType.Unknown,
       };
       cy.apiDevicesCheck("RR_user7", [expectedDevice2]);
     });
@@ -282,6 +292,7 @@ describe("Device reregister", () => {
             saltId: 9997,
             groupName: getTestName("RR_group8"),
             groupId: getCreds("RR_group8").id,
+            type: DeviceType.Unknown,
           };
           cy.apiDevicesCheck("RR_user8", [expectedDevice2]);
         }

@@ -64,7 +64,6 @@ export default {
         this.loading = true;
         try {
           const { result } = await api.recording.query(nextQuery);
-
           // TODO: It's possible that more recordings have come in since we loaded the page,
           //  in which case our offsets are wrong. So check for duplicate recordings here.
           this.recordings.push(...result.rows);

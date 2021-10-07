@@ -13,14 +13,15 @@
         <template #title>
           <TabTemplate
             title="Users"
-            :isLoading="!device"
-            :value="device && device.Users ? device.Users.length : 0"
+            :isLoading="usersCountLoading"
+            :value="deviceUsers.length"
           />
         </template>
         <DeviceUsers
+          :device-users="deviceUsers"
           :device="device"
           :user="user"
-          @reload-device="$emit('reload-device')"
+          @reload-device="fetchDeviceUsers"
         />
       </b-tab>
       <b-tab title="All Events" lazy>
@@ -40,11 +41,7 @@
           :recordings-query="recordingQuery()"
         />
       </b-tab>
-      <b-tab
-        title="Visits"
-        lazy
-        v-if="!deviceType || deviceType === 'VideoRecorder'"
-      >
+      <b-tab title="Visits" lazy v-if="!deviceType || deviceType === 'thermal'">
         <template #title>
           <TabTemplate
             title="Visits"
@@ -68,7 +65,7 @@
   </b-container>
 </template>
 
-<script>
+<script lang="ts">
 import DeviceUsers from "./DeviceUsers.vue";
 import DeviceSoftware from "./DeviceSoftware.vue";
 import DeviceEvents from "./DeviceEvents.vue";
@@ -115,13 +112,17 @@ export default {
       ],
       recordingsCount: 0,
       recordingsCountLoading: false,
+      usersCountLoading: false,
       visitsCount: 0,
       visitsCountLoading: false,
       deviceType: null,
+      deviceUsers: [],
     };
   },
   async created() {
-    this.deviceType = await api.device.getType(this.device.id);
+    // TODO - Could show users inherited from group.
+
+    this.deviceType = this.device.type;
     const nextTabName = this.tabNames[this.currentTabIndex];
     if (nextTabName !== this.currentTabName) {
       await this.$router.replace({
@@ -134,7 +135,11 @@ export default {
       });
     }
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
-    await Promise.all([this.fetchRecordingCount(), this.fetchVisitsCount()]);
+    await Promise.all([
+      this.fetchRecordingCount(),
+      this.fetchVisitsCount(),
+      this.fetchDeviceUsers(),
+    ]);
   },
   computed: {
     staticVisitsQuery() {
@@ -187,6 +192,19 @@ export default {
 
         device: [this.device.id],
       };
+    },
+    async fetchDeviceUsers() {
+      this.usersCountLoading = true;
+      try {
+        // Fetch device users:
+        const { result } = await api.device.getUsers(this.device.id);
+        this.deviceUsers = result.users.filter(
+          (user) => user.relation === "device"
+        );
+      } catch (e) {
+        // ...
+      }
+      this.usersCountLoading = false;
     },
     async fetchRecordingCount() {
       this.recordingsCountLoading = true;

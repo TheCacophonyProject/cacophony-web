@@ -49,3 +49,9 @@ export enum AcceptableTag {
   TrappedInTrap = "trapped in trap",
   MissedRecording = "missed recording",
 }
+
+export enum DeviceType {
+  Audio = "audio",
+  Thermal = "thermal",
+  Unknown = "unknown",
+}

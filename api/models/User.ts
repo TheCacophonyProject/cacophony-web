@@ -22,7 +22,7 @@ import Sequelize, {
   ModelAttributes,
   ModelOptions,
 } from "sequelize";
-import { AuthorizationError } from "../api/customErrors";
+import { AuthorizationError } from "@api/customErrors";
 import log from "../logging";
 import logger from "../logging";
 import { bool } from "aws-sdk/clients/signer";

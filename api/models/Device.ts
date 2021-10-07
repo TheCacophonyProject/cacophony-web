@@ -25,6 +25,7 @@ import { ScheduleId } from "./Schedule";
 import { Event } from "./Event";
 import { AccessLevel } from "./GroupUsers";
 import logger from "../logging";
+import { DeviceType } from "@typedefs/api/consts";
 
 const Op = Sequelize.Op;
 export type DeviceId = number;
@@ -49,6 +50,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   ) => Promise<Device | false>;
   Group: Group;
   GroupId: number;
+  kind: DeviceType;
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;
   users: (authUser: User, attrs?: string[]) => Promise<User[]>;
@@ -133,6 +135,11 @@ export default function (
       type: DataTypes.BOOLEAN,
       defaultValue: true,
       allowNull: false,
+    },
+    kind: {
+      type: DataTypes.ENUM,
+      values: Object.values(DeviceType),
+      defaultValue: DeviceType.Unknown,
     },
   };
 
@@ -265,7 +272,7 @@ export default function (
 
   Device.freeDevicename = async function (devicename, groupId) {
     const device = await this.findOne({
-      where: { devicename: devicename, GroupId: groupId },
+      where: { devicename, GroupId: groupId },
     });
     return device === null;
   };

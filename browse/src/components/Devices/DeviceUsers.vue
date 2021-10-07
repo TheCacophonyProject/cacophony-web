@@ -29,15 +29,15 @@
         <span>Add user</span>
       </b-button>
     </div>
-    <div v-if="device && device.users">
-      <div v-if="!device.users.length">
+    <div v-if="deviceUsers">
+      <div v-if="!deviceUsers.length">
         <b-card class="no-content-placeholder">
           This device has no users associated with it.
         </b-card>
       </div>
       <div v-else>
         <b-table
-          :items="device.users"
+          :items="deviceUsers"
           :fields="deviceUsersTableFields"
           :sort-by="userSortBy"
           striped
@@ -91,6 +91,10 @@ export default {
       type: Object,
       required: true,
     },
+    deviceUsers: {
+      type: Array,
+      required: true,
+    },
     user: {
       type: Object,
       required: true,
@@ -113,9 +117,9 @@ export default {
     };
   },
   computed: mapState({
-    uiUser: (state) => state.User.userData.username,
+    uiUser: (state) => state.User.userData.userName,
     isDeviceAdmin: function () {
-      return this.device ? this.device.userIsAdmin : false;
+      return this.device ? this.device.admin : false;
     },
   }),
   methods: {
@@ -127,7 +131,7 @@ export default {
       this.$emit("reload-device");
     },
     async removeDeviceUserCheckIfSelf(userName, uiUser) {
-      if (userName == uiUser) {
+      if (userName === uiUser) {
         this.showUserRemoveSelfModal = true;
       } else {
         this.removeDeviceUser(userName);

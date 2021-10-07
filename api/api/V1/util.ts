@@ -27,6 +27,7 @@ import { Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
+import { DeviceType, RecordingType } from "@typedefs/api/consts";
 
 function multipartUpload(
   keyPrefix: string,
@@ -190,6 +191,14 @@ function multipartUpload(
           await uploadingDevice.update({
             location: (dbRecordOrFileKey as Recording).location,
           });
+          if (uploadingDevice.kind === DeviceType.Unknown) {
+            // If this is the first recording we've gotten from a device, we can set its type.
+            const deviceType =
+              (dbRecordOrFileKey as Recording).type === RecordingType.ThermalRaw
+                ? "thermal"
+                : "audio";
+            await uploadingDevice.update({ kind: deviceType });
+          }
         }
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();

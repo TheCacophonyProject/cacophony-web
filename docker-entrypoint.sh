@@ -27,9 +27,9 @@ echo "---- Setting up Minio ----"
 
 cd /app/api
 
-CONFIG=config/app.js
+CONFIG=/app/api/config/app.js
 if [ ! -f "$CONFIG" ]; then
-  CONFIG=config/app_test_default.js
+  CONFIG=/app/api/config/app_test_default.js
 fi
 echo "---- Using config $CONFIG ----"
 

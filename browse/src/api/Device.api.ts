@@ -2,12 +2,16 @@ import CacophonyApi from "./CacophonyApi";
 import * as querystring from "querystring";
 import { shouldViewAsSuperUser } from "@/utils";
 import recording, { FetchResult } from "./Recording.api";
-import { ApiDeviceResponse } from "@typedefs/api/device";
+import {
+  ApiDeviceResponse,
+  ApiDeviceUserRelationshipResponse,
+} from "@typedefs/api/device";
 import { DeviceId } from "@typedefs/api/common";
 
 export default {
   getDevices,
   getDevice,
+  getUsers,
   addUserToDevice,
   removeUserFromDevice,
   getLatestSoftwareVersion,
@@ -34,6 +38,12 @@ function getDevices(): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   );
 }
 
+function getUsers(
+  deviceId: DeviceId
+): Promise<FetchResult<{ users: ApiDeviceUserRelationshipResponse[] }>> {
+  return CacophonyApi.get(`/api/v1/devices/users?deviceId=${deviceId}`);
+}
+
 function getDevice(
   groupName: string,
   deviceName: string
@@ -43,23 +53,22 @@ function getDevice(
   );
 }
 
-function addUserToDevice(username, deviceId, admin) {
+function addUserToDevice(userName: string, deviceId: DeviceId, admin: boolean) {
   const suppressGlobalMessaging = true;
-
   return CacophonyApi.post(
     "/api/v1/devices/users",
     {
-      username: username,
-      deviceId: deviceId,
-      admin: admin,
+      userName,
+      deviceId,
+      admin,
     },
     suppressGlobalMessaging
   );
 }
 
-function removeUserFromDevice(username: string, deviceId: number) {
+function removeUserFromDevice(userName: string, deviceId: DeviceId) {
   return CacophonyApi.delete("/api/v1/devices/users", {
-    username,
+    userName,
     deviceId,
   });
 }

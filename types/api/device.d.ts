@@ -6,6 +6,7 @@ import {
   SaltId,
 } from "./common";
 import { ApiUserResponse } from "./user";
+import { DeviceType } from "./consts";
 
 export type DeviceBatteryChargeState =
   | "NOT_CHARGING"
@@ -26,6 +27,7 @@ export interface ApiDeviceResponse {
   saltId: SaltId;
   active: boolean;
   admin: boolean;
+  type: DeviceType;
 
   public?: boolean; // Assumed to be private unless otherwise specified.
   lastConnectionTime?: IsoFormattedDateString;

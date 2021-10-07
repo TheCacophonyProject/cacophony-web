@@ -110,7 +110,15 @@ import UsersTab from "@/components/Groups/UsersTab.vue";
 import DevicesTab from "@/components/Groups/DevicesTab.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
+import { ApiGroupResponse } from "@typedefs/api/group";
+import { GroupId } from "@typedefs/api/common";
+import { DeviceType } from "@typedefs/api/consts";
 //import MonitoringTab from "@/components/MonitoringTab.vue";
+
+interface GroupViewData {
+  group: ApiGroupResponse | null;
+  groupId: GroupId | null;
+}
 
 export default {
   name: "GroupView",
@@ -122,7 +130,7 @@ export default {
     TabTemplate,
     //MonitoringTab,
   },
-  data() {
+  data(): Record<string, any> & GroupViewData {
     return {
       stationsLoading: false,
       usersLoading: false, // Loading all users on page load
@@ -150,10 +158,7 @@ export default {
       return this.$route.params.groupName;
     },
     isGroupAdmin() {
-      return (
-        (this.currentUser && this.currentUser.isSuperUser) ||
-        (this.group && this.group.admin)
-      );
+      return this.group && (this.group as ApiGroupResponse).admin;
     },
     tabNames() {
       if (!this.limitedView) {
@@ -191,7 +196,7 @@ export default {
     anyDevicesAreUnhealthy() {
       return this.devices.some(
         (device) =>
-          device.type === "VideoRecorder" && device.isHealthy === false
+          device.type === DeviceType.Thermal && device.isHealthy === false
       );
     },
   },
@@ -212,7 +217,10 @@ export default {
         },
       });
     }
-    this.group = await api.groups.getGroup(this.groupName);
+    const {
+      result: { group },
+    } = await api.groups.getGroup(this.groupName);
+    this.group = group;
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
     if (!this.limitedView) {
       await Promise.all([
@@ -341,6 +349,9 @@ export default {
     async fetchDevices() {
       this.devicesLoading = true;
       {
+        const now = new Date();
+        now.setDate(now.getDate() - 1);
+        const oneDayAgo = new Date(now);
         if (!this.limitedView) {
           try {
             const { result, status } = await api.groups.getDevicesForGroup(
@@ -349,8 +360,9 @@ export default {
             if (status === 200) {
               this.devices = result.devices.map((device) => ({
                 ...device,
-                isHealthy: true,
-                type: null,
+                isHealthy:
+                  device.lastConnectionTime &&
+                  new Date(device.lastConnectionTime) > oneDayAgo,
               }));
             } else {
               this.limitedView = true;
@@ -362,50 +374,14 @@ export default {
         } else {
           // FIXME: Do we still need this branch?  I feel like maybe not.
           const { result } = await api.device.getDevices();
-          for (const device of result.devices) {
-            const rec = await api.recording.latestForDevice(device.id);
-            if (
-              rec.result.count &&
-              rec.result.rows[0].Group.groupname === this.groupName
-            ) {
-              (device as any).inGroup = true;
-            }
-          }
           this.devices = result.devices
-            .filter((device) => (device as any).inGroup)
+            .filter((device) => device.groupName === this.groupName)
             .map((device) => ({
               ...device,
-              isHealthy: true,
-              type: null,
+              isHealthy:
+                device.lastConnectionTime &&
+                new Date(device.lastConnectionTime) > oneDayAgo,
             }));
-        }
-
-        const last24Hours = new Date(
-          new Date().getTime() - 60 * 1000 * 60 * 24
-        ).toISOString();
-
-        // Get device health.
-        //This is secondary info, so fine to lazy load
-        for (const device of this.devices) {
-          api.device
-            .getLatestEvents(device.id, {
-              limit: 1,
-              type: "daytime-power-off",
-              startTime: last24Hours,
-            })
-            .then(({ result }) => {
-              device.isHealthy = result.rows.length !== 0;
-            })
-            // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
-            .catch((_) => {});
-
-          api.device
-            .getType(device.id)
-            .then((type) => {
-              device.type = type;
-            })
-            // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
-            .catch((_) => {});
         }
       }
       this.devicesLoading = false;

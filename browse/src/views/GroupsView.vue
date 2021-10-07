@@ -202,7 +202,7 @@ export default {
         // TODO(jon): Error handling.
 
         interface GroupInfo {
-          Devices: ApiDeviceResponse[];
+          devices: ApiDeviceResponse[];
           groupName: string;
           userCount: number;
           initialDeviceCount: number;
@@ -211,34 +211,70 @@ export default {
         }
 
         const groups: Record<number, GroupInfo> = {};
-
         try {
-          const { result } = await api.device.getDevices();
-          // FIXME(jon): Quick hack for the issue that we can't currently get the group for a deviceId via the api.
-          //  get the latest recording for a device, and that contains it.  Will fail if device has no recordings.
-          for (const device of result.devices) {
-            const { groupName, groupId } = device;
-            groups[groupId] = groups[groupId] || {
-              Devices: [],
-              groupName,
-              userCount: 1,
-              initialDeviceCount: 0,
-              deviceCount: 0,
-              deviceOnly: true,
-            };
-            groups[groupId].Devices.push(device);
-            groups[groupId].initialDeviceCount = groups[groupId].Devices.length;
-            groups[groupId].deviceCount = groups[groupId].Devices.length;
-            // Now we should be able to show the groups for those devices.
+          const [userGroups, userDevices] = await Promise.all([
+            api.groups.getGroups(),
+            api.device.getDevices(),
+          ]);
+          {
+            const { result } = userGroups;
+            for (const { id, groupName } of result.groups) {
+              groups[id] = {
+                devices: [],
+                groupName,
+                userCount: 1,
+                initialDeviceCount: 0,
+                deviceCount: 0,
+                deviceOnly: false,
+              };
+            }
           }
+          {
+            const { result } = userDevices;
+            const locations = {};
+            for (const device of result.devices) {
+              if (device.location) {
+                // TODO - Expand group bubble to encompass all devices
+                const location = latLng(
+                  device.location.lat,
+                  device.location.lng
+                );
+                if (isInNZ(location)) {
+                  if (!locations.hasOwnProperty(location.toString())) {
+                    locations[location.toString()] = {
+                      location,
+                      group: "",
+                    };
+                  }
+                  const loc = locations[location.toString()];
+                  loc.name = device.groupName;
+                }
+              }
+              this.locations = locations;
+              this.locationsLoading = false;
 
-          this.groups = Object.values(groups).sort((a, b) =>
-            a.groupName.localeCompare(b.groupName)
-          );
+              const { groupName, groupId } = device;
+              groups[groupId] = groups[groupId] || {
+                devices: [],
+                groupName,
+                userCount: 1,
+                initialDeviceCount: 0,
+                deviceCount: 0,
+                deviceOnly: true,
+              };
+              groups[groupId].devices.push(device);
+              groups[groupId].initialDeviceCount =
+                groups[groupId].devices.length;
+              groups[groupId].deviceCount = groups[groupId].devices.length;
+              // Now we should be able to show the groups for those devices.
+            }
+          }
         } catch (e) {
-          // ....
-          // console.log(e);
+          // ...
         }
+        this.groups = Object.values(groups).sort((a, b) =>
+          a.groupName.localeCompare(b.groupName)
+        );
         // try {
         //   const { result } = await api.groups.getGroups();
         //   console.log("Groups", result);
@@ -298,40 +334,42 @@ export default {
         //       );
         //     }
         //   }
-        //   Promise.all(devicesForGroupsPromises)
-        //     .then((devicesForGroups) => {
-        //       for (const results of devicesForGroups) {
-        //         for (const recordings of results) {
-        //           if (
-        //             recordings.result.count !== 0 &&
-        //             recordings.result.rows[0].location
-        //           ) {
-        //             const rec = recordings.result.rows[0];
-        //             const location = latLng(
-        //               rec.location.coordinates[0],
-        //               rec.location.coordinates[1]
-        //             );
-        //             if (isInNZ(location)) {
-        //               if (!locations.hasOwnProperty(location.toString())) {
-        //                 locations[location.toString()] = {
-        //                   location,
-        //                   group: "",
-        //                 };
-        //               }
-        //               const loc = locations[location.toString()];
-        //               loc.name = rec.Group.groupname;
-        //             }
-        //           }
-        //         }
-        //       }
-        //       this.locations = locations;
-        //       this.locationsLoading = false;
-        //     })
-        //     .catch(() => {});
-        // } catch (error) {
-        //   // Do something with the error.
-        //   console.log(error);
-        // }
+        /*
+          Promise.all(devicesForGroupsPromises)
+            .then((devicesForGroups) => {
+              for (const results of devicesForGroups) {
+                for (const recordings of results) {
+                  if (
+                    recordings.result.count !== 0 &&
+                    recordings.result.rows[0].location
+                  ) {
+                    const rec = recordings.result.rows[0];
+                    const location = latLng(
+                      rec.location.coordinates[0],
+                      rec.location.coordinates[1]
+                    );
+                    if (isInNZ(location)) {
+                      if (!locations.hasOwnProperty(location.toString())) {
+                        locations[location.toString()] = {
+                          location,
+                          group: "",
+                        };
+                      }
+                      const loc = locations[location.toString()];
+                      loc.name = rec.Group.groupname;
+                    }
+                  }
+                }
+              }
+              this.locations = locations;
+              this.locationsLoading = false;
+            })
+            .catch(() => {});
+        } catch (error) {
+          // Do something with the error.
+          console.log(error);
+        }
+        */
       }
       this.isLoading = false;
     },

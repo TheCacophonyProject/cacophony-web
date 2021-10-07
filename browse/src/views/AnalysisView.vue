@@ -39,7 +39,8 @@
 
 <script lang="ts">
 import Spinner from "../components/Spinner.vue";
-import api, { RecordingQuery } from "../api/Recording.api";
+import { RecordingQuery } from "../api/Recording.api";
+import api from "../api";
 import DateRange from "../components/Analysis/DateRange.vue";
 import RecordingType from "../components/Analysis/RecordingType.vue";
 import DeviceGroups from "../components/Analysis/DeviceGroups.vue";
@@ -69,6 +70,8 @@ export default {
       showGroups: "all",
       logarithmic: false,
       introMessage: "",
+      groups: [],
+      devices: [],
     };
   },
   computed: {
@@ -88,29 +91,31 @@ export default {
         this.$store.commit("User/updateAnalysisDatePref", value);
       },
     },
-    devices: function () {
-      let devices;
-      if (this.showGroups === "all") {
-        devices = this.$store.state.Devices.devices;
-      } else {
-        for (const group of this.allGroups) {
-          if (group.id === this.showGroups) {
-            devices = group.devices;
-          }
-        }
-      }
-      return devices.map((device) => {
-        return {
-          id: device.id,
-          name: device.devicename,
-        };
-      });
-    },
+
+    // FIXME
+    // devices: function () {
+    //   let devices;
+    //   if (this.showGroups === "all") {
+    //     devices = this.$store.state.Devices.devices;
+    //   } else {
+    //     for (const group of this.allGroups) {
+    //       if (group.id === this.showGroups) {
+    //         devices = group.devices;
+    //       }
+    //     }
+    //   }
+    //   return devices.map((device) => {
+    //     return {
+    //       id: device.id,
+    //       name: device.deviceName,
+    //     };
+    //   });
+    // },
     allGroups: function () {
       return this.$store.state.Groups.groups.map((group) => {
         return {
           id: group.id,
-          name: group.groupname,
+          name: group.groupName,
           devices: group.Devices,
         };
       });
@@ -140,8 +145,16 @@ export default {
   },
   created: async function () {
     try {
-      await this.$store.dispatch("Devices/GET_DEVICES");
-      await this.$store.dispatch("Groups/GET_GROUPS");
+      const [
+        {
+          result: { groups },
+        },
+        {
+          result: { devices },
+        },
+      ] = await Promise.all([api.groups.getGroups(), api.device.getDevices()]);
+      this.groups = groups;
+      this.devices = devices;
       await this.getData();
       // eslint-disable-next-line no-empty
     } catch (e) {}
@@ -168,12 +181,12 @@ export default {
         }
 
         // Get all data (first 1000 rows)
-        let { result: allData } = await api.query(searchParams);
+        let { result: allData } = await api.recording.query(searchParams);
         // Check whether all data was fetched
         // if not, run again with increased limit to get all rows
         if (allData.count > limit) {
           searchParams.limit = allData.count;
-          ({ result: allData } = await api.query(searchParams));
+          ({ result: allData } = await api.recording.query(searchParams));
         }
         // Count the number of recordings for each device
         this.devices.map((device) => (this.deviceCount[device.id] = 0));
@@ -189,11 +202,11 @@ export default {
             data.push({
               id: device.id,
               count: this.deviceCount[device.id],
-              devicename: device.name,
+              deviceName: device.deviceName,
             });
-            labels.push(device.name);
+            labels.push(device.deviceName);
           } else {
-            this.unused.push(device.name);
+            this.unused.push(device.deviceName);
           }
         }
 

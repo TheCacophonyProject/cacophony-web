@@ -47,41 +47,47 @@ import {
 import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import logging from "@log";
+import { DeviceType } from "@typedefs/api/consts";
 
 export const mapDeviceResponse = (
   device: Device,
   viewAsSuperUser: boolean
 ): ApiDeviceResponse => {
-  const mapped: ApiDeviceResponse = {
-    deviceName: device.devicename,
-    id: device.id,
-    groupName: device.Group.groupname,
-    groupId: device.GroupId,
-    active: device.active,
-    saltId: device.saltId,
-    admin:
-      viewAsSuperUser ||
-      (
-        (device as any).Group?.Users[0]?.GroupUsers ||
-        (device as any).Users[0]?.DeviceUsers
-      )?.admin ||
-      false,
-  };
-  if (device.lastConnectionTime) {
-    mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
-  }
-  if (device.location) {
-    const { coordinates } = device.location;
-    mapped.location = {
-      lat: coordinates[0],
-      lng: coordinates[1],
+  try {
+    const mapped: ApiDeviceResponse = {
+      deviceName: device.devicename,
+      id: device.id,
+      type: device.kind,
+      groupName: device.Group.groupname,
+      groupId: device.GroupId,
+      active: device.active,
+      saltId: device.saltId,
+      admin:
+        viewAsSuperUser ||
+        (
+          (device as any).Group?.Users[0]?.GroupUsers ||
+          (device as any).Users[0]?.DeviceUsers
+        )?.admin ||
+        false,
     };
-  }
-  if (device.public) {
-    mapped.public = true;
-  }
+    if (device.lastConnectionTime) {
+      mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
+    }
+    if (device.location) {
+      const { coordinates } = device.location;
+      mapped.location = {
+        lat: coordinates[0],
+        lng: coordinates[1],
+      };
+    }
+    if (device.public) {
+      mapped.public = true;
+    }
 
-  return mapped;
+    return mapped;
+  } catch (e) {
+    logging.warning("%s", e);
+  }
 };
 
 export const mapDevicesResponse = (
@@ -314,7 +320,7 @@ export default function (app: Application, baseUrl: string) {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["OK."],
-        rows: users,
+        users,
       });
     }
   );

@@ -4,6 +4,7 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { logTestDescription } from "@commands/descriptions";
 import { HTTP_Forbidden } from "@commands/constants";
+import { DeviceType } from "@typedefs/api/consts";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe("Device in group", () => {
@@ -31,6 +32,7 @@ describe("Device in group", () => {
         deviceName: getTestName(camera),
         groupName: getTestName(group),
         groupId: getCreds(group).id,
+        type: DeviceType.Unknown,
         admin: true,
         active: true,
       };
@@ -40,6 +42,7 @@ describe("Device in group", () => {
         deviceName: getTestName(camera),
         groupName: getTestName(group),
         groupId: getCreds(group).id,
+        type: DeviceType.Unknown,
         admin: false,
         active: true,
       };

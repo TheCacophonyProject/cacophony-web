@@ -5,6 +5,7 @@ import { getCreds } from "@commands/server";
 
 import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
+import { DeviceType } from "@typedefs/api/consts";
 
 describe("Groups - get devices for group", () => {
   const ADMIN = true;
@@ -24,6 +25,7 @@ describe("Groups - get devices for group", () => {
           groupId: getCreds("gdGroup").id,
           active: true,
           admin: true,
+          type: DeviceType.Unknown,
         };
       }
     );
@@ -41,6 +43,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup").id,
         active: true,
         admin: true,
+        type: DeviceType.Unknown,
       };
     });
 
@@ -121,6 +124,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup4").id,
         active: false,
         admin: true,
+        type: DeviceType.Unknown,
       };
     });
 
@@ -134,6 +138,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup4").id,
         active: true,
         admin: true,
+        type: DeviceType.Unknown,
       };
       expectedDevice4b = {
         id: getCreds("gdCam4b").id,
@@ -143,6 +148,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup4").id,
         active: true,
         admin: true,
+        type: DeviceType.Unknown,
       };
 
       cy.log(

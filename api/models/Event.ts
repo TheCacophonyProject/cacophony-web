@@ -142,7 +142,6 @@ export default function (sequelize, DataTypes) {
       order = [["dateTime", "DESC"]];
     }
     const user = await models.User.findByPk(userId);
-    logger.warning("Got user %s", user);
     return this.findAndCountAll({
       where: {
         [Op.and]: [

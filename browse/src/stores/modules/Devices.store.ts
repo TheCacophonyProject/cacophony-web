@@ -10,8 +10,8 @@ const getters = {};
 
 async function _getDevice(devicename, commit) {
   const { result } = await api.device.getDevices();
-  const device = result.devices.rows.find(
-    (device) => device.devicename === devicename
+  const device = result.devices.find(
+    (device) => device.deviceName === devicename
   );
   commit("setCurrentDevice", device);
 }
@@ -20,7 +20,7 @@ const actions = {
   async GET_DEVICES({ commit }) {
     commit("fetching");
     const { result } = await api.device.getDevices();
-    commit("receiveDevices", result.devices.rows);
+    commit("receiveDevices", result.devices);
     commit("fetched");
   },
 
@@ -30,9 +30,9 @@ const actions = {
     commit("fetched");
   },
 
-  async ADD_USER({ commit }, { username, device, admin }) {
+  async ADD_USER({ commit }, { userName, device, admin }) {
     const { success } = await api.device.addUserToDevice(
-      username,
+      userName,
       device.id,
       admin
     );
@@ -40,7 +40,7 @@ const actions = {
     if (!success) {
       return false;
     } else {
-      await _getDevice(device.devicename, commit);
+      await _getDevice(device.deviceName, commit);
       // FIXME: A bunch of different components all rely on this fetched state.
       //  Modal to add user to device in admin area is only dismissed when fetching is true
       commit("fetching");

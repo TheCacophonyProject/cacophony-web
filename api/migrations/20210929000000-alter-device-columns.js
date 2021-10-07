@@ -10,11 +10,17 @@ module.exports = {
       queryInterface.removeColumn("Devices", "newConfig"),
       queryInterface.addColumn("Devices", "location", Sequelize.GEOMETRY),
       queryInterface.addColumn("Devices", "lastConnectionTime", Sequelize.DATE),
+      queryInterface.addColumn("Devices", "kind", {
+        type: Sequelize.ENUM,
+        values: ["audio", "thermal", "unknown"],
+        defaultValue: "unknown",
+      }),
     ]);
   },
 
   down: async function (queryInterface, Sequelize) {
     await Promise.all([
+      queryInterface.removeColumn("Devices", "kind"),
       queryInterface.removeColumn("Devices", "location"),
       queryInterface.removeColumn("Devices", "lastConnectionTime"),
     ]);

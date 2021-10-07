@@ -35,6 +35,7 @@
 
 <script>
 import { required } from "vuelidate/lib/validators";
+import api from "@api";
 
 const initialFormState = {
   username: null,
@@ -89,17 +90,13 @@ export default {
     },
     addUser: async function (event) {
       event.preventDefault();
-
       if (!this.$v.$invalid) {
-        const params = {
-          username: this.$v.form.username.$model,
-          admin: this.$v.form.isAdmin.$model,
-          device: this.device,
-        };
-
-        const result = await this.$store.dispatch("Devices/ADD_USER", params);
-
-        if (result === false) {
+        const { success } = await api.device.addUserToDevice(
+          this.$v.form.username.$model,
+          this.device.id,
+          this.$v.form.isAdmin.$model
+        );
+        if (!success) {
           this.formSubmissionFailed = true;
         } else {
           this.$refs["add-user-dialog"].hide();

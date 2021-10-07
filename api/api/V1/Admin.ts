@@ -44,6 +44,7 @@ export default function (app: Application, baseUrl: string) {
       body("permission").isIn(models.User.GLOBAL_PERMISSIONS),
     ],
     middleware.requestWrapper(async (request, response) => {
+      // FIXME:
       await models.User.changeGlobalPermission(
         request.admin,
         request.body.user,

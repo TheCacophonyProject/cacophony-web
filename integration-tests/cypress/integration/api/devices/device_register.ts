@@ -8,6 +8,7 @@ import {
   HTTP_OK200,
   HTTP_Unprocessable,
 } from "@commands/constants";
+import { DeviceType } from "@typedefs/api/consts";
 
 describe("Device register", () => {
   const camsGroup = "cams";
@@ -118,6 +119,7 @@ describe("Device register", () => {
       saltId: getCreds("defaultcam").id,
       id: getCreds("defaultcam").id,
       groupId: getCreds(camsGroup).id,
+      type: DeviceType.Unknown,
       active: true,
       admin: true,
     };

@@ -2,10 +2,9 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiDeviceResponse =
-    import("../../../../types/api/device").ApiDeviceResponse;
+  type ApiDeviceResponse = import("@typedefs/api/device").ApiDeviceResponse;
   type ApiDeviceUserRelationshipResponse =
-    import("../../../../types/api/device").ApiDeviceUserRelationshipResponse;
+    import("@typedefs/api/device").ApiDeviceUserRelationshipResponse;
 
   interface Chainable {
     /**

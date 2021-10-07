@@ -134,6 +134,7 @@ const deviceAttributes = [
   "lastConnectionTime",
   "public",
   "active",
+  "kind",
 ];
 
 const getGroupInclude = (
@@ -452,11 +453,24 @@ export const fetchOptionalModel = <T>(
 const getDevices =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
   (
-    unused1?: string,
+    groupNameOrId?: string,
     unused2?: string,
     context?: any
   ): Promise<ModelStaticCommon<Device>[] | ClientError | null> => {
     let getDeviceOptions;
+    let groupWhere = {};
+
+    const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
+    if (groupNameOrId) {
+      if (groupIsId) {
+        groupWhere = { id: parseInt(groupNameOrId) };
+      } else {
+        groupWhere = { groupname: groupNameOrId };
+      }
+    }
 
     const allDevicesOptions = {
       where: {},
@@ -464,7 +478,7 @@ const getDevices =
         {
           model: models.Group,
           required: true,
-          where: {},
+          where: groupWhere,
         },
       ],
     };
@@ -474,7 +488,7 @@ const getDevices =
         // Insert request user constraints
         getDeviceOptions = getIncludeForUser(
           context,
-          getDeviceInclude({}, {}),
+          getDeviceInclude({}, groupWhere),
           asAdmin
         );
       } else {
@@ -769,7 +783,17 @@ const getDevice =
           asAdmin
         );
         if (!getDeviceOptions.where && deviceWhere) {
-          getDeviceOptions.where = deviceWhere;
+          getDeviceOptions = {
+            where: deviceWhere,
+            attributes: deviceAttributes,
+            include: [
+              {
+                model: models.Group,
+                required: true,
+                where: groupWhere,
+              },
+            ],
+          };
         }
       } else {
         return Promise.resolve(
@@ -779,6 +803,7 @@ const getDevice =
     } else {
       getDeviceOptions = {
         where: deviceWhere,
+        attributes: deviceAttributes,
         include: [
           {
             model: models.Group,
@@ -816,7 +841,9 @@ const getIncludeForUser = (
     return includeFn(asAdmin ? { admin: true } : {}, context.requestUser.id);
   } else {
     // Don't add any permission constraints when getting the resource
-    log.info(`Accessing model by ${context.requestUser.id} as super-admin`);
+    log.info(
+      `Accessing model by user #${context.requestUser.id} as super-admin`
+    );
     return {};
   }
 };
@@ -829,14 +856,14 @@ const getGroup =
     context?: any
   ): Promise<ModelStaticCommon<Group> | ClientError | null> => {
     // @ts-ignore
-    const groupCouldBeNameOrId = groupNameOrId == parseInt(groupNameOrId);
+    const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
     let groupWhere;
-    if (groupCouldBeNameOrId) {
+    if (groupIsId) {
       groupWhere = {
-        [Op.or]: [
-          { id: parseInt(groupNameOrId) },
-          { groupname: groupNameOrId },
-        ],
+        id: parseInt(groupNameOrId),
       };
     } else {
       groupWhere = { groupname: groupNameOrId };
@@ -857,6 +884,7 @@ const getGroup =
         where: groupWhere,
       };
     }
+    logger.warning("^^ %s", groupWhere);
     return models.Group.findOne(getGroupOptions);
   };
 

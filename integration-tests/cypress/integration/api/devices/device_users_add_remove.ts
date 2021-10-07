@@ -5,6 +5,7 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiDeviceUserRelationshipResponse = Cypress.ApiDeviceUserRelationshipResponse;
+import { DeviceType } from "@typedefs/api/consts";
 
 describe("Devices add / view / remove users", () => {
   const superuser = getCreds("superuser")["name"];
@@ -70,6 +71,7 @@ describe("Devices add / view / remove users", () => {
         groupId: getCreds(group).id,
         active: true,
         admin: false,
+        type: DeviceType.Unknown,
       };
     });
     cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);

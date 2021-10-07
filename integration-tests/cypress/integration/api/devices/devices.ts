@@ -2,6 +2,7 @@
 import { getTestName } from "@commands/names";
 import { makeAuthorizedRequest, v1ApiPath, getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
+import { DeviceType } from "@typedefs/api/consts";
 
 describe("Devices list", () => {
   const superuser = getCreds("superuser")["name"];
@@ -43,6 +44,7 @@ describe("Devices list", () => {
         groupId: getCreds(group).id,
         active: true,
         admin: true,
+        type: DeviceType.Unknown,
       };
       expectedDeviceMemberView = {
         id: getCreds(camera).id,
@@ -52,6 +54,7 @@ describe("Devices list", () => {
         groupId: getCreds(group).id,
         admin: false,
         saltId: getCreds(camera).id,
+        type: DeviceType.Unknown,
       };
     });
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
@@ -68,6 +71,7 @@ describe("Devices list", () => {
         groupName: getTestName(group2),
         active: true,
         admin: true,
+        type: DeviceType.Unknown,
       };
     });
 
@@ -83,6 +87,7 @@ describe("Devices list", () => {
         groupId: getCreds(group3).id,
         active: false,
         admin: true,
+        type: DeviceType.Unknown,
       };
       expectedDevice4AdminView = {
         id: getCreds(camera4).id,
@@ -92,6 +97,7 @@ describe("Devices list", () => {
         admin: true,
         groupName: getTestName(group3),
         groupId: getCreds(group3).id,
+        type: DeviceType.Unknown,
       };
     });
   });
@@ -109,6 +115,7 @@ describe("Devices list", () => {
         admin: true,
         groupName: getTestName(group2),
         groupId: getCreds(group2).id,
+        type: DeviceType.Unknown,
       };
 
       cy.apiDevicesCheckContains(superuser, [

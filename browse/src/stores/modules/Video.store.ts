@@ -18,7 +18,7 @@ const getters = {
     const tags = (state.recording && state.recording.Tags) || [];
     const tagItems = [];
     tags.map((tag) => {
-      const tagItem = {};
+      const tagItem: any = {};
       if (tag.what) {
         tagItem.what = tag.what;
         tagItem.animal = tag.what;
@@ -44,7 +44,7 @@ const getters = {
     const tags = (state.recording && state.recording.Tags) || [];
     const tagItems = [];
     tags.map((tag) => {
-      const tagItem = {};
+      const tagItem: any = {};
       if (tag.event == "AUDIO") {
         // check for optional fields
         if (tag.tagId) {

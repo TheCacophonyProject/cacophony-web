@@ -5,6 +5,7 @@ import {
   ApiGroupResponse,
   ApiGroupUserRelationshipResponse,
 } from "@typedefs/api/group";
+import { ApiDeviceResponse } from "@typedefs/api/device";
 
 function addNewGroup(groupName) {
   const suppressGlobalMessaging = true;
@@ -59,7 +60,9 @@ function getUsersForGroup(
   );
 }
 
-function getDevicesForGroup(groupNameOrId: string | number) {
+function getDevicesForGroup(
+  groupNameOrId: string | number
+): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/devices`
   );
