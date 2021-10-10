@@ -81,7 +81,7 @@
         </div>
       </div>
     </div>
-    <div v-if="allLoaded || atEnd" class="all-loaded">
+    <div v-if="recordings.length && (allLoaded || atEnd)" class="all-loaded">
       <span>That's all! No more recordings to load for the current query.</span>
     </div>
   </div>

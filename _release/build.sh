@@ -29,8 +29,22 @@ cp _release/* ${build_dir}/_release  # makes things easier while developing rele
 
 cd ${build_dir}
 
-cd api
+echo "Installing shared type definitions"
+cd types
+rm -rf node_modules
+npm install
+echo "Compiling TypeScript..."
+./node_modules/.bin/tsc
+npm run generate-schemas
+echo "Removing external dependencies..."
+rm -rf node_modules
+echo "Removing TypeScript files..."
+find -name '*.ts' -print0 | xargs -0 rm
+
+cd ..
+
 echo "Installing dependencies for build..."
+cd api
 rm -rf node_modules
 npm install
 
