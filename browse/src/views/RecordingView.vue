@@ -66,7 +66,27 @@
 import config from "../config";
 import { mapState } from "vuex";
 import * as SunCalc from "suncalc";
-import { RecordingInfo } from "@/api/Recording.api";
+import {
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
+import { RecordingType } from "@typedefs/api/consts";
+import { ApiTrackResponse } from "@typedefs/api/track";
+
+interface RecordingViewComputed {
+  recording: () => ApiThermalRecordingResponse | ApiAudioRecordingResponse;
+  tracks: () => ApiTrackResponse[];
+  fileSource: () => string;
+  rawSource: () => string;
+  timeString: () => string;
+  dateString: () => string;
+  timeUntilDawn: () => string;
+  isVideo: () => boolean;
+  isAudio: () => boolean;
+  groupName: () => string;
+  deviceName: () => string;
+}
 
 export default {
   name: "RecordingView",
@@ -85,8 +105,9 @@ export default {
   },
   computed: {
     ...mapState({
-      recording: (state: any): RecordingInfo => state.Video.recording,
-      tracks: (state: any) => state.Video.tracks,
+      recording: (state: any): ApiRecordingResponse =>
+        state.Video.recording as ApiRecordingResponse,
+      tracks: (state: any): ApiTrackResponse[] => state.Video.tracks,
       fileSource: (state: any) => {
         return (
           (state.Video.downloadFileJWT &&
@@ -114,8 +135,8 @@ export default {
     sunTimes() {
       return SunCalc.getTimes(
         this.date,
-        this.recording.location.coordinates[0],
-        this.recording.location.coordinates[1]
+        this.recording.location.lat,
+        this.recording.location.lng
       );
     },
     timeUntilDawn(): string {
@@ -131,10 +152,10 @@ export default {
       }
     },
     isVideo(): boolean {
-      return this.recording.type === "thermalRaw";
+      return this.recording.type === RecordingType.ThermalRaw;
     },
     isAudio(): boolean {
-      return this.recording.type === "audio";
+      return this.recording.type === RecordingType.Audio;
     },
     date(): Date | null {
       return (
@@ -144,12 +165,12 @@ export default {
       );
     },
     deviceName(): string {
-      return (this.recording.Device && this.recording.Device.devicename) || "";
+      return this.recording.deviceName;
     },
     groupName(): string {
-      return (this.recording.Group && this.recording.Group.groupname) || "";
+      return this.recording.groupName;
     },
-  },
+  } as RecordingViewComputed,
   watch: {
     async $route(to) {
       if (Number(to.params.id) !== this.recording.id) {

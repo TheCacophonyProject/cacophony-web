@@ -144,12 +144,12 @@ export default {
   },
   computed: {
     parseLocation: function () {
-      if (this.recording.location.type === "Point") {
-        return `Lat: ${this.recording.location.coordinates[0].toFixed(
+      if (this.recording.location) {
+        return `Lat: ${this.recording.location.lat.toFixed(
           2
-        )}, Long: ${this.recording.location.coordinates[1].toFixed(2)}`;
+        )}, Long: ${this.recording.location.lng.toFixed(2)}`;
       } else {
-        return this.recording.location;
+        return "No location";
       }
     },
     metaItems: function () {

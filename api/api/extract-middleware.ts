@@ -653,21 +653,26 @@ const getRecording =
           new ClientError("No authorizing user specified")
         );
       }
-    } else {
-      getRecordingOptions = {
-        include: [
-          {
-            model: models.Group,
-            required: true,
-            where: groupWhere,
-          },
-          {
-            model: models.Device,
-            required: true,
-            where: deviceWhere,
-          },
-        ],
-      };
+    }
+    if (
+      !getRecordingOptions ||
+      (getRecordingOptions && !getRecordingOptions.include)
+    ) {
+      if (!getRecordingOptions) {
+        getRecordingOptions = {};
+      }
+      getRecordingOptions.include = [
+        {
+          model: models.Group,
+          required: true,
+          where: groupWhere,
+        },
+        {
+          model: models.Device,
+          required: true,
+          where: deviceWhere,
+        },
+      ];
     }
     getRecordingOptions.where = getRecordingOptions.where || recordingWhere;
     getRecordingOptions = getRecordingRelationships(getRecordingOptions);

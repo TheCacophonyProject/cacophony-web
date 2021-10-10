@@ -21,7 +21,12 @@ import { body } from "express-validator";
 import auth from "../auth";
 import responseUtil from "./responseUtil";
 import { Application, Response, Request, NextFunction } from "express";
-import { anyOf, validNameOf, validPasswordOf } from "../validation-middleware";
+import {
+  anyOf,
+  idOf,
+  validNameOf,
+  validPasswordOf,
+} from "../validation-middleware";
 import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
 import { Device } from "models/Device";
 import { ClientError } from "../customErrors";
@@ -46,16 +51,29 @@ export default function (app: Application) {
     "/authenticate_device",
     validateFields([
       validPasswordOf(body("password")),
-      anyOf(validNameOf(body("devicename")), validNameOf(body("deviceName"))),
-      anyOf(validNameOf(body("groupname")), validNameOf(body("groupName"))),
+
+      // FIXME - is this correct for all variations?
+      anyOf(
+        validNameOf(body("devicename")).optional(),
+        validNameOf(body("deviceName")).optional()
+      ),
+      anyOf(
+        validNameOf(body("groupname")).optional(),
+        validNameOf(body("groupName")).optional()
+      ),
+      anyOf(
+        idOf(body("deviceId")).optional(),
+        idOf(body("deviceID")).optional()
+      ),
     ]),
     extractUnauthenticatedOptionalDeviceInGroup(
-      body(["devicename", "deviceName"]),
+      body(["devicename", "deviceName", "deviceId", "deviceID"]),
       body(["groupname", "groupName"])
     ),
     (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.device) {
         return next(
+          // FIXME - better message if it's only a deviceId
           new ClientError(
             "Device not found for supplied deviceName and groupName",
             401
