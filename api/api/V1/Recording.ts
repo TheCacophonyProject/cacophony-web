@@ -740,7 +740,6 @@ export default (app: Application, baseUrl: string) => {
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
-      // FIXME Also look at storing fileSize in the DB, so we don't have to pull it out from object store!
       const recordingItem = response.locals.recording;
       let rawJWT;
       let cookedJWT;
@@ -752,7 +751,9 @@ export default (app: Application, baseUrl: string) => {
           recordingItem.getFileName(),
           recordingItem.fileMimeType
         );
-        cookedSize = await util.getS3ObjectFileSize(recordingItem.fileKey);
+        cookedSize =
+          recordingItem.fileSize ||
+          (await util.getS3ObjectFileSize(recordingItem.fileKey));
       }
       if (recordingItem.rawFileKey) {
         rawJWT = signedToken(
@@ -760,7 +761,9 @@ export default (app: Application, baseUrl: string) => {
           recordingItem.getRawFileName(),
           recordingItem.rawMimeType
         );
-        rawSize = await util.getS3ObjectFileSize(recordingItem.rawFileKey);
+        rawSize =
+          recordingItem.rawFileSize ||
+          (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
       }
       const recording = mapRecordingResponse(response.locals.recording);
 
@@ -988,10 +991,7 @@ export default (app: Application, baseUrl: string) => {
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["OK."],
-        tracks: tracks.map((t) => {
-          delete t.dataValues.RecordingId;
-          return t;
-        }),
+        tracks: mapTracks(tracks),
       });
     }
   );
@@ -1011,23 +1011,24 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
     fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request, response) => {
-      // FIXME - Extract track in middleware
-      const track = await response.locals.recording.getTrack(
-        request.params.trackId
-      );
-      if (!track) {
+      // Make sure the track belongs to the recording (this could probably be one query)
+      if (
+        (response.locals.track as Track).RecordingId ===
+        response.locals.recording.id
+      ) {
+        await response.locals.track.destroy();
+        responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Track deleted."],
+        });
+      } else {
         responseUtil.send(response, {
           statusCode: 400,
           messages: ["No such track."],
         });
-        return;
       }
-      await track.destroy();
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track deleted."],
-      });
     }
   );
 

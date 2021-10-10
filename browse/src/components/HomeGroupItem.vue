@@ -12,6 +12,7 @@
 
 <script lang="ts">
 import recordingsApi from "../api/Recording.api";
+import { ApiGroupResponse } from "@typedefs/api/group";
 
 export default {
   name: "HomeGroupItem",
@@ -35,15 +36,39 @@ export default {
     },
   },
   async mounted() {
-    const params = {
-      days: 1,
-      group: [this.group.id],
-    };
-    try {
-      const { result: allData } = await recordingsApi.queryCount(params);
-      this.count = allData.count;
-      // eslint-disable-next-line no-empty
-    } catch (e) {}
+    const group: ApiGroupResponse = this.group;
+    const now = new Date();
+    now.setDate(now.getDate() - 1);
+    const oneDayAgo = new Date(now);
+    if (
+      group.lastRecordingTime &&
+      new Date(group.lastRecordingTime) > oneDayAgo
+    ) {
+      const params = {
+        days: 1,
+        group: [this.group.id],
+      };
+      try {
+        const {
+          result: { count },
+        } = await recordingsApi.queryCount(params);
+        this.count = count;
+        const hoursAgo =
+          (new Date(group.lastRecordingTime).getTime() - oneDayAgo.getTime()) /
+          1000 /
+          60 /
+          60;
+        console.log("COUNT", this.count, hoursAgo);
+
+        // FIXME - count shouldn't be zero.
+        // FIXME - 1 day ago doesn't seem to get recordings that are 23.7xx hours old
+        //  Could it be because those recordings are corrupt under testing?
+
+        // eslint-disable-next-line no-empty
+      } catch (e) {}
+    } else if (group.lastRecordingTime) {
+      //console.log(group.lastRecordingTime);
+    }
   },
 };
 </script>

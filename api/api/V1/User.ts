@@ -73,7 +73,7 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     apiUrl,
     validateFields([
-      validNameOf(body("username")),
+      anyOf(validNameOf(body("username")), validNameOf(body("userName"))),
       body("email").isEmail(),
       validPasswordOf(body("password")),
       body("endUserAgreement").isInt().optional(),
@@ -95,7 +95,7 @@ export default function (app: Application, baseUrl: string) {
     },
     async (request: Request, response: Response) => {
       const user: User = await models.User.create({
-        username: request.body.username,
+        username: request.body.username || request.body.userName,
         password: request.body.password,
         email: request.body.email,
         endUserAgreement: request.body.endUserAgreement,
@@ -164,7 +164,10 @@ export default function (app: Application, baseUrl: string) {
         dataToUpdate.username = dataToUpdate.userName;
         delete dataToUpdate.userName;
       }
-      await response.locals.requestUser.update(dataToUpdate);
+      const requestUser = await models.User.findByPk(
+        response.locals.requestUser.id
+      );
+      await requestUser.update(dataToUpdate);
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated user."],

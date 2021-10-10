@@ -1,4 +1,4 @@
-import { GroupId } from "./common";
+import { GroupId, IsoFormattedDateString } from "./common";
 import { ApiUserResponse } from "./user";
 
 export interface ApiGroupUserRelationshipResponse extends ApiUserResponse {
@@ -8,5 +8,6 @@ export interface ApiGroupUserRelationshipResponse extends ApiUserResponse {
 export interface ApiGroupResponse {
   id: GroupId;
   groupName: string;
+  lastRecordingTime?: IsoFormattedDateString;
   admin: boolean;
 }

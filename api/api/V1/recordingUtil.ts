@@ -379,6 +379,10 @@ export const uploadRawRecording = util.multipartUpload(
       recording.rawFileHash = data.fileHash;
     }
 
+    if (data.fileSize) {
+      recording.rawFileSize = data.fileSize;
+    }
+
     let fileIsCorrupt = false;
     if (data.type === "thermalRaw") {
       // Read the file back out from s3 and decode/parse it.

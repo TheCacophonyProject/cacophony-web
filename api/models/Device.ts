@@ -18,7 +18,7 @@ import { format } from "util";
 import Sequelize, { FindOptions } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { User, UserId } from "./User";
-import { Group, GroupId, GroupStatic } from "./Group";
+import { Group, GroupStatic } from "./Group";
 import { GroupUsersStatic } from "./GroupUsers";
 import { DeviceUsersStatic } from "./DeviceUsers";
 import { ScheduleId } from "./Schedule";
@@ -26,6 +26,7 @@ import { Event } from "./Event";
 import { AccessLevel } from "./GroupUsers";
 import logger from "../logging";
 import { DeviceType } from "@typedefs/api/consts";
+import { GroupId } from "@typedefs/api/common";
 
 const Op = Sequelize.Op;
 export type DeviceId = number;

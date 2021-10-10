@@ -11,11 +11,14 @@ module.exports = {
       queryInterface.addColumn("Devices", "location", Sequelize.GEOMETRY),
       queryInterface.addColumn("Devices", "lastConnectionTime", Sequelize.DATE),
       queryInterface.addColumn("Devices", "lastRecordingTime", Sequelize.DATE),
+      queryInterface.addColumn("Groups", "lastRecordingTime", Sequelize.DATE),
       queryInterface.addColumn("Devices", "kind", {
         type: Sequelize.ENUM,
         values: ["audio", "thermal", "unknown"],
         defaultValue: "unknown",
       }),
+      queryInterface.addColumn("Recordings", "fileSize", Sequelize.INTEGER),
+      queryInterface.addColumn("Recordings", "rawFileSize", Sequelize.INTEGER),
     ]);
   },
 
@@ -25,6 +28,9 @@ module.exports = {
       queryInterface.removeColumn("Devices", "location"),
       queryInterface.removeColumn("Devices", "lastConnectionTime"),
       queryInterface.removeColumn("Devices", "lastRecordingTime"),
+      queryInterface.removeColumn("Groups", "lastRecordingTime"),
+      queryInterface.removeColumn("Recordings", "fileSize", Sequelize.INTEGER),
+      queryInterface.removeColumn("Recordings", "rawFileSize", Sequelize.INTEGER),
     ]);
     await queryInterface.sequelize.query(
       'drop type "enum_Devices_kind"'

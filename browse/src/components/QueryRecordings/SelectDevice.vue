@@ -32,8 +32,7 @@
           />
           <span class="tag">{{ option.name }}</span>
           <span v-if="option.type === 'group'" class="tag">
-            ({{ option.devices.length }} device<span
-              v-if="option.devices.length > 1"
+            ({{ option.deviceCount }} device<span v-if="option.deviceCount > 1"
               >s</span
             >)
           </span>
@@ -152,17 +151,9 @@ export default {
     async loadValues() {
       this.fetching = true;
       try {
-        const [
-          {
-            result: { devices },
-          },
-          {
-            result: { groups },
-          },
-        ] = await Promise.all([
-          api.device.getDevices(),
-          api.groups.getGroups(),
-        ]);
+        const {
+          result: { devices },
+        } = await api.device.getDevices();
         this.devices = Object.freeze(
           devices
             .map(({ id, deviceName }) => ({
@@ -173,20 +164,34 @@ export default {
             }))
             .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
         );
-        // FIXME - just load devices here, no need for groups
+
+        // FIXME - Both devices and stations can have name collisions, so
+        //  disambiguate and group by group.
         this.groups = Object.freeze(
-          groups
-            .map(({ id, groupName, Devices }) => ({
-              id: Number(id),
+          devices.reduce((acc, { groupId, groupName }) => {
+            acc[groupId] = acc[groupId] || {
+              id: groupId,
               type: "group",
               name: groupName,
-              devices: Devices,
-              uid: `group_${id}`,
-            }))
-            // NOTE: Filter out empty groups
-            .filter(({ devices }) => devices.length !== 0)
-            .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
+              uid: `group_${groupId}`,
+              deviceCount: 0,
+            };
+            acc[groupId].deviceCount++;
+            return acc;
+          }, {})
         );
+        //
+        // groups
+        //   .map(({ id, groupName, Devices }) => ({
+        //     id: Number(id),
+        //     type: "group",
+        //     name: groupName,
+        //     devices: Devices,
+        //     uid: `group_${id}`,
+        //   }))
+        //   // NOTE: Filter out empty groups
+        //   .filter(({ devices }) => devices.length !== 0)
+        //   .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
 
         // TODO(jon): Add stations for each group: in practice this shouldn't be too many for most people.
         const stationPromises = [];

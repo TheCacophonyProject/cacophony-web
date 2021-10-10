@@ -30,6 +30,7 @@ export interface File extends Sequelize.Model, ModelCommon<File> {
   details: any;
   type: any;
   fileKey: string;
+  fileSize: number;
 }
 export interface FileStatic extends ModelStaticCommon<File> {
   buildSafely: (fields: Record<string, any>) => File;

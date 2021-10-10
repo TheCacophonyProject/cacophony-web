@@ -27,8 +27,7 @@ import {
   tryToMatchRecordingToStation,
 } from "@api/V1/recordingUtil";
 import { Device } from "./Device";
-
-export type GroupId = number;
+import { GroupId } from "@typedefs/api/common";
 
 const retireMissingStations = (
   existingStations: Station[],
@@ -182,6 +181,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
 export interface Group extends Sequelize.Model, ModelCommon<Group> {
   id: GroupId;
   groupname: string;
+  lastRecordingTime?: Date;
   addUser: (userToAdd: User, through: any) => Promise<void>;
   addStation: (stationToAdd: CreateStationData) => Promise<void>;
   getUsers: (options?: {
@@ -237,6 +237,9 @@ export default function (sequelize, DataTypes): GroupStatic {
     groupname: {
       type: DataTypes.STRING,
       unique: true,
+    },
+    lastRecordingTime: {
+      type: DataTypes.DATE,
     },
   };
 

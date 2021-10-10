@@ -49,11 +49,17 @@ import { ApiGroupResponse } from "@typedefs/api/group";
 const mapGroup = (
   group: Group,
   viewAsSuperAdmin: boolean
-): ApiGroupResponse => ({
-  id: group.id,
-  groupName: group.groupname,
-  admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
-});
+): ApiGroupResponse => {
+  const groupData: ApiGroupResponse = {
+    id: group.id,
+    groupName: group.groupname,
+    admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
+  };
+  if (group.lastRecordingTime) {
+    groupData.lastRecordingTime = group.lastRecordingTime.toISOString();
+  }
+  return groupData;
+};
 const mapGroups = (
   groups: Group[],
   viewAsSuperAdmin: boolean

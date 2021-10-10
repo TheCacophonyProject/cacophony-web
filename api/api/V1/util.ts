@@ -42,6 +42,7 @@ function multipartUpload(
     let data;
     let filename;
     let upload;
+    let fileSize = 0;
 
     // Note regarding multiparty: there are no guarantees about the
     // order that the field and part handlers will be called. You need
@@ -70,7 +71,8 @@ function multipartUpload(
         return;
       }
       filename = part.filename;
-
+      fileSize = part.length;
+      log.warning("Upload file size %s", fileSize);
       upload = modelsUtil
         .openS3()
         .upload({
@@ -143,6 +145,7 @@ function multipartUpload(
             // @ts-ignore
             .update(new Uint8Array(fileData.Body), "binary")
             .digest("hex");
+          fileSize = fileData.ContentLength;
           if (data.fileHash !== checkHash) {
             log.error("File hash check failed, deleting key: %s", key);
             // Hash check failed, delete the file from s3, and return an error which the client can respond to to decide
@@ -162,6 +165,9 @@ function multipartUpload(
             );
             return;
           }
+        } else {
+          // get the file size
+          fileSize = await getS3ObjectFileSize(key);
         }
 
         data.filename = filename;
@@ -184,12 +190,16 @@ function multipartUpload(
           }
         }
 
+        data.fileSize = fileSize;
         // Store a record for the upload.
         dbRecordOrFileKey = await onSaved(uploadingDevice || null, data, key);
         if (uploadingDevice) {
           // Update the device location and lastRecordingTime from the recording data,
           // if the recording time is *later* than the last recording time, or there
           // is no last recording time
+
+          // FIXME - Does the recordingDateTime include a timezone?  If not, do
+          //  we need to set one here?
           const thisRecordingTime = new Date(
             (dbRecordOrFileKey as Recording).recordingDateTime
           );
@@ -201,6 +211,17 @@ function multipartUpload(
               location: (dbRecordOrFileKey as Recording).location,
               lastRecordingTime: thisRecordingTime,
             });
+
+            // Update the group lastRecordingTime too:
+            const group = await uploadingDevice.getGroup();
+            if (
+              !group.lastRecordingTime ||
+              group.lastRecordingTime < thisRecordingTime
+            ) {
+              await group.update({
+                lastRecordingTime: thisRecordingTime,
+              });
+            }
           }
           if (uploadingDevice.kind === DeviceType.Unknown) {
             // If this is the first recording we've gotten from a device, we can set its type.
@@ -215,7 +236,28 @@ function multipartUpload(
           await dbRecordOrFileKey.save();
           responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
         } else {
-          responseUtil.validRecordingUpload(response, dbRecordOrFileKey);
+          // Get the database row of the recording we just uploaded the processed file for:
+          if (data.id) {
+            const recording: Recording | null = await models.Recording.findByPk(
+              data.id
+            );
+            if (recording !== null) {
+              recording.fileKey = dbRecordOrFileKey;
+              recording.fileSize = fileSize;
+              await recording.save();
+              responseUtil.validRecordingUpload(response, dbRecordOrFileKey);
+            } else {
+              responseUtil.serverError(
+                response,
+                `No such recording ${data.id}`
+              );
+            }
+          } else {
+            responseUtil.serverError(
+              response,
+              "No recording supplied to update"
+            );
+          }
         }
       } catch (err) {
         responseUtil.serverError(response, err);

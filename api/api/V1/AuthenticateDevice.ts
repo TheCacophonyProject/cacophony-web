@@ -25,7 +25,6 @@ import { anyOf, validNameOf, validPasswordOf } from "../validation-middleware";
 import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
 import { Device } from "models/Device";
 import { ClientError } from "../customErrors";
-import logging from "@log";
 
 export default function (app: Application) {
   /**

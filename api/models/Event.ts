@@ -21,7 +21,6 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { DeviceId, Device } from "./Device";
 import { UserId } from "./User";
 import { DetailSnapShot } from "./DetailSnapshot";
-import logger from "../logging";
 
 const Op = Sequelize.Op;
 
@@ -146,7 +145,7 @@ export default function (sequelize, DataTypes) {
       where: {
         [Op.and]: [
           where, // User query
-          // FIXME(jon): This smells
+          // FIXME: Move permissions stuff to middleware
           options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
@@ -198,7 +197,7 @@ export default function (sequelize, DataTypes) {
       where: {
         [Op.and]: [
           where, // User query
-          // FIXME(jon): This also smells bad
+          // FIXME: Move permissions stuff to middleware
           options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },

@@ -20,9 +20,10 @@ import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { TrackTag, TrackTagId } from "./TrackTag";
 import { Recording } from "./Recording";
+import { RecordingId, TrackId } from "@typedefs/api/common";
 
-export type TrackId = number;
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
+  RecordingId: RecordingId;
   getTrackTag: (trackTagId: TrackTagId) => Promise<TrackTag>;
   id: TrackId;
   AlgorithmId: number | null;

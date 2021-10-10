@@ -101,6 +101,7 @@ export default function (app: Application) {
    */
   app.post(`${apiUrl}/processed`, () => {
     util.multipartUpload("file", async (uploader, data, key) => {
+      // FIXME - where does this new uploaded key ever get saved to the database row of the recording?
       return key;
     });
   });

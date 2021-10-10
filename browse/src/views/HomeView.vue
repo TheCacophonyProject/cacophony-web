@@ -6,7 +6,7 @@
         <div v-if="hasLoaded">
           <b-row align-h="center">
             <b-col cols="12">
-              <h1 v-if="hasGroups">Kia ora {{ username }}</h1>
+              <h1 v-if="hasGroups">Kia ora {{ userName }}</h1>
               <div v-else class="text-center py-5">
                 <h2>It looks like you're new here</h2>
                 <h5>
@@ -39,7 +39,7 @@
                 </p>
                 <p>
                   They will need your Cacophony username:
-                  <strong>{{ username }}</strong
+                  <strong>{{ userName }}</strong
                   ><br />
                 </p>
                 <p class="mb-0">
@@ -85,7 +85,7 @@ export default {
   },
   computed: {
     ...mapState({
-      username: (state) => state.User.userData.username,
+      userName: (state) => state.User.userData.userName,
     }),
     hasGroups() {
       return this.groups.length !== 0;
@@ -98,8 +98,10 @@ export default {
     async fetchGroups() {
       this.hasLoaded = false;
       try {
-        const { result } = await api.groups.getGroups();
-        this.groups = result.groups;
+        const {
+          result: { groups },
+        } = await api.groups.getGroups();
+        this.groups = groups;
       } catch (e) {
         // Handle this at a component level, or boot it up to a global error.
       }

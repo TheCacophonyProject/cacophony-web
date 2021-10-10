@@ -27,10 +27,11 @@ import log from "../logging";
 import logger from "../logging";
 import { bool } from "aws-sdk/clients/signer";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { Group, GroupId } from "./Group";
+import { Group } from "./Group";
 import { AccessLevel, GroupUsersStatic } from "./GroupUsers";
 import { Device, DeviceId, DeviceStatic } from "./Device";
 import { DeviceUsersStatic } from "./DeviceUsers";
+import { GroupId } from "@typedefs/api/common";
 
 const Op = Sequelize.Op;
 

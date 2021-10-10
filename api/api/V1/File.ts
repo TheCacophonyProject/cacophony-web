@@ -55,6 +55,7 @@ export default (app: Application, baseUrl: string) => {
         const dbRecord = models.File.buildSafely(data);
         dbRecord.UserId = response.locals.requestUser.id;
         dbRecord.fileKey = key;
+        dbRecord.fileSize = data.fileSize;
         await dbRecord.save();
         return dbRecord;
       });

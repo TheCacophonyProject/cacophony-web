@@ -4,11 +4,11 @@
 
     <dl>
       <dt>Username</dt>
-      <dd id="username">{{ username }}</dd>
-      <dt v-show="firstname">First name</dt>
-      <dd v-show="firstname" id="firstname">{{ firstname }}</dd>
-      <dt v-show="lastname">Last name</dt>
-      <dd v-show="lastname" id="lastname">{{ lastname }}</dd>
+      <dd id="username">{{ userName }}</dd>
+      <dt v-if="firstName">First name</dt>
+      <dd v-if="firstName" id="firstname">{{ firstName }}</dd>
+      <dt v-if="lastName">Last name</dt>
+      <dd v-if="lastName" id="lastname">{{ lastName }}</dd>
       <dt>Email</dt>
       <dd id="email">{{ email }}</dd>
     </dl>
@@ -22,9 +22,9 @@ export default {
   name: "HomeUser",
   computed: mapState({
     user: (state) => state.User,
-    username: (state) => state.User.userData.username,
-    firstname: (state) => state.User.userData.firstname,
-    lastname: (state) => state.User.userData.lastname,
+    userName: (state) => state.User.userData.userName,
+    firstName: (state) => state.User.userData.firstName,
+    lastName: (state) => state.User.userData.lastName,
     email: (state) => state.User.userData.email,
   }),
 };

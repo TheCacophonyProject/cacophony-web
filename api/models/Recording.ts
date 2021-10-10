@@ -35,15 +35,15 @@ import {
   DeviceId as DeviceIdAlias,
   DeviceStatic,
 } from "./Device";
-import { GroupId as GroupIdAlias, Group } from "./Group";
-import { Track, TrackId } from "./Track";
+import { Group } from "./Group";
+import { Track } from "./Track";
 import { Tag } from "./Tag";
 
 import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
 import { Station, StationId } from "./Station";
 import { tryToMatchRecordingToStation } from "@api/V1/recordingUtil";
-import { RecordingId, UserId } from "@typedefs/api/common";
+import { GroupId, RecordingId, UserId, TrackId } from "@typedefs/api/common";
 import {
   RecordingPermission,
   RecordingProcessingState,
@@ -183,6 +183,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   rawMimeType: string;
   rawFileHash: string;
   fileKey: string;
+  fileSize: number;
+  rawFileSize: number;
   fileMimeType: string;
   processingStartTime: string;
   processingEndTime: string;
@@ -196,7 +198,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   airplaneModeOn: boolean;
 
   DeviceId: DeviceIdAlias;
-  GroupId: GroupIdAlias;
+  GroupId: GroupId;
   StationId: StationId;
   // Recording columns end
 
