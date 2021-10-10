@@ -35,7 +35,7 @@
                 :class="[
                   'list-group-item',
                   'list-group-item-action',
-                  { 'no-devices': deviceCount === 0 },
+                  { 'no-devices': devices.length === 0 },
                 ]"
                 :key="groupName"
                 :to="
@@ -52,13 +52,13 @@
                         params: { groupName, tabName: 'devices' },
                       }
                 "
-                v-for="{ groupName, deviceCount, deviceOnly } in filteredGroups"
+                v-for="{ groupName, devices, deviceOnly } in filteredGroups"
               >
                 <span>
                   <strong>{{ groupName }}</strong> -
-                  <span v-if="deviceCount !== false"
-                    >{{ deviceCount || "No" }} device<span
-                      v-if="deviceCount !== 1"
+                  <span v-if="devices.length !== 0"
+                    >{{ devices.length || "No" }} device<span
+                      v-if="devices.length !== 1"
                       >s</span
                     >
                   </span>
@@ -169,15 +169,10 @@ export default {
       return Object.values(this.locations);
     },
     filteredGroups(): any[] {
-      // TODO - If there are only groups with no devices, always show the checkbox checked.
       if (this.showGroupsWithNoDevices) {
         return this.groups;
       }
-      return this.groups.filter(
-        (group) =>
-          group.initialDeviceCount !== 0 &&
-          (group.deviceCount === false || group.deviceCount !== 0)
-      );
+      return this.groups.filter((group) => group.devices.length !== 0);
     },
   },
   created: function () {
@@ -193,14 +188,14 @@ export default {
         interface GroupInfo {
           devices: ApiDeviceResponse[];
           groupName: string;
-          initialDeviceCount: number;
-          deviceCount: number;
           deviceOnly: boolean;
         }
 
         const groups: Record<number, GroupInfo> = {};
         try {
           const [userGroups, userDevices] = await Promise.all([
+            // NOTE - We only need to get groups because there can be groups with
+            //  no devices - otherwise all groups would be listed in devices
             api.groups.getGroups(),
             api.device.getDevices(),
           ]);
@@ -210,8 +205,6 @@ export default {
               groups[id] = {
                 devices: [],
                 groupName,
-                initialDeviceCount: 0,
-                deviceCount: 0,
                 deviceOnly: false,
               };
             }
@@ -247,14 +240,9 @@ export default {
               groups[groupId] = groups[groupId] || {
                 devices: [],
                 groupName,
-                initialDeviceCount: 0,
-                deviceCount: 0,
                 deviceOnly: true,
               };
               groups[groupId].devices.push(device);
-              groups[groupId].initialDeviceCount =
-                groups[groupId].devices.length;
-              groups[groupId].deviceCount = groups[groupId].devices.length;
               // Now we should be able to show the groups for those devices.
             }
           }

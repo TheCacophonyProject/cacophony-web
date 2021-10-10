@@ -36,10 +36,6 @@ npm install
 echo "Compiling TypeScript..."
 ./node_modules/.bin/tsc
 npm run generate-schemas
-echo "Removing external dependencies..."
-rm -rf node_modules
-echo "Removing TypeScript files..."
-find -name '*.ts' -print0 | xargs -0 rm
 
 cd ..
 
@@ -57,6 +53,7 @@ rm -rf node_modules
 echo "Removing TypeScript files..."
 find -name '*.ts' -print0 | xargs -0 rm
 
+
 # BROWSE: Update files which need the right version number, build the packed
 # release
 cd ../browse
@@ -65,6 +62,13 @@ rm -rf node_modules
 npm install
 npm run release
 rm -rf node_modules
+cd ../types
+
+echo "Removing typedefs external dependencies..."
+rm -rf node_modules
+echo "Removing typedefs TypeScript files..."
+find -name '*.ts' -print0 | xargs -0 rm
+
 cd ..
 
 # cron doesn't like it when cron.d files are writeable by anyone other than the
