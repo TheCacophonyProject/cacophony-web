@@ -22,7 +22,7 @@ export interface ApiRecordingResponse {
   groupName: string;
   deviceId: DeviceId;
   deviceName: string;
-  // TODO - Should we return fileHash?  less useful for API consumers, perhaps just keep as implementation detail internally
+  fileHash?: string;
   processing?: boolean;
   tags: ApiRecordingTagResponse[];
   tracks: ApiTrackResponse[];

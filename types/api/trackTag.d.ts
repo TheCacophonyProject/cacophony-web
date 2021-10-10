@@ -5,7 +5,7 @@ interface ApiTrackTagResponse {
   id: TrackTagId;
   trackId: TrackId; // FIXME? Needed
   confidence: number;
-  data: any;
+  data: any; // FIXME - validation?
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;
   archivedAt?: IsoFormattedDateString; // FIXME - is this used?

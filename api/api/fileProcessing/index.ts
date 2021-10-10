@@ -60,6 +60,7 @@ export default function (app: Application) {
           query("state").isIn([
             RecordingProcessingState.Reprocess,
             RecordingProcessingState.AnalyseThermal,
+            RecordingProcessingState.Tracking,
           ]),
         ],
       ]),
@@ -101,7 +102,8 @@ export default function (app: Application) {
    */
   app.post(`${apiUrl}/processed`, () => {
     util.multipartUpload("file", async (uploader, data, key) => {
-      // FIXME - where does this new uploaded key ever get saved to the database row of the recording?
+      // FIXME: We're not actually saving to the database here, probably should be, but we're currently
+      //  handling it in multipartUpload once the key is returned.
       return key;
     });
   });

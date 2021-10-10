@@ -146,14 +146,6 @@ const ifNotNull = (val: any | null) => {
 const mapRecordingResponse = (
   recording: Recording
 ): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
-  if (recording.Tags && recording.Tags.length) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    for (const tag of recording.Tags) {
-      // FIXME - Does this make any sense?
-      // tag.animal = tag.what;
-      // tag.event = tag.detail;
-    }
-  }
   const commonRecording: ApiRecordingResponse = {
     id: recording.id,
     deviceId: recording.DeviceId,
@@ -175,6 +167,7 @@ const mapRecordingResponse = (
     stationId: ifNotNull(recording.StationId),
     stationName: recording.Station?.name,
     type: recording.type,
+    fileHash: recording.rawFileHash,
     tags: recording.Tags && mapTags(recording.Tags),
     tracks: recording.Tracks && mapTracks(recording.Tracks),
   };
@@ -633,6 +626,7 @@ export default (app: Application, baseUrl: string) => {
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
+        // FIXME - should be a mapped recording?
         rows: [result],
       });
     }

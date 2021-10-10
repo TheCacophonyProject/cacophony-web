@@ -21,10 +21,8 @@ const getters = {
       const tagItem: any = {};
       if (tag.what) {
         tagItem.what = tag.what;
-        tagItem.animal = tag.what;
       }
       tagItem.detail = tag.detail;
-      tagItem.event = tag.detail;
       if (tag.confidence) {
         tagItem.confidence = tag.confidence.toFixed(2);
       }
@@ -37,32 +35,6 @@ const getters = {
       tagItem.when = new Date(tag.createdAt).toLocaleString();
       tagItem.tag = tag;
       tagItems.push(tagItem);
-    });
-    return tagItems;
-  },
-  getAudioTagItems(state) {
-    const tags = (state.recording && state.recording.Tags) || [];
-    const tagItems = [];
-    tags.map((tag) => {
-      const tagItem: any = {};
-      if (tag.event == "AUDIO") {
-        // check for optional fields
-        if (tag.tagId) {
-          tagItem.id = tag.id;
-        }
-        if (tag.recordingId) {
-          tagItem.recordingId = tag.recordingId;
-        }
-        // compulsory fields
-        tagItem.tagValue = tag.tagValue;
-        tagItem.startTime = tag.startTime;
-        tagItem.duration = tag.duration;
-        tagItem.confidence = tag.confidence;
-        tagItem.automatic = tag.automatic;
-        tagItem.schemaVersion = tag.schemaVersion;
-        tagItem.when = new Date(tag.createdAt).toLocaleString();
-        tagItem.who = tag.tagger;
-      }
     });
     return tagItems;
   },

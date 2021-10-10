@@ -23,7 +23,6 @@ import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
 import urljoin from "url-join";
-import { ClientError } from "../customErrors";
 import config from "@config";
 import models from "@models";
 import util from "./util";
@@ -63,7 +62,6 @@ import { RecordingId, TrackTagId, UserId } from "@typedefs/api/common";
 import { AcceptableTag } from "@typedefs/api/consts";
 import { Device } from "@models/Device";
 import {
-  RecordingPermission,
   RecordingProcessingState,
   RecordingType,
   TagMode,
@@ -86,7 +84,6 @@ export interface RecordingQuery {
   distinct: boolean;
   type: string;
   audiobait: null | boolean;
-
   //filterOptions: null | any;
 }
 
@@ -531,19 +528,13 @@ async function query(
   );
   builder.query.distinct = true;
   const result = await models.Recording.findAndCountAll(builder.get());
-
   // FIXME: Removed less location precision.  Look at addressing this
   //  if and when we use the public recording feature.
-
   // This gives less location precision if the user isn't admin.
   // const filterOptions = models.Recording.makeFilterOptions(
   //   request.user,
   //   request.filterOptions
   // );
-  result.rows = result.rows.map((rec) => {
-    //rec.filterData(filterOptions);
-    return handleLegacyTagFieldsForGetOnRecording(rec);
-  });
   return result;
 }
 
@@ -766,48 +757,6 @@ function formatTags(tags) {
   return out.join("+");
 }
 
-async function get(request, type?: RecordingType) {
-  const recording = await models.Recording.get(
-    request.user,
-    request.params.id,
-    RecordingPermission.VIEW,
-    {
-      type,
-      filterOptions: request.query.filterOptions,
-    }
-  );
-  if (!recording) {
-    throw new ClientError("No file found with given datapoint.");
-  }
-
-  const data: any = {
-    recording: handleLegacyTagFieldsForGetOnRecording(recording),
-  };
-
-  if (recording.fileKey) {
-    data.cookedJWT = signedToken(
-      recording.fileKey,
-      recording.getFileName(),
-      recording.fileMimeType
-    );
-    data.cookedSize = await util.getS3ObjectFileSize(recording.fileKey);
-  }
-
-  if (recording.rawFileKey) {
-    data.rawJWT = signedToken(
-      recording.rawFileKey,
-      recording.getRawFileName(),
-      recording.rawMimeType
-    );
-    data.rawSize = await util.getS3ObjectFileSize(recording.rawFileKey);
-  }
-
-  delete data.recording.rawFileKey;
-  delete data.recording.fileKey;
-
-  return data;
-}
-
 export function signedToken(key, file, mimeType) {
   return jsonwebtoken.sign(
     {
@@ -842,9 +791,6 @@ const addTag = async (
   recording: Recording,
   tag: ApiRecordingTagRequest
 ): Promise<Tag> => {
-  // If old tag fields are used, convert to new field names.
-  tag = handleLegacyTagFieldsForCreate(tag);
-
   const tagInstance = models.Tag.buildSafely(tag);
   tagInstance.recordingId = recording.id;
   if (user) {
@@ -853,37 +799,6 @@ const addTag = async (
   await tagInstance.save();
   return tagInstance;
 };
-
-function handleLegacyTagFieldsForCreate(tag: any): ApiRecordingTagRequest {
-  tag = moveLegacyField(tag, "animal", "what");
-  tag = moveLegacyField(tag, "event", "detail");
-  return tag as ApiRecordingTagRequest;
-}
-
-function moveLegacyField(o: object, oldName: string, newName: string): object {
-  if (o[oldName]) {
-    if (o[newName]) {
-      throw new ClientError(
-        `can't specify both '${oldName}' and '${newName}' fields at the same time`
-      );
-    }
-    o[newName] = o[oldName];
-    delete o[oldName];
-  }
-  return o;
-}
-
-export function handleLegacyTagFieldsForGet(tag) {
-  tag.animal = tag.what;
-  tag.event = tag.detail;
-  return tag;
-}
-
-export function handleLegacyTagFieldsForGetOnRecording(recording) {
-  recording = recording.get({ plain: true });
-  recording.Tags = recording.Tags.map(handleLegacyTagFieldsForGet);
-  return recording;
-}
 
 async function tracksFromMeta(recording: Recording, metadata: any) {
   if (!("tracks" in metadata)) {
@@ -1735,7 +1650,6 @@ export const finishedProcessingRecording = async (
 
 export default {
   query,
-  get,
   addTag,
   tracksFromMeta,
   updateMetadata,
