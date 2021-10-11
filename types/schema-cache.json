@@ -8,7 +8,7 @@
   "api/recording.d.ts": "b5f8e213c58e494b9c12544a5901e357df2537e7",
   "api/station.d.ts": "06670608a691e495825f88e5606677f16829140a",
   "api/tag.d.ts": "b517bab0cc6ddea67df3ab8fb1296ccd5f8e37c4",
-  "api/track.d.ts": "5b694205c217b9b85460c075a5a3d28932ab393f",
+  "api/track.d.ts": "063ee6bef66315b275d732719021d651964dc14c",
   "api/trackTag.d.ts": "d243c8dec7b19d8c3f7868cf2e708657f1d06606",
   "api/user.d.ts": "35471a8c2ab0cfd6b4887feedfad6827e17ea044"
 }
