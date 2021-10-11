@@ -32,12 +32,15 @@ declare namespace Cypress {
      * Sign is as device/group.
      * Optionally supply a password (otherwise password is calculated)
      * Optionaly expect a non-200 statusCode
+     * By default authenticates using devicename and groupname
+     * Optionally authenticate with deviceid (additionalChecks["useDeviceId"]=true)
      */
     apiAuthenticateDevice(
       deviceName: string,
       groupName: string,
       password?: string,
-      statusCode?: number
+      statusCode?: number,
+      additionalChecks?: any
     ): Chainable<Element>;
 
     /**

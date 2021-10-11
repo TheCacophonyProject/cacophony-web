@@ -1,2 +1,4 @@
 /cacophony-web.iml
 /.idea/
+*/node_modules
+/types/jsonSchemas
