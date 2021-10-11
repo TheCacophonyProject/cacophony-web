@@ -4,10 +4,19 @@ import {
   ApiHumanTrackTagResponse,
 } from "./trackTag";
 
+export interface ApiTrackPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  frameNumber: number;
+}
+
 export interface ApiTrackResponse {
   id: TrackId;
   start: Seconds;
   end: Seconds;
+  positions?: ApiTrackPosition[];
   tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[];
 }
 

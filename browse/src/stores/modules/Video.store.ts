@@ -59,6 +59,7 @@ const actions = {
       recordingPromise,
       tracksPromise,
     ]);
+
     commit("receiveRecording", recording);
     commit("receiveTracks", tracks);
     return {

@@ -29,6 +29,9 @@ const cancelPendingRequests = (to, from, next) => {
 };
 
 function createRouter() {
+  // @ts-ignore
+  // @ts-ignore
+  // @ts-ignore
   const router = new Router({
     mode: "history",
     fallback: false,
@@ -118,6 +121,7 @@ function createRouter() {
       },
       {
         path: "/recording/:id/:trackId?",
+        //@ts-ignore
         component: RecordingView,
         meta: { title: "Recording :id" },
         beforeEnter: cancelPendingRequests,

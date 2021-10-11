@@ -66,7 +66,7 @@ import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingRespo
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
 import { Validator } from "jsonschema";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { ApiTrackResponse } from "@typedefs/api/track";
+import { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
 import { Tag } from "@models/Tag";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import {
@@ -114,11 +114,28 @@ const mapTrackTags = (
 ): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] =>
   trackTags.map(mapTrackTag);
 
+const mapPosition = (position: any): ApiTrackPosition => {
+  return {
+    x: position.x,
+    y: position.y,
+    width: position.width,
+    height: position.height,
+    frameNumber: position.frame_number,
+  };
+};
+
+const mapPositions = (positions: any[]): ApiTrackPosition[] | undefined => {
+  if (positions && positions.length) {
+    return positions.map(mapPosition);
+  }
+};
+
 const mapTrack = (track: Track): ApiTrackResponse => ({
   id: track.id,
   start: track.data.start_s,
   end: track.data.end_s,
   tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
+  positions: mapPositions(track.data.positions),
 });
 
 const mapTracks = (tracks: Track[]): ApiTrackResponse[] => tracks.map(mapTrack);
@@ -845,19 +862,21 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       let deleted = false;
       const recording = response.locals.recording;
+      const rawFileKey = recording.rawFileKey;
+      const fileKey = recording.fileKey;
       try {
         await recording.destroy();
         deleted = true;
       } catch (e) {
         // ..
       }
-      if (deleted && recording.rawFileKey) {
-        await util.deleteS3Object(recording.rawFileKey).catch((err) => {
+      if (deleted && rawFileKey) {
+        await util.deleteS3Object(rawFileKey).catch((err) => {
           log.warning(err);
         });
       }
-      if (deleted && recording.fileKey) {
-        await util.deleteS3Object(recording.fileKey).catch((err) => {
+      if (deleted && fileKey) {
+        await util.deleteS3Object(fileKey).catch((err) => {
           log.warning(err);
         });
       }

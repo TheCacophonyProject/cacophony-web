@@ -58,7 +58,7 @@ export default {
           1000 /
           60 /
           60;
-        console.log("COUNT", this.count, hoursAgo);
+        // console.log("COUNT", this.count, hoursAgo);
 
         // FIXME - count shouldn't be zero.
         // FIXME - 1 day ago doesn't seem to get recordings that are 23.7xx hours old

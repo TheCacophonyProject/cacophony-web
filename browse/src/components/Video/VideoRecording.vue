@@ -86,6 +86,9 @@ import CptvPlayer from "cptv-player-vue/src/CptvPlayer.vue";
 import RecordingProperties from "./RecordingProperties.vue";
 import { TagColours, WALLABY_GROUP } from "@/const";
 import api from "@/api";
+import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import { RecordingProcessingState } from "@typedefs/api/consts";
+import { ApiTrackResponse } from "@typedefs/api/track";
 
 export default {
   name: "VideoRecording",
@@ -143,7 +146,11 @@ export default {
       return 0;
     },
     processingCompleted() {
-      return this.recording && this.recording["processingState"] === "FINISHED";
+      return (
+        this.recording &&
+        (this.recording as ApiThermalRecordingResponse).processingState ===
+          RecordingProcessingState.Finished
+      );
     },
   },
   async mounted() {
@@ -311,7 +318,7 @@ export default {
       return Number(this.$route.params.id);
     },
     isWallabyProject() {
-      return this.recording.GroupId === WALLABY_GROUP;
+      return this.recording.groupId === WALLABY_GROUP;
     },
     addTag(tag) {
       const id = Number(this.$route.params.id);
@@ -330,15 +337,15 @@ export default {
       const selectedTrack = {
         ...track,
       };
-      const targetTrack = this.tracks[track.trackIndex];
+      const targetTrack: ApiTrackResponse = this.tracks[track.trackIndex];
       if (track.gotoStart) {
-        selectedTrack.start_s = Math.max(
+        selectedTrack.start = Math.max(
           0,
-          targetTrack.data.start_s - this.timespanAdjustment
+          targetTrack.start - this.timespanAdjustment
         );
       }
       if (track.playToEnd) {
-        selectedTrack.end_s = targetTrack.data.end_s - this.timespanAdjustment;
+        selectedTrack.end = targetTrack.end - this.timespanAdjustment;
       }
       try {
         if (
