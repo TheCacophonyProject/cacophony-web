@@ -104,6 +104,8 @@ export default {
     };
   },
   computed: {
+
+    // FIXME - Let's get rid of the use of the store here, it's not helpful.
     ...mapState({
       recording: (state: any): ApiRecordingResponse =>
         state.Video.recording as ApiRecordingResponse,

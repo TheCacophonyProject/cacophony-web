@@ -28,6 +28,7 @@ import { promisify } from "util";
 import { AsyncLocalStorage } from "async_hooks";
 import { v4 as uuidv4 } from "uuid";
 import { Op } from "sequelize";
+import { validationResult } from "express-validator";
 
 export const SuperUsers: Map<number, any> = new Map();
 
@@ -144,6 +145,13 @@ const checkS3Connection = (): Promise<void> => {
   });
   initialiseApi(app);
   app.use(customErrors.errorHandler);
+
+  // FIXME / TODO
+  // app.use((request: Request, res: Response, next: NextFunction) => {
+  //   // Extract deprecation warnings, stick them onto response.locals.warnings
+  //   const result = validationResult(request);
+  //   log.warning("validation %s", result);
+  // });
 
   // Add file processing API.
   const fileProcessingApp = express();

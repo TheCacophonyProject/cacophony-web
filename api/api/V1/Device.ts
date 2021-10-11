@@ -43,6 +43,7 @@ import {
   nameOrIdOf,
   validNameOf,
   validPasswordOf,
+  deprecatedField,
 } from "../validation-middleware";
 import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
@@ -92,6 +93,13 @@ export const mapDeviceResponse = (
   }
 };
 
+export const mapLegacyDevicesResponse = (devices: ApiDeviceResponse[]) =>
+  devices.map(({ deviceName, ...rest }) => ({
+    devicename: deviceName,
+    deviceName,
+    ...rest,
+  }));
+
 export const mapDevicesResponse = (
   devices: Device[],
   viewAsSuperUser: boolean
@@ -127,15 +135,23 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const device = await models.Device.create({
         devicename: request.body.devicename || request.body.deviceName,
         password: request.body.password,
         GroupId: response.locals.group.id,
       });
       if (request.body.saltId) {
-        // FIXME - Looks like we can overwrite any devices saltId here - is that true, or will we get
-        //  a database error on the unique key constraint?
+        const existingSaltId = await models.Device.findOne({
+          where: { saltId: request.body.saltId },
+        });
+        if (existingSaltId !== null) {
+          return next(
+            new ClientError(
+              `saltId ${request.body.saltId} is already in use by another device`
+            )
+          );
+        }
         await device.update({ saltId: request.body.saltId });
       } else {
         await device.update({ saltId: device.id });
@@ -203,6 +219,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
+      deprecatedField(query("where")), // Sidekick
       anyOf(
         query("onlyActive").optional().isBoolean().toBoolean(),
         query("only-active").optional().isBoolean().toBoolean()
@@ -210,6 +227,19 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
+      if (request.headers["user-agent"] === "okhttp/3.12.1") {
+        return responseUtil.send(response, {
+          rows: mapLegacyDevicesResponse(
+            mapDevicesResponse(
+              response.locals.devices,
+              response.locals.viewAsSuperUser
+            )
+          ),
+          statusCode: 200,
+          messages: ["Completed get devices query."],
+        });
+      }
+
       return responseUtil.send(response, {
         devices: mapDevicesResponse(
           response.locals.devices,
