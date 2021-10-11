@@ -31,9 +31,6 @@
       <p v-if="trackTag.average_novelty">
         <strong>Novelty:</strong> {{ trackTag.average_novelty }}
       </p>
-      <p v-if="message">
-        <strong class="title">Message:</strong> {{ message }}
-      </p>
       <table class="table table-sm">
         <thead>
           <tr>
@@ -59,10 +56,6 @@ export default {
   props: {
     trackTag: {
       type: Object,
-      required: true,
-    },
-    message: {
-      type: [String, undefined],
       required: true,
     },
   },

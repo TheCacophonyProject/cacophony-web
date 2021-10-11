@@ -40,52 +40,9 @@ export interface FetchResult<T> {
   status: number;
 }
 
-interface Device {
-  id: DeviceId;
-  devicename: string;
-}
-
 export interface Location {
   type: "Point" | string;
   coordinates: [number, number];
-}
-
-export interface RecordingInfo {
-  id: RecordingId;
-  type: RecordingType;
-  recordingDateTime: UtcTimestamp;
-  rawMimeType: string;
-  fileMimeType: string;
-  processingState: "FINISHED"; // Or?
-  duration: number; //seconds
-  location: Location;
-  batteryLevel: null | number;
-  DeviceId: DeviceId;
-  GroupId: GroupId;
-  StationId: StationId | null;
-  Group: {
-    groupname: string;
-  };
-  Station?: {
-    name: string;
-  };
-  Tags: Tag[];
-  Tracks: Track[];
-  Device: Device;
-
-  fileKey?: string;
-  comment?: string | null;
-  rawFileKey?: string;
-  relativeToDawn?: null;
-  relativeToDusk?: null;
-  version?: null;
-  processing: boolean | null;
-  batteryCharging?: null;
-  airplaneModeOn?: null;
-  additionalMetadata?: {
-    algorithm: number;
-    previewSecs: number;
-  };
 }
 
 export interface LimitedTrack {
@@ -112,11 +69,11 @@ type Mp4File = "string";
 type CptvFile = "string";
 export interface Recording {
   messages: [];
-  recording: RecordingInfo;
-  rawSize: number; // CPTV size
-  fileSize: number; // MP4 size
-  downloadFileJWT: JwtToken<Mp4File>;
-  downloadRawJWT: JwtToken<CptvFile>;
+  recording: ApiRecordingResponse;
+  rawSize?: number; // CPTV size
+  fileSize?: number; // MP4 size
+  downloadFileJWT?: JwtToken<Mp4File>;
+  downloadRawJWT?: JwtToken<CptvFile>;
   success: boolean;
 }
 
@@ -368,7 +325,15 @@ function queryCount(
   );
 }
 
-function id(id: RecordingId): Promise<FetchResult<Recording>> {
+function id(id: RecordingId): Promise<
+  FetchResult<{
+    recording: ApiRecordingResponse;
+    rawSize?: number; // CPTV size
+    fileSize?: number; // MP4 size
+    downloadFileJWT?: JwtToken<Mp4File>;
+    downloadRawJWT?: JwtToken<CptvFile>;
+  }>
+> {
   return CacophonyApi.get(`${apiPath}/${id}`);
 }
 

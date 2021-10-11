@@ -125,6 +125,7 @@ const mapPosition = (position: any): ApiTrackPosition => {
 };
 
 const mapPositions = (positions: any[]): ApiTrackPosition[] | undefined => {
+  // FIXME - support legacy positions
   if (positions && positions.length) {
     return positions.map(mapPosition);
   }
@@ -138,7 +139,12 @@ const mapTrack = (track: Track): ApiTrackResponse => ({
   positions: mapPositions(track.data.positions),
 });
 
-const mapTracks = (tracks: Track[]): ApiTrackResponse[] => tracks.map(mapTrack);
+const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
+  const t = tracks.map(mapTrack);
+  // Sort tracks by start time
+  t.sort((a, b) => a.start - b.start);
+  return t;
+};
 
 const mapTag = (tag: Tag): ApiRecordingTagResponse => ({
   automatic: tag.automatic,

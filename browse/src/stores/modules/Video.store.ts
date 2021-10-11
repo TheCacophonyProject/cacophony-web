@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import api from "@api";
 import store from "../index";
+import { ApiTrackResponse } from "@typedefs/api/track";
 
 const state = {
   downloadFileJWT: null,
@@ -99,7 +100,7 @@ const actions = {
       id
     );
     if (syncSuccess) {
-      commit("setTags", syncResult.recording.Tags);
+      commit("setTags", syncResult.recording.tags);
     }
   },
 
@@ -154,11 +155,12 @@ const mutations = {
     state.rawSize = rawSize;
   },
 
-  receiveTracks(state, { tracks }) {
-    tracks.sort((a, b) => a.data.start_s - b.data.start_s);
+  receiveTracks(state, { tracks }: { tracks: ApiTrackResponse[] }) {
+    // FIXME - We shouldn't need this
+    tracks.sort((a, b) => a.start - b.start);
     for (let i = 0; i < tracks.length; i++) {
-      tracks[i].trackIndex = i;
-      tracks[i].data = Object.freeze(tracks[i].data);
+      (tracks[i] as any).trackIndex = i;
+      //tracks[i] = Object.freeze(tracks[i].data);
     }
     state.tracks = tracks;
   },

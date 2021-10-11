@@ -16,11 +16,11 @@
       </h5>
       <div class="track-time" @click="trackSelected(0)">
         <span class="title">Time:</span>
-        {{ Math.max(0, track.data.start_s - adjustTimespans).toFixed(1) }} -
-        {{ (track.data.end_s - adjustTimespans).toFixed(1) }}s <br />
+        {{ Math.max(0, track.start - adjustTimespans).toFixed(1) }} -
+        {{ (track.end - adjustTimespans).toFixed(1) }}s <br />
         <span class="delta">
           (&#916;
-          {{ (track.data.end_s - track.data.start_s).toFixed(1) }}s)
+          {{ (track.end - track.start).toFixed(1) }}s)
         </span>
       </div>
       <button
@@ -35,7 +35,7 @@
     </div>
     <div v-if="show" class="card-body">
       <AIClassification
-        :tags="track.TrackTags"
+        :tags="track.tags"
         :is-wallaby-project="isWallabyProject"
         :needs-confirmation="!hasUserTags"
         :userTags="userTags"
@@ -54,7 +54,7 @@
         <em>really</em> is.
       </b-alert>
       <QuickTagTrack
-        :tags="track.TrackTags"
+        :tags="track.tags"
         :is-wallaby-project="isWallabyProject"
         @addTag="addTag($event)"
         @deleteTag="deleteTag($event)"
@@ -62,22 +62,24 @@
       <AddCustomTrackTag @addTag="addTag($event)" />
       <div v-if="isSuperUser">
         <TrackTags
-          :items="track.TrackTags"
+          :items="track.tags"
           @addTag="addTag($event)"
           @deleteTag="deleteTag($event)"
         />
-        <TrackData :track-tag="masterTag" :message="track.data.message" />
+        <TrackData :track-tag="masterTag" />
       </div>
     </div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import TrackData from "./TrackData.vue";
 import QuickTagTrack from "./QuickTagTrack.vue";
 import TrackTags from "./TrackTags.vue";
 import AddCustomTrackTag from "./AddCustomTrackTag.vue";
 import AIClassification from "./AIClassification.vue";
+import api from "@api";
+import { ApiTrackResponse } from "@typedefs/api/track";
 
 export default {
   name: "Track",
@@ -136,28 +138,27 @@ export default {
   },
   computed: {
     masterTag() {
-      return this.track.TrackTags.find((tag) => tag.data.name == "Master");
+      return (this.track as ApiTrackResponse).tags.find(
+        (tag) => tag.data.name === "Master"
+      );
     },
     trackClass() {
-      const selected = "selected-" + this.show;
-      if ("tag" in this.track.data) {
-        return selected;
-      } else {
-        return selected + " ignored";
-      }
+      return "selected-" + this.show;
     },
     iconStyle() {
       return `background-color: ${this.colour}`;
     },
     hasUserTags() {
       return (
-        this.track.TrackTags.find(({ User }) => User !== null) !== undefined
+        (this.track as ApiTrackResponse).tags.find(
+          ({ automatic }) => !automatic
+        ) !== undefined
       );
     },
     userTags() {
-      return this.track.TrackTags.filter(({ User }) => User !== null).map(
-        ({ what }) => what
-      );
+      return this.track.tags
+        .filter(({ automatic }) => !automatic)
+        .map(({ what }) => what);
     },
     isSuperUser() {
       return this.$store.state.User.userData.isSuperUser;
@@ -167,6 +168,8 @@ export default {
     addTag(tag) {
       const recordingId = this.recordingId;
       const trackId = this.track.id;
+
+      // TODO
       this.$store
         .dispatch("Video/ADD_TRACK_TAG", {
           tag,
@@ -180,16 +183,18 @@ export default {
     promptUserToAddTag() {
       this.showUserTaggingHintCountDown = true;
     },
-    deleteTag(tag) {
+    async deleteTag(tag) {
       const recordingId = this.recordingId;
-      this.$store
-        .dispatch("Video/DELETE_TRACK_TAG", {
-          tag,
-          recordingId,
-        })
-        .then(() => {
-          this.$emit("change-tag", { trackIndex: this.index, tag });
-        });
+      try {
+        const result = await api.recording.deleteTrackTag(tag, recordingId);
+        if (!result.success) {
+          // TODO
+          return result;
+        }
+      } catch (e) {
+        // TODO
+      }
+      this.$emit("change-tag", { trackIndex: this.index, tag });
     },
     trackSelected(increment) {
       const index = Math.min(

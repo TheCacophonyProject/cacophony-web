@@ -7,8 +7,8 @@
             :to="{
               name: 'device',
               params: {
-                deviceName: deviceName,
-                groupName: groupName,
+                deviceName,
+                groupName,
                 tabName: 'recordings',
               },
             }"
@@ -42,7 +42,6 @@
     <VideoRecording
       v-else-if="isVideo"
       :recording="recording"
-      :tracks="tracks"
       :video-url="fileSource"
       :video-raw-url="rawSource"
     />
@@ -64,7 +63,6 @@
 
 <script lang="ts">
 import config from "../config";
-import { mapState } from "vuex";
 import * as SunCalc from "suncalc";
 import {
   ApiAudioRecordingResponse,
@@ -72,21 +70,8 @@ import {
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { RecordingType } from "@typedefs/api/consts";
-import { ApiTrackResponse } from "@typedefs/api/track";
-
-interface RecordingViewComputed {
-  recording: () => ApiThermalRecordingResponse | ApiAudioRecordingResponse;
-  tracks: () => ApiTrackResponse[];
-  fileSource: () => string;
-  rawSource: () => string;
-  timeString: () => string;
-  dateString: () => string;
-  timeUntilDawn: () => string;
-  isVideo: () => boolean;
-  isAudio: () => boolean;
-  groupName: () => string;
-  deviceName: () => string;
-}
+import api from "@api";
+import { RecordingId } from "@typedefs/api/common";
 
 export default {
   name: "RecordingView",
@@ -101,27 +86,37 @@ export default {
       alertMessage: "",
       alertVariant: "",
       errorMessage: "",
+      recordingInternal: null,
+      downloadFileJWT: null,
+      downloadRawJWT: null,
     };
   },
   computed: {
-
-    // FIXME - Let's get rid of the use of the store here, it's not helpful.
-    ...mapState({
-      recording: (state: any): ApiRecordingResponse =>
-        state.Video.recording as ApiRecordingResponse,
-      tracks: (state: any): ApiTrackResponse[] => state.Video.tracks,
-      fileSource: (state: any) => {
-        return (
-          (state.Video.downloadFileJWT &&
-            `${config.api}/api/v1/signedUrl?jwt=${state.Video.downloadFileJWT}`) ||
-          ""
-        );
-      },
-      // TODO(jon): Api endpoint that doesn't require signedUrl etc, just uses usual auth, and we say which recording we want.
-      // Fixes issue with videos timing out on tabs that are open for a while.
-      rawSource: (state: any) =>
-        `${config.api}/api/v1/signedUrl?jwt=${state.Video.downloadRawJWT}`,
-    }),
+    fileSource(): string {
+      return (
+        (this.downloadFileJWT &&
+          `${config.api}/api/v1/signedUrl?jwt=${this.downloadFileJWT}`) ||
+        ""
+      );
+    },
+    rawSource(): string {
+      return `${config.api}/api/v1/signedUrl?jwt=${this.downloadRawJWT}`;
+    },
+    recording():
+      | ApiThermalRecordingResponse
+      | ApiAudioRecordingResponse
+      | undefined {
+      if (this.recordingInternal) {
+        if (
+          (this.recordingInternal as ApiRecordingResponse).type ===
+          RecordingType.ThermalRaw
+        ) {
+          return this.recordingInternal as ApiThermalRecordingResponse;
+        } else {
+          return this.recordingInternal as ApiAudioRecordingResponse;
+        }
+      }
+    },
     timeString(): string {
       if (this.date) {
         return this.date.toLocaleTimeString();
@@ -167,33 +162,35 @@ export default {
       );
     },
     deviceName(): string {
-      return this.recording.deviceName;
+      return (this.recording as ApiRecordingResponse).deviceName;
     },
     groupName(): string {
-      return this.recording.groupName;
+      return (this.recording as ApiRecordingResponse).groupName;
     },
-  } as RecordingViewComputed,
+  },
   watch: {
     async $route(to) {
       if (Number(to.params.id) !== this.recording.id) {
-        try {
-          await this.$store.dispatch(
-            "Video/GET_RECORDING",
-            this.$route.params.id
-          );
-        } catch (e) {
-          this.errorMessage =
-            "We couldn't find the recording you're looking for.";
-        }
+        await this.fetchRecording(to.params.id);
+      }
+    },
+  },
+  methods: {
+    async fetchRecording(id: RecordingId): Promise<void> {
+      try {
+        const {
+          result: { recording, downloadRawJWT, downloadFileJWT },
+        } = await api.recording.id(id);
+        this.recordingInternal = recording;
+        this.downloadFileJWT = downloadFileJWT;
+        this.downloadRawJWT = downloadRawJWT;
+      } catch (err) {
+        this.errorMessage = "We couldn't find the recording you're looking for.";
       }
     },
   },
   mounted: async function () {
-    try {
-      await this.$store.dispatch("Video/GET_RECORDING", this.$route.params.id);
-    } catch (err) {
-      this.errorMessage = "We couldn't find the recording you're looking for.";
-    }
+    await this.fetchRecording(this.$route.params.id);
   },
 };
 </script>
