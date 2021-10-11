@@ -162,7 +162,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.viewAsSuperUser
       );
 
-      if (request["user-agent"] === "okhttp/3.12.1") {
+      if (request["user-agent"].includes("okhttp")) {
         // Sidekick UA
         groups = mapLegacyGroupsResponse(groups);
       }

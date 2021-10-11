@@ -227,7 +227,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
-      if (request.headers["user-agent"] === "okhttp/3.12.1") {
+      if (request.headers["user-agent"].includes("okhttp")) {
         return responseUtil.send(response, {
           rows: mapLegacyDevicesResponse(
             mapDevicesResponse(
