@@ -3,12 +3,9 @@ import * as querystring from "querystring";
 import { DeviceVisitMap } from "./visits";
 import * as moment from "moment";
 import { shouldViewAsSuperUser } from "@/utils";
-import { RecordingType } from "@typedefs/api/consts";
 import {
   DeviceId,
   RecordingId,
-  GroupId,
-  StationId,
   TrackId,
   TrackTagId,
   UserId,

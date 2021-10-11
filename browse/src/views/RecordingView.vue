@@ -116,6 +116,7 @@ export default {
           return this.recordingInternal as ApiAudioRecordingResponse;
         }
       }
+      return undefined;
     },
     timeString(): string {
       if (this.date) {
@@ -185,7 +186,8 @@ export default {
         this.downloadFileJWT = downloadFileJWT;
         this.downloadRawJWT = downloadRawJWT;
       } catch (err) {
-        this.errorMessage = "We couldn't find the recording you're looking for.";
+        this.errorMessage =
+          "We couldn't find the recording you're looking for.";
       }
     },
   },
