@@ -24,15 +24,13 @@ import initialiseFileProcessingApi from "./api/fileProcessing";
 import expressWinston from "express-winston";
 import { exec } from "child_process";
 import { promisify } from "util";
-
-import { AsyncLocalStorage } from "async_hooks";
 import { v4 as uuidv4 } from "uuid";
 import { Op } from "sequelize";
 import { validationResult } from "express-validator";
+import { asyncLocalStorage } from "./Globals";
 
 export const SuperUsers: Map<number, any> = new Map();
 
-export const asyncLocalStorage = new AsyncLocalStorage();
 const asyncExec = promisify(exec);
 
 const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {

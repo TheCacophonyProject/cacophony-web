@@ -35,7 +35,7 @@ import { GroupUsersStatic } from "./GroupUsers";
 import { DeviceUsersStatic } from "./DeviceUsers";
 import { ScheduleStatic } from "./Schedule";
 import { StationStatic } from "./Station";
-import { asyncLocalStorage } from "@/Server";
+import { asyncLocalStorage } from "@/Globals";
 
 const basename = path.basename(module.filename);
 const dbConfig = config.database;

@@ -1,6 +1,6 @@
 import config from "./config";
 import winston, { format } from "winston";
-import { asyncLocalStorage } from "./Server";
+import { asyncLocalStorage } from "./Globals";
 
 export const consoleTransport = new winston.transports.Console({
   level: config.server.loggerLevel,

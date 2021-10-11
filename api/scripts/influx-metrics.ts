@@ -1,6 +1,6 @@
 import * as config from "../config";
 
-import Influx from "influx";
+import * as Influx from "influx";
 import process from "process";
 import { program } from "commander";
 import { Client } from "pg";
@@ -80,13 +80,10 @@ async function measureProcessingWaitTime(influx, pgClient) {
 }
 
 const countStates = Object.values(RecordingProcessingState).filter(
-  (state) => state != RecordingProcessingState.Finished
+  (state) =>
+    state !== RecordingProcessingState.Finished &&
+    state !== RecordingProcessingState.AnalyseTest
 ) as string[];
-countStates.push(
-  ...countStates
-    .filter((state) => state != RecordingProcessingState.Corrupt)
-    .map((state) => `${state}.failed`)
-);
 
 const stateCountMeasurement = "processing_state_count";
 
