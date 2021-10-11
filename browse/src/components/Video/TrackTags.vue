@@ -130,9 +130,9 @@ export default {
     userTagExists: function (what) {
       return this.items.find(
         (tag) =>
-          tag.User &&
-          tag.what == what &&
-          tag.User.username == this.$store.state.User.userData.username
+          !tag.automatic &&
+          tag.what === what &&
+          tag.userName === this.$store.state.User.userData.username
       );
     },
     confirmTag: function (rowItem) {

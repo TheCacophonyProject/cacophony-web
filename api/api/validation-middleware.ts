@@ -5,6 +5,7 @@ import { oneOf, Result, ValidationChain } from "express-validator";
 import { expectedTypeOf } from "./middleware";
 import { Middleware } from "express-validator/src/base";
 import { extractValFromRequest } from "./extract-middleware";
+import logging from "@log";
 
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
@@ -31,6 +32,11 @@ export const checkDeviceNameIsUniqueInGroup =
 export const idOf = (field: ValidationChain): ValidationChain =>
   field.exists().isInt().toInt().withMessage(expectedTypeOf("integer"));
 
+export const deprecatedField = (field: ValidationChain): ValidationChain => {
+  (field.builder as any).deprecated = true;
+  return field;
+};
+
 export const integerOf = idOf;
 
 export const nameOf = (field: ValidationChain): ValidationChain =>
@@ -53,24 +59,62 @@ export const validPasswordOf = (field: ValidationChain): ValidationChain =>
 export const booleanOf = (field: ValidationChain): ValidationChain =>
   field.isBoolean().toBoolean().withMessage(expectedTypeOf("boolean"));
 
+type AnyOf = Middleware & { run: (req: Request) => Promise<Result> };
 // Wrapping 'oneOf' with a useful error message.
 export const anyOf = (
-  ...fields: ValidationChain[] | ValidationChain[][]
-): Middleware & { run: (req: Request) => Promise<Result> } => {
-  if (Array.isArray(fields[0])) {
+  ...fields:
+    | (ValidationChain | AnyOf | AnyOf[])[]
+    | (ValidationChain | AnyOf | AnyOf[])[][]
+): AnyOf => {
+  if (fields.length === 1 && Array.isArray(fields[0])) {
     fields = fields[0];
   }
-  const fieldNames = (fields as ValidationChain[]).reduce((fields, rule) => {
-    if (rule.builder) {
-      // @ts-ignore - Accessing private field
-      for (const field of rule.builder.fields) {
-        if (!fields.includes(field)) {
-          fields.push(field);
+
+  // Extracting all the field names from various combinations of nested anyOf calls.
+  const fieldNames = [];
+  for (const field of fields) {
+    if (Array.isArray(field)) {
+      for (const subField of field) {
+        // Check to see if this is a ValidationChain or another anyOf
+        if ((subField as any).isOneOf) {
+          // process children
+          for (const fieldName of (subField as any).fieldNames) {
+            if (!fieldNames.includes(fieldName)) {
+              fieldNames.push(fieldName);
+            }
+          }
+        } else {
+          // Get name from field.
+          if ((subField as ValidationChain).builder) {
+            // @ts-ignore - Accessing private field
+            const subFields = (subField as ValidationChain).builder.fields;
+            for (const fieldName of subFields) {
+              if (!fieldNames.includes(fieldName)) {
+                fieldNames.push(fieldName);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      if ((field as ValidationChain).builder) {
+        // @ts-ignore - Accessing private field
+        const fields = (field as ValidationChain).builder.fields;
+        for (const fieldName of fields) {
+          if (!fieldNames.includes(fieldName)) {
+            fieldNames.push(fieldName);
+          }
+        }
+      } else if ((field as any).isOneOf) {
+        for (const fieldName of (field as any).fieldNames) {
+          if (!fieldNames.includes(fieldName)) {
+            fieldNames.push(fieldName);
+          }
         }
       }
     }
-    return fields;
-  }, []);
+  }
+
   let message;
   if (fieldNames.length === 1) {
     message = `Missing required field '${fieldNames[0]}'`;
@@ -79,9 +123,9 @@ export const anyOf = (
   } else {
     message = `Expected one of ${fieldNames.map((f) => `'${f}'`).join(", ")}`;
   }
-  const oneOfChain = oneOf(fields, message);
+  const oneOfChain = oneOf(fields as ValidationChain[], message);
   // Make the fieldNames available so that they can be added to the list of known allowed field names
-  Object.assign(oneOfChain, { fieldNames });
+  Object.assign(oneOfChain, { fieldNames, isOneOf: true });
   return oneOfChain;
 };
 

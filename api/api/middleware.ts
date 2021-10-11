@@ -584,9 +584,13 @@ export const validateFields = (
         }
       }
     } else {
-      await Promise.all(
-        validations.map((validation) => validation.run(request))
-      );
+      // FIXME - Properly handle nested anyOf groupings.
+      const validationPromises = [];
+      for (const validation of validations) {
+        validationPromises.push(validation.run(request));
+      }
+      const results = await Promise.all(validationPromises);
+      // log.warning("Results %s", results);
     }
 
     const { unknownFields, suggestions } = checkForUnknownFields(

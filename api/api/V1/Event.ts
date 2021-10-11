@@ -35,7 +35,13 @@ import EventDatesSchema from "@schemas/api/event/EventDates.schema.json";
 import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json";
 import { EventDescription } from "@typedefs/api/event";
 import logger from "@log";
-import { booleanOf, anyOf, idOf, integerOf } from "../validation-middleware";
+import {
+  booleanOf,
+  anyOf,
+  idOf,
+  integerOf,
+  deprecatedField,
+} from "../validation-middleware";
 import { ClientError } from "../customErrors";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -88,6 +94,7 @@ const uploadEvent = async (
 // TODO(jon): Consider whether extracting this is worth it compared with just
 //  duplicating and having things be explicit in each api endpoint?
 const commonEventFields = [
+  deprecatedField(body("Timestamp")),
   anyOf(
     idOf(body("eventDetailId")),
     body("description")

@@ -5,7 +5,7 @@
         <CptvPlayer
           :cptv-url="videoRawUrl"
           :cptv-size="rawSize"
-          :tracks="tracks"
+          :tracks="mapTracks(tracks)"
           :user-files="false"
           :recording-id="recording.id"
           :known-duration="recording.duration"
@@ -112,10 +112,6 @@ export default {
       type: String,
       required: true,
     },
-    tracks: {
-      type: Array,
-      required: true,
-    },
   },
   data() {
     return {
@@ -144,6 +140,11 @@ export default {
         }
       }
       return 0;
+    },
+    tracks() {
+      return (
+        this.recording && (this.recording as ApiThermalRecordingResponse).tracks
+      );
     },
     processingCompleted() {
       return (
@@ -383,6 +384,14 @@ export default {
         comment,
         recordingId,
       });
+    },
+    mapTracks(tracks: ApiTrackResponse[]) {
+      // FIXME - Update CptvPlayer to not need this mapping
+      return tracks.map(({ start, end, positions, tags, ...rest }) => ({
+        data: { start_s: start, end_s: end, positions },
+        TrackTags: tags,
+        ...rest,
+      }));
     },
   },
 };

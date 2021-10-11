@@ -40,6 +40,7 @@ import {
   nameOf,
   nameOrIdOf,
   validNameOf,
+  deprecatedField,
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
@@ -60,6 +61,14 @@ const mapGroup = (
   }
   return groupData;
 };
+
+export const mapLegacyGroupsResponse = (groups: ApiGroupResponse[]) =>
+  groups.map(({ groupName, ...rest }) => ({
+    groupname: groupName,
+    groupName,
+    ...rest,
+  }));
+
 const mapGroups = (
   groups: Group[],
   viewAsSuperAdmin: boolean
@@ -142,16 +151,25 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     apiUrl,
     extractJwtAuthorizedUser,
-    validateFields([query("view-mode").optional().equals("user")]),
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      deprecatedField(query("where")), // Sidekick
+    ]),
     fetchAuthorizedRequiredGroups,
     async (request: Request, response: Response) => {
-      const groups: ApiGroupResponse[] = mapGroups(
+      let groups: ApiGroupResponse[] = mapGroups(
         response.locals.groups,
         response.locals.viewAsSuperUser
       );
+
+      if (request["user-agent"] === "okhttp/3.12.1") {
+        // Sidekick UA
+        groups = mapLegacyGroupsResponse(groups);
+      }
+
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: [],
+        messages: [], // FIXME - handle deprecated field.
         groups,
       });
     }

@@ -23,6 +23,7 @@ import responseUtil from "./responseUtil";
 import { Application, Response, Request, NextFunction } from "express";
 import {
   anyOf,
+  deprecatedField,
   idOf,
   validNameOf,
   validPasswordOf,
@@ -30,6 +31,7 @@ import {
 import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
 import { Device } from "models/Device";
 import { ClientError } from "../customErrors";
+import logging from "@log";
 
 export default function (app: Application) {
   /**
@@ -51,34 +53,57 @@ export default function (app: Application) {
     "/authenticate_device",
     validateFields([
       validPasswordOf(body("password")),
-
-      // FIXME - is this correct for all variations?
+      // FIXME - Make nested anyOf work properly with error messages etc.
+      //anyOf(
+      //  [
       anyOf(
-        validNameOf(body("devicename")).optional(),
+        deprecatedField(validNameOf(body("devicename"))).optional(),
         validNameOf(body("deviceName")).optional()
       ),
       anyOf(
-        validNameOf(body("groupname")).optional(),
+        deprecatedField(validNameOf(body("groupname"))).optional(),
         validNameOf(body("groupName")).optional()
       ),
+      //  ],
       anyOf(
         idOf(body("deviceId")).optional(),
-        idOf(body("deviceID")).optional()
+        deprecatedField(idOf(body("deviceID"))).optional()
       ),
+      // ),
     ]),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const b = request.body;
+      if ((b.deviceName || b.devicename) && (b.groupName || b.groupname)) {
+        next();
+      } else if (b.deviceId || b.deviceID) {
+        next();
+      } else {
+        next(
+          new ClientError(
+            "Either a deviceName and groupName is required, or a deviceId"
+          )
+        );
+      }
+    },
     extractUnauthenticatedOptionalDeviceInGroup(
       body(["devicename", "deviceName", "deviceId", "deviceID"]),
       body(["groupname", "groupName"])
     ),
     (request: Request, response: Response, next: NextFunction) => {
+      logging.warning("Referrer %s", request.headers);
       if (!response.locals.device) {
-        return next(
-          // FIXME - better message if it's only a deviceId
-          new ClientError(
-            "Device not found for supplied deviceName and groupName",
-            401
-          )
-        );
+        if (request.body.deviceId || request.body.deviceID) {
+          return next(
+            new ClientError("Device not found for supplied deviceId", 401)
+          );
+        } else {
+          return next(
+            new ClientError(
+              "Device not found for supplied deviceName and groupName",
+              401
+            )
+          );
+        }
       }
       next();
     },
