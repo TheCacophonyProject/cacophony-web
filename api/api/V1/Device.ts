@@ -143,12 +143,15 @@ export default function (app: Application, baseUrl: string) {
       });
       if (request.body.saltId) {
         const existingSaltId = await models.Device.findOne({
-          where: { saltId: request.body.saltId },
+          where: {
+            saltId: request.body.saltId,
+            active: true
+          },
         });
         if (existingSaltId !== null) {
           return next(
             new ClientError(
-              `saltId ${request.body.saltId} is already in use by another device`
+              `saltId ${request.body.saltId} is already in use by another active device`
             )
           );
         }
