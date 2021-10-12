@@ -42,7 +42,10 @@ import { Tag } from "./Tag";
 import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
 import { Station, StationId } from "./Station";
-import { tryToMatchRecordingToStation } from "@api/V1/recordingUtil";
+import {
+  mapPositions,
+  tryToMatchRecordingToStation,
+} from "@api/V1/recordingUtil";
 import { GroupId, RecordingId, UserId, TrackId } from "@typedefs/api/common";
 import {
   RecordingPermission,
@@ -52,7 +55,6 @@ import {
   AcceptableTag,
 } from "@typedefs/api/consts";
 import { DeviceBatteryChargeState } from "@typedefs/api/device";
-import { mapPositions } from "@api/V1/Recording";
 
 type SqlString = string;
 

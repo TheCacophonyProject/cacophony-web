@@ -67,6 +67,7 @@ import {
   TagMode,
 } from "@typedefs/api/consts";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { ApiTrackPosition } from "@typedefs/api/track";
 
 let CptvDecoder;
 (async () => {
@@ -1647,6 +1648,27 @@ export const finishedProcessingRecording = async (
     await sendAlerts(recording.id);
   }
 };
+
+// Mapping
+const mapPosition = (position: any): ApiTrackPosition => {
+  return {
+    x: position.x,
+    y: position.y,
+    width: position.width,
+    height: position.height,
+    frameNumber: position.frame_number,
+  };
+};
+
+export const mapPositions = (
+    positions: any[]
+): ApiTrackPosition[] | undefined => {
+  // FIXME - support legacy positions
+  if (positions && positions.length) {
+    return positions.map(mapPosition);
+  }
+};
+
 
 export default {
   query,
