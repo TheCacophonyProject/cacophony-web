@@ -582,43 +582,45 @@ describe("Recordings (thermal): add, get, delete", () => {
     let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log("Rename/reregister device");
-    cy.apiDeviceReregister("raCamera1", "raCamera1-renamed", "raGroup").then(() => {
-      cy.log("Add recording as device member");
-      cy.apiRecordingAddOnBehalfUsingDevice(
-        "raDeviceMember",
-        "raCamera1",
-        recording1,
-        "raRecording1"
-      ).then(() => {
-        expectedRecording1 = TestCreateExpectedRecordingData(
-          templateExpectedRecording,
-          "raRecording1",
+    cy.apiDeviceReregister("raCamera1", "raCamera1-renamed", "raGroup").then(
+      () => {
+        cy.log("Add recording as device member");
+        cy.apiRecordingAddOnBehalfUsingDevice(
+          "raDeviceMember",
           "raCamera1",
-          "raGroup",
-          null,
-          recording1
-        );
-        cy.log("Check recording can be viewed correctly");
+          recording1,
+          "raRecording1"
+        ).then(() => {
+          expectedRecording1 = TestCreateExpectedRecordingData(
+            templateExpectedRecording,
+            "raRecording1",
+            "raCamera1",
+            "raGroup",
+            null,
+            recording1
+          );
+          cy.log("Check recording can be viewed correctly");
+          cy.apiRecordingCheck(
+            "raDeviceMember",
+            "raRecording1",
+            expectedRecording1,
+            EXCLUDE_IDS
+          );
+        });
+
+        cy.log("Delete recording");
+        cy.apiRecordingDelete("raDeviceMember", "raRecording1");
+
+        cy.log("Check recording no longer exists");
         cy.apiRecordingCheck(
           "raDeviceMember",
           "raRecording1",
-          expectedRecording1,
-          EXCLUDE_IDS
+          undefined,
+          [],
+          HTTP_Forbidden
         );
-      });
-
-      cy.log("Delete recording");
-      cy.apiRecordingDelete("raDeviceMember", "raRecording1");
-
-      cy.log("Check recording no longer exists");
-      cy.apiRecordingCheck(
-        "raDeviceMember",
-        "raRecording1",
-        undefined,
-        [],
-        HTTP_Forbidden
-      );
-    });
+      }
+    );
   });
 
   it("Group member can add recordings by device on behalf - for inactive device", () => {
@@ -626,7 +628,11 @@ describe("Recordings (thermal): add, get, delete", () => {
     let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log("Rename/reregister device");
-    cy.apiDeviceReregister("raCamera1-renamed", "raCamera1-renamed2", "raGroup").then(() => {
+    cy.apiDeviceReregister(
+      "raCamera1-renamed",
+      "raCamera1-renamed2",
+      "raGroup"
+    ).then(() => {
       cy.log("Add recording as group member");
       cy.apiRecordingAddOnBehalfUsingDevice(
         "raGroupMember",
