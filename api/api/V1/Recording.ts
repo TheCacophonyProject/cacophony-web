@@ -67,7 +67,7 @@ import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingRespo
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
 import { Validator } from "jsonschema";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
+import { ApiTrackResponse } from "@typedefs/api/track";
 import { Tag } from "@models/Tag";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import {

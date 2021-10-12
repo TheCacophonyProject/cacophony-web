@@ -425,11 +425,9 @@ export function TestCreateExpectedNeedsTagData(
   expected.tracks = [];
   inputRecording.metadata.tracks.forEach((track: any) => {
     expected.tracks.push({
-      TrackId: NOT_NULL,
-      data: {
-        start_s: track.start_s,
-        end_s: track.end_s,
-      },
+      trackId: NOT_NULL,
+      start: track.start_s,
+      end: track.end_s,
       needsTagging: true,
     });
   });
