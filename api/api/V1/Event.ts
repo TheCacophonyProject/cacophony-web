@@ -257,6 +257,7 @@ export default function (app: Application, baseUrl: string) {
       integerOf(query("limit")).optional(),
       query("type").matches(EVENT_TYPE_REGEXP).optional(),
       booleanOf(query("latest")).optional(),
+      query("only-active").optional().isBoolean().toBoolean()
     ]),
     // Extract required resources
     fetchAuthorizedOptionalDeviceById(query("deviceId")),
@@ -366,6 +367,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(query("deviceId")).optional(),
       integerOf(query("offset")).optional(),
       integerOf(query("limit")).optional(),
+      query("only-active").optional().isBoolean().toBoolean()
     ]),
     // Extract required resources
     fetchAuthorizedOptionalDeviceById(query("deviceId")),
@@ -437,6 +439,7 @@ export default function (app: Application, baseUrl: string) {
         .optional()
         .toInt()
         .withMessage(expectedTypeOf("integer")),
+      query("only-active").optional().isBoolean().toBoolean()
     ]),
     // Extract required resources
     fetchAuthorizedOptionalDeviceById(query("deviceId")),
