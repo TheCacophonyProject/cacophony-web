@@ -193,7 +193,12 @@ export default function (app: Application, baseUrl: string) {
     // Validate session
     extractJwtAuthorizedUser,
     // Validate fields
-    validateFields([idOf(param("deviceId")), ...commonEventFields]),
+    validateFields([
+      idOf(param("deviceId")),
+      ...commonEventFields,
+      // Default to also allowing inactive devices to have uploads on their behalf
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -252,6 +257,7 @@ export default function (app: Application, baseUrl: string) {
       integerOf(query("limit")).optional(),
       query("type").matches(EVENT_TYPE_REGEXP).optional(),
       booleanOf(query("latest")).optional(),
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     // Extract required resources
     fetchAuthorizedOptionalDeviceById(query("deviceId")),
@@ -361,6 +367,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(query("deviceId")).optional(),
       integerOf(query("offset")).optional(),
       integerOf(query("limit")).optional(),
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     // Extract required resources
     fetchAuthorizedOptionalDeviceById(query("deviceId")),
@@ -432,6 +439,7 @@ export default function (app: Application, baseUrl: string) {
         .optional()
         .toInt()
         .withMessage(expectedTypeOf("integer")),
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     // Extract required resources
     fetchAuthorizedOptionalDeviceById(query("deviceId")),

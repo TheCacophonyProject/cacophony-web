@@ -581,7 +581,15 @@ const getRecordingRelationships = (recordingQuery: any): any => {
   recordingQuery.include.push({
     model: models.Tag,
     // FIXME - Work out what other attributes to return here.
-    attributes: ["id", "what", "detail", "taggerId"],
+    attributes: [
+      "id",
+      "what",
+      "detail",
+      "taggerId",
+      "automatic",
+      "confidence",
+      "createdAt",
+    ],
     include: [
       {
         model: models.User,

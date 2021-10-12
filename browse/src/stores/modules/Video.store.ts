@@ -16,7 +16,7 @@ const state = {
 
 const getters = {
   getTagItems(state) {
-    const tags = (state.recording && state.recording.Tags) || [];
+    const tags = (state.recording && state.recording.tags) || [];
     const tagItems = [];
     tags.map((tag) => {
       const tagItem: any = {};

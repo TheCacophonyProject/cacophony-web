@@ -52,6 +52,7 @@ import {
   AcceptableTag,
 } from "@typedefs/api/consts";
 import { DeviceBatteryChargeState } from "@typedefs/api/device";
+import { mapPositions } from "@api/V1/Recording";
 
 type SqlString = string;
 
@@ -701,13 +702,12 @@ from (
         acc.recordingDateTime = item.recordingDateTime;
         acc.duration = item.duration;
         acc.tracks.push({
-          TrackId: item.TrackId,
-          data: {
-            start_s: item.TrackData.start_s,
-            end_s: item.TrackData.end_s,
-            positions: item.TrackData.positions,
-            num_frames: item.TrackData.num_frames,
-          },
+          trackId: item.TrackId,
+          id: item.TrackId,
+          start: item.TrackData.start_s,
+          end: item.TrackData.end_s,
+          positions: mapPositions(item.TrackData.positions),
+          numFrames: item.TrackData.num_frames,
           needsTagging: item.TaggedBy !== false,
         });
         return acc;

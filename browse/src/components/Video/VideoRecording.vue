@@ -4,7 +4,7 @@
       <b-col cols="12" lg="8">
         <CptvPlayer
           :cptv-url="videoRawUrl"
-          :cptv-size="rawSize"
+          :cptv-size="videoRawSize"
           :tracks="tracks"
           :user-files="false"
           :recording-id="recording.id"
@@ -78,7 +78,6 @@
 
 <script lang="ts">
 /* eslint-disable no-console */
-import { mapState } from "vuex";
 import PrevNext from "./PrevNext.vue";
 import RecordingControls from "./RecordingControls.vue";
 import TrackInfo from "./Track.vue";
@@ -112,6 +111,10 @@ export default {
       type: String,
       required: true,
     },
+    videoRawSize: {
+      type: Number,
+      required: true,
+    },
   },
   data() {
     return {
@@ -127,12 +130,30 @@ export default {
     };
   },
   computed: {
-    ...mapState({
-      tagItems() {
-        return this.$store.getters["Video/getTagItems"];
-      },
-      rawSize: (state) => (state as any).Video.rawSize,
-    }),
+    tagItems() {
+      const tags = (this.recording && this.recording.tags) || [];
+      const tagItems = [];
+      tags.map((tag) => {
+        const tagItem: any = {};
+        if (tag.what) {
+          tagItem.what = tag.what;
+        }
+        tagItem.detail = tag.detail;
+        if (tag.confidence) {
+          tagItem.confidence = tag.confidence.toFixed(2);
+        }
+        if (tag.automatic) {
+          tagItem.who = "Cacophony AI";
+          tagItem["_rowVariant"] = "warning";
+        } else {
+          tagItem.who = tag.tagger ? tag.tagger.username : "-";
+        }
+        tagItem.when = new Date(tag.createdAt).toLocaleString();
+        tagItem.tag = tag;
+        tagItems.push(tagItem);
+      });
+      return tagItems;
+    },
     timespanAdjustment() {
       if (this.header) {
         if (this.header.hasBackgroundFrame) {
