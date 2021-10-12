@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { Application, NextFunction, Request, Response } from "express";
 import { validateFields } from "../middleware";
 import recordingUtil, {
+  mapPositions,
   reportRecordings,
   reportVisits,
   signedToken,
@@ -114,24 +115,7 @@ const mapTrackTags = (
 ): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] =>
   trackTags.map(mapTrackTag);
 
-const mapPosition = (position: any): ApiTrackPosition => {
-  return {
-    x: position.x,
-    y: position.y,
-    width: position.width,
-    height: position.height,
-    frameNumber: position.frame_number,
-  };
-};
 
-export const mapPositions = (
-  positions: any[]
-): ApiTrackPosition[] | undefined => {
-  // FIXME - support legacy positions
-  if (positions && positions.length) {
-    return positions.map(mapPosition);
-  }
-};
 
 const mapTrack = (track: Track): ApiTrackResponse => ({
   id: track.id,
