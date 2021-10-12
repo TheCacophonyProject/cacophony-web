@@ -76,7 +76,7 @@ export default function (
 
   //add or replace a tag, such that this track only has 1 animal tag by this user
   //and no duplicate tags
-  Track.prototype.replaceTag = async function (tag: TrackTag) {
+  Track.prototype.replaceTag = async function (tag: TrackTag): Promise<TrackTag | void> {
     const trackId = this.id;
     return sequelize.transaction(async function (t) {
       const trackTags = await models.TrackTag.findAll({
