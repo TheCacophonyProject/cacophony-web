@@ -142,6 +142,9 @@ export default function (app: Application, baseUrl: string) {
         GroupId: response.locals.group.id,
       });
       if (request.body.saltId) {
+        /*
+        NOTE: We decided not to use this check, since damage caused by someone
+        spamming us with in-use saltIds is minimal.
         const existingSaltId = await models.Device.findOne({
           where: {
             saltId: request.body.saltId,
@@ -155,6 +158,7 @@ export default function (app: Application, baseUrl: string) {
             )
           );
         }
+        */
         await device.update({ saltId: request.body.saltId });
       } else {
         await device.update({ saltId: device.id });

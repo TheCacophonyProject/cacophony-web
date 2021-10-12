@@ -320,6 +320,9 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       validNameOf(param("groupName")),
       validNameOf(param("deviceName")),
+
+      // Default to also allowing inactive devices to have uploads on their behalf
+      booleanOf(query("only-active")).default(false)
     ]),
     fetchAuthorizedRequiredDeviceInGroup(
       param("deviceName"),
