@@ -46,6 +46,7 @@ import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
 import { Group } from "models/Group";
 import { ApiGroupResponse } from "@typedefs/api/group";
+import logging from "@log";
 
 const mapGroup = (
   group: Group,
@@ -161,8 +162,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.groups,
         response.locals.viewAsSuperUser
       );
-
-      if (request["user-agent"] === "okhttp/3.12.1") {
+      if (request.headers["user-agent"].includes("okhttp")) {
         // Sidekick UA
         groups = mapLegacyGroupsResponse(groups);
       }

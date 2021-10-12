@@ -142,16 +142,23 @@ export default function (app: Application, baseUrl: string) {
         GroupId: response.locals.group.id,
       });
       if (request.body.saltId) {
+        /*
+        NOTE: We decided not to use this check, since damage caused by someone
+        spamming us with in-use saltIds is minimal.
         const existingSaltId = await models.Device.findOne({
-          where: { saltId: request.body.saltId },
+          where: {
+            saltId: request.body.saltId,
+            active: true
+          },
         });
         if (existingSaltId !== null) {
           return next(
             new ClientError(
-              `saltId ${request.body.saltId} is already in use by another device`
+              `saltId ${request.body.saltId} is already in use by another active device`
             )
           );
         }
+        */
         await device.update({ saltId: request.body.saltId });
       } else {
         await device.update({ saltId: device.id });
@@ -227,7 +234,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
-      if (request.headers["user-agent"] === "okhttp/3.12.1") {
+      if (request.headers["user-agent"].includes("okhttp")) {
         return responseUtil.send(response, {
           rows: mapLegacyDevicesResponse(
             mapDevicesResponse(

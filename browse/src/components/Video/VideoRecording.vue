@@ -5,7 +5,7 @@
         <CptvPlayer
           :cptv-url="videoRawUrl"
           :cptv-size="rawSize"
-          :tracks="mapTracks(tracks)"
+          :tracks="tracks"
           :user-files="false"
           :recording-id="recording.id"
           :known-duration="recording.duration"
@@ -384,14 +384,6 @@ export default {
         comment,
         recordingId,
       });
-    },
-    mapTracks(tracks: ApiTrackResponse[]) {
-      // FIXME - Update CptvPlayer to not need this mapping
-      return tracks.map(({ start, end, positions, tags, ...rest }) => ({
-        data: { start_s: start, end_s: end, positions },
-        TrackTags: tags,
-        ...rest,
-      }));
     },
   },
 };

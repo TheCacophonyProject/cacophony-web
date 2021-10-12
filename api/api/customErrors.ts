@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import log from "../logging";
 import { format } from "util";
-import { asyncLocalStorage } from "../Server";
+import { asyncLocalStorage } from "@/Globals";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function errorHandler(err: Error, request, response, next) {
@@ -35,14 +35,17 @@ function errorHandler(err: Error, request, response, next) {
   }
   if (err instanceof CustomError) {
     log.warning(err.toString());
+    const error = err.toJson();
+    delete error.message;
     return response.status(err.statusCode).json({
-      ...err.toJson(),
+      messages: [err.message],
+      ...error,
       requestId,
     });
   }
   log.error("%s, %s", err.toString(), err.stack);
   response.status(500).json({
-    message: `Internal server error: ${err.name}: ${err.message}.`,
+    messages: [`Internal server error: ${err.name}: ${err.message}.`],
     errorType: "server",
     requestId,
   });

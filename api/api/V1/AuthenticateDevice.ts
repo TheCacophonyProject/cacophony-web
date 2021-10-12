@@ -31,7 +31,6 @@ import {
 import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
 import { Device } from "models/Device";
 import { ClientError } from "../customErrors";
-import logging from "@log";
 
 export default function (app: Application) {
   /**
@@ -90,7 +89,6 @@ export default function (app: Application) {
       body(["groupname", "groupName"])
     ),
     (request: Request, response: Response, next: NextFunction) => {
-      logging.warning("Referrer %s", request.headers);
       if (!response.locals.device) {
         if (request.body.deviceId || request.body.deviceID) {
           return next(

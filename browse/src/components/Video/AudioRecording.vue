@@ -57,12 +57,13 @@
   </b-container>
 </template>
 
-<script>
+<script lang="ts">
 import api from "@api";
 import { mapState } from "vuex";
 import BasicTags from "../Audio/BasicTags.vue";
 import CustomTags from "../Audio/CustomTags.vue";
 import TagList from "../Audio/TagList.vue";
+import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 
 export default {
   name: "AudioRecording",
@@ -95,32 +96,35 @@ export default {
         return result;
       },
     }),
+    audioRecording(): ApiAudioRecordingResponse {
+      return this.recording;
+    },
   },
   methods: {
     async gotoNextRecording(direction) {
       if (await this.getNextRecording(direction)) {
         this.deleteDisabled = false;
         this.$router.push({
-          path: `/recording/${this.recording.id}`,
+          path: `/recording/${this.audioRecording.id}`,
         });
       }
     },
     async getNextRecording(direction, skipMessage) {
-      let where = {
-        DeviceId: this.recording.Device.id,
+      let where: any = {
+        DeviceId: this.audioRecording.deviceId,
       };
 
       let order;
       switch (direction) {
         case "next":
           where.recordingDateTime = {
-            $gt: this.recording.recordingDateTime,
+            $gt: this.audioRecording.recordingDateTime,
           };
           order = "ASC";
           break;
         case "previous":
           where.recordingDateTime = {
-            $lt: this.recording.recordingDateTime,
+            $lt: this.audioRecording.recordingDateTime,
           };
           order = "DESC";
           break;
