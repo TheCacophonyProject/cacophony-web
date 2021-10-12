@@ -193,7 +193,12 @@ export default function (app: Application, baseUrl: string) {
     // Validate session
     extractJwtAuthorizedUser,
     // Validate fields
-    validateFields([idOf(param("deviceId")), ...commonEventFields]),
+    validateFields([
+        idOf(param("deviceId")),
+      ...commonEventFields,
+      // Default to also allowing inactive devices to have uploads on their behalf
+      query("only-active").default(false).isBoolean().toBoolean()
+    ]),
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
     async (request: Request, response: Response, next: NextFunction) => {
