@@ -32,9 +32,15 @@ export interface UserDetails {
   admin: boolean;
 }
 
-function getDevices(): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
+function getDevices(
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
-    `/api/v1/devices${shouldViewAsSuperUser() ? "" : "?view-mode=user"}`
+    `/api/v1/devices${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
   );
 }
 
@@ -46,10 +52,13 @@ function getUsers(
 
 function getDevice(
   groupName: string,
-  deviceName: string
+  deviceName: string,
+  activeAndInactive: boolean = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceName}/in-group/${groupName}`
+    `/api/v1/devices/${deviceName}/in-group/${groupName}?only-active=${
+      activeAndInactive ? "false" : "true"
+    }`
   );
 }
 

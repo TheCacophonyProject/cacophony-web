@@ -12,21 +12,6 @@ import {
 } from "@typedefs/api/common";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 
-export default {
-  query,
-  queryVisits,
-  queryCount,
-  id,
-  comment,
-  del,
-  tracks,
-  addTrackTag,
-  deleteTrackTag,
-  replaceTrackTag,
-  makeApiQuery,
-  latestForDevice,
-};
-
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
 export type JwtToken<T> = string;
 type UtcTimestamp = string;
@@ -401,15 +386,22 @@ function deleteTrackTag(
 }
 
 interface RecordingToTag {
-  id: RecordingId;
-  deviceId: DeviceId;
+  RecordingId: RecordingId;
+  DeviceId: DeviceId;
   tracks: Track[];
+  duration: number;
+  fileKey: string;
+  fileMimeType: string;
+  recordingDateTime: string;
+  recordingJWT: string;
+  tagJWT: string;
+  fileSize: number;
 }
 
 // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
-const needsTag = async (
+export const needsTag = async (
   biasToDeviceId?: DeviceId
-): Promise<FetchResult<RecordingToTag>> => {
+): Promise<FetchResult<QueryResult<RecordingToTag>>> => {
   let requestUri = `${apiPath}/needs-tag`;
   if (biasToDeviceId != null) {
     requestUri += `?deviceId=${biasToDeviceId}`;
@@ -441,3 +433,19 @@ export function latestForDevice(deviceId: number) {
     device: [deviceId],
   });
 }
+
+export default {
+  query,
+  queryVisits,
+  queryCount,
+  id,
+  comment,
+  del,
+  tracks,
+  addTrackTag,
+  deleteTrackTag,
+  replaceTrackTag,
+  makeApiQuery,
+  needsTag,
+  latestForDevice,
+};

@@ -145,7 +145,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       param("deviceId").isInt().toInt(),
       query("view-mode").optional().equals("user"),
-      query("only-active").optional().isBoolean().toBoolean()
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request, response) => {

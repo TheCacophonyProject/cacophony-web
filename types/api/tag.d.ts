@@ -1,4 +1,4 @@
-import { RecordingId, TagId, UserId } from "./common";
+import { IsoFormattedDateString, RecordingId, TagId, UserId } from "./common";
 import { AcceptableTag } from "./consts";
 
 export interface ApiRecordingTagRequest {
@@ -15,7 +15,9 @@ export interface ApiRecordingTagResponse {
   confidence: number;
   recordingId?: RecordingId;
   taggerId?: UserId;
+  taggerName?: string;
   what?: AcceptableTag;
   automatic?: boolean;
   version?: number;
+  createdAt?: IsoFormattedDateString;
 }

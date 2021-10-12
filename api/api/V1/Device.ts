@@ -295,7 +295,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
       nameOf(param("deviceName")),
-      query("only-active").optional().isBoolean().toBoolean()
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceInGroup(
       param("deviceName"),
@@ -341,8 +341,8 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractJwtAuthorizedUser,
     validateFields([
-        idOf(query("deviceId")),
-      query("only-active").optional().isBoolean().toBoolean()
+      idOf(query("deviceId")),
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     // Should this require admin access to the device?
     fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
@@ -398,7 +398,7 @@ export default function (app: Application, baseUrl: string) {
       booleanOf(body("admin")),
 
       // In theory we may want to be able to add a user to an inactive device
-      query("only-active").optional().isBoolean().toBoolean()
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchUnauthorizedOptionalUserById(body("userId")),
     fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
@@ -451,7 +451,7 @@ export default function (app: Application, baseUrl: string) {
         nameOf(body("userName")),
         idOf(body("userId"))
       ),
-      query("only-active").optional().isBoolean().toBoolean()
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchUnauthorizedOptionalUserById(body("userId")),
     fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
@@ -506,7 +506,7 @@ export default function (app: Application, baseUrl: string) {
       nameOf(body("newGroup")),
       validNameOf(body("newName")),
       validPasswordOf(body("newPassword")),
-        // NOTE: Reregister only works on currently active devices
+      // NOTE: Reregister only works on currently active devices
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
@@ -558,7 +558,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
-      query("only-active").optional().isBoolean().toBoolean()
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -600,7 +600,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
-      query("only-active").optional().isBoolean().toBoolean()
+      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {

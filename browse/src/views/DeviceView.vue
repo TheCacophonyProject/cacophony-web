@@ -128,7 +128,8 @@ export default {
         });
         const { result } = await api.device.getDevice(
           this.groupName,
-          this.deviceName
+          this.deviceName,
+          true
         );
         this.device = result.device;
         await this.getSoftwareDetails(this.device.id);

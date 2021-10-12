@@ -44,6 +44,7 @@
       :recording="recording"
       :video-url="fileSource"
       :video-raw-url="rawSource"
+      :video-raw-size="rawSize"
     />
   </b-container>
   <b-container v-else class="message-container">
@@ -89,6 +90,8 @@ export default {
       recordingInternal: null,
       downloadFileJWT: null,
       downloadRawJWT: null,
+      rawSize: 0,
+      fileSize: 0,
     };
   },
   computed: {
@@ -180,11 +183,19 @@ export default {
     async fetchRecording(id: RecordingId): Promise<void> {
       try {
         const {
-          result: { recording, downloadRawJWT, downloadFileJWT },
+          result: {
+            recording,
+            downloadRawJWT,
+            downloadFileJWT,
+            rawSize,
+            fileSize,
+          },
         } = await api.recording.id(id);
         this.recordingInternal = recording;
         this.downloadFileJWT = downloadFileJWT;
         this.downloadRawJWT = downloadRawJWT;
+        this.rawSize = rawSize;
+        this.fileSize = fileSize;
       } catch (err) {
         this.errorMessage =
           "We couldn't find the recording you're looking for.";

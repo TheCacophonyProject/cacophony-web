@@ -124,7 +124,9 @@ const mapPosition = (position: any): ApiTrackPosition => {
   };
 };
 
-const mapPositions = (positions: any[]): ApiTrackPosition[] | undefined => {
+export const mapPositions = (
+  positions: any[]
+): ApiTrackPosition[] | undefined => {
   // FIXME - support legacy positions
   if (positions && positions.length) {
     return positions.map(mapPosition);
@@ -146,16 +148,25 @@ const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
   return t;
 };
 
-const mapTag = (tag: Tag): ApiRecordingTagResponse => ({
-  automatic: tag.automatic,
-  confidence: tag.confidence,
-  detail: tag.detail,
-  id: tag.id,
-  recordingId: tag.recordingId,
-  taggerId: tag.taggerId,
-  version: tag.version,
-  what: tag.what,
-});
+const mapTag = (tag: Tag): ApiRecordingTagResponse => {
+  const result: ApiRecordingTagResponse = {
+    automatic: tag.automatic,
+    confidence: tag.confidence,
+    detail: tag.detail,
+    id: tag.id,
+    recordingId: tag.recordingId,
+    version: tag.version,
+    createdAt: (tag.createdAt as unknown as Date).toISOString(),
+  };
+  if (tag.taggerId) {
+    result.taggerId = tag.taggerId;
+    result.taggerName = (tag as any).Users[0].username;
+  }
+  if (tag.what) {
+    result.what = tag.what;
+  }
+  return result;
+};
 
 const mapTags = (tags: Tag[]): ApiRecordingTagResponse[] => tags.map(mapTag);
 
@@ -322,7 +333,7 @@ export default (app: Application, baseUrl: string) => {
       validNameOf(param("deviceName")),
 
       // Default to also allowing inactive devices to have uploads on their behalf
-      query("only-active").default(false).isBoolean().toBoolean()
+      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceInGroup(
       param("deviceName"),
@@ -357,7 +368,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("deviceId")),
       // Default to also allowing inactive devices to have uploads on their behalf
-      query("only-active").default(false).isBoolean().toBoolean()
+      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     (request, response, next) => {
       log.warning("!! %s", request.query);
@@ -1110,17 +1121,27 @@ export default (app: Application, baseUrl: string) => {
         UserId: requestUser.id,
         TrackId: response.locals.track.id,
       }) as TrackTag;
-      let tag;
       try {
-        tag = await response.locals.track.replaceTag(newTag);
+        const tag = await response.locals.track.replaceTag(newTag);
+        if (tag) {
+          responseUtil.send(response, {
+            statusCode: 200,
+            messages: ["Track tag added."],
+            trackTagId: tag.id,
+          });
+        } else {
+          responseUtil.send(response, {
+            statusCode: 200,
+            messages: ["Tag already exists."],
+          });
+        }
       } catch (e) {
-        log.warning("%s", e);
+        log.warning("Failure replacing tag: %s", e);
+        responseUtil.send(response, {
+          statusCode: 500,
+          messages: ["Server error replacing tag."],
+        });
       }
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track tag added."],
-        trackTagId: tag.id,
-      });
     }
   );
 

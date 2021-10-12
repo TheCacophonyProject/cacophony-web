@@ -119,7 +119,6 @@ import DefaultLabels, { TagColours } from "@/const";
 import Vue from "vue";
 
 import {
-  DeviceId,
   LimitedTrack,
   LimitedTrackTag,
   TagLimitedRecording,
@@ -128,6 +127,7 @@ import {
   User,
   JwtToken,
 } from "@/api/Recording.api";
+import { DeviceId } from "@typedefs/api/common";
 
 interface TaggingViewData {
   colours: string[];
@@ -232,7 +232,7 @@ export default Vue.extend({
     },
     async nextRecording() {
       const currentDeviceId =
-        this.currentRecording && this.currentRecording.DeviceId;
+        this.currentRecording && this.currentRecording.deviceId;
       this.tracks = [];
       this.readyToPlay = false;
       this.loading = true;
@@ -339,16 +339,15 @@ export default Vue.extend({
           // FIXME: Dedupe these tracks, we seem to not be getting DISTINCT tracks on the DB side.
           if (recording.tracks.length) {
             const tracks = recording.tracks.reduce((acc, track) => {
-              acc[track.TrackId] = track;
+              acc[track.id] = track;
               return acc;
             }, {});
             this.tracks = Object.values(tracks)
               .map((track) => ({
-                ...track,
+                ...(track as object),
                 tags: [],
               }))
-              .filter((track) => track.needsTagging)
-              .sort((a, b) => a.data.start_s - b.data.start_s);
+              .filter((track) => (track as any).needsTagging);
 
             for (let i = 0; i < this.tracks.length; i++) {
               this.tracks[i].trackIndex = i;

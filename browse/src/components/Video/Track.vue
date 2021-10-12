@@ -169,6 +169,7 @@ export default {
       const recordingId = this.recordingId;
       const trackId = this.track.id;
 
+      console.log("Add tag", tag);
       // TODO
       this.$store
         .dispatch("Video/ADD_TRACK_TAG", {
