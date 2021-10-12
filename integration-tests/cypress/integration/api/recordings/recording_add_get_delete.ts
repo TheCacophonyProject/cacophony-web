@@ -577,6 +577,94 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
   });
 
+  it("Device member can add recordings by device on behalf - for inactive device", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    let expectedRecording1: ApiThermalRecordingResponse;
+
+    cy.log("Rename/reregister device");
+    cy.apiDeviceReregister("raCamera1", "raCamera1-renamed", "raGroup").then(() => {
+      cy.log("Add recording as device member");
+      cy.apiRecordingAddOnBehalfUsingDevice(
+        "raDeviceMember",
+        "raCamera1",
+        recording1,
+        "raRecording1"
+      ).then(() => {
+        expectedRecording1 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "raRecording1",
+          "raCamera1",
+          "raGroup",
+          null,
+          recording1
+        );
+        cy.log("Check recording can be viewed correctly");
+        cy.apiRecordingCheck(
+          "raDeviceMember",
+          "raRecording1",
+          expectedRecording1,
+          EXCLUDE_IDS
+        );
+      });
+
+      cy.log("Delete recording");
+      cy.apiRecordingDelete("raDeviceMember", "raRecording1");
+
+      cy.log("Check recording no longer exists");
+      cy.apiRecordingCheck(
+        "raDeviceMember",
+        "raRecording1",
+        undefined,
+        [],
+        HTTP_Forbidden
+      );
+    });
+  });
+
+  it("Group member can add recordings by device on behalf - for inactive device", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    let expectedRecording1: ApiThermalRecordingResponse;
+
+    cy.log("Rename/reregister device");
+    cy.apiDeviceReregister("raCamera1-renamed", "raCamera1-renamed2", "raGroup").then(() => {
+      cy.log("Add recording as group member");
+      cy.apiRecordingAddOnBehalfUsingDevice(
+        "raGroupMember",
+        "raCamera1-renamed",
+        recording1,
+        "raRecording1"
+      ).then(() => {
+        expectedRecording1 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "raRecording1",
+          "raCamera1-renamed",
+          "raGroup",
+          null,
+          recording1
+        );
+        cy.log("Check recording can be viewed correctly");
+        cy.apiRecordingCheck(
+          "raGroupMember",
+          "raRecording1",
+          expectedRecording1,
+          EXCLUDE_IDS
+        );
+      });
+
+      cy.log("Delete recording");
+      cy.apiRecordingDelete("raGroupMember", "raRecording1");
+
+      cy.log("Check recording no longer exists");
+      cy.apiRecordingCheck(
+        "raGroupMember",
+        "raRecording1",
+        undefined,
+        [],
+        HTTP_Forbidden
+      );
+    });
+  });
+
   it("Group admin/member cannot access devices outside their group", () => {
     const recording2 = TestCreateRecordingData(templateRecording);
     cy.log("Cannot add recording for another group's devices using device");

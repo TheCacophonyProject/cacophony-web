@@ -322,7 +322,7 @@ export default (app: Application, baseUrl: string) => {
       validNameOf(param("deviceName")),
 
       // Default to also allowing inactive devices to have uploads on their behalf
-      booleanOf(query("only-active")).default(false)
+      query("only-active").default(false).isBoolean().toBoolean()
     ]),
     fetchAuthorizedRequiredDeviceInGroup(
       param("deviceName"),
@@ -354,7 +354,15 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     `${apiUrl}/device/:deviceId`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("deviceId"))]),
+    validateFields([
+      idOf(param("deviceId")),
+      // Default to also allowing inactive devices to have uploads on their behalf
+      query("only-active").default(false).isBoolean().toBoolean()
+    ]),
+    (request, response, next) => {
+      log.warning("!! %s", request.query);
+      next();
+    },
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     uploadRawRecording
   );
