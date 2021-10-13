@@ -102,8 +102,7 @@ export default function (app: Application) {
    */
   app.post(`${apiUrl}/processed`, () => {
     util.multipartUpload("file", async (uploader, data, key) => {
-      // FIXME: We're not actually saving to the database here, probably should be, but we're currently
-      //  handling it in multipartUpload once the key is returned.
+      // FIXME responseUtil.validFileUpload(response, key);
       return key;
     });
   });
@@ -231,6 +230,7 @@ export default function (app: Application) {
       idOf(body("id")),
       body("jobKey").exists(),
       booleanOf(body("success")),
+      body("fileHash").isString().optional(),
       // FIXME - JSON schema validate this?
       body("result").isJSON().optional(),
     ]),

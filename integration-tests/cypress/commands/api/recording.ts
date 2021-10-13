@@ -249,7 +249,7 @@ Cypress.Commands.add(
       url,
       deviceName,
       fileName,
-      data["type"],
+      data.type,
       data,
       "@addRecording",
       statusCode

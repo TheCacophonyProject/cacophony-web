@@ -1,4 +1,5 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
+import {RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {
@@ -300,7 +301,7 @@ export interface ApiRecordingForProcessing {
 
 // from api/v1/recordings (post)
 export interface ApiRecordingSet {
-  type: string;
+  type: RecordingType;
   fileHash?: string;
   duration: number;
   location?: ApiLocation | number[];
@@ -314,7 +315,7 @@ export interface ApiRecordingSet {
   metadata?: ApiRecordingDataMetadata;
   additionalMetadata?: ApiThermalAdditionalMetadata | any;
   comment?: string;
-  processingState?: string;
+  processingState?: RecordingProcessingState;
 }
 
 // api/recordings/report

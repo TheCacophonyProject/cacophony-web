@@ -706,8 +706,8 @@ from (
         acc.tracks.push({
           trackId: item.TrackId,
           id: item.TrackId,
-          start: item.TrackData.start_s,
-          end: item.TrackData.end_s,
+          start: item.TrackData.data.start_s,
+          end: item.TrackData.data.end_s,
           positions: mapPositions(item.TrackData.positions),
           numFrames: item.TrackData.num_frames,
           needsTagging: item.TaggedBy !== false,
@@ -725,7 +725,7 @@ from (
       }
     );
     // Sort tracks by time, so that the front-end doesn't have to.
-    flattenedResult.tracks.sort((a, b) => a.data.start_s - b.data.start_s);
+    flattenedResult.tracks.sort((a, b) => a.start - b.start);
     // We need to retrieve the content length of the media file in order to sign
     // the JWT token for it.
     let ContentLength = 0;
