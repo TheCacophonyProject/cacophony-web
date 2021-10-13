@@ -88,6 +88,10 @@ import api from "@/api";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
 
 export default {
   name: "VideoRecording",
@@ -349,11 +353,12 @@ export default {
     deleteTag(tagId) {
       this.$store.dispatch("Video/DELETE_TAG", tagId);
     },
-    changedTrackTag(trackTag) {
+    changedTrackTag(trackTag: ApiTrackTagResponse) {
       this.recentlyAddedTrackTag = trackTag;
       setTimeout(() => {
         this.recentlyAddedTrackTag = null;
       }, 2000);
+      this.$emit("track-tag-changed", trackTag.trackId);
     },
     async trackSelected(track) {
       const selectedTrack = {

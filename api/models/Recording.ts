@@ -652,7 +652,7 @@ export default function (
 
   Recording.getRecordingWithUntaggedTracks = async (
     biasDeviceId: DeviceId
-  ): Promise<TagLimitedRecording | null> => {
+  ): Promise<TagLimitedRecording> => {
     // If a device id is supplied, try to bias the returned recording to that device.
     // If the requested device has no more recordings, pick another random recording.
 

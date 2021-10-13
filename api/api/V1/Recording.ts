@@ -1223,16 +1223,16 @@ export default (app: Application, baseUrl: string) => {
       } else {
         // FIXME - fetch in middleware
         // Otherwise, just check that the user can update this track.
-        const track = await response.locals.recording.getTrack(
+        track = await response.locals.recording.getTrack(
           request.params.trackId
         );
-        if (!track) {
-          responseUtil.send(response, {
-            statusCode: 400,
-            messages: ["No such track."],
-          });
-          return;
-        }
+      }
+      if (!track) {
+        responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["No such track."],
+        });
+        return;
       }
 
       const tag = await track.getTrackTag(request.params.trackTagId);

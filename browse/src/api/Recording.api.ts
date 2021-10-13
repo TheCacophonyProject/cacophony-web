@@ -11,6 +11,12 @@ import {
   UserId,
 } from "@typedefs/api/common";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
+import {
+  ApiAutomaticTrackTagResponse,
+  ApiHumanTrackTagResponse,
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
 export type JwtToken<T> = string;
@@ -91,36 +97,7 @@ export interface User {
   globalPermission: "read" | "write" | "off";
 }
 
-export interface TagCommon {
-  id?: TrackTagId;
-  TrackId: TrackId;
-  what: string;
-  confidence: number;
-}
-
-// export interface TrackTag {
-//   data: string | { name: string } | null;
-//   createdAt?: UtcTimestamp;
-//   updatedAt?: UtcTimestamp;
-//
-//   //user?: User;
-// }
-
-export interface AiTag extends TagCommon {
-  data: string | { name: string };
-  UserId: null;
-  User: null;
-  automatic: true;
-}
-
-export interface HumanTag extends TagCommon {
-  data: null;
-  UserId: UserId;
-  User: User;
-  automatic: false;
-}
-
-export type TrackTag = AiTag | HumanTag;
+export type TrackTag = ApiAutomaticTrackTagResponse | ApiHumanTrackTagResponse;
 
 export interface LimitedTrackTag {
   TrackTagId: TrackTagId;
@@ -338,14 +315,13 @@ function tracks(
 }
 
 function replaceTrackTag(
-  tag: TrackTag,
+  tag: ApiTrackTagRequest,
   recordingId: RecordingId,
   trackId: TrackId
-) {
-  const body = {
-    what: tag.what,
-    confidence: tag.confidence,
-    automatic: "false",
+): Promise<FetchResult<{ trackTagId?: number }>> {
+  const body: ApiTrackTagRequest = {
+    ...tag,
+    automatic: false,
   };
   return CacophonyApi.post(
     `${apiPath}/${recordingId}/tracks/${trackId}/replaceTag`,
@@ -354,12 +330,12 @@ function replaceTrackTag(
 }
 
 function addTrackTag(
-  tag: Tag,
+  tag: ApiTrackTagRequest,
   recordingId: RecordingId,
   trackId: TrackId,
   tagJWT?: JwtToken<TrackTag>
 ): Promise<FetchResult<{ trackTagId: number; success: boolean }>> {
-  const body: any = {
+  const body: ApiTrackTagRequest = {
     what: tag.what,
     confidence: tag.confidence,
     automatic: false,
@@ -374,11 +350,11 @@ function addTrackTag(
 }
 
 function deleteTrackTag(
-  tag: TrackTag,
+  tag: ApiTrackTagResponse,
   recordingId: RecordingId,
   tagJWT?: JwtToken<TrackTag>
 ): Promise<FetchResult<any>> {
-  let requestUri = `${apiPath}/${recordingId}/tracks/${tag.TrackId}/tags/${tag.id}`;
+  let requestUri = `${apiPath}/${recordingId}/tracks/${tag.trackId}/tags/${tag.id}`;
   if (tagJWT !== undefined) {
     requestUri += `?tagJWT=${tagJWT}`;
   }

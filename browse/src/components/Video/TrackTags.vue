@@ -35,8 +35,8 @@
         </template>
 
         <template v-slot:cell(who)="row">
-          <span v-if="row.item.User">
-            {{ row.item.User.username }}
+          <span v-if="row.item.userName">
+            {{ row.item.userName }}
           </span>
           <span v-else>
             {{ aiName(row.item) }}

@@ -1,5 +1,12 @@
 import { IsoFormattedDateString, TrackId, TrackTagId, UserId } from "./common";
 
+export interface ApiTrackTagRequest {
+  what: string;
+  confidence: number;
+  automatic?: boolean;
+  tagJWT?: string; // Allows tagging by someone without recording permissions.
+}
+
 interface ApiTrackTagResponse {
   what: string;
   id: TrackTagId;

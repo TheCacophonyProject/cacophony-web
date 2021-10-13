@@ -1,18 +1,22 @@
 import api from "@api";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
-const state = {
-  isLoggingIn: false,
-  didInvalidate: false,
-  JWT: localStorage.getItem("JWT"),
-  userData: {
+function getUserFromLocalStorage() {
+  return {
     id: Number(localStorage.getItem("userId")),
     userName: localStorage.getItem("userName"),
     email: localStorage.getItem("email"),
     globalPermission: getGlobalPermission(),
     isSuperUser: isSuperUser(),
     acceptedEUA: localStorage.getItem("acceptedEUA"),
-  },
+  };
+}
+
+const state = {
+  isLoggingIn: false,
+  didInvalidate: false,
+  JWT: localStorage.getItem("JWT"),
+  userData: getUserFromLocalStorage(),
   latestEUA: localStorage.getItem("latestEUA"),
   euaUpdatedAt: localStorage.getItem("euaUpdatedAt"),
   errorMessage: undefined,
@@ -165,7 +169,7 @@ const mutations = {
     { userData, token }: { userData: ApiLoggedInUserResponse; token: string }
   ) {
     state.JWT = token;
-    state.userData = userData;
+    state.userData = getUserFromLocalStorage();
     state.userData.acceptedEUA = userData.endUserAgreement;
   },
   updateFields(state, data) {

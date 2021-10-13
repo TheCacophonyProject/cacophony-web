@@ -45,6 +45,7 @@
       :video-url="fileSource"
       :video-raw-url="rawSource"
       :video-raw-size="rawSize"
+      @track-tag-changed="refreshTrackTagData"
     />
   </b-container>
   <b-container v-else class="message-container">
@@ -200,6 +201,19 @@ export default {
         this.errorMessage =
           "We couldn't find the recording you're looking for.";
       }
+    },
+    async refreshTrackTagData(trackId): Promise<void> {
+      // Resync all tags for the track from the API.
+      const {
+        success,
+        result: { tracks },
+      } = await api.recording.tracks(this.recording.id);
+      if (!success) {
+        return;
+      }
+      const track = tracks.find((track) => track.id === trackId);
+      this.recording.tracks.find((track) => track.id === trackId).tags =
+        track.tags;
     },
   },
   mounted: async function () {

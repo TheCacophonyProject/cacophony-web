@@ -80,6 +80,10 @@ import AddCustomTrackTag from "./AddCustomTrackTag.vue";
 import AIClassification from "./AIClassification.vue";
 import api from "@api";
 import { ApiTrackResponse } from "@typedefs/api/track";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
 
 export default {
   name: "Track",
@@ -137,7 +141,7 @@ export default {
     };
   },
   computed: {
-    masterTag() {
+    masterTag(): ApiTrackTagResponse | undefined {
       return (this.track as ApiTrackResponse).tags.find(
         (tag) => tag.data.name === "Master"
       );
@@ -148,14 +152,14 @@ export default {
     iconStyle() {
       return `background-color: ${this.colour}`;
     },
-    hasUserTags() {
+    hasUserTags(): boolean {
       return (
         (this.track as ApiTrackResponse).tags.find(
           ({ automatic }) => !automatic
         ) !== undefined
       );
     },
-    userTags() {
+    userTags(): ApiTrackTagResponse[] {
       return this.track.tags
         .filter(({ automatic }) => !automatic)
         .map(({ what }) => what);
@@ -165,25 +169,27 @@ export default {
     },
   },
   methods: {
-    addTag(tag) {
+    async addTag(tag: ApiTrackTagRequest) {
       const recordingId = this.recordingId;
       const trackId = this.track.id;
-
-      // TODO
-      this.$store
-        .dispatch("Video/ADD_TRACK_TAG", {
-          tag,
-          recordingId,
-          trackId,
-        })
-        .then(() => {
-          this.$emit("change-tag", { trackId, tag });
-        });
+      const {
+        result: { trackTagId },
+      } = await api.recording.replaceTrackTag(tag, recordingId, trackId);
+      if (!trackTagId) {
+        return;
+      }
+      // FIXME - This doesn't actually update the UI more quickly.
+      // Add an initial tag to update the UI more quickly.
+      const newTag: ApiTrackTagResponse = { ...tag };
+      newTag.id = trackTagId;
+      newTag.trackId = trackId;
+      newTag.createdAt = new Date().toISOString();
+      this.$emit("change-tag", newTag);
     },
     promptUserToAddTag() {
       this.showUserTaggingHintCountDown = true;
     },
-    async deleteTag(tag) {
+    async deleteTag(tag: ApiTrackTagResponse) {
       const recordingId = this.recordingId;
       try {
         const result = await api.recording.deleteTrackTag(tag, recordingId);
@@ -194,7 +200,7 @@ export default {
       } catch (e) {
         // TODO
       }
-      this.$emit("change-tag", { trackId: this.track.id, tag });
+      this.$emit("change-tag", tag);
     },
     trackSelected(increment) {
       const index = Math.min(
