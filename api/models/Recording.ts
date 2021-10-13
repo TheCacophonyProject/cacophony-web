@@ -652,7 +652,7 @@ export default function (
 
   Recording.getRecordingWithUntaggedTracks = async (
     biasDeviceId: DeviceId
-  ): Promise<TagLimitedRecording> => {
+  ): Promise<TagLimitedRecording | null> => {
     // If a device id is supplied, try to bias the returned recording to that device.
     // If the requested device has no more recordings, pick another random recording.
 
@@ -693,7 +693,6 @@ from (
   as f left outer join "Tracks" on f."RId" = "Tracks"."RecordingId" and "Tracks"."archivedAt" is null
   left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" is null
 ) as g;`);
-
     // NOTE: We bundle everything we need into this one specialised request.
     const flattenedResult = result.reduce(
       (acc, item) => {
@@ -706,10 +705,10 @@ from (
         acc.tracks.push({
           trackId: item.TrackId,
           id: item.TrackId,
-          start: item.TrackData.data.start_s,
-          end: item.TrackData.data.end_s,
+          start: item.TrackData.start_s,
+          end: item.TrackData.end_s,
           positions: mapPositions(item.TrackData.positions),
-          numFrames: item.TrackData.num_frames,
+          numFrames: item.TrackData?.num_frames,
           needsTagging: item.TaggedBy !== false,
         });
         return acc;
