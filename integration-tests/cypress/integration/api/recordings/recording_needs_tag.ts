@@ -5,7 +5,10 @@ import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
 import { getCreds } from "@commands/server";
 
-import { TestCreateExpectedNeedsTagData, TestCreateRecordingData } from "@commands/api/recording-tests";
+import {
+  TestCreateExpectedNeedsTagData,
+  TestCreateRecordingData,
+} from "@commands/api/recording-tests";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recording needs-tag (power-tagger)", () => {
@@ -40,7 +43,13 @@ describe("Recording needs-tag (power-tagger)", () => {
     metadata: {
       algorithm: { model_name: "master" },
       tracks: [
-        { start_s: 1, end_s: 3, predictions: [{confident_tag: "possum", confidence: 0.8, model_id: 1}] },
+        {
+          start_s: 1,
+          end_s: 3,
+          predictions: [
+            { confident_tag: "possum", confidence: 0.8, model_id: 1 },
+          ],
+        },
       ],
     },
     comment: "This is a comment2",
