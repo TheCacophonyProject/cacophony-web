@@ -143,7 +143,9 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
   };
   if (tag.taggerId) {
     result.taggerId = tag.taggerId;
-    result.taggerName = (tag as any).Users[0].username;
+    if ((tag as any).Users && (tag as any).Users.length) {
+      result.taggerName = (tag as any).Users[0].username;
+    }
   }
   if (tag.what) {
     result.what = tag.what;
