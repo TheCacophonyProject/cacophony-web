@@ -169,7 +169,6 @@ export default {
       const recordingId = this.recordingId;
       const trackId = this.track.id;
 
-      console.log("Add tag", tag);
       // TODO
       this.$store
         .dispatch("Video/ADD_TRACK_TAG", {
@@ -178,7 +177,7 @@ export default {
           trackId,
         })
         .then(() => {
-          this.$emit("change-tag", { trackIndex: this.index, tag });
+          this.$emit("change-tag", { trackId, tag });
         });
     },
     promptUserToAddTag() {
@@ -195,7 +194,7 @@ export default {
       } catch (e) {
         // TODO
       }
-      this.$emit("change-tag", { trackIndex: this.index, tag });
+      this.$emit("change-tag", { trackId: this.track.id, tag });
     },
     trackSelected(increment) {
       const index = Math.min(
@@ -204,7 +203,6 @@ export default {
       );
       if (0 <= index && index < this.numTracks) {
         this.$emit("track-selected", {
-          trackIndex: this.tracks[index].trackIndex,
           trackId: this.tracks[index].id,
           gotoStart: true,
           playToEnd: true,

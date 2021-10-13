@@ -91,7 +91,7 @@ export default function (app: Application) {
   );
 
   /**
-   * @api {put} /api/fileProcessing/processed Upload a processed file to the db
+   * @api {post} /api/fileProcessing/processed Upload a processed file to object storage
    * @apiName PostProcessedFile
    * @apiGroup FileProcessing
 
@@ -102,7 +102,6 @@ export default function (app: Application) {
    */
   app.post(`${apiUrl}/processed`, () => {
     util.multipartUpload("file", async (uploader, data, key) => {
-      // FIXME responseUtil.validFileUpload(response, key);
       return key;
     });
   });

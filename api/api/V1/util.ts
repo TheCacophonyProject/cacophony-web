@@ -236,28 +236,9 @@ function multipartUpload(
           await dbRecordOrFileKey.save();
           responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
         } else {
-          // Get the database row of the recording we just uploaded the processed file for:
-          if (data.id) {
-            const recording: Recording | null = await models.Recording.findByPk(
-              data.id
-            );
-            if (recording !== null) {
-              recording.fileKey = dbRecordOrFileKey;
-              recording.fileSize = fileSize;
-              await recording.save();
-              responseUtil.validRecordingUpload(response, dbRecordOrFileKey);
-            } else {
-              responseUtil.serverError(
-                response,
-                `No such recording ${data.id}`
-              );
-            }
-          } else {
-            responseUtil.serverError(
-              response,
-              "No recording supplied to update"
-            );
-          }
+          // Returning the s3 key of an uploaded asset - will be entered against
+          // the recording in the DB by a subsequent api call.
+          responseUtil.validFileUpload(response, dbRecordOrFileKey);
         }
       } catch (err) {
         responseUtil.serverError(response, err);

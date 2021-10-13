@@ -1661,14 +1661,13 @@ const mapPosition = (position: any): ApiTrackPosition => {
 };
 
 export const mapPositions = (
-    positions: any[]
+  positions: any[]
 ): ApiTrackPosition[] | undefined => {
   // FIXME - support legacy positions
   if (positions && positions.length) {
     return positions.map(mapPosition);
   }
 };
-
 
 export default {
   query,

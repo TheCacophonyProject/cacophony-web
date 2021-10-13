@@ -1,5 +1,5 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
-import {RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {

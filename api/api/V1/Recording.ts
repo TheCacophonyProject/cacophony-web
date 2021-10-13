@@ -115,8 +115,6 @@ const mapTrackTags = (
 ): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] =>
   trackTags.map(mapTrackTag);
 
-
-
 const mapTrack = (track: Track): ApiTrackResponse => ({
   id: track.id,
   start: track.data.start_s,

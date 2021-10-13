@@ -33,7 +33,7 @@
             :num-tracks="tracks.length"
             :recording-id="getRecordingId()"
             :is-wallaby-project="isWallabyProject()"
-            :show="index === selectedTrack.trackIndex"
+            :show="selectedTrack && track.id === selectedTrack.trackId"
             :colour="colours[index % colours.length]"
             :adjust-timespans="timespanAdjustment"
             @track-selected="trackSelected"
@@ -99,7 +99,7 @@ export default {
     CptvPlayer,
   },
   props: {
-    trackid: {
+    trackId: {
       type: Number,
       required: false,
     },
@@ -119,7 +119,7 @@ export default {
   data() {
     return {
       showAddObservation: false,
-      selectedTrack: { trackIndex: 0 },
+      selectedTrack: null,
       recentlyAddedTrackTag: null,
       startVideoTime: 0,
       colours: TagColours,
@@ -359,7 +359,9 @@ export default {
       const selectedTrack = {
         ...track,
       };
-      const targetTrack: ApiTrackResponse = this.tracks[track.trackIndex];
+      const targetTrack: ApiTrackResponse = this.tracks.find(
+        (track) => track.id === selectedTrack.trackId
+      );
       if (track.gotoStart) {
         selectedTrack.start = Math.max(
           0,
@@ -372,7 +374,7 @@ export default {
       try {
         if (
           selectedTrack.trackId &&
-          Number(this.$route.params.trackid) !== selectedTrack.trackId
+          Number(this.$route.params.trackId) !== selectedTrack.trackId
         ) {
           await this.$router.replace({
             path: `/recording/${this.recording.id}/${selectedTrack.trackId}`,
@@ -385,18 +387,20 @@ export default {
     },
     async playerReady(header) {
       this.header = header;
-      const selectedTrackIndex = this.tracks.findIndex(
-        (track) => track.id === Number(this.$route.params.trackid)
-      );
-      if (selectedTrackIndex !== -1) {
-        await this.trackSelected({
-          trackIndex: selectedTrackIndex,
-          gotoStart: true,
-        });
-      } else {
-        await this.trackSelected({
-          trackIndex: 0,
-        });
+      if (this.tracks && this.tracks.length) {
+        const selectedTrack = this.tracks.find(
+          (track) => track.id === Number(this.$route.params.trackId)
+        );
+        if (selectedTrack) {
+          await this.trackSelected({
+            trackId: selectedTrack.id,
+            gotoStart: true,
+          });
+        } else {
+          await this.trackSelected({
+            trackId: this.tracks[0].id,
+          });
+        }
       }
     },
     updateComment(comment) {
