@@ -26,7 +26,6 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
 import { Op } from "sequelize";
-import { validationResult } from "express-validator";
 import { asyncLocalStorage } from "./Globals";
 
 export const SuperUsers: Map<number, any> = new Map();

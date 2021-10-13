@@ -494,7 +494,7 @@ export const expectedTypeOf =
         .map((t) => `'${t}'`)
         .join(", ")}, got ${typeOf}`;
     }
-    return `expected ${type[0]}, got ${typeOf}`;
+    return `expected ${type[0]}, got ${typeOf} : (${val})`;
   };
 
 export const isIntArray = (val) => {

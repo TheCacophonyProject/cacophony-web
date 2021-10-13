@@ -2,6 +2,7 @@
   <div>
     <b-form>
       <b-form-group>
+        <!--        FIXME - Does user-entered ever exist? -->
         <div
           v-if="
             recording.additionalMetadata &&
@@ -153,20 +154,10 @@ export default {
       }
     },
     metaItems: function () {
-      const data = this.recording["additionalMetadata"];
-      const items = [];
-      if (!data) {
-        return items;
-      }
-      for (const key in data) {
-        if (key != "tracks") {
-          items.push({
-            key: key,
-            data: data[key],
-          });
-        }
-      }
-      return items;
+      return this.recording.additionalMetadata
+        ?.map((data) => Object.entries(data))
+        .filter(([key, data]) => key !== "tracks")
+        .map(([key, data]) => ({ key, data }));
     },
   },
 };

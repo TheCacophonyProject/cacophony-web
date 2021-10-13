@@ -60,6 +60,7 @@ import {
   ApiAudioRecordingMetadataResponse,
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
+  ApiRecordingUpdateRequest,
   ApiThermalRecordingMetadataResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
@@ -929,7 +930,11 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     parseJSONField(body("updates")),
     async (request: Request, response: Response) => {
-      await response.locals.recording.update(response.locals.updates);
+      // FIXME - If update includes location, rematch stations.  Maybe this should
+      //  be part of the setter for location, but might be too magic?
+      await response.locals.recording.update(
+        response.locals.updates as ApiRecordingUpdateRequest
+      );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated recording."],

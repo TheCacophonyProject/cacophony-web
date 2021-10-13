@@ -793,7 +793,7 @@ const addTag = async (
   tag: ApiRecordingTagRequest
 ): Promise<Tag> => {
   const tagInstance = models.Tag.buildSafely(tag);
-  tagInstance.recordingId = recording.id;
+  (tagInstance as any).RecordingId = recording.id;
   if (user) {
     tagInstance.taggerId = user.id;
   }

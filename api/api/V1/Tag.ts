@@ -29,7 +29,7 @@ import {
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
-import TagData from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
+import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
@@ -65,8 +65,8 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       body("tag")
-        .custom(jsonSchemaOf(TagData))
-        .withMessage(expectedTypeOf("ApiTagData")),
+        .custom(jsonSchemaOf(ApiRecordingTagRequest))
+        .withMessage(expectedTypeOf("ApiRecordingTagRequest")),
       idOf(body("recordingId")),
     ]),
     parseJSONField(body("tag")),

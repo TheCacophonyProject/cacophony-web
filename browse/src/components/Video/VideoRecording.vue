@@ -31,7 +31,7 @@
             :index="index"
             :tracks="tracks"
             :num-tracks="tracks.length"
-            :recording-id="getRecordingId()"
+            :recording-id="recordingId"
             :is-wallaby-project="isWallabyProject()"
             :show="selectedTrack && track.id === selectedTrack.trackId"
             :colour="colours[index % colours.length]"
@@ -92,6 +92,11 @@ import {
   ApiTrackTagRequest,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
+import {
+  ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
+} from "@typedefs/api/tag";
+import { TagId } from "@typedefs/api/common";
 
 export default {
   name: "VideoRecording",
@@ -131,11 +136,12 @@ export default {
       canGoForwardInSearch: false,
       canGoBackwardInSearch: false,
       requestedExport: false,
+      localTags: [],
     };
   },
   computed: {
     tagItems() {
-      const tags = (this.recording && this.recording.tags) || [];
+      const tags = this.localTags;
       const tagItems = [];
       tags.map((tag) => {
         const tagItem: any = {};
@@ -157,6 +163,9 @@ export default {
         tagItems.push(tagItem);
       });
       return tagItems;
+    },
+    recordingId() {
+      return Number(this.$route.params.id);
     },
     timespanAdjustment() {
       if (this.header) {
@@ -180,9 +189,21 @@ export default {
     },
   },
   async mounted() {
+    this.updateLocalTags();
     await this.checkPreviousAndNextRecordings();
   },
+  watch: {
+    "recording.tags": function () {
+      this.updateLocalTags();
+    },
+  },
   methods: {
+    updateLocalTags() {
+      console.log("HERE", this.recording, this.recording.tags);
+      this.localTags =
+        (this.recording && this.recording.tags && [...this.recording.tags]) ||
+        [];
+    },
     requestedMp4Export(advanced?: boolean) {
       if (advanced === true) {
         this.requestedExport = "advanced";
@@ -340,18 +361,44 @@ export default {
     async prevRecording() {
       await this.gotoNextRecording("previous", false, false, true);
     },
-    getRecordingId() {
-      return Number(this.$route.params.id);
-    },
+
     isWallabyProject() {
       return this.recording.groupId === WALLABY_GROUP;
     },
-    addTag(tag) {
-      const id = Number(this.$route.params.id);
-      this.$store.dispatch("Video/ADD_TAG", { tag, id });
+    async addTag(tag: ApiRecordingTagRequest) {
+      // Add an initial tag to update the UI more quickly.
+      const newTag: ApiRecordingTagResponse = {
+        ...tag,
+        id: -1,
+        createdAt: new Date().toISOString(),
+      };
+      this.localTags.push(newTag);
+      const id = this.recordingId;
+      const {
+        success,
+        result: { tagId },
+      } = await api.tag.addTag(tag, id);
+      if (!success) {
+        // Roll back local change
+        this.localTags.splice(this.localTags.indexOf(newTag), 1);
+        return;
+      }
+      this.$emit("tag-changed", tagId);
     },
-    deleteTag(tagId) {
-      this.$store.dispatch("Video/DELETE_TAG", tagId);
+    async deleteTag(tagId: TagId) {
+      // Remove tag from local tags to update UI quickly.
+      const oldLocalTags = [...this.localTags];
+      this.localTags.splice(
+        this.localTags.findIndex(({ id }) => id === tagId),
+        1
+      );
+      const { success } = await api.tag.deleteTag(tagId);
+      if (!success) {
+        // Roll back local change
+        this.localTags = oldLocalTags;
+        return;
+      }
+      this.$emit("tag-changed", tagId);
     },
     changedTrackTag(trackTag: ApiTrackTagResponse) {
       this.recentlyAddedTrackTag = trackTag;

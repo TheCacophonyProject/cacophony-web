@@ -46,6 +46,7 @@
       :video-raw-url="rawSource"
       :video-raw-size="rawSize"
       @track-tag-changed="refreshTrackTagData"
+      @tag-changed="refreshRecordingTagData"
     />
   </b-container>
   <b-container v-else class="message-container">
@@ -73,7 +74,7 @@ import {
 } from "@typedefs/api/recording";
 import { RecordingType } from "@typedefs/api/consts";
 import api from "@api";
-import { RecordingId } from "@typedefs/api/common";
+import { RecordingId, TagId, TrackId } from "@typedefs/api/common";
 
 export default {
   name: "RecordingView",
@@ -202,7 +203,7 @@ export default {
           "We couldn't find the recording you're looking for.";
       }
     },
-    async refreshTrackTagData(trackId): Promise<void> {
+    async refreshTrackTagData(trackId: TrackId): Promise<void> {
       // Resync all tags for the track from the API.
       const {
         success,
@@ -214,6 +215,28 @@ export default {
       const track = tracks.find((track) => track.id === trackId);
       this.recording.tracks.find((track) => track.id === trackId).tags =
         track.tags;
+    },
+    async refreshRecordingTagData(tagId: TagId): Promise<void> {
+      // Resync all recording tags from the API.
+      const {
+        success,
+        result: {
+          recording: { tags },
+        },
+      } = await api.recording.id(this.recording.id);
+      if (success) {
+        const newTag = tags.find(({ id }) => id === tagId);
+        if (!newTag) {
+          const index = this.recording.tags.findIndex(({ id }) => id === tagId);
+          if (index) {
+            this.recording.tags.splice(index, 1);
+          }
+        } else {
+          this.recording.tags.push(newTag);
+        }
+      } else {
+        // FIXME - can this ever really happen in a recoverable way?
+      }
     },
   },
   mounted: async function () {

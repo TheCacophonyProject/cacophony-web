@@ -103,15 +103,6 @@ const actions = {
       commit("setTags", syncResult.recording.tags);
     }
   },
-
-  async DELETE_TRACK_TAG({ commit }, { tag, recordingId }) {
-    const result = await api.recording.deleteTrackTag(tag, recordingId);
-    if (!result.success) {
-      return result;
-    }
-    commit("deleteTrackTag", tag);
-    return result;
-  },
 };
 
 // mutations https://vuex.vuejs.org/guide/mutations.html
