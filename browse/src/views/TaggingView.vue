@@ -286,12 +286,9 @@ export default Vue.extend({
       if (tag.what !== "skipped") {
         this.taggingPending = true;
         const { success } = await api.recording.deleteTrackTag(
-          {
-            id: tag.TrackTagId,
-            TrackId: track.TrackId,
-            what: tag.what,
-          },
-          recording.RecordingId
+          recording.RecordingId,
+          track.TrackId,
+          tag.TrackTagId
         );
         this.taggingPending = false;
         if (success) {
@@ -406,8 +403,8 @@ export default Vue.extend({
     },
     cTrack() {
       return {
-        trackIndex: this.currentTrack && this.currentTrack.trackIndex,
-        start_s: (this.currentTrack && this.currentTrack.data.start_s) || 0,
+        trackId: this.currentTrack && this.currentTrack.id,
+        start: (this.currentTrack && this.currentTrack.start) || 0,
       };
     },
     currentUser(): User {

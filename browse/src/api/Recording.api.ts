@@ -353,11 +353,12 @@ function addTrackTag(
 }
 
 function deleteTrackTag(
-  tag: ApiTrackTagResponse,
-  recordingId: RecordingId,
+  id: RecordingId,
+  trackId: TrackId,
+  trackTagId: TrackTagId,
   tagJWT?: JwtToken<TrackTag>
 ): Promise<FetchResult<any>> {
-  let requestUri = `${apiPath}/${recordingId}/tracks/${tag.trackId}/tags/${tag.id}`;
+  let requestUri = `${apiPath}/${id}/tracks/${trackId}/tags/${trackTagId}`;
   if (tagJWT !== undefined) {
     requestUri += `?tagJWT=${tagJWT}`;
   }

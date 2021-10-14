@@ -192,7 +192,11 @@ export default {
     async deleteTag(tag: ApiTrackTagResponse) {
       const recordingId = this.recordingId;
       try {
-        const result = await api.recording.deleteTrackTag(tag, recordingId);
+        const result = await api.recording.deleteTrackTag(
+          recordingId,
+          tag.trackId,
+          tag.id
+        );
         if (!result.success) {
           // TODO
           return result;
