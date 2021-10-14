@@ -37,12 +37,30 @@ function multipartUpload(
     key: string
   ) => Promise<ModelCommon<T> | string>
 ) {
-  return (request: Request, response: Response) => {
+  return async (request: Request, response: Response) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;
     let upload;
     let fileSize = 0;
+
+    let uploadingDevice =
+      response.locals.device || response.locals.requestDevice;
+    if (uploadingDevice) {
+      // If it was the actual device uploading the recording, not a user
+      // on the devices' behalf, set the lastConnectionTime for the device.
+      if (
+        response.locals.requestDevice &&
+        !response.locals.requestDevice.devicename
+      ) {
+        // We just have a device id, so get the actual device object to update.
+        uploadingDevice = await models.Device.findByPk(
+          response.locals.requestDevice.id
+        );
+        // Update the last connection time for the uploading device.
+        await uploadingDevice.update({ lastConnectionTime: new Date() });
+      }
+    }
 
     // Note regarding multiparty: there are no guarantees about the
     // order that the field and part handlers will be called. You need
@@ -50,13 +68,35 @@ function multipartUpload(
     const form = new multiparty.Form();
 
     // Handle the "data" field.
-    form.on("field", (name, value) => {
+    form.on("field", async (name, value) => {
       if (name != "data") {
         return;
       }
 
       try {
         data = JSON.parse(value);
+        if (uploadingDevice && data.fileHash) {
+          // Try and handle duplicates early in the upload if possible,
+          // so that we can return early and not waste bandwidth
+          const existingRecordingWithHashForDevice =
+            await models.Recording.findOne({
+              where: {
+                DeviceId: uploadingDevice.id,
+                rawFileHash: data.fileHash,
+              },
+            });
+          if (existingRecordingWithHashForDevice !== null) {
+            log.error(
+              "Recording with hash for device %s already exists, discarding duplicate",
+              uploadingDevice.id
+            );
+            responseUtil.send(response, {
+              statusCode: 422,
+              messages: ["Duplicate recording found for device"],
+            });
+            return;
+          }
+        }
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
         // will fail the upload.
@@ -71,8 +111,6 @@ function multipartUpload(
         return;
       }
       filename = part.filename;
-      fileSize = part.length;
-      log.warning("Upload file size %s", fileSize);
       upload = modelsUtil
         .openS3()
         .upload({
@@ -124,11 +162,6 @@ function multipartUpload(
 
         // Optional file integrity check, opt-in to be backward compatible with existing clients.
         if (data.fileHash) {
-          // TODO: ***Maybe*** check if fileHash already exists in DB?  We may actually want to allow duplicate files though,
-          //  so maybe rather than disallowing the entry being created, we should just make a new recording that
-          //  references the same data (fileKey, tracks etc) as the existing recording?  Then we just want to make sure
-          //  we stop running our script to prune duplicates.
-
           log.info("Checking file hash. Key: %s", key);
           // Read the full file back from s3 and hash it
           const fileData = await modelsUtil
@@ -171,25 +204,6 @@ function multipartUpload(
         }
 
         data.filename = filename;
-
-        let uploadingDevice =
-          response.locals.device || response.locals.requestDevice;
-        if (uploadingDevice) {
-          // If it was the actual device uploading the recording, not a user
-          // on the devices' behalf, set the lastConnectionTime for the device.
-          if (
-            response.locals.requestDevice &&
-            !response.locals.requestDevice.devicename
-          ) {
-            // We just have a device id, so get the actual device object to update.
-            uploadingDevice = await models.Device.findByPk(
-              response.locals.requestDevice.id
-            );
-            // Update the last connection time for the uploading device.
-            await uploadingDevice.update({ lastConnectionTime: new Date() });
-          }
-        }
-
         data.fileSize = fileSize;
         // Store a record for the upload.
         dbRecordOrFileKey = await onSaved(uploadingDevice || null, data, key);

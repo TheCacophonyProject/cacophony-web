@@ -38,6 +38,8 @@
       :recording="recording"
       :audio-url="fileSource"
       :audio-raw-url="rawSource"
+      @tag-changed="refreshRecordingTagData"
+      @load-next-recording="loadNextRecording"
     />
     <VideoRecording
       v-else-if="isVideo"

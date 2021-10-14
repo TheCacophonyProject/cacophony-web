@@ -229,6 +229,7 @@ export default function (app: Application) {
       idOf(body("id")),
       body("jobKey").exists(),
       booleanOf(body("success")),
+      booleanOf(body("complete")),
       body("fileHash").isString().optional(),
       // FIXME - JSON schema validate this?
       body("result").isJSON().optional(),

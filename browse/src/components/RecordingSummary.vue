@@ -215,6 +215,7 @@
 import BatteryLevel from "./BatteryLevel.vue";
 import TagBadge from "./TagBadge.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
+import { RecordingProcessingState } from "@typedefs/api/consts";
 
 export default {
   name: "RecordingSummary",
@@ -248,8 +249,13 @@ export default {
       },
     },
     queuedForProcessing(): boolean {
+      const state = this.item.processingState.toLowerCase();
       return (
-        this.item.processingState === "Analyse" && this.item.processing === null
+        (state === RecordingProcessingState.Analyse ||
+          state === RecordingProcessingState.AnalyseThermal ||
+          state === RecordingProcessingState.Tracking ||
+          state === RecordingProcessingState.Reprocess) &&
+        !this.item.processing
       );
     },
     processing(): boolean {
@@ -418,7 +424,6 @@ $recording-side-padding-small: 0.5rem;
   }
 
   .recording-tags {
-    display: flex;
     padding: 0 $recording-side-padding 0.9rem;
     @include media-breakpoint-down(xs) {
       padding: 0.25rem $recording-side-padding-small;

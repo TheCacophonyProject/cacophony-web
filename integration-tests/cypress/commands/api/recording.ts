@@ -19,7 +19,7 @@ import {
   ApiRecordingNeedsTagReturned,
   ApiRecordingColumns,
 } from "../types";
-import { ApiRecordingColumnNames } from "../constants";
+import { ApiRecordingColumnNames, HTTP_OK200 } from "../constants";
 import {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
@@ -255,7 +255,7 @@ Cypress.Commands.add(
       statusCode
     ).then((x) => {
       cy.wrap(x.response.body.recordingId);
-      if (recordingName !== null) {
+      if (recordingName !== null && x.response.statusCode === HTTP_OK200) {
         saveIdOnly(recordingName, x.response.body.recordingId);
       }
       if (additionalChecks["message"] !== undefined) {

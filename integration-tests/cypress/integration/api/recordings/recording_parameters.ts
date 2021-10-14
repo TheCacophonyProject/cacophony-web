@@ -48,7 +48,7 @@ describe("Recordings - parameter tests", () => {
   };
 
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -69,7 +69,7 @@ describe("Recordings - parameter tests", () => {
       ],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   before(() => {
@@ -834,7 +834,6 @@ describe("Recordings - parameter tests", () => {
     cy.log("Correct file hash accepted");
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
-
     recording1.fileHash = "0add9e2337d1c6df3e6a52e797e6b995e433f0f0"; //shasum output for oneframe.cptv
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -856,6 +855,16 @@ describe("Recordings - parameter tests", () => {
         expectedRecording1,
         EXCLUDE_IDS
       );
+
+      cy.log("Check that duplicate uploads for the same device are rejected");
+      cy.apiRecordingAdd(
+        "rpaCamera1",
+        recording1,
+        "oneframe.cptv",
+        "rpaRecording27",
+        HTTP_Unprocessable
+      );
+
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording27");
     });
 
