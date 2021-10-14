@@ -1651,19 +1651,28 @@ export const finishedProcessingRecording = async (
 
 // Mapping
 const mapPosition = (position: any): ApiTrackPosition => {
-  return {
-    x: position.x,
-    y: position.y,
-    width: position.width,
-    height: position.height,
-    frameNumber: position.frame_number,
-  };
+  if (Array.isArray(position)) {
+    return {
+      x: position[1][0],
+      y: position[1][1],
+      width: position[1][2],
+      height: position[1][3],
+      frameTime: position[0],
+    };
+  } else {
+    return {
+      x: position.x,
+      y: position.y,
+      width: position.width,
+      height: position.height,
+      frameNumber: position.frame_number,
+    };
+  }
 };
 
 export const mapPositions = (
   positions: any[]
 ): ApiTrackPosition[] | undefined => {
-  // FIXME - support legacy positions
   if (positions && positions.length) {
     return positions.map(mapPosition);
   }

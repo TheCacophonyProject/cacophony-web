@@ -320,9 +320,12 @@ export default Vue.extend({
     async getRecording(biasToDeviceId?: DeviceId): Promise<boolean> {
       try {
         const recordingResponse = await api.recording.needsTag(biasToDeviceId);
-        const { result, success } = recordingResponse;
-        if (success) {
-          const recording = result.rows[0];
+        const {
+          result: { rows },
+          success,
+        } = recordingResponse;
+        if (success && rows.length) {
+          const recording = rows[0];
           this.fileSize = recording.fileSize;
           // Make sure it's not a recording we've seen before and skipped tracks from.
           if (
@@ -345,10 +348,6 @@ export default Vue.extend({
                 tags: [],
               }))
               .filter((track) => (track as any).needsTagging);
-
-            for (let i = 0; i < this.tracks.length; i++) {
-              this.tracks[i].trackIndex = i;
-            }
           }
           this.currentRecording = recording;
 
