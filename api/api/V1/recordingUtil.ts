@@ -1676,6 +1676,7 @@ export const mapPositions = (
   if (positions && positions.length) {
     return positions.map(mapPosition);
   }
+  return [];
 };
 
 export default {
