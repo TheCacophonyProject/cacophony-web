@@ -33,7 +33,10 @@
             :num-tracks="tracks.length"
             :recording-id="recordingId"
             :is-wallaby-project="isWallabyProject()"
-            :show="selectedTrack && track.id === selectedTrack.trackId"
+            :show="
+              (!selectedTrack && index === 0) ||
+              (selectedTrack && track.id === selectedTrack.trackId)
+            "
             :colour="colours[index % colours.length]"
             :adjust-timespans="timespanAdjustment"
             @track-selected="trackSelected"
@@ -97,6 +100,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
+import { RecordingType } from "@typedefs/api/consts";
 
 export default {
   name: "VideoRecording",
@@ -141,7 +145,8 @@ export default {
   },
   computed: {
     tagItems() {
-      const tags = this.localTags;
+      // TODO - Move to RecordingControls
+      const tags: ApiRecordingTagResponse[] = this.localTags;
       const tagItems = [];
       tags.map((tag) => {
         const tagItem: any = {};
@@ -156,11 +161,12 @@ export default {
           tagItem.who = "Cacophony AI";
           tagItem["_rowVariant"] = "warning";
         } else {
-          tagItem.who = tag.tagger ? tag.tagger.username : "-";
+          tagItem.who = tag.taggerName || "-";
         }
         tagItem.when = new Date(tag.createdAt).toLocaleString();
         tagItem.tag = tag;
         tagItems.push(tagItem);
+        // TODO - Sort tags by date newest to oldest
       });
       return tagItems;
     },
@@ -199,10 +205,14 @@ export default {
   },
   methods: {
     updateLocalTags() {
-      console.log("HERE", this.recording, this.recording.tags);
-      this.localTags =
+      const newTags: ApiRecordingTagResponse[] =
         (this.recording && this.recording.tags && [...this.recording.tags]) ||
         [];
+      newTags.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      this.localTags = newTags;
     },
     requestedMp4Export(advanced?: boolean) {
       if (advanced === true) {
@@ -332,17 +342,12 @@ export default {
           throw `invalid direction: '${direction}'`;
       }
       params.order = JSON.stringify([["recordingDateTime", order]]);
-
       params.limit = 1;
-      params.type = "video";
+      params.type = RecordingType.ThermalRaw;
       delete params.offset;
-
       try {
         if (!noNavigate) {
-          return await this.$store.dispatch("Video/QUERY_RECORDING", {
-            params,
-            skipMessage,
-          });
+          this.$emit("load-next-recording", { params });
         } else {
           // Just return whether or not there is a next/prev recording.
           const { result, success } = await api.recording.query(params);
@@ -373,17 +378,23 @@ export default {
         createdAt: new Date().toISOString(),
       };
       this.localTags.push(newTag);
-      const id = this.recordingId;
+      this.localTags.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
       const {
         success,
         result: { tagId },
-      } = await api.tag.addTag(tag, id);
+      } = await api.recording.addRecordingTag(tag, this.recordingId);
       if (!success) {
         // Roll back local change
         this.localTags.splice(this.localTags.indexOf(newTag), 1);
         return;
       }
-      this.$emit("tag-changed", tagId);
+      this.$nextTick(() => {
+        this.$emit("tag-changed", tagId);
+      });
     },
     async deleteTag(tagId: TagId) {
       // Remove tag from local tags to update UI quickly.
@@ -392,13 +403,18 @@ export default {
         this.localTags.findIndex(({ id }) => id === tagId),
         1
       );
-      const { success } = await api.tag.deleteTag(tagId);
+      const { success } = await api.recording.deleteRecordingTag(
+        tagId,
+        this.recordingId
+      );
       if (!success) {
         // Roll back local change
         this.localTags = oldLocalTags;
         return;
       }
-      this.$emit("tag-changed", tagId);
+      this.$nextTick(() => {
+        this.$emit("tag-changed", tagId);
+      });
     },
     changedTrackTag(trackTag: ApiTrackTagResponse) {
       this.recentlyAddedTrackTag = trackTag;

@@ -602,6 +602,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
   });
   recordingQuery.include.push({
     model: models.Track,
+    where: { archivedAt: null },
     attributes: ["id", "data"],
     required: false,
     include: [
@@ -899,7 +900,6 @@ const getGroup =
         where: groupWhere,
       };
     }
-    logger.warning("^^ %s", groupWhere);
     return models.Group.findOne(getGroupOptions);
   };
 
@@ -1237,4 +1237,15 @@ export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>
     true,
     getUnauthorizedGenericModelById(models.Track),
     trackId
+  );
+
+export const fetchUnauthorizedRequiredRecordingTagById = (
+  tagId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Tag,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.Tag),
+    tagId
   );

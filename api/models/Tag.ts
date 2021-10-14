@@ -27,6 +27,7 @@ import {
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
 import { RecordingPermission, AcceptableTag } from "@typedefs/api/consts";
+import logging from "@log";
 
 export interface Tag
   extends ApiRecordingTagResponse,
@@ -101,9 +102,10 @@ export default function (sequelize, DataTypes): TagStatic {
     return util.deleteModelInstance(id, user);
   };
 
-  Tag.deleteFromId = async function (id, user) {
-    const tag = await this.findOne({ where: { id: id } });
+  Tag.deleteFromId = async function (id: TagId, user: User) {
+    const tag = await this.findByPk(id);
     if (tag == null) {
+      logging.warning("Didn't find tag");
       return true;
     }
     // FIXME - How about we validate *before* we get the resource?
@@ -114,6 +116,7 @@ export default function (sequelize, DataTypes): TagStatic {
     );
 
     if (recording == null) {
+      logging.warning("Didn't find recording %s", tag.RecordingId);
       return false;
     }
 

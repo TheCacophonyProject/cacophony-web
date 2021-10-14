@@ -47,6 +47,7 @@
       :video-raw-size="rawSize"
       @track-tag-changed="refreshTrackTagData"
       @tag-changed="refreshRecordingTagData"
+      @load-next-recording="loadNextRecording"
     />
   </b-container>
   <b-container v-else class="message-container">
@@ -75,6 +76,7 @@ import {
 import { RecordingType } from "@typedefs/api/consts";
 import api from "@api";
 import { RecordingId, TagId, TrackId } from "@typedefs/api/common";
+import store from "@/stores";
 
 export default {
   name: "RecordingView",
@@ -185,6 +187,7 @@ export default {
     async fetchRecording(id: RecordingId): Promise<void> {
       try {
         const {
+          success,
           result: {
             recording,
             downloadRawJWT,
@@ -193,14 +196,33 @@ export default {
             fileSize,
           },
         } = await api.recording.id(id);
-        this.recordingInternal = recording;
-        this.downloadFileJWT = downloadFileJWT;
-        this.downloadRawJWT = downloadRawJWT;
-        this.rawSize = rawSize;
-        this.fileSize = fileSize;
+        if (!success) {
+          this.errorMessage =
+            "We couldn't find the recording you're looking for.";
+          this.recordingInternal = null;
+        } else {
+          this.recordingInternal = recording;
+          this.downloadFileJWT = downloadFileJWT;
+          this.downloadRawJWT = downloadRawJWT;
+          this.rawSize = rawSize;
+          this.fileSize = fileSize;
+        }
       } catch (err) {
         this.errorMessage =
           "We couldn't find the recording you're looking for.";
+        this.recordingInternal = null;
+      }
+    },
+    async loadNextRecording(params: any): Promise<void> {
+      console.log("Loading next recording", params);
+      const {
+        result: { rows },
+        success,
+      } = await api.recording.query(params);
+      if (!success || !rows || rows.length == 0) {
+        //  store.dispatch("Messaging/WARN", `No more recordings for this search.`);
+      } else {
+        await this.$router.push(`/recording/${rows[0].id}`);
       }
     },
     async refreshTrackTagData(trackId: TrackId): Promise<void> {
@@ -225,15 +247,7 @@ export default {
         },
       } = await api.recording.id(this.recording.id);
       if (success) {
-        const newTag = tags.find(({ id }) => id === tagId);
-        if (!newTag) {
-          const index = this.recording.tags.findIndex(({ id }) => id === tagId);
-          if (index) {
-            this.recording.tags.splice(index, 1);
-          }
-        } else {
-          this.recording.tags.push(newTag);
-        }
+        this.recording.tags = tags;
       } else {
         // FIXME - can this ever really happen in a recoverable way?
       }

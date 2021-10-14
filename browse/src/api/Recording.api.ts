@@ -6,6 +6,7 @@ import { shouldViewAsSuperUser } from "@/utils";
 import {
   DeviceId,
   RecordingId,
+  TagId,
   TrackId,
   TrackTagId,
   UserId,
@@ -17,6 +18,8 @@ import {
   ApiTrackTagRequest,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { ApiTrackResponse } from "@typedefs/api/track";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
 export type JwtToken<T> = string;
@@ -310,7 +313,7 @@ function del(id: RecordingId): Promise<FetchResult<any>> {
 
 function tracks(
   recordingId: RecordingId
-): Promise<FetchResult<{ tracks: Track[] }>> {
+): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
   return CacophonyApi.get(`${apiPath}/${recordingId}/tracks`);
 }
 
@@ -359,6 +362,22 @@ function deleteTrackTag(
     requestUri += `?tagJWT=${tagJWT}`;
   }
   return CacophonyApi.delete(requestUri);
+}
+
+function addRecordingTag(
+  tag: ApiRecordingTagRequest,
+  id: RecordingId
+): Promise<FetchResult<{ tagId: TagId }>> {
+  return CacophonyApi.post(`${apiPath}/${id}/tags`, {
+    tag: tag,
+  });
+}
+
+function deleteRecordingTag(
+  tagId: TagId,
+  id: RecordingId
+): Promise<FetchResult<void>> {
+  return CacophonyApi.delete(`${apiPath}/${id}/tags/${tagId}`);
 }
 
 interface RecordingToTag {
@@ -421,6 +440,8 @@ export default {
   addTrackTag,
   deleteTrackTag,
   replaceTrackTag,
+  addRecordingTag,
+  deleteRecordingTag,
   makeApiQuery,
   needsTag,
   latestForDevice,

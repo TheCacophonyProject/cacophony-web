@@ -34,6 +34,8 @@ import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.sche
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
 
+  // TODO - Deprecate this, functionality moved to Recording.
+
   /**
    * @api {post} /api/v1/tags Adds a new tag
    * @apiName AddTag
@@ -99,15 +101,11 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([idOf(body("tagId"))]),
-    // Can we guarantee that when a recording is deleted, all its tags are deleted too?
-
-    // FIXME - So according to this, anyone with tag permissions can delete anyone elses tag.
-    //  There is no validation that they control the recordings or anything.
-    // Actually not true - validation is handled deep inside Recording.get
     async function (request: Request, response: Response) {
+      const user = models.User.findByPk(response.locals.requestUser.id);
       const tagDeleteResult = await models.Tag.deleteFromId(
         request.body.tagId,
-        response.locals.requestUser
+        user
       );
       if (tagDeleteResult) {
         return responseUtil.send(response, {

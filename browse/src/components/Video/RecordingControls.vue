@@ -133,7 +133,7 @@
           {{ whatDetail(row.item) }}
         </template>
         <template v-slot:cell(deleteButton)="row">
-          <button class="button btn">
+          <button class="button btn" :disabled="row.item.tag.id === -1">
             <font-awesome-icon
               icon="trash"
               @click="$emit('deleteTag', row.item.tag.id)"
