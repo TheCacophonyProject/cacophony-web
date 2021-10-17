@@ -344,7 +344,10 @@ export default function (app: Application) {
     fetchUnauthorizedRequiredRecordingById(body("recordingId")),
     parseJSONField(body("tag")),
     async (request, response) => {
-      log.warning("Adding tag %s", JSON.stringify(response.locals.tag));
+      if (response.locals.tag.event) {
+        // FIXME - processing still sends us the tag as "event" rather than "detail"
+        response.locals.tag.detail = response.locals.tag.event;
+      }
       const tagInstance = await recordingUtil.addTag(
         null,
         response.locals.recording,
@@ -537,7 +540,6 @@ export default function (app: Application) {
   app.get(
     `${apiUrl}/:id/tracks`,
     param("id").isInt().toInt(),
-
     middleware.requestWrapper(async (request, response) => {
       const recording = await models.Recording.findOne({
         where: { id: request.params.id },
