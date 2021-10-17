@@ -119,10 +119,10 @@ export default function (
     userId = null
   ) {
     const tag = await this.createTrackTag({
-      what: what,
-      confidence: confidence,
-      automatic: automatic,
-      data: data,
+      what,
+      confidence,
+      automatic,
+      data,
       UserId: userId,
     });
     return tag;
