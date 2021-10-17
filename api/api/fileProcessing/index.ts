@@ -412,9 +412,10 @@ export default function (app: Application) {
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredEventDetailSnapshotById(body("algorithmId")),
+    parseJSONField(body("data")),
     async (request: Request, response) => {
       const track = await response.locals.recording.createTrack({
-        data: request.body.data,
+        data: response.locals.data,
         AlgorithmId: request.body.algorithmId,
       });
       logger.warning("Create track %s", track.get({ plain: true }));
