@@ -1,5 +1,5 @@
 <template>
-  <div class="details simple-accordion-wrapper">
+  <div class="details simple-accordion-wrapper" v-if="trackTag">
     <h6 class="simple-accordion-header" @click="show_details = !show_details">
       Classifier details
       <span
@@ -56,7 +56,7 @@ export default {
   props: {
     trackTag: {
       type: Object,
-      required: true,
+      required: false,
     },
   },
   data() {

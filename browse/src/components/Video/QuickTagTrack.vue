@@ -88,8 +88,8 @@ export default {
     userTags() {
       return this.tags.filter(
         (tag) =>
-          tag.User &&
-          tag.User.username === this.$store.state.User.userData.username
+          !tag.automatic &&
+          tag.userName === this.$store.state.User.userData.userName
       );
     },
     otherTags() {

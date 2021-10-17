@@ -91,6 +91,8 @@ export interface MinimalTrackRequestData {
   // Fields used in api when calculating good tracks/tags
   confidence?: FloatZeroToOne;
   message?: string;
+
+  id?: number; // FIXME - Why is the processing backend including an id for a track that hasn't been created yet?
 }
 
 interface ClassifierModelDescription {

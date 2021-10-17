@@ -103,43 +103,6 @@ const actions = {
       commit("setTags", syncResult.recording.tags);
     }
   },
-
-  async ADD_TRACK_TAG({ commit }, { tag, recordingId, trackId }) {
-    const { success, result } = await api.recording.replaceTrackTag(
-      tag,
-      recordingId,
-      trackId
-    );
-    if (!success) {
-      return;
-    }
-
-    // Add an initial tag to update the UI more quickly.
-    const newTag = { ...tag };
-    newTag.id = Number(result.trackTagId);
-    newTag.TrackId = Number(trackId);
-    newTag.createdAt = new Date();
-    commit("addTrackTag", newTag);
-
-    // Resync all tags for the track from the API.
-    const { success: syncSuccess, result: syncResult } =
-      await api.recording.tracks(recordingId);
-    if (!syncSuccess) {
-      return;
-    }
-    const track = syncResult.tracks.find((track) => track.id === trackId);
-    commit("setTrackTags", track);
-    return result;
-  },
-
-  async DELETE_TRACK_TAG({ commit }, { tag, recordingId }) {
-    const result = await api.recording.deleteTrackTag(tag, recordingId);
-    if (!result.success) {
-      return result;
-    }
-    commit("deleteTrackTag", tag);
-    return result;
-  },
 };
 
 // mutations https://vuex.vuejs.org/guide/mutations.html

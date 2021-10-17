@@ -3,22 +3,22 @@
 
 import { getTestName } from "../names";
 import {
-  v1ApiPath,
-  getCreds,
+  convertToDate,
   DEFAULT_DATE,
+  getCreds,
   makeAuthorizedRequest,
   removeUndefinedParams,
+  v1ApiPath,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { convertToDate } from "../server";
 import {
-  TestThermalRecordingInfo,
-  ApiTrackSet,
+  ApiDeviceIdAndName,
+  ApiRecordingColumns,
+  ApiRecordingNeedsTagReturned,
   ApiRecordingSet,
   ApiRecordingStation,
-  ApiDeviceIdAndName,
-  ApiRecordingNeedsTagReturned,
-  ApiRecordingColumns,
+  ApiTrackSet,
+  TestThermalRecordingInfo,
 } from "../types";
 
 import { HTTP_OK200, NOT_NULL } from "../constants";
@@ -28,6 +28,8 @@ import {
 } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+
 const BASE_URL = Cypress.env("base-url-returned-in-links");
 
 let lastUsedTime = DEFAULT_DATE;
@@ -210,7 +212,7 @@ function makeRecordingDataFromDetails(
   details: TestThermalRecordingInfo
 ): ApiRecordingSet {
   const data: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     recordingDateTime: "",
     duration: 12,
     comment: "uploaded by cypress",
@@ -231,7 +233,7 @@ function makeRecordingDataFromDetails(
     data.location = [details.lat, details.lng];
   }
   if (details.processingState) {
-    data.processingState = details.processingState;
+    data.processingState = details.processingState as RecordingProcessingState;
   }
   return data;
 }

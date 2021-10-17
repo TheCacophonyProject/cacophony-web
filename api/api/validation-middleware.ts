@@ -57,7 +57,7 @@ export const validPasswordOf = (field: ValidationChain): ValidationChain =>
     .withMessage("Password must be at least 8 characters long");
 
 export const booleanOf = (field: ValidationChain): ValidationChain =>
-  field.isBoolean().toBoolean().withMessage(expectedTypeOf("boolean"));
+  field.toBoolean().isBoolean().withMessage(expectedTypeOf("boolean"));
 
 type AnyOf = Middleware & { run: (req: Request) => Promise<Result> };
 // Wrapping 'oneOf' with a useful error message.

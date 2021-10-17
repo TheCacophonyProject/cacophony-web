@@ -218,7 +218,7 @@ export default {
           api.groups.getGroup(this.groupName),
           api.groups.getStationsForGroup(this.groupName),
         ]);
-        this.group = group.result.groups[0];
+        this.group = group.result.group;
         const station = stations.result.stations.filter(
           (station) => station.name === this.stationName
         );

@@ -9,7 +9,8 @@ export interface ApiTrackPosition {
   y: number;
   width: number;
   height: number;
-  frameNumber: number;
+  frameNumber?: number;
+  frameTime?: number;
 }
 
 export interface ApiTrackResponse {

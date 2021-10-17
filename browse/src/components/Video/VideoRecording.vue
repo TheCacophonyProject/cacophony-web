@@ -31,9 +31,12 @@
             :index="index"
             :tracks="tracks"
             :num-tracks="tracks.length"
-            :recording-id="getRecordingId()"
+            :recording-id="recordingId"
             :is-wallaby-project="isWallabyProject()"
-            :show="index === selectedTrack.trackIndex"
+            :show="
+              (!selectedTrack && index === 0) ||
+              (selectedTrack && track.id === selectedTrack.trackId)
+            "
             :colour="colours[index % colours.length]"
             :adjust-timespans="timespanAdjustment"
             @track-selected="trackSelected"
@@ -88,6 +91,16 @@ import api from "@/api";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
+import {
+  ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
+} from "@typedefs/api/tag";
+import { TagId } from "@typedefs/api/common";
+import { RecordingType } from "@typedefs/api/consts";
 
 export default {
   name: "VideoRecording",
@@ -99,7 +112,7 @@ export default {
     CptvPlayer,
   },
   props: {
-    trackid: {
+    trackId: {
       type: Number,
       required: false,
     },
@@ -119,7 +132,7 @@ export default {
   data() {
     return {
       showAddObservation: false,
-      selectedTrack: { trackIndex: 0 },
+      selectedTrack: null,
       recentlyAddedTrackTag: null,
       startVideoTime: 0,
       colours: TagColours,
@@ -127,11 +140,13 @@ export default {
       canGoForwardInSearch: false,
       canGoBackwardInSearch: false,
       requestedExport: false,
+      localTags: [],
     };
   },
   computed: {
     tagItems() {
-      const tags = (this.recording && this.recording.tags) || [];
+      // TODO - Move to RecordingControls
+      const tags: ApiRecordingTagResponse[] = this.localTags;
       const tagItems = [];
       tags.map((tag) => {
         const tagItem: any = {};
@@ -146,13 +161,17 @@ export default {
           tagItem.who = "Cacophony AI";
           tagItem["_rowVariant"] = "warning";
         } else {
-          tagItem.who = tag.tagger ? tag.tagger.username : "-";
+          tagItem.who = tag.taggerName || "-";
         }
         tagItem.when = new Date(tag.createdAt).toLocaleString();
         tagItem.tag = tag;
         tagItems.push(tagItem);
+        // TODO - Sort tags by date newest to oldest
       });
       return tagItems;
+    },
+    recordingId() {
+      return Number(this.$route.params.id);
     },
     timespanAdjustment() {
       if (this.header) {
@@ -176,9 +195,25 @@ export default {
     },
   },
   async mounted() {
+    this.updateLocalTags();
     await this.checkPreviousAndNextRecordings();
   },
+  watch: {
+    "recording.tags": function () {
+      this.updateLocalTags();
+    },
+  },
   methods: {
+    updateLocalTags() {
+      const newTags: ApiRecordingTagResponse[] =
+        (this.recording && this.recording.tags && [...this.recording.tags]) ||
+        [];
+      newTags.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      this.localTags = newTags;
+    },
     requestedMp4Export(advanced?: boolean) {
       if (advanced === true) {
         this.requestedExport = "advanced";
@@ -307,17 +342,12 @@ export default {
           throw `invalid direction: '${direction}'`;
       }
       params.order = JSON.stringify([["recordingDateTime", order]]);
-
       params.limit = 1;
-      params.type = "video";
+      params.type = RecordingType.ThermalRaw;
       delete params.offset;
-
       try {
         if (!noNavigate) {
-          return await this.$store.dispatch("Video/QUERY_RECORDING", {
-            params,
-            skipMessage,
-          });
+          this.$emit("load-next-recording", { params });
         } else {
           // Just return whether or not there is a next/prev recording.
           const { result, success } = await api.recording.query(params);
@@ -336,30 +366,70 @@ export default {
     async prevRecording() {
       await this.gotoNextRecording("previous", false, false, true);
     },
-    getRecordingId() {
-      return Number(this.$route.params.id);
-    },
+
     isWallabyProject() {
       return this.recording.groupId === WALLABY_GROUP;
     },
-    addTag(tag) {
-      const id = Number(this.$route.params.id);
-      this.$store.dispatch("Video/ADD_TAG", { tag, id });
+    async addTag(tag: ApiRecordingTagRequest) {
+      // Add an initial tag to update the UI more quickly.
+      const newTag: ApiRecordingTagResponse = {
+        ...tag,
+        id: -1,
+        createdAt: new Date().toISOString(),
+      };
+      this.localTags.push(newTag);
+      this.localTags.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      const {
+        success,
+        result: { tagId },
+      } = await api.recording.addRecordingTag(tag, this.recordingId);
+      if (!success) {
+        // Roll back local change
+        this.localTags.splice(this.localTags.indexOf(newTag), 1);
+        return;
+      }
+      this.$nextTick(() => {
+        this.$emit("tag-changed", tagId);
+      });
     },
-    deleteTag(tagId) {
-      this.$store.dispatch("Video/DELETE_TAG", tagId);
+    async deleteTag(tagId: TagId) {
+      // Remove tag from local tags to update UI quickly.
+      const oldLocalTags = [...this.localTags];
+      this.localTags.splice(
+        this.localTags.findIndex(({ id }) => id === tagId),
+        1
+      );
+      const { success } = await api.recording.deleteRecordingTag(
+        tagId,
+        this.recordingId
+      );
+      if (!success) {
+        // Roll back local change
+        this.localTags = oldLocalTags;
+        return;
+      }
+      this.$nextTick(() => {
+        this.$emit("tag-changed", tagId);
+      });
     },
-    changedTrackTag(trackTag) {
+    changedTrackTag(trackTag: ApiTrackTagResponse) {
       this.recentlyAddedTrackTag = trackTag;
       setTimeout(() => {
         this.recentlyAddedTrackTag = null;
       }, 2000);
+      this.$emit("track-tag-changed", trackTag.trackId);
     },
     async trackSelected(track) {
       const selectedTrack = {
         ...track,
       };
-      const targetTrack: ApiTrackResponse = this.tracks[track.trackIndex];
+      const targetTrack: ApiTrackResponse = this.tracks.find(
+        (track) => track.id === selectedTrack.trackId
+      );
       if (track.gotoStart) {
         selectedTrack.start = Math.max(
           0,
@@ -372,7 +442,7 @@ export default {
       try {
         if (
           selectedTrack.trackId &&
-          Number(this.$route.params.trackid) !== selectedTrack.trackId
+          Number(this.$route.params.trackId) !== selectedTrack.trackId
         ) {
           await this.$router.replace({
             path: `/recording/${this.recording.id}/${selectedTrack.trackId}`,
@@ -385,18 +455,20 @@ export default {
     },
     async playerReady(header) {
       this.header = header;
-      const selectedTrackIndex = this.tracks.findIndex(
-        (track) => track.id === Number(this.$route.params.trackid)
-      );
-      if (selectedTrackIndex !== -1) {
-        await this.trackSelected({
-          trackIndex: selectedTrackIndex,
-          gotoStart: true,
-        });
-      } else {
-        await this.trackSelected({
-          trackIndex: 0,
-        });
+      if (this.tracks && this.tracks.length) {
+        const selectedTrack = this.tracks.find(
+          (track) => track.id === Number(this.$route.params.trackId)
+        );
+        if (selectedTrack) {
+          await this.trackSelected({
+            trackId: selectedTrack.id,
+            gotoStart: true,
+          });
+        } else {
+          await this.trackSelected({
+            trackId: this.tracks[0].id,
+          });
+        }
       }
     },
     updateComment(comment) {

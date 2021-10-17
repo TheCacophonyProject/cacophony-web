@@ -29,14 +29,15 @@
               onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='"
               :src="imgSrc(row.item.what)"
               class="tag-img"
+              :alt="row.item.what"
             />
             {{ row.item.what }}
           </div>
         </template>
 
         <template v-slot:cell(who)="row">
-          <span v-if="row.item.User">
-            {{ row.item.User.username }}
+          <span v-if="row.item.userName">
+            {{ row.item.userName }}
           </span>
           <span v-else>
             {{ aiName(row.item) }}
@@ -77,8 +78,8 @@
   </div>
 </template>
 
-<script>
-import { imgSrc } from "../../const";
+<script lang="ts">
+import { imgSrc } from "@/const";
 
 export default {
   name: "TrackTags",
@@ -132,7 +133,7 @@ export default {
         (tag) =>
           !tag.automatic &&
           tag.what === what &&
-          tag.userName === this.$store.state.User.userData.username
+          tag.userName === this.$store.state.User.userData.userName
       );
     },
     confirmTag: function (rowItem) {

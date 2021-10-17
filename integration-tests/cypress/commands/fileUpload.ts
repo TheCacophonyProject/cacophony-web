@@ -3,6 +3,9 @@
 
 import { getCreds } from "./server";
 import { Interception } from "cypress/types/net-stubbing";
+import { RecordingType } from "@typedefs/api/consts";
+import { ApiRecordingSet } from "@commands/types";
+//import {createTestCptvFile} from "cptv-decoder/encoder";
 
 export function sendMultipartMessage(
   url: string,
@@ -36,18 +39,14 @@ export function uploadFile(
   url: string,
   credName: string,
   fileName: string,
-  fileType: string,
-  data: any,
+  fileType: RecordingType,
+  data: ApiRecordingSet,
   waitOn: string,
   statusCode: number = 200
 ): Cypress.Chainable<Interception> {
   const jwt = getCreds(credName).jwt;
 
-  // Get file from fixtures as binary
-  return cy.fixture(fileName, "binary").then((fileBinary) => {
-    // File in binary format gets converted to blob so it can be sent as Form data
-    const blob = Cypress.Blob.binaryStringToBlob(fileBinary, fileType);
-
+  const doUpload = (blob: Blob, data: any) => {
     // Build up the form
     const formData = new FormData();
     formData.set("file", blob, fileName); //adding a file to the form
@@ -87,5 +86,25 @@ export function uploadFile(
         }
       }
     );
+  };
+
+  // TODO - Make wasm encoder import work here
+  // if (fileType === RecordingType.ThermalRaw) {
+  //   return cy.wrap(createTestCptvFile({
+  //     duration: data.duration || 5,
+  //     hasBackgroundFrame: false,
+  //     recordingDateTime: data.recordingDateTime || new Date().toISOString()
+  //   })).then((testFile: Uint8Array) => {
+  //     const blob = Cypress.Blob.arrayBufferToBlob(testFile, "application/x-cptv");
+  //     return doUpload(blob, data);
+  //   });
+  //   // Create a test cptv file from data.
+  // } else if (fileType === RecordingType.Audio) {
+  // Get file from fixtures as binary
+  return cy.fixture(fileName, "binary").then((fileBinary) => {
+    // File in binary format gets converted to blob so it can be sent as Form data
+    const blob = Cypress.Blob.binaryStringToBlob(fileBinary, "audio/mpeg");
+    return doUpload(blob, data);
   });
+  // }
 }

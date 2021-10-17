@@ -793,7 +793,7 @@ const addTag = async (
   tag: ApiRecordingTagRequest
 ): Promise<Tag> => {
   const tagInstance = models.Tag.buildSafely(tag);
-  tagInstance.recordingId = recording.id;
+  (tagInstance as any).RecordingId = recording.id;
   if (user) {
     tagInstance.taggerId = user.id;
   }
@@ -1651,24 +1651,33 @@ export const finishedProcessingRecording = async (
 
 // Mapping
 const mapPosition = (position: any): ApiTrackPosition => {
-  return {
-    x: position.x,
-    y: position.y,
-    width: position.width,
-    height: position.height,
-    frameNumber: position.frame_number,
-  };
-};
-
-export const mapPositions = (
-    positions: any[]
-): ApiTrackPosition[] | undefined => {
-  // FIXME - support legacy positions
-  if (positions && positions.length) {
-    return positions.map(mapPosition);
+  if (Array.isArray(position)) {
+    return {
+      x: position[1][0],
+      y: position[1][1],
+      width: position[1][2] - position[1][0],
+      height: position[1][3] - position[1][1],
+      frameTime: position[0],
+    };
+  } else {
+    return {
+      x: position.x,
+      y: position.y,
+      width: position.width,
+      height: position.height,
+      frameNumber: position.frame_number,
+    };
   }
 };
 
+export const mapPositions = (
+  positions: any[]
+): ApiTrackPosition[] | undefined => {
+  if (positions && positions.length) {
+    return positions.map(mapPosition);
+  }
+  return [];
+};
 
 export default {
   query,

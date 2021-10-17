@@ -91,7 +91,7 @@ export default function (app: Application) {
   );
 
   /**
-   * @api {put} /api/fileProcessing/processed Upload a processed file to the db
+   * @api {post} /api/fileProcessing/processed Upload a processed file to object storage
    * @apiName PostProcessedFile
    * @apiGroup FileProcessing
 
@@ -102,8 +102,6 @@ export default function (app: Application) {
    */
   app.post(`${apiUrl}/processed`, () => {
     util.multipartUpload("file", async (uploader, data, key) => {
-      // FIXME: We're not actually saving to the database here, probably should be, but we're currently
-      //  handling it in multipartUpload once the key is returned.
       return key;
     });
   });
@@ -231,6 +229,8 @@ export default function (app: Application) {
       idOf(body("id")),
       body("jobKey").exists(),
       booleanOf(body("success")),
+      booleanOf(body("complete")),
+      body("fileHash").isString().optional(),
       // FIXME - JSON schema validate this?
       body("result").isJSON().optional(),
     ]),
@@ -412,9 +412,10 @@ export default function (app: Application) {
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredEventDetailSnapshotById(body("algorithmId")),
+    parseJSONField(body("data")),
     async (request: Request, response) => {
       const track = await response.locals.recording.createTrack({
-        data: request.body.data,
+        data: response.locals.data,
         AlgorithmId: request.body.algorithmId,
       });
       logger.warning("Create track %s", track.get({ plain: true }));

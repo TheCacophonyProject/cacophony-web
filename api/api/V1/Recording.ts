@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { Application, NextFunction, Request, Response } from "express";
-import { validateFields } from "../middleware";
+import { expectedTypeOf, validateFields } from "../middleware";
 import recordingUtil, {
   mapPositions,
   reportRecordings,
@@ -46,6 +46,7 @@ import {
   fetchAuthorizedRequiredDevices,
   fetchAuthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredRecordingById,
+  fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
 } from "../extract-middleware";
@@ -60,6 +61,7 @@ import {
   ApiAudioRecordingMetadataResponse,
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
+  ApiRecordingUpdateRequest,
   ApiThermalRecordingMetadataResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
@@ -76,6 +78,7 @@ import {
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { jsonSchemaOf } from "@api/schema-validation";
+import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -115,8 +118,6 @@ const mapTrackTags = (
 ): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] =>
   trackTags.map(mapTrackTag);
 
-
-
 const mapTrack = (track: Track): ApiTrackResponse => ({
   id: track.id,
   start: track.data.start_s,
@@ -144,7 +145,9 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
   };
   if (tag.taggerId) {
     result.taggerId = tag.taggerId;
-    result.taggerName = (tag as any).Users[0].username;
+    if ((tag as any).tagger) {
+      result.taggerName = (tag as any).tagger.username;
+    }
   }
   if (tag.what) {
     result.what = tag.what;
@@ -685,6 +688,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       query("type").isString().optional().isIn(["recordings", "visits"]),
       query("where").isJSON().optional(),
+      query("jwt").optional(),
       integerOf(query("offset")).optional(),
       integerOf(query("limit")).optional(),
       query("audiobait").isBoolean().optional(),
@@ -931,7 +935,11 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     parseJSONField(body("updates")),
     async (request: Request, response: Response) => {
-      await response.locals.recording.update(response.locals.updates);
+      // FIXME - If update includes location, rematch stations.  Maybe this should
+      //  be part of the setter for location, but might be too magic?
+      await response.locals.recording.update(
+        response.locals.updates as ApiRecordingUpdateRequest
+      );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated recording."],
@@ -1225,16 +1233,16 @@ export default (app: Application, baseUrl: string) => {
       } else {
         // FIXME - fetch in middleware
         // Otherwise, just check that the user can update this track.
-        const track = await response.locals.recording.getTrack(
+        track = await response.locals.recording.getTrack(
           request.params.trackId
         );
-        if (!track) {
-          responseUtil.send(response, {
-            statusCode: 400,
-            messages: ["No such track."],
-          });
-          return;
-        }
+      }
+      if (!track) {
+        responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["No such track."],
+        });
+        return;
       }
 
       const tag = await track.getTrackTag(request.params.trackTagId);
@@ -1251,6 +1259,66 @@ export default (app: Application, baseUrl: string) => {
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag deleted."],
+      });
+    }
+  );
+
+  /**
+   * @api {delete} /api/v1/recordings/:id/tags/:tagId Delete an existing recording tag
+   * @apiName DeleteRecordingTag
+   * @apiGroup Recordings
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+    `${apiUrl}/:id/tags/:tagId`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id")), idOf(param("tagId"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredRecordingTagById(param("tagId")),
+    async (request: Request, response: Response) => {
+      await response.locals.tag.destroy();
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Deleted tag."],
+      });
+    }
+  );
+
+  /**
+   * @api {post} /api/v1/recordings/:id/tags Add a new recording tag
+   * @apiName AddRecordingTag
+   * @apiGroup Recordings
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/tags`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      body("tag")
+        .custom(jsonSchemaOf(ApiRecordingTagRequest))
+        .withMessage(expectedTypeOf("ApiRecordingTagRequest")),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    parseJSONField(body("tag")),
+    async (request: Request, response: Response) => {
+      const tagInstance = await recordingUtil.addTag(
+        response.locals.requestUser,
+        response.locals.recording,
+        request.body.tag
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Added new tag."],
+        tagId: tagInstance.id,
       });
     }
   );
