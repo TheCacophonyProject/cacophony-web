@@ -341,15 +341,17 @@ export default function (app: Application) {
   app.post(
     `${apiUrl}/tags`,
     validateFields([
-      middleware.parseJSON("tag", body),
+      body("tag").isJSON(),
       idOf(body("recordingId")),
     ]),
     fetchUnauthorizedRequiredRecordingById(body("recordingId")),
+    parseJSONField(body("tag")),
     async (request, response) => {
+      log.warning("Adding tag %s", JSON.stringify(response.locals.tag));
       const tagInstance = await recordingUtil.addTag(
         null,
         response.locals.recording,
-        request.body.tag
+        response.locals.tag
       );
       responseUtil.send(response, {
         statusCode: 200,
