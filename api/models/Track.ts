@@ -86,8 +86,7 @@ export default function (
         where: {
           UserId: tag.UserId,
           automatic: tag.automatic,
-          TrackId: trackId,
-          what: tag.what,
+          TrackId: trackId
         },
         transaction: t,
       });

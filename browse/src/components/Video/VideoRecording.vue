@@ -471,7 +471,7 @@ export default {
         }
       }
     },
-    async updateComment(comment) {
+    async updateComment(comment: string) {
       const recordingId = Number(this.$route.params.id);
       await api.recording.comment(comment, recordingId);
     },
