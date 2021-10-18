@@ -35,7 +35,7 @@ export interface Location {
 }
 
 export interface LimitedTrack {
-  TrackId: TrackId;
+  trackId: TrackId;
   data: {
     start_s: number;
     end_s: number;

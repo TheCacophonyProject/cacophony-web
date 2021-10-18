@@ -22,7 +22,13 @@
           />
           <font-awesome-icon
             v-else-if="option.type === 'device'"
-            icon="microchip"
+            :icon="
+              option.kind === 'thermal'
+                ? 'video'
+                : option.kind === 'audio'
+                ? 'music'
+                : 'microchip'
+            "
             size="xs"
           />
           <font-awesome-icon
@@ -46,12 +52,18 @@
           ></i>
         </span>
       </template>
-      <template slot="option" slot-scope="{ option: { type, name } }">
+      <template slot="option" slot-scope="{ option: { type, name, kind } }">
         <span>
           <font-awesome-icon v-if="type === 'group'" icon="users" size="xs" />
           <font-awesome-icon
             v-else-if="type === 'device'"
-            icon="microchip"
+            :icon="
+              kind === 'thermal'
+                ? 'video'
+                : kind === 'audio'
+                ? 'music'
+                : 'microchip'
+            "
             size="xs"
           />
           <font-awesome-icon
@@ -156,10 +168,11 @@ export default {
         } = await api.device.getDevices();
         this.devices = Object.freeze(
           devices
-            .map(({ id, deviceName }) => ({
+            .map(({ id, deviceName, type }) => ({
               id: Number(id),
               type: "device",
               name: deviceName,
+              kind: type,
               uid: `device_${id}`,
             }))
             .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
