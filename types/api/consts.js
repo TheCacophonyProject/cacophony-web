@@ -35,6 +35,7 @@ var RecordingProcessingState;
     RecordingProcessingState["ToMp3"] = "toMp3";
     RecordingProcessingState["Analyse"] = "analyse";
     RecordingProcessingState["Reprocess"] = "reprocess";
+    RecordingProcessingState["TrackingFailed"] = "tracking.failed";
     RecordingProcessingState["AnalyseThermalFailed"] = "analyse.failed";
     RecordingProcessingState["ToMp3Failed"] = "toMp3.failed";
     RecordingProcessingState["AnalyseFailed"] = "analyse.failed";
