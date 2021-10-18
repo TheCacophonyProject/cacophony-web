@@ -19,9 +19,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "../logging";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals";
+import { Request, Response, NextFunction } from "express";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function errorHandler(err: Error, request, response, next) {
+function errorHandler(
+  err: Error,
+  request: Request,
+  response: Response,
+  next: NextFunction
+) {
   if (
     err instanceof SyntaxError &&
     (err as any).type === "entity.parse.failed"
@@ -36,7 +42,10 @@ function errorHandler(err: Error, request, response, next) {
   if (err instanceof CustomError) {
     log.warning(err.toString());
     const error = err.toJson();
-    delete error.message;
+    if (!request.headers["user-agent"].includes("okhttp")) {
+      // FIXME - leave this in for sidekick etc, since currently it expects a 'message' error response.
+      delete error.message;
+    }
     return response.status(err.statusCode).json({
       messages: [err.message],
       ...error,

@@ -23,11 +23,12 @@ import log from "@log";
 import responseUtil from "./responseUtil";
 import modelsUtil from "@models/util/util";
 import crypto from "crypto";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
 import { DeviceType, RecordingType } from "@typedefs/api/consts";
+import { ClientError } from "@api/customErrors";
 
 function multipartUpload(
   keyPrefix: string,
@@ -37,7 +38,7 @@ function multipartUpload(
     key: string
   ) => Promise<ModelCommon<T> | string>
 ) {
-  return async (request: Request, response: Response) => {
+  return async (request: Request, response: Response, next: NextFunction) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
 
     if (keyPrefix === "file") {
@@ -102,11 +103,9 @@ function multipartUpload(
               "Recording with hash for device %s already exists, discarding duplicate",
               uploadingDevice.id
             );
-            responseUtil.send(response, {
-              statusCode: 422,
-              messages: ["Duplicate recording found for device"],
-            });
-            return;
+            return next(
+              new ClientError("Duplicate recording found for device", 422)
+            );
           }
         }
       } catch (err) {
