@@ -471,12 +471,9 @@ export default {
         }
       }
     },
-    updateComment(comment) {
+    async updateComment(comment) {
       const recordingId = Number(this.$route.params.id);
-      this.$store.dispatch("Video/UPDATE_COMMENT", {
-        comment,
-        recordingId,
-      });
+      await api.recording.comment(comment, recordingId);
     },
   },
 };

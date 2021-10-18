@@ -302,7 +302,7 @@ function id(id: RecordingId): Promise<
 function comment(comment: string, id: RecordingId): Promise<FetchResult<any>> {
   return CacophonyApi.patch(`${apiPath}/${id}`, {
     updates: {
-      comment: comment,
+      comment,
     },
   });
 }
