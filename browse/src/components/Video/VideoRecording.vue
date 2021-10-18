@@ -91,10 +91,7 @@ import api from "@/api";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
-import {
-  ApiTrackTagRequest,
-  ApiTrackTagResponse,
-} from "@typedefs/api/trackTag";
+import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import {
   ApiRecordingTagRequest,
   ApiRecordingTagResponse,

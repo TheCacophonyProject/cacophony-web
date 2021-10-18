@@ -35,7 +35,7 @@
     </div>
     <div v-if="show" class="card-body">
       <AIClassification
-        :tags="track.tags"
+        :tags="localTags"
         :is-wallaby-project="isWallabyProject"
         :needs-confirmation="!hasUserTags"
         :userTags="userTags"
@@ -54,7 +54,7 @@
         <em>really</em> is.
       </b-alert>
       <QuickTagTrack
-        :tags="track.tags"
+        :tags="localTags"
         :is-wallaby-project="isWallabyProject"
         @addTag="addTag($event)"
         @deleteTag="deleteTag($event)"
@@ -62,7 +62,7 @@
       <AddCustomTrackTag @addTag="addTag($event)" />
       <div v-if="isSuperUser">
         <TrackTags
-          :items="track.tags"
+          :items="localTags"
           @addTag="addTag($event)"
           @deleteTag="deleteTag($event)"
         />
@@ -81,9 +81,18 @@ import AIClassification from "./AIClassification.vue";
 import api from "@api";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import {
+  ApiHumanTrackTagResponse,
   ApiTrackTagRequest,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
+
+interface TrackInternalData {
+  localTags: ApiTrackTagResponse[];
+  show_details: boolean;
+  showFullAddTag: boolean;
+  message: string;
+  showUserTaggingHintCountDown: boolean;
+}
 
 export default {
   name: "Track",
@@ -134,11 +143,12 @@ export default {
   },
   data() {
     return {
-      show_details: false,
+      showDetails: false,
       showFullAddTag: false,
       message: "",
       showUserTaggingHintCountDown: false,
-    };
+      localTags: [],
+    } as TrackInternalData;
   },
   computed: {
     masterTag(): ApiTrackTagResponse | undefined {
@@ -159,19 +169,50 @@ export default {
         ) !== undefined
       );
     },
-    userTags(): ApiTrackTagResponse[] {
-      return this.track.tags
-        .filter(({ automatic }) => !automatic)
-        .map(({ what }) => what);
+    userTags(): string[] {
+      return this.userTagItems.map(({ what }) => what);
+    },
+    userTagItems(): ApiHumanTrackTagResponse[] {
+      return this.localTags.filter(({ automatic }) => !automatic);
     },
     isSuperUser() {
       return this.$store.state.User.userData.isSuperUser;
     },
   },
+  created() {
+    this.localTags = [...this.track.tags];
+  },
+  watch: {
+    "track.tags": function () {
+      this.updateLocalTags();
+    },
+  },
   methods: {
+    updateLocalTags() {
+      this.localTags =
+        (this.track && this.track.tags && [...this.track.tags]) || [];
+    },
     async addTag(tag: ApiTrackTagRequest) {
       const recordingId = this.recordingId;
       const trackId = this.track.id;
+      // Replace any tag by the current user:
+      const tagByUser = this.userTagItems.find(
+        (tag) => tag.userName === this.$store.state.User.userData.userName
+      );
+      if (tagByUser) {
+        this.localTags = this.localTags.filter((tag) => tag !== tagByUser);
+      }
+      // Add to local tags for fast UI update while we wait for the API
+      this.localTags = [
+        ...this.localTags,
+        {
+          ...tag,
+          userName: this.$store.state.User.userData.userName,
+          trackId,
+          id: -1,
+          createdAt: new Date().toISOString(),
+        },
+      ];
       const {
         result: { trackTagId },
       } = await api.recording.replaceTrackTag(tag, recordingId, trackId);
@@ -189,22 +230,30 @@ export default {
     promptUserToAddTag() {
       this.showUserTaggingHintCountDown = true;
     },
-    async deleteTag(tag: ApiTrackTagResponse) {
+    async deleteTag(tagToDelete: ApiTrackTagResponse) {
       const recordingId = this.recordingId;
+      let removedTag;
       try {
+        this.localTags = this.localTags.filter((tag) => tag !== tagToDelete);
         const result = await api.recording.deleteTrackTag(
           recordingId,
-          tag.trackId,
-          tag.id
+          tagToDelete.trackId,
+          tagToDelete.id
         );
         if (!result.success) {
-          // TODO
+          if (removedTag) {
+            // Add it back to localTags
+            this.localTags = [...this.localTags, removedTag];
+          }
           return result;
         }
       } catch (e) {
-        // TODO
+        if (removedTag) {
+          // Add it back to localTags
+          this.localTags = [...this.localTags, removedTag];
+        }
       }
-      this.$emit("change-tag", tag);
+      this.$emit("change-tag", tagToDelete);
     },
     trackSelected(increment) {
       const index = Math.min(
