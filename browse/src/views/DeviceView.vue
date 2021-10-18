@@ -33,7 +33,16 @@
           size="xs"
           style="color: #666; font-size: 16px"
         />
-        <font-awesome-icon icon="microchip" size="xs" />
+        <font-awesome-icon
+          :icon="
+            device.type === 'thermal'
+              ? 'video'
+              : device.type === 'audio'
+              ? 'music'
+              : 'microchip'
+          "
+          size="xs"
+        />
         <span>{{ deviceName }}</span>
       </h1>
       <p class="lead">Manage this device.</p>

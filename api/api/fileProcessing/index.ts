@@ -100,11 +100,12 @@ export default function (app: Application) {
    *
    * @apiUse V1ResponseError
    */
-  app.post(`${apiUrl}/processed`, () => {
+  app.post(
+    `${apiUrl}/processed`,
     util.multipartUpload("file", async (uploader, data, key) => {
       return key;
-    });
-  });
+    })
+  );
 
   // Add tracks
 
@@ -340,16 +341,18 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/tags`,
-    validateFields([
-      middleware.parseJSON("tag", body),
-      idOf(body("recordingId")),
-    ]),
+    validateFields([body("tag").isJSON(), idOf(body("recordingId"))]),
     fetchUnauthorizedRequiredRecordingById(body("recordingId")),
+    parseJSONField(body("tag")),
     async (request, response) => {
+      if (response.locals.tag.event) {
+        // FIXME - processing still sends us the tag as "event" rather than "detail"
+        response.locals.tag.detail = response.locals.tag.event;
+      }
       const tagInstance = await recordingUtil.addTag(
         null,
         response.locals.recording,
-        request.body.tag
+        response.locals.tag
       );
       responseUtil.send(response, {
         statusCode: 200,
@@ -376,12 +379,13 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/metadata`,
-    validateFields([idOf(body("id")), middleware.parseJSON("metadata", body)]),
+    validateFields([idOf(body("id")), body("metadata").isJSON()]),
     fetchUnauthorizedRequiredRecordingById(body("id")),
+    parseJSONField(body("metadata")),
     async (request: Request, response: Response) => {
       await recordingUtil.updateMetadata(
-        response.locals.recording.recording,
-        request.body.metadata
+        response.locals.recording,
+        response.locals.metadata
       );
     }
   );
@@ -472,16 +476,17 @@ export default function (app: Application) {
       idOf(param("trackId")),
       body("what").exists().isString(), // FIXME - Validate against valid tags?
       body("confidence").isFloat().toFloat(),
-      middleware.parseJSON("data", body).optional(),
+      body("data").isJSON().optional(),
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
+    parseJSONField(body("data")),
     async (request: Request, response: Response) => {
       const tag = await response.locals.track.addTag(
         request.body.what,
         request.body.confidence,
         true,
-        request.body.data
+        response.locals.data
       );
       responseUtil.send(response, {
         statusCode: 200,
@@ -505,11 +510,12 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/algorithm`,
-    [middleware.parseJSON("algorithm", body)],
-    middleware.requestWrapper(async (request, response) => {
+    validateFields([body("algorithm").isJSON()]),
+    parseJSONField(body("algorithm")),
+    async (request, response) => {
       const algorithm = await models.DetailSnapshot.getOrCreateMatching(
         "algorithm",
-        request.body.algorithm
+        response.locals.algorithm
       );
 
       responseUtil.send(response, {
@@ -517,7 +523,7 @@ export default function (app: Application) {
         messages: ["Algorithm key retrieved."],
         algorithmId: algorithm.id,
       });
-    })
+    }
   );
 
   /**
@@ -535,7 +541,6 @@ export default function (app: Application) {
   app.get(
     `${apiUrl}/:id/tracks`,
     param("id").isInt().toInt(),
-
     middleware.requestWrapper(async (request, response) => {
       const recording = await models.Recording.findOne({
         where: { id: request.params.id },

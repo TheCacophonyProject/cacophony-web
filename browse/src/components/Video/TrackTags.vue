@@ -1,19 +1,15 @@
 <template>
   <div class="simple-accordion-wrapper">
-    <h6 class="simple-accordion-header" @click="show_details = !show_details">
+    <h6 class="simple-accordion-header" @click="showDetails = !showDetails">
       Tag history
-      <span
-        v-if="!show_details"
-        title="Show all result classes"
-        class="pointer"
-      >
+      <span v-if="!showDetails" title="Show all result classes" class="pointer">
         <font-awesome-icon icon="angle-down" class="fa-1x" />
       </span>
-      <span v-if="show_details" title="Hide other results" class="pointer">
+      <span v-if="showDetails" title="Hide other results" class="pointer">
         <font-awesome-icon icon="angle-up" class="fa-1x" />
       </span>
     </h6>
-    <div v-if="show_details">
+    <div v-if="showDetails">
       <b-table
         :items="items"
         :fields="fields"
@@ -80,6 +76,7 @@
 
 <script lang="ts">
 import { imgSrc } from "@/const";
+import { ApiTrackTagRequest } from "@typedefs/api/trackTag";
 
 export default {
   name: "TrackTags",
@@ -105,7 +102,7 @@ export default {
           tdClass: "tag-history-table-buttons",
         },
       ],
-      show_details: false,
+      showDetails: false,
     };
   },
   methods: {
@@ -136,10 +133,11 @@ export default {
           tag.userName === this.$store.state.User.userData.userName
       );
     },
-    confirmTag: function (rowItem) {
-      const tag = {};
-      tag.what = rowItem.what;
-      tag.confidence = rowItem.confidence;
+    confirmTag: function ({ what, confidence }) {
+      const tag: ApiTrackTagRequest = {
+        what,
+        confidence,
+      };
       this.$emit("addTag", tag);
     },
   },

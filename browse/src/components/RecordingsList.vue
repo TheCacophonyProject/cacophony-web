@@ -168,7 +168,7 @@ const collateTags = (
   for (let i = 0; i < tags.length; i++) {
     const tag = tags[i];
     // FIXME - check if we needed animal here
-    const tagName = tag.what; //tag.animal === null ? tag.event : tag.animal;
+    const tagName = tag.what || tag.detail; //tag.animal === null ? tag.event : tag.animal;
     const taggerId = tag.taggerId;
     addToListOfTags(tagItems, tagName, tag.automatic, taggerId);
   }

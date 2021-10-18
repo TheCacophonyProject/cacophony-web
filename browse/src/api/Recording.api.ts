@@ -9,14 +9,12 @@ import {
   TagId,
   TrackId,
   TrackTagId,
-  UserId,
 } from "@typedefs/api/common";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
   ApiTrackTagRequest,
-  ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
@@ -37,7 +35,7 @@ export interface Location {
 }
 
 export interface LimitedTrack {
-  TrackId: TrackId;
+  trackId: TrackId;
   data: {
     start_s: number;
     end_s: number;
@@ -302,7 +300,7 @@ function id(id: RecordingId): Promise<
 function comment(comment: string, id: RecordingId): Promise<FetchResult<any>> {
   return CacophonyApi.patch(`${apiPath}/${id}`, {
     updates: {
-      comment: comment,
+      comment,
     },
   });
 }

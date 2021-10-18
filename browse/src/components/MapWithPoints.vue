@@ -7,7 +7,7 @@
     }"
     v-if="mapBounds"
     :bounds="mapBounds"
-    :options="{ zoomControl: zoom, dragging: isInteractive, maxZoom: 17 }"
+    :options="{ zoomControl: zoom, dragging: isInteractive, maxZoom: 16 }"
     @ready="onReady"
   >
     <l-control-layers v-if="canChangeBaseMap && mapLayers.length > 1" />

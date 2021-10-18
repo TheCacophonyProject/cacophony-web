@@ -226,15 +226,14 @@ export default {
                   if (!locations.hasOwnProperty(location.toString())) {
                     locations[location.toString()] = {
                       location,
-                      group: "",
+                      group: device.groupName,
                     };
                   }
                   const loc = locations[location.toString()];
-                  loc.name = device.groupName;
+                  loc.group = device.groupName;
+                  loc.name = device.deviceName;
                 }
               }
-              this.locations = locations;
-              this.locationsLoading = false;
 
               const { groupName, groupId } = device;
               groups[groupId] = groups[groupId] || {
@@ -245,6 +244,8 @@ export default {
               groups[groupId].devices.push(device);
               // Now we should be able to show the groups for those devices.
             }
+            this.locations = locations;
+            this.locationsLoading = false;
           }
         } catch (e) {
           // ...

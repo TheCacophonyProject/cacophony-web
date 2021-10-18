@@ -21,6 +21,7 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { TrackTag, TrackTagId } from "./TrackTag";
 import { Recording } from "./Recording";
 import { RecordingId, TrackId } from "@typedefs/api/common";
+import logger from "@log";
 
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
   RecordingId: RecordingId;
@@ -86,7 +87,6 @@ export default function (
           UserId: tag.UserId,
           automatic: tag.automatic,
           TrackId: trackId,
-          what: tag.what,
         },
         transaction: t,
       });
@@ -100,6 +100,10 @@ export default function (
           (uTag) => !uTag.isAdditionalTag()
         );
 
+        logger.warning(
+          "Replace tag: Existing animal tags %s",
+          existingAnimalTags.map(({ what }) => what).join(", ")
+        );
         for (let i = 0; i < existingAnimalTags.length; i++) {
           await existingAnimalTags[i].destroy({ transaction: t });
         }
@@ -119,10 +123,10 @@ export default function (
     userId = null
   ) {
     const tag = await this.createTrackTag({
-      what: what,
-      confidence: confidence,
-      automatic: automatic,
-      data: data,
+      what,
+      confidence,
+      automatic,
+      data,
       UserId: userId,
     });
     return tag;

@@ -91,10 +91,7 @@ import api from "@/api";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
-import {
-  ApiTrackTagRequest,
-  ApiTrackTagResponse,
-} from "@typedefs/api/trackTag";
+import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import {
   ApiRecordingTagRequest,
   ApiRecordingTagResponse,
@@ -471,12 +468,9 @@ export default {
         }
       }
     },
-    updateComment(comment) {
+    async updateComment(comment: string) {
       const recordingId = Number(this.$route.params.id);
-      this.$store.dispatch("Video/UPDATE_COMMENT", {
-        comment,
-        recordingId,
-      });
+      await api.recording.comment(comment, recordingId);
     },
   },
 };

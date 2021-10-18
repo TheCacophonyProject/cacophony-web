@@ -699,6 +699,7 @@ export default (app: Application, baseUrl: string) => {
         .custom((value) => {
           return models.Recording.isValidTagMode(value);
         }),
+      query("view-mode").optional().equals("user"),
       //middleware.parseJSON("filterOptions", query).optional(),
     ]),
     parseJSONField(query("order")),

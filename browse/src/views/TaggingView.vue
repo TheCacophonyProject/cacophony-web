@@ -252,7 +252,7 @@ export default Vue.extend({
     async addTag(tagLabel: string) {
       const recordingId = this.currentRecording.RecordingId;
       const currentTrack = this.tracks[this.currentTrackIndex];
-      const trackId = currentTrack.TrackId;
+      const trackId = currentTrack.trackId;
       const tag = { what: tagLabel, confidence: 0.85 };
       this.taggingPending = true;
       const { result } = await api.recording.addTrackTag(
@@ -287,7 +287,7 @@ export default Vue.extend({
         this.taggingPending = true;
         const { success } = await api.recording.deleteTrackTag(
           recording.RecordingId,
-          track.TrackId,
+          track.trackId,
           tag.TrackTagId
         );
         this.taggingPending = false;

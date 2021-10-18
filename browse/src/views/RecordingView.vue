@@ -78,7 +78,6 @@ import {
 import { RecordingType } from "@typedefs/api/consts";
 import api from "@api";
 import { RecordingId, TagId, TrackId } from "@typedefs/api/common";
-import store from "@/stores";
 
 export default {
   name: "RecordingView",
