@@ -100,11 +100,12 @@ export default function (app: Application) {
    *
    * @apiUse V1ResponseError
    */
-  app.post(`${apiUrl}/processed`, () => {
+  app.post(
+    `${apiUrl}/processed`,
     util.multipartUpload("file", async (uploader, data, key) => {
       return key;
-    });
-  });
+    })
+  );
 
   // Add tracks
 

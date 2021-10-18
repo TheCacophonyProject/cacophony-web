@@ -39,6 +39,11 @@ function multipartUpload(
 ) {
   return async (request: Request, response: Response) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
+
+    if (keyPrefix === "file") {
+      log.warning("Got file upload init");
+    }
+
     let data;
     let filename;
     let upload;
@@ -73,9 +78,16 @@ function multipartUpload(
         return;
       }
 
+      if (keyPrefix === "file") {
+        log.warning("Got file upload data field");
+      }
+
       try {
         data = JSON.parse(value);
-        if (uploadingDevice && data.fileHash) {
+        if (keyPrefix === "file") {
+          log.warning("Got file upload data %s", data);
+        }
+        if (uploadingDevice && data.fileHash && keyPrefix === "raw") {
           // Try and handle duplicates early in the upload if possible,
           // so that we can return early and not waste bandwidth
           const existingRecordingWithHashForDevice =
@@ -121,6 +133,9 @@ function multipartUpload(
         .catch((err) => {
           return err;
         });
+      if (keyPrefix === "file") {
+        log.warning("Started streaming file upload to bucket...");
+      }
       log.debug("Started streaming upload to bucket...");
     });
 
@@ -153,6 +168,14 @@ function multipartUpload(
       try {
         // Wait for the upload to complete.
         const uploadResult = await upload;
+
+        if (keyPrefix === "file") {
+          log.warning(
+            "Finished streaming upload to object store. Key: %s",
+            key
+          );
+        }
+
         // log.warning("Upload %s", performance.now() - s);
         if (uploadResult instanceof Error) {
           responseUtil.serverError(response, uploadResult);
@@ -161,7 +184,7 @@ function multipartUpload(
         log.info("Finished streaming upload to object store. Key: %s", key);
 
         // Optional file integrity check, opt-in to be backward compatible with existing clients.
-        if (data.fileHash) {
+        if (data.fileHash && keyPrefix === "raw") {
           log.info("Checking file hash. Key: %s", key);
           // Read the full file back from s3 and hash it
           const fileData = await modelsUtil
@@ -253,6 +276,7 @@ function multipartUpload(
           // Returning the s3 key of an uploaded asset - will be entered against
           // the recording in the DB by a subsequent api call.
           responseUtil.validFileUpload(response, dbRecordOrFileKey);
+          return;
         }
       } catch (err) {
         responseUtil.serverError(response, err);
