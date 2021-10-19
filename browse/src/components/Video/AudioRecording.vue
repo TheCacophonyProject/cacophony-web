@@ -64,6 +64,7 @@ import CustomTags from "../Audio/CustomTags.vue";
 import TagList from "../Audio/TagList.vue";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
+import { RecordingType } from "@typedefs/api/consts";
 
 export default {
   name: "AudioRecording",
@@ -121,22 +122,21 @@ export default {
   },
   methods: {
     async getNextRecording(direction: "next" | "previous" | "either") {
-      let where: any = {
-        DeviceId: this.audioRecording.deviceId,
+      const params: any = {
+        limit: 1,
+        offset: 0,
+        type: RecordingType.Audio,
       };
-
       let order;
       switch (direction) {
         case "next":
-          where.recordingDateTime = {
-            $gt: this.audioRecording.recordingDateTime,
-          };
+          params.to = null;
+          params.from = this.recording.recordingDateTime;
           order = "ASC";
           break;
         case "previous":
-          where.recordingDateTime = {
-            $lt: this.audioRecording.recordingDateTime,
-          };
+          params.from = null;
+          params.to = this.recording.recordingDateTime;
           order = "DESC";
           break;
         case "either":
@@ -147,15 +147,7 @@ export default {
         default:
           throw `invalid direction: '${direction}'`;
       }
-      order = JSON.stringify([["recordingDateTime", order]]);
-      where = JSON.stringify(where);
-
-      const params = {
-        where,
-        order,
-        limit: 1,
-        offset: 0,
-      };
+      params.order = JSON.stringify([["recordingDateTime", order]]);
       this.$emit("load-next-recording", params);
     },
     async deleteRecording() {
@@ -199,7 +191,7 @@ export default {
       });
     },
     done() {
-      this.gotoNextRecording("either");
+      this.getNextRecording("either");
     },
     replay(time) {
       this.$refs.player.currentTime = time;

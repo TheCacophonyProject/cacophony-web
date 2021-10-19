@@ -229,6 +229,7 @@ export default {
         delete params.order;
         delete params.type;
         delete params.limit;
+        delete params.offset;
         await this.$router.push({
           path: `/recording/${rows[0].id}`,
           query: params,
