@@ -43,7 +43,15 @@
             @change-tag="changedTrackTag"
           />
         </div>
-        <div v-if="!processingCompleted" class="processing">
+        <div v-if="processingQueued" class="processing">
+          <b-spinner small />
+          <span>Queued for processing</span>
+        </div>
+        <div v-else-if="processingFailed" class="processing">
+          <span>Processing recording encountered errors.</span>
+          <b-btn @click="reprocess">Retry?</b-btn>
+        </div>
+        <div v-else-if="!processingCompleted" class="processing">
           <b-spinner small />
           <span>Recording still processing.</span>
         </div>
@@ -51,12 +59,23 @@
     </b-row>
     <b-row>
       <b-col cols="12" lg="8">
-        <PrevNext
-          :recording="recording"
-          :can-go-backwards="canGoBackwardInSearch"
-          :can-go-forwards="canGoForwardInSearch"
-          @nextOrPreviousRecording="prevNext"
-        />
+        <div class="img-buttons">
+          <button
+            v-b-tooltip.hover.bottomleft="'Earlier in search'"
+            @click="gotoNextRecording('previous')"
+            :disabled="!canGoBackwardInSearch"
+          >
+            <font-awesome-icon icon="angle-left" class="fa-3x" />
+          </button>
+          <button
+            v-b-tooltip.hover.bottomleft="'Later in search'"
+            @click="gotoNextRecording('next')"
+            :disabled="!canGoForwardInSearch"
+          >
+            <font-awesome-icon icon="angle-right" class="fa-3x" />
+          </button>
+        </div>
+
         <RecordingControls
           :items="tagItems"
           :comment="recording.comment"
@@ -81,7 +100,6 @@
 
 <script lang="ts">
 /* eslint-disable no-console */
-import PrevNext from "./PrevNext.vue";
 import RecordingControls from "./RecordingControls.vue";
 import TrackInfo from "./Track.vue";
 import CptvPlayer from "cptv-player-vue/src/CptvPlayer.vue";
@@ -102,7 +120,6 @@ import { RecordingType } from "@typedefs/api/consts";
 export default {
   name: "VideoRecording",
   components: {
-    PrevNext,
     RecordingControls,
     RecordingProperties,
     TrackInfo,
@@ -190,6 +207,21 @@ export default {
           RecordingProcessingState.Finished
       );
     },
+    processingQueued() {
+      return (
+        !this.processingFailed &&
+        !this.processingCompleted &&
+        !this.recording.processing
+      );
+    },
+    processingFailed() {
+      return (
+        this.recording &&
+        (
+          this.recording as ApiThermalRecordingResponse
+        ).processingState.endsWith(".failed")
+      );
+    },
   },
   async mounted() {
     this.updateLocalTags();
@@ -201,6 +233,14 @@ export default {
     },
   },
   methods: {
+    async reprocess() {
+      const { success } = await api.recording.reprocess(this.recordingId);
+      if (success) {
+        this.$emit("reprocess-requested", this.recordingId);
+      } else {
+        // TODO
+      }
+    },
     updateLocalTags() {
       const newTags: ApiRecordingTagResponse[] =
         (this.recording && this.recording.tags && [...this.recording.tags]) ||
@@ -226,8 +266,8 @@ export default {
         this.canGoForwardInSearch = listIndex < list.length - 1;
       } else {
         const prevNext = await Promise.all([
-          this.hasNextRecording("previous", "any", false, true),
-          this.hasNextRecording("next", "any", false, true),
+          this.hasNextRecording("previous", false, false, true),
+          this.hasNextRecording("next", false, false, true),
         ]);
         this.canGoBackwardInSearch = prevNext[0];
         this.canGoForwardInSearch = prevNext[1];
@@ -236,34 +276,48 @@ export default {
     getListOfRecordingsIds(): string[] {
       return this.$route.query.id;
     },
-    async gotoNextRecording(direction, tagMode, tags, skipMessage = false) {
+    async gotoNextRecording(
+      direction: "next" | "previous" | "either",
+      tagMode: false | string = false,
+      tags: false | string[] = false,
+      skipMessage = false
+    ) {
       const idsList = this.getListOfRecordingsIds();
       if (idsList) {
         await this.goToNextRecordingInList(direction, idsList);
       } else {
         const searchQueryCopy = JSON.parse(JSON.stringify(this.$route.query));
+        searchQueryCopy.type = RecordingType.ThermalRaw;
+        const resolvedTagMode = tagMode || searchQueryCopy.tagMode;
+        const resolvedTags = tags || searchQueryCopy.tags;
         try {
           if (
-            await this.getNextRecording(direction, tagMode, tags, skipMessage)
+            await this.getNextRecording(
+              direction,
+              resolvedTagMode,
+              resolvedTags,
+              skipMessage
+            )
           ) {
-            await this.$router.push({
-              path: `/recording/${this.recording.id}`,
-              query: searchQueryCopy,
-            });
-            if (direction === "next") {
+            // await this.$router.push({
+            //   path: `/recording/${this.recording.id}`,
+            //   query: searchQueryCopy,
+            // });
+            if (direction === "next" || direction === "either") {
               this.canGoBackwardInSearch = true;
               this.canGoForwardInSearch = await this.hasNextRecording(
                 "next",
-                tagMode,
-                tags,
+                resolvedTagMode,
+                resolvedTags,
                 true
               );
-            } else if (direction === "previous") {
+            }
+            if (direction === "previous" || direction === "either") {
               this.canGoForwardInSearch = true;
               this.canGoBackwardInSearch = await this.hasNextRecording(
                 "previous",
-                tagMode,
-                tags,
+                resolvedTagMode,
+                resolvedTags,
                 true
               );
             }
@@ -284,10 +338,6 @@ export default {
             });
             this.canGoBackwardInSearch = nextIndex > 0;
             this.canGoForwardInSearch = nextIndex < list.length - 1;
-            return await this.$store.dispatch(
-              "Video/GET_RECORDING",
-              list[nextIndex]
-            );
             // eslint-disable-next-line no-empty
           } catch (e) {}
         }
@@ -344,7 +394,8 @@ export default {
       delete params.offset;
       try {
         if (!noNavigate) {
-          this.$emit("load-next-recording", { params });
+          this.$emit("load-next-recording", params);
+          return true;
         } else {
           // Just return whether or not there is a next/prev recording.
           const { result, success } = await api.recording.query(params);
@@ -482,14 +533,54 @@ export default {
 }
 .processing {
   color: darkred;
-  padding: 0 20px;
+  padding: 20px;
   text-align: center;
   > span {
+    display: inline-block;
     vertical-align: middle;
+    padding: 0 0 10px 0;
   }
   > span:last-child {
     font-weight: 600;
     font-size: 120%;
+  }
+}
+
+// Prev-next buttons:
+.img-buttons {
+  padding: 0.5em;
+  text-align: center;
+  span:hover {
+    opacity: 1;
+  }
+  > button {
+    cursor: pointer;
+    width: 4em;
+    max-height: 4em;
+    display: inline-block;
+    opacity: 0.6;
+    background: transparent;
+
+    &:focus,
+    &:active {
+      outline: none;
+    }
+
+    color: inherit;
+    border: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    &:disabled {
+      opacity: 0.3;
+    }
+  }
+}
+
+@media only screen and (max-width: 575px) {
+  .img-buttons {
+    font-size: 80%;
   }
 }
 </style>

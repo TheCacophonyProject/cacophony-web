@@ -230,6 +230,7 @@ export default function (app: Application) {
       idOf(body("id")),
       body("jobKey").exists(),
       booleanOf(body("success")),
+      body("newProcessedFileKey").isString().optional(),
       booleanOf(body("complete")),
       body("fileHash").isString().optional(),
       // FIXME - JSON schema validate this?
@@ -422,7 +423,6 @@ export default function (app: Application) {
         data: response.locals.data,
         AlgorithmId: request.body.algorithmId,
       });
-      logger.warning("Create track %s", track.get({ plain: true }));
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track added."],

@@ -379,6 +379,10 @@ function deleteRecordingTag(
   return CacophonyApi.delete(`${apiPath}/${id}/tags/${tagId}`);
 }
 
+function reprocess(id: RecordingId): Promise<FetchResult<void>> {
+  return CacophonyApi.get(`/api/v1/reprocess/${id}`);
+}
+
 interface RecordingToTag {
   RecordingId: RecordingId;
   DeviceId: DeviceId;
@@ -436,6 +440,7 @@ export default {
   comment,
   del,
   tracks,
+  reprocess,
   addTrackTag,
   deleteTrackTag,
   replaceTrackTag,

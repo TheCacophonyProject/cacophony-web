@@ -444,7 +444,6 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
   }
   log.info(logMessage);
   const validationErrors = validationResult(request);
-  // log.info("Validation errors %s", validationErrors);
   if (!validationErrors.isEmpty()) {
     log.warning(
       "%s",
@@ -589,8 +588,7 @@ export const validateFields = (
       for (const validation of validations) {
         validationPromises.push(validation.run(request));
       }
-      const results = await Promise.all(validationPromises);
-      // log.warning("Results %s", results);
+      await Promise.all(validationPromises);
     }
 
     const { unknownFields, suggestions } = checkForUnknownFields(

@@ -23,11 +23,12 @@ import log from "@log";
 import responseUtil from "./responseUtil";
 import modelsUtil from "@models/util/util";
 import crypto from "crypto";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
 import { DeviceType, RecordingType } from "@typedefs/api/consts";
+import { ClientError } from "@api/customErrors";
 
 function multipartUpload(
   keyPrefix: string,
@@ -37,12 +38,8 @@ function multipartUpload(
     key: string
   ) => Promise<ModelCommon<T> | string>
 ) {
-  return async (request: Request, response: Response) => {
+  return async (request: Request, response: Response, next: NextFunction) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
-
-    if (keyPrefix === "file") {
-      log.warning("Got file upload init");
-    }
 
     let data;
     let filename;
@@ -78,15 +75,8 @@ function multipartUpload(
         return;
       }
 
-      if (keyPrefix === "file") {
-        log.warning("Got file upload data field");
-      }
-
       try {
         data = JSON.parse(value);
-        if (keyPrefix === "file") {
-          log.warning("Got file upload data %s", data);
-        }
         if (uploadingDevice && data.fileHash && keyPrefix === "raw") {
           // Try and handle duplicates early in the upload if possible,
           // so that we can return early and not waste bandwidth
@@ -102,11 +92,9 @@ function multipartUpload(
               "Recording with hash for device %s already exists, discarding duplicate",
               uploadingDevice.id
             );
-            responseUtil.send(response, {
-              statusCode: 422,
-              messages: ["Duplicate recording found for device"],
-            });
-            return;
+            return next(
+              new ClientError("Duplicate recording found for device", 422)
+            );
           }
         }
       } catch (err) {
@@ -133,9 +121,6 @@ function multipartUpload(
         .catch((err) => {
           return err;
         });
-      if (keyPrefix === "file") {
-        log.warning("Started streaming file upload to bucket...");
-      }
       log.debug("Started streaming upload to bucket...");
     });
 
@@ -168,15 +153,6 @@ function multipartUpload(
       try {
         // Wait for the upload to complete.
         const uploadResult = await upload;
-
-        if (keyPrefix === "file") {
-          log.warning(
-            "Finished streaming upload to object store. Key: %s",
-            key
-          );
-        }
-
-        // log.warning("Upload %s", performance.now() - s);
         if (uploadResult instanceof Error) {
           responseUtil.serverError(response, uploadResult);
           return;

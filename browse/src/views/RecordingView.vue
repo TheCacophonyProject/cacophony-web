@@ -50,6 +50,7 @@
       @track-tag-changed="refreshTrackTagData"
       @tag-changed="refreshRecordingTagData"
       @load-next-recording="loadNextRecording"
+      @reprocess-requested="fetchRecording"
     />
   </b-container>
   <b-container v-else class="message-container">
@@ -215,7 +216,6 @@ export default {
       }
     },
     async loadNextRecording(params: any): Promise<void> {
-      console.log("Loading next recording", params);
       const {
         result: { rows },
         success,
@@ -223,7 +223,15 @@ export default {
       if (!success || !rows || rows.length == 0) {
         //  store.dispatch("Messaging/WARN", `No more recordings for this search.`);
       } else {
-        await this.$router.push(`/recording/${rows[0].id}`);
+        delete params.from;
+        delete params.to;
+        delete params.order;
+        delete params.type;
+        delete params.limit;
+        await this.$router.push({
+          path: `/recording/${rows[0].id}`,
+          query: params,
+        });
       }
     },
     async refreshTrackTagData(trackId: TrackId): Promise<void> {

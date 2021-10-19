@@ -357,10 +357,6 @@ export default (app: Application, baseUrl: string) => {
       // Default to also allowing inactive devices to have uploads on their behalf
       query("only-active").default(false).isBoolean().toBoolean(),
     ]),
-    (request, response, next) => {
-      log.warning("!! %s", request.query);
-      next();
-    },
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     uploadRawRecording
   );
