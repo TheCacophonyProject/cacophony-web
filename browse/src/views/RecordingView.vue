@@ -223,6 +223,7 @@ export default {
       if (!success || !rows || rows.length == 0) {
         //  store.dispatch("Messaging/WARN", `No more recordings for this search.`);
       } else {
+        // FIXME - Loading this twice here seems a wee bit silly
         delete params.from;
         delete params.to;
         delete params.order;

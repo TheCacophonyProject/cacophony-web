@@ -4,6 +4,7 @@ import { AcceptableTag } from "./consts";
 export interface ApiRecordingTagRequest {
   detail: string;
   confidence: number;
+  startTime?: number; // Used for audio tags
   what?: AcceptableTag;
   automatic?: boolean;
   version?: number;
@@ -15,6 +16,7 @@ export interface ApiRecordingTagResponse {
   confidence: number;
   recordingId?: RecordingId;
   taggerId?: UserId;
+  startTime?: number;
   taggerName?: string;
   what?: AcceptableTag;
   automatic?: boolean;

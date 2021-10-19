@@ -149,6 +149,9 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
       result.taggerName = (tag as any).tagger.username;
     }
   }
+  if (tag.hasOwnProperty("startTime")) {
+    result.startTime = tag.startTime;
+  }
   if (tag.what) {
     result.what = tag.what;
   }

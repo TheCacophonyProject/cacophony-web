@@ -59,11 +59,11 @@
 
 <script lang="ts">
 import api from "@api";
-import { mapState } from "vuex";
 import BasicTags from "../Audio/BasicTags.vue";
 import CustomTags from "../Audio/CustomTags.vue";
 import TagList from "../Audio/TagList.vue";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
+import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 
 export default {
   name: "AudioRecording",
@@ -90,26 +90,37 @@ export default {
     },
   },
   computed: {
-    ...mapState({
-      tagItems() {
-        const result = this.$store.getters["Video/getTagItems"];
-        return result;
-      },
-    }),
+    tagItems() {
+      const tags: ApiRecordingTagResponse[] =
+        (this.recording && this.recording.tags) || [];
+      const tagItems = [];
+      tags.map((tag) => {
+        const tagItem: any = {};
+        if (tag.what) {
+          tagItem.what = tag.what;
+        }
+        tagItem.detail = tag.detail;
+        if (tag.confidence) {
+          tagItem.confidence = tag.confidence.toFixed(2);
+        }
+        if (tag.automatic) {
+          tagItem.who = "Cacophony AI";
+          tagItem["_rowVariant"] = "warning";
+        } else {
+          tagItem.who = tag.taggerName || "-";
+        }
+        tagItem.when = new Date(tag.createdAt).toLocaleString();
+        tagItem.tag = tag;
+        tagItems.push(tagItem);
+      });
+      return tagItems;
+    },
     audioRecording(): ApiAudioRecordingResponse {
       return this.recording;
     },
   },
   methods: {
-    async gotoNextRecording(direction) {
-      if (await this.getNextRecording(direction)) {
-        this.deleteDisabled = false;
-        this.$router.push({
-          path: `/recording/${this.audioRecording.id}`,
-        });
-      }
-    },
-    async getNextRecording(direction, skipMessage) {
+    async getNextRecording(direction: "next" | "previous" | "either") {
       let where: any = {
         DeviceId: this.audioRecording.deviceId,
       };
@@ -129,10 +140,10 @@ export default {
           order = "DESC";
           break;
         case "either":
-          if (await this.getNextRecording("next", true)) {
+          if (await this.getNextRecording("next")) {
             return true;
           }
-          return await this.getNextRecording("previous", skipMessage);
+          return await this.getNextRecording("previous");
         default:
           throw `invalid direction: '${direction}'`;
       }
@@ -145,34 +156,29 @@ export default {
         limit: 1,
         offset: 0,
       };
-
-      return await this.$store.dispatch("Video/QUERY_RECORDING", {
-        params,
-        skipMessage,
-      });
+      this.$emit("load-next-recording", params);
     },
     async deleteRecording() {
       this.deleteDisabled = true;
       const { success } = await api.recording.del(this.$route.params.id);
       if (success) {
-        this.gotoNextRecording("either");
+        await this.getNextRecording("either");
       }
+      this.deleteDisabled = false;
     },
-    addAudioTag: function (tag) {
+    addAudioTag: async function (tag) {
       const id = Number(this.$route.params.id);
       if (this.$refs.player.currentTime == this.$refs.player.duration) {
         tag.startTime = 0;
       } else {
         tag.startTime = this.$refs.player.currentTime.toFixed(2);
       }
-
-      // eslint-disable-next-line no-console
-      // console.log(config.tagVersion);
-      // next line generates internal server error on test api - menno to follow up
-      // tag.version = config.tagVersion;
-
-      this.$store.dispatch("Video/ADD_TAG", { tag, id });
-
+      const {
+        result: { tagId },
+      } = await api.recording.addRecordingTag(tag, id);
+      this.$nextTick(() => {
+        this.$emit("tag-changed", tagId);
+      });
       // https://api-test.cacophony.org.nz/api/v1/tags
       // tag format
       // tagId integer OPTIONAL on get or post operation, COMPULSORY for delete, if tag id given for get or post then operation is an UPDATE
@@ -186,8 +192,11 @@ export default {
       // automatic -Boolean	"true" if tag is machine generated, "false" if human COMPULSORY
       // schemaVersion - integer 0000 MMnn MAJORminor - Future proofing for schema changes Starts with 0100 (v1.00) COMPULSORY
     },
-    deleteTag(tagId) {
-      this.$store.dispatch("Video/DELETE_TAG", tagId);
+    async deleteTag(tagId) {
+      await api.recording.deleteRecordingTag(tagId, this.recordingId);
+      this.$nextTick(() => {
+        this.$emit("tag-changed", tagId);
+      });
     },
     done() {
       this.gotoNextRecording("either");
