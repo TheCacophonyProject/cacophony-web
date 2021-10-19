@@ -236,7 +236,7 @@ export default {
     async reprocess() {
       const { success } = await api.recording.reprocess(this.recordingId);
       if (success) {
-        this.$emit("reprocess-requested", this.recordingId);
+        this.$emit("recording-updated", this.recordingId);
       } else {
         // TODO
       }
@@ -527,6 +527,7 @@ export default {
     async updateComment(comment: string) {
       const recordingId = Number(this.$route.params.id);
       await api.recording.comment(comment, recordingId);
+      this.$emit("recording-updated", recordingId);
     },
   },
 };

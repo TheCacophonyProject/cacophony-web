@@ -50,7 +50,7 @@
       @track-tag-changed="refreshTrackTagData"
       @tag-changed="refreshRecordingTagData"
       @load-next-recording="loadNextRecording"
-      @reprocess-requested="fetchRecording"
+      @recording-updated="fetchRecording"
     />
   </b-container>
   <b-container v-else class="message-container">
