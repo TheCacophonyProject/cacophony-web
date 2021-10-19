@@ -262,8 +262,9 @@ export default {
       const list = this.getListOfRecordingsIds();
       if (list) {
         const listIndex = list.indexOf(this.recording.id.toString());
-        this.canGoBackwardInSearch = listIndex > 0;
-        this.canGoForwardInSearch = listIndex < list.length - 1;
+        this.canGoBackwardInSearch = list.length > 1 && listIndex > 0;
+        this.canGoForwardInSearch =
+          list.length > 1 && listIndex < list.length - 1;
       } else {
         const prevNext = await Promise.all([
           this.hasNextRecording("previous", false, false, true),
@@ -274,7 +275,11 @@ export default {
       }
     },
     getListOfRecordingsIds(): string[] {
-      return this.$route.query.id;
+      if (Array.isArray(this.$route.query.id)) {
+        return this.$route.query.id;
+      } else {
+        return [this.$route.query.id];
+      }
     },
     async gotoNextRecording(
       direction: "next" | "previous" | "either",
