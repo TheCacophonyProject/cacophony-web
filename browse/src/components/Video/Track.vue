@@ -59,7 +59,7 @@
         @addTag="addTag($event)"
         @deleteTag="deleteTag($event)"
       />
-      <AddCustomTrackTag @addTag="addTag($event)" />
+      <AddCustomTrackTag @addTag="addTag($event)" :allow-comment="false" />
       <div v-if="isSuperUser">
         <TrackTags
           :items="localTags"

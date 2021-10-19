@@ -121,7 +121,9 @@ export default {
     },
   },
   methods: {
-    async getNextRecording(direction: "next" | "previous" | "either") {
+    async getNextRecording(
+      direction: "next" | "previous" | "either"
+    ): Promise<boolean> {
       const params: any = {
         limit: 1,
         offset: 0,
@@ -140,15 +142,27 @@ export default {
           order = "DESC";
           break;
         case "either":
-          if (await this.getNextRecording("next")) {
+          // First, we want to see if we have a previous recording.
+          // If so, go prev, else go next
+          if (await this.getNextRecording("previous")) {
+            return true;
+          } else if (await this.getNextRecording("next")) {
             return true;
           }
-          return await this.getNextRecording("previous");
+          return false;
         default:
           throw `invalid direction: '${direction}'`;
       }
       params.order = JSON.stringify([["recordingDateTime", order]]);
-      this.$emit("load-next-recording", params);
+      // Check for recording"
+      const {
+        result: { rows },
+      } = await api.recording.query(params);
+      if (rows.length) {
+        this.$emit("load-next-recording", params);
+        return true;
+      }
+      return false;
     },
     async deleteRecording() {
       this.deleteDisabled = true;
@@ -171,18 +185,6 @@ export default {
       this.$nextTick(() => {
         this.$emit("tag-changed", tagId);
       });
-      // https://api-test.cacophony.org.nz/api/v1/tags
-      // tag format
-      // tagId integer OPTIONAL on get or post operation, COMPULSORY for delete, if tag id given for get or post then operation is an UPDATE
-      // recordingId - integer, COMPULSORY
-      // the operation is an update, provided the authenticated user is the same as the tagger id
-      // tag: string - known values - "unknown", "nothing of interest", "bird", "human", custom tag free text COMPULSORY maxlength 64
-      // startTime - integer (0 - 60) seconds since start of audio clip COMPULSORY
-      // duration - integer (0 - 60) seconds duration of tag, OPTIONAL
-      // confidence - real 0.0 - 1.0 OPTIONAL default is 0.5
-      // taggerId (authenticated user id) COMPULSORY authenticated by backend
-      // automatic -Boolean	"true" if tag is machine generated, "false" if human COMPULSORY
-      // schemaVersion - integer 0000 MMnn MAJORminor - Future proofing for schema changes Starts with 0100 (v1.00) COMPULSORY
     },
     async deleteTag(tagId) {
       await api.recording.deleteRecordingTag(tagId, this.recordingId);
@@ -190,8 +192,8 @@ export default {
         this.$emit("tag-changed", tagId);
       });
     },
-    done() {
-      this.getNextRecording("either");
+    async done() {
+      await this.getNextRecording("either");
     },
     replay(time) {
       this.$refs.player.currentTime = time;

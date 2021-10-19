@@ -85,9 +85,7 @@
           @deleteTag="deleteTag($event)"
           @addTag="addTag($event)"
           @updateComment="updateComment($event)"
-          @nextOrPreviousRecording="
-            gotoNextRecording('either', 'any', false, false)
-          "
+          @nextOrPreviousRecording="gotoNextRecording('either')"
           @requested-export="requestedMp4Export"
         />
       </b-col>

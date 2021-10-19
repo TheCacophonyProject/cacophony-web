@@ -1313,7 +1313,7 @@ export default (app: Application, baseUrl: string) => {
       const tagInstance = await recordingUtil.addTag(
         response.locals.requestUser,
         response.locals.recording,
-        request.body.tag
+        response.locals.tag
       );
       responseUtil.send(response, {
         statusCode: 200,
