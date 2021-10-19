@@ -274,7 +274,7 @@ export default {
     showLocation() {
       this.showingLocation = true;
     },
-    navigateToRecording(event, recordingId) {
+    async navigateToRecording(event, recordingId) {
       if (event.target !== event.currentTarget && event.target.href) {
         // Clicking a link inside the outer card link
         return;
@@ -282,7 +282,7 @@ export default {
       if (!(event.metaKey || event.ctrlKey || event.shiftKey)) {
         // Don't change the route if we're ctrl-clicking
         event.preventDefault();
-        this.$router.push({
+        await this.$router.push({
           path: `/recording/${recordingId}`,
           query: this.futureSearchQuery,
         });

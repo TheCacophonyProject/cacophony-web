@@ -171,7 +171,7 @@ export default {
         ({ recId }) => `id=${recId}`
       );
       let remainingIdsQuery = "";
-      if (remainingIds.length > 1) {
+      if (remainingIds.length > 0) {
         remainingIdsQuery = `?${remainingIds.join("&")}`;
       }
       return `/recording/${firstRecordingId}${remainingIdsQuery}`;

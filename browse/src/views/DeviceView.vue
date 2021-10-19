@@ -35,9 +35,9 @@
         />
         <font-awesome-icon
           :icon="
-            device.type === 'thermal'
+            device && device.type === 'thermal'
               ? 'video'
-              : device.type === 'audio'
+              : device && device.type === 'audio'
               ? 'music'
               : 'microchip'
           "

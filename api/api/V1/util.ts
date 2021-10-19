@@ -41,10 +41,6 @@ function multipartUpload(
   return async (request: Request, response: Response, next: NextFunction) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
 
-    if (keyPrefix === "file") {
-      log.warning("Got file upload init");
-    }
-
     let data;
     let filename;
     let upload;
@@ -79,15 +75,8 @@ function multipartUpload(
         return;
       }
 
-      if (keyPrefix === "file") {
-        log.warning("Got file upload data field");
-      }
-
       try {
         data = JSON.parse(value);
-        if (keyPrefix === "file") {
-          log.warning("Got file upload data %s", data);
-        }
         if (uploadingDevice && data.fileHash && keyPrefix === "raw") {
           // Try and handle duplicates early in the upload if possible,
           // so that we can return early and not waste bandwidth
@@ -132,9 +121,6 @@ function multipartUpload(
         .catch((err) => {
           return err;
         });
-      if (keyPrefix === "file") {
-        log.warning("Started streaming file upload to bucket...");
-      }
       log.debug("Started streaming upload to bucket...");
     });
 
