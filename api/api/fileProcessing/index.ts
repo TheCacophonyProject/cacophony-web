@@ -423,7 +423,6 @@ export default function (app: Application) {
         data: response.locals.data,
         AlgorithmId: request.body.algorithmId,
       });
-      logger.warning("Create track %s", track.get({ plain: true }));
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track added."],

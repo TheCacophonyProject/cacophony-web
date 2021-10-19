@@ -105,7 +105,6 @@ export default function (sequelize, DataTypes): TagStatic {
   Tag.deleteFromId = async function (id: TagId, user: User) {
     const tag = await this.findByPk(id);
     if (tag == null) {
-      logging.warning("Didn't find tag");
       return true;
     }
     // FIXME - How about we validate *before* we get the resource?
@@ -116,7 +115,6 @@ export default function (sequelize, DataTypes): TagStatic {
     );
 
     if (recording == null) {
-      logging.warning("Didn't find recording %s", tag.RecordingId);
       return false;
     }
 

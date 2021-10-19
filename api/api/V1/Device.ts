@@ -347,7 +347,6 @@ export default function (app: Application, baseUrl: string) {
     // Should this require admin access to the device?
     fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
     async (request: Request, response: Response) => {
-      logging.warning("Device %s", response.locals.device.id);
       const users = (
         await response.locals.device.users(response.locals.requestUser, [
           "id",

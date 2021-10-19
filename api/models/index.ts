@@ -67,8 +67,7 @@ const IS_DEBUG = config.server.loggerLevel === "debug";
         "queryTime",
         requestQueryTime
       );
-      if (timeMs > 15) {
-        //(config.database.slowQueryLogThresholdMs || 1000)) {
+      if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
         log.warning("Slow query: %s [%d]ms", msg, timeMs);
       }
     }

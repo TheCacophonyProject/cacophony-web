@@ -99,11 +99,6 @@ export default function (
         const existingAnimalTags = trackTags.filter(
           (uTag) => !uTag.isAdditionalTag()
         );
-
-        logger.warning(
-          "Replace tag: Existing animal tags %s",
-          existingAnimalTags.map(({ what }) => what).join(", ")
-        );
         for (let i = 0; i < existingAnimalTags.length; i++) {
           await existingAnimalTags[i].destroy({ transaction: t });
         }

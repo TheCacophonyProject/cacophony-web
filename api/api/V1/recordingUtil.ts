@@ -411,7 +411,6 @@ export const uploadRawRecording = util.multipartUpload(
         }
         decoder.close();
       }
-      // log.warning("load %s and decode %s, both %s", a - s, performance.now() - a, performance.now() - s);
 
       if (
         !data.hasOwnProperty("location") &&
@@ -455,7 +454,6 @@ export const uploadRawRecording = util.multipartUpload(
     recording.DeviceId = uploadingDevice.id;
     recording.GroupId = uploadingDevice.GroupId;
     const matchingStation = await tryToMatchRecordingToStation(recording);
-    // log.warning("Station matching %s", performance.now() - ss);
     if (matchingStation) {
       recording.StationId = matchingStation.id;
     }

@@ -489,12 +489,6 @@ order by hour;
       this.GroupId
     );
     const groupUsers = await group.getUsers({ attributes: attrs });
-
-    logger.warning(
-      "Device %s, group %s",
-      deviceUsers.length,
-      groupUsers.length
-    );
     // De-dupe users, since some users can be a group member as well as a device member.
     const dedupedUsers = new Map();
     for (const user of groupUsers) {

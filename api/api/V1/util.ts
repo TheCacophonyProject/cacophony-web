@@ -153,15 +153,6 @@ function multipartUpload(
       try {
         // Wait for the upload to complete.
         const uploadResult = await upload;
-
-        if (keyPrefix === "file") {
-          log.warning(
-            "Finished streaming upload to object store. Key: %s",
-            key
-          );
-        }
-
-        // log.warning("Upload %s", performance.now() - s);
         if (uploadResult instanceof Error) {
           responseUtil.serverError(response, uploadResult);
           return;
