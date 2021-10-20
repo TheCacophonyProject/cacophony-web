@@ -68,7 +68,7 @@ function getDeviceById(
   activeAndInactive: boolean = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/${id}?only-active=${
+    `/api/v1/devices/device/${id}?only-active=${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`

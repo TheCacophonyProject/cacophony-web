@@ -259,7 +259,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   app.get(
-    `${apiUrl}/:id`,
+    `${apiUrl}/device/:id`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
