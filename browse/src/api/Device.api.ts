@@ -11,6 +11,7 @@ import { DeviceId } from "@typedefs/api/common";
 export default {
   getDevices,
   getDevice,
+  getDeviceById,
   getUsers,
   addUserToDevice,
   removeUserFromDevice,
@@ -58,6 +59,19 @@ function getDevice(
   return CacophonyApi.get(
     `/api/v1/devices/${deviceName}/in-group/${groupName}?only-active=${
       activeAndInactive ? "false" : "true"
+    }`
+  );
+}
+
+function getDeviceById(
+  id: DeviceId,
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}?only-active=${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`
   );
 }

@@ -272,12 +272,13 @@ export default {
         this.canGoForwardInSearch = prevNext[1];
       }
     },
-    getListOfRecordingsIds(): string[] {
+    getListOfRecordingsIds(): string[] | undefined {
       if (Array.isArray(this.$route.query.id)) {
         return this.$route.query.id;
-      } else {
+      } else if (this.$route.query.id) {
         return [this.$route.query.id];
       }
+      return;
     },
     async gotoNextRecording(
       direction: "next" | "previous" | "either",

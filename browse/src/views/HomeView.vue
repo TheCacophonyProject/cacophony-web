@@ -61,7 +61,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { mapState } from "vuex";
 import api from "@/api";
 import HomeGroups from "@/components/HomeGroups.vue";
@@ -101,6 +101,14 @@ export default {
         const {
           result: { groups },
         } = await api.groups.getGroups();
+        groups.sort((a, b) => {
+          const aDate = a.lastRecordingTime && new Date(a.lastRecordingTime);
+          const bDate = b.lastRecordingTime && new Date(b.lastRecordingTime);
+          if (aDate && bDate) {
+            return aDate.getTime() - bDate.getTime();
+          }
+          return a.groupName.localeCompare(b.groupName);
+        });
         this.groups = groups;
       } catch (e) {
         // Handle this at a component level, or boot it up to a global error.

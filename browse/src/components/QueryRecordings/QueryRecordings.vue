@@ -50,7 +50,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import SelectDevice from "./SelectDevice.vue";
 import SelectTags from "./SelectTags.vue";
 import SelectDuration from "./SelectDuration.vue";
@@ -230,7 +230,7 @@ export default {
     toggleAdvancedSearch: function () {
       this.advanced = !this.advanced;
     },
-    toggleSearchPanel: function () {
+    toggleSearchPanel() {
       this.$emit("toggled-search-panel");
     },
     devicesDescription() {
