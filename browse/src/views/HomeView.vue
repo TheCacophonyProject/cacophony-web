@@ -85,7 +85,7 @@ export default {
   },
   computed: {
     ...mapState({
-      userName: (state) => state.User.userData.userName,
+      userName: (state) => (state as any).User.userData.userName,
     }),
     hasGroups() {
       return this.groups.length !== 0;
@@ -101,14 +101,6 @@ export default {
         const {
           result: { groups },
         } = await api.groups.getGroups();
-        groups.sort((a, b) => {
-          const aDate = a.lastRecordingTime && new Date(a.lastRecordingTime);
-          const bDate = b.lastRecordingTime && new Date(b.lastRecordingTime);
-          if (aDate && bDate) {
-            return aDate.getTime() - bDate.getTime();
-          }
-          return a.groupName.localeCompare(b.groupName);
-        });
         this.groups = groups;
       } catch (e) {
         // Handle this at a component level, or boot it up to a global error.

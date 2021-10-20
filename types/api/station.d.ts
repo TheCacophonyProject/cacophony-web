@@ -1,5 +1,11 @@
 // Station data as supplied to API on creation.
-import { GroupId, IsoFormattedDateString, LatLng, StationId, UserId } from "./common";
+import {
+  GroupId,
+  IsoFormattedDateString,
+  LatLng,
+  StationId,
+  UserId,
+} from "./common";
 
 export interface ApiCreateStationData {
   name: string;
