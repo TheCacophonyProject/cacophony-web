@@ -50,7 +50,7 @@
       @track-tag-changed="refreshTrackTagData"
       @tag-changed="refreshRecordingTagData"
       @load-next-recording="loadNextRecording"
-      @reprocess-requested="fetchRecording"
+      @recording-updated="fetchRecording"
     />
   </b-container>
   <b-container v-else class="message-container">
@@ -223,11 +223,13 @@ export default {
       if (!success || !rows || rows.length == 0) {
         //  store.dispatch("Messaging/WARN", `No more recordings for this search.`);
       } else {
+        // FIXME - Loading this twice here seems a wee bit silly
         delete params.from;
         delete params.to;
         delete params.order;
         delete params.type;
         delete params.limit;
+        delete params.offset;
         await this.$router.push({
           path: `/recording/${rows[0].id}`,
           query: params,

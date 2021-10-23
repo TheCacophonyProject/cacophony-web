@@ -1,11 +1,13 @@
 import CacophonyApi from "./CacophonyApi";
-import { shouldViewAsSuperUser } from "../utils";
+import { shouldViewAsSuperUser } from "@/utils";
 import { FetchResult } from "@/api/Recording.api";
 import {
   ApiGroupResponse,
   ApiGroupUserRelationshipResponse,
 } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
+import { GroupId, StationId } from "@typedefs/api/common";
+import { ApiStationResponse } from "@typedefs/api/station";
 
 function addNewGroup(groupName) {
   const suppressGlobalMessaging = true;
@@ -43,7 +45,21 @@ function removeGroupUser(groupName, userName) {
 function getGroup(
   groupName: string
 ): Promise<FetchResult<{ group: ApiGroupResponse }>> {
-  return CacophonyApi.get(`/api/v1/groups/${encodeURIComponent(groupName)}`);
+  return CacophonyApi.get(
+    `/api/v1/groups/${encodeURIComponent(groupName)}${
+      shouldViewAsSuperUser() ? "" : "?view-mode=user"
+    }`
+  );
+}
+
+function getGroupById(
+  groupId: GroupId
+): Promise<FetchResult<{ group: ApiGroupResponse }>> {
+  return CacophonyApi.get(
+    `/api/v1/groups/${groupId}${
+      shouldViewAsSuperUser() ? "" : "?view-mode=user"
+    }`
+  );
 }
 
 function getGroups(): Promise<FetchResult<{ groups: ApiGroupResponse[] }>> {
@@ -74,6 +90,21 @@ function getStationsForGroup(groupNameOrId: string) {
   );
 }
 
+function getStationById(
+  stationId: StationId
+): Promise<FetchResult<{ station: ApiStationResponse }>> {
+  return CacophonyApi.get(`/api/v1/stations/${stationId}`);
+}
+
+function getStationByNameInGroup(
+  groupNameOrId: string | GroupId,
+  stationName: string
+): Promise<FetchResult<{ station: ApiStationResponse }>> {
+  return CacophonyApi.get(
+    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/station/${stationName}`
+  );
+}
+
 function addStationsToGroup(
   groupName: string | number,
   stations: { name: string; lat: number; lng: number },
@@ -98,6 +129,8 @@ export default {
   addNewGroup,
   getGroups,
   getGroup,
+  getGroupById,
+  getStationById,
   getUsersForGroup,
   getDevicesForGroup,
   getStationsForGroup,

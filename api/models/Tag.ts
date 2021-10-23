@@ -27,7 +27,6 @@ import {
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
 import { RecordingPermission, AcceptableTag } from "@typedefs/api/consts";
-import logging from "@log";
 
 export interface Tag
   extends ApiRecordingTagResponse,

@@ -149,6 +149,9 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
       result.taggerName = (tag as any).tagger.username;
     }
   }
+  if (tag.hasOwnProperty("startTime")) {
+    result.startTime = tag.startTime;
+  }
   if (tag.what) {
     result.what = tag.what;
   }
@@ -1310,7 +1313,7 @@ export default (app: Application, baseUrl: string) => {
       const tagInstance = await recordingUtil.addTag(
         response.locals.requestUser,
         response.locals.recording,
-        request.body.tag
+        response.locals.tag
       );
       responseUtil.send(response, {
         statusCode: 200,

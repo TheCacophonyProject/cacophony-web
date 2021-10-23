@@ -258,6 +258,31 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  app.get(
+    `${apiUrl}/device/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      deprecatedField(query("where")), // Sidekick
+      anyOf(
+        query("onlyActive").optional().isBoolean().toBoolean(),
+        query("only-active").optional().isBoolean().toBoolean()
+      ),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response) => {
+      return responseUtil.send(response, {
+        device: mapDeviceResponse(
+          response.locals.device,
+          response.locals.viewAsSuperUser
+        ),
+        statusCode: 200,
+        messages: ["Completed get device query."],
+      });
+    }
+  );
+
   /**
    * @api {get} /api/v1/devices/:deviceName/in-group/:groupIdOrName Get a single device
    * @apiName GetDeviceInGroup

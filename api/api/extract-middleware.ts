@@ -580,7 +580,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
   recordingQuery.include = recordingQuery.include || [];
   recordingQuery.include.push({
     model: models.Tag,
-    // FIXME - Work out what other attributes to return here.
+    order: ["createdAt"],
     attributes: [
       "id",
       "what",
@@ -609,6 +609,8 @@ const getRecordingRelationships = (recordingQuery: any): any => {
       {
         model: models.TrackTag,
         required: false,
+        where: { archivedAt: null },
+        order: ["createdAt"],
         attributes: [
           "id",
           "what",

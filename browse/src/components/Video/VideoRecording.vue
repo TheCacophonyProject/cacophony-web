@@ -85,9 +85,7 @@
           @deleteTag="deleteTag($event)"
           @addTag="addTag($event)"
           @updateComment="updateComment($event)"
-          @nextOrPreviousRecording="
-            gotoNextRecording('either', 'any', false, false)
-          "
+          @nextOrPreviousRecording="gotoNextRecording('either')"
           @requested-export="requestedMp4Export"
         />
       </b-col>
@@ -236,7 +234,7 @@ export default {
     async reprocess() {
       const { success } = await api.recording.reprocess(this.recordingId);
       if (success) {
-        this.$emit("reprocess-requested", this.recordingId);
+        this.$emit("recording-updated", this.recordingId);
       } else {
         // TODO
       }
@@ -262,8 +260,9 @@ export default {
       const list = this.getListOfRecordingsIds();
       if (list) {
         const listIndex = list.indexOf(this.recording.id.toString());
-        this.canGoBackwardInSearch = listIndex > 0;
-        this.canGoForwardInSearch = listIndex < list.length - 1;
+        this.canGoBackwardInSearch = list.length > 1 && listIndex > 0;
+        this.canGoForwardInSearch =
+          list.length > 1 && listIndex < list.length - 1;
       } else {
         const prevNext = await Promise.all([
           this.hasNextRecording("previous", false, false, true),
@@ -273,8 +272,13 @@ export default {
         this.canGoForwardInSearch = prevNext[1];
       }
     },
-    getListOfRecordingsIds(): string[] {
-      return this.$route.query.id;
+    getListOfRecordingsIds(): string[] | undefined {
+      if (Array.isArray(this.$route.query.id)) {
+        return this.$route.query.id;
+      } else if (this.$route.query.id) {
+        return [this.$route.query.id];
+      }
+      return;
     },
     async gotoNextRecording(
       direction: "next" | "previous" | "either",
@@ -522,6 +526,7 @@ export default {
     async updateComment(comment: string) {
       const recordingId = Number(this.$route.params.id);
       await api.recording.comment(comment, recordingId);
+      this.$emit("recording-updated", recordingId);
     },
   },
 };

@@ -368,7 +368,7 @@ function addRecordingTag(
   id: RecordingId
 ): Promise<FetchResult<{ tagId: TagId }>> {
   return CacophonyApi.post(`${apiPath}/${id}/tags`, {
-    tag: tag,
+    tag,
   });
 }
 

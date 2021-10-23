@@ -59,11 +59,12 @@
 
 <script lang="ts">
 import api from "@api";
-import { mapState } from "vuex";
 import BasicTags from "../Audio/BasicTags.vue";
 import CustomTags from "../Audio/CustomTags.vue";
 import TagList from "../Audio/TagList.vue";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
+import { ApiRecordingTagResponse } from "@typedefs/api/tag";
+import { RecordingType } from "@typedefs/api/consts";
 
 export default {
   name: "AudioRecording",
@@ -90,107 +91,109 @@ export default {
     },
   },
   computed: {
-    ...mapState({
-      tagItems() {
-        const result = this.$store.getters["Video/getTagItems"];
-        return result;
-      },
-    }),
+    tagItems() {
+      const tags: ApiRecordingTagResponse[] =
+        (this.recording && this.recording.tags) || [];
+      const tagItems = [];
+      tags.map((tag) => {
+        const tagItem: any = {};
+        if (tag.what) {
+          tagItem.what = tag.what;
+        }
+        tagItem.detail = tag.detail;
+        if (tag.confidence) {
+          tagItem.confidence = tag.confidence.toFixed(2);
+        }
+        if (tag.automatic) {
+          tagItem.who = "Cacophony AI";
+          tagItem["_rowVariant"] = "warning";
+        } else {
+          tagItem.who = tag.taggerName || "-";
+        }
+        tagItem.when = new Date(tag.createdAt).toLocaleString();
+        tagItem.tag = tag;
+        tagItems.push(tagItem);
+      });
+      return tagItems;
+    },
     audioRecording(): ApiAudioRecordingResponse {
       return this.recording;
     },
   },
   methods: {
-    async gotoNextRecording(direction) {
-      if (await this.getNextRecording(direction)) {
-        this.deleteDisabled = false;
-        this.$router.push({
-          path: `/recording/${this.audioRecording.id}`,
-        });
-      }
-    },
-    async getNextRecording(direction, skipMessage) {
-      let where: any = {
-        DeviceId: this.audioRecording.deviceId,
+    async getNextRecording(
+      direction: "next" | "previous" | "either"
+    ): Promise<boolean> {
+      const params: any = {
+        limit: 1,
+        offset: 0,
+        type: RecordingType.Audio,
       };
-
       let order;
       switch (direction) {
         case "next":
-          where.recordingDateTime = {
-            $gt: this.audioRecording.recordingDateTime,
-          };
+          params.to = null;
+          params.from = this.recording.recordingDateTime;
           order = "ASC";
           break;
         case "previous":
-          where.recordingDateTime = {
-            $lt: this.audioRecording.recordingDateTime,
-          };
+          params.from = null;
+          params.to = this.recording.recordingDateTime;
           order = "DESC";
           break;
         case "either":
-          if (await this.getNextRecording("next", true)) {
+          // First, we want to see if we have a previous recording.
+          // If so, go prev, else go next
+          if (await this.getNextRecording("previous")) {
+            return true;
+          } else if (await this.getNextRecording("next")) {
             return true;
           }
-          return await this.getNextRecording("previous", skipMessage);
+          return false;
         default:
           throw `invalid direction: '${direction}'`;
       }
-      order = JSON.stringify([["recordingDateTime", order]]);
-      where = JSON.stringify(where);
-
-      const params = {
-        where,
-        order,
-        limit: 1,
-        offset: 0,
-      };
-
-      return await this.$store.dispatch("Video/QUERY_RECORDING", {
-        params,
-        skipMessage,
-      });
+      params.order = JSON.stringify([["recordingDateTime", order]]);
+      // Check for recording"
+      const {
+        result: { rows },
+      } = await api.recording.query(params);
+      if (rows.length) {
+        this.$emit("load-next-recording", params);
+        return true;
+      }
+      return false;
     },
     async deleteRecording() {
       this.deleteDisabled = true;
       const { success } = await api.recording.del(this.$route.params.id);
       if (success) {
-        this.gotoNextRecording("either");
+        await this.getNextRecording("either");
       }
+      this.deleteDisabled = false;
     },
-    addAudioTag: function (tag) {
+    addAudioTag: async function (tag) {
       const id = Number(this.$route.params.id);
       if (this.$refs.player.currentTime == this.$refs.player.duration) {
         tag.startTime = 0;
       } else {
         tag.startTime = this.$refs.player.currentTime.toFixed(2);
       }
-
-      // eslint-disable-next-line no-console
-      // console.log(config.tagVersion);
-      // next line generates internal server error on test api - menno to follow up
-      // tag.version = config.tagVersion;
-
-      this.$store.dispatch("Video/ADD_TAG", { tag, id });
-
-      // https://api-test.cacophony.org.nz/api/v1/tags
-      // tag format
-      // tagId integer OPTIONAL on get or post operation, COMPULSORY for delete, if tag id given for get or post then operation is an UPDATE
-      // recordingId - integer, COMPULSORY
-      // the operation is an update, provided the authenticated user is the same as the tagger id
-      // tag: string - known values - "unknown", "nothing of interest", "bird", "human", custom tag free text COMPULSORY maxlength 64
-      // startTime - integer (0 - 60) seconds since start of audio clip COMPULSORY
-      // duration - integer (0 - 60) seconds duration of tag, OPTIONAL
-      // confidence - real 0.0 - 1.0 OPTIONAL default is 0.5
-      // taggerId (authenticated user id) COMPULSORY authenticated by backend
-      // automatic -Boolean	"true" if tag is machine generated, "false" if human COMPULSORY
-      // schemaVersion - integer 0000 MMnn MAJORminor - Future proofing for schema changes Starts with 0100 (v1.00) COMPULSORY
+      const {
+        result: { tagId },
+      } = await api.recording.addRecordingTag(tag, id);
+      this.$nextTick(() => {
+        this.$emit("tag-changed", tagId);
+      });
     },
-    deleteTag(tagId) {
-      this.$store.dispatch("Video/DELETE_TAG", tagId);
+    async deleteTag(tagId) {
+      await api.recording.deleteRecordingTag(tagId, this.recordingId);
+      this.$nextTick(() => {
+        this.$emit("tag-changed", tagId);
+      });
     },
-    done() {
-      this.gotoNextRecording("either");
+    async done() {
+      await this.getNextRecording("either");
     },
     replay(time) {
       this.$refs.player.currentTime = time;

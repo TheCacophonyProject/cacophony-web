@@ -61,7 +61,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { mapState } from "vuex";
 import api from "@/api";
 import HomeGroups from "@/components/HomeGroups.vue";
@@ -85,7 +85,7 @@ export default {
   },
   computed: {
     ...mapState({
-      userName: (state) => state.User.userData.userName,
+      userName: (state) => (state as any).User.userData.userName,
     }),
     hasGroups() {
       return this.groups.length !== 0;

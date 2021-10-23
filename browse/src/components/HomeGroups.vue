@@ -33,13 +33,18 @@ export default {
   computed: {
     orderedGroups: {
       get(): ApiGroupResponse[] {
-        return [...this.groups].sort(
-          (a: ApiGroupResponse, b: ApiGroupResponse) => {
-            return a.groupName.toLowerCase() < b.groupName.toLowerCase()
-              ? -1
-              : 1;
+        return [...this.groups].sort((a, b) => {
+          const aDate = a.lastRecordingTime && new Date(a.lastRecordingTime);
+          const bDate = b.lastRecordingTime && new Date(b.lastRecordingTime);
+          if (aDate && bDate) {
+            return bDate.getTime() - aDate.getTime();
+          } else if (aDate) {
+            return -1;
+          } else if (bDate) {
+            return -1;
           }
-        );
+          return a.groupName.localeCompare(b.groupName);
+        });
       },
     },
   },
