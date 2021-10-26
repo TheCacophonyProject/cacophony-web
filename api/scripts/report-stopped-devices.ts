@@ -36,7 +36,10 @@ async function main() {
     throw "No SMTP details found in config/app.js";
   }
   const powerEvents = (
-    await powerEventsPerDevice({ query: {}, res: { locals: {} } }, true)
+    await powerEventsPerDevice(
+      { query: {}, res: { locals: { requestUser: null } } },
+      true
+    )
   ).filter(
     (device: PowerEvents) =>
       device.hasStopped == true && device.hasAlerted == false

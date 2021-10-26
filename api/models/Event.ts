@@ -52,7 +52,7 @@ export interface QueryOptions {
 
 export interface EventStatic extends ModelStaticCommon<Event> {
   query: (
-    userId: UserId,
+    userId?: UserId,
     startTime?: string,
     endTime?: string,
     deviceId?: DeviceId,
@@ -62,7 +62,7 @@ export interface EventStatic extends ModelStaticCommon<Event> {
     options?: QueryOptions
   ) => Promise<{ rows: Event[]; count: number }>;
   latestEvents: (
-    userId: UserId,
+    userId?: UserId,
     deviceId?: DeviceId,
     options?: QueryOptions
   ) => Promise<Event[]>;
@@ -95,7 +95,7 @@ export default function (sequelize, DataTypes) {
    * arguments given.
    */
   Event.query = async function (
-    userId: UserId,
+    userId,
     startTime,
     endTime,
     deviceId,
@@ -140,7 +140,11 @@ export default function (sequelize, DataTypes) {
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
-    const user = await models.User.findByPk(userId);
+    let user;
+    if (userId) {
+      // NOTE: This function is sometimes called by scripts without a user
+      user = await models.User.findByPk(userId);
+    }
     return this.findAndCountAll({
       where: {
         [Op.and]: [
@@ -192,7 +196,12 @@ export default function (sequelize, DataTypes) {
       ["DeviceId", "DESC"],
       ["dateTime", "DESC"],
     ];
-    const user = await models.User.findByPk(userId);
+
+    let user;
+    if (userId) {
+      // NOTE - This function is called by scripts without supplying a user.
+      user = await models.User.findByPk(userId);
+    }
     return this.findAll({
       where: {
         [Op.and]: [
