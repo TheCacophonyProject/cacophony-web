@@ -41,11 +41,15 @@ cd ..
 
 echo "Installing dependencies for build..."
 cd api
+
 rm -rf node_modules
 npm install
 
 echo "Compiling TypeScript..."
 ./node_modules/.bin/tsc
+
+echo "Creating API docs..."
+npm run apidoc
 
 echo "Removing external dependencies..."
 rm -rf node_modules
