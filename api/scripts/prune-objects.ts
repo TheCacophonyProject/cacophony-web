@@ -1,5 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import aliases from "./module-aliases";
+import registerAliases from "./module-aliases";
+registerAliases();
 import process from "process";
 import { program } from "commander";
 import { Client } from "pg";

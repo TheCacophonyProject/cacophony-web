@@ -1,5 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import aliases from "./module-aliases";
+import registerAliases from "./module-aliases";
+registerAliases();
 import config from "../config";
 import { Recording } from "@models/Recording";
 import { TrackTag } from "@models/TrackTag";

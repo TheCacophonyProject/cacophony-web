@@ -1,5 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import aliases from "./module-aliases";
+import registerAliases from "./module-aliases";
+registerAliases();
 import * as config from "../config";
 
 import * as Influx from "influx";
