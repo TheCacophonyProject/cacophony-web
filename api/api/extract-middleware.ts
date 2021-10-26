@@ -173,7 +173,9 @@ const getDeviceInclude =
       {
         model: models.Group,
         attributes: ["id", "groupname"],
-        required: false,
+        required:
+          Object.keys(groupWhere).length !== 0 &&
+          Object.keys(deviceWhere).length === 0,
         where: groupWhere,
         include: [
           {
@@ -199,13 +201,6 @@ const getDeviceInclude =
           },
           attributes: ["admin", "UserId"],
         },
-        include: [
-          {
-            model: models.Group,
-            where: groupWhere,
-            required: false,
-          },
-        ],
         required: false,
         where: { id: requestUserId },
       },
