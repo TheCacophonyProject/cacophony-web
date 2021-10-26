@@ -1,5 +1,5 @@
 import moduleAlias from "module-alias";
-export default function() {
+export default function () {
   moduleAlias.addAliases({
     "@": __dirname,
     "@typedefs": __dirname + "/../../types",
@@ -9,4 +9,4 @@ export default function() {
     "@log": __dirname + "/../logging.js",
     "@schemas": __dirname + "/../../types/jsonSchemas",
   });
-};
+}
