@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import aliases from "./module-aliases";
 import * as config from "../config";
 
 import * as Influx from "influx";
@@ -6,7 +8,7 @@ import { program } from "commander";
 import { Client } from "pg";
 import moment from "moment";
 import os from "os";
-import { RecordingProcessingState } from "../../types/api/consts";
+import { RecordingProcessingState } from "@typedefs/api/consts";
 
 let Config;
 

@@ -1,4 +1,6 @@
-import { openS3 } from "../models/util/util";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import aliases from "./module-aliases";
+import { openS3 } from "@models/util/util";
 import { exec as cp_exec } from "child_process";
 import util from "util";
 import * as config from "../config";

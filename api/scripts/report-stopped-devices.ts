@@ -1,6 +1,8 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import aliases from "./module-aliases";
 import config from "../config";
 import log from "../logging";
-import { PowerEvents, powerEventsPerDevice } from "../api/V1/eventUtil";
+import { PowerEvents, powerEventsPerDevice } from "@api/V1/eventUtil";
 import moment from "moment";
 import { sendEmail } from "./emailUtil";
 import models from "../models";

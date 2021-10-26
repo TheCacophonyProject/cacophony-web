@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import aliases from "./module-aliases";
 import config from "../config";
 
 const args = require("commander");

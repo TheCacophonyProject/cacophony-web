@@ -1,8 +1,10 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import aliases from "./module-aliases";
 import config from "../config";
 import log from "../logging";
-import { errors } from "../api/V1/eventUtil";
+import { errors } from "@api/V1/eventUtil";
 import moment, { Moment } from "moment";
-import { ServiceErrorMap } from "../api/V1/systemError";
+import { ServiceErrorMap } from "@api/V1/systemError";
 import { sendEmail } from "./emailUtil";
 async function main() {
   if (!config.smtpDetails) {

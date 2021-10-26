@@ -74,7 +74,7 @@ cd ..
 # cron doesn't like it when cron.d files are writeable by anyone other than the
 # owner.
 echo "Fixing perms..."
-chmod 644 _release/{cacophony-api-prune-objects,cacophony-api-remove-dups,cacophony-api-report-stopped-devices,cacophony-api-report-errors,cacophony-api-archive-objects}
+chmod 644 _release/{cacophony-api-influx-metrics,cacophony-api-prune-objects,cacophony-api-remove-dups,cacophony-api-report-stopped-devices,cacophony-api-report-errors,cacophony-api-archive-objects}
 
 echo "Setting versions..."
 perl -pi -e "s/^version:.+/version: \"${version}\"/" _release/nfpm.yaml
