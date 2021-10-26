@@ -23,11 +23,25 @@ import { ApiTrackResponse } from "@typedefs/api/track";
 export type JwtToken<T> = string;
 type UtcTimestamp = string;
 
-export interface FetchResult<T> {
-  result: T;
-  success: boolean;
+export interface ErrorResult {
+  messages: string[];
+  errors?: string[];
+  errorType?: string;
+}
+
+interface SuccessFetchResult<SUCCESS> {
+  result: SUCCESS;
+  success: true;
   status: number;
 }
+
+interface FailureFetchResult<FAILURE = ErrorResult> {
+  result: FAILURE;
+  success: false;
+  status: number;
+}
+
+export type FetchResult<T> = SuccessFetchResult<T> | FailureFetchResult;
 
 export interface Location {
   type: "Point" | string;
@@ -175,7 +189,9 @@ const apiPath = "/api/v1/recordings";
 
 function query(
   queryParams: RecordingQuery
-): Promise<FetchResult<QueryResult<ApiRecordingResponse>>> {
+): Promise<
+  SuccessFetchResult<QueryResult<ApiRecordingResponse>> | FailureFetchResult
+> {
   return CacophonyApi.get(
     `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
   );
@@ -424,7 +440,11 @@ export function calculateFromTime(query: RecordingQuery): string {
   return null;
 }
 
-export function latestForDevice(deviceId: number) {
+export function latestForDevice(
+  deviceId: DeviceId
+): Promise<
+  SuccessFetchResult<QueryResult<ApiRecordingResponse>> | FailureFetchResult
+> {
   return query({
     limit: 1,
     days: "all",

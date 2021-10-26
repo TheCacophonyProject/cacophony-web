@@ -18,8 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize, { Op } from "sequelize";
 import models, { ModelCommon, ModelStaticCommon } from "./index";
-import { User, UserId } from "./User";
-import { CreateStationData, Station, StationId } from "./Station";
+import { User } from "./User";
+import { CreateStationData, Station } from "./Station";
 import { Recording } from "./Recording";
 import {
   latLngApproxDistance,
@@ -27,7 +27,7 @@ import {
   tryToMatchRecordingToStation,
 } from "@api/V1/recordingUtil";
 import { Device } from "./Device";
-import { GroupId } from "@typedefs/api/common";
+import { GroupId, UserId, StationId } from "@typedefs/api/common";
 
 const retireMissingStations = (
   existingStations: Station[],

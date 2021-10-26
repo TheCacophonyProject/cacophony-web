@@ -9,18 +9,26 @@ const state = {
 const getters = {};
 
 async function _getDevice(devicename, commit) {
-  const { result } = await api.device.getDevices();
-  const device = result.devices.find(
-    (device) => device.deviceName === devicename
-  );
-  commit("setCurrentDevice", device);
+  const response = await api.device.getDevices();
+  if (response.success) {
+    const device = response.result.devices.find(
+      (device) => device.deviceName === devicename
+    );
+    commit("setCurrentDevice", device);
+  } else {
+    // FIXME
+  }
 }
 
 const actions = {
   async GET_DEVICES({ commit }) {
     commit("fetching");
-    const { result } = await api.device.getDevices();
-    commit("receiveDevices", result.devices);
+    const response = await api.device.getDevices();
+    if (response.success) {
+      commit("receiveDevices", response.result.devices);
+    } else {
+      // FIXME
+    }
     commit("fetched");
   },
 

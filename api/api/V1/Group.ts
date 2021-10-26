@@ -221,7 +221,6 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
-
   /**
    * @api {get} /api/v1/groups/{groupIdOrName}/devices Retrieves all devices for a group (only active devices by default).
    * @apiName GetDevicesForGroup
@@ -231,7 +230,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} groupIdOrName group id or group name
+   * @apiParam {String} groupIdOrName group id or group name
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {ApiGroupsDevice[]} devices List of devices associated with the group
@@ -247,6 +246,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/devices`,
     extractJwtAuthorizedUser,
     validateFields([
+      query("view-mode").optional().equals("user"),
       nameOrIdOf(param("groupIdOrName")),
       anyOf(
         query("onlyActive").optional().isBoolean().toBoolean(),

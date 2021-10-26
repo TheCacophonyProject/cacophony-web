@@ -9,11 +9,11 @@ import { ApiDeviceResponse } from "@typedefs/api/device";
 import { GroupId, StationId } from "@typedefs/api/common";
 import { ApiStationResponse } from "@typedefs/api/station";
 
-function addNewGroup(groupName) {
+function addNewGroup(groupName): Promise<FetchResult<{ groupId: GroupId }>> {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
     "/api/v1/groups",
-    { groupname: groupName },
+    { groupName },
     suppressGlobalMessaging
   );
 }
@@ -77,10 +77,15 @@ function getUsersForGroup(
 }
 
 function getDevicesForGroup(
-  groupNameOrId: string | number
+  groupNameOrId: string | number,
+  activeAndInactive: boolean = false
 ): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
-    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/devices`
+    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/devices${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
   );
 }
 

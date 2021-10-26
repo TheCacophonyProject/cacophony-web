@@ -1,11 +1,11 @@
 import models from "@models";
-import { Device, DeviceId } from "@models/Device";
+import { Device } from "@models/Device";
 import { Event } from "@models/Event";
 
 import { QueryOptions } from "@models/Event";
 import { groupSystemErrors } from "./systemError";
 import moment, { Moment } from "moment";
-import { IsoFormattedDateString } from "@/../types/api/common";
+import { DeviceId, IsoFormattedDateString } from "@typedefs/api/common";
 export const errors = async (
   request: {
     query: {

@@ -29,24 +29,17 @@ import { bool } from "aws-sdk/clients/signer";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { Group } from "./Group";
 import { AccessLevel, GroupUsersStatic } from "./GroupUsers";
-import { Device, DeviceId, DeviceStatic } from "./Device";
+import { Device, DeviceStatic } from "./Device";
 import { DeviceUsersStatic } from "./DeviceUsers";
-import { GroupId } from "@typedefs/api/common";
+import {
+  DeviceId,
+  EndUserAgreementVersion,
+  GroupId,
+  UserId,
+} from "@typedefs/api/common";
+import { UserGlobalPermission } from "@typedefs/api/consts";
 
 const Op = Sequelize.Op;
-
-const PERMISSION_WRITE = "write";
-const PERMISSION_READ = "read";
-const PERMISSION_OFF = "off";
-type GlobalPermission = "write" | "read" | "off";
-const PERMISSIONS: readonly string[] = Object.freeze([
-  PERMISSION_WRITE,
-  PERMISSION_READ,
-  PERMISSION_OFF,
-]);
-
-export type UserId = number;
-export type EndUserAgreementVersion = number;
 
 export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
@@ -98,25 +91,18 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   lastName: string;
   email: string;
   groups: Group[];
-  globalPermission: GlobalPermission;
+  globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
 }
 
 export interface UserStatic extends ModelStaticCommon<User> {
   new (values?: object, options?: BuildOptions): User;
   getAll: (where: any) => Promise<User[]>;
-
-  changeGlobalPermission: (
-    admin: User,
-    user: User,
-    permission: GlobalPermission
-  ) => Promise<User>;
   getFromName: (name: string) => Promise<User | null>;
   freeUsername: (name: string) => Promise<boolean>;
   getFromEmail: (email: string) => Promise<User | null>;
   freeEmail: (email: string) => Promise<boolean>;
   getFromId: (id: number) => Promise<User | null>;
-  ["GLOBAL_PERMISSIONS"]: string[];
 }
 
 interface UserData {
@@ -126,7 +112,7 @@ interface UserData {
   lastName: string;
   email: string;
   groups: Group[];
-  globalPermission: GlobalPermission;
+  globalPermission: UserGlobalPermission;
 }
 
 export default function (
@@ -156,8 +142,8 @@ export default function (
     },
     globalPermission: {
       type: DataTypes.ENUM,
-      values: PERMISSIONS as string[],
-      defaultValue: PERMISSION_OFF,
+      values: Object.values(UserGlobalPermission) as string[],
+      defaultValue: UserGlobalPermission.Off,
     },
     endUserAgreement: {
       type: DataTypes.INTEGER,
@@ -191,12 +177,6 @@ export default function (
     "email",
     "endUserAgreement",
   ]);
-
-  Object.defineProperty(User, "GLOBAL_PERMISSIONS", {
-    value: PERMISSIONS,
-    writable: false,
-  });
-
   //---------------
   // CLASS METHODS
   //---------------
@@ -237,26 +217,18 @@ export default function (
     return (await User.getFromEmail(email.toLowerCase())) === null;
   };
 
-  User.changeGlobalPermission = async function (admin, user, permission) {
-    if (!user || !admin || !admin.hasGlobalWrite()) {
-      throw new AuthorizationError(
-        "User must be an admin with global write permissions"
-      );
-    }
-    user.globalPermission = permission;
-    return user.save();
-  };
-
   //------------------
   // INSTANCE METHODS
   //------------------
 
   User.prototype.hasGlobalWrite = function () {
-    return PERMISSION_WRITE == this.globalPermission;
+    return UserGlobalPermission.Write === this.globalPermission;
   };
 
   User.prototype.hasGlobalRead = function () {
-    return [PERMISSION_WRITE, PERMISSION_READ].includes(this.globalPermission);
+    return [UserGlobalPermission.Read, UserGlobalPermission.Write].includes(
+      this.globalPermission
+    );
   };
 
   User.prototype.getGroupDeviceIds = async function () {

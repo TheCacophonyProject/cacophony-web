@@ -16,10 +16,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { GroupId } from "@typedefs/api/common";
+import { GroupId, UserId } from "@typedefs/api/common";
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { UserId } from "./User";
 
 export enum AccessLevel {
   None = 0,

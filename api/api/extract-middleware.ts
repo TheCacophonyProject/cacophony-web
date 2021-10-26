@@ -199,6 +199,13 @@ const getDeviceInclude =
           },
           attributes: ["admin", "UserId"],
         },
+        include: [
+          {
+            model: models.Group,
+            where: groupWhere,
+            required: false,
+          },
+        ],
         required: false,
         where: { id: requestUserId },
       },
@@ -1130,6 +1137,11 @@ export const fetchUnauthorizedRequiredUserByNameOrEmailOrId = (
   userNameOrEmailOrId: ValidationChain
 ) =>
   fetchRequiredModel(models.User, true, true, getUser(), userNameOrEmailOrId);
+
+export const fetchUnauthorizedOptionalUserByNameOrEmailOrId = (
+  userNameOrEmailOrId: ValidationChain
+) =>
+  fetchOptionalModel(models.User, true, true, getUser(), userNameOrEmailOrId);
 
 export const fetchUnauthorizedOptionalUserByNameOrId = (
   userNameOrId: ValidationChain

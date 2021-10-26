@@ -26,9 +26,21 @@ import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schem
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,
+  parseJSONField,
 } from "../extract-middleware";
+import { idOf, validNameOf } from "../validation-middleware";
+import { DeviceId, Seconds } from "@typedefs/api/common";
+import { ApiAlertCondition } from "@typedefs/api/alerts";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiPostAlertRequestBody {
+  name: string;
+  deviceId: DeviceId;
+  conditions: ApiAlertCondition[];
+  frequencySeconds?: Seconds; // Defaults to 30 minutes
+}
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/alerts`;
@@ -43,17 +55,17 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {JSON} alert Alert
+   * @apiInterface {apiBody::ApiPostAlertRequestBody}
    *
-   * @apiParamExample {JSON} alert:
+   * @apiParamExample {JSON} example alert body:
    * {
-   * "name":"alert name",
-   * "conditions":[{
-   *   "tag":"possum",
-   *   "automatic":true
+   * "name": "alert name",
+   * "conditions": [{
+   *   "tag": "possum",
+   *   "automatic": true
    * }],
-   * "deviceId":1234,
-   * "frequencySeconds":120
+   * "deviceId": 1234,
+   * "frequencySeconds": 120
    * }
    * @apiUse V1ResponseSuccess
    * @apiSuccess {number} id Unique id of the newly created alert.
@@ -74,20 +86,18 @@ export default function (app: Application, baseUrl: string) {
         .withMessage(expectedTypeOf("ApiAlertConditions"))
         .bail()
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
-      body("name").exists().isString(),
-      body("frequencySeconds")
-        .isInt()
-        .toInt()
-        .optional()
-        .default(DEFAULT_FREQUENCY),
-      body("deviceId").isInt().toInt().withMessage(expectedTypeOf("integer")),
+      validNameOf(body("name")),
+      // FIXME - integer with default?
+      body("frequencySeconds").default(DEFAULT_FREQUENCY).isInt().toInt(),
+      idOf(body("deviceId")),
     ]),
     // Now extract the items we need from the database.
     fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    parseJSONField(body("conditions")),
     async (request, response) => {
       const newAlert = await models.Alert.create({
         name: request.body.name,
-        conditions: request.body.conditions,
+        conditions: response.locals.conditions,
         frequencySeconds: request.body.frequencySeconds,
         UserId: response.locals.requestUser.id,
         DeviceId: response.locals.device.id,
@@ -143,7 +153,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/device/:deviceId`,
     extractJwtAuthorizedUser,
     validateFields([
-      param("deviceId").isInt().toInt(),
+      idOf(param("deviceId")),
       query("view-mode").optional().equals("user"),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),

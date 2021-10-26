@@ -17,12 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { User, UserId } from "./User";
+import { User } from "./User";
 import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
 import { alertBody, sendEmail } from "../scripts/emailUtil";
-import { DeviceId } from "@typedefs/api/common";
+import { DeviceId, UserId } from "@typedefs/api/common";
 import logger from "../logging";
 
 export type AlertId = number;

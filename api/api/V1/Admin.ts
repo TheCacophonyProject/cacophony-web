@@ -16,44 +16,80 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
-import models from "@models";
+import { validateFields } from "../middleware";
 import responseUtil from "./responseUtil";
 import { body, param } from "express-validator";
-import { Application } from "express";
+import { Application, NextFunction, Request, Response } from "express";
+import {
+  extractJwtAuthorisedSuperAdminUser,
+  fetchUnauthorizedRequiredUserByNameOrId,
+} from "@api/extract-middleware";
+import { nameOrIdOf } from "@api/validation-middleware";
+import { ClientError } from "@api/customErrors";
+import { SuperUsers } from "@/Server";
+import { UserGlobalPermission } from "@typedefs/api/consts";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiUpdateGlobalPermissionRequestBody {
+  permission: UserGlobalPermission; // Permission to apply for user
+}
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/admin`;
 
-  /**
-   * @api {patch} /api/v1/admin/global_permission/:username Update user global permissions
-   * @apiName UpdateGlobalPermission
-   * @apiGroup Admin
-   *
-   * @apiParam {String} permission Users new global permission.
-   * @apiUse V1ResponseSuccess
-   *
-   * @apiUse V1ResponseError
-   */
-  app.patch(
-    `${apiUrl}/global_permission/:username`,
-    [
-      auth.authenticateAdmin,
-      middleware.getUserByName(param),
-      body("permission").isIn(models.User.GLOBAL_PERMISSIONS),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      // FIXME:
-      await models.User.changeGlobalPermission(
-        request.admin,
-        request.body.user,
-        request.body.permission
-      );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Users global permission updated."],
-      });
-    })
-  );
+  {
+    /**
+     * @api {patch} /api/v1/admin/global-permission/:userNameOrId Update user global permissions
+     * @apiUse V1UserAuthorizationHeader
+     * @apiName UpdateGlobalPermission
+     * @apiGroup Admin
+     * @apiParam {String|Number} userNameOrId name or id of user to update
+     * @apiInterface {apiBody::ApiUpdateGlobalPermissionRequestBody}
+     * @apiUse V1ResponseSuccess
+     *
+     * @apiUse V1ResponseError
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+    app.patch(
+      `${apiUrl}/global-permission/:userNameOrId`,
+      extractJwtAuthorisedSuperAdminUser,
+      validateFields([
+        nameOrIdOf(param("userNameOrId")),
+        body("permission").isIn(Object.values(UserGlobalPermission)),
+      ]),
+      (request: Request, response: Response, next: NextFunction) => {
+        if (!response.locals.requestUser.hasGlobalWrite()) {
+          return next(
+            new ClientError(
+              "Super admin user must have globalWrite permissions",
+              403
+            )
+          );
+        }
+        next();
+      },
+      fetchUnauthorizedRequiredUserByNameOrId(param("userNameOrId")),
+      async (request, response) => {
+        const permission: UserGlobalPermission = request.body.permission;
+        const userToUpdate = response.locals.user;
+        response.locals.user.globalPermission = permission;
+        await userToUpdate.save();
+
+        // Update global super admin cache:
+        if (
+          [UserGlobalPermission.Write, UserGlobalPermission.Read].includes(
+            permission
+          )
+        ) {
+          SuperUsers.set(userToUpdate.id, userToUpdate.globalPermission);
+        } else {
+          SuperUsers.delete(userToUpdate.id);
+        }
+        responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Users global permission updated."],
+        });
+      }
+    );
+  }
 }

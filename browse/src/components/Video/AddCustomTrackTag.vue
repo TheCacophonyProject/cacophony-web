@@ -19,7 +19,8 @@
     </b-form>
   </b-modal>
 </template>
-<script>
+<script lang="ts">
+import { ApiTrackTagRequest } from "@typedefs/api/trackTag";
 import DefaultLabels from "../../const";
 
 export default {
@@ -37,7 +38,6 @@ export default {
   data() {
     return {
       whatTag: "cat",
-      whatOptions: DefaultLabels.trackLabels(),
       confidence: 0.8,
       confidenceOptions: [
         { value: 0.4, text: "low" },
@@ -47,11 +47,23 @@ export default {
       comment: "",
     };
   },
+  computed: {
+    whatOptions(): { value: string; text: string }[] {
+      const options = new Map();
+      for (const option of DefaultLabels.trackLabels()) {
+        options.set(option.text, { value: option.value, text: option.text });
+      }
+      return Array.from(options.values()).sort((a, b) =>
+        a.text.localeCompare(b.text)
+      );
+    },
+  },
   methods: {
     quickTag() {
-      const tag = {};
-      tag.confidence = this.confidence;
-      tag.what = this.whatTag;
+      const tag: ApiTrackTagRequest = {
+        confidence: this.confidence,
+        what: this.what,
+      };
       this.$emit("addTag", tag);
     },
   },

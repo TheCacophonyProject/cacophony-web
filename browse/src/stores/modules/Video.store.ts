@@ -1,6 +1,4 @@
 /* eslint-disable no-console */
-import api from "@api";
-import store from "../index";
 import { ApiTrackResponse } from "@typedefs/api/track";
 
 const state = {
@@ -38,70 +36,6 @@ const getters = {
       tagItems.push(tagItem);
     });
     return tagItems;
-  },
-};
-
-const actions = {
-  async QUERY_RECORDING(_, { params, skipMessage }) {
-    const { result, success } = await api.recording.query(params);
-    if (!success || !result.rows || result.rows.length == 0) {
-      if (!skipMessage) {
-        store.dispatch("Messaging/WARN", `No more recordings for this search.`);
-      }
-      return false;
-    }
-    return store.dispatch("Video/GET_RECORDING", result.rows[0].id);
-  },
-
-  async GET_RECORDING({ commit }, recordingId) {
-    const tracksPromise = api.recording.tracks(recordingId);
-    const recordingPromise = api.recording.id(recordingId);
-    const [{ result: recording }, { result: tracks }] = await Promise.all([
-      recordingPromise,
-      tracksPromise,
-    ]);
-
-    commit("receiveRecording", recording);
-    commit("receiveTracks", tracks);
-    return {
-      recording,
-      tracks: tracks.tracks,
-    };
-  },
-
-  async DELETE_TAG({ commit }, tag) {
-    const { success } = await api.tag.deleteTag(tag);
-    if (success) {
-      commit("deleteTag", tag);
-    }
-  },
-
-  async UPDATE_COMMENT({ commit }, { comment, recordingId }) {
-    const { success } = await api.recording.comment(comment, recordingId);
-    if (success) {
-      commit("updateComment", comment);
-    }
-  },
-
-  async ADD_TAG({ commit }, { tag, id }) {
-    const { success, result } = await api.tag.addTag(tag, id);
-    if (!success) {
-      return;
-    }
-
-    // Add an initial tag to update the UI more quickly.
-    const newTag = Object.assign({}, tag);
-    newTag.id = result.tagId;
-    newTag.createdAt = new Date();
-    commit("addTag", newTag);
-
-    // Resync all recording tags from the API.
-    const { success: syncSuccess, result: syncResult } = await api.recording.id(
-      id
-    );
-    if (syncSuccess) {
-      commit("setTags", syncResult.recording.tags);
-    }
   },
 };
 
@@ -174,6 +108,5 @@ export default {
   namespaced: true,
   state,
   getters,
-  actions,
   mutations,
 };

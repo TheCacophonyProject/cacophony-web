@@ -354,16 +354,18 @@ export default {
         const oneDayAgo = new Date(now);
         if (!this.limitedView) {
           try {
-            const { result, status } = await api.groups.getDevicesForGroup(
+            const getDevicesResponse = await api.groups.getDevicesForGroup(
               this.groupName
             );
-            if (status === 200) {
-              this.devices = result.devices.map((device) => ({
-                ...device,
-                isHealthy:
-                  device.lastConnectionTime &&
-                  new Date(device.lastConnectionTime) > oneDayAgo,
-              }));
+            if (getDevicesResponse.success) {
+              this.devices = getDevicesResponse.result.devices.map(
+                (device) => ({
+                  ...device,
+                  isHealthy:
+                    device.lastConnectionTime &&
+                    new Date(device.lastConnectionTime) > oneDayAgo,
+                })
+              );
             } else {
               this.limitedView = true;
               await this.fetchDevices();

@@ -1,10 +1,22 @@
 import CacophonyApi from "./CacophonyApi";
+import { FetchResult, JwtToken } from "@api/Recording.api";
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import { UserId } from "@typedefs/api/common";
 
-function login(usernameOrEmail, password) {
-  return CacophonyApi.post("/authenticate_user", {
-    nameOrEmail: usernameOrEmail,
-    password: password,
-  });
+function login(
+  usernameOrEmail: string,
+  password: string
+): Promise<
+  FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
+> {
+  return CacophonyApi.post(
+    "/authenticate_user",
+    {
+      nameOrEmail: usernameOrEmail,
+      password: password,
+    },
+    true
+  );
 }
 
 function loginOther(username) {

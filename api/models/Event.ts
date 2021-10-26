@@ -18,9 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { DeviceId, Device } from "./Device";
-import { UserId } from "./User";
+import { Device } from "./Device";
 import { DetailSnapShot } from "./DetailSnapshot";
+import { DeviceId, UserId } from "@typedefs/api/common";
 
 const Op = Sequelize.Op;
 

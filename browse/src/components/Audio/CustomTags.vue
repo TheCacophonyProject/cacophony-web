@@ -5,11 +5,18 @@
       class="w-50 mt-4 d-inline align-bottom"
       placeholder="Enter custom tag"
     />
-    <b-button class="mt-0 align-bottom" @click="addCustomTag()">Add</b-button>
+    <b-button
+      :disabled="isEmpty"
+      class="mt-0 align-bottom"
+      @click="addCustomTag()"
+      >Add</b-button
+    >
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+
 export default {
   name: "CustomTag",
   data: function () {
@@ -17,18 +24,20 @@ export default {
       customTagValue: "",
     };
   },
+  computed: {
+    isEmpty() {
+      return this.customTagValue.trim().length === 0;
+    },
+  },
   methods: {
     addCustomTag() {
-      if (this.customTagValue.trim().length == 0) {
-        this.customTagValue = "";
-        return;
-      }
-      const tag = {};
-      tag.what = this.customTagValue;
-      tag.confidence = 0.5;
-      tag.startTime = 0.5;
-      tag.duration = 0.5;
-      tag.automatic = false;
+      const tag: ApiRecordingTagRequest = {
+        what: this.customTagValue,
+        confidence: 0.5,
+        startTime: 0.5,
+        duration: 0.5,
+        automatic: false,
+      };
       this.$emit("addAudioTag", tag);
       this.customTagValue = "";
     },

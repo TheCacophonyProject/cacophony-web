@@ -95,24 +95,27 @@ async function getAllVisits(
   while (morePagesExist && request < 100) {
     request++;
     const response = await queryVisitPage(nextRequestQuery);
-    // what if failed???
-    allVisitsCount += response.result.visits.length;
-    let visits = response.result.visits;
-    if (visitsFilter) {
-      visits = response.result.visits.filter(visitsFilter);
-    }
-    returnVisits.push(...visits);
+    if (response.success) {
+      const { result } = response;
+      // what if failed???
+      allVisitsCount += result.visits.length;
+      let visits = result.visits;
+      if (visitsFilter) {
+        visits = result.visits.filter(visitsFilter);
+      }
+      returnVisits.push(...visits);
 
-    morePagesExist = response.result.params.pagesEstimate != 1;
-    if (progress) {
-      progress(request / (request + response.result.params.pagesEstimate));
-    }
+      morePagesExist = response.result.params.pagesEstimate != 1;
+      if (progress) {
+        progress(request / (request + result.params.pagesEstimate));
+      }
 
-    if (morePagesExist) {
-      // Use the returned date from the params "pagefrom" parameter.
-      // Don't use paging just incase recordings have been create or deleted between queries.
-      nextRequestQuery = JSON.parse(JSON.stringify(visitQuery)); // copy query
-      nextRequestQuery.to = response.result.params.pageFrom;
+      if (morePagesExist) {
+        // Use the returned date from the params "pagefrom" parameter.
+        // Don't use paging just incase recordings have been create or deleted between queries.
+        nextRequestQuery = JSON.parse(JSON.stringify(visitQuery)); // copy query
+        nextRequestQuery.to = result.params.pageFrom;
+      }
     }
   }
   return {

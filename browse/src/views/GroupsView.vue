@@ -200,51 +200,59 @@ export default {
             api.device.getDevices(),
           ]);
           {
-            const { result } = userGroups;
-            for (const { id, groupName } of result.groups) {
-              groups[id] = {
-                devices: [],
-                groupName,
-                deviceOnly: false,
-              };
+            if (userGroups.success) {
+              const { result } = userGroups;
+              for (const { id, groupName } of result.groups) {
+                groups[id] = {
+                  devices: [],
+                  groupName,
+                  deviceOnly: false,
+                };
+              }
+            } else {
+              // FIXME?
             }
           }
           {
-            const { result } = userDevices;
-            const locations = {};
-            if (!result.devices.length) {
-              this.showGroupsWithNoDevices = true;
-            }
-            for (const device of result.devices) {
-              if (device.location) {
-                // TODO - Expand group bubble to encompass all devices
-                const location = latLng(
-                  device.location.lat,
-                  device.location.lng
-                );
-                if (isInNZ(location)) {
-                  if (!locations.hasOwnProperty(location.toString())) {
-                    locations[location.toString()] = {
-                      location,
-                      group: device.groupName,
-                    };
-                  }
-                  const loc = locations[location.toString()];
-                  loc.group = device.groupName;
-                  loc.name = device.deviceName;
-                }
+            if (userDevices.success) {
+              const { result } = userDevices;
+              const locations = {};
+              if (!result.devices.length) {
+                this.showGroupsWithNoDevices = true;
               }
+              for (const device of result.devices) {
+                if (device.location) {
+                  // TODO - Expand group bubble to encompass all devices
+                  const location = latLng(
+                    device.location.lat,
+                    device.location.lng
+                  );
+                  if (isInNZ(location)) {
+                    if (!locations.hasOwnProperty(location.toString())) {
+                      locations[location.toString()] = {
+                        location,
+                        group: device.groupName,
+                      };
+                    }
+                    const loc = locations[location.toString()];
+                    loc.group = device.groupName;
+                    loc.name = device.deviceName;
+                  }
+                }
 
-              const { groupName, groupId } = device;
-              groups[groupId] = groups[groupId] || {
-                devices: [],
-                groupName,
-                deviceOnly: true,
-              };
-              groups[groupId].devices.push(device);
-              // Now we should be able to show the groups for those devices.
+                const { groupName, groupId } = device;
+                groups[groupId] = groups[groupId] || {
+                  devices: [],
+                  groupName,
+                  deviceOnly: true,
+                };
+                groups[groupId].devices.push(device);
+                // Now we should be able to show the groups for those devices.
+              }
+              this.locations = locations;
+            } else {
+              // FIXME?
             }
-            this.locations = locations;
             this.locationsLoading = false;
           }
         } catch (e) {

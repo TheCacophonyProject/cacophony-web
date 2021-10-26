@@ -58,7 +58,7 @@ export const mapDeviceResponse = (
       deviceName: device.devicename,
       id: device.id,
       type: device.kind,
-      groupName: device.Group.groupname,
+      groupName: device.Group?.groupname,
       groupId: device.GroupId,
       active: device.active,
       saltId: device.saltId,
@@ -106,6 +106,14 @@ export const mapDevicesResponse = (
 ): ApiDeviceResponse[] =>
   devices.map((device) => mapDeviceResponse(device, viewAsSuperUser));
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiRegisterDeviceRequestBody {
+  group: string; // Name of group to assign the device to.
+  deviceName: string; // Unique (within group) device name.
+  password: string; // password Password for the device.
+  saltId?: number; // Salt ID of device. Will be set as device id if not given.
+}
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/devices`;
 
@@ -114,10 +122,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName RegisterDevice
    * @apiGroup Device
    *
-   * @apiParam {String} deviceName Unique (within group) device name.
-   * @apiParam {String} password Password for the device.
-   * @apiParam {String} group Name of group to assign the device to.
-   * @apiParam {Integer} [saltId] Salt ID of device. Will be set as device id if not given.
+   * @apiInterface {apiBody::ApiRegisterDeviceRequestBody}
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the device ID and type.
@@ -177,9 +182,9 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/v1/devices Get list of devices
    * @apiName GetDevices
    * @apiGroup Device
-   * @apiParam {Boolean} [onlyActive] Only return active devices, defaults to `true`
+   * @apiQuery {Boolean} [onlyActive] Only return active devices, defaults to `true`
    * If we want to return *all* devices this must be present and set to `false`
-   * @apiParam {string} [view-mode] `"user"` show only devices assigned to current user where
+   * @apiQuery {string} [view-mode] `"user"` show only devices assigned to current user where
    * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
    *
    * @apiDescription Returns all devices the user can access
@@ -188,8 +193,9 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} devices Devices details
+   * @apiInterface {apiSuccess::ApiDeviceResponse[]} devices Devices details
    * @apiSuccessExample {JSON} devices:
+   * // FIXME - update example
    * {
    * "count":1,
    * "rows":
