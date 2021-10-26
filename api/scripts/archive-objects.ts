@@ -1,4 +1,4 @@
-import registerAliases from "./module-aliases";
+import registerAliases from "../module-aliases";
 registerAliases();
 import { openS3 } from "@models/util/util";
 import { exec as cp_exec } from "child_process";

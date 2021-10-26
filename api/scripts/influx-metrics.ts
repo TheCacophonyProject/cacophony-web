@@ -1,4 +1,4 @@
-import registerAliases from "./module-aliases";
+import registerAliases from "../module-aliases";
 registerAliases();
 import * as config from "../config";
 

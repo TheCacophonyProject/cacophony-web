@@ -1,4 +1,4 @@
-import registerAliases from "./module-aliases";
+import registerAliases from "../module-aliases";
 registerAliases();
 import process from "process";
 import { program } from "commander";
