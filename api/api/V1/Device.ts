@@ -242,12 +242,14 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       if (request.headers["user-agent"].includes("okhttp")) {
         return responseUtil.send(response, {
-          rows: mapLegacyDevicesResponse(
-            mapDevicesResponse(
-              response.locals.devices,
-              response.locals.viewAsSuperUser
-            )
-          ),
+          devices: {
+            rows: mapLegacyDevicesResponse(
+              mapDevicesResponse(
+                response.locals.devices,
+                response.locals.viewAsSuperUser
+              )
+            ),
+          },
           statusCode: 200,
           messages: ["Completed get devices query."],
         });
