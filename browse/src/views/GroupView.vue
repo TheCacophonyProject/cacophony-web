@@ -240,7 +240,7 @@ export default {
       return {
         tagMode: "any",
         offset: 0,
-        limit: 20,
+        limit: 10,
         page: 1,
         days: "all",
         group: [this.groupId],
@@ -261,13 +261,13 @@ export default {
       this.usersLoading = true;
       if (!this.limitedView) {
         try {
-          const { result, status } = await api.groups.getUsersForGroup(
+          const usersResponse = await api.groups.getUsersForGroup(
             this.groupName
           );
-          if (status === 403) {
+          if (!usersResponse.success && usersResponse.status === 403) {
             this.limitedView = true;
-          } else {
-            this.users = result.users;
+          } else if (usersResponse.success) {
+            this.users = usersResponse.result.users;
           }
         } catch (e) {
           // ...
@@ -279,16 +279,21 @@ export default {
       this.recordingsCountLoading = true;
       if (!this.limitedView) {
         try {
-          const { result } = await api.groups.getGroup(this.groupName);
-
-          this.groupId = result.group.id;
-          this.recordingQueryFinal = this.recordingQuery();
-          {
-            const { result } = await api.recording.queryCount(
-              this.recordingQuery()
-            );
-            if (result.count !== 0) {
-              this.recordingsCount = result.count;
+          const groupResponse = await api.groups.getGroup(this.groupName);
+          if (groupResponse.success) {
+            const { result } = groupResponse;
+            this.groupId = result.group.id;
+            this.recordingQueryFinal = this.recordingQuery();
+            {
+              const countResponse = await api.recording.queryCount(
+                this.recordingQuery()
+              );
+              if (countResponse.success) {
+                const { result } = countResponse;
+                if (result.count !== 0) {
+                  this.recordingsCount = result.count;
+                }
+              }
             }
           }
           //} else {
@@ -310,12 +315,15 @@ export default {
             this.devices.map((device) => device.id)
           );
           {
-            const { result } = await api.recording.query({
+            const recordingResponse = await api.recording.query({
               ...this.recordingQueryFinal,
               limit: 1,
             });
-            if (result.count !== 0) {
-              this.recordingsCount = result.count;
+            if (recordingResponse.success) {
+              const { result } = recordingResponse;
+              if (result.count !== 0) {
+                this.recordingsCount = result.count;
+              }
             }
           }
         } catch (e) {
@@ -328,17 +336,23 @@ export default {
     async fetchVisitsCount() {
       this.visitsCountLoading = true;
       try {
-        const { result } = await api.groups.getGroup(this.groupName);
-        this.groupId = result.group.id;
-        this.visitsQueryFinal = this.visitsQuery();
-        {
-          const { result } = await api.monitoring.queryVisitPage({
-            ...this.visitsQuery(),
-            days: "all",
-            perPage: 1,
-            page: 1,
-          });
-          this.visitsCount = `${result.params.pagesEstimate}`;
+        const groupResponse = await api.groups.getGroup(this.groupName);
+        if (groupResponse.success) {
+          const { result } = groupResponse;
+          this.groupId = result.group.id;
+          this.visitsQueryFinal = this.visitsQuery();
+          {
+            const visitsResponse = await api.monitoring.queryVisitPage({
+              ...this.visitsQuery(),
+              days: "all",
+              perPage: 1,
+              page: 1,
+            });
+            if (visitsResponse.success) {
+              const { result } = visitsResponse;
+              this.visitsCount = `${result.params.pagesEstimate}`;
+            }
+          }
         }
       } catch (e) {
         this.visitsCountLoading = false;
@@ -375,15 +389,18 @@ export default {
           }
         } else {
           // FIXME: Do we still need this branch?  I feel like maybe not.
-          const { result } = await api.device.getDevices();
-          this.devices = result.devices
-            .filter((device) => device.groupName === this.groupName)
-            .map((device) => ({
-              ...device,
-              isHealthy:
-                device.lastConnectionTime &&
-                new Date(device.lastConnectionTime) > oneDayAgo,
-            }));
+          const devicesResponse = await api.device.getDevices();
+          if (devicesResponse.success) {
+            const { result } = devicesResponse;
+            this.devices = result.devices
+              .filter((device) => device.groupName === this.groupName)
+              .map((device) => ({
+                ...device,
+                isHealthy:
+                  device.lastConnectionTime &&
+                  new Date(device.lastConnectionTime) > oneDayAgo,
+              }));
+          }
         }
       }
       this.devicesLoading = false;

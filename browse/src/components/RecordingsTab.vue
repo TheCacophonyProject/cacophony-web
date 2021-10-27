@@ -63,10 +63,12 @@ export default {
         this.currentPage += 1;
         this.loading = true;
         try {
-          const { result } = await api.recording.query(nextQuery);
-          // TODO: It's possible that more recordings have come in since we loaded the page,
-          //  in which case our offsets are wrong. So check for duplicate recordings here.
-          this.recordings.push(...result.rows);
+          const recordingsResponse = await api.recording.query(nextQuery);
+          if (recordingsResponse.success) {
+            // TODO: It's possible that more recordings have come in since we loaded the page,
+            //  in which case our offsets are wrong. So check for duplicate recordings here.
+            this.recordings.push(...recordingsResponse.result.rows);
+          }
           // eslint-disable-next-line no-empty
         } catch (e) {}
         this.loading = false;
@@ -89,9 +91,17 @@ export default {
       ) {
         this.loading = true;
         try {
-          const { result } = await api.recording.query(this.recordingsQuery);
-          this.totalRecordingCount = result.count;
-          this.recordings = result.rows;
+          console.log(this.recordingsQuery);
+          const recordingsResponse = await api.recording.query(
+            this.recordingsQuery
+          );
+          if (recordingsResponse.success) {
+            const {
+              result: { rows, count },
+            } = recordingsResponse;
+            this.totalRecordingCount = count;
+            this.recordings = rows;
+          }
         } catch (e) {
           //
         }
