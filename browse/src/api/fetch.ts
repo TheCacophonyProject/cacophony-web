@@ -34,7 +34,7 @@ export async function fetch(url, init, suppressGlobalMessaging = false) {
   const status = response.status;
 
   const result = await response.json();
-  if (status === 401) {
+  if (status === 401 && !suppressGlobalMessaging) {
     store.dispatch("User/LOGOUT");
     store.dispatch(
       "Messaging/ERROR",

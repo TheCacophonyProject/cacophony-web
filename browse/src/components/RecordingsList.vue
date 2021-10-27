@@ -319,8 +319,7 @@ export default {
         const thisDate = new Date(recording.recordingDateTime);
         if (
           prevDate === null ||
-          startOfDay(thisDate, true).getTime() !==
-            startOfDay(prevDate, true).getTime()
+          startOfDay(thisDate).getTime() !== startOfDay(prevDate).getTime()
         ) {
           const item = {
             kind: "dataSeparator",
@@ -330,8 +329,7 @@ export default {
           items.push(item);
           prevDate = thisDate;
         } else if (
-          startOfHour(thisDate, true).getTime() !==
-          startOfHour(prevDate, true).getTime()
+          startOfHour(thisDate).getTime() !== startOfHour(prevDate).getTime()
         ) {
           const item = {
             kind: "dataSeparator",

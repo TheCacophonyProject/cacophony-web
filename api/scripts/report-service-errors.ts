@@ -1,8 +1,10 @@
+import registerAliases from "../module-aliases";
+registerAliases();
 import config from "../config";
 import log from "../logging";
-import { errors } from "../api/V1/eventUtil";
+import { errors } from "@api/V1/eventUtil";
 import moment, { Moment } from "moment";
-import { ServiceErrorMap } from "../api/V1/systemError";
+import { ServiceErrorMap } from "@api/V1/systemError";
 import { sendEmail } from "./emailUtil";
 async function main() {
   if (!config.smtpDetails) {
@@ -15,7 +17,7 @@ async function main() {
     startTime: startDate.toDate().toISOString(),
   };
   const serviceErrors = await errors(
-    { query: query, res: { locals: { requestUser: null } } },
+    { query: query, res: { locals: { requestUser: {} } } },
     true
   );
   if (Object.keys(serviceErrors).length == 0) {

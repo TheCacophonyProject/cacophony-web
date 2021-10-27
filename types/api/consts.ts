@@ -56,3 +56,9 @@ export enum DeviceType {
   Thermal = "thermal",
   Unknown = "unknown",
 }
+
+export enum UserGlobalPermission {
+  Write = "write",
+  Read = "read",
+  Off = "off",
+}

@@ -158,9 +158,11 @@ async function getType(
   deviceId: number
 ): Promise<"AudioRecorder" | "VideoRecorder" | "UnknownDeviceType"> {
   const rec = await recording.latestForDevice(deviceId);
-  if (rec.result.rows.length) {
-    const type = rec.result.rows[0].type;
-    return type === "thermalRaw" ? "VideoRecorder" : "AudioRecorder";
+  if (rec.success) {
+    if (rec.result.rows.length) {
+      const type = rec.result.rows[0].type;
+      return type === "thermalRaw" ? "VideoRecorder" : "AudioRecorder";
+    }
   }
   return "UnknownDeviceType";
 }

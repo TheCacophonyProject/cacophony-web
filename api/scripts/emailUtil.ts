@@ -1,6 +1,8 @@
+import registerAliases from "../module-aliases";
+registerAliases();
 import config from "../config";
-import { Recording } from "../models/Recording";
-import { TrackTag } from "../models/TrackTag";
+import { Recording } from "@models/Recording";
+import { TrackTag } from "@models/TrackTag";
 import log from "../logging";
 import moment from "moment";
 import { SMTPClient, Message } from "emailjs";

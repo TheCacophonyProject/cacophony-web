@@ -20,37 +20,49 @@ import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
 import { body, oneOf } from "express-validator";
 import responseUtil from "./responseUtil";
-import { Application, Request, Response } from "express";
-import { validNameOf, validPasswordOf } from "../validation-middleware";
+import { Application, NextFunction, Request, Response } from "express";
+import {
+  deprecatedField,
+  validNameOf,
+  validPasswordOf,
+} from "../validation-middleware";
 import {
   extractJwtAuthorisedSuperAdminUser,
+  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrEmailOrId,
 } from "../extract-middleware";
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiAuthenticateUserRequestBody {
+  password: string; // Password for the user account
+  userName?: string; // Username identifying a valid user account
+  nameOrEmail?: string; // Username or email of a valid user account.
+  email?: string; // Email identifying a valid user account
+}
+
 export default function (app: Application) {
   /**
    * @api {post} /authenticate_user/ Authenticate a user
+   *
    * @apiName AuthenticateUser
    * @apiGroup Authentication
    * @apiDescription Checks the username corresponds to an existing user account
    * and the password matches the account.
-   * One of 'username', 'email', or 'nameOrEmail' is required.
+   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
    *
-   * @apiParam {String} username Username identifying a valid user account
-   * @apiParam {String} email Email identifying a valid user account
-   * @apiParam {String} nameOrEmail Username or email of a valid user account.
-   * @apiParam {String} password Password for the user account
+   * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiSuccess {String} userData ApiLoggedInUserResponse
    */
   app.post(
     "/authenticate_user",
     validateFields([
       oneOf(
         [
-          validNameOf(body("username")),
+          deprecatedField(validNameOf(body("username"))),
           validNameOf(body("userName")),
           validNameOf(body("nameOrEmail")),
           body("nameOrEmail").isEmail(),
@@ -59,11 +71,27 @@ export default function (app: Application) {
         "could not find a user with the given username or email"
       ),
       // FIXME - How about not sending our passwords in the clear eh?
+      //  Ideally should generate hash on client side, and compare hashes with one
+      //  stored on the backend.  Salt on both sides with some timestamp
+      //  rounded to x minutes, so that if hash is compromised
+      //  it can't be reused for long.
       validPasswordOf(body("password")),
     ]),
-    fetchUnauthorizedRequiredUserByNameOrEmailOrId(
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
       body(["username", "userName", "nameOrEmail", "email"])
     ),
+    (request: Request, response: Response, next: NextFunction) => {
+      if (!response.locals.user) {
+        // NOTE: Don't give away the fact that the user may not exist - remain vague in the
+        //  error message as to whether the error is username or password related.
+        return responseUtil.send(response, {
+          statusCode: 401,
+          messages: ["Wrong password or username/email address."],
+        });
+      } else {
+        next();
+      }
+    },
     async (request: Request, response: Response) => {
       const passwordMatch = await response.locals.user.comparePassword(
         request.body.password
@@ -96,7 +124,7 @@ export default function (app: Application) {
       } else {
         responseUtil.send(response, {
           statusCode: 401,
-          messages: ["Wrong password or username."],
+          messages: ["Wrong password or username/email address."],
         });
       }
     }
@@ -111,7 +139,7 @@ export default function (app: Application) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} name Username identifying a valid user account
+   * @apiBody {String} name Username identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    */

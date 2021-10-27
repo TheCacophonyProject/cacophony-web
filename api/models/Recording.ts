@@ -29,24 +29,26 @@ import _ from "lodash";
 import { User } from "./User";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { TagStatic } from "./Tag";
-import {
-  Device,
-  DeviceId,
-  DeviceId as DeviceIdAlias,
-  DeviceStatic,
-} from "./Device";
+import { Device, DeviceStatic } from "./Device";
 import { Group } from "./Group";
 import { Track } from "./Track";
 import { Tag } from "./Tag";
 
 import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
-import { Station, StationId } from "./Station";
+import { Station } from "./Station";
 import {
   mapPositions,
   tryToMatchRecordingToStation,
 } from "@api/V1/recordingUtil";
-import { GroupId, RecordingId, UserId, TrackId } from "@typedefs/api/common";
+import {
+  GroupId,
+  RecordingId,
+  UserId,
+  TrackId,
+  DeviceId,
+  StationId,
+} from "@typedefs/api/common";
 import {
   RecordingPermission,
   RecordingProcessingState,
@@ -200,7 +202,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   batteryCharging: DeviceBatteryChargeState;
   airplaneModeOn: boolean;
 
-  DeviceId: DeviceIdAlias;
+  DeviceId: DeviceId;
   GroupId: GroupId;
   StationId: StationId;
   // Recording columns end

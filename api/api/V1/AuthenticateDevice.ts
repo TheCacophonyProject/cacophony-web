@@ -31,22 +31,30 @@ import {
 import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
 import { Device } from "models/Device";
 import { ClientError } from "../customErrors";
+import { DeviceId } from "@typedefs/api/common";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiAuthenticateDeviceRequestBody {
+  password: string; // Password for the device account
+  deviceName?: string; // The name identifying a valid device account.  Must be paired with groupName
+  groupName?: string; // The name identifying the group to which the device account belongs
+  deviceId?: DeviceId; // Unique id of the device - used instead of deviceName/groupName combo
+}
 
 export default function (app: Application) {
   /**
    * @api {post} /authenticate_device/ Authenticate a device
    * @apiName AuthenticateDevice
    * @apiGroup Authentication
-   * @apiDescription Checks the devicename and groupname combination corresponds to an existing device
-   * account and the password matches the account. Returns a JWT authentication token to use for
-   * further API requests
+   * @apiDescription Checks the deviceName and groupName combination corresponds to an existing device
+   * account and the password matches the account.
+   * Optionally, a deviceId can be used instead of the deviceName/groupName combination.
+   * Returns a JWT authentication token to use for further API requests
    *
-   * @apiParam {String} devicename The name identifying a valid device account
-   * @apiParam {String} groupname The name identifying the group to which the device account belongs
-   * @apiParam {String} password Password for the device account
+   * @apiInterface {apiBody::ApiAuthenticateDeviceRequestBody}
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiSuccess {int} id id of device authenticated
+   * @apiSuccess {Integer} id id of device authenticated
    */
   app.post(
     "/authenticate_device",

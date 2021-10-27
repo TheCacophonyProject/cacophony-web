@@ -173,7 +173,9 @@ const getDeviceInclude =
       {
         model: models.Group,
         attributes: ["id", "groupname"],
-        required: false,
+        required:
+          Object.keys(groupWhere).length !== 0 &&
+          Object.keys(deviceWhere).length === 0,
         where: groupWhere,
         include: [
           {
@@ -1130,6 +1132,11 @@ export const fetchUnauthorizedRequiredUserByNameOrEmailOrId = (
   userNameOrEmailOrId: ValidationChain
 ) =>
   fetchRequiredModel(models.User, true, true, getUser(), userNameOrEmailOrId);
+
+export const fetchUnauthorizedOptionalUserByNameOrEmailOrId = (
+  userNameOrEmailOrId: ValidationChain
+) =>
+  fetchOptionalModel(models.User, true, true, getUser(), userNameOrEmailOrId);
 
 export const fetchUnauthorizedOptionalUserByNameOrId = (
   userNameOrId: ValidationChain

@@ -54,31 +54,33 @@ const getters = {
 const actions = {
   async LOGIN({ commit }, payload) {
     commit("invalidateLogin");
-
-    const { result, success } = await api.user.login(
+    const loginResponse = await api.user.login(
       payload.username,
       payload.password
     );
-    if (success) {
+    if (loginResponse.success) {
+      const {
+        result: { userData, token },
+      } = loginResponse;
       // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
-      const userData: ApiLoggedInUserResponse = result.userData;
-      if (result.userData.globalPermission === "write") {
+      if (userData.globalPermission === "write") {
         // Persist super user settings so that we can switch user views.
         localStorage.setItem(
           "superUserCreds",
-          JSON.stringify({ ...result.userData, token: result.token })
+          JSON.stringify({ ...userData, token })
         );
       }
       api.user.persistUser(
-        result.userData.userName,
-        result.token,
-        result.userData.email,
-        result.userData.globalPermission,
-        result.userData.id,
-        result.userData.endUserAgreement
+        userData.userName,
+        token,
+        userData.email,
+        userData.globalPermission,
+        userData.id,
+        userData.endUserAgreement
       );
-      commit("receiveLogin", result);
+      commit("receiveLogin", { userData, token });
     }
+    return loginResponse;
   },
   async LOGIN_OTHER({ commit }, result) {
     api.user.persistUser(

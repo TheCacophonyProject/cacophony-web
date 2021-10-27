@@ -1,6 +1,8 @@
+import registerAliases from "../module-aliases";
+registerAliases();
 import config from "../config";
 import log from "../logging";
-import { PowerEvents, powerEventsPerDevice } from "../api/V1/eventUtil";
+import { PowerEvents, powerEventsPerDevice } from "@api/V1/eventUtil";
 import moment from "moment";
 import { sendEmail } from "./emailUtil";
 import models from "../models";
@@ -34,7 +36,10 @@ async function main() {
     throw "No SMTP details found in config/app.js";
   }
   const powerEvents = (
-    await powerEventsPerDevice({ query: {}, res: { locals: {} } }, true)
+    await powerEventsPerDevice(
+      { query: {}, res: { locals: { requestUser: {} } } },
+      true
+    )
   ).filter(
     (device: PowerEvents) =>
       device.hasStopped == true && device.hasAlerted == false

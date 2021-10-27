@@ -63,8 +63,12 @@ import BasicTags from "../Audio/BasicTags.vue";
 import CustomTags from "../Audio/CustomTags.vue";
 import TagList from "../Audio/TagList.vue";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
-import { ApiRecordingTagResponse } from "@typedefs/api/tag";
+import {
+  ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
+} from "@typedefs/api/tag";
 import { RecordingType } from "@typedefs/api/consts";
+import { TagId } from "@typedefs/api/common";
 
 export default {
   name: "AudioRecording",
@@ -111,6 +115,12 @@ export default {
           tagItem.who = tag.taggerName || "-";
         }
         tagItem.when = new Date(tag.createdAt).toLocaleString();
+        const startTime = tag.startTime || 0;
+        tagItem.startTime = `${Math.floor(
+          (startTime - (startTime % 60)) / 60
+        )}:${Math.floor(startTime % 60)
+          .toString()
+          .padStart(2, "0")}`;
         tagItem.tag = tag;
         tagItems.push(tagItem);
       });
@@ -155,12 +165,16 @@ export default {
       }
       params.order = JSON.stringify([["recordingDateTime", order]]);
       // Check for recording"
-      const {
-        result: { rows },
-      } = await api.recording.query(params);
-      if (rows.length) {
-        this.$emit("load-next-recording", params);
-        return true;
+      const queryResponse = await api.recording.query(params);
+      if (queryResponse.success) {
+        const {
+          result: { rows },
+        } = queryResponse;
+        if (rows.length) {
+          this.$emit("load-next-recording", params);
+          return true;
+        }
+        return false;
       }
       return false;
     },
@@ -172,22 +186,26 @@ export default {
       }
       this.deleteDisabled = false;
     },
-    addAudioTag: async function (tag) {
+    addAudioTag: async function (tag: ApiRecordingTagRequest) {
       const id = Number(this.$route.params.id);
       if (this.$refs.player.currentTime == this.$refs.player.duration) {
         tag.startTime = 0;
       } else {
-        tag.startTime = this.$refs.player.currentTime.toFixed(2);
+        tag.startTime = Number(this.$refs.player.currentTime.toFixed(2));
       }
-      const {
-        result: { tagId },
-      } = await api.recording.addRecordingTag(tag, id);
-      this.$nextTick(() => {
-        this.$emit("tag-changed", tagId);
-      });
+      const addTagResult = await api.recording.addRecordingTag(tag, id);
+      if (addTagResult.success) {
+        const {
+          result: { tagId },
+        } = addTagResult;
+        this.$nextTick(() => {
+          this.$emit("tag-changed", tagId);
+        });
+      }
     },
-    async deleteTag(tagId) {
-      await api.recording.deleteRecordingTag(tagId, this.recordingId);
+    async deleteTag(tagId: TagId) {
+      const id = Number(this.$route.params.id);
+      await api.recording.deleteRecordingTag(tagId, id);
       this.$nextTick(() => {
         this.$emit("tag-changed", tagId);
       });

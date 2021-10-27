@@ -18,9 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { UserId } from "./User";
-import { DeviceId } from "./Device";
 import { AccessLevel } from "./GroupUsers";
+import { DeviceId, UserId } from "@typedefs/api/common";
 
 export interface DeviceUsers
   extends Sequelize.Model,

@@ -3,8 +3,8 @@ import { MonitoringPageCriteria } from "./monitoringPage";
 import models from "@models";
 import { Recording } from "@models/Recording";
 import { getTrackTag, unidentifiedTags } from "./Visits";
-import { UserId } from "@models/User";
 import { ClientError } from "../customErrors";
+import { UserId } from "@typedefs/api/common";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;

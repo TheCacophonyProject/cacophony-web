@@ -1,3 +1,5 @@
+import registerAliases from "../module-aliases";
+registerAliases();
 import config from "../config";
 
 const args = require("commander");

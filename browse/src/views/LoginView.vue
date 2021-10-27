@@ -44,7 +44,7 @@
           </b-form-group>
 
           <b-button
-            :disabled="usernameOrEmail === '' || password === ''"
+            :disabled="usernameOrEmail === '' || password === '' || loggingIn"
             type="submit"
             variant="primary"
             class="btn-block"
@@ -61,38 +61,43 @@
   </b-container>
 </template>
 
-<script>
+<script lang="ts">
 export default {
-  // https://vuejs.org/v2/style-guide/#Multi-word-component-names-essential
   name: "LoginView",
-  // https://vuejs.org/v2/style-guide/#Prop-definitions-essential
   props: {},
-  // https://vuejs.org/v2/style-guide/#Component-data-essential
   data() {
     return {
       usernameOrEmail: "",
       password: "",
       errorMessage: null,
+      loggingIn: false,
     };
   },
-  // https://vuejs.org/v2/style-guide/#Simple-computed-properties-strongly-recommended
   computed: {},
   methods: {
     async onSubmit(evt) {
+      this.loggingIn = true;
+      this.errorMessage = null;
       evt.preventDefault();
 
-      await this.$store.dispatch("User/LOGIN", {
+      const response = await this.$store.dispatch("User/LOGIN", {
         username: this.usernameOrEmail,
         password: this.password,
       });
-
-      if (this.$store.getters["User/isLoggedIn"]) {
-        if (this.$route.query.nextUrl) {
-          this.$router.push(this.$route.query.nextUrl);
-        } else {
-          this.$router.go("home");
+      if (response.success) {
+        if (this.$store.getters["User/isLoggedIn"]) {
+          console.log("Redirect to", this.$route.query.nextUrl);
+          if (this.$route.query.nextUrl) {
+            await this.$router.push(this.$route.query.nextUrl);
+          } else {
+            this.$router.go("home");
+          }
         }
+      } else {
+        this.errorMessage =
+          response.result.messages.length && response.result.messages[0];
       }
+      this.loggingIn = false;
     },
   },
 };

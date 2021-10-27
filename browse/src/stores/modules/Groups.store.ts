@@ -14,19 +14,28 @@ const state: {
 const getters = {};
 
 async function _getGroup(groupName, commit) {
-  const { result } = await api.groups.getGroup(groupName);
-  const group = result.group;
-  commit("setCurrentGroup", group);
+  const response = await api.groups.getGroup(groupName);
+  if (response.success) {
+    const { result } = response;
+    const group = result.group;
+    commit("setCurrentGroup", group);
 
-  // FIXME - Not sure this should be here
-  commit("receiveGroups", result.group);
+    // FIXME - Not sure this should be here
+    commit("receiveGroups", result.group);
+  } else {
+    // FIXME
+  }
 }
 
 const actions = {
   async GET_GROUPS({ commit }) {
     commit("fetching");
-    const { result } = await api.groups.getGroups();
-    commit("receiveGroups", result.groups);
+    const response = await api.groups.getGroups();
+    if (response.success) {
+      commit("receiveGroups", response.result.groups);
+    } else {
+      // FIXME
+    }
     commit("fetched");
   },
 
@@ -34,23 +43,6 @@ const actions = {
     commit("fetching");
     await _getGroup(groupname, commit);
     commit("fetched");
-  },
-
-  async ADD_GROUP({ commit }, groupname) {
-    commit("fetching");
-    const { success, result } = await api.groups.addNewGroup(groupname);
-    if (!success) {
-      return result.message;
-    } else {
-      await _getGroup(groupname, commit);
-      // FIXME: A bunch of different components all rely on this fetched state.
-      //  Modal to add user to group in admin area is only dismissed when fetching is true
-      commit("fetching");
-      // FIXME This is a hack. Fix eventually. If we don't set a timeout fetching never gets set
-      setTimeout(() => {
-        commit("fetched");
-      }, 10);
-    }
   },
 
   async ADD_GROUP_USER({ commit, state }, { groupName, userName, isAdmin }) {
