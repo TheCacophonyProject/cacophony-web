@@ -97,6 +97,7 @@ const mapTrackTag = (
     createdAt: trackTag.createdAt?.toISOString(),
     data: data as any, // FIXME - Probably returning a bit too much useless data to the front-end?
     id: trackTag.id,
+    automatic: false, // Unset
     trackId: trackTag.TrackId,
     updatedAt: trackTag.updatedAt?.toISOString(),
     what: trackTag.what,
@@ -503,6 +504,7 @@ export default (app: Application, baseUrl: string) => {
       integerOf(query("limit")).optional(),
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
+      query("include-deleted").default(false).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
@@ -514,10 +516,16 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
     async (request: Request, response: Response) => {
       // FIXME Stop allowing arbitrary where queries
+      const where = response.locals.where || {};
+      if (request.query["include-deleted"]) {
+        where.deletedAt = { [Op.ne]: null };
+      } else {
+        where.deletedAt = { [Op.eq]: null };
+      }
       const result = await recordingUtil.query(
         response.locals.requestUser.id,
         response.locals.viewAsSuperUser,
-        response.locals.where || {},
+        where,
         request.query.tagMode,
         response.locals.tags || [],
         request.query.limit && parseInt(request.query.limit as string),
@@ -564,6 +572,7 @@ export default (app: Application, baseUrl: string) => {
       integerOf(query("limit")).optional(),
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
+      query("include-deleted").default(false).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
@@ -575,7 +584,9 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
     async (request: Request, response: Response) => {
       const user = response.locals.requestUser;
-      let userWhere = request.query.where;
+
+      // FIXME - Is this redundant now?
+      let userWhere = request.query.where || {};
       if (typeof userWhere === "string") {
         try {
           userWhere = JSON.parse(userWhere);
@@ -585,6 +596,11 @@ export default (app: Application, baseUrl: string) => {
             messages: ["Malformed JSON"],
           });
         }
+      }
+      if (request.query["include-deleted"]) {
+        (userWhere as any).deletedAt = { [Op.ne]: null };
+      } else {
+        (userWhere as any).deletedAt = { [Op.eq]: null };
       }
       const countQuery = {
         where: {
@@ -764,7 +780,10 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("id"))]),
+    validateFields([
+      idOf(param("id")),
+      query("include-deleted").default(false).isBoolean().toBoolean(),
+    ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const recordingItem = response.locals.recording;
@@ -876,26 +895,29 @@ export default (app: Application, baseUrl: string) => {
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
-      let deleted = false;
-      const recording = response.locals.recording;
-      const rawFileKey = recording.rawFileKey;
-      const fileKey = recording.fileKey;
-      try {
-        await recording.destroy();
-        deleted = true;
-      } catch (e) {
-        // ..
-      }
-      if (deleted && rawFileKey) {
-        await util.deleteS3Object(rawFileKey).catch((err) => {
-          log.warning(err);
-        });
-      }
-      if (deleted && fileKey) {
-        await util.deleteS3Object(fileKey).catch((err) => {
-          log.warning(err);
-        });
-      }
+      //let deleted = false;
+      const recording: Recording = response.locals.recording;
+      recording.deletedAt = new Date();
+      recording.deletedBy = response.locals.requestUser.id;
+      await recording.save();
+      // const rawFileKey = recording.rawFileKey;
+      // const fileKey = recording.fileKey;
+      // try {
+      //   await recording.destroy();
+      //   deleted = true;
+      // } catch (e) {
+      //   // ..
+      // }
+      // if (deleted && rawFileKey) {
+      //   await util.deleteS3Object(rawFileKey).catch((err) => {
+      //     log.warning(err);
+      //   });
+      // }
+      // if (deleted && fileKey) {
+      //   await util.deleteS3Object(fileKey).catch((err) => {
+      //     log.warning(err);
+      //   });
+      // }
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Deleted recording."],

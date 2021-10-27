@@ -201,6 +201,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   batteryLevel: number;
   batteryCharging: DeviceBatteryChargeState;
   airplaneModeOn: boolean;
+  deletedAt: Date | null;
+  deletedBy: UserId | null;
 
   DeviceId: DeviceId;
   GroupId: GroupId;
@@ -334,6 +336,8 @@ export default function (
     version: DataTypes.STRING,
     additionalMetadata: DataTypes.JSONB,
     comment: DataTypes.STRING,
+    deletedAt: DataTypes.DATE,
+    deletedBy: DataTypes.INTEGER,
     public: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -400,6 +404,7 @@ export default function (
         return Recording.findOne({
           where: {
             type: type,
+            deletedAt: { [Op.eq]: null },
             processingState: state,
             processing: { [Op.or]: [null, false] },
           },
@@ -691,7 +696,7 @@ from (
       )
     ) as e on e."RecordingId" = "Recordings".id ${
       biasDeviceId !== undefined ? ` where "DeviceId" = ${biasDeviceId}` : ""
-    } order by RANDOM() limit 1)
+    } and "Recordings"."deletedAt" is null order by RANDOM() limit 1)
   as f left outer join "Tracks" on f."RId" = "Tracks"."RecordingId" and "Tracks"."archivedAt" is null
   left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" is null
 ) as g;`);
@@ -1023,6 +1028,9 @@ from (
     if (!where) {
       where = {};
     }
+
+    // Don't include deleted recordings
+    where.deletedAt = { [Op.eq]: null };
 
     delete where._tagged; // remove legacy tag mode selector (if included)
 

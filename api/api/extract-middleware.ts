@@ -649,6 +649,7 @@ const getRecording =
   ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
     const recordingWhere = {
       id: parseInt(recordingId),
+      deletedAt: { [Op.eq]: null },
     };
     let getRecordingOptions;
     const groupWhere = {};

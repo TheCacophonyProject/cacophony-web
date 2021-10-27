@@ -30,6 +30,7 @@
             :track="track"
             :index="index"
             :tracks="tracks"
+            :device-id="deviceId"
             :num-tracks="tracks.length"
             :recording-id="recordingId"
             :is-wallaby-project="isWallabyProject()"
@@ -181,6 +182,9 @@ export default {
         // TODO - Sort tags by date newest to oldest
       });
       return tagItems;
+    },
+    deviceId(): number {
+      return (this.recording && this.recording.deviceId) || -1;
     },
     recordingId() {
       return Number(this.$route.params.id);
