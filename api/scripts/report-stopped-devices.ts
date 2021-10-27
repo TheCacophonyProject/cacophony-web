@@ -37,7 +37,7 @@ async function main() {
   }
   const powerEvents = (
     await powerEventsPerDevice(
-      { query: {}, res: { locals: { requestUser: null } } },
+      { query: {}, res: { locals: { requestUser: {} } } },
       true
     )
   ).filter(

@@ -17,7 +17,7 @@ async function main() {
     startTime: startDate.toDate().toISOString(),
   };
   const serviceErrors = await errors(
-    { query: query, res: { locals: { requestUser: null } } },
+    { query: query, res: { locals: { requestUser: {} } } },
     true
   );
   if (Object.keys(serviceErrors).length == 0) {
