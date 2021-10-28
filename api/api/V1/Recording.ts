@@ -54,6 +54,8 @@ import {
   booleanOf,
   idOf,
   integerOf,
+  nameOf,
+  stringOf,
   validNameOf,
 } from "../validation-middleware";
 import util from "@api/V1/util";
@@ -151,6 +153,9 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
     }
   }
   if (tag.hasOwnProperty("startTime") && tag.startTime !== undefined) {
+    result.startTime = tag.startTime;
+  }
+  if (tag.hasOwnProperty("duration") && tag.duration !== undefined) {
     result.startTime = tag.startTime;
   }
   if (tag.what) {
@@ -1116,7 +1121,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
-      body("what").exists().isString(),
+      stringOf(body("what")),
       body("confidence").isFloat().toFloat(),
       body("automatic").isBoolean().toBoolean(),
       body("data").isJSON().optional(),
@@ -1183,7 +1188,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
-      body("what").exists().isString(),
+      stringOf(body("what")),
       body("confidence").isFloat().toFloat(),
       booleanOf(body("automatic")),
       body("tagJWT").optional().isString(),
@@ -1191,7 +1196,18 @@ export default (app: Application, baseUrl: string) => {
     ]),
     // FIXME - JSON schema fo allowed data? At least a limit to how many chars etc?
     parseJSONField(body("data")),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (request.body.tagJWT) {
+        return next();
+      } else {
+        await fetchAuthorizedRequiredRecordingById(param("id"))(
+          request,
+          response,
+          next
+        );
+        return next();
+      }
+    },
     async (request: Request, response: Response) => {
       let track;
       if (request.body.tagJWT) {
@@ -1358,7 +1374,7 @@ export default (app: Application, baseUrl: string) => {
         const track = await models.Track.findByPk(request.params.trackId);
         if (!track) {
           responseUtil.send(response, {
-            statusCode: 401,
+            statusCode: 403,
             messages: ["Track does not exist"],
           });
           return;
@@ -1366,7 +1382,7 @@ export default (app: Application, baseUrl: string) => {
         // Ensure track belongs to this recording.
         if (track.RecordingId !== request.params.id) {
           responseUtil.send(response, {
-            statusCode: 401,
+            statusCode: 403,
             messages: ["Track does not belong to recording"],
           });
           return;
@@ -1374,14 +1390,14 @@ export default (app: Application, baseUrl: string) => {
         return track;
       } else {
         responseUtil.send(response, {
-          statusCode: 401,
+          statusCode: 403,
           messages: ["JWT does not have permissions to tag this recording"],
         });
         return;
       }
     } catch (e) {
       responseUtil.send(response, {
-        statusCode: 401,
+        statusCode: 403,
         messages: ["Failed to verify JWT."],
       });
       return;

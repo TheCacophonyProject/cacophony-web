@@ -310,18 +310,18 @@ function signedUrl(req, res, next) {
   const jwtParam = req.query["jwt"];
   if (jwtParam == null) {
     return res
-      .status(401)
+      .status(403)
       .json({ messages: ["Could not find JWT token in query params."] });
   }
   let jwtDecoded;
   try {
     jwtDecoded = jwt.verify(jwtParam, config.server.passportSecret);
   } catch (e) {
-    return res.status(401).json({ messages: ["Failed to verify JWT."] });
+    return res.status(403).json({ messages: ["Failed to verify JWT."] });
   }
 
   if (jwtDecoded._type !== "fileDownload") {
-    return res.status(401).json({ messages: ["Incorrect JWT type."] });
+    return res.status(403).json({ messages: ["Incorrect JWT type."] });
   }
 
   req.jwtDecoded = jwtDecoded;

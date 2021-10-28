@@ -37,7 +37,7 @@
         />
 
         <b-form-invalid-feedback id="username-live-feedback">
-          This username couldn't be found.
+          {{ formErrorMessage }}
         </b-form-invalid-feedback>
 
         <b-form-text id="username-live-help">
@@ -82,11 +82,16 @@ export default {
       type: String,
       required: true,
     },
+    groupUsers: {
+      type: Array,
+      required: true,
+    },
   },
   data() {
     return {
       form: { ...initialFormState },
       formSubmissionFailed: false,
+      formErrorMessage: null,
       users: [],
     };
   },
@@ -115,6 +120,9 @@ export default {
         this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
       );
     },
+    thisUserName() {
+      return this.$store.state.User.userData.userName;
+    },
     usersListLabel() {
       if (this.isSuperUserAndViewingAsSuperUser) {
         return "select a user";
@@ -141,13 +149,32 @@ export default {
     addUser: async function (event) {
       event.preventDefault();
       if (!this.$v.$invalid) {
+        // If we're adding ourselves, and we're not a super-user, and we're
+        // already an admin user, and we're trying to downgrade ourselves to
+        // a regular user *and* we're the last admin in the group, we should warn.
+        const userToAdd =
+          (this.isSuperUserAndViewingAsSuperUser && this.form.username.name) ||
+          this.form.username;
+        if (
+          !this.isSuperUserAndViewingAsSuperUser &&
+          userToAdd === this.thisUserName &&
+          !this.form.isAdmin &&
+          this.groupUsers.length === 1 &&
+          this.groupUsers[0].userName === this.thisUserName
+        ) {
+          this.formSubmissionFailed = true;
+          this.formErrorMessage =
+            "The last user cannot remove their admin status";
+          return;
+        }
+
         const result = await api.groups.addGroupUser(
           this.groupName,
-          (this.isSuperUserAndViewingAsSuperUser && this.form.username.name) ||
-            this.form.username,
+          userToAdd,
           this.form.isAdmin
         );
         if (!result.success) {
+          this.formErrorMessage = "The username couldn't be found";
           this.formSubmissionFailed = true;
         } else {
           // We can emit that a user was added to the group:
@@ -164,12 +191,12 @@ export default {
       if (this.isSuperUserAndViewingAsSuperUser) {
         const usersListResponse = await User.list();
         if (usersListResponse.success) {
-          this.users = usersListResponse.result.usersList
-            .map(({ userName, id }) => ({
+          this.users = usersListResponse.result.usersList.map(
+            ({ userName, id }) => ({
               name: userName,
               id,
-            }))
-            .filter(({ name }) => name !== this.superUserName());
+            })
+          );
         }
       }
     },

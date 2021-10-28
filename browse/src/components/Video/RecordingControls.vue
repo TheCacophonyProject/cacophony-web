@@ -221,8 +221,9 @@ export default {
     async deleteRecording() {
       this.deleteDisabled = true;
       const { success } = await api.recording.del(this.$route.params.id);
+      this.deleteDisabled = false;
       if (success) {
-        this.$emit("nextOrPreviousRecording");
+        this.$emit("deleted-recording");
       }
     },
     updateComment(event) {

@@ -62,7 +62,7 @@ export default {
     quickTag() {
       const tag: ApiTrackTagRequest = {
         confidence: this.confidence,
-        what: this.what,
+        what: this.whatTag,
       };
       this.$emit("addTag", tag);
     },

@@ -428,9 +428,8 @@ export default function (app: Application, baseUrl: string) {
       ),
       idOf(body("deviceId")),
       booleanOf(body("admin")),
-
-      // In theory we may want to be able to add a user to an inactive device
-      query("only-active").optional().isBoolean().toBoolean(),
+      // Allow adding a user to an inactive device by default
+      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchUnauthorizedOptionalUserById(body("userId")),
     fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
