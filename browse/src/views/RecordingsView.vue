@@ -48,7 +48,7 @@
             :show-cards="showCards"
             :view-recording-query="viewRecordingQuery"
             :all-loaded="atEndOfSearch"
-            @load-more="requestMoreRecordings"
+            @load-more="queueMoreRecordings"
           />
           <div v-if="countMessage === 'No matches'" class="no-results">
             <h6 class="text-muted">No recordings found</h6>
@@ -84,6 +84,7 @@ export default {
       countMessage: null,
       showCardsInternal: this.getPreferredResultsDisplayStyle(),
       currentPage: 1,
+      pagesQueued: 0,
       screenWidth: window.innerWidth,
       perPage: this.getPreferredResultsDisplayStyle()
         ? LOAD_PER_PAGE_CARDS
@@ -154,7 +155,14 @@ export default {
     onResize() {
       this.screenWidth = window.innerWidth;
     },
+    async queueMoreRecordings() {
+      this.pagesQueued++;
+      if (!this.queryPending) {
+        await this.requestMoreRecordings();
+      }
+    },
     async requestMoreRecordings() {
+      const currentPage = this.currentPage;
       const nextQuery = this.makePaginatedQuery(
         this.serialisedQuery,
         this.currentPage + 1,
@@ -162,26 +170,21 @@ export default {
       );
 
       // Make sure the request wouldn't go past the count?
-      if (this.currentPage < this.totalPages) {
+      if (currentPage < this.totalPages) {
         this.updateRoute(nextQuery);
         this.queryPending = true;
-        const { result } = await api.recording.query(nextQuery);
-
-        // TODO: It's possible that more recordings have come in since we loaded the page,
-        //  in which case our offsets are wrong. So check for duplicate recordings here.
+        const queryResponse = await api.recording.query(nextQuery);
+        const { result } = queryResponse;
         this.recordings.push(...result.rows);
         this.queryPending = false;
       } else {
         // At end of search
         // console.log("At end of search");
       }
-    },
-    pagination(page) {
-      this.paginationHasChanged(page, this.perPage);
-    },
-    perPageChanged(perPage) {
-      this.currentPage = 0;
-      this.paginationHasChanged(this.currentPage, perPage);
+      this.pagesQueued--;
+      if (this.pagesQueued !== 0) {
+        await this.requestMoreRecordings();
+      }
     },
     getPreferredResultsDisplayStyle() {
       return localStorage.getItem("results-display-style") !== "row";
@@ -203,23 +206,6 @@ export default {
           query,
         })
         .catch(() => {});
-    },
-    paginationHasChanged(page, perPage) {
-      const query = this.makePaginatedQuery(
-        this.serialisedQuery,
-        page,
-        perPage
-      );
-      this.updateRoute(query);
-      this.getRecordings(query);
-    },
-    queryRouteHasChanged(query) {
-      const fullQuery = this.makePaginatedQuery(
-        query,
-        this.currentPage,
-        this.perPage
-      );
-      this.updateRoute(fullQuery);
     },
     querySubmitted(query) {
       const queryParamsHaveChanged =
@@ -243,32 +229,35 @@ export default {
       this.nextQueryDescription = description;
     },
     async getRecordings(whereQuery) {
-      try {
-        // Remove previous values
-        this.countMessage = "";
-        this.recordings = [];
-        // Call API and process results
-        this.queryPending = true;
-        const { result, success } = await api.recording.query(whereQuery);
-        this.queryPending = false;
+      // Remove previous values
+      this.countMessage = "";
+      this.recordings = [];
+      // Call API and process results
+      this.queryPending = true;
+      this.pagesQueued++;
+      const queryResponse = await api.recording.query(whereQuery);
+      const { result, success } = queryResponse;
+      this.queryPending = false;
 
-        if (!success) {
-          result.messages &&
-            result.messages.forEach((message) => {
-              this.$store.dispatch("Messaging/WARN", message);
-            });
-        } else {
-          this.currentQueryDescription = this.nextQueryDescription;
-          this.count = result.count;
-          if (result.count > 0) {
-            this.countMessage = `${result.count} matches found (total)`;
-          } else if (result.count === 0) {
-            this.countMessage = "No matches";
-          }
-          this.recordings = result.rows;
+      if (!success) {
+        result.messages &&
+          result.messages.forEach((message) => {
+            this.$store.dispatch("Messaging/WARN", message);
+          });
+      } else {
+        this.currentQueryDescription = this.nextQueryDescription;
+        this.count = result.count;
+        if (result.count > 0) {
+          this.countMessage = `${result.count} matches found (total)`;
+        } else if (result.count === 0) {
+          this.countMessage = "No matches";
         }
-        // eslint-disable-next-line no-empty
-      } catch (e) {}
+        this.recordings.push(...result.rows);
+      }
+      this.pagesQueued--;
+      if (this.pagesQueued !== 0) {
+        await this.requestMoreRecordings();
+      }
     },
   },
 };

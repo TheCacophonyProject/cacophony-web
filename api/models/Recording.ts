@@ -1072,10 +1072,10 @@ from (
           ),
         ],
       },
-      order: order,
+      order,
       include: getRecordingInclude(),
-      limit: limit,
-      offset: offset,
+      limit,
+      offset,
       attributes: Recording.queryGetAttributes,
     };
     return this;

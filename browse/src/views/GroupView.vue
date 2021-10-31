@@ -98,6 +98,20 @@
           :recordings-query="recordingQueryFinal"
         />
       </b-tab>
+      <!--      <b-tab lazy v-if="!limitedView">-->
+      <!--        <template #title>-->
+      <!--          <TabTemplate-->
+      <!--            title="Deleted Recordings"-->
+      <!--            :isLoading="deletedRecordingsCountLoading"-->
+      <!--            :value="deletedRecordingsCount"-->
+      <!--          />-->
+      <!--        </template>-->
+      <!--        <RecordingsTab-->
+      <!--          :loading="deletedRecordingsCountLoading"-->
+      <!--          :group-name="groupName"-->
+      <!--          :recordings-query="recordingQueryFinal"-->
+      <!--        />-->
+      <!--      </b-tab>-->
     </b-tabs>
   </b-container>
 </template>
@@ -136,6 +150,8 @@ export default {
       usersLoading: false, // Loading all users on page load
       devicesLoading: false, // Loading all users on page load
       recordingsCountLoading: false,
+      deletedRecordingsCountLoading: false,
+      deletedRecordingsCount: 0,
       visitsCountLoading: false,
       recordingsCount: 0,
       visitsCount: 0,
@@ -217,22 +233,26 @@ export default {
         },
       });
     }
-    const {
-      result: { group },
-    } = await api.groups.getGroup(this.groupName);
-    this.group = group;
-    this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
-    if (!this.limitedView) {
-      await Promise.all([
-        this.fetchUsers(),
-        this.fetchStations(),
-        this.fetchVisitsCount(),
-        this.fetchDevices(),
-        this.fetchRecordingCount(),
-      ]);
-    } else {
-      await this.fetchDevices();
-      await this.fetchRecordingCount();
+    const groupRequest = await api.groups.getGroup(this.groupName);
+    if (groupRequest.success) {
+      const {
+        result: { group },
+      } = groupRequest;
+      this.group = group;
+      this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
+      if (!this.limitedView) {
+        await Promise.all([
+          this.fetchUsers(),
+          this.fetchStations(),
+          this.fetchVisitsCount(),
+          this.fetchDevices(),
+          this.fetchRecordingCount(),
+          this.fetchDeletedRecordingCount(),
+        ]);
+      } else {
+        await this.fetchDevices();
+        await this.fetchRecordingCount();
+      }
     }
   },
   methods: {
@@ -275,34 +295,30 @@ export default {
       }
       this.usersLoading = false;
     },
+    async fetchDeletedRecordingCount() {
+      this.deletedRecordingsCountLoading = true;
+
+      this.deletedRecordingsCountLoading = false;
+    },
     async fetchRecordingCount() {
       this.recordingsCountLoading = true;
       if (!this.limitedView) {
-        try {
-          const groupResponse = await api.groups.getGroup(this.groupName);
-          if (groupResponse.success) {
-            const { result } = groupResponse;
-            this.groupId = result.group.id;
-            this.recordingQueryFinal = this.recordingQuery();
-            {
-              const countResponse = await api.recording.queryCount(
-                this.recordingQuery()
-              );
-              if (countResponse.success) {
-                const { result } = countResponse;
-                if (result.count !== 0) {
-                  this.recordingsCount = result.count;
-                }
-              }
-            }
+        this.groupId = this.group.id;
+        this.recordingQueryFinal = this.recordingQuery();
+
+        const countResponse = await api.recording.queryCount(
+          this.recordingQuery()
+        );
+        if (countResponse.success) {
+          const {
+            result: { count },
+          } = countResponse;
+          if (count !== 0) {
+            this.recordingsCount = count;
           }
-          //} else {
-          //  this.limitedView = true;
-          //await this.fetchRecordingCount();
-          //}
-        } catch (e) {
-          this.recordingsCountLoading = false;
         }
+
+        this.recordingsCountLoading = false;
       } else {
         try {
           await this.fetchDevices();
@@ -335,28 +351,21 @@ export default {
     },
     async fetchVisitsCount() {
       this.visitsCountLoading = true;
-      try {
-        const groupResponse = await api.groups.getGroup(this.groupName);
-        if (groupResponse.success) {
-          const { result } = groupResponse;
-          this.groupId = result.group.id;
-          this.visitsQueryFinal = this.visitsQuery();
-          {
-            const visitsResponse = await api.monitoring.queryVisitPage({
-              ...this.visitsQuery(),
-              days: "all",
-              perPage: 1,
-              page: 1,
-            });
-            if (visitsResponse.success) {
-              const { result } = visitsResponse;
-              this.visitsCount = `${result.params.pagesEstimate}`;
-            }
-          }
-        }
-      } catch (e) {
-        this.visitsCountLoading = false;
+
+      this.groupId = this.group.id;
+      this.visitsQueryFinal = this.visitsQuery();
+
+      const visitsResponse = await api.monitoring.queryVisitPage({
+        ...this.visitsQuery(),
+        days: "all",
+        perPage: 1,
+        page: 1,
+      });
+      if (visitsResponse.success) {
+        const { result } = visitsResponse;
+        this.visitsCount = `${result.params.pagesEstimate}`;
       }
+
       this.visitsCountLoading = false;
     },
 

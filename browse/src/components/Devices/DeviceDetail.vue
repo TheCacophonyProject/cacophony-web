@@ -195,41 +195,44 @@ export default {
     },
     async fetchDeviceUsers() {
       this.usersCountLoading = true;
-      try {
-        // Fetch device users:
-        const { result } = await api.device.getUsers(this.device.id);
-        this.deviceUsers = result.users.filter(
-          (user) => user.relation === "device"
-        );
-      } catch (e) {
-        // ...
+      // Fetch device users:
+      const usersResponse = await api.device.getUsers(this.device.id);
+      if (usersResponse.success) {
+        const {
+          result: { users },
+        } = usersResponse;
+        this.deviceUsers = users.filter((user) => user.relation === "device");
       }
       this.usersCountLoading = false;
     },
     async fetchRecordingCount() {
       this.recordingsCountLoading = true;
-      try {
-        const { result } = await api.recording.queryCount(
-          this.recordingQuery()
-        );
-        this.recordingsCount = result.count;
-      } catch (e) {
-        this.recordingsCountLoading = false;
+      const recordingCountResponse = await api.recording.queryCount(
+        this.recordingQuery()
+      );
+      if (recordingCountResponse.success) {
+        const {
+          result: { count },
+        } = recordingCountResponse;
+        this.recordingsCount = count;
       }
       this.recordingsCountLoading = false;
     },
     async fetchVisitsCount() {
       this.visitsCountLoading = true;
-      try {
-        const { result } = await api.monitoring.queryVisitPage({
-          page: 1,
-          perPage: 1,
-          days: "all",
-          device: [this.device.id],
-        });
-        this.visitsCount = result.params.pagesEstimate;
-      } catch (e) {
-        this.visitsCountLoading = false;
+      const visitsCountResponse = await api.monitoring.queryVisitPage({
+        page: 1,
+        perPage: 1,
+        days: "all",
+        device: [this.device.id],
+      });
+      if (visitsCountResponse.success) {
+        const {
+          result: {
+            params: { pagesEstimate },
+          },
+        } = visitsCountResponse;
+        this.visitsCount = pagesEstimate;
       }
       this.visitsCountLoading = false;
     },
