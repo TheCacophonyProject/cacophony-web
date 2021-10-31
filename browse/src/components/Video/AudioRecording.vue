@@ -115,7 +115,6 @@ export default {
           tagItem.who = tag.taggerName || "-";
         }
         tagItem.when = new Date(tag.createdAt).toLocaleString();
-        debugger;
         const startTime = tag.startTime || 0;
         tagItem.startTime = `${Math.floor(
           (startTime - (startTime % 60)) / 60
