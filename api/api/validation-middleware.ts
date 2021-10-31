@@ -42,6 +42,8 @@ export const integerOf = idOf;
 export const nameOf = (field: ValidationChain): ValidationChain =>
   field.isString().withMessage(expectedTypeOf("string"));
 
+export const stringOf = nameOf;
+
 export const validNameOf = (field: ValidationChain): ValidationChain =>
   nameOf(field)
     .isLength({ min: 3 })

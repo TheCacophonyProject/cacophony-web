@@ -23,7 +23,10 @@
           </div>
         </div>
 
-        <div class="simple-accordion-wrapper">
+        <div
+          class="simple-accordion-wrapper"
+          v-if="isSuperUserAndViewingAsSuperUser"
+        >
           <h5
             id="technical-details"
             class="simple-accordion-header"
@@ -81,8 +84,9 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import BatteryLevel from "../BatteryLevel.vue";
+import { shouldViewAsSuperUser } from "@/utils";
 
 export default {
   name: "RecordingProperties",
@@ -144,6 +148,11 @@ export default {
     };
   },
   computed: {
+    isSuperUserAndViewingAsSuperUser(): boolean {
+      return (
+        this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
+      );
+    },
     parseLocation: function () {
       if (this.recording.location) {
         return `Lat: ${this.recording.location.lat.toFixed(

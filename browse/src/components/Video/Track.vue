@@ -60,13 +60,17 @@
         @deleteTag="deleteTag($event)"
       />
       <AddCustomTrackTag @addTag="addTag($event)" :allow-comment="false" />
-      <div v-if="isSuperUser">
+      <div>
         <TrackTags
+          :device-id="deviceId"
           :items="localTags"
           @addTag="addTag($event)"
           @deleteTag="deleteTag($event)"
         />
-        <TrackData :track-tag="masterTag" />
+        <TrackData
+          :track-tag="masterTag"
+          v-if="isSuperUserAndViewingAsSuperUser"
+        />
       </div>
     </div>
   </div>
@@ -85,6 +89,7 @@ import {
   ApiTrackTagRequest,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
+import { shouldViewAsSuperUser } from "@/utils";
 
 interface TrackInternalData {
   localTags: ApiTrackTagResponse[];
@@ -106,6 +111,10 @@ export default {
   props: {
     track: {
       type: Object,
+      required: true,
+    },
+    deviceId: {
+      type: Number,
       required: true,
     },
     tracks: {
@@ -148,7 +157,7 @@ export default {
       message: "",
       showUserTaggingHintCountDown: false,
       localTags: [],
-    } as TrackInternalData;
+    } as unknown as TrackInternalData;
   },
   computed: {
     masterTag(): ApiTrackTagResponse | undefined {
@@ -175,8 +184,10 @@ export default {
     userTagItems(): ApiHumanTrackTagResponse[] {
       return this.localTags.filter(({ automatic }) => !automatic);
     },
-    isSuperUser() {
-      return this.$store.state.User.userData.isSuperUser;
+    isSuperUserAndViewingAsSuperUser() {
+      return (
+        this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
+      );
     },
   },
   created() {

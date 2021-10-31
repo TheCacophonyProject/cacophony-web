@@ -1,6 +1,6 @@
 <template>
   <div class="simple-accordion-wrapper">
-    <h6 class="simple-accordion-header" @click="showDetails = !showDetails">
+    <h6 class="simple-accordion-header" @click="toggleDetails()">
       Tag history
       <span v-if="!showDetails" title="Show all result classes" class="pointer">
         <font-awesome-icon icon="angle-down" class="fa-1x" />
@@ -11,7 +11,7 @@
     </h6>
     <div v-if="showDetails">
       <b-table
-        :items="items"
+        :items="tagItems"
         :fields="fields"
         class="track-tag-table"
         striped
@@ -62,7 +62,10 @@
 
           <button
             v-b-tooltip.hover.left="'Delete tag'"
-            v-if="!row.item.automatic"
+            v-if="
+              (isGroupOrDeviceAdmin || row.item.userName === thisUserName) &&
+              !row.item.automatic
+            "
             class="btn"
             @click="$emit('deleteTag', row.item)"
           >
@@ -75,14 +78,23 @@
 </template>
 
 <script lang="ts">
+import api from "@/api";
 import { imgSrc } from "@/const";
-import { ApiTrackTagRequest } from "@typedefs/api/trackTag";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
+import { shouldViewAsSuperUser } from "@/utils";
 
 export default {
   name: "TrackTags",
   props: {
     items: {
       type: Array,
+      required: true,
+    },
+    deviceId: {
+      type: Number,
       required: true,
     },
   },
@@ -103,12 +115,65 @@ export default {
         },
       ],
       showDetails: false,
+      isGroupOrDeviceAdmin: null,
     };
   },
+  computed: {
+    isSuperUserAndViewingAsSuperUser(): boolean {
+      return (
+        this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
+      );
+    },
+    thisUserName(): string {
+      return this.$store.state.User.userData.userName;
+    },
+
+    tagItems() {
+      let items;
+      if (this.isSuperUser) {
+        items = [...this.items];
+      } else {
+        // Remove AI tags other than master, as they'll just be confusing
+        items = this.items.filter(
+          (item: ApiTrackTagResponse) =>
+            !item.automatic || item.data.name === "Master"
+        );
+      }
+      return items.sort((a: ApiTrackTagResponse, b: ApiTrackTagResponse) => {
+        if (a.createdAt && b.createdAt) {
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        } else if (a.createdAt) {
+          return 1;
+        } else if (b.createdAt) {
+          return -1;
+        }
+        return 0;
+      });
+    },
+  },
   methods: {
+    async toggleDetails() {
+      this.showDetails = !this.showDetails;
+      if (this.isSuperUserAndViewingAsSuperUser) {
+        this.isGroupOrDeviceAdmin = true;
+      }
+      if (this.isGroupOrDeviceAdmin === null) {
+        const groupResponse = await api.device.getDeviceById(this.deviceId);
+        if (groupResponse.success) {
+          const { result } = groupResponse;
+          this.isGroupOrDeviceAdmin = result.device.admin;
+        }
+      }
+    },
     imgSrc,
     aiName: function (trackTag) {
-      if (trackTag.data && trackTag.data.name) {
+      if (
+        this.isSuperUserAndViewingAsSuperUser &&
+        trackTag.data &&
+        trackTag.data.name
+      ) {
         return "AI " + trackTag.data.name;
       } else {
         return "Cacophony AI";
@@ -130,7 +195,7 @@ export default {
         (tag) =>
           !tag.automatic &&
           tag.what === what &&
-          tag.userName === this.$store.state.User.userData.userName
+          tag.userName === this.thisUserName
       );
     },
     confirmTag: function ({ what, confidence }) {

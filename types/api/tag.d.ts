@@ -18,6 +18,7 @@ export interface ApiRecordingTagResponse {
   recordingId?: RecordingId;
   taggerId?: UserId;
   startTime?: number;
+  duration?: number;
   taggerName?: string;
   what?: string; //AcceptableTag;
   automatic?: boolean;

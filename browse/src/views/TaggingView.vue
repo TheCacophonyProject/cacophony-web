@@ -128,6 +128,7 @@ import {
   JwtToken,
 } from "@/api/Recording.api";
 import { DeviceId } from "@typedefs/api/common";
+import { ApiTrackTagRequest } from "@typedefs/api/trackTag";
 
 interface TaggingViewData {
   colours: string[];
@@ -246,8 +247,8 @@ export default Vue.extend({
       await this.getRecording();
       this.loading = false;
     },
-    addCustomTag({ what }) {
-      this.addTag(what);
+    addCustomTag(tag: ApiTrackTagRequest) {
+      this.addTag(tag.what);
     },
     async addTag(tagLabel: string) {
       const recordingId = this.currentRecording.RecordingId;
@@ -255,27 +256,30 @@ export default Vue.extend({
       const trackId = currentTrack.trackId;
       const tag = { what: tagLabel, confidence: 0.85 };
       this.taggingPending = true;
-      const { result } = await api.recording.addTrackTag(
+      const addTrackTagResponse = await api.recording.addTrackTag(
         tag,
         recordingId,
         trackId,
         this.currentRecording.tagJWT as unknown as JwtToken<TrackTag>
       );
       this.taggingPending = false;
-      if (result.success) {
-        // Add the track tag to this.data.tracks:
-        currentTrack.tags.push(tagLabel);
-        currentTrack.needsTagging = false;
-        this.history.push({
-          trackIndex: this.currentTrackIndex,
-          tracks: this.tracks,
-          recording: this.currentRecording,
-          tag: {
-            what: tagLabel,
-            TrackTagId: result.trackTagId,
-          },
-        });
-        this.primeNextTrack(3);
+      if (addTrackTagResponse.success) {
+        const { result } = addTrackTagResponse;
+        if (result.success) {
+          // Add the track tag to this.data.tracks:
+          currentTrack.tags.push(tagLabel);
+          currentTrack.needsTagging = false;
+          this.history.push({
+            trackIndex: this.currentTrackIndex,
+            tracks: this.tracks,
+            recording: this.currentRecording,
+            tag: {
+              what: tagLabel,
+              TrackTagId: result.trackTagId,
+            },
+          });
+          this.primeNextTrack(3);
+        }
       }
     },
     async deleteTag(

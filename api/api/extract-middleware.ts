@@ -87,7 +87,7 @@ const extractJwtAuthenticatedEntity =
           return next(
             new ClientError(
               `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`,
-              401
+              403
             )
           );
         }
@@ -590,6 +590,8 @@ const getRecordingRelationships = (recordingQuery: any): any => {
       "taggerId",
       "automatic",
       "confidence",
+      "startTime",
+      "duration",
       "createdAt",
     ],
     include: [
@@ -649,6 +651,7 @@ const getRecording =
   ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
     const recordingWhere = {
       id: parseInt(recordingId),
+      deletedAt: { [Op.eq]: null },
     };
     let getRecordingOptions;
     const groupWhere = {};

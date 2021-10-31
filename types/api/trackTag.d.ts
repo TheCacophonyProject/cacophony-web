@@ -12,6 +12,7 @@ interface ApiTrackTagResponse {
   id: TrackTagId;
   trackId: TrackId; // FIXME? Needed
   confidence: number;
+  automatic: boolean;
   data: any; // FIXME - validation?
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;

@@ -25,7 +25,9 @@ function loginOther(username) {
   });
 }
 
-function list() {
+function list(): Promise<
+  FetchResult<{ usersList: ApiLoggedInUserResponse[] }>
+> {
   return CacophonyApi.get("/api/v1/listUsers");
 }
 

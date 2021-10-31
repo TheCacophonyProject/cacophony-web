@@ -30,6 +30,7 @@
             :track="track"
             :index="index"
             :tracks="tracks"
+            :device-id="deviceId"
             :num-tracks="tracks.length"
             :recording-id="recordingId"
             :is-wallaby-project="isWallabyProject()"
@@ -87,6 +88,7 @@
           @updateComment="updateComment($event)"
           @nextOrPreviousRecording="gotoNextRecording('either')"
           @requested-export="requestedMp4Export"
+          @deleted-recording="deletedRecording"
         />
       </b-col>
       <b-col cols="12" lg="4">
@@ -181,6 +183,9 @@ export default {
         // TODO - Sort tags by date newest to oldest
       });
       return tagItems;
+    },
+    deviceId(): number {
+      return (this.recording && this.recording.deviceId) || -1;
     },
     recordingId() {
       return Number(this.$route.params.id);
@@ -280,6 +285,14 @@ export default {
       }
       return;
     },
+    async deletedRecording() {
+      if (this.canGoBackwardInSearch || this.canGoForwardInSearch) {
+        await this.gotoNextRecording("either");
+      } else {
+        const recordingId = Number(this.$route.params.id);
+        this.$emit("recording-updated", recordingId);
+      }
+    },
     async gotoNextRecording(
       direction: "next" | "previous" | "either",
       tagMode: false | string = false,
@@ -295,18 +308,13 @@ export default {
         const resolvedTagMode = tagMode || searchQueryCopy.tagMode;
         const resolvedTags = tags || searchQueryCopy.tags;
         try {
-          if (
-            await this.getNextRecording(
-              direction,
-              resolvedTagMode,
-              resolvedTags,
-              skipMessage
-            )
-          ) {
-            // await this.$router.push({
-            //   path: `/recording/${this.recording.id}`,
-            //   query: searchQueryCopy,
-            // });
+          const hasNext = await this.getNextRecording(
+            direction,
+            resolvedTagMode,
+            resolvedTags,
+            skipMessage
+          );
+          if (hasNext) {
             if (direction === "next" || direction === "either") {
               this.canGoBackwardInSearch = true;
               this.canGoForwardInSearch = await this.hasNextRecording(
@@ -402,8 +410,11 @@ export default {
           return true;
         } else {
           // Just return whether or not there is a next/prev recording.
-          const { result, success } = await api.recording.query(params);
-          return success && result.rows.length !== 0;
+          const recordingQuery = await api.recording.query(params);
+          if (recordingQuery.success) {
+            return recordingQuery.result.rows.length !== 0;
+          }
+          return false;
         }
       } catch (e) {
         return false;
@@ -435,18 +446,22 @@ export default {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
-      const {
-        success,
-        result: { tagId },
-      } = await api.recording.addRecordingTag(tag, this.recordingId);
-      if (!success) {
+      const addRecordingTagResponse = await api.recording.addRecordingTag(
+        tag,
+        this.recordingId
+      );
+      if (addRecordingTagResponse.success) {
+        const {
+          result: { tagId },
+        } = addRecordingTagResponse;
+        this.$nextTick(() => {
+          this.$emit("tag-changed", tagId);
+        });
+      } else {
         // Roll back local change
         this.localTags.splice(this.localTags.indexOf(newTag), 1);
         return;
       }
-      this.$nextTick(() => {
-        this.$emit("tag-changed", tagId);
-      });
     },
     async deleteTag(tagId: TagId) {
       // Remove tag from local tags to update UI quickly.
