@@ -48,9 +48,9 @@
           <b-spinner small />
           <span>Queued for processing</span>
         </div>
-        <div v-else-if="processingFailed" class="processing">
+        <div v-else-if="processingFailedOrCorrupt" class="processing">
           <span>Processing recording encountered errors.</span>
-          <b-btn @click="reprocess">Retry?</b-btn>
+          <b-btn v-if="processingFailed" @click="reprocess">Retry?</b-btn>
         </div>
         <div v-else-if="!processingCompleted" class="processing">
           <b-spinner small />
@@ -107,7 +107,7 @@ import RecordingProperties from "./RecordingProperties.vue";
 import { TagColours, WALLABY_GROUP } from "@/const";
 import api from "@/api";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState } from "@typedefs/api/consts";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import {
@@ -115,7 +115,6 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
-import { RecordingType } from "@typedefs/api/consts";
 
 export default {
   name: "VideoRecording",
@@ -225,6 +224,14 @@ export default {
         ).processingState.endsWith(".failed")
       );
     },
+    processingFailedOrCorrupt() {
+      return (
+        this.processingFailed ||
+        (this.recording &&
+          (this.recording as ApiThermalRecordingResponse).processingState ===
+            RecordingProcessingState.Corrupt)
+      );
+    },
   },
   async mounted() {
     this.updateLocalTags();
@@ -299,7 +306,11 @@ export default {
     },
     async deletedRecording() {
       if (this.canGoBackwardInSearch || this.canGoForwardInSearch) {
-        await this.gotoNextRecording("either");
+        if (this.canGoForwardInSearch) {
+          await this.gotoNextRecording("next");
+        } else {
+          await this.gotoNextRecording("previous");
+        }
       } else {
         const recordingId = Number(this.$route.params.id);
         this.$emit("recording-updated", recordingId);
@@ -327,24 +338,22 @@ export default {
             skipMessage
           );
           if (hasNext) {
-            if (direction === "next" || direction === "either") {
-              this.canGoBackwardInSearch = true;
-              this.canGoForwardInSearch = await this.hasNextRecording(
-                "next",
-                resolvedTagMode,
-                resolvedTags,
-                true
-              );
-            }
-            if (direction === "previous" || direction === "either") {
-              this.canGoForwardInSearch = true;
-              this.canGoBackwardInSearch = await this.hasNextRecording(
+            const prevNext = await Promise.all([
+              this.hasNextRecording(
                 "previous",
                 resolvedTagMode,
                 resolvedTags,
                 true
-              );
-            }
+              ),
+              this.hasNextRecording(
+                "next",
+                resolvedTagMode,
+                resolvedTags,
+                true
+              ),
+            ]);
+            this.canGoBackwardInSearch = prevNext[0];
+            this.canGoForwardInSearch = prevNext[1];
           }
           // eslint-disable-next-line no-empty
         } catch (e) {}
@@ -386,7 +395,6 @@ export default {
       noNavigate: boolean = false
     ): Promise<boolean | any> {
       const params = JSON.parse(JSON.stringify(this.$route.query));
-      console.log(params);
       let order;
       switch (direction) {
         case "next":

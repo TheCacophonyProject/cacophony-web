@@ -85,6 +85,9 @@
           />
           <span class="label" v-if="queuedForProcessing">Queued</span>
           <span class="label" v-else-if="processing">Processing</span>
+          <span class="label" v-else-if="corruptedOrFailed">
+            Processing failed
+          </span>
           <span
             class="label"
             v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
@@ -249,7 +252,7 @@ export default {
       },
     },
     queuedForProcessing(): boolean {
-      const state = this.item.processingState.toLowerCase();
+      const state = this.item.processingState;
       return (
         (state === RecordingProcessingState.Analyse ||
           state === RecordingProcessingState.AnalyseThermal ||
@@ -260,6 +263,13 @@ export default {
     },
     processing(): boolean {
       return this.item.processing;
+    },
+    corruptedOrFailed(): boolean {
+      const state = this.item.processingState;
+      return (
+        state === RecordingProcessingState.Corrupt ||
+        (state as string).endsWith(".failed")
+      );
     },
     itemLocation(): { name: string; location: string }[] {
       return [

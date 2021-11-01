@@ -105,14 +105,17 @@ async function getAllVisits(
       }
       returnVisits.push(...visits);
 
-      morePagesExist = response.result.params.pagesEstimate != 1;
+      morePagesExist = response.result.params.pagesEstimate > 1;
       if (progress) {
-        progress(request / (request + result.params.pagesEstimate));
+        const totalPages = request + result.params.pagesEstimate;
+        if (totalPages === 0) {
+          progress(request / (request + result.params.pagesEstimate));
+        }
       }
 
       if (morePagesExist) {
         // Use the returned date from the params "pagefrom" parameter.
-        // Don't use paging just incase recordings have been create or deleted between queries.
+        // Don't use paging just in case recordings have been create or deleted between queries.
         nextRequestQuery = JSON.parse(JSON.stringify(visitQuery)); // copy query
         nextRequestQuery.to = result.params.pageFrom;
       }
