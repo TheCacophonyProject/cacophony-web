@@ -77,7 +77,7 @@ function getDeviceById(
   activeAndInactive: boolean = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/device/${id}?only-active=${
+    `/api/v1/devices/device/${id}${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
@@ -98,11 +98,22 @@ function addUserToDevice(userName: string, deviceId: DeviceId, admin: boolean) {
   );
 }
 
-function removeUserFromDevice(userName: string, deviceId: DeviceId) {
-  return CacophonyApi.delete("/api/v1/devices/users", {
-    userName,
-    deviceId,
-  });
+function removeUserFromDevice(
+  userName: string,
+  deviceId: DeviceId,
+  activeAndInactive: boolean = true
+) {
+  return CacophonyApi.delete(
+    `/api/v1/devices/users${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`,
+    {
+      userName,
+      deviceId,
+    }
+  );
 }
 
 function getLatestSoftwareVersion(deviceId: number) {
