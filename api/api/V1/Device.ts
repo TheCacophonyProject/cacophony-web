@@ -377,6 +377,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(query("deviceId")),
       query("only-active").optional().isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
     ]),
     // Should this require admin access to the device?
     fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
