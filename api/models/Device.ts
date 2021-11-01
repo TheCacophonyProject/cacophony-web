@@ -491,18 +491,19 @@ order by hour;
       this.GroupId
     );
     const groupUsers = await group.getUsers({ attributes: attrs });
-    // De-dupe users, since some users can be a group member as well as a device member.
-    const dedupedUsers = new Map();
-    for (const user of groupUsers) {
-      dedupedUsers.set(user.id, user);
-    }
-    // Prefer group membership in the case where we have both?
-    for (const user of deviceUsers) {
-      if (!dedupedUsers.has(user.id)) {
-        dedupedUsers.set(user.id, user);
-      }
-    }
-    return Array.from(dedupedUsers.values());
+    // // De-dupe users, since some users can be a group member as well as a device member.
+    // const dedupedUsers = new Map();
+    // for (const user of groupUsers) {
+    //   dedupedUsers.set(user.id, user);
+    // }
+    // // Prefer group membership in the case where we have both?
+    // for (const user of deviceUsers) {
+    //   if (!dedupedUsers.has(user.id)) {
+    //     dedupedUsers.set(user.id, user);
+    //   }
+    // }
+    // return Array.from(dedupedUsers.values());
+    return [...groupUsers, ...deviceUsers];
   };
 
   // Will register as a new device

@@ -9,7 +9,7 @@
       <b-tab title="About" lazy>
         <DeviceSoftware :software="software" />
       </b-tab>
-      <b-tab title="Users" lazy>
+      <b-tab title="Users" lazy v-if="device.admin">
         <template #title>
           <TabTemplate
             title="Users"
@@ -195,13 +195,17 @@ export default {
     },
     async fetchDeviceUsers() {
       this.usersCountLoading = true;
-      // Fetch device users:
-      const usersResponse = await api.device.getUsers(this.device.id, true);
-      if (usersResponse.success) {
-        const {
-          result: { users },
-        } = usersResponse;
-        this.deviceUsers = users.filter((user) => user.relation === "device");
+      if (this.device.admin) {
+        // Fetch device users:
+        const usersResponse = await api.device.getUsers(this.device.id, true);
+        if (usersResponse.success) {
+          const {
+            result: { users },
+          } = usersResponse;
+          this.deviceUsers = users.filter((user) => user.relation === "device");
+        } else {
+          // The user may not be an admin, so is not allowed to see user info
+        }
       }
       this.usersCountLoading = false;
     },
