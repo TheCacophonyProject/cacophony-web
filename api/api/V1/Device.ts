@@ -379,8 +379,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").optional().isBoolean().toBoolean(),
       query("view-mode").optional().equals("user"),
     ]),
-    // Should this require admin access to the device?
-    fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
+    fetchAuthorizedRequiredDeviceById(query("deviceId")),
     async (request: Request, response: Response) => {
       const users = (
         await response.locals.device.users(response.locals.requestUser, [
