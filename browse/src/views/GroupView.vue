@@ -233,14 +233,14 @@ export default {
         },
       });
     }
-    const groupRequest = await api.groups.getGroup(this.groupName);
-    if (groupRequest.success) {
-      const {
-        result: { group },
-      } = groupRequest;
-      this.group = group;
-      this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
-      if (!this.limitedView) {
+    if (!this.limitedView) {
+      const groupRequest = await api.groups.getGroup(this.groupName);
+      if (groupRequest.success) {
+        const {
+          result: { group },
+        } = groupRequest;
+        this.group = group;
+        this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
         await Promise.all([
           this.fetchUsers(),
           this.fetchStations(),
@@ -249,10 +249,14 @@ export default {
           this.fetchRecordingCount(),
           this.fetchDeletedRecordingCount(),
         ]);
-      } else {
+      } else if (groupRequest.status === 403) {
+        this.limitedView = true;
         await this.fetchDevices();
         await this.fetchRecordingCount();
       }
+    } else {
+      await this.fetchDevices();
+      await this.fetchRecordingCount();
     }
   },
   methods: {
@@ -368,7 +372,6 @@ export default {
 
       this.visitsCountLoading = false;
     },
-
     async fetchDevices() {
       this.devicesLoading = true;
       {
