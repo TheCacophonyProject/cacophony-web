@@ -46,9 +46,16 @@ function getDevices(
 }
 
 function getUsers(
-  deviceId: DeviceId
+  deviceId: DeviceId,
+  activeAndInactive: boolean = false
 ): Promise<FetchResult<{ users: ApiDeviceUserRelationshipResponse[] }>> {
-  return CacophonyApi.get(`/api/v1/devices/users?deviceId=${deviceId}`);
+  return CacophonyApi.get(
+    `/api/v1/devices/users?deviceId=${deviceId}&${
+      shouldViewAsSuperUser()
+        ? `only-active=${activeAndInactive ? "false" : "true"}`
+        : `view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
 }
 
 function getDevice(
@@ -79,7 +86,7 @@ function getDeviceById(
 function addUserToDevice(userName: string, deviceId: DeviceId, admin: boolean) {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
-    "/api/v1/devices/users",
+    "/api/v1/devices/users?only-active=false",
     {
       userName,
       deviceId,
@@ -148,7 +155,7 @@ function getLatestEvents(
   params?: EventApiParams
 ): Promise<{ result: { rows: DeviceEvent[] } }> {
   return CacophonyApi.get(
-    `/api/v1/events?latest=true&deviceId=${deviceId}&${querystring.stringify(
+    `/api/v1/events?only-active=false&latest=true&deviceId=${deviceId}&${querystring.stringify(
       params as any
     )}`
   );

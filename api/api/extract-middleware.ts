@@ -18,6 +18,7 @@ import { UserId } from "@typedefs/api/common";
 import { Group } from "models/Group";
 import { Recording } from "models/Recording";
 import { SuperUsers } from "@/Server";
+import { Station } from "@/models/Station";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -517,6 +518,33 @@ const getDevices =
       ...getDeviceOptions,
       order: ["devicename"],
     });
+  };
+
+const getStations =
+  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (
+    groupNameOrId?: string,
+    unused2?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Station>[] | ClientError | null> => {
+    let groupWhere = {};
+
+    const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
+    if (groupNameOrId) {
+      if (groupIsId) {
+        groupWhere = { id: parseInt(groupNameOrId) };
+      } else {
+        groupWhere = { groupname: groupNameOrId };
+      }
+    }
+
+    // TODO
+    // All stations where the user is a member of the device or group.
+    // So this is essentially getDevices, then join on recording station, right?
+    return models.Station.findAll({});
   };
 
 const getGroups =
@@ -1213,6 +1241,14 @@ export const fetchAuthorizedRequiredDevices = fetchRequiredModels(
   false,
   getDevices(true, false)
 );
+
+export const fetchAuthorizedRequiredStations = fetchRequiredModels(
+  models.Station,
+  false,
+  false,
+  getStations(true, false)
+);
+
 export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
   models.Group,
   false,

@@ -184,10 +184,14 @@ export default function (
       },
     });
     if (deviceUser !== null) {
-      if (!deviceUser.admin) {
+      if (deviceUser.admin !== admin) {
         deviceUser.admin = admin; // Update admin value.
         await deviceUser.save();
-        return "Updated, user was made admin for device.";
+        if (admin) {
+          return "Updated, user was made admin for device.";
+        } else {
+          return "Updated, user had admin rights removed for device.";
+        }
       } else {
         return "No change, user already added.";
       }

@@ -205,7 +205,7 @@ export default {
         formatDate(visit.timeEnd),
         visit.classification,
         visit.classificationAi,
-        visit.classFromUserTag,
+        !visit.classFromUserTag,
         getTrapNzSpecies(visit.classification),
         "cacophony",
         `${visit.classFromUserTag ? "User tagged: " : "AI tagged: "} ${

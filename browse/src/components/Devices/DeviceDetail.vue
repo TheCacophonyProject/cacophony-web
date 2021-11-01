@@ -196,7 +196,7 @@ export default {
     async fetchDeviceUsers() {
       this.usersCountLoading = true;
       // Fetch device users:
-      const usersResponse = await api.device.getUsers(this.device.id);
+      const usersResponse = await api.device.getUsers(this.device.id, true);
       if (usersResponse.success) {
         const {
           result: { users },

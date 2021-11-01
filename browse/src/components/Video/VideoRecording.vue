@@ -269,9 +269,21 @@ export default {
         this.canGoForwardInSearch =
           list.length > 1 && listIndex < list.length - 1;
       } else {
+        const searchQueryCopy = JSON.parse(JSON.stringify(this.$route.query));
+        const resolvedTagMode = searchQueryCopy.tagMode || false;
+        const resolvedTags =
+          searchQueryCopy.tags ||
+          (searchQueryCopy.tag && [searchQueryCopy.tag]) ||
+          false;
+
         const prevNext = await Promise.all([
-          this.hasNextRecording("previous", false, false, true),
-          this.hasNextRecording("next", false, false, true),
+          this.hasNextRecording(
+            "previous",
+            resolvedTagMode,
+            resolvedTags,
+            true
+          ),
+          this.hasNextRecording("next", resolvedTagMode, resolvedTags, true),
         ]);
         this.canGoBackwardInSearch = prevNext[0];
         this.canGoForwardInSearch = prevNext[1];
@@ -374,7 +386,7 @@ export default {
       noNavigate: boolean = false
     ): Promise<boolean | any> {
       const params = JSON.parse(JSON.stringify(this.$route.query));
-
+      console.log(params);
       let order;
       switch (direction) {
         case "next":
