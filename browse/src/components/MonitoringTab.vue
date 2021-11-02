@@ -233,55 +233,60 @@ export default {
         this.totalVisitsPages === null ||
         this.currentPage < this.totalVisitsPages
       ) {
-        try {
-          this.loading = true;
-          if (!currentVisits.length) {
-            const { result } = await api.monitoring.queryVisitPage({
-              ...this.visitsQuery,
-              page: this.currentPage,
-            });
-
+        this.loading = true;
+        if (!currentVisits.length) {
+          const monitoringResponse = await api.monitoring.queryVisitPage({
+            ...this.visitsQuery,
+            page: this.currentPage,
+          });
+          if (monitoringResponse.success) {
+            const { result } = monitoringResponse;
             if (!this.totalVisitsCount) {
               this.totalVisitsPages = result.params.pagesEstimate;
-              this.totalVisitsCount =
-                result.params.pagesEstimate * LOAD_PER_PAGE_CARDS;
+              if (this.totalVisitsPages === 1) {
+                this.totalVisitsCount = result.visits.length;
+              } else {
+                this.totalVisitsCount =
+                  result.params.pagesEstimate * LOAD_PER_PAGE_CARDS;
+              }
             }
 
             this.currentPage += 1;
             // Visits ordered newest to oldest.
             currentVisits.push(...result.visits);
-          } else if (extraVisits.length) {
-            while (currentVisits.length) {
-              currentVisits.pop();
-            }
-            while (extraVisits.length) {
-              currentVisits.push(extraVisits.shift());
-            }
           }
-          // eslint-disable-next-line no-console
-          console.assert(
-            this.visitsQuery.device.length === 1,
-            "Should only have one device"
+        } else if (extraVisits.length) {
+          while (currentVisits.length) {
+            currentVisits.pop();
+          }
+          while (extraVisits.length) {
+            currentVisits.push(extraVisits.shift());
+          }
+        }
+        // eslint-disable-next-line no-console
+        console.assert(
+          this.visitsQuery.device.length === 1,
+          "Should only have one device"
+        );
+        const { location, devicePowerEvents } =
+          await getPowerEventsAndLocationForDevice(
+            this.visitsQuery.device[0],
+            this.currentPage === 2
           );
-          const { location, devicePowerEvents } =
-            await getPowerEventsAndLocationForDevice(
-              this.visitsQuery.device[0],
-              this.currentPage === 2
-            );
-          const oldestVisit = currentVisits[currentVisits.length - 1];
-          const oldestVisitDay = startOfEvening(
-            new Date(oldestVisit.timeStart)
-          );
-          // Now request again until we get a day that is less than oldestVisitDay.  Split the remaining array into before and after.
-          while (
-            extraVisits.length === 0 &&
-            this.currentPage <= this.totalVisitsPages
-          ) {
-            const { result } = await api.monitoring.queryVisitPage({
-              ...this.visitsQuery,
-              page: this.currentPage,
-            });
-            this.currentPage += 1;
+        const oldestVisit = currentVisits[currentVisits.length - 1];
+        const oldestVisitDay = startOfEvening(new Date(oldestVisit.timeStart));
+        // Now request again until we get a day that is less than oldestVisitDay.  Split the remaining array into before and after.
+        while (
+          extraVisits.length === 0 &&
+          this.currentPage <= this.totalVisitsPages
+        ) {
+          const monitoringResponse = await api.monitoring.queryVisitPage({
+            ...this.visitsQuery,
+            page: this.currentPage,
+          });
+          this.currentPage += 1;
+          if (monitoringResponse.success) {
+            const { result } = monitoringResponse;
             const v = result.visits;
             while (
               v.length &&
@@ -303,22 +308,20 @@ export default {
               extraVisits.push(...v);
             }
           }
-          const supplementaryEvents = addSupplementaryEvents(
-            currentVisits.map((visit) => ({
-              ...visit,
-              sortDate: new Date(visit.timeStart),
-            })),
-            devicePowerEvents,
-            location
-          )
-            .sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime())
-            .map((o) => Object.freeze(o));
-          this.visits.push(...supplementaryEvents);
-          this.loading = false;
-          // Now merge these in with day
-        } catch (e) {
-          return;
         }
+        const supplementaryEvents = addSupplementaryEvents(
+          currentVisits.map((visit) => ({
+            ...visit,
+            sortDate: new Date(visit.timeStart),
+          })),
+          devicePowerEvents,
+          location
+        )
+          .sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime())
+          .map((o) => Object.freeze(o));
+        this.visits.push(...supplementaryEvents);
+        this.loading = false;
+        // Now merge these in with day
       } else {
         // At end of search
         this.allLoaded = true;

@@ -102,14 +102,6 @@ export default {
   },
   data() {
     return {
-      tabNames: [
-        "about",
-        "users",
-        "events",
-        "recordings",
-        "visits",
-        "schedule",
-      ],
       recordingsCount: 0,
       recordingsCountLoading: false,
       usersCountLoading: false,
@@ -153,6 +145,16 @@ export default {
     },
     currentTabName() {
       return this.$route.params.tabName;
+    },
+    isDeviceAdmin() {
+      return this.device && this.device.admin;
+    },
+    tabNames() {
+      if (this.isDeviceAdmin) {
+        return ["about", "users", "events", "recordings", "visits", "schedule"];
+      } else {
+        return ["about", "events", "recordings", "visits", "schedule"];
+      }
     },
     currentTabIndex: {
       get() {
