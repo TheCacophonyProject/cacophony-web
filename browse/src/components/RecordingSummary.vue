@@ -252,7 +252,7 @@ export default {
       },
     },
     queuedForProcessing(): boolean {
-      const state = this.item.processingState;
+      const state = this.item.processingState.toLowerCase();
       return (
         (state === RecordingProcessingState.Analyse ||
           state === RecordingProcessingState.AnalyseThermal ||
