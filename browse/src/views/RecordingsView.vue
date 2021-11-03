@@ -182,6 +182,7 @@ export default {
         // console.log("At end of search");
       }
       this.pagesQueued--;
+      this.pagesQueued = Math.max(0, this.pagesQueued);
       if (this.pagesQueued !== 0) {
         await this.requestMoreRecordings();
       }

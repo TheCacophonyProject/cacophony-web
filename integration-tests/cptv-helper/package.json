@@ -1,0 +1,12 @@
+{
+    "name": "cptv-helper",
+    "description": "cptv helper is a webserver that accepts cptv config descriptions and returns valid cptv test files to cypress.  It exists as a work-around because at this time cypress cannot directly import wasm files.  If that limitation goes away in the future, then the cptv-encoder should be directly imported into the test command",
+    "version": "1.0.0",
+    "dependencies": {
+        "cptv-decoder": "github:TheCacophonyProject/cptv-rs#v1.2.7",
+        "express": "^4.17.1"
+    },
+    "scripts": {
+        "serve": "node ./bin/www"
+    }
+}

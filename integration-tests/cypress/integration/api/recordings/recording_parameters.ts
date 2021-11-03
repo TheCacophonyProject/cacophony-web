@@ -862,7 +862,7 @@ describe("Recordings - parameter tests", () => {
         recording1,
         "oneframe.cptv",
         "rpaRecording27",
-        HTTP_Unprocessable
+        HTTP_BadRequest
       );
 
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording27");

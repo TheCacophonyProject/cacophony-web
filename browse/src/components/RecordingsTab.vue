@@ -78,6 +78,7 @@ export default {
         }
         this.loading = false;
         this.recordingsQueued--;
+        this.recordingsQueued = Math.max(0, this.recordingsQueued);
         if (this.recordingsQueued !== 0) {
           await this.requestRecordings();
         }

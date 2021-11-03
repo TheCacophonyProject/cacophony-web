@@ -77,26 +77,6 @@ function multipartUpload(
 
       try {
         data = JSON.parse(value);
-        if (uploadingDevice && data.fileHash && keyPrefix === "raw") {
-          // Try and handle duplicates early in the upload if possible,
-          // so that we can return early and not waste bandwidth
-          const existingRecordingWithHashForDevice =
-            await models.Recording.findOne({
-              where: {
-                DeviceId: uploadingDevice.id,
-                rawFileHash: data.fileHash,
-              },
-            });
-          if (existingRecordingWithHashForDevice !== null) {
-            log.error(
-              "Recording with hash for device %s already exists, discarding duplicate",
-              uploadingDevice.id
-            );
-            return next(
-              new ClientError("Duplicate recording found for device", 422)
-            );
-          }
-        }
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
         // will fail the upload.
@@ -147,6 +127,30 @@ function multipartUpload(
           "Upload was never started."
         );
         return;
+      }
+
+      if (uploadingDevice && data.fileHash && keyPrefix === "raw") {
+        // Try and handle duplicates early in the upload if possible,
+        // so that we can return early and not waste bandwidth
+        const existingRecordingWithHashForDevice =
+          await models.Recording.findOne({
+            where: {
+              DeviceId: uploadingDevice.id,
+              rawFileHash: data.fileHash,
+            },
+          });
+        if (existingRecordingWithHashForDevice !== null) {
+          log.error(
+            "Recording with hash %s for device %s already exists, discarding duplicate",
+            data.fileHash,
+            uploadingDevice.id
+          );
+          responseUtil.invalidDatapointUpload(
+            response,
+            "Duplicate recording found for device"
+          );
+          return;
+        }
       }
 
       let dbRecordOrFileKey: any;

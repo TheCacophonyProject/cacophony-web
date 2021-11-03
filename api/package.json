@@ -68,7 +68,7 @@
   "scripts": {
     "lint": "eslint --ext .ts --ignore-path .gitignore . && (npx prettier --check ./**/*.ts !./apidoc/** || (echo \"Please run 'npm lint:fix' to clean up formatting of files.\"; false))",
     "lint:fix": "eslint --fix --ext .ts --ignore-path .gitignore . && npx prettier --write ./**/*.ts !./apidoc/**",
-    "apidoc": "apidoc -f \".*\\.ts$\" -i api/V1 -o apidoc/",
+    "apidoc": "apidoc -c ./apidoc.json -f \".*\\.ts$\" -i api/V1 -o apidoc/",
     "db-migrate": "sequelize db:migrate",
     "new-migration": "sequelize migration:generate --name",
     "dev": "docker-compose build && docker-compose up --force-recreate",
