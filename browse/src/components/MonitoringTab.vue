@@ -239,6 +239,7 @@ export default {
             ...this.visitsQuery,
             page: this.currentPage,
           });
+          debugger;
           if (monitoringResponse.success) {
             const { result } = monitoringResponse;
             if (!this.totalVisitsCount) {

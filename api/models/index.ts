@@ -95,14 +95,7 @@ const poolOptions = IS_DEBUG
         evict: 1,
       },
     }
-  : {
-      pool: {
-        max: 5,
-        min: 0,
-        idle: 10000,
-        evict: 1000,
-      },
-    };
+  : {};
 
 // @ts-ignore
 const sequelize = new Sequelize(
