@@ -135,7 +135,7 @@ async function influxConnect() {
     database: Config.influx.database,
     username: Config.influx.username,
     password: Config.influx.password,
-    protocol: 'https',
+    protocol: "https",
     port: 443,
     schema: [
       {
