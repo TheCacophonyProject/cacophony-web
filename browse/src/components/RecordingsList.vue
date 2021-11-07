@@ -53,6 +53,7 @@
           v-for="(item, index) in tableItems"
           :item="item"
           :ref="item.id"
+          :index="index"
           :is-even-row="index % 2 === 1"
           :key="`${index}_row`"
           display-style="row"
@@ -60,7 +61,7 @@
         />
 
         <div
-          v-for="i in queryPending ? 20 : 0"
+          v-for="i in queryPending ? 10 : 0"
           :key="i"
           class="recording-summary-row"
           :style="{
@@ -321,23 +322,20 @@ export default {
           prevDate === null ||
           startOfDay(thisDate).getTime() !== startOfDay(prevDate).getTime()
         ) {
-          const item = {
+          items.push({
             kind: "dataSeparator",
             hour: thisDate,
             date: thisDate,
-          };
-          items.push(item);
-          prevDate = thisDate;
+          });
         } else if (
           startOfHour(thisDate).getTime() !== startOfHour(prevDate).getTime()
         ) {
-          const item = {
+          items.push({
             kind: "dataSeparator",
             hour: thisDate,
-          };
-          items.push(item);
-          prevDate = thisDate;
+          });
         }
+        prevDate = thisDate;
         const itemData: ItemData = {
           kind: "dataRow",
           id: recording.id,
@@ -378,11 +376,11 @@ export default {
             current[current.length - 1].push(item);
           }
         }
-        if (chunks.length === 0) {
-          // We've reached the end of the recordings.
-          this.atEnd = true;
-          // console.log("At end of recordings");
-        }
+        // if (chunks.length === 0) {
+        //   // We've reached the end of the recordings.
+        //   //this.atEnd = true;
+        //   // console.log("At end of recordings");
+        // }
         if (
           this.recordingsChunkedByDayAndHour.length !== 0 &&
           chunks.length !== 0
@@ -396,7 +394,6 @@ export default {
             lastDay[lastDay.length - 1][lastDay[lastDay.length - 1].length - 1];
           const firstDay = chunks[0];
           const firstHour = firstDay[0][0];
-
           if (lastHour.date === firstHour.date) {
             // We're going to push firstDay into lastDay
             if (lastHour.time.split(":")[0] === firstHour.time.split(":")[0]) {

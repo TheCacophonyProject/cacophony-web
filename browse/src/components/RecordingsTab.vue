@@ -12,7 +12,7 @@
       :recordings="recordings"
       :all-loaded="allLoaded"
       :view-recording-query="recordingsQuery"
-      @load-more="requestRecordings"
+      @load-more="queueRecordings"
     />
     <div v-if="!loading && recordings && recordings.length === 0">
       No recordings found for this
@@ -43,6 +43,7 @@ export default {
       recordings: [],
       totalRecordingCount: 0,
       loading: true,
+      recordingsQueued: 0,
       allLoaded: false,
       currentPage: 1,
     };
@@ -51,27 +52,36 @@ export default {
     await this.fetchRecordings();
   },
   methods: {
+    async queueRecordings() {
+      this.recordingsQueued++;
+      if (!this.loading) {
+        await this.requestRecordings();
+      }
+    },
     async requestRecordings() {
       // Keep track of the offset of the page.
       const nextQuery = { ...this.recordingsQuery };
       nextQuery.limit = LOAD_PER_PAGE_CARDS;
       nextQuery.offset = Math.max(0, this.currentPage * LOAD_PER_PAGE_CARDS);
       // Make sure the request wouldn't go past the count?
-      const totalPages =
-        Math.ceil(this.totalRecordingCount / LOAD_PER_PAGE_CARDS) + 1;
+      const totalPages = Math.ceil(
+        this.totalRecordingCount / LOAD_PER_PAGE_CARDS
+      );
       if (this.currentPage < totalPages) {
         this.currentPage += 1;
         this.loading = true;
-        try {
-          const recordingsResponse = await api.recording.query(nextQuery);
-          if (recordingsResponse.success) {
-            // TODO: It's possible that more recordings have come in since we loaded the page,
-            //  in which case our offsets are wrong. So check for duplicate recordings here.
-            this.recordings.push(...recordingsResponse.result.rows);
-          }
-          // eslint-disable-next-line no-empty
-        } catch (e) {}
+        const recordingsResponse = await api.recording.query(nextQuery);
+        if (recordingsResponse.success) {
+          // TODO: It's possible that more recordings have come in since we loaded the page,
+          //  in which case our offsets are wrong. So check for duplicate recordings here.
+          this.recordings.push(...recordingsResponse.result.rows);
+        }
         this.loading = false;
+        this.recordingsQueued--;
+        this.recordingsQueued = Math.max(0, this.recordingsQueued);
+        if (this.recordingsQueued !== 0) {
+          await this.requestRecordings();
+        }
       } else {
         // At end of search
         this.allLoaded = true;
@@ -90,28 +100,27 @@ export default {
           this.recordingsQuery.station[0] !== null)
       ) {
         this.loading = true;
-        try {
-          console.log(this.recordingsQuery);
-          const recordingsResponse = await api.recording.query(
-            this.recordingsQuery
-          );
-          if (recordingsResponse.success) {
-            const {
-              result: { rows, count },
-            } = recordingsResponse;
-            this.totalRecordingCount = count;
-            this.recordings = rows;
-          }
-        } catch (e) {
-          //
+        this.recordingsQueued++;
+        const recordingsResponse = await api.recording.query(
+          this.recordingsQuery
+        );
+        if (recordingsResponse.success) {
+          const {
+            result: { rows, count },
+          } = recordingsResponse;
+          this.totalRecordingCount = count;
+          this.recordings = rows;
         }
         this.loading = false;
+        this.recordingsQueued--;
+        if (this.recordingsQueued !== 0) {
+          await this.requestRecordings();
+        }
       }
     },
   },
   watch: {
     recordingsQuery() {
-      // TODO(jon): Make sure we allow inactive devices to show recordings.
       this.fetchRecordings();
     },
   },

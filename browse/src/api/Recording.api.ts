@@ -189,9 +189,7 @@ const apiPath = "/api/v1/recordings";
 
 function query(
   queryParams: RecordingQuery
-): Promise<
-  SuccessFetchResult<QueryResult<ApiRecordingResponse>> | FailureFetchResult
-> {
+): Promise<FetchResult<QueryResult<ApiRecordingResponse>>> {
   return CacophonyApi.get(
     `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
   );

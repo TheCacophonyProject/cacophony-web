@@ -41,7 +41,7 @@ export default {
           } else if (aDate) {
             return -1;
           } else if (bDate) {
-            return -1;
+            return 1;
           }
           return a.groupName.localeCompare(b.groupName);
         });

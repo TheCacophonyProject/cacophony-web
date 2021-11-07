@@ -29,7 +29,7 @@
         <span>Add user</span>
       </b-button>
     </div>
-    <div v-if="deviceUsers">
+    <div v-if="isDeviceAdmin && deviceUsers">
       <div v-if="!deviceUsers.length">
         <b-card class="no-content-placeholder">
           This device has no users associated with it.

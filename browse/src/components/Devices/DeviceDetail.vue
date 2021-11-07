@@ -9,7 +9,7 @@
       <b-tab title="About" lazy>
         <DeviceSoftware :software="software" />
       </b-tab>
-      <b-tab title="Users" lazy>
+      <b-tab title="Users" lazy v-if="device.admin">
         <template #title>
           <TabTemplate
             title="Users"
@@ -102,14 +102,6 @@ export default {
   },
   data() {
     return {
-      tabNames: [
-        "about",
-        "users",
-        "events",
-        "recordings",
-        "visits",
-        "schedule",
-      ],
       recordingsCount: 0,
       recordingsCountLoading: false,
       usersCountLoading: false,
@@ -154,6 +146,16 @@ export default {
     currentTabName() {
       return this.$route.params.tabName;
     },
+    isDeviceAdmin() {
+      return this.device && this.device.admin;
+    },
+    tabNames() {
+      if (this.isDeviceAdmin) {
+        return ["about", "users", "events", "recordings", "visits", "schedule"];
+      } else {
+        return ["about", "events", "recordings", "visits", "schedule"];
+      }
+    },
     currentTabIndex: {
       get() {
         return Math.max(0, this.tabNames.indexOf(this.currentTabName));
@@ -195,41 +197,48 @@ export default {
     },
     async fetchDeviceUsers() {
       this.usersCountLoading = true;
-      try {
+      if (this.device.admin) {
         // Fetch device users:
-        const { result } = await api.device.getUsers(this.device.id);
-        this.deviceUsers = result.users.filter(
-          (user) => user.relation === "device"
-        );
-      } catch (e) {
-        // ...
+        const usersResponse = await api.device.getUsers(this.device.id, true);
+        if (usersResponse.success) {
+          const {
+            result: { users },
+          } = usersResponse;
+          this.deviceUsers = users.filter((user) => user.relation === "device");
+        } else {
+          // The user may not be an admin, so is not allowed to see user info
+        }
       }
       this.usersCountLoading = false;
     },
     async fetchRecordingCount() {
       this.recordingsCountLoading = true;
-      try {
-        const { result } = await api.recording.queryCount(
-          this.recordingQuery()
-        );
-        this.recordingsCount = result.count;
-      } catch (e) {
-        this.recordingsCountLoading = false;
+      const recordingCountResponse = await api.recording.queryCount(
+        this.recordingQuery()
+      );
+      if (recordingCountResponse.success) {
+        const {
+          result: { count },
+        } = recordingCountResponse;
+        this.recordingsCount = count;
       }
       this.recordingsCountLoading = false;
     },
     async fetchVisitsCount() {
       this.visitsCountLoading = true;
-      try {
-        const { result } = await api.monitoring.queryVisitPage({
-          page: 1,
-          perPage: 1,
-          days: "all",
-          device: [this.device.id],
-        });
-        this.visitsCount = result.params.pagesEstimate;
-      } catch (e) {
-        this.visitsCountLoading = false;
+      const visitsCountResponse = await api.monitoring.queryVisitPage({
+        page: 1,
+        perPage: 1,
+        days: "all",
+        device: [this.device.id],
+      });
+      if (visitsCountResponse.success) {
+        const {
+          result: {
+            params: { pagesEstimate },
+          },
+        } = visitsCountResponse;
+        this.visitsCount = pagesEstimate;
       }
       this.visitsCountLoading = false;
     },

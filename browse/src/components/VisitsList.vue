@@ -151,6 +151,10 @@ export default {
               current = chunks[chunks.length - 1];
             }
           } else {
+            if (current === chunks && current.length === 0) {
+              chunks.push([]);
+              current = chunks[chunks.length - 1];
+            }
             current.push(item);
           }
         }

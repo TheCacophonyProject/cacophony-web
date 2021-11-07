@@ -129,21 +129,16 @@ export default {
   methods: {
     async queryDevice() {
       this.loadedDevice = false;
-      try {
-        api.groups.getGroup(this.groupName).then((response) => {
-          if (response.status === 200) {
-            this.group = response.result.group;
-          }
-        });
-        const { result } = await api.device.getDevice(
-          this.groupName,
-          this.deviceName,
-          true
-        );
-        this.device = result.device;
+      const [groupResponse, deviceResponse] = await Promise.all([
+        api.groups.getGroup(this.groupName),
+        api.device.getDevice(this.groupName, this.deviceName, true),
+      ]);
+      if (groupResponse.success) {
+        this.group = groupResponse.result.group;
+      }
+      if (deviceResponse.success) {
+        this.device = deviceResponse.result.device;
         await this.getSoftwareDetails(this.device.id);
-      } catch (e) {
-        // TODO - we will move away from global error handling, and show any errors locally in the component
       }
       this.loadedDevice = true;
     },
