@@ -195,7 +195,7 @@ interface VisitRecording {
 interface VisitTrack {
   // this is the overriding tag that we have given this event
   // e.g. if it was unidentified but grouped under a cat visit
-  // assumedTag woudl be "cat"
+  // assumedTag would be "cat"
   tag: string;
   aiTag: string;
   isAITagged: boolean;
@@ -207,7 +207,7 @@ export async function generateVisits(
   userId: UserId,
   search: MonitoringPageCriteria,
   viewAsSuperAdmin: boolean
-) {
+): Promise<Visit[] | ClientError> {
   const search_start = moment(search.pageFrom).subtract(
     MAX_SECS_BETWEEN_RECORDINGS + MAX_SECS_VIDEO_LENGTH,
     "seconds"
@@ -224,9 +224,9 @@ export async function generateVisits(
     search_end,
     viewAsSuperAdmin
   );
-  if (recordings.length == RECORDINGS_LIMIT) {
-    throw new ClientError(
-      "Too many recordings to retrieve.   Please reduce your page size"
+  if (recordings.length === RECORDINGS_LIMIT) {
+    return new ClientError(
+      "Too many recordings to retrieve. Please reduce your page size."
     );
   }
 
@@ -234,7 +234,7 @@ export async function generateVisits(
     recordings,
     moment(search.pageFrom),
     moment(search.pageUntil),
-    search.page == search.pagesEstimate
+    search.page === search.pagesEstimate
   );
 
   const incompleteCutoff = moment(search_end).subtract(
@@ -269,7 +269,6 @@ async function getRecordings(
     where.GroupId = params.groups;
   }
   const order = [["recordingDateTime", "ASC"]];
-
   const builder = await new models.Recording.queryBuilder().init(
     userId,
     where,

@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields, expectedTypeOf, isIntArray } from "../middleware";
-import { Application, Response, Request } from "express";
+import {Application, Response, Request, NextFunction} from "express";
 import {
   calculateMonitoringPageCriteria,
   MonitoringParams,
@@ -28,6 +28,7 @@ import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import models from "@models";
+import {ClientError} from "@api/customErrors";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -181,7 +182,7 @@ export default function (app: Application, baseUrl: string) {
     // Extract resources
     // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
     //  Also don't require pulling out the user
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const requestUser: User = await models.User.findByPk(
         response.locals.requestUser.id
       );
@@ -199,19 +200,20 @@ export default function (app: Application, baseUrl: string) {
         params.until = request.query.until as unknown as Date;
       }
 
-      const viewAsSuperAdmin = response.locals.viewAsSuperAdmin;
+      const viewAsSuperAdmin = response.locals.viewAsSuperUser;
       const searchDetails = await calculateMonitoringPageCriteria(
         params,
         viewAsSuperAdmin
       );
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
-
       const visits = await generateVisits(
-        requestUser.id,
-        searchDetails,
-        viewAsSuperAdmin
+          requestUser.id,
+          searchDetails,
+          viewAsSuperAdmin
       );
-
+      if (visits instanceof ClientError) {
+        return next(visits);
+      }
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
