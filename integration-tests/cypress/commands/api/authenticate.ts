@@ -65,7 +65,7 @@ Cypress.Commands.add(
     const data = {};
 
     if (userB !== null) {
-      data["deviceid"] = getCreds(userB).id;
+      data["name"] = getTestName(userB);
     }
 
     makeAuthorizedRequestWithStatus(
