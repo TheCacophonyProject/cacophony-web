@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DeviceType = exports.AcceptableTag = exports.RecordingProcessingState = exports.TagMode = exports.RecordingPermission = exports.RecordingType = void 0;
+exports.UserGlobalPermission = exports.DeviceType = exports.AcceptableTag = exports.RecordingProcessingState = exports.TagMode = exports.RecordingPermission = exports.RecordingType = void 0;
 var RecordingType;
 (function (RecordingType) {
     RecordingType["ThermalRaw"] = "thermalRaw";
@@ -58,3 +58,9 @@ var DeviceType;
     DeviceType["Thermal"] = "thermal";
     DeviceType["Unknown"] = "unknown";
 })(DeviceType = exports.DeviceType || (exports.DeviceType = {}));
+var UserGlobalPermission;
+(function (UserGlobalPermission) {
+    UserGlobalPermission["Write"] = "write";
+    UserGlobalPermission["Read"] = "read";
+    UserGlobalPermission["Off"] = "off";
+})(UserGlobalPermission = exports.UserGlobalPermission || (exports.UserGlobalPermission = {}));
