@@ -17,7 +17,6 @@ const EXCLUDE_IDS = [
   ".tracks[].id",
 ];
 
-
 describe("Recordings (thermal): add, get, delete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = {
     deviceId: 0,
@@ -854,73 +853,72 @@ describe("Recordings (thermal): add, get, delete", () => {
       cy.log("Removing all recordings not associated with this test");
       const superuser = getCreds("superuser")["name"];
       const suPassword = getCreds("superuser")["password"];
-       cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, null, superuser, suPassword);
       cy.testDeleteRecordingsInState(superuser, "thermalRaw", undefined);
     }
- 
+
     cy.log("Add recording as device");
     cy.apiRecordingAdd("raCamera1", recording1, undefined, "raRecording1");
-   
+
     cy.log("Delete recording");
     cy.apiRecordingDelete("raGroupAdmin", "raRecording1");
- 
-     cy.log("Check /recordings/report ignores deleted recording");
-     cy.apiRecordingsReportCheck(
+
+    cy.log("Check /recordings/report ignores deleted recording");
+    cy.apiRecordingsReportCheck(
       "raGroupAdmin",
       { where: {}, order: '[["id", "ASC"]]' },
       []
     );
- 
+
     cy.log("Check /recordings/id: ignores deleted recording");
     cy.apiRecordingCheck(
       "raGroupAdmin",
       "raRecording1",
-       undefined,
+      undefined,
       [],
       HTTP_Forbidden
-     );
- 
-     cy.log("Check /recordings/id:/thumbnail ignores deleted recording");
-     cy.apiRecordingThumbnailCheck(
+    );
+
+    cy.log("Check /recordings/id:/thumbnail ignores deleted recording");
+    cy.apiRecordingThumbnailCheck(
       "raGroupAdmin",
       "raRecording1",
-       HTTP_Forbidden
+      HTTP_Forbidden
     );
- 
+
     cy.log("Check /recordings/count ignores deleted recording");
-     cy.apiRecordingsCountCheck(
+    cy.apiRecordingsCountCheck(
       "raGroupAdmin",
       {
-         where: { },
-        order: '[["id", "ASC"]]',
-       },
-      0
-     );
- 
-    cy.log("Check /recordings ignores deleted recording");
-     cy.apiRecordingsQueryCheck(
-      "raGroupAdmin",
-      {
-         where: { },
+        where: {},
         order: '[["id", "ASC"]]',
       },
-       [],
+      0
+    );
+
+    cy.log("Check /recordings ignores deleted recording");
+    cy.apiRecordingsQueryCheck(
+      "raGroupAdmin",
+      {
+        where: {},
+        order: '[["id", "ASC"]]',
+      },
+      [],
       EXCLUDE_IDS
-     );
+    );
     cy.log("Check /recordings/id:/tracks ignores deleted recording");
     //TODO: add check here where apiRecordingsTracksCheck has been written
- 
- 
+
     cy.log("Check /monitoring ignores deleted recording");
     cy.checkMonitoringWithFilter("raGroupAdmin", "raCamera1", filter, []);
- 
+
     if (Cypress.env("running_in_a_dev_environment") == true) {
       cy.log("Check /recordings/needs-tag ignores deleted recording");
       cy.apiRecordingNeedsTagCheck("raGroupAdmin", undefined, []);
     } else {
-      cy.log("SKIPPING - Check /recordings/needs-tag ignores deleted recording - as can only do that on a dev server");
+      cy.log(
+        "SKIPPING - Check /recordings/needs-tag ignores deleted recording - as can only do that on a dev server"
+      );
     }
-
   });
-
 });

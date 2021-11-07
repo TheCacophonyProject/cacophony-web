@@ -90,7 +90,7 @@ Cypress.Commands.add(
     deviceName: string,
     groupName: string,
     password: string | null = null,
-    statusCode: number = 200, 
+    statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
     const theUrl = apiPath() + "/authenticate_device";
@@ -102,16 +102,16 @@ Cypress.Commands.add(
       password = "p" + fullDeviceName;
     }
 
-    if (additionalChecks["useDeviceId"]===true) {
+    if (additionalChecks["useDeviceId"] === true) {
       data = {
-       deviceId: getCreds(deviceName).id,
-       password: password,
+        deviceId: getCreds(deviceName).id,
+        password: password,
       };
     } else {
       data = {
-       devicename: fullDeviceName,
-       groupname: fullGroupName,
-       password: password,
+        devicename: fullDeviceName,
+        groupname: fullGroupName,
+        password: password,
       };
     }
 

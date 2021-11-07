@@ -101,7 +101,7 @@ describe("Recordings - processing tests", () => {
     },
     metadata: {},
     comment: "This is a comment",
-//    processingState: "analyse",
+    //    processingState: "analyse",
   };
 
   const templateAudioRecording: ApiRecordingSet = {
@@ -140,7 +140,7 @@ describe("Recordings - processing tests", () => {
       "App has root access": false,
     },
     comment: "A comment",
-//    processingState: "analyse",
+    //    processingState: "analyse",
   };
 
   const POSSUM_ALERT: ApiAlertConditions[] = [
@@ -245,8 +245,7 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Check recording status is 'tracking'");
-        expectedRecording1.processingState =
-          RecordingProcessingState.Tracking;
+        expectedRecording1.processingState = RecordingProcessingState.Tracking;
         expectedRecording1.processing = false;
         cy.apiRecordingCheck(
           "rpGroupAdmin",
@@ -275,8 +274,7 @@ describe("Recordings - processing tests", () => {
           null,
           recording1
         );
-        expectedRecording1b.processingState =
-          RecordingProcessingState.Tracking;
+        expectedRecording1b.processingState = RecordingProcessingState.Tracking;
         expectedRecording1b.processing = true;
         cy.apiRecordingCheck(
           "rpGroupAdmin",
@@ -287,7 +285,6 @@ describe("Recordings - processing tests", () => {
 
         cy.log("Mark tracking as done");
         cy.processingApiPut("rpRecording1", true, {}, undefined);
-
 
         cy.log("Check recording status is 'analyse'");
         expectedRecording1c = TestCreateExpectedRecordingData(
@@ -406,7 +403,9 @@ describe("Recordings - processing tests", () => {
               "rpRecording5"
             );
 
-            cy.log("Check recordings ordered by recordingDateTime (3,5,4) for TRACKING");
+            cy.log(
+              "Check recordings ordered by recordingDateTime (3,5,4) for TRACKING"
+            );
             cy.processingApiCheck(
               "thermalRaw",
               "tracking",
@@ -434,7 +433,9 @@ describe("Recordings - processing tests", () => {
             cy.processingApiPut("rpRecording4", true, {}, undefined);
             cy.processingApiPut("rpRecording5", true, {}, undefined);
 
-            cy.log("Check recordings ordered by recordingDateTime (3,5,4) for ANALYSE");
+            cy.log(
+              "Check recordings ordered by recordingDateTime (3,5,4) for ANALYSE"
+            );
             cy.processingApiCheck(
               "thermalRaw",
               "analyse",
@@ -636,7 +637,6 @@ describe("Recordings - processing tests", () => {
                 expectedProcessing11,
                 EXCLUDE_KEYS
               );
-
             });
           });
         });
@@ -663,8 +663,7 @@ describe("Recordings - processing tests", () => {
           null,
           recording18
         );
-        expectedRecording18.processingState =
-            RecordingProcessingState.Tracking;
+        expectedRecording18.processingState = RecordingProcessingState.Tracking;
         expectedRecording18.processing = true;
 
         cy.log("Send for processing");
@@ -704,7 +703,6 @@ describe("Recordings - processing tests", () => {
               expectedRecording18,
               EXCLUDE_IDS
             ).then(() => {
-
               cy.log("Complete tracking");
               cy.processingApiPut("rpRecording18", true, {}, undefined);
 
@@ -1021,7 +1019,8 @@ describe("Recordings - processing tests", () => {
           null,
           recording17
         );
-        expectedRecording17.processingState = RecordingProcessingState.AnalyseThermal;
+        expectedRecording17.processingState =
+          RecordingProcessingState.AnalyseThermal;
         expectedRecording17.processing = false;
         expectedRecording17.rawMimeType = "application/test";
         expectedRecording17.fileMimeType = "application/test2";
@@ -1129,7 +1128,6 @@ describe("Recordings - processing tests", () => {
           expectedProcessing21,
           EXCLUDE_KEYS
         ).then(() => {
-
           cy.log("Check status");
           expectedRecording21b = TestCreateExpectedRecordingData(
             templateExpectedAudioRecording,
@@ -1148,12 +1146,12 @@ describe("Recordings - processing tests", () => {
             expectedRecording21b,
             EXCLUDE_IDS
           );
-  
+
           cy.log("Mark processing as done");
           cy.processingApiPut("rpRecording21", true, {}, undefined).then(() => {
-  
             cy.log("Check recording status is 'analyse'");
-            expectedRecording21.processingState = RecordingProcessingState.Analyse;
+            expectedRecording21.processingState =
+              RecordingProcessingState.Analyse;
             delete expectedRecording21.processing;
             expectedRecording21.rawMimeType = "video/mp4";
             cy.apiRecordingCheck(
@@ -1162,7 +1160,7 @@ describe("Recordings - processing tests", () => {
               expectedRecording21,
               EXCLUDE_IDS
             );
-    
+
             cy.log("Send for processing (analyse)");
             expectedProcessing21.processingStartTime = NOT_NULL;
             expectedProcessing21.updatedAt = NOT_NULL;
@@ -1170,10 +1168,9 @@ describe("Recordings - processing tests", () => {
               "audio",
               "analyse",
               "rpRecording21",
-                expectedProcessing21,
+              expectedProcessing21,
               EXCLUDE_KEYS
             ).then(() => {
-    
               cy.log("Check status");
               expectedRecording21b = TestCreateExpectedRecordingData(
                 templateExpectedAudioRecording,
@@ -1183,7 +1180,8 @@ describe("Recordings - processing tests", () => {
                 null,
                 recording21
               );
-              expectedRecording21b.processingState = RecordingProcessingState.Analyse;
+              expectedRecording21b.processingState =
+                RecordingProcessingState.Analyse;
               expectedRecording21b.processing = true;
               expectedRecording21b.rawMimeType = "video/mp4";
               cy.apiRecordingCheck(
@@ -1192,31 +1190,32 @@ describe("Recordings - processing tests", () => {
                 expectedRecording21b,
                 EXCLUDE_IDS
               );
-      
+
               cy.log("Mark processing as done");
-              cy.processingApiPut("rpRecording21", true, {}, undefined).then(() => {
-      
-                cy.log("Check status (FINISHED)");
-                expectedRecording21c = TestCreateExpectedRecordingData(
-                  templateExpectedAudioRecording,
-                  "rpRecording21",
-                  "rpCamera1",
-                  "rpGroup",
-                  null,
-                  recording21
-                );
-                expectedRecording21c.processingState =
-                RecordingProcessingState.Finished;
-                expectedRecording21c.processing = false;
-                expectedRecording21c.rawMimeType = "video/mp4";
-                expectedRecording21c.tracks = [];
-                cy.apiRecordingCheck(
-                  "rpGroupAdmin",
-                  "rpRecording21",
-                  expectedRecording21c,
-                  EXCLUDE_IDS
-                );
-              });
+              cy.processingApiPut("rpRecording21", true, {}, undefined).then(
+                () => {
+                  cy.log("Check status (FINISHED)");
+                  expectedRecording21c = TestCreateExpectedRecordingData(
+                    templateExpectedAudioRecording,
+                    "rpRecording21",
+                    "rpCamera1",
+                    "rpGroup",
+                    null,
+                    recording21
+                  );
+                  expectedRecording21c.processingState =
+                    RecordingProcessingState.Finished;
+                  expectedRecording21c.processing = false;
+                  expectedRecording21c.rawMimeType = "video/mp4";
+                  expectedRecording21c.tracks = [];
+                  cy.apiRecordingCheck(
+                    "rpGroupAdmin",
+                    "rpRecording21",
+                    expectedRecording21c,
+                    EXCLUDE_IDS
+                  );
+                }
+              );
             });
           });
         });
