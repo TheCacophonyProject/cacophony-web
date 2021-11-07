@@ -183,3 +183,4 @@ server {
 }
 ```
 Note: you may also need to add a correct mime-type for WebAssembly (*.wasm)
+
