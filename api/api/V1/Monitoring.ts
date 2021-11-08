@@ -167,9 +167,7 @@ export default function (app: Application, baseUrl: string) {
         .withMessage(
           "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
         ),
-      query("ai")
-        .optional()
-        .isLength({ min: 3 }),
+      query("ai").optional().isLength({ min: 3 }),
       query("from").optional().isISO8601().toDate(),
       query("until").optional().isISO8601().toDate(),
       query("view-mode").optional(),
