@@ -193,6 +193,7 @@ export default function (app: Application, baseUrl: string) {
         page: request.query.page as unknown as number,
         pageSize: request.query["page-size"] as unknown as number,
       };
+      // FIXME - page-size is never actually used anywhere
       if (request.query.from) {
         params.from = request.query.from as unknown as Date;
       }

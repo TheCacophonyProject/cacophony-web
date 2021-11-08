@@ -24,11 +24,11 @@ import { Application } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json";
 import {
-  extractJwtAuthorizedUser,
+  extractJwtAuthorizedUser, fetchAdminAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceById,
   parseJSONField,
 } from "../extract-middleware";
-import { idOf, validNameOf } from "../validation-middleware";
+import {idOf, integerOfWithDefault, validNameOf} from "../validation-middleware";
 import { DeviceId, Seconds } from "@typedefs/api/common";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 
@@ -87,12 +87,11 @@ export default function (app: Application, baseUrl: string) {
         .bail()
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
       validNameOf(body("name")),
-      // FIXME - integer with default?
-      body("frequencySeconds").default(DEFAULT_FREQUENCY).isInt().toInt(),
+      integerOfWithDefault(body("frequencySeconds"), DEFAULT_FREQUENCY),
       idOf(body("deviceId")),
     ]),
     // Now extract the items we need from the database.
-    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
     parseJSONField(body("conditions")),
     async (request, response) => {
       const newAlert = await models.Alert.create({
@@ -159,13 +158,18 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request, response) => {
+
+      // FIXME - should require device admin, since it lets users see other users
+      //  email addresses.  Otherwise, should just show alerts for requesting user.
+
       const alerts = await models.Alert.queryUserDevice(
         response.locals.device.id,
         response.locals.requestUser.id,
         null,
         response.locals.viewAsSuperUser
       );
-      // FIXME validate schema of returned payload.
+      // FIXME validate schema of returned payload,
+      //  Reformat the response to conform to deviceName style etc.
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],

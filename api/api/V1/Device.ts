@@ -43,7 +43,7 @@ import {
   nameOrIdOf,
   validNameOf,
   validPasswordOf,
-  deprecatedField,
+  deprecatedField, integerOfWithDefault,
 } from "../validation-middleware";
 import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
@@ -592,7 +592,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
-      query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
+      integerOfWithDefault(query("window-size"), 2160),  // Default to a three month rolling window
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -634,7 +634,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
-      query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
+      integerOfWithDefault(query("window-size"),2160), // Default to a three month rolling window
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),

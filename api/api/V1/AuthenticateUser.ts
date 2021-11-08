@@ -55,7 +55,7 @@ export default function (app: Application) {
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiSuccess {String} userData ApiLoggedInUserResponse
+   * @apiSuccess {String} userData {apiBody::ApiLoggedInUserResponse}
    */
   app.post(
     "/authenticate_user",
@@ -142,6 +142,7 @@ export default function (app: Application) {
    * @apiBody {String} name Username identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiSuccess {String} userData {apiBody::ApiLoggedInUserResponse}
    */
   app.post(
     "/admin_authenticate_as_other_user",
@@ -200,6 +201,7 @@ export default function (app: Application) {
     "/token",
     [body("ttl").optional(), body("access").optional(), auth.authenticateUser],
     middleware.requestWrapper(async (request, response) => {
+      // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
       const token = auth.createEntityJWT(
         request.user,
