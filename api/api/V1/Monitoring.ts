@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields, expectedTypeOf, isIntArray } from "../middleware";
-import {Application, Response, Request, NextFunction} from "express";
+import { Application, Response, Request, NextFunction } from "express";
 import {
   calculateMonitoringPageCriteria,
   MonitoringParams,
@@ -28,7 +28,7 @@ import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import models from "@models";
-import {ClientError} from "@api/customErrors";
+import { ClientError } from "@api/customErrors";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -208,9 +208,9 @@ export default function (app: Application, baseUrl: string) {
       );
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
       const visits = await generateVisits(
-          requestUser.id,
-          searchDetails,
-          viewAsSuperAdmin
+        requestUser.id,
+        searchDetails,
+        viewAsSuperAdmin
       );
       if (visits instanceof ClientError) {
         return next(visits);

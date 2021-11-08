@@ -24,11 +24,16 @@ import { Application } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json";
 import {
-  extractJwtAuthorizedUser, fetchAdminAuthorizedRequiredDeviceById,
+  extractJwtAuthorizedUser,
+  fetchAdminAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceById,
   parseJSONField,
 } from "../extract-middleware";
-import {idOf, integerOfWithDefault, validNameOf} from "../validation-middleware";
+import {
+  idOf,
+  integerOfWithDefault,
+  validNameOf,
+} from "../validation-middleware";
 import { DeviceId, Seconds } from "@typedefs/api/common";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 
@@ -158,7 +163,6 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request, response) => {
-
       // FIXME - should require device admin, since it lets users see other users
       //  email addresses.  Otherwise, should just show alerts for requesting user.
 
