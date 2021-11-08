@@ -19,6 +19,13 @@ describe("Authentication", () => {
     cy.testCreateUserGroupAndDevice(userB, group2, camera2);
   });
 
+  //TODO - write test for auth by deviceId (is what cameras use)
+  it("Can authenticate using deviceId", () => {
+    cy.apiAuthenticateDevice(camera1, group1, undefined, undefined, {
+      useDeviceId: true,
+    });
+  });
+
   it("Can authenticate as a device", () => {
     cy.apiAuthenticateDevice(camera1, group1);
   });

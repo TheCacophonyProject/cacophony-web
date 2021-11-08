@@ -1,8 +1,10 @@
 {
   "projectId": "dyez6t",
-  "baseUrl": "https://browse-test.cacophony.org.nz",
   "env" : {
     "cacophony-api-server": "https://api-test.cacophony.org.nz", 
-    "testCreds" : {}
+    "cacophony-processing-api-server": "https://api-test.cacophony.org.nz:2008",
+    "base-url-returned-in-links": "https://browse-test.cacophony.org.nz", 
+    "testCreds" : { "superuser":{"name":"admin_test", "password": "admin_test"}},
+    "running_in_a_dev_environment" : false
   }
 }
