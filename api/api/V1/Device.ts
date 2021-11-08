@@ -193,7 +193,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiDeviceResponse[]} devices Devices details
+   * @apiSuccess {apiSuccess::ApiDeviceResponse[]} devices Devices details // TODO - rename as apiInterface
    * @apiSuccessExample {JSON} devices:
    * // FIXME - update example
    * {

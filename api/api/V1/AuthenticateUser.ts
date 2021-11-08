@@ -55,7 +55,7 @@ export default function (app: Application) {
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiSuccess {String} userData {apiBody::ApiLoggedInUserResponse}
+   * @apiSuccess {apiSuccess::ApiLoggedInUserResponse} userData // TODO rename to apiInterface
    */
   app.post(
     "/authenticate_user",
@@ -142,7 +142,7 @@ export default function (app: Application) {
    * @apiBody {String} name Username identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiSuccess {String} userData {apiBody::ApiLoggedInUserResponse}
+   * @apiSuccess {apiSuccess::ApiLoggedInUserResponse} userData // TODO rename to apiInterface
    */
   app.post(
     "/admin_authenticate_as_other_user",
