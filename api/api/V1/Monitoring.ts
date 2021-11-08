@@ -169,12 +169,7 @@ export default function (app: Application, baseUrl: string) {
         ),
       query("ai")
         .optional()
-        .isLength({ min: 3 })
-        .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
-        .withMessage(
-          (val, { location, path }) =>
-            `'${location}.${path}' must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`
-        ),
+        .isLength({ min: 3 }),
       query("from").optional().isISO8601().toDate(),
       query("until").optional().isISO8601().toDate(),
       query("view-mode").optional(),
