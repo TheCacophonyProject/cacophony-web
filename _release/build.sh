@@ -49,6 +49,7 @@ echo "Compiling TypeScript..."
 ./node_modules/.bin/tsc
 
 echo "Creating API docs..."
+npm update apidoc-plugin-ts
 npm run apidoc
 
 echo "Removing external dependencies..."
