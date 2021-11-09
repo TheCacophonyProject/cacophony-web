@@ -43,6 +43,7 @@ import {
   deprecatedField,
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
+import { IsoFormattedDateString } from "@typedefs/api/common";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -91,6 +92,14 @@ const uploadEvent = async (
   });
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiEventsRequestBody {
+  Timestamp?: IsoFormattedDateString; // Deprecated, use 'dateTimes' instead
+  eventDetailId?: number; // ID of existing event details entry if known. Either eventDetailId or description are required.
+  description?: EventDescription; // Description of the event. Either eventDetailId or description are required.
+  dateTimes: IsoFormattedDateString[]; // Array of event times in ISO standard format, eg ["2017-11-13T00:47:51.160Z"]
+}
+
 // TODO(jon): Consider whether extracting this is worth it compared with just
 //  duplicating and having things be explicit in each api endpoint?
 const commonEventFields = [
@@ -133,7 +142,7 @@ export default function (app: Application, baseUrl: string) {
    * `Either eventDetailId or description is required`
    * @apiUse V1DeviceAuthorizationHeader
    *
-   * @apiUse EventParams
+   * @apiInterface {apiBody::ApiEventsRequestBody}
    * @apiUse EventExampleDescription
    * @apiUse EventExampleEventDetailId
    *
@@ -174,12 +183,12 @@ export default function (app: Application, baseUrl: string) {
    *
    * `Either eventDetailId or description is required`
    * @apiParam {String} deviceId ID of the device to upload on behalf of.
-   * If you don't have access to the deviceId, the devicename can be used instead in it's place -
-   * however note that requests using devicename will be rejected if multiple devices exist with
-   * the same devicename. The use of devicename is `DEPRECATED` and may not be supported in future.
+   * If you don't have access to the deviceId, the deviceName can be used instead in it's place -
+   * however note that requests using deviceName will be rejected if multiple devices exist with
+   * the same deviceName. The use of deviceName is `DEPRECATED` and may not be supported in future.
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiUse EventParams
+   * @apiInterface {apiBody::ApiEventsRequestBody}
    * @apiUse EventExampleDescription
    * @apiUse EventExampleEventDetailId
    *
@@ -223,13 +232,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Datetime} [startTime] Return only events on or after this time
-   * @apiParam {Datetime} [endTime] Return only events from before this time
-   * @apiParam {Integer} [deviceId] Return only events for this device id
-   * @apiParam {Integer} [limit] Limit returned events to this number (default is 100)
-   * @apiParam {Integer} [offset] Offset returned events by this amount (default is 0)
-   * @apiParam {String} [type] Alphaonly string describing the type of event wanted
-   * @apiParam {Boolean} [latest] Set to true to see the most recent events recorded listed first
+   * @apiQuery {Datetime} [startTime] Return only events on or after this time
+   * @apiQuery {Datetime} [endTime] Return only events from before this time
+   * @apiQuery {Integer} [deviceId] Return only events for this device id
+   * @apiQuery {Integer} [limit] Limit returned events to this number (default is 100)
+   * @apiQuery {Integer} [offset] Offset returned events by this amount (default is 0)
+   * @apiQuery {String} [type] Alphaonly string describing the type of event wanted
+   * @apiQuery {Boolean} [latest] Set to true to see the most recent events recorded listed first
+   * @apiQuery {Boolean} [only-active=true] Only return events for active devices
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} offset Offset of returned page of results from 1st result matched by query.
@@ -314,11 +324,12 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Datetime} [startTime] Return only errors on or after this time
-   * @apiParam {Datetime} [endTime] Return only errors from before this time
-   * @apiParam {Integer} [deviceId] Return only errors for this device id
-   * @apiParam {Integer} [limit] Limit returned errors to this number (default is 100)
-   * @apiParam {Integer} [offset] Offset returned errors by this amount (default is 0)
+   * @apiQuery {Datetime} [startTime] Return only errors on or after this time
+   * @apiQuery {Datetime} [endTime] Return only errors from before this time
+   * @apiQuery {Integer} [deviceId] Return only errors for this device id
+   * @apiQuery {Integer} [limit=100] Limit returned errors to this number (default is 100)
+   * @apiQuery {Integer} [offset=0] Offset returned errors by this amount (default is 0)
+   * @apiQuery {Boolean} [only-active=true] Only return errors for active devices
    *
    * @apiSuccess {json} rows Map of Service Name to Service errors
    * @apiUse V1ResponseSuccess
@@ -408,7 +419,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Integer} [deviceId] Return only errors for this deviceId
+   * @apiQuery {Integer} [deviceId] Return only errors for this deviceId
    *
    * @apiSuccess {JSON} events Array of `ApiPowerEvent` containing details of power events matching the criteria given.
    * @apiSuccessExample ApiPowerEvent:

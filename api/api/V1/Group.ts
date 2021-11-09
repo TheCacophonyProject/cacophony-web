@@ -45,8 +45,17 @@ import {
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
 import { Group } from "models/Group";
-import { ApiGroupResponse } from "@typedefs/api/group";
-import logging from "@log";
+import {
+  ApiGroupResponse,
+  ApiGroupUserRelationshipResponse,
+} from "@typedefs/api/group";
+import { ApiDeviceResponse } from "@typedefs/api/device";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {
+  ApiCreateStationData,
+  ApiCreateStationResponse,
+  ApiStationResponse,
+} from "@typedefs/api/station";
 
 const mapGroup = (
   group: Group,
@@ -76,6 +85,36 @@ const mapGroups = (
 ): ApiGroupResponse[] =>
   groups.map((group) => mapGroup(group, viewAsSuperAdmin));
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupsResponseSuccess {
+  groups: ApiGroupResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupResponseSuccess {
+  group: ApiGroupResponse;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupUsersResponseSuccess {
+  users: ApiGroupUserRelationshipResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupDevicesResponseSuccess {
+  devices: ApiDeviceResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiCreateStationDataBody {
+  stations: ApiCreateStationData[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiStationResponseSuccess {
+  stations: ApiStationResponse[];
+}
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
 
@@ -88,7 +127,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} groupname Unique group name.
+   * @apiParam {String} groupName Unique group name.
    *
    * @apiUse V1ResponseSuccess
    *
@@ -130,23 +169,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {ApiGroup[]} groups Array of ApiGroup[]
-   * @apiSuccess {Number} groups.id Identifier of the group
-   * @apiSuccess {String} groups.groupname Name of the group
-   * @apiSuccess {ApiGroupUserRelation[]} groups.Users List of all associated group users and their relationship to the group
-   * @apiSuccess {ApiGroupUser[]} groups.GroupUsers List of users associated with the group
-   * @apiSuccess {ApiDeviceIdAndName[]} groups.Devices List of devices associated with the group
-   * @apiSuccessExample {JSON} ApiGroup:
-   * {
-   *   id: number;
-   *   groupname: string;
-   *   Users: ApiGroupUserRelation[];
-   *   Devices: ApiDeviceIdAndName[];
-   *   GroupUsers: ApiGroupUser[];
-   * }
-   * @apiUse ApiGroupUserRelation
-   * @apiUse ApiDeviceIdAndName
-   * @apiUse ApiGroupUser
+   * @apiInterface {apiSuccess::ApiGroupsResponseSuccess}
+   * @apiSuccessExample {JSON} ApiGroup[]:
+   * [{
+   *   "id": 1;
+   *   "groupName": "My group",
+   *   "lastRecordingTime": "2021-11-09T02:22:57.777Z",
+   *   "admin": false
+   * }]
    * @apiUse V1ResponseError
    */
   app.get(
@@ -176,7 +206,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/groups/{groupNameOrId} Get a group by name or id
+   * @api {get} /api/v1/groups/:groupNameOrId Get a group by name or id
    * @apiName GetGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view details of a group.
@@ -186,23 +216,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {ApiGroup[]} groups Array of ApiGroup[] (but should only contain one item)
-   * @apiSuccess {Number} groups.id Identifier of the group
-   * @apiSuccess {String} groups.groupname Name of the group
-   * @apiSuccess {ApiGroupUserRelation[]} groups.Users Relationship between current user and the group
-   * @apiSuccess {ApiGroupUser[]} groups.GroupUsers List of users associated with the group
-   * @apiSuccess {ApiDeviceIdAndName[]} groups.Devices List of devices associated with the group
+   * @apiInterface {apiSuccess::ApiGroupResponseSuccess}
    * @apiSuccessExample {JSON} ApiGroup:
    * {
-   *   id: number;
-   *   groupname: string;
-   *   Users: ApiGroupUserRelation[];
-   *   Devices: ApiDeviceIdAndName[];
-   *   GroupUsers: ApiGroupUser[];
+   *   "id": 1;
+   *   "groupName": "My group",
+   *   "lastRecordingTime": "2021-11-09T02:22:57.777Z",
+   *   "admin": false
    * }
-   * @apiUse ApiGroupUserRelation
-   * @apiUse ApiDeviceIdAndName
-   * @apiUse ApiGroupUser
    * @apiUse V1ResponseError
    */
   app.get(
@@ -222,7 +243,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
   /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/devices Retrieves all devices for a group (only active devices by default).
+   * @api {get} /api/v1/groups/:groupIdOrName/devices Retrieves all devices for a group (only active devices by default).
    * @apiName GetDevicesForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view devices that belong
@@ -230,16 +251,11 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} groupIdOrName group id or group name
+   * @apiParam {String|Integer} groupIdOrName group id or group name
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {ApiGroupsDevice[]} devices List of devices associated with the group
-   * @apiSuccessExample {JSON} ApiGroupsDevice:
-   * {
-   *   id: number;
-   *   deviceName: string;
-   * }
-
+   * @apiInterface {apiSuccess::ApiGroupDevicesResponseSuccess} devices List of devices associated with the group
+   * @apiUse DevicesList
    * @apiUse V1ResponseError
    */
   app.get(
@@ -268,7 +284,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/users Retrieves all users for a group.
+   * @api {get} /api/v1/groups/:groupIdOrName/users Retrieves all users for a group.
    * @apiName GetUsersForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view users that belong
@@ -276,18 +292,17 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} groupIdOrName group id or group name
+   * @apiParam {Integer|String} groupIdOrName group id or group name
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {ApiGroupUser[]} users Array of ApiGroupUser listing users assigned to this group
+   * @apiInterface {apiSuccess::ApiGroupUsersResponseSuccess} users List of users associated with the group
    * @apiUse V1ResponseError
    * @apiSuccessExample {JSON} ApiGroupUser:
    * {
-   *  "id":456,
-   *  "userName":"user name",
-   *  "isGroupAdmin":true
+   *  "id": 456,
+   *  "userName": "user name",
+   *  "admin": true
    * }
-
    *
    */
   app.get(
@@ -325,9 +340,10 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} group name of the group.
-   * @apiParam {String} username name of the user to add to the group.
-   * @apiParam {Boolean} admin If the user should be an admin for the group.
+   * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
+   * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
+   * @apiBody {String} userName name of the user to add to the group.
+   * @apiBody {Boolean} admin If the user should be an admin for the group.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -373,8 +389,10 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} group name of the group.
-   * @apiParam {String} username username of user to remove from the group.
+   * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
+   * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
+   * @apiBody {String} [userName] name of the user to remove from the group (either 'userName' or 'userId' must be specified).
+   * @apiBody {Integer} [userId] id of the user to remove from the group (either 'userName' or 'userId' must be specified).
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -416,27 +434,26 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/groups/{groupIdOrName}/stations Add, Update and retire current stations belonging to group
+   * @api {post} /api/v1/groups/:groupIdOrName/stations Add, Update and retire current stations belonging to group
    * @apiName PostStationsForGroup
    * @apiGroup Group
    * @apiDescription A group admin or an admin with globalWrite permissions can update stations for a group.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} groupNameOrId group name or group id
-   * @apiParam {Station[]} stations Json array of ApiStation[]
-   * @apiParam {Date} fromDate Start date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParam {Integer|String} groupNameOrId group name or group id
+   * @apiInterface {apiBody::ApiCreateStationDataBody} stations Json array of ApiStation[]
+   * @apiParam {Date} [fromDate] Start date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
    * @apiParamExample {json} ApiStation:
    * {
-   *   name: "Station Name:,
+   *   name: "Station Name",
    *   lat: -45.1,
    *   lng: 172.0
    * }
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Number[]} stationIdsAddedOrUpdated Array of Identifiers of stations added or updated.
-   * @apiSuccess {JSON} updatedRecordingsPerStation Hash of {stationId:recordingId, ...} showing recordings updated
-   * by the request.
+   * @apiSuccess {Integer[]} stationIdsAddedOrUpdated Array of Identifiers of stations added or updated.
+   * @apiInterface {apiSuccess::ApiCreateStationsResponse}
    * @apiSuccess {string} warnings Warnings showing data validation rule breaches for the applied stations.
    * @apiUse V1ResponseError
    */
@@ -471,7 +488,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/stations Retrieves all stations from a group, including retired ones.
+   * @api {get} /api/v1/groups/:groupIdOrName/stations Retrieves all stations from a group, including retired ones.
    * @apiName GetStationsForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view stations that belong
@@ -479,36 +496,24 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} groupIdOrName Group name or group id
+   * @apiParam {Integer|String} groupIdOrName Group name or group id
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {ApiStationDetail[]} stations Array of ApiStationDetail[] showing details of stations in group
-   * @apiSuccess {Number} stations.id Id of station
-   * @apiSuccess {Number} stations.GroupId Id of the group to which the station belongs
-   * @apiSuccess {String} stations.createdAt Timestamp station was created
-   * (Note: this is the database record creation date, not the user-supplied fromDate)
-   * @apiSuccess {String} stations.retiredAt Timestamp station was retired
-   * @apiSuccess {String} stations.updatedAt Timestamp station was last updated
-   * @apiSuccess {Number} stations.lastUpdatedById Id of the user account last used to update the station
-   * @apiSuccess {ApiLocation} stations.location JSON detailing location of the station
-   * @apiSuccess {String} stations.name Name of the station
+   * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations Array of ApiStationDetail[] showing details of stations in group
    * @apiSuccessExample {JSON} ApiStationDetail:
-   * {
-   *   GroupId: 1338,
-   *   createdAt: "2021-08-27T21:04:35.851Z",
-   *   id: 415,
-   *   lastUpdatedById: 2069,
-   *   location:  ApiLocation,
-   *   name: "station1",
-   *   retiredAt: null,
-   *   updatedAt: "2021-08-27T21:04:35.855Z"
-   * }
-   * @apiSuccessExample {JSON} ApiLocation:
-   * Note: these coordinates are currently reversed (Issue 73).
-   * {
-   *   type: 'Point',
-   *   coordinates: [ -45.0, 172.9 ]
-   * }
+   * [{
+   *   "groupId": 1338,
+   *   "createdAt": "2021-08-27T21:04:35.851Z",
+   *   "id": 415,
+   *   "lastUpdatedById": 2069,
+   *   "location":  {
+   *     "type": 'Point',
+   *     "coordinates": [ -45.0, 172.9 ] // Note: these coordinates are currently reversed (Issue 73).
+   *   },
+   *   "name": "station1",
+   *   "retiredAt": null,
+   *   "updatedAt": "2021-08-27T21:04:35.855Z"
+   * }]
    * @apiUse V1ResponseError
    */
   app.get(

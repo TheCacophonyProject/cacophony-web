@@ -46,15 +46,15 @@ export default function (app: Application, baseUrl: string) {
      * In some circumstances the number of visits returned may be slightly bigger or smaller than the page-size.
      *
      * @apiUse V1UserAuthorizationHeader
-     * @apiParam {number|number[]} devices  A single device id, or a JSON list of device ids to include.  eg 52, or [23, 42]
-     * @apiParam {number|number[]} groups  A single group id or a JSON list of group ids to include.  eg 20, or [23, 42]
-     * @apiParam {timestamp} from  Retrieve visits after this time
-     * @apiParam {timestamp} until Retrieve visits starting on or before this time
-     * @apiParam {number} page  Page number to retrieve
-     * @apiParam {number} page-size Maximum numbers of visits to show on each page.  Note: Number of visits is approximate per page.  In some situations number maybe slightly bigger or smaller than this.
-     * @apiParam {string} ai   Name of the AI to be used to compute the 'classificationAI' result.  Note: This will not affect the
+     * @apiQuery {number|number[]} [devices]  A single device id, or a JSON list of device ids to include.  eg 52, or [23, 42]
+     * @apiQuery {number|number[]} [groups]  A single group id or a JSON list of group ids to include.  eg 20, or [23, 42]
+     * @apiQuery {timestamp} [from]  Retrieve visits after this time
+     * @apiQuery {timestamp} [until] Retrieve visits starting on or before this time
+     * @apiQuery {number{1..10000}} page  Page number to retrieve
+     * @apiQuery {number{1..100}} page-size Maximum numbers of visits to show on each page.  Note: Number of visits is approximate per page.  In some situations number maybe slightly bigger or smaller than this.
+     * @apiQuery {string} [ai]   Name of the AI to be used to compute the 'classificationAI' result.  Note: This will not affect the
      * 'classification' result, which always uses a predefined AI/human choice.
-     * @apiParam {string} viewmode   View mode for super user.
+     * @apiQuery {string="user"} [view-mode]   View mode for super user.
      *
      * @apiSuccess {JSON} params The parameters used to retrieve these results.  Most of these fields are from the request.
      * Calculated fields are listed in the 'Params Details' section below.

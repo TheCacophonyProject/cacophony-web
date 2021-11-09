@@ -35,7 +35,7 @@ import {
   validNameOf,
 } from "../validation-middleware";
 import { DeviceId, Seconds } from "@typedefs/api/common";
-import { ApiAlertCondition } from "@typedefs/api/alerts";
+import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
@@ -45,6 +45,11 @@ interface ApiPostAlertRequestBody {
   deviceId: DeviceId;
   conditions: ApiAlertCondition[];
   frequencySeconds?: Seconds; // Defaults to 30 minutes
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGetAlertsResponse {
+  Alerts: ApiAlertResponse[];
 }
 
 export default function (app: Application, baseUrl: string) {
@@ -127,7 +132,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {number} deviceId deviceId of the device to get alerts for
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Alerts[]} Alerts Array of Alerts
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
    *
    * @apiUse V1ResponseError
    *

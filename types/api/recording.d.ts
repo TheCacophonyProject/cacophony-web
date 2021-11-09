@@ -109,3 +109,6 @@ export interface ApiRecordingUpdateRequest {
   additionalMetadata?: Record<string, any>;
   location?: [number, number];
 }
+
+export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
+  ApiAudioRecordingResponse;
