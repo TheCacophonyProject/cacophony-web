@@ -56,7 +56,9 @@ async function main() {
     const userInfo = userEvents[userID];
     const html = generateHtml(userInfo.powerEvents);
     const text = generateText(userInfo.powerEvents);
-    if (!(await sendEmail(html, text, userInfo.user.email, "Stopped Devices"))) {
+    if (
+      !(await sendEmail(html, text, userInfo.user.email, "Stopped Devices"))
+    ) {
       failedEmails.push(userInfo.user.email);
     }
   }
@@ -70,7 +72,10 @@ async function main() {
   }
 
   if (failedEmails.length) {
-    log.error("Failed sending stopped devices email to %s", failedEmails.join(", "));
+    log.error(
+      "Failed sending stopped devices email to %s",
+      failedEmails.join(", ")
+    );
   }
 
   const detail = await models.DetailSnapshot.getOrCreateMatching(
