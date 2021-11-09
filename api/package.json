@@ -73,6 +73,7 @@
     "new-migration": "sequelize migration:generate --name",
     "dev": "docker-compose build && docker-compose up --force-recreate",
     "dev:bash": "docker-compose exec server bash",
-    "clean": "tsc --build --clean"
+    "clean": "tsc --build --clean",
+    "postinstall": "npm update cptv-decoder apidoc-plugin-ts"
   }
 }
