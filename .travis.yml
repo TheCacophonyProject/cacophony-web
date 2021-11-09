@@ -31,8 +31,6 @@ script:
   - cd ../api
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin apidoc-plugin-ts
   - npm run lint || travis_terminate 1;
-  - npm update apidoc-plugin-ts
-  - npm run apidoc
   # Run integration checks
   - cd ../integration-tests
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests
@@ -53,6 +51,9 @@ script:
   - cd ../api
 
 before_deploy:
+  # Generate api docs
+  - npm update apidoc-plugin-ts
+  - npm run apidoc
   - version=${TRAVIS_TAG/v/}
   # Install nfpm tool (for building debs)
   - mkdir /tmp/nfpm
