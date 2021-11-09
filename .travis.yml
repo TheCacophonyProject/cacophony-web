@@ -49,11 +49,11 @@ script:
   - npm install
   - npm run release
   - cd ../api
-
-before_deploy:
   # Generate api docs
   - npm update apidoc-plugin-ts
-  - npm run apidoc
+  - npm run apidoc || travis_terminate 1;
+
+before_deploy:
   - version=${TRAVIS_TAG/v/}
   # Install nfpm tool (for building debs)
   - mkdir /tmp/nfpm
