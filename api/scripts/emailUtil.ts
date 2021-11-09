@@ -39,7 +39,7 @@ async function sendEmail(
   thumbnail?: Buffer
 ): Promise<boolean> {
   const client = new SMTPClient(config.smtpDetails);
-  log.info(`Sending  email with subject ${subject} to ${to}`);
+  log.info(`Sending email with subject ${subject} to ${to}`);
   try {
     const message = new Message({
       text: text,
