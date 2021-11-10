@@ -199,7 +199,7 @@ export default {
       // Call API and process results
       this.queryPending = true;
       // console.log("query", whereQuery);
-      const results = await api.monitoring.queryVisitPage(whereQuery);
+      const visitsResponse = await api.monitoring.queryVisitPage(whereQuery);
       // console.log("results", results);
       this.queryPending = false;
 
@@ -209,14 +209,14 @@ export default {
       this.count = 0;
       this.countMessage = "";
 
-      if (!results.success) {
+      if (!visitsResponse.success) {
         // result.messages &&
         //   result.messages.forEach((message) => {
         //     this.$store.dispatch("Messaging/WARN", message);
         //   });
       } else {
-        this.visits = results.result.visits;
-        const params = results.result.params;
+        this.visits = visitsResponse.result.visits;
+        const params = visitsResponse.result.params;
         this.count = params.pagesEstimate * this.perPage;
         this.currentPage = params.page;
         if (this.visits.length > 0) {

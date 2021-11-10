@@ -67,9 +67,9 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceIdOrName: string,
-    description: ApiEventDetail,
+    description?: ApiEventDetail,
     dates: string[] = [new Date().toISOString()],
-    eventDetailId: number,
+    eventDetailId?: number,
     log: boolean = true,
     statusCode: number = 200
   ) => {
@@ -112,6 +112,7 @@ Cypress.Commands.add(
     deviceName: string,
     queryParams: any,
     expectedErrors: ApiEventErrorCategory[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}
@@ -298,6 +299,7 @@ Cypress.Commands.add(
     expectedEvents: ApiPowerEventReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     additionalChecks: any = {}
   ) => {
     logTestDescription(`Check for expected power events for ${deviceName} `, {
@@ -306,8 +308,8 @@ Cypress.Commands.add(
     });
 
     // add deviceId to params unless already defined
-    if (queryParams.deviceID === undefined && deviceName !== undefined) {
-      queryParams.deviceID = getCreds(deviceName).id;
+    if (queryParams.deviceId === undefined && deviceName !== undefined) {
+      queryParams.deviceId = getCreds(deviceName).id;
     }
 
     //drop any undefined parameters
@@ -331,7 +333,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiPowerEventsCheckAgainstExpected",
+  "testPowerEventsCheckAgainstExpected",
   (
     userName: string,
     deviceName: string,
@@ -351,7 +353,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiEventsCheckAgainstExpected",
+  "testEventsCheckAgainstExpected",
   (
     userName: string,
     deviceName: string,
@@ -422,7 +424,7 @@ function checkPowerEvents(
   expectedEvent: TestComparablePowerEvent
 ) {
   const params = {
-    deviceID: getCreds(deviceName).id,
+    deviceId: getCreds(deviceName).id,
   };
 
   makeAuthorizedRequest(
@@ -442,7 +444,7 @@ function checkEvents(
   statusCode: number
 ) {
   const params = {
-    deviceID: getCreds(deviceName).id,
+    deviceId: getCreds(deviceName).id,
   };
 
   makeAuthorizedRequestWithStatus(

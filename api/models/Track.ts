@@ -20,9 +20,11 @@ import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { TrackTag, TrackTagId } from "./TrackTag";
 import { Recording } from "./Recording";
+import { RecordingId, TrackId } from "@typedefs/api/common";
+import logger from "@log";
 
-export type TrackId = number;
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
+  RecordingId: RecordingId;
   getTrackTag: (trackTagId: TrackTagId) => Promise<TrackTag>;
   id: TrackId;
   AlgorithmId: number | null;
@@ -38,9 +40,9 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
   getRecording: () => Promise<Recording>;
 
   TrackTags?: TrackTag[];
+  replaceTag: (tag: TrackTag) => Promise<any>;
 }
 export interface TrackStatic extends ModelStaticCommon<Track> {
-  replaceTag: (id: TrackId, tag: TrackTag) => Promise<any>;
   archiveTags: () => Promise<any>;
 }
 
@@ -48,8 +50,6 @@ export default function (
   sequelize: Sequelize.Sequelize,
   DataTypes
 ): TrackStatic {
-  const { ClientError } = require("../api/customErrors");
-
   const Track = sequelize.define("Track", {
     data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
@@ -77,11 +77,10 @@ export default function (
 
   //add or replace a tag, such that this track only has 1 animal tag by this user
   //and no duplicate tags
-  Track.replaceTag = async function (trackId, tag: TrackTag) {
-    const track = await Track.findByPk(trackId);
-    if (!track) {
-      throw new ClientError("No track found for " + trackId);
-    }
+  Track.prototype.replaceTag = async function (
+    tag: TrackTag
+  ): Promise<TrackTag | void> {
+    const trackId = this.id;
     return sequelize.transaction(async function (t) {
       const trackTags = await models.TrackTag.findAll({
         where: {
@@ -91,22 +90,21 @@ export default function (
         },
         transaction: t,
       });
-
-      const existingTag = trackTags.find(function (uTag) {
-        return uTag.what == tag.what;
-      });
+      const existingTag = trackTags.find(
+        (uTag: TrackTag) => uTag.what === tag.what
+      );
       if (existingTag) {
         return;
       } else if (trackTags.length > 0 && !tag.isAdditionalTag()) {
-        const existingAnimalTags = trackTags.filter(function (uTag) {
-          return !uTag.isAdditionalTag();
-        });
-
+        const existingAnimalTags = trackTags.filter(
+          (uTag) => !uTag.isAdditionalTag()
+        );
         for (let i = 0; i < existingAnimalTags.length; i++) {
-          await existingAnimalTags[i].destroy();
+          await existingAnimalTags[i].destroy({ transaction: t });
         }
       }
-      await tag.save();
+      await tag.save({ transaction: t });
+      return tag;
     });
   };
 
@@ -120,10 +118,10 @@ export default function (
     userId = null
   ) {
     const tag = await this.createTrackTag({
-      what: what,
-      confidence: confidence,
-      automatic: automatic,
-      data: data,
+      what,
+      confidence,
+      automatic,
+      data,
       UserId: userId,
     });
     return tag;

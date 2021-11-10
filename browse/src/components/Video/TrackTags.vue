@@ -1,21 +1,17 @@
 <template>
   <div class="simple-accordion-wrapper">
-    <h6 class="simple-accordion-header" @click="show_details = !show_details">
+    <h6 class="simple-accordion-header" @click="toggleDetails()">
       Tag history
-      <span
-        v-if="!show_details"
-        title="Show all result classes"
-        class="pointer"
-      >
+      <span v-if="!showDetails" title="Show all result classes" class="pointer">
         <font-awesome-icon icon="angle-down" class="fa-1x" />
       </span>
-      <span v-if="show_details" title="Hide other results" class="pointer">
+      <span v-if="showDetails" title="Hide other results" class="pointer">
         <font-awesome-icon icon="angle-up" class="fa-1x" />
       </span>
     </h6>
-    <div v-if="show_details">
+    <div v-if="showDetails">
       <b-table
-        :items="items"
+        :items="tagItems"
         :fields="fields"
         class="track-tag-table"
         striped
@@ -29,14 +25,15 @@
               onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='"
               :src="imgSrc(row.item.what)"
               class="tag-img"
+              :alt="row.item.what"
             />
             {{ row.item.what }}
           </div>
         </template>
 
         <template v-slot:cell(who)="row">
-          <span v-if="row.item.User">
-            {{ row.item.User.username }}
+          <span v-if="row.item.userName">
+            {{ row.item.userName }}
           </span>
           <span v-else>
             {{ aiName(row.item) }}
@@ -65,7 +62,10 @@
 
           <button
             v-b-tooltip.hover.left="'Delete tag'"
-            v-if="!row.item.automatic"
+            v-if="
+              (isGroupOrDeviceAdmin || row.item.userName === thisUserName) &&
+              !row.item.automatic
+            "
             class="btn"
             @click="$emit('deleteTag', row.item)"
           >
@@ -77,14 +77,24 @@
   </div>
 </template>
 
-<script>
-import { imgSrc } from "../../const";
+<script lang="ts">
+import api from "@/api";
+import { imgSrc } from "@/const";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
+import { shouldViewAsSuperUser } from "@/utils";
 
 export default {
   name: "TrackTags",
   props: {
     items: {
       type: Array,
+      required: true,
+    },
+    deviceId: {
+      type: Number,
       required: true,
     },
   },
@@ -104,13 +114,66 @@ export default {
           tdClass: "tag-history-table-buttons",
         },
       ],
-      show_details: false,
+      showDetails: false,
+      isGroupOrDeviceAdmin: null,
     };
   },
+  computed: {
+    isSuperUserAndViewingAsSuperUser(): boolean {
+      return (
+        this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
+      );
+    },
+    thisUserName(): string {
+      return this.$store.state.User.userData.userName;
+    },
+
+    tagItems() {
+      let items;
+      if (this.isSuperUser) {
+        items = [...this.items];
+      } else {
+        // Remove AI tags other than master, as they'll just be confusing
+        items = this.items.filter(
+          (item: ApiTrackTagResponse) =>
+            !item.automatic || item.data.name === "Master"
+        );
+      }
+      return items.sort((a: ApiTrackTagResponse, b: ApiTrackTagResponse) => {
+        if (a.createdAt && b.createdAt) {
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        } else if (a.createdAt) {
+          return 1;
+        } else if (b.createdAt) {
+          return -1;
+        }
+        return 0;
+      });
+    },
+  },
   methods: {
+    async toggleDetails() {
+      this.showDetails = !this.showDetails;
+      if (this.isSuperUserAndViewingAsSuperUser) {
+        this.isGroupOrDeviceAdmin = true;
+      }
+      if (this.isGroupOrDeviceAdmin === null) {
+        const groupResponse = await api.device.getDeviceById(this.deviceId);
+        if (groupResponse.success) {
+          const { result } = groupResponse;
+          this.isGroupOrDeviceAdmin = result.device.admin;
+        }
+      }
+    },
     imgSrc,
     aiName: function (trackTag) {
-      if (trackTag.data && trackTag.data.name) {
+      if (
+        this.isSuperUserAndViewingAsSuperUser &&
+        trackTag.data &&
+        trackTag.data.name
+      ) {
         return "AI " + trackTag.data.name;
       } else {
         return "Cacophony AI";
@@ -130,15 +193,16 @@ export default {
     userTagExists: function (what) {
       return this.items.find(
         (tag) =>
-          tag.User &&
-          tag.what == what &&
-          tag.User.username == this.$store.state.User.userData.username
+          !tag.automatic &&
+          tag.what === what &&
+          tag.userName === this.thisUserName
       );
     },
-    confirmTag: function (rowItem) {
-      const tag = {};
-      tag.what = rowItem.what;
-      tag.confidence = rowItem.confidence;
+    confirmTag: function ({ what, confidence }) {
+      const tag: ApiTrackTagRequest = {
+        what,
+        confidence,
+      };
       this.$emit("addTag", tag);
     },
   },

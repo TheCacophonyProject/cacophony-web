@@ -5,7 +5,7 @@ import { getTestName } from "../names";
 import { apiPath, saveCreds } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 
-Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
+Cypress.Commands.add("apiUserAdd", (userName: string, log = true) => {
   logTestDescription(`Create user '${userName}'`, { user: userName }, log);
 
   const usersUrl = apiPath() + "/api/v1/users";
@@ -27,29 +27,29 @@ Cypress.Commands.add("apiCreateUser", (userName: string, log = true) => {
 });
 
 Cypress.Commands.add(
-  "apiCreateUserGroupAndDevice",
+  "testCreateUserGroupAndDevice",
   (userName, group, camera) => {
     logTestDescription(
       `Create user '${userName}' with camera '${camera}' in group '${group}'`,
       { user: userName, group: group, camera: camera }
     );
-    cy.apiCreateUser(userName, false);
-    cy.apiCreateGroup(userName, group, false);
-    cy.apiCreateDevice(camera, group, null, null);
+    cy.apiUserAdd(userName, false);
+    cy.apiGroupAdd(userName, group, false);
+    cy.apiDeviceAdd(camera, group, null, null);
   }
 );
 
-Cypress.Commands.add("apiCreateUserGroup", (userName, group) => {
+Cypress.Commands.add("testCreateUserAndGroup", (userName, group) => {
   logTestDescription(`Create user '${userName}' with group '${group}'`, {
     user: userName,
     group: group,
   });
-  cy.apiCreateUser(userName, false);
-  cy.apiCreateGroup(userName, group, false);
+  cy.apiUserAdd(userName, false);
+  cy.apiGroupAdd(userName, group, false);
 });
 
 Cypress.Commands.add(
-  "apiCreateGroupAndDevices",
+  "testCreateGroupAndDevices",
   (userName, group, ...cameras) => {
     logTestDescription(
       `Create group '${group}' with cameras '${prettyLog(cameras)}'`,
@@ -59,9 +59,9 @@ Cypress.Commands.add(
         cameras,
       }
     );
-    cy.apiCreateGroup(userName, group, false);
+    cy.apiGroupAdd(userName, group, false);
     cameras.forEach((camera) => {
-      cy.apiCreateDevice(camera, group);
+      cy.apiDeviceAdd(camera, group);
     });
   }
 );

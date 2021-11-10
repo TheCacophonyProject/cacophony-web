@@ -1,19 +1,15 @@
 <template>
-  <div class="details simple-accordion-wrapper">
-    <h6 class="simple-accordion-header" @click="show_details = !show_details">
+  <div class="details simple-accordion-wrapper" v-if="trackTag">
+    <h6 class="simple-accordion-header" @click="showDetails = !showDetails">
       Classifier details
-      <span
-        v-if="!show_details"
-        title="Show all result classes"
-        class="pointer"
-      >
+      <span v-if="!showDetails" title="Show all result classes" class="pointer">
         <font-awesome-icon icon="angle-down" class="fa-1x" />
       </span>
-      <span v-if="show_details" title="Hide other results" class="pointer">
+      <span v-if="showDetails" title="Hide other results" class="pointer">
         <font-awesome-icon icon="angle-up" class="fa-1x" />
       </span>
     </h6>
-    <div v-if="show_details">
+    <div v-if="showDetails">
       <p v-if="trackTag.data.model_used">
         <strong>Model:</strong> {{ trackTag.data.model_used }}
       </p>
@@ -30,9 +26,6 @@
 
       <p v-if="trackTag.average_novelty">
         <strong>Novelty:</strong> {{ trackTag.average_novelty }}
-      </p>
-      <p v-if="message">
-        <strong class="title">Message:</strong> {{ message }}
       </p>
       <table class="table table-sm">
         <thead>
@@ -59,16 +52,12 @@ export default {
   props: {
     trackTag: {
       type: Object,
-      required: true,
-    },
-    message: {
-      type: [String, undefined],
-      required: true,
+      required: false,
     },
   },
   data() {
     return {
-      show_details: false,
+      showDetails: false,
     };
   },
 };

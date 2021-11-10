@@ -18,25 +18,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import {
   body,
+  CustomValidator,
+  matchedData,
   oneOf,
   query,
+  Result,
   ValidationChain,
-  ValidationChainBuilder,
   validationResult,
-  ValidatorOptions,
-} from "express-validator/check";
+} from "express-validator";
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
 import log from "../logging";
-import customErrors from "./customErrors";
-import { RequestHandler, Response } from "express";
+import customErrors, { ClientError } from "./customErrors";
+import { NextFunction, Request, RequestHandler, Response } from "express";
+import { IsIntOptions } from "express-validator/src/options";
+import logger from "../logging";
+import { DecodedJWTToken } from "./auth";
+import levenshteinEditDistance from "levenshtein-edit-distance";
 
-const getModelById = function <T>(
+export const getModelByIdChain = <T>(
   modelType: ModelStaticCommon<T>,
   fieldName: string,
   checkFunc
-) {
+) => {
   return checkFunc(fieldName).custom(async (val, { req }) => {
+    logger.info("Get id %s for %s", val, modelTypeName(modelType));
     const model = await modelType.findByPk(val);
     if (model === null) {
       throw new Error(
@@ -48,23 +54,51 @@ const getModelById = function <T>(
   });
 };
 
-const getModelByName = function <T>(
+export const getModelById = <T>(
+  modelType: ModelStaticCommon<T>
+): CustomValidator => {
+  return async (id, { req }) => {
+    logger.info("Get model by id %s for %s", id, modelTypeName(modelType));
+    const item = await modelType.findByPk(id);
+    logger.info("Returned %s", item);
+    if (item === null) {
+      throw new ClientError(
+        `Could not find a ${modelType.name} with an id of ${id}`
+      );
+    }
+    req.body[modelTypeName(modelType)] = item;
+    return true;
+  };
+};
+
+type ValidationMiddleware = (
+  fields?: string | string[] | undefined,
+  message?: any
+) => ValidationChain;
+
+export const getModelByName = function <T>(
   modelType: ModelStaticCommon<T>,
   fieldName: string,
-  checkFunc: ValidationChainBuilder
+  checkFunc: ValidationMiddleware
 ): ValidationChain {
   return checkFunc(fieldName).custom(async (val, { req }) => {
     const model: T = await modelType.getFromName(val);
     if (model === null) {
-      throw new Error(format("Could not find %s of %s.", fieldName, val));
+      await Promise.reject(format("Could not find %s of %s.", fieldName, val));
+      //throw new Error(format("Could not find %s of %s.", fieldName, val));
     }
     req.body[modelTypeName(modelType)] = model;
+    logger.info(
+      "req.body.%s = %s",
+      modelTypeName(modelType),
+      JSON.stringify(req.body[modelTypeName(modelType)])
+    );
     return true;
   });
 };
 
-const getUserByEmail = function (
-  checkFunc: ValidationChainBuilder,
+export const getUserByEmail = function (
+  checkFunc: ValidationMiddleware,
   fieldName: string = "email"
 ): ValidationChain {
   return checkFunc(fieldName)
@@ -80,8 +114,12 @@ const getUserByEmail = function (
     });
 };
 
-function modelTypeName(modelType: ModelStaticCommon<any>): string {
+export function modelTypeName(modelType: ModelStaticCommon<any>): string {
   return modelType.options.name.singular.toLowerCase();
+}
+
+export function modelTypeNamePlural(modelType: ModelStaticCommon<any>): string {
+  return modelType.options.name.plural.toLowerCase();
 }
 
 const ID_OR_ID_ARRAY_REGEXP = /^\[[0-9,]+\]$|^[0-9]+$/;
@@ -94,7 +132,7 @@ export const toIdArray = function (fieldName: string): ValidationChain {
     .customSanitizer((value) => convertToIdArray(value));
 };
 
-const convertToIdArray = function (idsAsString: string): number[] {
+export const convertToIdArray = function (idsAsString: string): number[] {
   if (idsAsString) {
     try {
       const val = JSON.parse(idsAsString);
@@ -112,7 +150,7 @@ const convertToIdArray = function (idsAsString: string): number[] {
 
 export const isInteger = function (
   fieldName: string,
-  range: ValidatorOptions.IsIntOptions
+  range: IsIntOptions
 ): ValidationChain {
   // add an actually useful error to this isInt check
   const error = `Parameter '${fieldName}' must be an integer between ${range.min} and ${range.max}`;
@@ -127,9 +165,8 @@ export const toDate = function (fieldName: string): ValidationChain {
     .isInt();
 };
 
-const getAsDate = function (dateAsString: string): number {
+export const getAsDate = function (dateAsString: string): number {
   try {
-    console.log("date is " + dateAsString);
     return Date.parse(dateAsString);
   } catch (error) {
     return NaN;
@@ -139,7 +176,10 @@ const getAsDate = function (dateAsString: string): number {
 const DATE_ERROR =
   "Must be a date or timestamp.   For example, '2017-11-13' or '2017-11-13T00:47:51.160Z'.";
 
-const isDateArray = function (fieldName: string, customError): ValidationChain {
+export const isDateArray = function (
+  fieldName: string,
+  customError
+): ValidationChain {
   return body(fieldName, customError)
     .exists()
     .custom((value) => {
@@ -161,68 +201,74 @@ const isDateArray = function (fieldName: string, customError): ValidationChain {
     });
 };
 
-function getUserById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.User, "userId", checkFunc);
+export function getUserById(checkFunc: ValidationMiddleware): ValidationChain {
+  return getModelByIdChain(models.User, "userId", checkFunc);
 }
 
-function getUserByName(
-  checkFunc: ValidationChainBuilder,
+export function getUserByName(
+  checkFunc: ValidationMiddleware,
   fieldName: string = "username"
 ): ValidationChain {
   return getModelByName(models.User, fieldName, checkFunc);
 }
 
-function getUserByNameOrId(checkFunc: ValidationChainBuilder): RequestHandler {
+export function getUserByNameOrId(
+  checkFunc: ValidationMiddleware
+): RequestHandler {
   return oneOf(
     [getUserByName(checkFunc), getUserById(checkFunc)],
     "User doesn't exist or was not specified"
   );
 }
 
-function getGroupById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.Group, "groupId", checkFunc);
+export function getGroupById(checkFunc: ValidationMiddleware): ValidationChain {
+  return getModelByIdChain(models.Group, "groupId", checkFunc);
 }
 
-function getGroupByName(
-  checkFunc: ValidationChainBuilder,
+export function getGroupByName(
+  checkFunc: ValidationMiddleware,
   fieldName: string = "group"
 ) {
   return getModelByName(models.Group, fieldName, checkFunc);
 }
 
-function getGroupByNameOrId(checkFunc: ValidationChainBuilder): RequestHandler {
+export function getGroupByNameOrId(
+  checkFunc: ValidationMiddleware
+): RequestHandler {
   return oneOf(
     [getGroupById(checkFunc), getGroupByName(checkFunc)],
     "Group doesn't exist or hasn't been specified."
   );
 }
 
-function getGroupByNameOrIdDynamic(
-  checkFunc: ValidationChainBuilder,
+export function getGroupByNameOrIdDynamic(
+  checkFunc: ValidationMiddleware,
   fieldName: string
 ): RequestHandler {
   return oneOf(
     [
-      getModelById(models.Group, fieldName, checkFunc),
+      getModelByIdChain(models.Group, fieldName, checkFunc),
       getModelByName(models.Group, fieldName, checkFunc),
     ],
     "Group doesn't exist or hasn't been specified."
   );
 }
 
-function getDeviceById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.Device, "deviceId", checkFunc);
+export function getDeviceById(
+  checkFunc: ValidationMiddleware
+): ValidationChain {
+  return getModelByIdChain(models.Device, "deviceId", checkFunc);
 }
 
-function setGroupName(checkFunc: ValidationChainBuilder): ValidationChain {
+export function setGroupName(checkFunc: ValidationMiddleware): ValidationChain {
   return checkFunc("groupname").custom(async (value, { req }) => {
     req.body["groupname"] = value;
     return true;
   });
 }
 
-function getDevice(
-  checkFunc: ValidationChainBuilder,
+export function getDevice(
+  checkFunc: ValidationMiddleware,
   paramName: string = "devicename"
 ) {
   return checkFunc(paramName).custom(async (deviceName, { req }) => {
@@ -245,23 +291,24 @@ function getDevice(
   });
 }
 
-function getDetailSnapshotById(
-  checkFunc: ValidationChainBuilder,
+export const getDetailSnapshotById = (
+  checkFunc: ValidationMiddleware,
   paramName: string
-): ValidationChain {
-  return getModelById(models.DetailSnapshot, paramName, checkFunc);
-}
+): ValidationChain =>
+  getModelByIdChain(models.DetailSnapshot, paramName, checkFunc);
 
-function getFileById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.File, "id", checkFunc);
-}
+export const getFileById = (checkFunc: ValidationMiddleware): ValidationChain =>
+  getModelByIdChain(models.File, "id", checkFunc);
 
-function getRecordingById(checkFunc: ValidationChainBuilder): ValidationChain {
-  return getModelById(models.Recording, "id", checkFunc);
-}
+export const getRecordingByIdChain = (
+  checkFunc: ValidationMiddleware
+): ValidationChain => getModelByIdChain(models.Recording, "id", checkFunc);
 
-const isValidName = function (
-  checkFunc: ValidationChainBuilder,
+export const getRecordingById = (): CustomValidator =>
+  getModelById(models.Recording);
+
+export const isValidName = function (
+  checkFunc: ValidationMiddleware,
   field: string
 ): ValidationChain {
   return checkFunc(
@@ -272,13 +319,28 @@ const isValidName = function (
     .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/);
 };
 
-const checkNewPassword = function (field: string): ValidationChain {
+export const isValidName2 = (val) =>
+  val
+    .isLength({ min: 3 })
+    .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
+    .withMessage(
+      "password must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter"
+    );
+
+export const checkNewPassword = function (field: string): ValidationChain {
   return body(field, "Password must be at least 8 characters long").isLength({
     min: 8,
   });
 };
 
-const viewMode = function (): ValidationChain {
+export const checkNewPassword2 = (val) =>
+  val
+    .isLength({
+      min: 8,
+    })
+    .withMessage("Password must be at least 8 characters long");
+
+export const viewMode = function (): ValidationChain {
   // All api listing commands will automatically return all results if the user is a super-admin
   // There is now an optional "view-mode" query param to these APIs, which, if set to "user",
   // will restrict results to items only directly viewable by the super-admin user.
@@ -297,27 +359,29 @@ const viewMode = function (): ValidationChain {
  * @param field The field in the JSON object to get
  * @param checkFunc The express-validator function, typically `body` or `query`
  */
-const parseJSON = function (
+export const parseJSON = function (
   field: string,
-  checkFunc: ValidationChainBuilder
+  checkFunc: ValidationMiddleware
 ): ValidationChain {
-  return checkFunc(field).custom((value, { req, location, path }) => {
-    if (typeof req[location][path] === "string") {
-      let result = value;
-      while (typeof result === "string") {
-        try {
-          result = JSON.parse(result);
-        } catch (e) {
-          throw new Error(format("Could not parse JSON field %s.", path));
-        }
+  return checkFunc(field).custom(parseJSONInternal);
+};
+
+export const parseJSONInternal = (value, { req, location, path }) => {
+  if (typeof req[location][path] === "string") {
+    let result = value;
+    while (typeof result === "string") {
+      try {
+        result = JSON.parse(result);
+      } catch (e) {
+        throw new Error(format("Could not parse JSON field %s.", path));
       }
-      if (typeof result !== "object") {
-        throw new Error(format("JSON field %s is not an object", path));
-      }
-      req[location][path] = result;
     }
-    return req[location][path] !== undefined;
-  });
+    if (typeof result !== "object") {
+      throw new Error(format("JSON field %s is not an object", path));
+    }
+    req[location][path] = result;
+  }
+  return req[location][path] !== undefined;
 };
 
 /**
@@ -330,9 +394,9 @@ const parseJSON = function (
  * @param field The field in the JSON object to get
  * @param checkFunc The express-validator function, typically `body` or `query`
  */
-const parseArray = function (
+export const parseArray = function (
   field: string,
-  checkFunc: ValidationChainBuilder
+  checkFunc: ValidationMiddleware
 ): ValidationChain {
   return checkFunc(field).custom((value, { req, location, path }) => {
     if (Array.isArray(value)) {
@@ -356,14 +420,14 @@ const parseArray = function (
   });
 };
 
-const parseBool = function (value: any): boolean {
+export const parseBool = function (value: any): boolean {
   if (!value) {
     return false;
   }
   return value.toString().toLowerCase() == "true";
 };
 
-const requestWrapper = (fn) => (request, response: Response, next) => {
+export const requestWrapper = (fn) => (request, response: Response, next) => {
   let logMessage = format("%s %s", request.method, request.url);
   if (request.user) {
     logMessage = format(
@@ -381,10 +445,202 @@ const requestWrapper = (fn) => (request, response: Response, next) => {
   log.info(logMessage);
   const validationErrors = validationResult(request);
   if (!validationErrors.isEmpty()) {
+    log.warning(
+      "%s",
+      validationErrors
+        .array()
+        .map((item) => JSON.stringify(item))
+        .join(", ")
+    );
     throw new customErrors.ValidationError(validationErrors);
   } else {
     Promise.resolve(fn(request, response, next)).catch(next);
   }
+};
+
+export const asArray = (options?: { min?: number; max?: number }) => (val) => {
+  if (typeof val === "string") {
+    try {
+      val = JSON.parse(val);
+    } catch (e) {
+      throw new ClientError("Expected array of strings");
+    }
+  }
+  if (options) {
+    if (options.min && val.length < options.min) {
+      throw new ClientError(`Expected at least ${options.min} array elements`);
+    }
+    if (options.max && val.length > options.max) {
+      throw new ClientError(`Expected at most ${options.max} array elements`);
+    }
+  }
+  if (Array.isArray(val)) {
+    return true;
+  } else {
+    throw new ClientError("Expected array");
+  }
+};
+
+export const expectedTypeOf =
+  (...type: string[]) =>
+  (val) => {
+    let typeOf = typeof val as string;
+    if (typeOf === "object" && Array.isArray(val)) {
+      typeOf = "array";
+    }
+    if (type.length > 1) {
+      return `expected one of ${(type as string[])
+        .map((t) => `'${t}'`)
+        .join(", ")}, got ${typeOf}`;
+    }
+    return `expected ${type[0]}, got ${typeOf} : (${val})`;
+  };
+
+export const isIntArray = (val) => {
+  if (Array.isArray(val)) {
+    return !(val as string[]).some(
+      (v) => isNaN(parseInt(v)) || parseInt(v).toString() !== String(v)
+    );
+  }
+  return !(isNaN(parseInt(val)) || parseInt(val).toString() !== String(val));
+};
+
+const checkForUnknownFields = (
+  validators,
+  req: Request
+): { unknownFields: string[]; suggestions: Record<string, string> } => {
+  const allowedFieldsKnown = validators.reduce((fields, rule) => {
+    if (rule.fieldNames) {
+      fields.push(...rule.fieldNames);
+    } else if (rule.builder) {
+      for (const field of rule.builder.fields) {
+        fields.push(field);
+      }
+    }
+    return fields;
+  }, []);
+  const matchedAllowedFields = Object.keys(
+    matchedData(req, { onlyValidData: false, includeOptionals: true })
+  );
+  const allowed = new Set();
+  for (const field of allowedFieldsKnown) {
+    allowed.add(field);
+  }
+  for (const field of matchedAllowedFields) {
+    allowed.add(field);
+  }
+  const allowedFields: string[] = Array.from(
+    allowed.keys()
+  ) as unknown as string[];
+
+  // Check for all common request inputs
+  const requestInput = { ...req.query, ...req.params, ...req.body };
+  const requestFields = Object.keys(requestInput);
+  const unusedAllowedFields = allowedFields.filter(
+    (field) => !requestFields.includes(field)
+  );
+  const unknownFields = requestFields.filter(
+    (item) => !allowedFields.includes(item)
+  );
+  const suggestions = {};
+  if (unusedAllowedFields.length && unknownFields.length) {
+    // We have unused allowed fields, see if any of our unknown fields is potentially a typo
+    // of an allowed field.
+    for (const unknownField of unknownFields) {
+      let bestDistance = 3;
+      for (const unusedField of unusedAllowedFields) {
+        const distance = levenshteinEditDistance(
+          unknownField,
+          unusedField,
+          true
+        );
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          suggestions[unknownField] = unusedField;
+        }
+      }
+    }
+  }
+  return { unknownFields, suggestions };
+};
+
+// sequential processing, stops running validations chain if the previous one have failed.
+export const validateFields = (
+  validations: (
+    | (((req: Request, res: any, next: (err?: any) => void) => void) & {
+        run: (req: Request) => Promise<Result>;
+      })
+    | ValidationChain
+  )[],
+  sequentially: boolean = false
+) => {
+  return async (request: Request, response: Response, next: NextFunction) => {
+    if (sequentially) {
+      for (const validation of validations) {
+        const result = await validation.run(request);
+        if (!result.isEmpty()) {
+          break;
+        }
+      }
+    } else {
+      // FIXME - Properly handle nested anyOf groupings.
+      const validationPromises = [];
+      for (const validation of validations) {
+        validationPromises.push(validation.run(request));
+      }
+      await Promise.all(validationPromises);
+    }
+
+    const { unknownFields, suggestions } = checkForUnknownFields(
+      validations,
+      request
+    );
+    if (unknownFields.length) {
+      return next(
+        new ClientError(
+          `Unknown fields found: ${unknownFields
+            .map((item) => {
+              let field = `'${item}'`;
+              if (suggestions[item]) {
+                field += ` - did you mean '${suggestions[item]}'?`;
+              }
+              return field;
+            })
+            .join(", ")}`,
+          422
+        )
+      );
+    }
+
+    {
+      const logMessage = format("%s %s", request.method, request.url);
+      const requester =
+        response.locals.token &&
+        (response.locals.token as DecodedJWTToken)._type;
+      const requestId =
+        (response.locals.user && response.locals.user.username) ||
+        (response.locals.device && response.locals.device.devicename) ||
+        (requester && (response.locals.token as DecodedJWTToken).id) ||
+        "unknown";
+
+      // TODO: At this point *if* we have errors, we may want to lookup the username or devicename?
+
+      log.info(
+        "%s (%s: %s%s)",
+        logMessage,
+        requester || "unauthenticated",
+        requestId,
+        response.locals.viewAsSuperUser ? "::SUPER_USER" : ""
+      );
+      const validationErrors = validationResult(request);
+      // log.info("Validation errors %s", validationErrors);
+      if (!validationErrors.isEmpty()) {
+        return next(new customErrors.ValidationError(validationErrors));
+      } else {
+        return next();
+      }
+    }
+  };
 };
 
 export default {
@@ -399,9 +655,11 @@ export default {
   getDevice,
   getDetailSnapshotById,
   getFileById,
-  getRecordingById,
+  getRecordingById: getRecordingByIdChain,
   isValidName,
+  isValidName2,
   checkNewPassword,
+  checkNewPassword2,
   parseJSON,
   parseArray,
   parseBool,
@@ -410,4 +668,6 @@ export default {
   getUserByEmail,
   setGroupName,
   viewMode,
+  validateSequentially: validateFields,
+  typeError: expectedTypeOf,
 };

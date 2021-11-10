@@ -18,37 +18,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import _ from "lodash";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { User, UserId } from "./User";
+import { User } from "./User";
 import Sequelize from "sequelize";
 import util from "./util/util";
 import {
-  RecordingId as RecordingIdAlias,
-  RecordingPermission,
-} from "./Recording";
+  ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
+} from "@typedefs/api/tag";
+import { TagId } from "@typedefs/api/common";
+import { RecordingPermission, AcceptableTag } from "@typedefs/api/consts";
 
-export type TagId = number;
-export interface Tag extends Sequelize.Model, ModelCommon<Tag> {
-  RecordingId: RecordingIdAlias;
-  taggerId: UserId;
-  id: TagId;
-}
+export interface Tag
+  extends ApiRecordingTagResponse,
+    Sequelize.Model,
+    ModelCommon<Tag> {}
 
 export interface TagStatic extends ModelStaticCommon<Tag> {
-  buildSafely: (fields: Record<string, any>) => Tag;
+  buildSafely: (fields: ApiRecordingTagRequest) => Tag;
   getFromId: (id: TagId, user: User, attributes: any) => Promise<Tag>;
   userGetAttributes: readonly string[];
   acceptableTags: Set<AcceptableTag>;
   deleteFromId: (id: TagId, user: User) => Promise<boolean>;
-}
-
-export enum AcceptableTag {
-  Cool = "cool",
-  RequiresReview = "requires review",
-  InteractionWithTrap = "interaction with trap",
-  MissedTrack = "missed track",
-  MultipleAnimals = "multiple animals",
-  TrappedInTrap = "trapped in trap",
-  MissedRecording = "missed recording",
 }
 
 export const AcceptableTags = new Set(Object.values(AcceptableTag));
@@ -94,7 +84,7 @@ export default function (sequelize, DataTypes): TagStatic {
   //---------------
   const Recording = sequelize.models.Recording;
 
-  Tag.buildSafely = function (fields) {
+  Tag.buildSafely = function (fields: ApiRecordingTagRequest) {
     return Tag.build(_.pick(fields, Tag.apiSettableFields));
   };
 
@@ -111,11 +101,12 @@ export default function (sequelize, DataTypes): TagStatic {
     return util.deleteModelInstance(id, user);
   };
 
-  Tag.deleteFromId = async function (id, user) {
-    const tag = await this.findOne({ where: { id: id } });
+  Tag.deleteFromId = async function (id: TagId, user: User) {
+    const tag = await this.findByPk(id);
     if (tag == null) {
       return true;
     }
+    // FIXME - How about we validate *before* we get the resource?
     const recording = await Recording.get(
       user,
       tag.RecordingId,

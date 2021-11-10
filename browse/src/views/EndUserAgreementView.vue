@@ -37,13 +37,13 @@
                 target="_blank"
                 href="https://www.2040.co.nz/pages/2040-end-user-agreement"
               >
-                end user agreement
+                end&nbsp;user&nbsp;agreement
               </a>
             </b-form-checkbox>
           </b-form-group>
 
           <b-button
-            :disabled="inputEndUserAgreement != 'accepted'"
+            :disabled="inputEndUserAgreement !== 'accepted'"
             type="submit"
             variant="primary"
             class="btn-block"

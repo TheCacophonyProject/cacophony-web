@@ -16,40 +16,104 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
-import models from "../../models";
+import { validateFields } from "../middleware";
+import models from "@models";
 import responseUtil from "./responseUtil";
-import { body, param, query } from "express-validator/check";
-import { Application } from "express";
-import { Validator } from "jsonschema";
+import { body, param, query } from "express-validator";
+import { Application, NextFunction, Request, Response } from "express";
+import {
+  parseJSONField,
+  extractJwtAuthorizedUser,
+  fetchUnauthorizedOptionalGroupByNameOrId,
+  fetchAuthorizedRequiredGroupByNameOrId,
+  fetchAdminAuthorizedRequiredGroupByNameOrId,
+  fetchUnauthorizedRequiredUserByNameOrId,
+  fetchAuthorizedRequiredDevicesInGroup,
+  fetchAuthorizedRequiredGroups,
+} from "../extract-middleware";
+import { arrayOf, jsonSchemaOf } from "../schema-validation";
+import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
+import {
+  booleanOf,
+  anyOf,
+  idOf,
+  nameOf,
+  nameOrIdOf,
+  validNameOf,
+  deprecatedField,
+} from "../validation-middleware";
+import { ClientError } from "../customErrors";
+import { mapDevicesResponse } from "./Device";
+import { Group } from "models/Group";
+import {
+  ApiGroupResponse,
+  ApiGroupUserRelationshipResponse,
+} from "@typedefs/api/group";
+import { ApiDeviceResponse } from "@typedefs/api/device";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {
+  ApiCreateStationData,
+  ApiCreateStationResponse,
+  ApiStationResponse,
+} from "@typedefs/api/station";
 
-const JsonSchema = new Validator();
-
-const validateStationsJson = (val, { req }) => {
-  const stations = JSON.parse(val);
-
-  // Validate json schema of input:
-  JsonSchema.validate(
-    stations,
-    {
-      type: "array",
-      minItems: 1,
-      uniqueItems: true,
-      items: {
-        properties: {
-          name: { type: "string" },
-          lat: { type: "number" },
-          lng: { type: "number" },
-        },
-        required: ["name", "lat", "lng"],
-      },
-    },
-    { throwFirst: true }
-  );
-  req.body.stations = stations;
-  return true;
+const mapGroup = (
+  group: Group,
+  viewAsSuperAdmin: boolean
+): ApiGroupResponse => {
+  const groupData: ApiGroupResponse = {
+    id: group.id,
+    groupName: group.groupname,
+    admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
+  };
+  if (group.lastRecordingTime) {
+    groupData.lastRecordingTime = group.lastRecordingTime.toISOString();
+  }
+  return groupData;
 };
+
+export const mapLegacyGroupsResponse = (groups: ApiGroupResponse[]) =>
+  groups.map(({ groupName, ...rest }) => ({
+    groupname: groupName,
+    groupName,
+    ...rest,
+  }));
+
+const mapGroups = (
+  groups: Group[],
+  viewAsSuperAdmin: boolean
+): ApiGroupResponse[] =>
+  groups.map((group) => mapGroup(group, viewAsSuperAdmin));
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupsResponseSuccess {
+  groups: ApiGroupResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupResponseSuccess {
+  group: ApiGroupResponse;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupUsersResponseSuccess {
+  users: ApiGroupUserRelationshipResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupDevicesResponseSuccess {
+  devices: ApiDeviceResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiCreateStationDataBody {
+  stations: ApiCreateStationData[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiStationResponseSuccess {
+  stations: ApiStationResponse[];
+}
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
@@ -63,7 +127,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} groupname Unique group name.
+   * @apiParam {String} groupName Unique group name.
    *
    * @apiUse V1ResponseSuccess
    *
@@ -71,23 +135,30 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware.isValidName(body, "groupname").custom((value) => {
-        return models.Group.freeGroupname(value);
-      }),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    extractJwtAuthorizedUser,
+    validateFields([
+      anyOf(validNameOf(body("groupname")), validNameOf(body("groupName"))),
+    ]),
+    fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (response.locals.group) {
+        return next(new ClientError("Group name in use", 422));
+      }
+      next();
+    },
+    async (request: Request, response: Response) => {
       const newGroup = await models.Group.create({
-        groupname: request.body.groupname,
+        groupname: request.body.groupname || request.body.groupName,
       });
-      await newGroup.addUser(request.user.id, { through: { admin: true } });
+      await newGroup.addUser(response.locals.requestUser.id, {
+        through: { admin: true },
+      });
       return responseUtil.send(response, {
         statusCode: 200,
         groupId: newGroup.id,
         messages: ["Created new group."],
       });
-    })
+    }
   );
 
   /**
@@ -97,69 +168,82 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {JSON} where [Sequelize where conditions](http://docs.sequelizejs.com/manual/tutorial/querying.html#where) for query.
-   *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Groups[]} groups Array of groups
-   *
+   * @apiInterface {apiSuccess::ApiGroupsResponseSuccess}
+   * @apiSuccessExample {JSON} ApiGroup[]:
+   * [{
+   *   "id": 1;
+   *   "groupName": "My group",
+   *   "lastRecordingTime": "2021-11-09T02:22:57.777Z",
+   *   "admin": false
+   * }]
    * @apiUse V1ResponseError
    */
   app.get(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware.parseJSON("where", query).optional(),
-      middleware.viewMode(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const groups = await models.Group.query(
-        request.query.where || {},
-        request.user,
-        request.body.viewAsSuperAdmin
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      deprecatedField(query("where")), // Sidekick
+    ]),
+    fetchAuthorizedRequiredGroups,
+    async (request: Request, response: Response) => {
+      let groups: ApiGroupResponse[] = mapGroups(
+        response.locals.groups,
+        response.locals.viewAsSuperUser
       );
+      if (request.headers["user-agent"].includes("okhttp")) {
+        // Sidekick UA
+        groups = mapLegacyGroupsResponse(groups);
+      }
+
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: [],
+        messages: [], // FIXME - handle deprecated field.
         groups,
       });
-    })
+    }
   );
 
   /**
-   * @api {get} /api/v1/groups/{groupNameOrId} Get a group by name or id
+   * @api {get} /api/v1/groups/:groupNameOrId Get a group by name or id
    * @apiName GetGroup
    * @apiGroup Group
+   * @apiDescription A group member or an admin member with globalRead permissions can view details of a group.
+   *
+   * @apiParam {Number|String} groupIdOrName group id or group name
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Group} groups Array of groups (but should only contain one item)
-   *
+   * @apiInterface {apiSuccess::ApiGroupResponseSuccess}
+   * @apiSuccessExample {JSON} ApiGroup:
+   * {
+   *   "id": 1;
+   *   "groupName": "My group",
+   *   "lastRecordingTime": "2021-11-09T02:22:57.777Z",
+   *   "admin": false
+   * }
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:groupIdOrName`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      middleware.viewMode(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const groups = await models.Group.query(
-        { id: request.body.group.id },
-        request.user,
-        request.viewAsSuperAdmin
-      );
+    extractJwtAuthorizedUser,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        groups,
+        group: mapGroup(response.locals.group, response.locals.viewAsSuperUser),
       });
-    })
+    }
   );
-
   /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/devices Retrieves all active devices for a group.
+   * @api {get} /api/v1/groups/:groupIdOrName/devices Retrieves all devices for a group (only active devices by default).
    * @apiName GetDevicesForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view devices that belong
@@ -167,36 +251,40 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} group name or group id
+   * @apiParam {String|Integer} groupIdOrName group id or group name
    *
    * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiGroupDevicesResponseSuccess} devices List of devices associated with the group
+   * @apiUse DevicesList
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:groupIdOrName/devices`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const devices = await request.body.group.getDevices({
-        where: { active: true },
-        attributes: ["id", "devicename"],
-      });
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      nameOrIdOf(param("groupIdOrName")),
+      anyOf(
+        query("onlyActive").optional().isBoolean().toBoolean(),
+        query("only-active").optional().isBoolean().toBoolean()
+      ),
+    ]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    fetchAuthorizedRequiredDevicesInGroup(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
       return responseUtil.send(response, {
         statusCode: 200,
-        devices: devices.map(({ id, devicename }) => ({
-          id,
-          deviceName: devicename,
-        })),
+        devices: mapDevicesResponse(
+          response.locals.devices,
+          response.locals.viewAsSuperUser
+        ),
         messages: ["Got devices for group"],
       });
-    })
+    }
   );
 
   /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/users Retrieves all users for a group.
+   * @api {get} /api/v1/groups/:groupIdOrName/users Retrieves all users for a group.
    * @apiName GetUsersForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view users that belong
@@ -204,20 +292,30 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} group name or group id
+   * @apiParam {Integer|String} groupIdOrName group id or group name
    *
    * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiGroupUsersResponseSuccess} users List of users associated with the group
    * @apiUse V1ResponseError
+   * @apiSuccessExample {JSON} ApiGroupUser:
+   * {
+   *  "id": 456,
+   *  "userName": "user name",
+   *  "admin": true
+   * }
+   *
    */
   app.get(
     `${apiUrl}/:groupIdOrName/users`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const users = await request.body.group.getUsers({
+    extractJwtAuthorizedUser,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      query("view-mode").optional().equals("user"),
+    ]),
+    // FIXME - should this be only visible to group admins?
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
+      const users = await response.locals.group.getUsers({
         attributes: ["id", "username"],
       });
       return responseUtil.send(response, {
@@ -225,87 +323,62 @@ export default function (app: Application, baseUrl: string) {
         users: users.map(({ username, id, GroupUsers }) => ({
           userName: username,
           id,
-          isGroupAdmin: GroupUsers.admin,
+          admin: GroupUsers.admin,
         })),
         messages: ["Got users for group"],
       });
-    })
-  );
-
-  /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/users Retrieves all users for a group.
-   * @apiName GetUsersForGroup
-   * @apiGroup Group
-   * @apiDescription A group member or an admin member with globalRead permissions can view users that belong
-   * to a group.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Number|String} group name or group id
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:groupIdOrName/users`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const users = await request.body.group.getUsers({
-        attributes: ["id", "username"],
-      });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        users: users.map(({ username, id, GroupUsers }) => ({
-          userName: username,
-          id,
-          isGroupAdmin: GroupUsers.admin,
-        })),
-        messages: ["Got users for group"],
-      });
-    })
+    }
   );
 
   /**
    * @api {post} /api/v1/groups/users Add a user to a group.
    * @apiName AddUserToGroup
    * @apiGroup Group
-   * @apiDescription This call can add a user to a group. Has to be authenticated
+   * @apiDescription This call can add a user to a group. It must to be authenticated
    * by an admin from the group or a user with global write permission. It can also be used to update the
    * admin status of a user for the group by setting admin to true or false.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} group name of the group.
-   * @apiParam {Number} username name of the user to add to the grouop.
-   * @apiParam {Boolean} admin If the user should be an admin for the group.
+   * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
+   * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
+   * @apiBody {String} userName name of the user to add to the group.
+   * @apiBody {Boolean} admin If the user should be an admin for the group.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
+
+  // TODO(jon): Would be nicer as /api/v1/groups/:groupName/users or something
   app.post(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrId(body),
-      middleware.getUserByNameOrId(body),
-      body("admin").isBoolean(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      await models.Group.addUserToGroup(
-        request.user,
-        request.body.group,
-        request.body.user,
+    extractJwtAuthorizedUser,
+    validateFields([
+      anyOf(nameOf(body("group")), idOf(body("groupId"))),
+      anyOf(
+        nameOf(body("username")),
+        nameOf(body("userName")),
+        idOf(body("userId"))
+      ),
+      booleanOf(body("admin")),
+    ]),
+    // Extract required resources to validate permissions.
+    fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
+    // Extract secondary resource
+    fetchUnauthorizedRequiredUserByNameOrId(
+      body(["username", "userName", "userId"])
+    ),
+    async (request, response) => {
+      const action = await models.Group.addUserToGroup(
+        response.locals.group,
+        response.locals.user,
         request.body.admin
       );
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Added user to group."],
+        messages: [action],
       });
-    })
+    }
   );
   /**
    * @api {delete} /api/v1/groups/users Removes a user from a group.
@@ -316,76 +389,106 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} group name of the group.
-   * @apiParam {Number} username username of user to remove from the grouop.
+   * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
+   * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
+   * @apiBody {String} [userName] name of the user to remove from the group (either 'userName' or 'userId' must be specified).
+   * @apiBody {Integer} [userId] id of the user to remove from the group (either 'userName' or 'userId' must be specified).
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
   app.delete(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getUserByNameOrId(body),
-      middleware.getGroupByNameOrId(body),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      await models.Group.removeUserFromGroup(
-        request.user,
-        request.body.group,
-        request.body.user
+    extractJwtAuthorizedUser,
+    validateFields([
+      anyOf(nameOf(body("group")), idOf(body("groupId"))),
+      anyOf(
+        nameOf(body("username")),
+        nameOf(body("userName")),
+        idOf(body("userId"))
+      ),
+    ]),
+    // Extract required resources to check permissions
+    fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
+    // Extract secondary resource
+    fetchUnauthorizedRequiredUserByNameOrId(
+      body(["username", "userName", "userId"])
+    ),
+    async (request, response) => {
+      const removed = await models.Group.removeUserFromGroup(
+        response.locals.group,
+        response.locals.user
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Removed user from the group."],
-      });
-    })
+      if (removed) {
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Removed user from the group."],
+        });
+      } else {
+        return responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["Failed to remove user from the group."],
+        });
+      }
+    }
   );
 
   /**
-   * @api {post} /api/v1/groups/{groupIdOrName}/stations Add, Update and retire current stations belonging to group
+   * @api {post} /api/v1/groups/:groupIdOrName/stations Add, Update and retire current stations belonging to group
    * @apiName PostStationsForGroup
    * @apiGroup Group
    * @apiDescription A group admin or an admin with globalWrite permissions can update stations for a group.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} group name or group id
-   * @apiParam {JSON} Json array of {name: string, lat: number, lng: number}
+   * @apiParam {Integer|String} groupNameOrId group name or group id
+   * @apiInterface {apiBody::ApiCreateStationDataBody} stations Json array of ApiStation[]
+   * @apiParam {Date} [fromDate] Start date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParamExample {json} ApiStation:
+   * {
+   *   name: "Station Name",
+   *   lat: -45.1,
+   *   lng: 172.0
+   * }
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Integer[]} stationIdsAddedOrUpdated Array of Identifiers of stations added or updated.
+   * @apiInterface {apiSuccess::ApiCreateStationsResponse}
+   * @apiSuccess {string} warnings Warnings showing data validation rule breaches for the applied stations.
    * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/:groupIdOrName/stations`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasWriteAccessToGroup,
+    extractJwtAuthorizedUser,
+    validateFields([
       body("stations")
         .exists()
-        .isJSON()
-        .withMessage("Expected JSON array")
-        .custom(validateStationsJson),
+        .custom(jsonSchemaOf(arrayOf(ApiCreateStationDataSchema))),
       body("fromDate").isISO8601().toDate().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+      nameOrIdOf(param("groupIdOrName")),
+    ]),
+    // Extract required resources
+    fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    // Extract further non-dependent resources:
+    parseJSONField(body("stations")),
+    async (request, response) => {
       const stationsUpdated = await models.Group.addStationsToGroup(
-        request.user,
-        request.body.group,
-        request.body.stations,
+        response.locals.requestUser.id,
+        response.locals.group,
+        response.locals.stations,
         request.body.fromDate
       );
+      // FIXME - validate/formalize return type.
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Added stations to group."],
         ...stationsUpdated,
       });
-    })
+    }
   );
 
   /**
-   * @api {get} /api/v1/groups/{groupIdOrName}/stations Retrieves all stations from a group, including retired ones.
+   * @api {get} /api/v1/groups/:groupIdOrName/stations Retrieves all stations from a group, including retired ones.
    * @apiName GetStationsForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view stations that belong
@@ -393,25 +496,39 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number|String} group name or group id
+   * @apiParam {Integer|String} groupIdOrName Group name or group id
    *
    * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations Array of ApiStationDetail[] showing details of stations in group
+   * @apiSuccessExample {JSON} ApiStationDetail:
+   * [{
+   *   "groupId": 1338,
+   *   "createdAt": "2021-08-27T21:04:35.851Z",
+   *   "id": 415,
+   *   "lastUpdatedById": 2069,
+   *   "location":  {
+   *     "type": 'Point',
+   *     "coordinates": [ -45.0, 172.9 ] // Note: these coordinates are currently reversed (Issue 73).
+   *   },
+   *   "name": "station1",
+   *   "retiredAt": null,
+   *   "updatedAt": "2021-08-27T21:04:35.855Z"
+   * }]
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:groupIdOrName/stations`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      auth.userHasReadAccessToGroup,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const stations = await request.body.group.getStations();
+    extractJwtAuthorizedUser,
+    validateFields([nameOrIdOf(param("groupIdOrName"))]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
+      // FIXME - A flag to only get non-retired stations?
+      const stations = await response.locals.group.getStations();
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got stations for group"],
         stations,
       });
-    })
+    }
   );
 }

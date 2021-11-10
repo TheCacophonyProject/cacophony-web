@@ -13,7 +13,7 @@
 // The matching subsets create total of 10 words out of 12 this makes for a match of
 // 100 * 10/12 = 84%
 
-import { Event } from "../../models/Event";
+import { Event } from "@models/Event";
 
 // minimum number of words in a substring to be considered a match
 const MIN_MATCH_LENGTH = 3;

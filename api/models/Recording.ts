@@ -24,41 +24,41 @@ import { v4 as uuidv4 } from "uuid";
 import config from "../config";
 import util from "./util/util";
 import validation from "./util/validation";
-import { AuthorizationError } from "../api/customErrors";
+import { AuthorizationError } from "@api/customErrors";
 import _ from "lodash";
 import { User } from "./User";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { AcceptableTag, TagStatic } from "./Tag";
-import {
-  Device,
-  DeviceId,
-  DeviceId as DeviceIdAlias,
-  DeviceStatic,
-} from "./Device";
-import { GroupId as GroupIdAlias, Group } from "./Group";
-import { Track, TrackId } from "./Track";
+import { TagStatic } from "./Tag";
+import { Device, DeviceStatic } from "./Device";
+import { Group } from "./Group";
+import { Track } from "./Track";
 import { Tag } from "./Tag";
 
 import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
-import { Station, StationId } from "./Station";
-import { tryToMatchRecordingToStation } from "../api/V1/recordingUtil";
+import { Station } from "./Station";
+import {
+  mapPositions,
+  tryToMatchRecordingToStation,
+} from "@api/V1/recordingUtil";
+import {
+  GroupId,
+  RecordingId,
+  UserId,
+  TrackId,
+  DeviceId,
+  StationId,
+} from "@typedefs/api/common";
+import {
+  RecordingPermission,
+  RecordingProcessingState,
+  RecordingType,
+  TagMode,
+  AcceptableTag,
+} from "@typedefs/api/consts";
+import { DeviceBatteryChargeState } from "@typedefs/api/device";
 
-export type RecordingId = number;
 type SqlString = string;
-
-export enum TagMode {
-  Any = "any",
-  UnTagged = "untagged",
-  Tagged = "tagged",
-  HumanTagged = "human-tagged",
-  AutomaticallyTagged = "automatic-tagged",
-  BothTagged = "both-tagged",
-  NoHuman = "no-human", // untagged or automatic only
-  AutomaticOnly = "automatic-only",
-  HumanOnly = "human-only",
-  AutomaticHuman = "automatic+human",
-}
 
 type AllTagModes = TagMode | AcceptableTag;
 // local
@@ -67,34 +67,13 @@ const validTagModes = new Set([
   ...Object.values(AcceptableTag),
 ]);
 
-export enum RecordingType {
-  ThermalRaw = "thermalRaw",
-  Audio = "audio",
-}
-
-export enum RecordingPermission {
-  DELETE = "delete",
-  TAG = "tag",
-  VIEW = "view",
-  UPDATE = "update",
-}
-
-export enum RecordingProcessingState {
-  Corrupt = "CORRUPT",
-  Tracking = "tracking",
-  AnalyseThermal = "analyse",
-  Finished = "FINISHED",
-  ToMp3 = "toMp3",
-  Analyse = "analyse",
-  Reprocess = "reprocess",
-}
 export const RecordingPermissions = new Set(Object.values(RecordingPermission));
 
 interface RecordingQueryBuilder {
   new (): RecordingQueryBuilder;
   findInclude: (modelType: ModelStaticCommon<any>) => Includeable[];
   init: (
-    user: User,
+    user: UserId,
     where: any,
     tagMode?: TagMode,
     tags?: string[], // AcceptableTag[]
@@ -209,19 +188,24 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   rawMimeType: string;
   rawFileHash: string;
   fileKey: string;
+  fileSize: number;
+  rawFileSize: number;
   fileMimeType: string;
   processingStartTime: string;
   processingEndTime: string;
   processingMeta: RecordingProcessingMetadata;
+  processing: boolean;
   processingState: RecordingProcessingState;
   passedFilter: boolean;
   jobKey: string;
   batteryLevel: number;
-  batteryCharging: "NOT_CHARGING" | "CHARGING" | "FULL" | "DISCHARGING";
+  batteryCharging: DeviceBatteryChargeState;
   airplaneModeOn: boolean;
+  deletedAt: Date | null;
+  deletedBy: UserId | null;
 
-  DeviceId: DeviceIdAlias;
-  GroupId: GroupIdAlias;
+  DeviceId: DeviceId;
+  GroupId: GroupId;
   StationId: StationId;
   // Recording columns end
 
@@ -236,7 +220,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getActiveTracksTagsAndTagger: () => Promise<any>;
   getUserPermissions: (user: User) => Promise<RecordingPermission[]>;
 
-  reprocess: (user: User) => Promise<Recording>;
+  reprocess: () => Promise<Recording>;
   mergeUpdate: (updates: any) => Promise<void>;
   filterData: (options: any) => void;
   // NOTE: Implicitly created by sequelize associations (along with other
@@ -245,6 +229,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getTracks: (options: FindOptions) => Promise<Track[]>;
   createTrack: ({ data: any, AlgorithmId: DetailSnapshotId }) => Promise<Track>;
   setStation: (station: Station) => Promise<void>;
+
+  getNextState: () => RecordingProcessingState;
 
   Station?: Station;
   Group?: Group;
@@ -323,7 +309,6 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
     id: RecordingId,
     options?: getOptions
   ) => Promise<Recording>;
-  getNextState: () => String;
   //findAll: (query: FindOptions) => Promise<Recording[]>;
 }
 
@@ -351,6 +336,8 @@ export default function (
     version: DataTypes.STRING,
     additionalMetadata: DataTypes.JSONB,
     comment: DataTypes.STRING,
+    deletedAt: DataTypes.DATE,
+    deletedBy: DataTypes.INTEGER,
     public: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -417,6 +404,7 @@ export default function (
         return Recording.findOne({
           where: {
             type: type,
+            deletedAt: { [Op.eq]: null },
             processingState: state,
             processing: { [Op.or]: [null, false] },
           },
@@ -490,6 +478,7 @@ export default function (
     permission,
     options: getOptions = {}
   ) {
+    // FIXME - permissions should be handled at the API layer.
     if (isUser(modelObj)) {
       return Recording.getForUser(modelObj as User, id, permission, options);
     } else if (isDevice(modelObj)) {
@@ -533,20 +522,22 @@ export default function (
     if (!recording) {
       return null;
     }
+
+    // FIXME - This should happen waaaay earlier, at the API layer.
     const userPermissions = await recording.getUserPermissions(user);
     if (!userPermissions.includes(permission)) {
       throw new AuthorizationError(
         "The user does not have permission to view this file"
       );
     }
-    recording.filterData(
-      Recording.makeFilterOptions(user, options.filterOptions)
-    );
+    // recording.filterData(
+    //   Recording.makeFilterOptions(user, options.filterOptions)
+    // );
     return recording;
   };
 
   /**
-   * Return a single recording for a devce.
+   * Return a single recording for a device.
    */
   Recording.getForDevice = async function (
     device: Device,
@@ -577,9 +568,9 @@ export default function (
       return null;
     }
 
-    recording.filterData(
-      Recording.makeFilterOptions(null, options.filterOptions)
-    );
+    // recording.filterData(
+    //   Recording.makeFilterOptions(null, options.filterOptions)
+    // );
     return recording;
   };
 
@@ -604,6 +595,7 @@ export default function (
     id: RecordingId,
     updates: any
   ): Promise<boolean> {
+    // FIXME - Move this permissions stuff to API layer
     for (const key in updates) {
       if (!apiUpdatableFields.includes(key)) {
         return false;
@@ -632,7 +624,11 @@ export default function (
   };
 
   // local
-  const recordingsFor = async function (user: User, viewAsSuperAdmin = true) {
+  const recordingsFor = async function (
+    userId: UserId,
+    viewAsSuperAdmin = true
+  ) {
+    const user = await models.User.findByPk(userId);
     if (viewAsSuperAdmin && user.hasGlobalRead()) {
       return null;
     }
@@ -700,11 +696,10 @@ from (
       )
     ) as e on e."RecordingId" = "Recordings".id ${
       biasDeviceId !== undefined ? ` where "DeviceId" = ${biasDeviceId}` : ""
-    } order by RANDOM() limit 1)
+    } and "Recordings"."deletedAt" is null order by RANDOM() limit 1)
   as f left outer join "Tracks" on f."RId" = "Tracks"."RecordingId" and "Tracks"."archivedAt" is null
   left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" is null
 ) as g;`);
-
     // NOTE: We bundle everything we need into this one specialised request.
     const flattenedResult = result.reduce(
       (acc, item) => {
@@ -715,13 +710,12 @@ from (
         acc.recordingDateTime = item.recordingDateTime;
         acc.duration = item.duration;
         acc.tracks.push({
-          TrackId: item.TrackId,
-          data: {
-            start_s: item.TrackData.start_s,
-            end_s: item.TrackData.end_s,
-            positions: item.TrackData.positions,
-            num_frames: item.TrackData.num_frames,
-          },
+          trackId: item.TrackId,
+          id: item.TrackId,
+          start: item.TrackData.start_s,
+          end: item.TrackData.end_s,
+          positions: mapPositions(item.TrackData.positions),
+          numFrames: item.TrackData?.num_frames,
           needsTagging: item.TaggedBy !== false,
         });
         return acc;
@@ -737,7 +731,7 @@ from (
       }
     );
     // Sort tracks by time, so that the front-end doesn't have to.
-    flattenedResult.tracks.sort((a, b) => a.data.start_s - b.data.start_s);
+    flattenedResult.tracks.sort((a, b) => a.start - b.start);
     // We need to retrieve the content length of the media file in order to sign
     // the JWT token for it.
     let ContentLength = 0;
@@ -794,7 +788,7 @@ from (
   //------------------
   // INSTANCE METHODS
   //------------------
-  Recording.prototype.getNextState = function () {
+  Recording.prototype.getNextState = function (): RecordingProcessingState {
     const jobs = Recording.processingStates[this.type];
     let nextState;
     if (this.processingState == RecordingProcessingState.Reprocess) {
@@ -882,12 +876,13 @@ from (
    * TODO This will be edited in the future when recordings can be public.
    */
   Recording.prototype.getUserPermissions = async function (
-    user: User
+    user: User,
+    viewAsSuperAdmin = true
   ): Promise<RecordingPermission[]> {
     if (
-      user.hasGlobalWrite() ||
-      (await user.isInGroup(this.GroupId)) ||
-      (await user.canAccessDevice(this.Device.id))
+      (user.hasGlobalWrite() && viewAsSuperAdmin) ||
+      (await user.canDirectlyAccessGroup(this.GroupId)) ||
+      (await user.canDirectlyAccessDevice(this.Device.id))
     ) {
       return [...RecordingPermissions.values()];
     }
@@ -899,7 +894,9 @@ from (
 
   // Bulk update recording values. Any new additionalMetadata fields
   // will be merged.
-  Recording.prototype.mergeUpdate = async function (newValues): Promise<void> {
+  Recording.prototype.mergeUpdate = async function (
+    newValues: any
+  ): Promise<void> {
     for (const [name, newValue] of Object.entries(newValues)) {
       if (name == "additionalMetadata") {
         this.mergeAdditionalMetadata(newValue);
@@ -917,7 +914,7 @@ from (
   };
 
   // Update additionalMetadata fields with new values supplied.
-  Recording.prototype.mergeAdditionalMetadata = function (newValues) {
+  Recording.prototype.mergeAdditionalMetadata = function (newValues: any) {
     this.additionalMetadata = { ...this.additionalMetadata, ...newValues };
   };
 
@@ -975,6 +972,8 @@ from (
     const tags = await this.getTags();
     if (tags.length > 0) {
       const meta = this.additionalMetadata || {};
+      // FIXME What happens if we reprocess more than once?
+      //  :We lose initial archived tags.
       meta["oldTags"] = tags;
       this.additionalMetadata = meta;
       await this.save();
@@ -1017,18 +1016,21 @@ from (
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
 
   Recording.queryBuilder.prototype.init = async function (
-    user,
-    where,
-    tagMode,
-    tags,
-    offset,
-    limit,
-    order,
-    viewAsSuperAdmin = true
+    userId: UserId,
+    where: any,
+    tagMode?: TagMode,
+    tags?: string[], // AcceptableTag[]
+    offset?: number,
+    limit?: number,
+    order?: any,
+    viewAsSuperUser?: boolean
   ) {
     if (!where) {
       where = {};
     }
+
+    // Don't include deleted recordings
+    where.deletedAt = { [Op.eq]: null };
 
     delete where._tagged; // remove legacy tag mode selector (if included)
 
@@ -1055,20 +1057,25 @@ from (
         ["id", "DESC"],
       ];
     }
+
+    if (typeof where === "string") {
+      where = JSON.parse(where);
+    }
+    const recordingPermissions = await recordingsFor(userId, viewAsSuperUser);
     this.query = {
       where: {
         [Op.and]: [
           where, // User query
-          await recordingsFor(user, viewAsSuperAdmin),
+          recordingPermissions,
           Sequelize.literal(
             Recording.queryBuilder.handleTagMode(tagMode, tags)
           ),
         ],
       },
-      order: order,
+      order,
       include: getRecordingInclude(),
-      limit: limit,
-      offset: offset,
+      limit,
+      offset,
       attributes: Recording.queryGetAttributes,
     };
     return this;
@@ -1121,6 +1128,7 @@ from (
               archivedAt: null,
             },
             attributes: [
+              "id",
               "what",
               "automatic",
               "TrackId",
@@ -1155,6 +1163,7 @@ from (
       tagMode = tagWhats ? TagMode.Tagged : TagMode.Any;
     }
 
+    // FIXME Seems like we're doing validation here that should be done at the API layer
     const humanSQL = 'NOT "Tags".automatic';
     const AISQL = '"Tags".automatic';
     if (
@@ -1408,6 +1417,7 @@ from (
     "StationId",
     "rawFileKey",
     "processing",
+    "comment",
   ];
 
   // Attributes returned when looking up a single recording.
@@ -1447,7 +1457,7 @@ from (
     "batteryLevel",
     "airplaneModeOn",
     "additionalMetadata",
-    "processingMeta",
+    "processingMeta", // FIXME - Check this
     "comment",
     "StationId",
   ];

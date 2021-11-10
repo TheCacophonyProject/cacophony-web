@@ -16,11 +16,11 @@
       </h5>
       <div class="track-time" @click="trackSelected(0)">
         <span class="title">Time:</span>
-        {{ Math.max(0, track.data.start_s - adjustTimespans).toFixed(1) }} -
-        {{ (track.data.end_s - adjustTimespans).toFixed(1) }}s <br />
+        {{ Math.max(0, track.start - adjustTimespans).toFixed(1) }} -
+        {{ (track.end - adjustTimespans).toFixed(1) }}s <br />
         <span class="delta">
           (&#916;
-          {{ (track.data.end_s - track.data.start_s).toFixed(1) }}s)
+          {{ (track.end - track.start).toFixed(1) }}s)
         </span>
       </div>
       <button
@@ -35,7 +35,7 @@
     </div>
     <div v-if="show" class="card-body">
       <AIClassification
-        :tags="track.TrackTags"
+        :tags="localTags"
         :is-wallaby-project="isWallabyProject"
         :needs-confirmation="!hasUserTags"
         :userTags="userTags"
@@ -54,30 +54,50 @@
         <em>really</em> is.
       </b-alert>
       <QuickTagTrack
-        :tags="track.TrackTags"
+        :tags="localTags"
         :is-wallaby-project="isWallabyProject"
         @addTag="addTag($event)"
         @deleteTag="deleteTag($event)"
       />
-      <AddCustomTrackTag @addTag="addTag($event)" />
-      <div v-if="isSuperUser">
+      <AddCustomTrackTag @addTag="addTag($event)" :allow-comment="false" />
+      <div>
         <TrackTags
-          :items="track.TrackTags"
+          :device-id="deviceId"
+          :items="localTags"
           @addTag="addTag($event)"
           @deleteTag="deleteTag($event)"
         />
-        <TrackData :track-tag="masterTag" :message="track.data.message" />
+        <TrackData
+          :track-tag="masterTag"
+          v-if="isSuperUserAndViewingAsSuperUser"
+        />
       </div>
     </div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import TrackData from "./TrackData.vue";
 import QuickTagTrack from "./QuickTagTrack.vue";
 import TrackTags from "./TrackTags.vue";
 import AddCustomTrackTag from "./AddCustomTrackTag.vue";
 import AIClassification from "./AIClassification.vue";
+import api from "@api";
+import { ApiTrackResponse } from "@typedefs/api/track";
+import {
+  ApiHumanTrackTagResponse,
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
+import { shouldViewAsSuperUser } from "@/utils";
+
+interface TrackInternalData {
+  localTags: ApiTrackTagResponse[];
+  show_details: boolean;
+  showFullAddTag: boolean;
+  message: string;
+  showUserTaggingHintCountDown: boolean;
+}
 
 export default {
   name: "Track",
@@ -91,6 +111,10 @@ export default {
   props: {
     track: {
       type: Object,
+      required: true,
+    },
+    deviceId: {
+      type: Number,
       required: true,
     },
     tracks: {
@@ -128,68 +152,119 @@ export default {
   },
   data() {
     return {
-      show_details: false,
+      showDetails: false,
       showFullAddTag: false,
       message: "",
       showUserTaggingHintCountDown: false,
-    };
+      localTags: [],
+    } as unknown as TrackInternalData;
   },
   computed: {
-    masterTag() {
-      return this.track.TrackTags.find((tag) => tag.data.name == "Master");
+    masterTag(): ApiTrackTagResponse | undefined {
+      return (this.track as ApiTrackResponse).tags.find(
+        (tag) => tag.data.name === "Master"
+      );
     },
     trackClass() {
-      const selected = "selected-" + this.show;
-      if ("tag" in this.track.data) {
-        return selected;
-      } else {
-        return selected + " ignored";
-      }
+      return "selected-" + this.show;
     },
     iconStyle() {
       return `background-color: ${this.colour}`;
     },
-    hasUserTags() {
+    hasUserTags(): boolean {
       return (
-        this.track.TrackTags.find(({ User }) => User !== null) !== undefined
+        (this.track as ApiTrackResponse).tags.find(
+          ({ automatic }) => !automatic
+        ) !== undefined
       );
     },
-    userTags() {
-      return this.track.TrackTags.filter(({ User }) => User !== null).map(
-        ({ what }) => what
+    userTags(): string[] {
+      return this.userTagItems.map(({ what }) => what);
+    },
+    userTagItems(): ApiHumanTrackTagResponse[] {
+      return this.localTags.filter(({ automatic }) => !automatic);
+    },
+    isSuperUserAndViewingAsSuperUser() {
+      return (
+        this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
       );
     },
-    isSuperUser() {
-      return this.$store.state.User.userData.isSuperUser;
+  },
+  created() {
+    this.localTags = [...this.track.tags];
+  },
+  watch: {
+    "track.tags": function () {
+      this.updateLocalTags();
     },
   },
   methods: {
-    addTag(tag) {
+    updateLocalTags() {
+      this.localTags =
+        (this.track && this.track.tags && [...this.track.tags]) || [];
+    },
+    async addTag(tag: ApiTrackTagRequest) {
       const recordingId = this.recordingId;
       const trackId = this.track.id;
-      this.$store
-        .dispatch("Video/ADD_TRACK_TAG", {
-          tag,
-          recordingId,
+      // Replace any tag by the current user:
+      const tagByUser = this.userTagItems.find(
+        (tag) => tag.userName === this.$store.state.User.userData.userName
+      );
+      if (tagByUser) {
+        this.localTags = this.localTags.filter((tag) => tag !== tagByUser);
+      }
+      // Add to local tags for fast UI update while we wait for the API
+      this.localTags = [
+        ...this.localTags,
+        {
+          ...tag,
+          userName: this.$store.state.User.userData.userName,
           trackId,
-        })
-        .then(() => {
-          this.$emit("change-tag", { trackIndex: this.index, tag });
-        });
+          id: -1,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      const {
+        result: { trackTagId },
+      } = await api.recording.replaceTrackTag(tag, recordingId, trackId);
+      if (!trackTagId) {
+        return;
+      }
+      // FIXME - This doesn't actually update the UI more quickly.
+      // Add an initial tag to update the UI more quickly.
+      const newTag: ApiTrackTagResponse = { ...tag };
+      newTag.id = trackTagId;
+      newTag.trackId = trackId;
+      newTag.createdAt = new Date().toISOString();
+      this.$emit("change-tag", newTag);
     },
     promptUserToAddTag() {
       this.showUserTaggingHintCountDown = true;
     },
-    deleteTag(tag) {
+    async deleteTag(tagToDelete: ApiTrackTagResponse) {
       const recordingId = this.recordingId;
-      this.$store
-        .dispatch("Video/DELETE_TRACK_TAG", {
-          tag,
+      let removedTag;
+      try {
+        this.localTags = this.localTags.filter((tag) => tag !== tagToDelete);
+        const result = await api.recording.deleteTrackTag(
           recordingId,
-        })
-        .then(() => {
-          this.$emit("change-tag", { trackIndex: this.index, tag });
-        });
+          tagToDelete.trackId,
+          tagToDelete.id
+        );
+        if (!result.success) {
+          if (removedTag) {
+            // Add it back to localTags
+            this.localTags = [...this.localTags, removedTag];
+          }
+          return result;
+        }
+      } catch (e) {
+        if (removedTag) {
+          // Add it back to localTags
+          this.localTags = [...this.localTags, removedTag];
+        }
+      }
+      this.$emit("change-tag", tagToDelete);
     },
     trackSelected(increment) {
       const index = Math.min(
@@ -198,7 +273,6 @@ export default {
       );
       if (0 <= index && index < this.numTracks) {
         this.$emit("track-selected", {
-          trackIndex: this.tracks[index].trackIndex,
           trackId: this.tracks[index].id,
           gotoStart: true,
           playToEnd: true,

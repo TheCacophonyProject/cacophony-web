@@ -1,0 +1,114 @@
+import {
+  DeviceId,
+  GroupId,
+  IsoFormattedDateString,
+  LatLng,
+  RecordingId,
+  Seconds,
+  StationId,
+} from "./common";
+import { ApiRecordingTagResponse } from "./tag";
+import { ApiTrackResponse } from "./track";
+import { RecordingProcessingState, RecordingType } from "./consts";
+import { DeviceBatteryChargeState } from "./device";
+
+export interface ApiRecordingResponse {
+  id: RecordingId;
+  processingState: RecordingProcessingState;
+  duration: Seconds;
+  recordingDateTime: IsoFormattedDateString;
+  type: RecordingType;
+  groupId: GroupId;
+  groupName: string;
+  deviceId: DeviceId;
+  deviceName: string;
+  fileHash?: string;
+  processing?: boolean;
+  tags: ApiRecordingTagResponse[];
+  tracks: ApiTrackResponse[];
+  location?: LatLng;
+  stationId?: StationId;
+  stationName?: string;
+  comment?: string;
+  rawMimeType: string;
+}
+
+export interface ApiThermalRecordingMetadataResponse {
+  trackingTime?: Seconds;
+  previewSecs?: Seconds;
+  totalFrames?: number;
+  algorithm?: number;
+  thumbnailRegion?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    frameNumber: number;
+  };
+}
+
+export interface ApiAudioRecordingMetadataResponse {
+  analysis: {
+    cacophony_index: CacophonyIndex[];
+    species_identify: { begin_s: Seconds; end_s: Seconds; species: string }[];
+    processing_time_seconds: Seconds;
+    cacophony_index_version: string;
+    species_identify_version: string;
+    speech_detection?: boolean;
+    speech_detection_version?: string;
+  };
+
+  normal: string;
+  "SIM IMEI": string;
+  "SIM state": string;
+  "Auto Update": boolean;
+  "Flight Mode": boolean;
+  "Phone model": string;
+  amplification: number;
+  SimOperatorName: string;
+  "Android API Level": number;
+  "Phone manufacturer": string;
+  "App has root access": boolean;
+}
+
+export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
+  additionalMetadata?: ApiThermalRecordingMetadataResponse;
+  type: RecordingType.ThermalRaw;
+}
+
+interface CacophonyIndex {
+  begin_s: Seconds;
+  end_s: Seconds;
+  index_percent: number;
+}
+
+export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
+  version?: string;
+  batteryLevel?: number;
+  batteryCharging?: DeviceBatteryChargeState;
+  airplaneModeOn?: boolean;
+  relativeToDawn?: number;
+  relativeToDusk?: number;
+  type: RecordingType.Audio;
+  fileMimeType?: string;
+  additionalMetadata?: ApiAudioRecordingMetadataResponse;
+}
+
+export interface ApiRecordingProcessingJob {
+  jobKey: string;
+  id: RecordingId;
+  type: RecordingType;
+  hasAlert: boolean;
+  updatedAt: IsoFormattedDateString;
+  processingStartTime?: IsoFormattedDateString;
+  processingEndTime?: IsoFormattedDateString;
+}
+
+export interface ApiRecordingUpdateRequest {
+  comment?: string;
+  additionalMetadata?: Record<string, any>;
+  location?: [number, number];
+}
+
+export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
+  ApiAudioRecordingResponse;

@@ -186,7 +186,7 @@ export default {
       return false;
     },
     userName() {
-      return this.$store.state.User.userData.username;
+      return this.$store.state.User.userData.userName;
     },
     globalPermission() {
       return this.$store.state.User.userData.globalPermission;
@@ -226,8 +226,8 @@ export default {
       if (this.hasGlobalReadPermissions) {
         const usersList = await User.list();
         this.users = usersList.result.usersList
-          .map(({ username, id }) => ({
-            name: username,
+          .map(({ userName, id }) => ({
+            name: userName,
             id,
           }))
           .filter(({ name }) => name !== this.superUserName());
@@ -235,7 +235,7 @@ export default {
     },
     superUserName() {
       const creds = superUserCreds();
-      return creds && creds.username;
+      return creds && creds.userName;
     },
     logout() {
       this.$store.dispatch("User/LOGOUT");

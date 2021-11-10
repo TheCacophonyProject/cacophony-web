@@ -16,9 +16,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import log from "../../logging";
+import log from "@log";
 import jwt from "jsonwebtoken";
-import config from "../../config";
+import config from "@config";
 import { Response } from "express";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
@@ -104,7 +104,7 @@ function serverError(
   err,
   message = "Server error. Sorry!"
 ) {
-  log.error(err.toString());
+  log.error("%s, %s", err.toString(), err.stack);
   return response.status(500).json({
     messages: [message],
   });

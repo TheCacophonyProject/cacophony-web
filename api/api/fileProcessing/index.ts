@@ -1,16 +1,33 @@
 import responseUtil from "../V1/responseUtil";
-import middleware from "../middleware";
-import log from "../../logging";
-import { body, param } from "express-validator/check";
-import models from "../../models";
+import middleware, {
+  getRecordingById,
+  expectedTypeOf,
+  validateFields,
+} from "../middleware";
+import log from "@log";
+import { body, param, query, oneOf } from "express-validator";
+import models from "@models";
+import recordingUtil, {
+  finishedProcessingRecording,
+} from "../V1/recordingUtil";
+import { Application, NextFunction, Request, Response } from "express";
+import { Recording } from "@models/Recording";
+
+import { ClassifierRawResult } from "@typedefs/api/fileProcessing";
+import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRawResult.schema.json";
+import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json";
+import { jsonSchemaOf } from "../schema-validation";
+import { booleanOf, idOf } from "../validation-middleware";
+import { ClientError } from "../customErrors";
 import util from "../V1/util";
-import recordingUtil from "../V1/recordingUtil";
-import { Application, Request, Response } from "express";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import {
-  Recording,
-  RecordingProcessingState,
-  RecordingType,
-} from "../../models/Recording";
+  fetchUnauthorizedRequiredEventDetailSnapshotById,
+  fetchUnauthorizedRequiredRecordingById,
+  fetchUnauthorizedRequiredTrackById,
+  parseJSONField,
+} from "@api/extract-middleware";
+import logger from "@log";
 
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";
@@ -26,32 +43,55 @@ export default function (app: Application) {
    * @apiSuccess {String} signed url to download the raw file
 
    */
-  app.get(apiUrl, async (request: Request, response: Response) => {
-    log.info(`${request.method} Request: ${request.url}`);
-    const type = request.query.type as RecordingType;
-    const state = request.query.state as RecordingProcessingState;
-    const recording = await models.Recording.getOneForProcessing(type, state);
-
-    if (recording == null) {
-      log.debug("No file to be processed.");
-      return response.status(204).json();
-    } else {
-      const rawJWT = recordingUtil.signedToken(
-        recording.rawFileKey,
-        recording.getRawFileName(),
-        recording.rawMimeType
-      );
-      return response.status(200).json({
-        // FIXME(jon): Test that dataValues is even a thing.  It's not a publicly
-        //  documented sequelize property.
-        recording: (recording as any).dataValues,
-        rawJWT: rawJWT,
-      });
-    }
-  });
+  app.get(
+    apiUrl,
+    [
+      oneOf([
+        [
+          query("type").equals(RecordingType.Audio),
+          query("state").isIn([
+            RecordingProcessingState.Reprocess,
+            RecordingProcessingState.ToMp3,
+            RecordingProcessingState.Analyse,
+          ]),
+        ],
+        [
+          query("type").equals(RecordingType.ThermalRaw),
+          query("state").isIn([
+            RecordingProcessingState.Reprocess,
+            RecordingProcessingState.AnalyseThermal,
+            RecordingProcessingState.Tracking,
+          ]),
+        ],
+      ]),
+    ],
+    middleware.requestWrapper(async (request: Request, response: Response) => {
+      const type = request.query.type as RecordingType;
+      const state = request.query.state as RecordingProcessingState;
+      const recording = await models.Recording.getOneForProcessing(type, state);
+      if (recording == null) {
+        log.debug(
+          "No file to be processed for '%s' in state '%s.",
+          type,
+          state
+        );
+        return response.status(204).json();
+      } else {
+        const rawJWT = recordingUtil.signedToken(
+          recording.rawFileKey,
+          recording.getRawFileName(),
+          recording.rawMimeType
+        );
+        return response.status(200).json({
+          recording: (recording as any).dataValues,
+          rawJWT,
+        });
+      }
+    })
+  );
 
   /**
-   * @api {put} /api/fileProcessing/processed Upload a processed file to the db
+   * @api {post} /api/fileProcessing/processed Upload a processed file to object storage
    * @apiName PostProcessedFile
    * @apiGroup FileProcessing
 
@@ -62,12 +102,115 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/processed`,
-    middleware.requestWrapper(
-      util.multipartUpload("file", async (request, response, data, key) => {
-        responseUtil.validFileUpload(response, key);
-        return key;
-      })
-    )
+    util.multipartUpload("file", async (uploader, data, key) => {
+      return key;
+    })
+  );
+
+  // Add tracks
+
+  // Add track tags
+  // TODO - Processing should send this request gzipped.
+  app.put(
+    `${apiUrl}/raw`,
+    [
+      body("id")
+        .isInt()
+        .toInt()
+        .withMessage(expectedTypeOf("integer"))
+        .bail()
+        .custom(getRecordingById())
+        .bail()
+        .custom(() =>
+          // Job key given matches the one on the retrieved recording
+          body("jobKey")
+            .exists()
+            .withMessage(expectedTypeOf("string"))
+            .custom(
+              (jobKey, { req }) =>
+                (req.body.recording as Recording).get("jobKey") === jobKey
+            )
+            .withMessage(
+              (jobKey, { req }) =>
+                `'jobKey' '${jobKey}' given did not match the database (${(
+                  req.body.recording as Recording
+                ).get("jobKey")})`
+            )
+        ),
+      body("success")
+        .isBoolean()
+        .toBoolean()
+        .withMessage(expectedTypeOf("boolean")),
+      body("result")
+        .exists()
+        .withMessage(expectedTypeOf("ClassifierRawResult"))
+        .bail()
+        .custom(jsonSchemaOf(ClassifierRawResultSchema)), // TODO: Can we compile the schema for this on demand?
+      body("newProcessedFileKey").optional(),
+    ],
+    middleware.requestWrapper(async (request: Request, response: Response) => {
+      const {
+        id,
+        result,
+        complete,
+        newProcessedFileKey,
+        success,
+        recording,
+      }: {
+        id: number;
+        newProcessedFileKey?: string;
+        result: ClassifierRawResult;
+        recording: Recording;
+        complete: boolean;
+        success: boolean;
+      } = request.body;
+      // Input the bits we care about to the DB, and store the rest as gzipped metadata for the object?
+
+      const prevState = recording.processingState;
+      if (success) {
+        if (newProcessedFileKey) {
+          recording.set("fileKey", newProcessedFileKey);
+        }
+        if (complete) {
+          recording.set({
+            jobKey: null,
+            processing: false,
+            processingEndTime: new Date().toISOString(),
+          });
+        }
+        const nextJob = recording.getNextState();
+        recording.set("processingState", nextJob);
+        // Process extra data from file processing
+
+        // FIXME Is fieldUpdates ever set by current processing?
+        // if (result && result.fieldUpdates) {
+        //   await recording.mergeUpdate(result.fieldUpdates);
+        // }
+        await recording.save();
+        if (
+          recording.type === RecordingType.ThermalRaw &&
+          recording.processingState === RecordingProcessingState.Finished
+        ) {
+          await finishedProcessingRecording(recording, result, prevState);
+        }
+        return response
+          .status(200)
+          .json({ messages: [`Processing finished for #${id}`] });
+      } else {
+        // The current stage failed
+        recording.set({
+          processingState:
+            `${recording.processingState}.failed` as RecordingProcessingState,
+          jobKey: null,
+          processing: false,
+          processingEndTime: new Date().toISOString(), // Still set processingEndTime, since we might want to know how long it took to fail.
+        });
+        await recording.save();
+        return response.status(200).json({
+          messages: [`Processing failed for #${id}`],
+        });
+      }
+    })
   );
 
   /**
@@ -81,74 +224,66 @@ export default function (app: Application) {
    * @apiParam {JSON} [result] Result of the file processing
    * @apiParam {String} [newProcessedFileKey] LeoFS Key of the new file.
    */
-  app.put(apiUrl, async (request: Request, response: Response) => {
-    const id = parseInt(request.body.id);
-    const jobKey = request.body.jobKey;
-    const success = middleware.parseBool(request.body.success);
-    let result = request.body.result;
-    const newProcessedFileKey = request.body.newProcessedFileKey;
-    // Validate request.
-    const errorMessages = [];
-    if (isNaN(id)) {
-      errorMessages.push("'id' field needs to be a number.");
-    }
-    if (jobKey == null) {
-      errorMessages.push("'jobKey' field is required.");
-    }
-    if (success == null) {
-      errorMessages.push("'success' field is required");
-    }
-    if (result != null) {
-      try {
-        result = JSON.parse(result);
-      } catch (e) {
-        errorMessages.push("'result' field was not a valid JSON.");
+  app.put(
+    apiUrl,
+    validateFields([
+      idOf(body("id")),
+      body("jobKey").exists(),
+      booleanOf(body("success")),
+      body("newProcessedFileKey").isString().optional(),
+      booleanOf(body("complete")),
+      body("fileHash").isString().optional(),
+      // FIXME - JSON schema validate this?
+      body("result").isJSON().optional(),
+    ]),
+    parseJSONField(body("result")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const recording = await models.Recording.findByPk(request.body.id);
+      if (!recording) {
+        return next(
+          new ClientError(
+            `Recording ${request.body.id} not found for jobKey ${request.body.jobKey}`,
+            400
+          )
+        );
+      } else {
+        if (recording.jobKey !== request.body.jobKey) {
+          return next(
+            new ClientError("'jobKey' given did not match the database.", 400)
+          );
+        }
+        response.locals.recording = recording;
+        next();
       }
-    }
+    },
+    async (request: Request, response: Response) => {
+      const { newProcessedFileKey, success } = request.body;
+      const result = response.locals.result;
+      const recording = response.locals.recording;
+      const prevState = recording.processingState;
+      if (success) {
+        if (newProcessedFileKey) {
+          recording.set("fileKey", newProcessedFileKey);
+        }
+        const nextJob = recording.getNextState();
+        const complete =
+          nextJob == models.Recording.finishedState(recording.type);
+        recording.set({
+          jobKey: null,
+          processing: false,
+          processingState: nextJob,
+          processingEndTime: new Date().toISOString(),
+        });
 
-    if (errorMessages.length > 0) {
-      return response.status(400).json({
-        messages: errorMessages,
-      });
-    }
-
-    const recording = await models.Recording.findOne({ where: { id: id } });
-    if (!recording) {
-      return response.status(400).json({
-        messages: [`Recording ${id} not found for jobKey ${jobKey}`],
-      });
-    }
-
-    // Check that jobKey is correct.
-    if (jobKey != recording.get("jobKey")) {
-      return response.status(400).json({
-        messages: ["'jobKey' given did not match the database.."],
-      });
-    }
-    const prevState = recording.processingState;
-    if (success) {
-      if (newProcessedFileKey) {
-        recording.set("fileKey", newProcessedFileKey);
-      }
-      const nextJob = recording.getNextState();
-      recording.set("processingState", nextJob);
-      const complete =
-        nextJob == models.Recording.finishedState(recording.type);
-      recording.set({
-        jobKey: null,
-        processing: false,
-        processingEndTime: new Date().toISOString(),
-        processingState: nextJob,
-      });
-
-      // Process extra data from file processing
-      if (result && result.fieldUpdates) {
-        await recording.mergeUpdate(result.fieldUpdates);
-      }
-      await recording.save();
-      if ((recording as Recording).type === RecordingType.ThermalRaw) {
-        if (complete) {
+        // Process extra data from file processing
+        if (result && result.fieldUpdates) {
+          // FIXME - station matching happens in here, move it out.
+          await recording.mergeUpdate(result.fieldUpdates);
+        }
+        await recording.save();
+        if (recording.type === RecordingType.ThermalRaw) {
           if (
+            complete &&
             recording.additionalMetadata &&
             "thumbnail_region" in recording.additionalMetadata
           ) {
@@ -165,25 +300,27 @@ export default function (app: Application) {
               log.error("Reason: %s", (result as Error).message);
             }
           }
+          if (complete && prevState !== RecordingProcessingState.Reprocess) {
+            await recordingUtil.sendAlerts(recording.id);
+          }
         }
-        if (prevState != RecordingProcessingState.Reprocess) {
-          await recordingUtil.sendAlerts(recording.id);
-        }
+        return response
+          .status(200)
+          .json({ messages: ["Processing finished."] });
+      } else {
+        recording.set({
+          processingState:
+            `${recording.processingState}.failed` as RecordingProcessingState,
+          jobKey: null,
+          processing: false,
+        });
+        await recording.save();
+        return response.status(200).json({
+          messages: ["Processing failed."],
+        });
       }
-
-      return response.status(200).json({ messages: ["Processing finished."] });
-    } else {
-      recording.set({
-        processingState: `${recording.processingState}.failed`,
-        jobKey: null,
-        processing: false,
-      });
-      await recording.save();
-      return response.status(200).json({
-        messages: ["Processing failed."],
-      });
     }
-  });
+  );
 
   /**
    * @api {post} /api/fileProcessing/tags Add a tag to a recording
@@ -205,19 +342,25 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/tags`,
-    [middleware.parseJSON("tag", body), body("recordingId").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const options = {
-        include: [
-          { model: models.Device, where: {}, attributes: ["devicename", "id"] },
-        ],
-      };
-      const recording = await models.Recording.findByPk(
-        request.body.recordingId,
-        options
+    validateFields([body("tag").isJSON(), idOf(body("recordingId"))]),
+    fetchUnauthorizedRequiredRecordingById(body("recordingId")),
+    parseJSONField(body("tag")),
+    async (request, response) => {
+      if (response.locals.tag.event) {
+        // FIXME - processing still sends us the tag as "event" rather than "detail"
+        response.locals.tag.detail = response.locals.tag.event;
+      }
+      const tagInstance = await recordingUtil.addTag(
+        null,
+        response.locals.recording,
+        response.locals.tag
       );
-      await recordingUtil.addTag(null, recording, request.body.tag, response);
-    })
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Added new tag."],
+        tagId: tagInstance.id,
+      });
+    }
   );
 
   /**
@@ -237,13 +380,15 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/metadata`,
-    [middleware.getRecordingById(body), middleware.parseJSON("metadata", body)],
-    middleware.requestWrapper(async (request) => {
+    validateFields([idOf(body("id")), body("metadata").isJSON()]),
+    fetchUnauthorizedRequiredRecordingById(body("id")),
+    parseJSONField(body("metadata")),
+    async (request: Request, response: Response) => {
       await recordingUtil.updateMetadata(
-        request.body.recording,
-        request.body.metadata
+        response.locals.recording,
+        response.locals.metadata
       );
-    })
+    }
   );
 
   /**
@@ -263,22 +408,19 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/:id/tracks`,
-    [
-      param("id").isInt().toInt(),
-      middleware.parseJSON("data", body),
-      middleware.getDetailSnapshotById(body, "algorithmId"),
-    ],
-    middleware.requestWrapper(async (request: Request, response) => {
-      const recording = await models.Recording.findByPk(request.params.id);
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-      const track = await recording.createTrack({
-        data: request.body.data,
+    validateFields([
+      idOf(param("id")),
+
+      // FIXME - We don't currently have tracks for audio recordings, but when we do we need to widen this check.
+      body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
+      idOf(body("algorithmId")),
+    ]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredEventDetailSnapshotById(body("algorithmId")),
+    parseJSONField(body("data")),
+    async (request: Request, response) => {
+      const track = await response.locals.recording.createTrack({
+        data: response.locals.data,
         AlgorithmId: request.body.algorithmId,
       });
       responseUtil.send(response, {
@@ -286,7 +428,7 @@ export default function (app: Application) {
         messages: ["Track added."],
         trackId: track.id,
       });
-    })
+    }
   );
 
   /**
@@ -301,25 +443,16 @@ export default function (app: Application) {
    */
   app.delete(
     `${apiUrl}/:id/tracks`,
-    [param("id").isInt().toInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.findByPk(request.params.id);
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-
-      const tracks = await recording.getTracks();
+    validateFields([idOf(param("id"))]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const tracks = await response.locals.recording.getTracks();
       tracks.forEach((track) => track.destroy());
-
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Tracks cleared."],
       });
-    })
+    }
   );
 
   /**
@@ -338,44 +471,29 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/tags`,
-    [
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-      body("what"),
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("what").exists().isString(), // FIXME - Validate against valid tags?
       body("confidence").isFloat().toFloat(),
-      middleware.parseJSON("data", body).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.findByPk(request.params.id);
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-
-      const track = await recording.getTrack(request.params.trackId);
-      if (!track) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such track."],
-        });
-        return;
-      }
-
-      const tag = await track.addTag(
+      body("data").isJSON().optional(),
+    ]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    parseJSONField(body("data")),
+    async (request: Request, response: Response) => {
+      const tag = await response.locals.track.addTag(
         request.body.what,
         request.body.confidence,
         true,
-        request.body.data
+        response.locals.data
       );
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag added."],
         trackTagId: tag.id,
       });
-    })
+    }
   );
 
   /**
@@ -392,11 +510,12 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/algorithm`,
-    [middleware.parseJSON("algorithm", body)],
-    middleware.requestWrapper(async (request, response) => {
+    validateFields([body("algorithm").isJSON()]),
+    parseJSONField(body("algorithm")),
+    async (request, response) => {
       const algorithm = await models.DetailSnapshot.getOrCreateMatching(
         "algorithm",
-        request.body.algorithm
+        response.locals.algorithm
       );
 
       responseUtil.send(response, {
@@ -404,7 +523,7 @@ export default function (app: Application) {
         messages: ["Algorithm key retrieved."],
         algorithmId: algorithm.id,
       });
-    })
+    }
   );
 
   /**
@@ -422,7 +541,6 @@ export default function (app: Application) {
   app.get(
     `${apiUrl}/:id/tracks`,
     param("id").isInt().toInt(),
-
     middleware.requestWrapper(async (request, response) => {
       const recording = await models.Recording.findOne({
         where: { id: request.params.id },

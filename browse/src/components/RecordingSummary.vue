@@ -85,6 +85,9 @@
           />
           <span class="label" v-if="queuedForProcessing">Queued</span>
           <span class="label" v-else-if="processing">Processing</span>
+          <span class="label" v-else-if="corruptedOrFailed">
+            Processing failed
+          </span>
           <span
             class="label"
             v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
@@ -215,6 +218,7 @@
 import BatteryLevel from "./BatteryLevel.vue";
 import TagBadge from "./TagBadge.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
+import { RecordingProcessingState } from "@typedefs/api/consts";
 
 export default {
   name: "RecordingSummary",
@@ -248,12 +252,24 @@ export default {
       },
     },
     queuedForProcessing(): boolean {
+      const state = this.item.processingState.toLowerCase();
       return (
-        this.item.processingState === "Analyse" && this.item.processing === null
+        (state === RecordingProcessingState.Analyse ||
+          state === RecordingProcessingState.AnalyseThermal ||
+          state === RecordingProcessingState.Tracking ||
+          state === RecordingProcessingState.Reprocess) &&
+        !this.item.processing
       );
     },
     processing(): boolean {
       return this.item.processing;
+    },
+    corruptedOrFailed(): boolean {
+      const state = this.item.processingState;
+      return (
+        state === RecordingProcessingState.Corrupt ||
+        (state as string).endsWith(".failed")
+      );
     },
     itemLocation(): { name: string; location: string }[] {
       return [
@@ -268,7 +284,7 @@ export default {
     showLocation() {
       this.showingLocation = true;
     },
-    navigateToRecording(event, recordingId) {
+    async navigateToRecording(event, recordingId) {
       if (event.target !== event.currentTarget && event.target.href) {
         // Clicking a link inside the outer card link
         return;
@@ -276,7 +292,7 @@ export default {
       if (!(event.metaKey || event.ctrlKey || event.shiftKey)) {
         // Don't change the route if we're ctrl-clicking
         event.preventDefault();
-        this.$router.push({
+        await this.$router.push({
           path: `/recording/${recordingId}`,
           query: this.futureSearchQuery,
         });
@@ -418,7 +434,6 @@ $recording-side-padding-small: 0.5rem;
   }
 
   .recording-tags {
-    display: flex;
     padding: 0 $recording-side-padding 0.9rem;
     @include media-breakpoint-down(xs) {
       padding: 0.25rem $recording-side-padding-small;

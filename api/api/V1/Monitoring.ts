@@ -16,16 +16,19 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { toIdArray, toDate, isInteger } from "../middleware";
-import auth from "../auth";
-import e, { Application } from "express";
+import { validateFields, expectedTypeOf, isIntArray } from "../middleware";
+import { Application, Response, Request, NextFunction } from "express";
 import {
   calculateMonitoringPageCriteria,
   MonitoringParams,
 } from "./monitoringPage";
 import { generateVisits } from "./monitoringVisit";
 import responseUtil from "./responseUtil";
-import { query } from "express-validator/check";
+import { query } from "express-validator";
+import { extractJwtAuthorizedUser } from "../extract-middleware";
+import { User } from "models/User";
+import models from "@models";
+import { ClientError } from "@api/customErrors";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -43,15 +46,15 @@ export default function (app: Application, baseUrl: string) {
      * In some circumstances the number of visits returned may be slightly bigger or smaller than the page-size.
      *
      * @apiUse V1UserAuthorizationHeader
-     * @apiParam {number|number[]} devices  A single device id, or a JSON list of device ids to include.  eg 52, or [23, 42]
-     * @apiParam {number|number[]} groups  A single group id or a JSON list of group ids to include.  eg 20, or [23, 42]
-     * @apiParam {timestamp} from  Retrieve visits after this time
-     * @apiParam {timestamp} until Retrieve visits starting on or before this time
-     * @apiParam {number} page  Page number to retrieve
-     * @apiParam {number} page-size Maximum numbers of visits to show on each page.  Note: Number of visits is approximate per page.  In some situations number maybe slightly bigger or smaller than this.
-     * @apiParam {string} ai   Name of the AI to be used to compute the 'classificationAI' result.  Note: This will not affect the
+     * @apiQuery {number|number[]} [devices]  A single device id, or a JSON list of device ids to include.  eg 52, or [23, 42]
+     * @apiQuery {number|number[]} [groups]  A single group id or a JSON list of group ids to include.  eg 20, or [23, 42]
+     * @apiQuery {timestamp} [from]  Retrieve visits after this time
+     * @apiQuery {timestamp} [until] Retrieve visits starting on or before this time
+     * @apiQuery {number{1..10000}} page  Page number to retrieve
+     * @apiQuery {number{1..100}} page-size Maximum numbers of visits to show on each page.  Note: Number of visits is approximate per page.  In some situations number maybe slightly bigger or smaller than this.
+     * @apiQuery {string} [ai]   Name of the AI to be used to compute the 'classificationAI' result.  Note: This will not affect the
      * 'classification' result, which always uses a predefined AI/human choice.
-     * @apiParam {string} viewmode   View mode for super user.
+     * @apiQuery {string="user"} [view-mode]   View mode for super user.
      *
      * @apiSuccess {JSON} params The parameters used to retrieve these results.  Most of these fields are from the request.
      * Calculated fields are listed in the 'Params Details' section below.
@@ -130,57 +133,87 @@ export default function (app: Application, baseUrl: string) {
      * @apiUse V1ResponseError
      */
   app.get(
-    apiUrl + "/page",
-    [
-      auth.authenticateUser,
-      toIdArray("devices").optional(),
-      toIdArray("groups").optional(),
-      toDate("from").optional(),
-      toDate("until").optional(),
-      isInteger("page", { min: 1, max: 10000 }),
-      isInteger("page-size", { min: 1, max: 100 }),
-      middleware.isValidName(query, "ai").optional(),
-    ],
-    middleware.viewMode(),
-    middleware.requestWrapper(
-      async (request: e.Request, response: e.Response) => {
-        const user = (request as any).user;
-        const params: MonitoringParams = {
-          user,
-          devices: request.query.devices as unknown[] as number[],
-          groups: request.query.groups as unknown[] as number[],
-          page: Number(request.query.page),
-          pageSize: Number(request.query["page-size"]),
-        };
-
-        if (request.query.from) {
-          params.from = new Date(request.query.from as string);
-        }
-
-        if (request.query.until) {
-          params.until = new Date(request.query.until as string);
-        }
-
-        const viewAsSuperAdmin = request.body.viewAsSuperAdmin;
-        const searchDetails = await calculateMonitoringPageCriteria(
-          params,
-          viewAsSuperAdmin
-        );
-        searchDetails.compareAi = (request.query["ai"] as string) || "Master";
-
-        const visits = await generateVisits(
-          user,
-          searchDetails,
-          viewAsSuperAdmin
-        );
-
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          params: searchDetails,
-          visits: visits,
-        });
+    `${apiUrl}/page`,
+    // Validate session
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("page-size")
+        .exists()
+        .withMessage(expectedTypeOf("integer"))
+        .bail()
+        .isInt({ min: 1, max: 100 })
+        .toInt()
+        .withMessage(`Parameter 'page-size' must be an integer from 1 to 100`), //${range.min} and ${range.max}
+      query("page")
+        .exists()
+        .withMessage(expectedTypeOf("integer"))
+        .bail()
+        .isInt({ min: 1, max: 10000 })
+        .toInt()
+        .withMessage(`Parameter 'page' must be an integer from 1 to 10000`), //${range.min} and ${range.max}
+      query("devices")
+        .optional()
+        .toArray()
+        .isArray({ min: 1 })
+        .custom(isIntArray)
+        .withMessage(
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+        ),
+      query("groups")
+        .optional()
+        .toArray()
+        .isArray({ min: 1 })
+        .custom(isIntArray)
+        .withMessage(
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+        ),
+      query("ai").optional().isLength({ min: 3 }),
+      query("from").optional().isISO8601().toDate(),
+      query("until").optional().isISO8601().toDate(),
+      query("view-mode").optional(),
+    ]),
+    // Extract resources
+    // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
+    //  Also don't require pulling out the user
+    async (request: Request, response: Response, next: NextFunction) => {
+      const requestUser: User = await models.User.findByPk(
+        response.locals.requestUser.id
+      );
+      const params: MonitoringParams = {
+        user: requestUser,
+        devices: request.query.devices as unknown[] as number[],
+        groups: request.query.groups as unknown[] as number[],
+        page: request.query.page as unknown as number,
+        pageSize: request.query["page-size"] as unknown as number,
+      };
+      // FIXME - page-size is never actually used anywhere
+      if (request.query.from) {
+        params.from = request.query.from as unknown as Date;
       }
-    )
+      if (request.query.until) {
+        params.until = request.query.until as unknown as Date;
+      }
+
+      const viewAsSuperAdmin = response.locals.viewAsSuperUser;
+      const searchDetails = await calculateMonitoringPageCriteria(
+        params,
+        viewAsSuperAdmin
+      );
+      searchDetails.compareAi = (request.query["ai"] as string) || "Master";
+      const visits = await generateVisits(
+        requestUser.id,
+        searchDetails,
+        viewAsSuperAdmin
+      );
+      if (visits instanceof ClientError) {
+        return next(visits);
+      }
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        params: searchDetails,
+        visits,
+      });
+    }
   );
 }

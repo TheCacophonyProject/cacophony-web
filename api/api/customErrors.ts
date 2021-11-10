@@ -18,23 +18,45 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import log from "../logging";
 import { format } from "util";
+import { asyncLocalStorage } from "@/Globals";
+import { Request, Response, NextFunction } from "express";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function errorHandler(err, request, response, next) {
+function errorHandler(
+  err: Error,
+  request: Request,
+  response: Response,
+  next: NextFunction
+) {
   if (
     err instanceof SyntaxError &&
     (err as any).type === "entity.parse.failed"
   ) {
     err = new ClientError(err.message, 422); // Convert invalid JSON body error to UnprocessableEntity
   }
+  const session = asyncLocalStorage.getStore();
+  let requestId;
+  if (session) {
+    requestId = (session as Map<string, any>).get("requestId").split("-")[0];
+  }
   if (err instanceof CustomError) {
     log.warning(err.toString());
-    return response.status(err.statusCode).json(err.toJson());
+    const error = err.toJson();
+    if (!request.headers["user-agent"].includes("okhttp")) {
+      // FIXME - leave this in for sidekick etc, since currently it expects a 'message' error response.
+      delete error.message;
+    }
+    return response.status(err.statusCode).json({
+      messages: [err.message],
+      ...error,
+      requestId,
+    });
   }
-  log.error(err.toString());
+  log.error("%s, %s", err.toString(), err.stack);
   response.status(500).json({
-    message: "Internal server error: " + err.name + ".",
+    messages: [`Internal server error: ${err.name}: ${err.message}.`],
     errorType: "server",
+    requestId,
   });
 }
 
@@ -75,7 +97,7 @@ class ValidationError extends CustomError {
     const message = errors
       .array()
       .filter((error) => typeof error.msg === "string")
-      .map((error) => error.msg)
+      .map(({ msg, location, param }) => `${location}.${param}: ${msg}`)
       .join("; ");
     super(message, 422);
     this.errors = errors;
@@ -84,8 +106,10 @@ class ValidationError extends CustomError {
   toJson() {
     return {
       errorType: this.getErrorType(),
-      message: this.message,
-      errors: this.errors.mapped(),
+      message: `${
+        this.errors.array().length
+      } request validation errors found. Request payload could not be processed.`,
+      errors: this.errors.array(),
     };
   }
 }

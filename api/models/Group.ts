@@ -17,19 +17,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import Sequelize, { Op } from "sequelize";
-import AllModels, { ModelCommon, ModelStaticCommon } from "./index";
-import { User, UserId } from "./User";
-import { CreateStationData, Station, StationId } from "./Station";
+import models, { ModelCommon, ModelStaticCommon } from "./index";
+import { User } from "./User";
+import { CreateStationData, Station } from "./Station";
 import { Recording } from "./Recording";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
   tryToMatchRecordingToStation,
-} from "../api/V1/recordingUtil";
-import { AuthorizationError } from "../api/customErrors";
+} from "@api/V1/recordingUtil";
 import { Device } from "./Device";
-
-export type GroupId = number;
+import { GroupId, UserId, StationId } from "@typedefs/api/common";
 
 const retireMissingStations = (
   existingStations: Station[],
@@ -134,7 +132,7 @@ const checkThatStationsAreNotTooCloseTogether = (
 };
 
 const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
-  authUser: User,
+  authUserId: UserId,
   group: Group,
   fromDate: Date,
   stations: Station[]
@@ -144,7 +142,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   // should be assigned to any of our stations.
 
   // Get recordings for group starting at date:
-  const builder = await new AllModels.Recording.queryBuilder().init(authUser, {
+  const builder = await new models.Recording.queryBuilder().init(authUserId, {
     // Group id, and after date
     GroupId: group.id,
     recordingDateTime: {
@@ -153,8 +151,9 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   });
   builder.query.distinct = true;
   delete builder.query.limit;
-  const recordingsFromStartDate: Recording[] =
-    await AllModels.Recording.findAll(builder.get());
+  const recordingsFromStartDate: Recording[] = await models.Recording.findAll(
+    builder.get()
+  );
   const recordingOpPromises = [];
   // Find matching recordings to apply stations to from `applyToRecordingsFromDate`
   for (const recording of recordingsFromStartDate) {
@@ -182,11 +181,13 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
 export interface Group extends Sequelize.Model, ModelCommon<Group> {
   id: GroupId;
   groupname: string;
+  lastRecordingTime?: Date;
   addUser: (userToAdd: User, through: any) => Promise<void>;
   addStation: (stationToAdd: CreateStationData) => Promise<void>;
   getUsers: (options?: {
     through?: any;
     where?: any;
+    include?: any;
     attributes?: string[];
   }) => Promise<User[]>;
   getDevices: (options?: {
@@ -205,27 +206,21 @@ export interface Group extends Sequelize.Model, ModelCommon<Group> {
 }
 export interface GroupStatic extends ModelStaticCommon<Group> {
   addUserToGroup: (
-    authUser: User,
     group: Group,
     userToAdd: User,
     admin: boolean
-  ) => Promise<void>;
-  removeUserFromGroup: (
-    authUser: User,
-    group: Group,
-    userToRemove: User
-  ) => Promise<void>;
+  ) => Promise<string>;
+  removeUserFromGroup: (group: Group, userToRemove: User) => Promise<boolean>;
   query: (
     where: any,
     user: User,
     viewAsSuperAdmin: boolean
   ) => Promise<Group[]>;
   getFromId: (id: GroupId) => Promise<Group>;
-  freeGroupname: (groupname: string) => Promise<boolean>;
   getIdFromName: (groupname: string) => Promise<GroupId | null>;
 
   addStationsToGroup: (
-    authUser: User,
+    authUserId: UserId,
     group: Group,
     stationsToAdd: CreateStationData[],
     applyToRecordingsFromDate: Date | undefined
@@ -242,6 +237,9 @@ export default function (sequelize, DataTypes): GroupStatic {
     groupname: {
       type: DataTypes.STRING,
       unique: true,
+    },
+    lastRecordingTime: {
+      type: DataTypes.DATE,
     },
   };
 
@@ -265,13 +263,7 @@ export default function (sequelize, DataTypes): GroupStatic {
    * Adds a user to a Group, if the given user has permission to do so.
    * The user must be a group admin to do this.
    */
-  Group.addUserToGroup = async function (authUser, group, userToAdd, admin) {
-    if (!(await group.userPermissions(authUser)).canAddUsers) {
-      throw new AuthorizationError(
-        "User is not a group admin so cannot add users"
-      );
-    }
-
+  Group.addUserToGroup = async function (group, userToAdd, admin) {
     // Get association if already there and update it.
     const groupUser = await models.GroupUsers.findOne({
       where: {
@@ -279,35 +271,35 @@ export default function (sequelize, DataTypes): GroupStatic {
         UserId: userToAdd.id,
       },
     });
-    if (groupUser != null) {
-      groupUser.admin = admin; // Update admin value.
-      await groupUser.save();
+    if (groupUser !== null) {
+      if (groupUser.admin !== admin) {
+        groupUser.admin = admin; // Update admin value.
+        await groupUser.save();
+        return "Updated, user was made admin for group.";
+      } else {
+        return "No change, user already added.";
+      }
     }
-
     await group.addUser(userToAdd, { through: { admin: admin } });
+    return "Added user to group.";
   };
 
   /**
-   * Removes a user from a Group, if the given user has permission to do so.
-   * The user must be a group admin to do this.
+   * Removes a user from a Group
    */
-  Group.removeUserFromGroup = async function (authUser, group, userToRemove) {
-    if (!(await group.userPermissions(authUser)).canRemoveUsers) {
-      throw new AuthorizationError(
-        "User is not a group admin so cannot remove users"
-      );
-    }
-
+  Group.removeUserFromGroup = async function (group, userToRemove) {
     // Get association if already there and update it.
-    const groupUsers = await models.GroupUsers.findAll({
+    const groupUser = await models.GroupUsers.findOne({
       where: {
         GroupId: group.id,
         UserId: userToRemove.id,
       },
     });
-    for (const groupUser of groupUsers) {
-      await groupUser.destroy();
+    if (groupUser === null) {
+      return false;
     }
+    await groupUser.destroy();
+    return true;
   };
 
   /**
@@ -325,7 +317,7 @@ export default function (sequelize, DataTypes): GroupStatic {
    *
    */
   Group.addStationsToGroup = async function (
-    authUser,
+    authUserId: UserId,
     group,
     stationsToAdd,
     applyToRecordingsFromDate
@@ -356,7 +348,7 @@ export default function (sequelize, DataTypes): GroupStatic {
     const retiredStations = retireMissingStations(
       existingStations,
       newStationsByName,
-      authUser.id
+      authUserId
     );
 
     for (const station of existingStations) {
@@ -378,7 +370,7 @@ export default function (sequelize, DataTypes): GroupStatic {
         stationToAddOrUpdate = new models.Station({
           name: newStation.name,
           location: [newStation.lat, newStation.lng],
-          lastUpdatedById: authUser.id,
+          lastUpdatedById: authUserId,
         });
         addedOrUpdatedStations.push(stationToAddOrUpdate);
         stationOpsPromises.push(
@@ -399,7 +391,7 @@ export default function (sequelize, DataTypes): GroupStatic {
             newStation.lat,
             newStation.lng,
           ];
-          stationToAddOrUpdate.lastUpdatedById = authUser.id;
+          stationToAddOrUpdate.lastUpdatedById = authUserId;
           addedOrUpdatedStations.push(stationToAddOrUpdate);
           stationOpsPromises.push(stationToAddOrUpdate.save());
         }
@@ -412,7 +404,7 @@ export default function (sequelize, DataTypes): GroupStatic {
       // After adding stations, we need to apply any station matches to recordings from a start date:
       updatedRecordings =
         await updateExistingRecordingsForGroupWithMatchingStationsFromDate(
-          authUser,
+          authUserId,
           group,
           applyToRecordingsFromDate,
           allStations
@@ -447,12 +439,13 @@ export default function (sequelize, DataTypes): GroupStatic {
    * that the user belongs if user does not have global read/write permission.
    */
   Group.query = async function (where, user: User, viewAsSuperAdmin: boolean) {
+    // FIXME - ideally move this permissions stuff up to the API layer
     let userWhere = { id: user.id };
     if (viewAsSuperAdmin && user.hasGlobalRead()) {
       userWhere = null;
     }
     return await models.Group.findAll({
-      where: where,
+      where,
       attributes: ["id", "groupname"],
       include: [
         {
@@ -526,27 +519,14 @@ export default function (sequelize, DataTypes): GroupStatic {
     return this.findByPk(id);
   };
 
-  Group.getFromName = async function (name) {
+  Group.getFromName = async function (name): Promise<Group | null> {
     return this.findOne({ where: { groupname: name } });
-  };
-
-  Group.freeGroupname = async function (name) {
-    const group = await this.findOne({ where: { groupname: name } });
-    if (group != null) {
-      throw new Error("groupname in use");
-    }
-    return true;
   };
 
   // NOTE: It doesn't seem that there are any consumers of this function right now.
   Group.getIdFromName = async function (name): Promise<GroupId | null> {
-    const Group = this;
-    const group = await Group.findOne({ where: { groupname: name } });
-    if (group == null) {
-      return null;
-    } else {
-      group.getDataValue("id");
-    }
+    const group = await Group.getFromName(name);
+    return (group && group.getDataValue("id")) || null;
   };
 
   //------------------

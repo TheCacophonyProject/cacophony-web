@@ -37,9 +37,6 @@ if [ "$HOSTNAME" != "processing02" ]; then
     npm run db-migrate
 fi
 
-section "Creating API docs"
-npm run apidoc
-
 section "Restarting API server"
 systemctl daemon-reload
 systemctl start cacophony-api

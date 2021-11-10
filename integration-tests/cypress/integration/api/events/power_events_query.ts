@@ -3,10 +3,11 @@
 // This test set verifies correct retrieval of power events
 // For generation of power events and alerts please see alerts/device_stopped.ts
 //
-import { EventTypes } from "../../../commands/api/events";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
-import { ApiPowerEventReturned } from "../../../commands/types";
+import { EventTypes } from "@commands/api/events";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
+import { ApiPowerEventReturned } from "@commands/types";
+import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
 
 describe("Events - query power events", () => {
   const time1 = "2018-01-01T07:22:56.000Z";
@@ -45,19 +46,19 @@ describe("Events - query power events", () => {
 
   before(() => {
     // group with 2 devices, admin and member users
-    cy.apiCreateUserGroupAndDevice("peGroupAdmin", "peGroup", "peCamera");
-    cy.apiCreateUser("peGroupMember");
-    cy.apiAddUserToGroup("peGroupAdmin", "peGroupMember", "peGroup", false);
-    cy.apiCreateDevice("peOtherCamera", "peGroup");
+    cy.testCreateUserGroupAndDevice("peGroupAdmin", "peGroup", "peCamera");
+    cy.apiUserAdd("peGroupMember");
+    cy.apiGroupUserAdd("peGroupAdmin", "peGroupMember", "peGroup", false);
+    cy.apiDeviceAdd("peOtherCamera", "peGroup");
 
     //admin and member for single device
-    cy.apiCreateUser("peDeviceAdmin");
-    cy.apiCreateUser("peDeviceMember");
-    cy.apiAddUserToDevice("peGroupAdmin", "peDeviceAdmin", "peCamera", true);
-    cy.apiAddUserToDevice("peGroupAdmin", "peDeviceMember", "peCamera", true);
+    cy.apiUserAdd("peDeviceAdmin");
+    cy.apiUserAdd("peDeviceMember");
+    cy.apiDeviceUserAdd("peGroupAdmin", "peDeviceAdmin", "peCamera", true);
+    cy.apiDeviceUserAdd("peGroupAdmin", "peDeviceMember", "peCamera", true);
 
     //another group and device
-    cy.apiCreateUserGroupAndDevice(
+    cy.testCreateUserGroupAndDevice(
       "peOtherGroupAdmin",
       "peOtherGroup",
       "peOtherGroupCamera"
@@ -126,6 +127,7 @@ describe("Events - query power events", () => {
       GroupId: getCreds("peGroup").id,
       Group: peGroup,
     };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     peOtherGroupCameraDevice = {
       id: getCreds("peOtherGroupCamera").id,
       devicename: getTestName("peOtherGroupCamera"),
@@ -186,20 +188,47 @@ describe("Events - query power events", () => {
     cy.apiPowerEventsCheck("peGroupAdmin", "peOtherCamera", {}, [
       expectedOtherCamera,
     ]);
-    cy.apiPowerEventsCheck("peGroupAdmin", "peOtherGroupCamera", {}, []);
+    cy.apiPowerEventsCheck(
+      "peGroupAdmin",
+      "peOtherGroupCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
   });
 
   it("Device member can only request events from within their device", () => {
     cy.apiPowerEventsCheck("peDeviceAdmin", "peCamera", {}, [expectedCamera]);
     //   cy.apiPowerEventsCheck("peDeviceAdmin","peOtherCamera",{}, []);
-    cy.apiPowerEventsCheck("peDeviceAdmin", "peOtherGroupCamera", {}, []);
+    cy.apiPowerEventsCheck(
+      "peDeviceAdmin",
+      "peOtherGroupCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
   });
 
   it("Handles invalid parameters correctly", () => {
-    cy.log("Test for non existant device");
-    cy.apiPowerEventsCheck("peGroupAdmin", undefined, { deviceID: 999999 }, []);
-    cy.log("Bad value for devcice id");
-    //TODO: Test fails - Issue 72 - causes server error - should be caugth with message and 422
-    //cy.apiPowerEventsCheck("peGroupAdmin",undefined,{"deviceID": "bad value"}, [], [], HTTP_Unprocessable);
+    cy.log("Test for non existent device");
+    cy.apiPowerEventsCheck(
+      "peGroupAdmin",
+      undefined,
+      { deviceId: 999999 },
+      [],
+      [],
+      HTTP_Forbidden
+    );
+    cy.log("Bad value for device id");
+    cy.apiPowerEventsCheck(
+      "peGroupAdmin",
+      undefined,
+      { deviceId: "bad value" },
+      [],
+      [],
+      HTTP_Unprocessable
+    );
   });
 });

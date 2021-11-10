@@ -1,10 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { EventTypes } from "../../../commands/api/events";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
+import { EventTypes } from "@commands/api/events";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
 
-import { HTTP_Unprocessable } from "../../../commands/constants";
+import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; //do not check eventId or createdAt time
 
@@ -20,9 +20,9 @@ describe("Events - add event as a device", () => {
   };
 
   before(() => {
-    cy.apiCreateUserGroupAndDevice("evGroupAdmin", "evGroup", "evCamera");
-    cy.apiCreateUserGroupAndDevice("evGroupAdmin2", "evGroup2", "evCamera2");
-    cy.apiCreateUserGroupAndDevice("evGroupAdmin8", "evGroup8", "evCamera8");
+    cy.testCreateUserGroupAndDevice("evGroupAdmin", "evGroup", "evCamera");
+    cy.testCreateUserGroupAndDevice("evGroupAdmin2", "evGroup2", "evCamera2");
+    cy.testCreateUserGroupAndDevice("evGroupAdmin8", "evGroup8", "evCamera8");
 
     //Create some events to reuse / query
     cy.apiEventsAdd("evCamera", eventDetails1, [time1]).then(
@@ -234,7 +234,7 @@ describe("Events - add event as a device", () => {
       [time1],
       9999999,
       true,
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
   });
 

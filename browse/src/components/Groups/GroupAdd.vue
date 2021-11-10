@@ -28,8 +28,10 @@
   </b-modal>
 </template>
 
-<script>
+<script lang="ts">
 import { minLength, required } from "vuelidate/lib/validators";
+import api from "@api";
+import { ErrorResult } from "@api/Recording.api";
 
 const groupNameMinLength = 3;
 
@@ -86,16 +88,23 @@ export default {
 
       if (!this.$v.$invalid) {
         const groupName = this.$v.form.groupName.$model;
-        const result = await this.$store.dispatch(
-          "Groups/ADD_GROUP",
-          groupName
-        );
-
-        if (result !== undefined) {
-          this.formSubmissionFailed = true;
-          this.formSubmissionFailedMessage = result;
+        const addGroupResponse = await api.groups.addNewGroup(groupName);
+        if (addGroupResponse.success === true) {
+          // Go to the added group
+          await this.$router.push(`/groups/${groupName}`);
         } else {
-          this.$router.push(`/groups/${groupName}`);
+          this.formSubmissionFailed = true;
+          if (
+            addGroupResponse.status === 422 &&
+            addGroupResponse.result.errorType === "validation"
+          ) {
+            this.formSubmissionFailedMessage =
+              "Invalid group name: group name must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter";
+          } else {
+            this.formSubmissionFailedMessage =
+              addGroupResponse.result.messages.length &&
+              addGroupResponse.result.messages[0];
+          }
         }
       }
     },

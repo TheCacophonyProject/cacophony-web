@@ -16,23 +16,233 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import e, { Application } from "express";
-import middleware from "../middleware";
-import auth from "../auth";
-import recordingUtil, { RecordingQuery } from "./recordingUtil";
+import { Application, NextFunction, Request, Response } from "express";
+import { expectedTypeOf, validateFields } from "../middleware";
+import recordingUtil, {
+  mapPositions,
+  reportRecordings,
+  reportVisits,
+  signedToken,
+  uploadRawRecording,
+} from "./recordingUtil";
 import responseUtil from "./responseUtil";
-import models from "../../models";
+import models from "@models";
 // @ts-ignore
 import * as csv from "fast-csv";
-import { body, param, query } from "express-validator/check";
-import { RecordingPermission } from "../../models/Recording";
-import { TrackTag } from "../../models/TrackTag";
-import { Track } from "../../models/Track";
+import { body, param, query } from "express-validator";
+import { Recording } from "@models/Recording";
+import { TrackTag } from "@models/TrackTag";
+import { Track } from "@models/Track";
 import { Op } from "sequelize";
 import jwt from "jsonwebtoken";
-import config from "../../config";
+import config from "@config";
 import { ClientError } from "../customErrors";
-import log from "../../logging";
+import log from "@log";
+import {
+  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredDeviceInGroup,
+  fetchAuthorizedRequiredDevices,
+  fetchAuthorizedRequiredRecordingById,
+  fetchUnauthorizedRequiredRecordingById,
+  fetchUnauthorizedRequiredRecordingTagById,
+  fetchUnauthorizedRequiredTrackById,
+  parseJSONField,
+} from "../extract-middleware";
+import {
+  booleanOf,
+  idOf,
+  integerOf,
+  stringOf,
+  validNameOf,
+} from "../validation-middleware";
+import util from "@api/V1/util";
+import {
+  ApiAudioRecordingMetadataResponse,
+  ApiAudioRecordingResponse,
+  ApiGenericRecordingResponse,
+  ApiRecordingResponse,
+  ApiRecordingUpdateRequest,
+  ApiThermalRecordingMetadataResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
+import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
+import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
+import { Validator } from "jsonschema";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { ApiTrackResponse } from "@typedefs/api/track";
+import { Tag } from "@models/Tag";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {
+  ApiRecordingTagResponse,
+  ApiRecordingTagRequest,
+} from "@typedefs/api/tag";
+import {
+  ApiAutomaticTrackTagResponse,
+  ApiHumanTrackTagResponse,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
+import { jsonSchemaOf } from "@api/schema-validation";
+import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
+
+const mapTrackTag = (
+  trackTag: TrackTag
+): ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse => {
+  let data = trackTag?.data;
+  if (data && typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch (e) {
+      // ...
+    }
+  }
+
+  const trackTagBase: ApiTrackTagResponse = {
+    confidence: trackTag.confidence,
+    createdAt: trackTag.createdAt?.toISOString(),
+    data: data as any, // FIXME - Probably returning a bit too much useless data to the front-end?
+    id: trackTag.id,
+    automatic: false, // Unset
+    trackId: trackTag.TrackId,
+    updatedAt: trackTag.updatedAt?.toISOString(),
+    what: trackTag.what,
+  };
+  if (trackTag.automatic) {
+    (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;
+    return trackTagBase as ApiAutomaticTrackTagResponse;
+  } else {
+    (trackTagBase as ApiHumanTrackTagResponse).automatic = false;
+    (trackTagBase as ApiHumanTrackTagResponse).userId = trackTag.UserId;
+    (trackTagBase as ApiHumanTrackTagResponse).userName =
+      trackTag.User.username;
+    return trackTagBase as ApiHumanTrackTagResponse;
+  }
+};
+
+const mapTrackTags = (
+  trackTags: TrackTag[]
+): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] =>
+  trackTags.map(mapTrackTag);
+
+const mapTrack = (track: Track): ApiTrackResponse => ({
+  id: track.id,
+  start: track.data.start_s,
+  end: track.data.end_s,
+  tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
+  positions: mapPositions(track.data.positions),
+});
+
+const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
+  const t = tracks.map(mapTrack);
+  // Sort tracks by start time
+  t.sort((a, b) => a.start - b.start);
+  return t;
+};
+
+const mapTag = (tag: Tag): ApiRecordingTagResponse => {
+  const result: ApiRecordingTagResponse = {
+    automatic: tag.automatic,
+    confidence: tag.confidence,
+    detail: tag.detail,
+    id: tag.id,
+    recordingId: tag.recordingId,
+    version: tag.version,
+    createdAt: (tag.createdAt as unknown as Date).toISOString(),
+  };
+  if (tag.taggerId) {
+    result.taggerId = tag.taggerId;
+    if ((tag as any).tagger) {
+      result.taggerName = (tag as any).tagger.username;
+    }
+  }
+  if (tag.startTime !== undefined) {
+    result.startTime = tag.startTime;
+  }
+  if (tag.duration !== undefined) {
+    result.duration = tag.duration;
+  }
+  if (tag.what) {
+    result.what = tag.what;
+  }
+  return result;
+};
+
+const mapTags = (tags: Tag[]): ApiRecordingTagResponse[] => tags.map(mapTag);
+
+const ifNotNull = (val: any | null) => {
+  if (val !== null) {
+    return val;
+  }
+  return undefined;
+};
+
+const mapRecordingResponse = (
+  recording: Recording
+): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
+  const commonRecording: ApiRecordingResponse = {
+    id: recording.id,
+    deviceId: recording.DeviceId,
+    duration: recording.duration,
+    location: recording.location && {
+      lat: (recording.location as { coordinates: [number, number] })
+        .coordinates[0],
+      lng: (recording.location as { coordinates: [number, number] })
+        .coordinates[1],
+    },
+    rawMimeType: recording.rawMimeType,
+    comment: ifNotNull(recording.comment),
+    deviceName: recording.Device?.devicename,
+    groupId: recording.GroupId,
+    groupName: recording.Group?.groupname,
+    processing: recording.processing || false,
+    processingState: recording.processingState,
+    recordingDateTime: recording.recordingDateTime,
+    stationId: ifNotNull(recording.StationId),
+    stationName: recording.Station?.name,
+    type: recording.type,
+    fileHash: recording.rawFileHash,
+    tags: recording.Tags && mapTags(recording.Tags),
+    tracks: recording.Tracks && mapTracks(recording.Tracks),
+  };
+  if (recording.type === RecordingType.ThermalRaw) {
+    return {
+      ...commonRecording,
+      type: recording.type,
+      additionalMetadata:
+        recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
+    };
+  } else if (recording.type === RecordingType.Audio) {
+    return {
+      ...commonRecording,
+      fileMimeType: ifNotNull(recording.fileMimeType),
+      additionalMetadata:
+        recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map metadata?
+      airplaneModeOn: ifNotNull(recording.airplaneModeOn),
+      batteryCharging: ifNotNull(recording.batteryCharging),
+      batteryLevel: ifNotNull(recording.batteryLevel),
+      relativeToDawn: ifNotNull(recording.relativeToDawn),
+      relativeToDusk: ifNotNull(recording.relativeToDusk),
+      type: recording.type,
+      version: recording.version,
+    };
+  }
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiTracksResponseSuccess {
+  tracks: ApiTrackResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiUpdateRecordingRequestBody {
+  updates: ApiRecordingUpdateRequest;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiRecordingResponseSuccess {
+  recording: ApiGenericRecordingResponse;
+}
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
@@ -40,7 +250,7 @@ export default (app: Application, baseUrl: string) => {
   /**
    * @apiDefine RecordingMetaData
    *
-   * @apiParam {JSON} data[metadata] recording tracks and predictions:
+   * @apiBody {JSON} data[metadata] recording tracks and predictions:
    *<ul>
    * <li>(REQUIRED) tracks - array of track JSON, each track should have
    *   <ul>
@@ -74,7 +284,7 @@ export default (app: Application, baseUrl: string) => {
   /**
    * @apiDefine RecordingParams
    *
-   * @apiParam {JSON} data Metadata about the recording.   Valid tags are:
+   * @apiBody {JSON} data Metadata about the recording.   Valid tags are:
    * <ul>
    * <li>(REQUIRED) type: 'thermalRaw', or 'audio'
    * <li>fileHash - Optional sha1 hexadecimal formatted hash of the file to be uploaded
@@ -89,7 +299,7 @@ export default (app: Application, baseUrl: string) => {
    * <li>comment
    * <li>processingState - Initial processing state to set recording at
    * </ul>
-   * @apiParam {File} file Recording file to upload
+   * @apiBody {File} file Recording file to upload
    */
 
   /**
@@ -109,14 +319,10 @@ export default (app: Application, baseUrl: string) => {
    * @apiSuccess {Number} recordingId ID of the recording.
    * @apiuse V1ResponseError
    */
-  app.post(
-    apiUrl,
-    [auth.authenticateDevice],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler())
-  );
+  app.post(apiUrl, extractJwtAuthorisedDevice, uploadRawRecording);
 
   /**
-   * @api {post} /api/v1/recordings/device/:devicename/group/:groupname Add a new recording on behalf of device using group
+   * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a new recording on behalf of device using group
    * @apiName PostRecordingOnBehalfUsingGroup
    * @apiGroup Recordings
    * @apiDescription Called by a user to upload raw thermal video on behalf of a device.
@@ -125,6 +331,8 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {String} deviceName name of device to add recording for
+   * @apiParam {String} groupName name of group to add recording for
    * @apiUse RecordingParams
    *
    * @apiUse RecordingMetaData
@@ -135,25 +343,32 @@ export default (app: Application, baseUrl: string) => {
    */
 
   app.post(
-    `${apiUrl}/device/:devicename/group/:groupname`,
-    [
-      auth.authenticateUser,
-      middleware.setGroupName(param),
-      middleware.getDevice(param),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler())
+    `${apiUrl}/device/:deviceName/group/:groupName`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      validNameOf(param("groupName")),
+      validNameOf(param("deviceName")),
+
+      // Default to also allowing inactive devices to have uploads on their behalf
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredDeviceInGroup(
+      param("deviceName"),
+      param("groupName")
+    ),
+    uploadRawRecording
   );
 
   /**
-   * @api {post} /api/v1/recordings/device/:deviceID Add a new recording on behalf of device
+   * @api {post} /api/v1/recordings/device/:deviceId Add a new recording on behalf of device
    * @apiName PostRecordingOnBehalf
    * @apiGroup Recordings
    * @apiDescription Called by a user to upload raw thermal video on behalf of a device.
    * The user must have permission to view videos from the device or the call will return an
    * error.
    *
-   * @apiParam {String} deviceID ID of the device to upload on behalf of. If you don't have access to the ID the devicename can be used instead in it's place.
+   * @apiParam {Integer} deviceId ID of the device to upload on behalf of. If you don't have access to the ID the devicename can be used instead in it's place.
+   * @apiQuery {Boolean} [only-active=false] operate only on active devices
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse RecordingParams
@@ -166,31 +381,19 @@ export default (app: Application, baseUrl: string) => {
    */
 
   app.post(
-    `${apiUrl}/device/:deviceID`,
-    [
-      auth.authenticateUser,
-      middleware.getDevice(param, "deviceID"),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler())
+    `${apiUrl}/device/:deviceId`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+      // Default to also allowing inactive devices to have uploads on their behalf
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    uploadRawRecording
   );
 
-  const queryValidators = Object.freeze([
-    middleware.parseJSON("where", query).optional(),
-    query("offset").isInt().toInt().optional(),
-    query("limit").isInt().toInt().optional(),
-    middleware.parseJSON("order", query).optional(),
-    middleware.parseArray("tags", query).optional(),
-    query("tagMode")
-      .optional()
-      .custom((value) => {
-        return models.Recording.isValidTagMode(value);
-      }),
-    middleware.parseJSON("filterOptions", query).optional(),
-  ]);
-
   /**
-   * @api {post} /api/v1/recordings/:devicename Legacy upload on behalf of
+   * @api {post} /api/v1/recordings/:deviceName Legacy upload on behalf of
    * @apiName PostRecordingOnBehalfLegacy
    * @apiGroup Recordings
    * @apiDeprecated use now (#Recordings:PostRecordingOnBehalf)
@@ -200,7 +403,7 @@ export default (app: Application, baseUrl: string) => {
    * name is unique across all groups. It should not be used for new code.
    *
    * @apiUse V1UserAuthorizationHeader
-   *
+   * @apiParam {Integer} deviceName
    * @apiUse RecordingParams
    *
    * @apiUse RecordingMetaData
@@ -210,15 +413,29 @@ export default (app: Application, baseUrl: string) => {
    * @apiuse V1ResponseError
    */
   app.post(
-    apiUrl + "/:devicename",
-    [
-      auth.authenticateUser,
-      middleware.getDevice(param),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(recordingUtil.makeUploadHandler())
+    `${apiUrl}/:deviceName`,
+    extractJwtAuthorizedUser,
+    validateFields([validNameOf(param("deviceName"))]),
+    fetchAuthorizedRequiredDevices,
+    (request: Request, response: Response, next: NextFunction) => {
+      const targetDeviceName = request.params.deviceName;
+      const devices = response.locals.devices.filter(
+        ({ deviceName }) => deviceName === targetDeviceName
+      );
+      if (devices.length !== 1) {
+        return next(
+          new ClientError(
+            `Could not find unique device with name ${targetDeviceName} - try the /api/v1/recordings/device/:deviceName/group/:groupName endpoint.`
+          )
+        );
+      }
+      response.locals.device = devices[0];
+      next();
+    },
+    uploadRawRecording
   );
 
+  // FIXME - Should we just delete this now?
   /**
    * @api {get} /api/v1/recordings/visits Query available recordings and generate visits
    * @apiName QueryVisits
@@ -230,33 +447,58 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse BaseQueryParams
    * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
-   * @apiUse FilterOptions
    * @apiUse V1ResponseSuccessQuery
    * @apiUse V1ResponseError
    */
   app.get(
-    apiUrl + "/visits",
-    [auth.authenticateUser, middleware.viewMode(), ...queryValidators],
-    middleware.requestWrapper(
-      async (request: e.Request, response: e.Response) => {
-        const result = await recordingUtil.queryVisits(
-          request as unknown as RecordingQuery
-        );
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          limit: request.query.limit,
-          offset: request.query.offset,
-          numRecordings: result.numRecordings,
-          numVisits: result.numVisits,
-          queryOffset: result.queryOffset,
-          totalRecordings: result.totalRecordings,
-          hasMoreVisits: result.hasMoreVisits,
-          visits: result.visits,
-          summary: result.summary.generateAnimalSummary(),
-        });
-      }
-    )
+    `${apiUrl}/visits`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      query("type").optional().isIn(["thermalRaw", "audio"]),
+      query("processingState")
+        .optional()
+        .isIn(Object.values(RecordingProcessingState)),
+      query("where").isJSON().optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+      query("order").isJSON().optional(),
+      query("tags").isJSON().optional(),
+      query("tagMode")
+        .optional()
+        .custom((value) => {
+          return models.Recording.isValidTagMode(value);
+        }),
+      query("filterOptions").isJSON().optional(),
+    ]),
+    parseJSONField(query("order")),
+    parseJSONField(query("where")),
+    parseJSONField(query("tags")),
+    parseJSONField(query("filterOptions")), // FIXME - this doesn't seem to be used.
+    async (request: Request, response: Response) => {
+      const result = await recordingUtil.queryVisits(
+        response.locals.requestUser.id,
+        response.locals.viewAsSuperUser,
+        response.locals.where,
+        request.query.tagMode,
+        response.locals.tags || [],
+        request.query.offset && parseInt(request.query.offset as string),
+        request.query.limit && parseInt(request.query.limit as string)
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        limit: request.query.limit,
+        offset: request.query.offset,
+        numRecordings: result.numRecordings,
+        numVisits: result.numVisits,
+        queryOffset: result.queryOffset,
+        totalRecordings: result.totalRecordings,
+        hasMoreVisits: result.hasMoreVisits,
+        visits: result.visits,
+        summary: result.summary.generateAnimalSummary(),
+      });
+    }
   );
 
   /**
@@ -264,34 +506,69 @@ export default (app: Application, baseUrl: string) => {
    * @apiName QueryRecordings
    * @apiGroup Recordings
    *
-   * @apiParam {string} view-mode (Optional) - can be set to "user"
-   *
    * @apiUse V1UserAuthorizationHeader
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
+   * @apiQuery {Boolean} [include-deleted=false] Include deleted recordings
+   * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
+   * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
+   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiUse BaseQueryParams
-   * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
-   * @apiUse FilterOptions
    * @apiUse V1ResponseSuccessQuery
    * @apiUse V1ResponseError
    */
   app.get(
     apiUrl,
-    [auth.authenticateUser, middleware.viewMode(), ...queryValidators],
-    middleware.requestWrapper(
-      async (request: e.Request, response: e.Response) => {
-        const result = await recordingUtil.query(
-          request as unknown as RecordingQuery
-        );
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          limit: request.query.limit,
-          offset: request.query.offset,
-          count: result.count,
-          rows: result.rows,
-        });
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      query("type").optional().isIn(Object.values(RecordingType)),
+      query("processingState")
+        .optional()
+        .isIn(Object.values(RecordingProcessingState)),
+      query("where").isJSON().optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+      query("order").isJSON().optional(),
+      query("tags").isJSON().optional(),
+      query("include-deleted").default(false).isBoolean().toBoolean(),
+      query("tagMode")
+        .optional()
+        .custom((value) => {
+          return models.Recording.isValidTagMode(value);
+        }),
+    ]),
+    parseJSONField(query("order")),
+    parseJSONField(query("where")),
+    parseJSONField(query("tags")),
+    async (request: Request, response: Response) => {
+      // FIXME Stop allowing arbitrary where queries
+      const where = response.locals.where || {};
+      if (request.query["include-deleted"]) {
+        where.deletedAt = { [Op.ne]: null };
+      } else {
+        where.deletedAt = { [Op.eq]: null };
       }
-    )
+      const result = await recordingUtil.query(
+        response.locals.requestUser.id,
+        response.locals.viewAsSuperUser,
+        where,
+        request.query.tagMode,
+        response.locals.tags || [],
+        request.query.limit && parseInt(request.query.limit as string),
+        request.query.offset && parseInt(request.query.offset as string),
+        response.locals.order,
+        request.query.type as RecordingType
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        limit: request.query.limit,
+        offset: request.query.offset,
+        count: result.count,
+        rows: result.rows.map(mapRecordingResponse),
+      });
+    }
   );
 
   /**
@@ -299,54 +576,92 @@ export default (app: Application, baseUrl: string) => {
    * @apiName QueryRecordingsCount
    * @apiGroup Recordings
    *
-   * @apiParam {string} view-mode (Optional) - can be set to "user"
-   *
    * @apiUse V1UserAuthorizationHeader
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
+   * @apiQuery {Boolean} [include-deleted=false] Include deleted recordings
+   * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
+   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiUse BaseQueryParams
    * @apiUse MoreQueryParams
-   * @apiUse FilterOptions
    * @apiUse V1ResponseSuccessQuery
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/count`,
-    [auth.authenticateUser, middleware.viewMode(), ...queryValidators],
-    middleware.requestWrapper(
-      async (request: RecordingQuery, response: e.Response) => {
-        const user = request.user;
-        const countQuery = {
-          where: {
-            [Op.and]: [
-              request.query.where, // User query
-            ],
-          },
-          include: [
-            {
-              model: models.Group,
-              include: [
-                {
-                  model: models.User,
-                  where: {
-                    [Op.and]: [{ id: user.id }],
-                  },
-                },
-              ],
-              required: true,
-            },
-          ],
-        };
-        if (request.body.viewAsSuperAdmin && user.hasGlobalRead()) {
-          // Dont' filter on user if the user has global read permissons.
-          delete countQuery.include[0].include;
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      query("type").optional().isIn(Object.values(RecordingType)),
+      query("processingState")
+        .optional()
+        .isIn(Object.values(RecordingProcessingState)),
+      query("where").isJSON().optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+      query("order").isJSON().optional(),
+      query("tags").isJSON().optional(),
+      query("include-deleted").default(false).isBoolean().toBoolean(),
+      query("tagMode")
+        .optional()
+        .custom((value) => {
+          return models.Recording.isValidTagMode(value);
+        }),
+    ]),
+    parseJSONField(query("order")),
+    parseJSONField(query("where")),
+    parseJSONField(query("tags")),
+    async (request: Request, response: Response) => {
+      const user = response.locals.requestUser;
+
+      // FIXME - Is this redundant now?
+      let userWhere = request.query.where || {};
+      if (typeof userWhere === "string") {
+        try {
+          userWhere = JSON.parse(userWhere);
+        } catch (e) {
+          responseUtil.send(response, {
+            statusCode: 400,
+            messages: ["Malformed JSON"],
+          });
         }
-        const count = await models.Recording.count(countQuery);
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          count,
-        });
       }
-    )
+      if (request.query["include-deleted"]) {
+        (userWhere as any).deletedAt = { [Op.ne]: null };
+      } else {
+        (userWhere as any).deletedAt = { [Op.eq]: null };
+      }
+      const countQuery = {
+        where: {
+          [Op.and]: [
+            userWhere, // User query
+          ],
+        },
+        include: [
+          {
+            model: models.Group,
+            include: [
+              {
+                model: models.User,
+                where: {
+                  [Op.and]: [{ id: user.id }],
+                },
+              },
+            ],
+            required: true,
+          },
+        ],
+      };
+      if (response.locals.viewAsSuperUser && user.hasGlobalRead()) {
+        // Dont' filter on user if the user has global read permissions.
+        delete countQuery.include[0].include;
+      }
+      const count = await models.Recording.count(countQuery);
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        count,
+      });
+    }
   );
 
   /**
@@ -359,37 +674,37 @@ export default (app: Application, baseUrl: string) => {
    * formatted details of the selected recordings.
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {number} [deviceId] Optional deviceId to bias returned recording to.
+   * @apiParam {Integer} [deviceId] Optional deviceId to bias returned recording to.
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/needs-tag`,
-    [auth.authenticateUser, query("deviceId").isInt().toInt().optional()],
-    middleware.requestWrapper(
-      async (request: e.Request, response: e.Response) => {
-        // NOTE: We only return the minimum set of fields we need to play back
-        //  a recording, show tracks in the UI, and have the user add a tag.
-        //  Generate a short-lived JWT token for each recording we return, keyed
-        //  to that recording.  Only return a single recording at a time.
-        //
-        let result;
-        if (!request.query.deviceId) {
-          result = await models.Recording.getRecordingWithUntaggedTracks();
-        } else {
-          // NOTE: Optionally, the returned recordings can be biased to be from
-          //  a preferred deviceId, to handle the case where we'd like a series
-          //  of random recordings to tag constrained to a single device.
-          result = await models.Recording.getRecordingWithUntaggedTracks(
-            Number(request.query.deviceId)
-          );
-        }
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Completed query."],
-          rows: [result],
-        });
+    extractJwtAuthorizedUser,
+    validateFields([idOf(query("deviceId")).optional()]),
+    async (request: Request, response: Response) => {
+      // NOTE: We only return the minimum set of fields we need to play back
+      //  a recording, show tracks in the UI, and have the user add a tag.
+      //  Generate a short-lived JWT token for each recording we return, keyed
+      //  to that recording.  Only return a single recording at a time.
+      //
+      let result;
+      if (!request.query.deviceId) {
+        result = await models.Recording.getRecordingWithUntaggedTracks();
+      } else {
+        // NOTE: Optionally, the returned recordings can be biased to be from
+        //  a preferred deviceId, to handle the case where we'd like a series
+        //  of random recordings to tag constrained to a single device.
+        result = await models.Recording.getRecordingWithUntaggedTracks(
+          Number(request.query.deviceId)
+        );
       }
-    )
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        // FIXME - should be a mapped recording?
+        rows: [result],
+      });
+    }
   );
 
   /**
@@ -407,27 +722,66 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
    * @apiParam {boolean} [audiobait] To add audiobait to a recording query set this to true.
-   * @apiUse FilterOptions
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/report`,
-    [
-      auth.paramOrHeader,
+    extractJwtAuthorizedUser,
+    validateFields([
       query("type").isString().optional().isIn(["recordings", "visits"]),
-      ...queryValidators,
+      query("where").isJSON().optional(),
+      query("jwt").optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
       query("audiobait").isBoolean().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+      query("order").isJSON().optional(),
+      query("tags").isJSON().optional(),
+      query("tagMode")
+        .optional()
+        .custom((value) => {
+          return models.Recording.isValidTagMode(value);
+        }),
+      query("view-mode").optional().equals("user"),
+      //middleware.parseJSON("filterOptions", query).optional(),
+    ]),
+    parseJSONField(query("order")),
+    parseJSONField(query("where")),
+    parseJSONField(query("tags")),
+    async (request: Request, response: Response) => {
+      // FIXME - deprecate and generate report client-side from other available API data.
+
       // 10 minute timeout because the query can take a while to run
       // when the result set is large.
-      const rows = await recordingUtil.report(request);
+      let rows;
+      if (request.query.type == "visits") {
+        rows = await reportVisits(
+          response.locals.requestUser.id,
+          response.locals.viewAsSuperUser,
+          response.locals.where,
+          request.query.tagMode,
+          response.locals.tags || [],
+          request.query.offset && parseInt(request.query.offset as string),
+          request.query.limit && parseInt(request.query.limit as string)
+        );
+      } else {
+        rows = await reportRecordings(
+          response.locals.requestUser.id,
+          response.locals.viewAsSuperUser,
+          response.locals.where,
+          request.query.tagMode,
+          response.locals.tags || [],
+          request.query.offset && parseInt(request.query.offset as string),
+          request.query.limit && parseInt(request.query.limit as string),
+          response.locals.order,
+          Boolean(request.query.audiobait)
+        );
+      }
       response.status(200).set({
         "Content-Type": "text/csv",
         "Content-Disposition": "attachment; filename=recordings.csv",
       });
       csv.writeToStream(response, rows);
-    })
+    }
   );
 
   /**
@@ -438,39 +792,73 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse MetaDataAndJWT
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiUse FilterOptions
    * @apiUse V1ResponseSuccess
+   *
+   * @apiParam {Integer} id Id of the recording to get.
+   * @apiQuery {Boolean} [include-deleted=false] Whether or not to include deleted recordings.
    * @apiSuccess {int} fileSize the number of bytes in recording file.
    * @apiSuccess {int} rawSize the number of bytes in raw recording file.
    * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
    * recording file.
    * @apiSuccess {String} downloadRawJWT JSON Web Token to use to download
    * the raw recording data.
-   * @apiSuccess {JSON} recording The recording data.
+   * @apiInterface {apiSuccess::ApiRecordingResponseSuccess} recording The recording data.
    *
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:id`,
-    [
-      auth.authenticateUser,
-      param("id").isInt(),
-      middleware.parseJSON("filterOptions", query).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const { recording, rawSize, rawJWT, cookedSize, cookedJWT } =
-        await recordingUtil.get(request);
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("include-deleted").default(false).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const recordingItem = response.locals.recording;
+      let rawJWT;
+      let cookedJWT;
+      let rawSize;
+      let cookedSize;
+      if (recordingItem.fileKey) {
+        cookedJWT = signedToken(
+          recordingItem.fileKey,
+          recordingItem.getFileName(),
+          recordingItem.fileMimeType
+        );
+        cookedSize =
+          recordingItem.fileSize ||
+          (await util.getS3ObjectFileSize(recordingItem.fileKey));
+      }
+      if (recordingItem.rawFileKey) {
+        rawJWT = signedToken(
+          recordingItem.rawFileKey,
+          recordingItem.getRawFileName(),
+          recordingItem.rawMimeType
+        );
+        rawSize =
+          recordingItem.rawFileSize ||
+          (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
+      }
+      const recording = mapRecordingResponse(response.locals.recording);
+
+      if (!config.productionEnv) {
+        const JsonSchema = new Validator();
+        console.assert(
+          JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
+        );
+      }
 
       responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        recording: recording,
+        recording,
         rawSize: rawSize,
         fileSize: cookedSize,
         downloadFileJWT: cookedJWT,
         downloadRawJWT: rawJWT,
       });
-    })
+    }
   );
 
   /**
@@ -479,22 +867,17 @@ export default (app: Application, baseUrl: string) => {
    * @apiGroup Recordings
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
    *
+   * @apiParam {Integer} id Id of the recording to get the thumbnail for.
+   *
    * @apiSuccess {file} file Raw data stream of the png.
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:id/thumbnail`,
-    [param("id").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const rec = await models.Recording.findByPk(request.params.id, {
-        attributes: ["rawFileKey", "id"],
-      });
-      if (!rec) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to get recording."],
-        });
-      }
+    validateFields([idOf(param("id"))]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const rec = response.locals.recording;
       const mimeType = "image/png";
       const filename = `${rec.id}-thumb.png`;
 
@@ -515,14 +898,17 @@ export default (app: Application, baseUrl: string) => {
           return response.end(null, "binary");
         })
         .catch((err) => {
-          log.error("Error getting thumbnail from s3 %s", rec.id);
-          log.error(err.stack);
+          log.error(
+            "Error getting thumbnail from s3 %s: %s",
+            rec.id,
+            err.message
+          );
           return responseUtil.send(response, {
             statusCode: 400,
             messages: ["No thumbnail exists"],
           });
         });
-    })
+    }
   );
   /**
    * @api {delete} /api/v1/recordings/:id Delete an existing recording
@@ -530,16 +916,45 @@ export default (app: Application, baseUrl: string) => {
    * @apiGroup Recordings
    *
    * @apiUse V1UserAuthorizationHeader
+   * @apiParam {Integer} id Id of the recording to delete.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
   app.delete(
     `${apiUrl}/:id`,
-    [auth.authenticateUser, param("id").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      return recordingUtil.delete_(request, response);
-    })
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      //let deleted = false;
+      const recording: Recording = response.locals.recording;
+      recording.deletedAt = new Date();
+      recording.deletedBy = response.locals.requestUser.id;
+      await recording.save();
+      // const rawFileKey = recording.rawFileKey;
+      // const fileKey = recording.fileKey;
+      // try {
+      //   await recording.destroy();
+      //   deleted = true;
+      // } catch (e) {
+      //   // ..
+      // }
+      // if (deleted && rawFileKey) {
+      //   await util.deleteS3Object(rawFileKey).catch((err) => {
+      //     log.warning(err);
+      //   });
+      // }
+      // if (deleted && fileKey) {
+      //   await util.deleteS3Object(fileKey).catch((err) => {
+      //     log.warning(err);
+      //   });
+      // }
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Deleted recording."],
+      });
+    }
   );
 
   /**
@@ -549,47 +964,34 @@ export default (app: Application, baseUrl: string) => {
    * @apiDescription This call is used for updating fields of a previously
    * submitted recording.
    *
-   * The following fields that may be updated are:
-   * - location
-   * - comment
-   * - additionalMetadata
-   *
-   * If a change to any other field is attempted the request will fail and no
-   * update will occur.
-   *
    * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {JSON} updates Object containing the fields to update and their new values.
+
+   * @apiParam {Integer} id Id of the recording to update.
+   * @apiInterface {apiBody::ApiRecordingUpdateRequestBody} updates Object containing the fields to update and their new values.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
   app.patch(
     `${apiUrl}/:id`,
-    [
-      auth.authenticateUser,
-      param("id").isInt(),
-      middleware.parseJSON("updates", body),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const updated = await models.Recording.updateOne(
-        request.user,
-        request.params.id,
-        request.body.updates
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      body("updates").custom(jsonSchemaOf(ApiRecordingUpdateRequestSchema)),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    parseJSONField(body("updates")),
+    async (request: Request, response: Response) => {
+      // FIXME - If update includes location, rematch stations.  Maybe this should
+      //  be part of the setter for location, but might be too magic?
+      await response.locals.recording.update(
+        response.locals.updates as ApiRecordingUpdateRequest
       );
-
-      if (updated) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Updated recording."],
-        });
-      } else {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to update recordings."],
-        });
-      }
-    })
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Updated recording."],
+      });
+    }
   );
 
   /**
@@ -599,49 +1001,40 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {number} id Id of the recording to add the track to.
+   * @apiParam {Integer} id Id of the recording to add the track to.
    * @apiParam {JSON} data Data which defines the track (type specific).
-   * @apiParam {JSON} algorithm (Optional) Description of algorithm that generated track
+   * @apiParam {JSON} [algorithm] Description of algorithm that generated track
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {int} trackId Unique id of the newly created track.
+   * @apiSuccess {Integer} trackId Unique id of the newly created track.
+   * @apiSuccess {Integer} algorithmId Id of tracking algorithm used
    *
    * @apiUse V1ResponseError
    *
    */
   app.post(
     `${apiUrl}/:id/tracks`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      middleware.parseJSON("data", body),
-      middleware.parseJSON("algorithm", body).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.get(
-        request.user,
-        request.params.id,
-        RecordingPermission.UPDATE
-      );
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-
-      // FIXME(jon): This incomplete JSON string looks dodge.
-      const algorithm = request.body.algorithm
-        ? request.body.algorithm
-        : "{'status': 'User added.'";
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      // FIXME - JSON schema for update data?
+      body("data").isJSON(),
+      body("algorithm").isJSON().optional(),
+    ]),
+    parseJSONField(body("data")),
+    parseJSONField(body("algorithm")),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const algorithm = response.locals.algorithm
+        ? response.locals.algorithm
+        : "{'status': 'User added.'}";
       const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
         "algorithm",
         algorithm
       );
 
-      const track = await recording.createTrack({
-        data: request.body.data,
+      const track = await response.locals.recording.createTrack({
+        data: response.locals.data,
         AlgorithmId: algorithmDetail.id,
       });
 
@@ -651,7 +1044,7 @@ export default (app: Application, baseUrl: string) => {
         trackId: track.id,
         algorithmId: track.AlgorithmId,
       });
-    })
+    }
   );
 
   /**
@@ -662,45 +1055,36 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} id Id of the recording
+   *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} tracks Array with elements containing id,
-   * algorithm, data and tags fields.
+   * @apiInterface {apiSuccess::ApiTracksResponseSuccess} tracks
    *
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:id/tracks`,
-    [auth.authenticateUser, param("id").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.get(
-        request.user,
-        request.params.id,
-        RecordingPermission.VIEW
-      );
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
-        });
-        return;
-      }
-
-      const tracks = await recording.getActiveTracksTagsAndTagger();
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const tracks =
+        await response.locals.recording.getActiveTracksTagsAndTagger();
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["OK."],
-        tracks: tracks.map((t) => {
-          delete t.dataValues.RecordingId;
-          return t;
-        }),
+        tracks: mapTracks(tracks),
       });
-    })
+    }
   );
 
   /**
    * @api {delete} /api/v1/recordings/:id/tracks/:trackId Remove track from recording
    * @apiName DeleteTrack
    * @apiGroup Tracks
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to remove
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiUse V1ResponseSuccess
@@ -709,22 +1093,28 @@ export default (app: Application, baseUrl: string) => {
    */
   app.delete(
     `${apiUrl}/:id/tracks/:trackId`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const track = await loadTrack(request, response);
-      if (!track) {
-        return;
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id")), idOf(param("trackId"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request, response) => {
+      // Make sure the track belongs to the recording (this could probably be one query)
+      if (
+        (response.locals.track as Track).RecordingId ===
+        response.locals.recording.id
+      ) {
+        await response.locals.track.destroy();
+        responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Track deleted."],
+        });
+      } else {
+        responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["No such track."],
+        });
       }
-      await track.destroy();
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track deleted."],
-      });
-    })
+    }
   );
 
   /**
@@ -739,10 +1129,13 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} what Object/event to tag.
-   * @apiParam {Number} confidence Tag confidence score.
-   * @apiParam {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
-   * @apiParam {JSON} data Data Additional tag data.
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   *
+   * @apiBody {String} what Object/event to tag.
+   * @apiBody {Number} confidence Tag confidence score.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
+   * @apiBody {JSON} [data] Data Additional tag data.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
@@ -752,32 +1145,51 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replaceTag`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-      body("what"),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      stringOf(body("what")),
       body("confidence").isFloat().toFloat(),
       body("automatic").isBoolean().toBoolean(),
-      middleware.parseJSON("data", body).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+      body("data").isJSON().optional(),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    parseJSONField(body("data")),
+    // FIXME - extract valid track for trackId on recording with id
+    async (request: Request, response: Response) => {
+      const requestUser = response.locals.requestUser;
       const newTag = models.TrackTag.build({
         what: request.body.what,
         confidence: request.body.confidence,
         automatic: request.body.automatic,
-        data: request.body.data ? request.body.data : "",
-        UserId: request.user.id,
-        TrackId: request.params.trackId,
+        data: response.locals.data || "",
+        UserId: requestUser.id,
+        TrackId: response.locals.track.id,
       }) as TrackTag;
-
-      await models.Track.replaceTag(request.params.trackId, newTag);
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track tag added."],
-        trackTagId: newTag.id,
-      });
-    })
+      try {
+        const tag = await response.locals.track.replaceTag(newTag);
+        if (tag) {
+          responseUtil.send(response, {
+            statusCode: 200,
+            messages: ["Track tag added."],
+            trackTagId: tag.id,
+          });
+        } else {
+          responseUtil.send(response, {
+            statusCode: 200,
+            messages: ["Tag already exists."],
+          });
+        }
+      } catch (e) {
+        log.warning("Failure replacing tag: %s", e);
+        responseUtil.send(response, {
+          statusCode: 500,
+          messages: ["Server error replacing tag."],
+        });
+      }
+    }
   );
 
   /**
@@ -787,10 +1199,14 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} what Object/event to tag.
-   * @apiParam {Number} confidence Tag confidence score.
-   * @apiParam {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
-   * @apiParam {JSON} data Data Additional tag data.
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   *
+   * @apiBody {String} what Object/event to tag.
+   * @apiBody {Number} confidence Tag confidence score.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
+   * @apiBody {String} [tagJWT] JWT token to tag a recording/track that the user would not otherwise have permission to view.
+   * @apiBody {JSON} [data] Data Additional tag data.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
@@ -800,17 +1216,31 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/tags`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-      body("what"),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      stringOf(body("what")),
       body("confidence").isFloat().toFloat(),
-      body("automatic").isBoolean().toBoolean(),
+      booleanOf(body("automatic")),
       body("tagJWT").optional().isString(),
-      middleware.parseJSON("data", body).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+      body("data").optional().isJSON(),
+    ]),
+    // FIXME - JSON schema fo allowed data? At least a limit to how many chars etc?
+    parseJSONField(body("data")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (request.body.tagJWT) {
+        return next();
+      } else {
+        await fetchAuthorizedRequiredRecordingById(param("id"))(
+          request,
+          response,
+          next
+        );
+        return next();
+      }
+    },
+    async (request: Request, response: Response) => {
       let track;
       if (request.body.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users' recording
@@ -818,11 +1248,13 @@ export default (app: Application, baseUrl: string) => {
         track = await loadTrackForTagJWT(request, response);
       } else {
         // Otherwise, just check that the user can update this track.
-        track = await loadTrack(request, response);
+        const track = await response.locals.recording.getTrack(
+          request.params.trackId
+        );
         if (!track) {
           responseUtil.send(response, {
-            statusCode: 401,
-            messages: ["Track not found"],
+            statusCode: 400,
+            messages: ["No such track."],
           });
           return;
         }
@@ -831,15 +1263,15 @@ export default (app: Application, baseUrl: string) => {
         request.body.what,
         request.body.confidence,
         request.body.automatic,
-        request.body.data ? request.body.data : "",
-        request.user.id
+        response.locals.data || "",
+        response.locals.requestUser.id
       );
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag added."],
         trackTagId: tag.id,
       });
-    })
+    }
   );
 
   /**
@@ -854,29 +1286,33 @@ export default (app: Application, baseUrl: string) => {
    */
   app.delete(
     `${apiUrl}/:id/tracks/:trackId/tags/:trackTagId`,
-    [
-      auth.authenticateUser,
-      param("id").isInt().toInt(),
-      param("trackId").isInt().toInt(),
-      param("trackTagId").isInt().toInt(),
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      idOf(param("trackTagId")),
       query("tagJWT").isString().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request, response) => {
       let track;
       if (request.query.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users' recording
         // update permissions.
         track = await loadTrackForTagJWT(request, response);
       } else {
+        // FIXME - fetch in middleware
         // Otherwise, just check that the user can update this track.
-        track = await loadTrack(request, response);
-        if (!track) {
-          responseUtil.send(response, {
-            statusCode: 401,
-            messages: ["Track not found"],
-          });
-          return;
-        }
+        track = await response.locals.recording.getTrack(
+          request.params.trackId
+        );
+      }
+      if (!track) {
+        responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["No such track."],
+        });
+        return;
       }
 
       const tag = await track.getTrackTag(request.params.trackTagId);
@@ -894,9 +1330,73 @@ export default (app: Application, baseUrl: string) => {
         statusCode: 200,
         messages: ["Track tag deleted."],
       });
-    })
+    }
   );
 
+  /**
+   * @api {delete} /api/v1/recordings/:id/tags/:tagId Delete an existing recording tag
+   * @apiName DeleteRecordingTag
+   * @apiGroup Recordings
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+    `${apiUrl}/:id/tags/:tagId`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id")), idOf(param("tagId"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredRecordingTagById(param("tagId")),
+    async (request: Request, response: Response) => {
+      await response.locals.tag.destroy();
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Deleted tag."],
+      });
+    }
+  );
+
+  /**
+   * @api {post} /api/v1/recordings/:id/tags Add a new recording tag
+   * @apiName AddRecordingTag
+   * @apiGroup Recordings
+   *
+   * @apiUse V1UserAuthorizationHeader
+   * @apiParam {Integer} id Recording id to add tag to
+   * @apiInterface {apiBody::ApiRecordingTagRequest} tag
+   *
+   * @apiSuccess {Integer} tagId id of the newly created tag
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/tags`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      body("tag")
+        .custom(jsonSchemaOf(ApiRecordingTagRequestSchema))
+        .withMessage(expectedTypeOf("ApiRecordingTagRequest")),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    parseJSONField(body("tag")),
+    async (request: Request, response: Response) => {
+      const tagInstance = await recordingUtil.addTag(
+        response.locals.requestUser,
+        response.locals.recording,
+        response.locals.tag
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Added new tag."],
+        tagId: tagInstance.id,
+      });
+    }
+  );
+
+  // FIXME - This function doesn't belong here
   async function loadTrackForTagJWT(request, response): Promise<Track> {
     let jwtDecoded;
     const tagJWT = request.body.tagJWT || request.query.tagJWT;
@@ -909,7 +1409,7 @@ export default (app: Application, baseUrl: string) => {
         const track = await models.Track.findByPk(request.params.trackId);
         if (!track) {
           responseUtil.send(response, {
-            statusCode: 401,
+            statusCode: 403,
             messages: ["Track does not exist"],
           });
           return;
@@ -917,7 +1417,7 @@ export default (app: Application, baseUrl: string) => {
         // Ensure track belongs to this recording.
         if (track.RecordingId !== request.params.id) {
           responseUtil.send(response, {
-            statusCode: 401,
+            statusCode: 403,
             messages: ["Track does not belong to recording"],
           });
           return;
@@ -925,43 +1425,17 @@ export default (app: Application, baseUrl: string) => {
         return track;
       } else {
         responseUtil.send(response, {
-          statusCode: 401,
+          statusCode: 403,
           messages: ["JWT does not have permissions to tag this recording"],
         });
         return;
       }
     } catch (e) {
       responseUtil.send(response, {
-        statusCode: 401,
+        statusCode: 403,
         messages: ["Failed to verify JWT."],
       });
       return;
     }
-  }
-
-  async function loadTrack(request, response): Promise<Track> {
-    const recording = await models.Recording.get(
-      request.user,
-      request.params.id,
-      RecordingPermission.UPDATE
-    );
-    if (!recording) {
-      responseUtil.send(response, {
-        statusCode: 400,
-        messages: ["No such recording."],
-      });
-      return;
-    }
-
-    const track = await recording.getTrack(request.params.trackId);
-    if (!track) {
-      responseUtil.send(response, {
-        statusCode: 400,
-        messages: ["No such track."],
-      });
-      return;
-    }
-
-    return track;
   }
 };

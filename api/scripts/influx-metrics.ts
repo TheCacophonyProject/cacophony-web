@@ -1,13 +1,14 @@
+import registerAliases from "../module-aliases";
+registerAliases();
 import * as config from "../config";
 
-const Influx = require("influx");
+import * as Influx from "influx";
 import process from "process";
 import { program } from "commander";
 import { Client } from "pg";
 import moment from "moment";
 import os from "os";
-import models from "../models";
-import { RecordingProcessingState } from "../models/Recording";
+import { RecordingProcessingState } from "@typedefs/api/consts";
 
 let Config;
 
@@ -63,15 +64,15 @@ async function measureProcessingWaitTime(influx, pgClient) {
   const res = await pgQuery(
     pgClient,
     `select "createdAt" from "Recordings"
-    where "processingState" in ('analyse', 'tracking')
+    where "processingState" in ('analyse', 'tracking') and "deletedAt" is null
     order by "createdAt" asc limit 1`
   );
 
   let waitMinutes = 0;
   if (res.rowCount != 0) {
     const uploadedAt = moment(res.rows[0].createdAt);
-    const dif = moment().diff(uploadedAt, "minutes");
-    waitMinutes = dif;
+    const diff = moment().diff(uploadedAt, "minutes");
+    waitMinutes = diff;
   }
   console.log(processingWaitTimeMeasurement, waitMinutes);
 
@@ -81,13 +82,10 @@ async function measureProcessingWaitTime(influx, pgClient) {
 }
 
 const countStates = Object.values(RecordingProcessingState).filter(
-  (state) => state != RecordingProcessingState.Finished
+  (state) =>
+    state !== RecordingProcessingState.Finished &&
+    state !== RecordingProcessingState.AnalyseTest
 ) as string[];
-countStates.push(
-  ...countStates
-    .filter((state) => state != RecordingProcessingState.Corrupt)
-    .map((state) => `${state}.failed`)
-);
 
 const stateCountMeasurement = "processing_state_count";
 
@@ -96,7 +94,7 @@ async function stateCount(influx, pgClient) {
   for (const state of countStates) {
     fields[state] = await getCount(
       pgClient,
-      `select Count(id) from "Recordings" where "processingState" = '${state}'`
+      `select Count(id) from "Recordings" where "processingState" = '${state}' and "deletedAt" is null`
     );
   }
   console.log("Count: ", fields);
@@ -137,6 +135,8 @@ async function influxConnect() {
     database: Config.influx.database,
     username: Config.influx.username,
     password: Config.influx.password,
+    protocol: "https",
+    port: 443,
     schema: [
       {
         measurement: stateCountMeasurement,

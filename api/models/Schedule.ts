@@ -19,9 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import _ from "lodash";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import Sequelize from "sequelize";
-import { UserId } from "./User";
+import { ScheduleId, UserId } from "@typedefs/api/common";
 
-export type ScheduleId = number;
 export interface Schedule extends Sequelize.Model, ModelCommon<Schedule> {
   id: ScheduleId;
   UserId: UserId;

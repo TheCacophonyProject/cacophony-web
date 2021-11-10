@@ -17,7 +17,8 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { ApiGroupResponse } from "@typedefs/api/group";
 import HomeGroupItem from "./HomeGroupItem.vue";
 
 export default {
@@ -31,16 +32,22 @@ export default {
   },
   computed: {
     orderedGroups: {
-      get() {
+      get(): ApiGroupResponse[] {
         return [...this.groups].sort((a, b) => {
-          return a.groupname.toLowerCase() < b.groupname.toLowerCase() ? -1 : 1;
+          const aDate = a.lastRecordingTime && new Date(a.lastRecordingTime);
+          const bDate = b.lastRecordingTime && new Date(b.lastRecordingTime);
+          if (aDate && bDate) {
+            return bDate.getTime() - aDate.getTime();
+          } else if (aDate) {
+            return -1;
+          } else if (bDate) {
+            return 1;
+          }
+          return a.groupName.localeCompare(b.groupName);
         });
       },
     },
   },
-
-  // TODO(jon): Would be better to have a single API query to load recording counts for all groups the user is
-  //  is part of.
 };
 </script>
 

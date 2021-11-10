@@ -1,13 +1,12 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "../../../commands/names";
-//import { getCreds } from "../../../commands/server";
-import { HTTP_Unprocessable } from "../../../commands/constants";
+import { getTestName } from "@/commands/names";
+import { HTTP_Forbidden, HTTP_Unprocessable } from "@/commands/constants";
 import {
   ApiEventErrorSimilar,
   ApiEventError,
   ApiEventErrorCategory,
-} from "../../../commands/types";
+} from "@/commands/types";
 
 //
 // This test set checks for errors reported against device services
@@ -16,12 +15,12 @@ import {
 //
 //
 
-const ADMIN = true;
-const NOT_ADMIN = false;
-const DEVICE_NOT_SPECIFIED = undefined;
-const DEFINED = []; // will verify that 'patterns' is present (undefined will verify that it is absent)
-
 describe("Events - query errors", () => {
+  const ADMIN = true;
+  const NOT_ADMIN = false;
+  const DEVICE_NOT_SPECIFIED = undefined;
+  const DEFINED = []; // will verify that 'patterns' is present (undefined will verify that it is absent)
+
   let expectedSimilar1: ApiEventErrorSimilar;
   let expectedSimilar2: ApiEventErrorSimilar;
   let expectedSimilar3: ApiEventErrorSimilar;
@@ -158,16 +157,16 @@ describe("Events - query errors", () => {
 
   before(() => {
     // group with 2 devices, admin and member users
-    cy.apiCreateUserGroupAndDevice("erGroupAdmin", "erGroup", "erCamera");
-    cy.apiCreateUser("erGroupMember");
-    cy.apiAddUserToGroup("erGroupAdmin", "erGroupMember", "erGroup", NOT_ADMIN);
-    cy.apiCreateDevice("erOtherCamera", "erGroup");
+    cy.testCreateUserGroupAndDevice("erGroupAdmin", "erGroup", "erCamera");
+    cy.apiUserAdd("erGroupMember");
+    cy.apiGroupUserAdd("erGroupAdmin", "erGroupMember", "erGroup", NOT_ADMIN);
+    cy.apiDeviceAdd("erOtherCamera", "erGroup");
 
     //admin and member for single device
-    cy.apiCreateUser("erDeviceAdmin");
-    cy.apiCreateUser("erDeviceMember");
-    cy.apiAddUserToDevice("erGroupAdmin", "erDeviceAdmin", "erCamera", ADMIN);
-    cy.apiAddUserToDevice(
+    cy.apiUserAdd("erDeviceAdmin");
+    cy.apiUserAdd("erDeviceMember");
+    cy.apiDeviceUserAdd("erGroupAdmin", "erDeviceAdmin", "erCamera", ADMIN);
+    cy.apiDeviceUserAdd(
       "erGroupAdmin",
       "erDeviceMember",
       "erCamera",
@@ -175,7 +174,7 @@ describe("Events - query errors", () => {
     );
 
     //another group and device
-    cy.apiCreateUserGroupAndDevice(
+    cy.testCreateUserGroupAndDevice(
       "erOtherGroupAdmin",
       "erOherGroup",
       "erOtherGroupCamera"
@@ -381,7 +380,14 @@ describe("Events - query errors", () => {
       expectedCategoryError5,
     ]);
     cy.log("Cannot check errors on camera not in our group");
-    cy.apiEventsErrorsCheck("erGroupAdmin", "erOtherGroupCamera", {}, []);
+    cy.apiEventsErrorsCheck(
+      "erGroupAdmin",
+      "erOtherGroupCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
   });
 
   it("Device admin can only request events by deviceId from within their device", () => {
@@ -394,8 +400,22 @@ describe("Events - query errors", () => {
     ]);
 
     cy.log("Cannot check errors on camera not assigned to us");
-    cy.apiEventsErrorsCheck("erDeviceAdmin", "erOtherCamera", {}, []);
-    cy.apiEventsErrorsCheck("erDeviceAdmin", "erOtherGroupCamera", {}, []);
+    cy.apiEventsErrorsCheck(
+      "erDeviceAdmin",
+      "erOtherCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
+    cy.apiEventsErrorsCheck(
+      "erDeviceAdmin",
+      "erOtherGroupCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
   });
 
   //TODO: time filtering not working (issue 71).
@@ -486,7 +506,7 @@ describe("Events - query errors", () => {
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
       "erCamera",
-      { offest: 0, limit: 2 },
+      { offset: 0, limit: 2 },
       [expectedCategoryError1and2]
     );
 

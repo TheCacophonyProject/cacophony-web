@@ -5,8 +5,9 @@
       height: mapHeight,
       pointerEvents: isInteractive ? 'auto' : 'none',
     }"
+    v-if="mapBounds"
     :bounds="mapBounds"
-    :options="{ zoomControl: zoom, dragging: isInteractive, maxZoom: 17 }"
+    :options="{ zoomControl: zoom, dragging: isInteractive, maxZoom: 16 }"
     @ready="onReady"
   >
     <l-control-layers v-if="canChangeBaseMap && mapLayers.length > 1" />
@@ -149,9 +150,12 @@ export default {
     },
     mapBounds() {
       // Calculate the initial map bounds and zoom level from the set of lat/lng points
-      return latLngBounds([
-        this.mapLocations.map(({ location }) => location),
-      ]).pad(0.25);
+      return (
+        this.mapLocations.length &&
+        latLngBounds([this.mapLocations.map(({ location }) => location)]).pad(
+          0.25
+        )
+      );
     },
     mapLocations(): Point[] {
       return this.points.map(({ location, ...rest }) => ({

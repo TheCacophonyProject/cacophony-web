@@ -214,43 +214,49 @@ export default {
     async fetchStation() {
       try {
         // eslint-disable-next-line no-unused-vars
-        const [group, stations] = await Promise.all([
+        const [groupResponse, stationsResponse] = await Promise.all([
           api.groups.getGroup(this.groupName),
           api.groups.getStationsForGroup(this.groupName),
         ]);
-        this.group = group.result.groups[0];
-        const station = stations.result.stations.filter(
-          (station) => station.name === this.stationName
-        );
-        if (station.length > 1) {
-          const nonRetired = station.find((item) => item.retiredAt === null);
-          if (nonRetired) {
-            this.station = nonRetired;
-          } else {
-            const sortedByLatestRetired = station.sort(
-              (a, b) =>
-                new Date(a.retiredAt).getTime() -
-                new Date(b.retiredAt).getTime()
-            );
-            this.station = sortedByLatestRetired.pop();
-            this.stationIsRetired = true;
+        if (groupResponse.success) {
+          this.group = groupResponse.result.group;
+        }
+        if (stationsResponse.success) {
+          const station = stationsResponse.result.stations.filter(
+            (station) => station.name === this.stationName
+          );
+          if (station.length > 1) {
+            const nonRetired = station.find((item) => item.retiredAt === null);
+            if (nonRetired) {
+              this.station = nonRetired;
+            } else {
+              const sortedByLatestRetired = station.sort(
+                (a, b) =>
+                  new Date(a.retiredAt).getTime() -
+                  new Date(b.retiredAt).getTime()
+              );
+              this.station = sortedByLatestRetired.pop();
+              this.stationIsRetired = true;
+            }
+          } else if (station.length === 1) {
+            this.station = station[0];
           }
-        } else if (station.length === 1) {
-          this.station = station[0];
         }
         this.recordingsQueryFinal = {
           tagMode: "any",
           offset: 0,
-          limit: 20,
+          limit: 10,
           days: "all",
           station: [this.station.id],
         };
         this.recordingsCountLoading = true;
         {
-          const { result } = await api.recording.queryCount(
+          const countResponse = await api.recording.queryCount(
             this.recordingsQueryFinal
           );
-          this.recordingsCount = result.count;
+          if (countResponse.success) {
+            this.recordingsCount = countResponse.result.count;
+          }
         }
         this.recordingsCountLoading = false;
 

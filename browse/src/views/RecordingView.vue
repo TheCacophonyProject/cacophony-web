@@ -7,8 +7,8 @@
             :to="{
               name: 'device',
               params: {
-                deviceName: deviceName,
-                groupName: groupName,
+                deviceName,
+                groupName,
                 tabName: 'recordings',
               },
             }"
@@ -38,13 +38,19 @@
       :recording="recording"
       :audio-url="fileSource"
       :audio-raw-url="rawSource"
+      @tag-changed="refreshRecordingTagData"
+      @load-next-recording="loadNextRecording"
     />
     <VideoRecording
       v-else-if="isVideo"
       :recording="recording"
-      :tracks="tracks"
       :video-url="fileSource"
       :video-raw-url="rawSource"
+      :video-raw-size="rawSize"
+      @track-tag-changed="refreshTrackTagData"
+      @tag-changed="refreshRecordingTagData"
+      @load-next-recording="loadNextRecording"
+      @recording-updated="fetchRecording"
     />
   </b-container>
   <b-container v-else class="message-container">
@@ -64,9 +70,15 @@
 
 <script lang="ts">
 import config from "../config";
-import { mapState } from "vuex";
 import * as SunCalc from "suncalc";
-import { RecordingInfo } from "@/api/Recording.api";
+import {
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
+import { RecordingType } from "@typedefs/api/consts";
+import api from "@api";
+import { RecordingId, TagId, TrackId } from "@typedefs/api/common";
 
 export default {
   name: "RecordingView",
@@ -81,24 +93,40 @@ export default {
       alertMessage: "",
       alertVariant: "",
       errorMessage: "",
+      recordingInternal: null,
+      downloadFileJWT: null,
+      downloadRawJWT: null,
+      rawSize: 0,
+      fileSize: 0,
     };
   },
   computed: {
-    ...mapState({
-      recording: (state: any): RecordingInfo => state.Video.recording,
-      tracks: (state: any) => state.Video.tracks,
-      fileSource: (state: any) => {
-        return (
-          (state.Video.downloadFileJWT &&
-            `${config.api}/api/v1/signedUrl?jwt=${state.Video.downloadFileJWT}`) ||
-          ""
-        );
-      },
-      // TODO(jon): Api endpoint that doesn't require signedUrl etc, just uses usual auth, and we say which recording we want.
-      // Fixes issue with videos timing out on tabs that are open for a while.
-      rawSource: (state: any) =>
-        `${config.api}/api/v1/signedUrl?jwt=${state.Video.downloadRawJWT}`,
-    }),
+    fileSource(): string {
+      return (
+        (this.downloadFileJWT &&
+          `${config.api}/api/v1/signedUrl?jwt=${this.downloadFileJWT}`) ||
+        ""
+      );
+    },
+    rawSource(): string {
+      return `${config.api}/api/v1/signedUrl?jwt=${this.downloadRawJWT}`;
+    },
+    recording():
+      | ApiThermalRecordingResponse
+      | ApiAudioRecordingResponse
+      | undefined {
+      if (this.recordingInternal) {
+        if (
+          (this.recordingInternal as ApiRecordingResponse).type ===
+          RecordingType.ThermalRaw
+        ) {
+          return this.recordingInternal as ApiThermalRecordingResponse;
+        } else {
+          return this.recordingInternal as ApiAudioRecordingResponse;
+        }
+      }
+      return undefined;
+    },
     timeString(): string {
       if (this.date) {
         return this.date.toLocaleTimeString();
@@ -114,8 +142,8 @@ export default {
     sunTimes() {
       return SunCalc.getTimes(
         this.date,
-        this.recording.location.coordinates[0],
-        this.recording.location.coordinates[1]
+        this.recording.location.lat,
+        this.recording.location.lng
       );
     },
     timeUntilDawn(): string {
@@ -131,10 +159,10 @@ export default {
       }
     },
     isVideo(): boolean {
-      return this.recording.type === "thermalRaw";
+      return this.recording.type === RecordingType.ThermalRaw;
     },
     isAudio(): boolean {
-      return this.recording.type === "audio";
+      return this.recording.type === RecordingType.Audio;
     },
     date(): Date | null {
       return (
@@ -144,33 +172,100 @@ export default {
       );
     },
     deviceName(): string {
-      return (this.recording.Device && this.recording.Device.devicename) || "";
+      return (this.recording as ApiRecordingResponse).deviceName;
     },
     groupName(): string {
-      return (this.recording.Group && this.recording.Group.groupname) || "";
+      return (this.recording as ApiRecordingResponse).groupName;
     },
   },
   watch: {
     async $route(to) {
       if (Number(to.params.id) !== this.recording.id) {
-        try {
-          await this.$store.dispatch(
-            "Video/GET_RECORDING",
-            this.$route.params.id
-          );
-        } catch (e) {
+        await this.fetchRecording(to.params.id);
+      }
+    },
+  },
+  methods: {
+    async fetchRecording(id: RecordingId): Promise<void> {
+      try {
+        const {
+          success,
+          result: {
+            recording,
+            downloadRawJWT,
+            downloadFileJWT,
+            rawSize,
+            fileSize,
+          },
+        } = await api.recording.id(id);
+        if (!success) {
           this.errorMessage =
             "We couldn't find the recording you're looking for.";
+          this.recordingInternal = null;
+        } else {
+          this.recordingInternal = recording;
+          this.downloadFileJWT = downloadFileJWT;
+          this.downloadRawJWT = downloadRawJWT;
+          this.rawSize = rawSize;
+          this.fileSize = fileSize;
         }
+      } catch (err) {
+        this.errorMessage =
+          "We couldn't find the recording you're looking for.";
+        this.recordingInternal = null;
+      }
+    },
+    async loadNextRecording(params: any): Promise<void> {
+      const {
+        result: { rows },
+        success,
+      } = await api.recording.query(params);
+      if (!success || !rows || rows.length == 0) {
+        //  store.dispatch("Messaging/WARN", `No more recordings for this search.`);
+      } else {
+        // FIXME - Loading this twice here seems a wee bit silly
+        delete params.from;
+        delete params.to;
+        delete params.order;
+        delete params.type;
+        delete params.limit;
+        delete params.offset;
+        await this.$router.push({
+          path: `/recording/${rows[0].id}`,
+          query: params,
+        });
+      }
+    },
+    async refreshTrackTagData(trackId: TrackId): Promise<void> {
+      // Resync all tags for the track from the API.
+      const {
+        success,
+        result: { tracks },
+      } = await api.recording.tracks(this.recording.id);
+      if (!success) {
+        return;
+      }
+      const track = tracks.find((track) => track.id === trackId);
+      this.recording.tracks.find((track) => track.id === trackId).tags =
+        track.tags;
+    },
+    async refreshRecordingTagData(tagId: TagId): Promise<void> {
+      // Resync all recording tags from the API.
+      const {
+        success,
+        result: {
+          recording: { tags },
+        },
+      } = await api.recording.id(this.recording.id);
+      if (success) {
+        this.recording.tags = tags;
+      } else {
+        // FIXME - can this ever really happen in a recoverable way?
       }
     },
   },
   mounted: async function () {
-    try {
-      await this.$store.dispatch("Video/GET_RECORDING", this.$route.params.id);
-    } catch (err) {
-      this.errorMessage = "We couldn't find the recording you're looking for.";
-    }
+    await this.fetchRecording(this.$route.params.id);
   },
 };
 </script>

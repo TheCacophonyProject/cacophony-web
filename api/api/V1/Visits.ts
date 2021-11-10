@@ -9,12 +9,14 @@ A visit is assumed to be the tag that occurs the most in the visitevents
 All tracks of a recording always belong to the same visit
 */
 
-import { Recording } from "../../models/Recording";
-import { TrackTag } from "../../models/TrackTag";
-import { Track } from "../../models/Track";
-import { AI_MASTER } from "../../models/TrackTag";
+// FIXME - This file seems to be in the wrong place - this folder is full of API endpoints...
+
+import { Recording } from "@models/Recording";
+import { TrackTag } from "@models/TrackTag";
+import { Track } from "@models/Track";
+import { AI_MASTER } from "@models/TrackTag";
 import moment, { Moment } from "moment";
-import { Event } from "../../models/Event";
+import { Event } from "@models/Event";
 
 let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;
@@ -369,9 +371,9 @@ class Visit {
   }
 
   mostCommonTag(): TrackTag | null {
-    // from all events in a visit, get the tag with the highest occurence that
-    // isnt unidentified, preferring human tags over ai
-    // returns [boolean desciribing if human tag, the tag]
+    // from all events in a visit, get the tag with the highest occurrence that
+    // isn't unidentified, preferring human tags over ai
+    // returns [boolean describing if human tag, the tag]
     const tagCount = this.tagCount;
     const sortedKeys = Object.keys(tagCount).sort(function (a, b) {
       const count_a = tagCount[a];

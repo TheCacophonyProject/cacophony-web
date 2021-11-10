@@ -16,12 +16,22 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
-import { body, param } from "express-validator/check";
+import { expectedTypeOf, validateFields } from "../middleware";
+import { body, param } from "express-validator";
 
-import recordingUtil from "./recordingUtil";
-import { Application } from "express";
+import { Application, Response, Request } from "express";
+import {
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredRecordingById,
+  fetchAuthorizedRequiredRecordingsByIds,
+} from "../extract-middleware";
+import { idOf } from "../validation-middleware";
+import responseUtil from "./responseUtil";
+import { NextFunction } from "express-serve-static-core";
+import { ClientError } from "../customErrors";
+import { arrayOf, jsonSchemaOf } from "../schema-validation";
+import { uniq as dedupe } from "lodash";
+import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
@@ -30,41 +40,74 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/reprocess/:id
    * @apiName Reprocess
    * @apiGroup Recordings
-   * @apiParam {Number} id of recording to reprocess
+   * @apiParam {Integer} id of recording to reprocess
    * @apiDescription Marks a recording for reprocessing and archives existing tracks
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Number} recordingId - recording_id reprocessed
+   * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:id`,
-    [auth.authenticateUser, param("id").isInt()],
-    middleware.requestWrapper(async (request, response) => {
-      return await recordingUtil.reprocess(request, response);
-    })
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      await response.locals.recording.reprocess();
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Recording reprocessed"],
+      });
+    }
   );
 
   /**
    * @api {post} /api/v1/reprocess Mark recordings for reprocessing
    * @apiName ReprocessMultiple
    * @apiGroup Recordings
-   * @apiParam {JSON} recordings an array of recording ids to reprocess
+   * @apiParam {Integer[]} recordings an array of recording ids to reprocess
    *
    * @apiDescription Mark one or more recordings for reprocessing,
    * archiving any tracks and recording tags that are associated with
    * them.
    *
    * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1RecordingReprocessResponse
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post(
     apiUrl,
-    [auth.authenticateUser, middleware.parseJSON("recordings", body)],
-    middleware.requestWrapper(async (request, response) => {
-      return await recordingUtil.reprocessAll(request, response);
-    })
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("recordings")
+        .exists()
+        .withMessage(expectedTypeOf("RecordingId[]"))
+        .bail()
+        .custom(jsonSchemaOf(arrayOf(RecordingIdSchema))),
+    ]),
+    // FIXME - Should we only allow this for admin users?
+    fetchAuthorizedRequiredRecordingsByIds(body("recordings")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // FIXME: Anyone who can see a recording can ask for it to be reprocessed
+      //  currently, but should be with the exception of users with globalRead permissions?
+      const recordings = response.locals.recordings;
+      // NOTE: Dedupe array when length checking in case the user specified the same recordingId more than once.
+      if (recordings.length !== dedupe(request.body.recordings).length) {
+        return next(
+          new ClientError(
+            "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",
+            403
+          )
+        );
+      }
+      for (const recording of recordings) {
+        await recording.reprocess();
+      }
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Recordings scheduled for reprocessing"],
+      });
+    }
   );
 };

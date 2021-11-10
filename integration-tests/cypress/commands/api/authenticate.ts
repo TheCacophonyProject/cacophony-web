@@ -1,15 +1,15 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+import { ApiAuthenticateAccess } from "@commands/types";
 import { getTestName } from "../names";
 import {
   apiPath,
   makeAuthorizedRequestWithStatus,
   saveCreds,
+  getCreds,
   expectRequestHasFailed,
 } from "../server";
-import { ApiAuthenticateAccess } from "../types";
-
 Cypress.Commands.add(
   "apiSignInAs",
   (
@@ -90,20 +90,30 @@ Cypress.Commands.add(
     deviceName: string,
     groupName: string,
     password: string | null = null,
-    statusCode: number = 200
+    statusCode: number = 200,
+    additionalChecks: any = {}
   ) => {
     const theUrl = apiPath() + "/authenticate_device";
     const fullDeviceName = getTestName(deviceName);
     const fullGroupName = getTestName(groupName);
+    let data: any;
+
     if (password === null) {
       password = "p" + fullDeviceName;
     }
 
-    const data = {
-      devicename: fullDeviceName,
-      groupname: fullGroupName,
-      password: password,
-    };
+    if (additionalChecks["useDeviceId"] === true) {
+      data = {
+        deviceId: getCreds(deviceName).id,
+        password: password,
+      };
+    } else {
+      data = {
+        devicename: fullDeviceName,
+        groupname: fullGroupName,
+        password: password,
+      };
+    }
 
     if (statusCode && statusCode > 200) {
       cy.request({

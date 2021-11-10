@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import middleware from "../middleware";
 import auth from "../auth";
 import stream from "stream";
-import log from "../../logging";
-import modelsUtil from "../../models/util/util";
+import log from "@log";
+import modelsUtil from "@models/util/util";
 import responseUtil from "./responseUtil";
 import { ClientError } from "../customErrors";
 import { Application } from "express";

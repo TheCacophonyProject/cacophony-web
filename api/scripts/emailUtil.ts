@@ -1,6 +1,8 @@
+import registerAliases from "../module-aliases";
+registerAliases();
 import config from "../config";
-import { Recording } from "../models/Recording";
-import { TrackTag } from "../models/TrackTag";
+import { Recording } from "@models/Recording";
+import { TrackTag } from "@models/TrackTag";
 import log from "../logging";
 import moment from "moment";
 import { SMTPClient, Message } from "emailjs";
@@ -37,7 +39,7 @@ async function sendEmail(
   thumbnail?: Buffer
 ): Promise<boolean> {
   const client = new SMTPClient(config.smtpDetails);
-  log.info(`Sending  email with subject ${subject} to ${to}`);
+  log.info(`Sending email with subject ${subject} to ${to}`);
   try {
     const message = new Message({
       text: text,

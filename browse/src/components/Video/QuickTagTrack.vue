@@ -8,6 +8,7 @@
           :key="animal"
           :class="['btn btn-light btn-tag equal-flex', getClass(animal)]"
           @click="quickTag(animal)"
+          :disabled="taggingPending"
         >
           <img
             :alt="`Mark as ${animal}`"
@@ -30,6 +31,7 @@
             'btn btn-light btn-tag equal-flex other-width',
             getClass(otherTag.value),
           ]"
+          :disabled="taggingPending"
           @click="quickTag(otherTag.value)"
         >
           <img
@@ -57,7 +59,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import DefaultLabels, { imgSrc } from "../../const";
 export default {
   name: "QuickTagTrack",
@@ -88,9 +90,12 @@ export default {
     userTags() {
       return this.tags.filter(
         (tag) =>
-          tag.User &&
-          tag.User.username === this.$store.state.User.userData.username
+          !tag.automatic &&
+          tag.userName === this.$store.state.User.userData.userName
       );
+    },
+    taggingPending(): boolean {
+      return this.tags.some((tag) => tag.id === -1);
     },
     otherTags() {
       const otherTags = DefaultLabels.otherTagLabels();

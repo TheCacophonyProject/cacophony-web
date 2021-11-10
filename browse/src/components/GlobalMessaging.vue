@@ -11,7 +11,9 @@
         <div class="box">
           <icon-link :icon="['fas', 'exclamation-triangle']" :colour="'red'" />
           Oops! Something went wrong. <br />
-          Message is: "{{ item.message }}"
+          Message is: "{{
+            item.message || (item.messages && item.messages.join(", "))
+          }}"
         </div>
       </b-alert>
     </div>

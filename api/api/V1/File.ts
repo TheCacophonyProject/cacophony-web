@@ -18,13 +18,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import middleware from "../middleware";
 import auth from "../auth";
-import models from "../../models";
+import models from "@models";
 import util from "./util";
 import responseUtil from "./responseUtil";
-import config from "../../config";
+import config from "@config";
 import jsonwebtoken from "jsonwebtoken";
-import { param, query } from "express-validator/check";
-import { Application } from "express";
+import { param, query } from "express-validator";
+import { Application, Request, Response } from "express";
+import { extractJwtAuthorizedUser } from "../extract-middleware";
+import { File } from "@models/File";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/files`;
@@ -38,27 +40,26 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {JSON} data Metadata about the recording in JSON format.  It must include the field 'type' (eg. audioBait).
-   * @apiParam {File} file File of the recording.
+   * @apiBody {JSON} data Metadata about the recording in JSON format.  It must include the field 'type' (eg. audioBait).
+   * @apiBody {File} file File of the recording.
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Number} recordingId ID of the recording.
+   * @apiSuccess {String} fileKey S3 object storage key of the uploaded file.
    * @apiuse V1ResponseError
    */
   app.post(
     apiUrl,
-    [auth.authenticateUser],
-    middleware.requestWrapper(
-      util.multipartUpload("f", async (request, response, data, key) => {
+    extractJwtAuthorizedUser,
+    (request: Request, response: Response) => {
+      util.multipartUpload("f", async (uploader, data, key): Promise<File> => {
         const dbRecord = models.File.buildSafely(data);
-        dbRecord.UserId = request.user.id;
+        dbRecord.UserId = response.locals.requestUser.id;
         dbRecord.fileKey = key;
-        await dbRecord.validate();
+        dbRecord.fileSize = data.fileSize;
         await dbRecord.save();
-        responseUtil.validRecordingUpload(response, dbRecord.id);
         return dbRecord;
-      })
-    )
+      });
+    }
   );
 
   /**
@@ -107,10 +108,11 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/files/id Get a file
+   * @api {get} /api/v1/files/:id Get a file by its unique id
    * @apiName GetFile
    * @apiGroup Files
    * @apiUse MetaDataAndJWT
+   * @apiParam {Integer} id id of the file to get
    *
    * @apiHeader {String} Authorization Signed JSON web token for either a user or a device.
    *
@@ -146,9 +148,10 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {delete} /api/v1/files/:id Delete an existing files
+   * @api {delete} /api/v1/files/:id Delete an existing file
    * @apiName DeleteFile
    * @apiGroup Files
+   * @apiParam {Integer} id id of the file to delete
    * @apiDescription This call deletes a file.  The user making the
    * call must have uploaded the file or be an administrator.
    *

@@ -22,25 +22,24 @@ import Sequelize, {
   ModelAttributes,
   ModelOptions,
 } from "sequelize";
-import { AuthorizationError } from "../api/customErrors";
+import { AuthorizationError } from "@api/customErrors";
 import log from "../logging";
+import logger from "../logging";
 import { bool } from "aws-sdk/clients/signer";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { Group } from "./Group";
+import { AccessLevel, GroupUsersStatic } from "./GroupUsers";
+import { Device, DeviceStatic } from "./Device";
+import { DeviceUsersStatic } from "./DeviceUsers";
+import {
+  DeviceId,
+  EndUserAgreementVersion,
+  GroupId,
+  UserId,
+} from "@typedefs/api/common";
+import { UserGlobalPermission } from "@typedefs/api/consts";
 
 const Op = Sequelize.Op;
-
-const PERMISSION_WRITE = "write";
-const PERMISSION_READ = "read";
-const PERMISSION_OFF = "off";
-type GlobalPermission = "write" | "read" | "off";
-const PERMISSIONS: readonly string[] = Object.freeze([
-  PERMISSION_WRITE,
-  PERMISSION_READ,
-  PERMISSION_OFF,
-]);
-
-export type UserId = number;
 
 export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
@@ -58,7 +57,28 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
     deviceIds: number[],
     viewAsSuperAdmin?: boolean
   ) => Promise<void>;
-  canAccessDevice: (deviceId: number) => Promise<bool>;
+
+  isInDevice: (deviceId: DeviceId) => Promise<bool>;
+  isDeviceAdmin: (deviceId: DeviceId) => Promise<bool>;
+  canReadGroup: (groupId: GroupId) => Promise<bool>;
+  canWriteGroup: (groupId: GroupId) => Promise<bool>;
+
+  canDirectlyAccessDevice: (device: DeviceId | Device) => Promise<bool>;
+  canDirectlyAdministrateDevice: (device: DeviceId | Device) => Promise<bool>;
+  canDirectlyOrIndirectlyAccessDevice: (
+    device: DeviceId | Device
+  ) => Promise<bool>;
+  canDirectlyOrIndirectlyAdministrateDevice: (
+    device: DeviceId | Device
+  ) => Promise<bool>;
+
+  canDirectlyAccessGroup: (group: GroupId | Group) => Promise<bool>;
+  canDirectlyAdministrateGroup: (group: GroupId | Group) => Promise<bool>;
+  canDirectlyOrIndirectlyAccessGroup: (group: GroupId | Group) => Promise<bool>;
+  canDirectlyOrIndirectlyAdministrateGroup: (
+    group: GroupId | Group
+  ) => Promise<bool>;
+
   canAccessGroup: (groupId: number) => Promise<bool>;
   getDeviceIds: () => Promise<number[]>;
   admin: boolean;
@@ -71,24 +91,18 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   lastName: string;
   email: string;
   groups: Group[];
-  globalPermission: GlobalPermission;
+  globalPermission: UserGlobalPermission;
+  endUserAgreement: EndUserAgreementVersion;
 }
 
 export interface UserStatic extends ModelStaticCommon<User> {
   new (values?: object, options?: BuildOptions): User;
   getAll: (where: any) => Promise<User[]>;
-
-  changeGlobalPermission: (
-    admin: User,
-    user: User,
-    permission: GlobalPermission
-  ) => Promise<User>;
   getFromName: (name: string) => Promise<User | null>;
   freeUsername: (name: string) => Promise<boolean>;
   getFromEmail: (email: string) => Promise<User | null>;
   freeEmail: (email: string) => Promise<boolean>;
   getFromId: (id: number) => Promise<User | null>;
-  ["GLOBAL_PERMISSIONS"]: string[];
 }
 
 interface UserData {
@@ -98,7 +112,7 @@ interface UserData {
   lastName: string;
   email: string;
   groups: Group[];
-  globalPermission: GlobalPermission;
+  globalPermission: UserGlobalPermission;
 }
 
 export default function (
@@ -128,8 +142,8 @@ export default function (
     },
     globalPermission: {
       type: DataTypes.ENUM,
-      values: PERMISSIONS as string[],
-      defaultValue: PERMISSION_OFF,
+      values: Object.values(UserGlobalPermission) as string[],
+      defaultValue: UserGlobalPermission.Off,
     },
     endUserAgreement: {
       type: DataTypes.INTEGER,
@@ -163,12 +177,6 @@ export default function (
     "email",
     "endUserAgreement",
   ]);
-
-  Object.defineProperty(User, "GLOBAL_PERMISSIONS", {
-    value: PERMISSIONS,
-    writable: false,
-  });
-
   //---------------
   // CLASS METHODS
   //---------------
@@ -193,44 +201,20 @@ export default function (
     return this.findByPk(id);
   };
 
-  User.getFromName = async function (name: string) {
-    return this.findOne({ where: { username: name } });
+  User.getFromName = async (name: string): Promise<User | null> => {
+    return User.findOne({ where: { username: name } });
   };
 
-  User.freeUsername = async function (username) {
-    const user = await this.findOne({ where: { username: username } });
-    if (user != null) {
-      throw new Error("Username in use");
-    }
-    return true;
+  User.freeUsername = async (name: string): Promise<boolean> => {
+    return (await User.getFromName(name)) === null;
   };
 
-  User.getFromEmail = async function (email) {
-    return this.findOne({ where: { email: email } });
+  User.getFromEmail = async (email): Promise<User | null> => {
+    return User.findOne({ where: { email } });
   };
 
-  User.freeEmail = async function (email: string, userId?: UserId) {
-    email = email.toLowerCase();
-    const where: { email: string; id?: any } = { email };
-    if (userId) {
-      //Ignore email from this user
-      where.id = { [Op.not]: userId };
-    }
-    const user = await this.findOne({ where });
-    if (user) {
-      throw new Error("Email in use");
-    }
-    return true;
-  };
-
-  User.changeGlobalPermission = async function (admin, user, permission) {
-    if (!user || !admin || !admin.hasGlobalWrite()) {
-      throw new AuthorizationError(
-        "User must be an admin with global write permissions"
-      );
-    }
-    user.globalPermission = permission;
-    return user.save();
+  User.freeEmail = async (email: string): Promise<boolean> => {
+    return (await User.getFromEmail(email.toLowerCase())) === null;
   };
 
   //------------------
@@ -238,11 +222,13 @@ export default function (
   //------------------
 
   User.prototype.hasGlobalWrite = function () {
-    return PERMISSION_WRITE == this.globalPermission;
+    return UserGlobalPermission.Write === this.globalPermission;
   };
 
   User.prototype.hasGlobalRead = function () {
-    return [PERMISSION_WRITE, PERMISSION_READ].includes(this.globalPermission);
+    return [UserGlobalPermission.Read, UserGlobalPermission.Write].includes(
+      this.globalPermission
+    );
   };
 
   User.prototype.getGroupDeviceIds = async function () {
@@ -262,7 +248,6 @@ export default function (
     if (this.hasGlobalRead()) {
       return null;
     }
-
     const allDeviceIds = await this.getAllDeviceIds();
     return { DeviceId: { [Op.in]: allDeviceIds } };
   };
@@ -299,49 +284,113 @@ export default function (
     return groups.map((g) => g.id);
   };
 
-  User.prototype.isInGroup = async function (
-    groupId: number
-  ): Promise<boolean> {
-    const groupIds = await this.getGroupsIds();
-    return groupIds.includes(groupId) === true;
-  };
-
-  User.prototype.isGroupAdmin = async function (
-    groupId: number
-  ): Promise<boolean> {
-    // FIXME: Better to put the groupId in the where clause here?
-    const groupIds = await this.getGroups();
-    return groupIds.some(
-      ({ id, GroupUsers }) => id === groupId && GroupUsers.admin === true
-    );
-  };
-
   // Returns the devices that are directly associated with this user
   // (via DeviceUsers).
-  User.prototype.getDeviceIds = async function () {
+  User.prototype.getDeviceIds = async function (): Promise<DeviceId[]> {
     const devices = await this.getDevices();
     return devices.map((d) => d.id);
   };
 
-  User.prototype.canAccessDevice = async function (deviceId) {
-    const deviceIds = await this.getDeviceIds();
-    return deviceIds.includes(deviceId);
+  User.prototype.canDirectlyAccessDevice = async function (
+    device: DeviceId | Device
+  ): Promise<bool> {
+    const deviceId = typeof device === "number" ? device : device.id;
+    const accessLevel = await (
+      models.DeviceUsers as DeviceUsersStatic
+    ).getAccessLevel(deviceId, this.id);
+    return accessLevel !== AccessLevel.None;
+  };
+  User.prototype.canDirectlyAdministrateDevice = async function (
+    device: DeviceId | Device
+  ): Promise<bool> {
+    const deviceId = typeof device === "number" ? device : device.id;
+    const accessLevel = await (
+      models.DeviceUsers as DeviceUsersStatic
+    ).getAccessLevel(deviceId, this.id);
+    return accessLevel === AccessLevel.Admin;
+  };
+  User.prototype.canDirectlyOrIndirectlyAccessDevice = async function (
+    device: DeviceId | Device
+  ): Promise<bool> {
+    if (this.hasGlobalRead()) {
+      return true;
+    }
+    if (await this.canDirectlyAccessDevice(device)) {
+      return true;
+    }
+    let actualDevice = device;
+    if (typeof device === "number") {
+      actualDevice = await (models.Device as DeviceStatic).findByPk(device);
+    }
+    return await this.canDirectlyOrIndirectlyAccessGroup(
+      (actualDevice as Device).GroupId
+    );
+  };
+  User.prototype.canDirectlyOrIndirectlyAdministrateDevice = async function (
+    device: DeviceId | Device
+  ): Promise<bool> {
+    if (this.hasGlobalWrite()) {
+      return true;
+    }
+    if (await this.canDirectlyAdministrateDevice(device)) {
+      return true;
+    }
+    let actualDevice = device;
+    if (typeof device === "number") {
+      actualDevice = await (models.Device as DeviceStatic).findByPk(device);
+    }
+    return await this.canDirectlyOrIndirectlyAdministrateGroup(
+      (actualDevice as Device).GroupId
+    );
+  };
+
+  User.prototype.canDirectlyAccessGroup = async function (
+    group: GroupId | Group
+  ): Promise<bool> {
+    const groupId = typeof group === "number" ? group : group.id;
+    const accessLevel = await (
+      models.GroupUsers as GroupUsersStatic
+    ).getAccessLevel(groupId, this.id);
+    return accessLevel !== AccessLevel.None;
+  };
+  User.prototype.canDirectlyAdministrateGroup = async function (
+    group: GroupId | Group
+  ): Promise<bool> {
+    const groupId = typeof group === "number" ? group : group.id;
+    const accessLevel = await (
+      models.GroupUsers as GroupUsersStatic
+    ).getAccessLevel(groupId, this.id);
+    return accessLevel === AccessLevel.Admin;
+  };
+  User.prototype.canDirectlyOrIndirectlyAccessGroup = async function (
+    group: GroupId | Group
+  ): Promise<bool> {
+    if (this.hasGlobalRead()) {
+      return true;
+    }
+    return await this.canDirectlyAccessGroup(group);
+  };
+  User.prototype.canDirectlyOrIndirectlyAdministrateGroup = async function (
+    group: GroupId | Group
+  ): Promise<bool> {
+    if (this.hasGlobalWrite()) {
+      return true;
+    }
+    return await this.canDirectlyAdministrateGroup(group);
   };
 
   User.prototype.checkUserControlsDevices = async function (
-    deviceIds,
+    deviceIds: DeviceId[],
     viewAsSuperAdmin = true
-  ) {
+  ): Promise<AuthorizationError | void> {
     if (!(viewAsSuperAdmin && this.hasGlobalWrite())) {
       const usersDevices = await this.getAllDeviceIds();
-
+      logger.info("User devices %s", usersDevices);
       deviceIds.forEach((deviceId) => {
         if (!usersDevices.includes(deviceId)) {
+          // FIXME - Move this to middleware
           log.info(
-            "Attempted unauthorized use of device " +
-              deviceId +
-              " by " +
-              this.username
+            `Attempted unauthorized use of device ${deviceId} by ${this.username}`
           );
           throw new AuthorizationError(
             "User is not authorized for one (or more) of specified devices."

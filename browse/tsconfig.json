@@ -9,13 +9,15 @@
         "allowSyntheticDefaultImports": true,
         "baseUrl": ".",
         "paths": {
-            "@/*": [
-                "src/*"
-            ]
-        }
+            "@/*": ["src/*"],
+            "@api/*": ["src/api/*"],
+            "@api": ["src/api/index.ts"],
+            "@typedefs/*":  ["../types/*"],
+        },
     },
     "include": [
-        "./src/**/*"
+        "./src/**/*",
+        "../types/**/*.ts"
     ],
     "exclude": ["node_modules"]
 }

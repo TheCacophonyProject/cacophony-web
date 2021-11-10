@@ -1,11 +1,19 @@
 import CacophonyApi from "./CacophonyApi";
-import { shouldViewAsSuperUser } from "../utils";
+import { shouldViewAsSuperUser } from "@/utils";
+import { FetchResult } from "@/api/Recording.api";
+import {
+  ApiGroupResponse,
+  ApiGroupUserRelationshipResponse,
+} from "@typedefs/api/group";
+import { ApiDeviceResponse } from "@typedefs/api/device";
+import { GroupId, StationId } from "@typedefs/api/common";
+import { ApiStationResponse } from "@typedefs/api/station";
 
-function addNewGroup(groupName) {
+function addNewGroup(groupName): Promise<FetchResult<{ groupId: GroupId }>> {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
     "/api/v1/groups",
-    { groupname: groupName },
+    { groupName },
     suppressGlobalMessaging
   );
 }
@@ -14,7 +22,7 @@ function addGroupUser(
   groupName,
   userName,
   isAdmin
-): { success: boolean; status: number } {
+): Promise<{ success: boolean; status: number; result: any }> {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
     "/api/v1/groups/users",
@@ -34,32 +42,71 @@ function removeGroupUser(groupName, userName) {
   });
 }
 
-function getGroup(groupName: string) {
-  const where = JSON.stringify({ groupname: groupName });
-  return CacophonyApi.get(`/api/v1/groups?where=${encodeURIComponent(where)}`);
+function getGroup(
+  groupName: string
+): Promise<FetchResult<{ group: ApiGroupResponse }>> {
+  return CacophonyApi.get(
+    `/api/v1/groups/${encodeURIComponent(groupName)}${
+      shouldViewAsSuperUser() ? "" : "?view-mode=user"
+    }`
+  );
 }
 
-function getGroups() {
+function getGroupById(
+  groupId: GroupId
+): Promise<FetchResult<{ group: ApiGroupResponse }>> {
+  return CacophonyApi.get(
+    `/api/v1/groups/${groupId}${
+      shouldViewAsSuperUser() ? "" : "?view-mode=user"
+    }`
+  );
+}
+
+function getGroups(): Promise<FetchResult<{ groups: ApiGroupResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups${shouldViewAsSuperUser() ? "" : "?view-mode=user"}`
   );
 }
 
-function getUsersForGroup(groupNameOrId: string | number) {
+function getUsersForGroup(
+  groupNameOrId: string | number
+): Promise<FetchResult<{ users: ApiGroupUserRelationshipResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/users`
   );
 }
 
-function getDevicesForGroup(groupNameOrId: string | number) {
+function getDevicesForGroup(
+  groupNameOrId: string | number,
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
-    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/devices`
+    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/devices${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
   );
 }
 
 function getStationsForGroup(groupNameOrId: string) {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/stations`
+  );
+}
+
+function getStationById(
+  stationId: StationId
+): Promise<FetchResult<{ station: ApiStationResponse }>> {
+  return CacophonyApi.get(`/api/v1/stations/${stationId}`);
+}
+
+function getStationByNameInGroup(
+  groupNameOrId: string | GroupId,
+  stationName: string
+): Promise<FetchResult<{ station: ApiStationResponse }>> {
+  return CacophonyApi.get(
+    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/station/${stationName}`
   );
 }
 
@@ -87,6 +134,8 @@ export default {
   addNewGroup,
   getGroups,
   getGroup,
+  getGroupById,
+  getStationById,
   getUsersForGroup,
   getDevicesForGroup,
   getStationsForGroup,

@@ -16,14 +16,117 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
-import models from "../../models";
-import { QueryOptions } from "../../models/Event";
+import { expectedTypeOf, validateFields } from "../middleware";
+import models from "@models";
+import { QueryOptions } from "@models/Event";
 import responseUtil from "./responseUtil";
-import { param, query } from "express-validator/check";
-import { Application } from "express";
-import eventUtil from "./eventUtil";
+import { body, param, query } from "express-validator";
+import { Application, Response, Request, NextFunction } from "express";
+import { errors, powerEventsPerDevice } from "./eventUtil";
+import {
+  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedOptionalDeviceById,
+  fetchUnAuthorizedOptionalEventDetailSnapshotById,
+} from "../extract-middleware";
+import { jsonSchemaOf } from "../schema-validation";
+import EventDatesSchema from "@schemas/api/event/EventDates.schema.json";
+import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json";
+import { EventDescription } from "@typedefs/api/event";
+import logger from "@log";
+import {
+  booleanOf,
+  anyOf,
+  idOf,
+  integerOf,
+  deprecatedField,
+} from "../validation-middleware";
+import { ClientError } from "../customErrors";
+import { IsoFormattedDateString } from "@typedefs/api/common";
+
+const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
+
+const uploadEvent = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+) => {
+  let detailsId = response.locals.detailsnapshot?.id;
+  if (!detailsId) {
+    const description: EventDescription = request.body.description;
+    const detail = await models.DetailSnapshot.getOrCreateMatching(
+      description.type,
+      description.details
+    );
+    detailsId = detail.id;
+  }
+  let device = response.locals.device || response.locals.requestDevice;
+  if (response.locals.requestDevice) {
+    // The device is connecting directly, so update the last connected time.
+    if (!device.devicename) {
+      // If we just have a device JWT id, get the actual device at this point.
+      device = await models.Device.findByPk(device.id);
+    }
+    await device.update({ lastConnectionTime: new Date() });
+  }
+
+  const eventList = request.body.dateTimes.map((dateTime) => ({
+    DeviceId: device.id,
+    EventDetailId: detailsId,
+    dateTime,
+  }));
+  const count = eventList.length;
+  try {
+    await models.Event.bulkCreate(eventList);
+  } catch (exception) {
+    return next(
+      new ClientError(`Failed to record events. ${exception.message}`)
+    );
+  }
+  return responseUtil.send(response, {
+    statusCode: 200,
+    messages: ["Added events."],
+    eventsAdded: count,
+    eventDetailId: detailsId,
+  });
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiEventsRequestBody {
+  Timestamp?: IsoFormattedDateString; // Deprecated, use 'dateTimes' instead
+  eventDetailId?: number; // ID of existing event details entry if known. Either eventDetailId or description are required.
+  description?: EventDescription; // Description of the event. Either eventDetailId or description are required.
+  dateTimes: IsoFormattedDateString[]; // Array of event times in ISO standard format, eg ["2017-11-13T00:47:51.160Z"]
+}
+
+// TODO(jon): Consider whether extracting this is worth it compared with just
+//  duplicating and having things be explicit in each api endpoint?
+const commonEventFields = [
+  deprecatedField(body("Timestamp")),
+  anyOf(
+    idOf(body("eventDetailId")),
+    body("description")
+      .exists()
+      .withMessage(expectedTypeOf("EventDescription"))
+      .bail()
+      .custom(jsonSchemaOf(EventDescriptionSchema))
+      .bail()
+      .custom(
+        (description: EventDescription) =>
+          description.type.match(EVENT_TYPE_REGEXP) !== null
+      )
+      .withMessage("description type contains invalid characters")
+  ),
+  body("dateTimes")
+    .exists()
+    .bail()
+    .withMessage(expectedTypeOf("Array of ISO formatted date time strings"))
+    .isArray({ min: 1 })
+    .withMessage(`Got empty array`)
+    .bail()
+    .custom(jsonSchemaOf(EventDatesSchema)),
+];
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/events`;
@@ -39,7 +142,7 @@ export default function (app: Application, baseUrl: string) {
    * `Either eventDetailId or description is required`
    * @apiUse V1DeviceAuthorizationHeader
    *
-   * @apiUse EventParams
+   * @apiInterface {apiBody::ApiEventsRequestBody}
    * @apiUse EventExampleDescription
    * @apiUse EventExampleEventDetailId
    *
@@ -50,12 +153,28 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [auth.authenticateDevice, ...eventUtil.eventAuth],
-    middleware.requestWrapper(eventUtil.uploadEvent)
+    extractJwtAuthorisedDevice,
+    validateFields(commonEventFields),
+    // Extract required resources
+    fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // eventDetailId is optional, but if it is supplied we need to make sure it exists
+      if (request.body.eventDetailId && !response.locals.detailsnapshot) {
+        return next(
+          new ClientError(
+            `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
+            403
+          )
+        );
+      }
+      next();
+    },
+    // Finally, upload event(s)
+    uploadEvent
   );
 
   /**
-   * @api {post} /api/v1/events/device/:deviceID Add new events on behalf of device
+   * @api {post} /api/v1/events/device/:deviceId Add new events on behalf of device
    * @apiName AddEventOnBehalf
    * @apiGroup Events
    * @apiDescription This call is used to upload new events on behalf of a device.
@@ -63,13 +182,13 @@ export default function (app: Application, baseUrl: string) {
    * the 'description' parameter.
    *
    * `Either eventDetailId or description is required`
-   * @apiParam {String} deviceID ID of the device to upload on behalf of.
-   * If you don't have access to the deviceID, the devicename can be used instead in it's place -
-   * however note that requests using devicename will be rejected if multiple devices exist with
-   * the same devicename. The use of devicename is `DEPRECATED` and may not be supported in future.
+   * @apiParam {String} deviceId ID of the device to upload on behalf of.
+   * If you don't have access to the deviceId, the deviceName can be used instead in it's place -
+   * however note that requests using deviceName will be rejected if multiple devices exist with
+   * the same deviceName. The use of deviceName is `DEPRECATED` and may not be supported in future.
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiUse EventParams
+   * @apiInterface {apiBody::ApiEventsRequestBody}
    * @apiUse EventExampleDescription
    * @apiUse EventExampleEventDetailId
    *
@@ -79,14 +198,32 @@ export default function (app: Application, baseUrl: string) {
    * @apiuse V1ResponseError
    */
   app.post(
-    apiUrl + "/device/:deviceID",
-    [
-      auth.authenticateUser,
-      middleware.getDevice(param, "deviceID"),
-      auth.userCanAccessDevices,
-      ...eventUtil.eventAuth,
-    ],
-    middleware.requestWrapper(eventUtil.uploadEvent)
+    `${apiUrl}/device/:deviceId`,
+    // Validate session
+    extractJwtAuthorizedUser,
+    // Validate fields
+    validateFields([
+      idOf(param("deviceId")),
+      ...commonEventFields,
+      // Default to also allowing inactive devices to have uploads on their behalf
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
+    // Extract required resources
+    fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // eventDetailId is optional, but if it is supplied we need to make sure it exists
+      if (request.body.eventDetailId && !response.locals.detailsnapshot) {
+        return next(
+          new ClientError(
+            `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
+            403
+          )
+        );
+      }
+      next();
+    },
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    uploadEvent
   );
 
   /**
@@ -95,13 +232,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Datetime} [startTime] Return only events on or after this time
-   * @apiParam {Datetime} [endTime] Return only events from before this time
-   * @apiParam {Integer} [deviceId] Return only events for this device id
-   * @apiParam {Integer} [limit] Limit returned events to this number (default is 100)
-   * @apiParam {Integer} [offset] Offset returned events by this amount (default is 0)
-   * @apiParam {String} [type] Alphaonly string describing the type of event wanted
-   * @apiParam {Boolean} [latest] Set to true to see the most recent events recorded listed first
+   * @apiQuery {Datetime} [startTime] Return only events on or after this time
+   * @apiQuery {Datetime} [endTime] Return only events from before this time
+   * @apiQuery {Integer} [deviceId] Return only events for this device id
+   * @apiQuery {Integer} [limit] Limit returned events to this number (default is 100)
+   * @apiQuery {Integer} [offset] Offset returned events by this amount (default is 0)
+   * @apiQuery {String} [type] Alphaonly string describing the type of event wanted
+   * @apiQuery {Boolean} [latest] Set to true to see the most recent events recorded listed first
+   * @apiQuery {Boolean} [only-active=true] Only return events for active devices
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} offset Offset of returned page of results from 1st result matched by query.
@@ -112,49 +250,72 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     apiUrl,
-    [
-      auth.authenticateUser,
+    // Validate session
+    extractJwtAuthorizedUser,
+    // Validate request structure
+    validateFields([
       query("startTime")
-        // @ts-ignore
         .isISO8601({ strict: true })
-        .optional(),
+        .optional()
+        .withMessage(expectedTypeOf("ISO formatted date string")),
       query("endTime")
-        // @ts-ignore
         .isISO8601({ strict: true })
-        .optional(),
-      query("deviceId").isInt().optional().toInt(),
-      query("offset").isInt().optional().toInt(),
-      query("limit").isInt().optional().toInt(),
-      query("type").matches(eventUtil.EVENT_TYPE_REGEXP).optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+        .optional()
+        .withMessage(expectedTypeOf("ISO formatted date string")),
+      idOf(query("deviceId")).optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+      query("type").matches(EVENT_TYPE_REGEXP).optional(),
+      booleanOf(query("latest")).optional(),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    // Extract required resources
+    fetchAuthorizedOptionalDeviceById(query("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // deviceId is optional, but if it is supplied we need to make sure that the user
+      // is allowed to access it.
+      if (request.query.deviceId && !response.locals.device) {
+        return next(
+          new ClientError(
+            `Could not find a device with an id of '${request.query.deviceId} for user`,
+            403
+          )
+        );
+      }
+      next();
+    },
+    // Check permissions on resources
+    // Extract device if any, and check that user has permissions to access it
+    async (request: Request, response: Response) => {
       const query = request.query;
-      query.offset = query.offset || 0;
+      const offset: number =
+        (query.offset && (query.offset as unknown as number)) || 0;
       let options: QueryOptions;
       if (query.type) {
         options = { eventType: query.type } as QueryOptions;
       }
-
       const result = await models.Event.query(
-        request.user,
-        query.startTime,
-        query.endTime,
-        query.deviceId,
-        query.offset,
-        query.limit,
-        query.latest,
+        response.locals.requestUser.id,
+        query.startTime as string,
+        query.endTime as string,
+        Number(query.deviceId),
+        offset,
+        query.limit as unknown as number,
+        query.latest as unknown as boolean,
         options
       );
+
+      // TODO(jon): Flatten out the response structure and formalise and validate it.
 
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
         limit: query.limit,
-        offset: query.offset,
+        offset,
         count: result.count,
         rows: result.rows,
       });
-    })
+    }
   );
 
   /**
@@ -163,11 +324,12 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Datetime} [startTime] Return only errors on or after this time
-   * @apiParam {Datetime} [endTime] Return only errors from before this time
-   * @apiParam {Integer} [deviceId] Return only errors for this device id
-   * @apiParam {Integer} [limit] Limit returned errors to this number (default is 100)
-   * @apiParam {Integer} [offset] Offset returned errors by this amount (default is 0)
+   * @apiQuery {Datetime} [startTime] Return only errors on or after this time
+   * @apiQuery {Datetime} [endTime] Return only errors from before this time
+   * @apiQuery {Integer} [deviceId] Return only errors for this device id
+   * @apiQuery {Integer} [limit=100] Limit returned errors to this number (default is 100)
+   * @apiQuery {Integer} [offset=0] Offset returned errors by this amount (default is 0)
+   * @apiQuery {Boolean} [only-active=true] Only return errors for active devices
    *
    * @apiSuccess {json} rows Map of Service Name to Service errors
    * @apiUse V1ResponseSuccess
@@ -206,25 +368,41 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    apiUrl + "/errors",
-    [
-      auth.authenticateUser,
-      query("startTime")
-        // @ts-ignore
-        .isISO8601({ strict: true })
-        .optional(),
-      query("endTime")
-        // @ts-ignore
-        .isISO8601({ strict: true })
-        .optional(),
-      query("deviceId").isInt().optional().toInt(),
-      query("offset").isInt().optional().toInt(),
-      query("limit").isInt().optional().toInt(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    `${apiUrl}/errors`,
+    // Authenticate the session
+    extractJwtAuthorizedUser,
+    // Validate request structure
+    validateFields([
+      query("startTime").isISO8601({ strict: true }).optional(),
+      query("endTime").isISO8601({ strict: true }).optional(),
+      idOf(query("deviceId")).optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    // Extract required resources
+    fetchAuthorizedOptionalDeviceById(query("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // deviceId is optional, but if it is supplied we need to make sure that the user
+      // is allowed to access it.
+      if (request.query.deviceId && !response.locals.device) {
+        return next(
+          new ClientError(
+            `Could not find a device with an id of '${request.query.deviceId} for user`,
+            403
+          )
+        );
+      }
+      next();
+    },
+    async (request: Request, response: Response) => {
       const query = request.query;
-      const result = await eventUtil.errors(request);
 
+      // FIXME(jon): This smells bad, sometimes requires user, and sometimes doesn't
+      const result = await errors({
+        query: { ...request.query },
+        res: { locals: { ...response.locals } },
+      });
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
@@ -232,7 +410,7 @@ export default function (app: Application, baseUrl: string) {
         offset: query.offset,
         rows: result,
       });
-    })
+    }
   );
 
   /**
@@ -241,7 +419,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Integer} [deviceID] Return only errors for this deviceID
+   * @apiQuery {Integer} [deviceId] Return only errors for this deviceId
    *
    * @apiSuccess {JSON} events Array of `ApiPowerEvent` containing details of power events matching the criteria given.
    * @apiSuccessExample ApiPowerEvent:
@@ -264,15 +442,47 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    apiUrl + "/powerEvents",
-    [auth.authenticateUser, query("deviceId").isInt().optional().toInt()],
-    middleware.requestWrapper(async (request, response) => {
-      const result = await eventUtil.powerEventsPerDevice(request);
+    `${apiUrl}/powerEvents`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("deviceId")
+        .isInt()
+        .optional()
+        .toInt()
+        .withMessage(expectedTypeOf("integer")),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    // Extract required resources
+    fetchAuthorizedOptionalDeviceById(query("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // FIXME - can this be incorporated into our fetch logic?
+      // deviceId is optional, but if it is supplied we need to make sure that the user
+      // is allowed to access it.
+      if (request.query.deviceId && !response.locals.device) {
+        return next(
+          new ClientError(
+            `Could not find a device with an id of '${request.query.deviceId} for user`,
+            403
+          )
+        );
+      }
+      next();
+    },
+    async (request: Request, response: Response) => {
+      logger.info(
+        "Get power events for %s at time %s",
+        response.locals.requestUser,
+        new Date()
+      );
+      const result = await powerEventsPerDevice({
+        query: { ...request.query },
+        res: { locals: { ...response.locals } },
+      });
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],
         events: result,
       });
-    })
+    }
   );
 }

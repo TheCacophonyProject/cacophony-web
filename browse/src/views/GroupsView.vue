@@ -35,7 +35,7 @@
                 :class="[
                   'list-group-item',
                   'list-group-item-action',
-                  { 'no-devices': deviceCount === 0 },
+                  { 'no-devices': devices.length === 0 },
                 ]"
                 :key="groupName"
                 :to="
@@ -52,28 +52,16 @@
                         params: { groupName, tabName: 'devices' },
                       }
                 "
-                v-for="{
-                  groupName,
-                  deviceCount,
-                  userCount,
-                  deviceOnly,
-                } in filteredGroups"
+                v-for="{ groupName, devices, deviceOnly } in filteredGroups"
               >
                 <span>
                   <strong>{{ groupName }}</strong> -
-                  <span v-if="deviceCount !== false"
-                    >{{ deviceCount || "No" }} device<span
-                      v-if="deviceCount !== 1"
+                  <span v-if="devices.length !== 0"
+                    >{{ devices.length || "No" }} device<span
+                      v-if="devices.length !== 1"
                       >s</span
                     >
-                    <span v-if="!deviceOnly"
-                      >with {{ userCount || "No" }} user<span
-                        v-if="userCount !== 1"
-                        >s</span
-                      ></span
-                    >
                   </span>
-                  <b-spinner v-else-if="!deviceOnly" type="border" small />
                 </span>
                 <font-awesome-icon
                   class="icon"
@@ -96,7 +84,7 @@
         </b-col>
         <b-col class="col-md-6 col-12">
           <MapWithPoints
-            v-if="!locationsLoading"
+            v-if="!locationsLoading && groupsByLocation.length"
             :points="groupsByLocation"
             :height="500"
             :navigate-to-point="
@@ -106,7 +94,7 @@
               })
             "
           />
-          <div class="map-loading" v-else>
+          <div class="map-loading" v-else-if="groupsByLocation.length">
             <b-spinner small />
             <div>&nbsp;Loading group locations</div>
           </div>
@@ -124,6 +112,9 @@ import GroupAdd from "@/components/Groups/GroupAdd.vue";
 import { LatLng, latLng, latLngBounds } from "leaflet";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { mapState } from "vuex";
+import { ApiGroupResponse } from "@typedefs/api/group";
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import { ApiDeviceResponse } from "@typedefs/api/device";
 
 interface GroupsForLocation {
   location: LatLng;
@@ -131,7 +122,7 @@ interface GroupsForLocation {
 }
 
 interface GroupsViewData {
-  groups: any[];
+  groups: ApiGroupResponse[];
   isLoading: boolean;
   locationsLoading: boolean;
   showGroupsWithNoDevices: boolean;
@@ -144,6 +135,7 @@ const NZ_BOUNDS = latLngBounds([
   latLng(-47.5254414, 164.9880683),
 ]);
 
+// eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
 const isInNZ = (location: LatLng): boolean => {
   return NZ_BOUNDS.contains(location);
 };
@@ -167,7 +159,8 @@ export default {
   },
   computed: {
     ...mapState({
-      currentUser: (state) => (state as any).User.userData,
+      currentUser: (state): ApiLoggedInUserResponse =>
+        (state as any).User.userData,
     }),
     hasGroups(): boolean {
       return this.groups.length !== 0;
@@ -179,11 +172,7 @@ export default {
       if (this.showGroupsWithNoDevices) {
         return this.groups;
       }
-      return this.groups.filter(
-        (group) =>
-          group.initialDeviceCount !== 0 &&
-          (group.deviceCount === false || group.deviceCount !== 0)
-      );
+      return this.groups.filter((group) => group.devices.length !== 0);
     },
   },
   created: function () {
@@ -195,131 +184,83 @@ export default {
       this.locationsLoading = true;
       {
         // TODO(jon): Error handling.
-        const groups = {};
-        try {
-          const { result } = await api.device.getDevices();
-          const myDevices = result.devices.rows.filter((device) => {
-            return (
-              device.Users.length !== 0 &&
-              device.Users.find((user) => user.id === this.currentUser.id) !==
-                undefined
-            );
-          });
-          // FIXME(jon): Quick hack for the issue that we can't currently get the group for a deviceId via the api.
-          //  get the latest recording for a device, and that contains it.  Will fail if device has no recordings.
-          for (const device of myDevices) {
-            const rec = await api.recording.latestForDevice(device.id);
-            if (rec.result.rows.length) {
-              const entry = rec.result.rows[0];
-              groups[entry.GroupId] = groups[entry.GroupId] || {
-                Devices: [],
-                groupName: entry.Group.groupname,
-                userCount: 1,
-                initialDeviceCount: 0,
-                deviceCount: 0,
-                deviceOnly: true,
-              };
-              groups[entry.GroupId].Devices.push(device);
-              groups[entry.GroupId].initialDeviceCount =
-                groups[entry.GroupId].Devices.length;
-              groups[entry.GroupId].deviceCount =
-                groups[entry.GroupId].Devices.length;
-              // Now we should be able to show the groups for those devices.
-            }
-          }
-        } catch (e) {
-          // ....
+
+        interface GroupInfo {
+          devices: ApiDeviceResponse[];
+          groupName: string;
+          deviceOnly: boolean;
         }
+
+        const groups: Record<number, GroupInfo> = {};
         try {
-          const { result } = await api.groups.getGroups();
-          // Groups are always ordered alphabetically.
-          // TODO(jon): Maybe also show groups that have devices with issues here?
-          const tempGroups = result.groups.map(
-            ({ groupname, GroupUsers, Devices }) => ({
-              groupName: groupname,
-              deviceCount: Devices.length === 0 ? 0 : false,
-              initialDeviceCount: Devices.length,
-              userCount: GroupUsers.length,
-            })
-          );
-
-          // Add in any groups that came from devices we're attached to, but that we're not directly members of.
-          for (const group of Object.values(groups)) {
-            if (
-              !tempGroups.find(
-                (tempGroup) => tempGroup.groupName === (group as any).groupName
-              )
-            ) {
-              tempGroups.push(group);
+          const [userGroups, userDevices] = await Promise.all([
+            // NOTE - We only need to get groups because there can be groups with
+            //  no devices - otherwise all groups would be listed in devices
+            api.groups.getGroups(),
+            api.device.getDevices(),
+          ]);
+          {
+            if (userGroups.success) {
+              const { result } = userGroups;
+              for (const { id, groupName } of result.groups) {
+                groups[id] = {
+                  devices: [],
+                  groupName,
+                  deviceOnly: false,
+                };
+              }
+            } else {
+              // FIXME?
             }
           }
-
-          this.groups = tempGroups.sort((a, b) =>
-            a.groupName.localeCompare(b.groupName)
-          );
-
-          const devicesForGroupsPromises = [];
-          const locations = {};
-          for (const group of this.groups) {
-            if (group.initialDeviceCount !== 0 && !group.deviceOnly) {
-              devicesForGroupsPromises.push(
-                new Promise((resolve) => {
-                  api.groups
-                    // FIXME: We only need to do this because getGroups returns both active and inactive devices right now.
-                    .getDevicesForGroup(group.groupName)
-                    .then(async ({ result }) => {
-                      group.deviceCount = result.devices.length;
-                      const latestRecordingForDevicesPromises = [];
-                      const device = result.devices.pop();
-                      // TODO(jon): Would be useful to be able to get the latest recording for each of a list of devices in a single request?
-                      device &&
-                        latestRecordingForDevicesPromises.push(
-                          api.recording.latestForDevice(device.id)
-                        );
-
-                      const latestRecordingForFirstDeviceInGroup =
-                        await Promise.all(latestRecordingForDevicesPromises);
-                      resolve(latestRecordingForFirstDeviceInGroup);
-                    })
-                    // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
-                    .catch((_) => {});
-                })
-              );
-            }
-          }
-          Promise.all(devicesForGroupsPromises)
-            .then((devicesForGroups) => {
-              for (const results of devicesForGroups) {
-                for (const recordings of results) {
-                  if (
-                    recordings.result.count !== 0 &&
-                    recordings.result.rows[0].location
-                  ) {
-                    const rec = recordings.result.rows[0];
-                    const location = latLng(
-                      rec.location.coordinates[0],
-                      rec.location.coordinates[1]
-                    );
-                    if (isInNZ(location)) {
-                      if (!locations.hasOwnProperty(location.toString())) {
-                        locations[location.toString()] = {
-                          location,
-                          group: "",
-                        };
-                      }
-                      const loc = locations[location.toString()];
-                      loc.name = rec.Group.groupname;
+          {
+            if (userDevices.success) {
+              const { result } = userDevices;
+              const locations = {};
+              if (!result.devices.length) {
+                this.showGroupsWithNoDevices = true;
+              }
+              for (const device of result.devices) {
+                if (device.location) {
+                  // TODO - Expand group bubble to encompass all devices
+                  const location = latLng(
+                    device.location.lat,
+                    device.location.lng
+                  );
+                  if (isInNZ(location)) {
+                    if (!locations.hasOwnProperty(location.toString())) {
+                      locations[location.toString()] = {
+                        location,
+                        group: device.groupName,
+                      };
                     }
+                    const loc = locations[location.toString()];
+                    loc.group = device.groupName;
+                    loc.name = device.deviceName;
                   }
                 }
+
+                const { groupName, groupId } = device;
+                groups[groupId] = groups[groupId] || {
+                  devices: [],
+                  groupName,
+                  deviceOnly: true,
+                };
+                groups[groupId].devices.push(device);
+                // Now we should be able to show the groups for those devices.
               }
               this.locations = locations;
-              this.locationsLoading = false;
-            })
-            .catch(() => {});
-        } catch (error) {
-          // Do something with the error.
+            } else {
+              // FIXME?
+            }
+            this.locationsLoading = false;
+          }
+        } catch (e) {
+          // ...
         }
+        this.groups = Object.values(groups).sort((a, b) =>
+          a.groupName.localeCompare(b.groupName)
+        );
       }
       this.isLoading = false;
     },

@@ -1,10 +1,10 @@
 import moment, { Moment } from "moment";
 import { MonitoringPageCriteria } from "./monitoringPage";
-import models from "../../models";
-import { Recording } from "../../models/Recording";
+import models from "@models";
+import { Recording } from "@models/Recording";
 import { getTrackTag, unidentifiedTags } from "./Visits";
-import { User } from "../../models/User";
 import { ClientError } from "../customErrors";
+import { UserId } from "@typedefs/api/common";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -195,7 +195,7 @@ interface VisitRecording {
 interface VisitTrack {
   // this is the overriding tag that we have given this event
   // e.g. if it was unidentified but grouped under a cat visit
-  // assumedTag woudl be "cat"
+  // assumedTag would be "cat"
   tag: string;
   aiTag: string;
   isAITagged: boolean;
@@ -204,10 +204,10 @@ interface VisitTrack {
 }
 
 export async function generateVisits(
-  user: User,
+  userId: UserId,
   search: MonitoringPageCriteria,
   viewAsSuperAdmin: boolean
-) {
+): Promise<Visit[] | ClientError> {
   const search_start = moment(search.pageFrom).subtract(
     MAX_SECS_BETWEEN_RECORDINGS + MAX_SECS_VIDEO_LENGTH,
     "seconds"
@@ -218,15 +218,15 @@ export async function generateVisits(
   );
 
   const recordings = await getRecordings(
-    user,
+    userId,
     search,
     search_start,
     search_end,
     viewAsSuperAdmin
   );
-  if (recordings.length == RECORDINGS_LIMIT) {
-    throw new ClientError(
-      "Too many recordings to retrieve.   Please reduce your page size"
+  if (recordings.length === RECORDINGS_LIMIT) {
+    return new ClientError(
+      "Too many recordings to retrieve. Please reduce your page size."
     );
   }
 
@@ -234,7 +234,7 @@ export async function generateVisits(
     recordings,
     moment(search.pageFrom),
     moment(search.pageUntil),
-    search.page == search.pagesEstimate
+    search.page === search.pagesEstimate
   );
 
   const incompleteCutoff = moment(search_end).subtract(
@@ -251,7 +251,7 @@ export async function generateVisits(
 }
 
 async function getRecordings(
-  user: User,
+  userId: UserId,
   params: MonitoringPageCriteria,
   from: Moment,
   until: Moment,
@@ -269,9 +269,8 @@ async function getRecordings(
     where.GroupId = params.groups;
   }
   const order = [["recordingDateTime", "ASC"]];
-
   const builder = await new models.Recording.queryBuilder().init(
-    user,
+    userId,
     where,
     null,
     null,

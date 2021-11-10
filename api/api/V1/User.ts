@@ -16,17 +16,50 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import { validateFields } from "../middleware";
 import auth from "../auth";
-import models from "../../models";
+import models from "@models";
 import responseUtil from "./responseUtil";
-import { body, param } from "express-validator/check";
-import { matchedData } from "express-validator/filter";
+import { body, param, matchedData } from "express-validator";
 import { ClientError } from "../customErrors";
-import { Application } from "express";
-import config from "../../config";
-import { User, UserStatic } from "../../models/User";
-import AllModels from "../../models";
+import { Application, NextFunction, Request, Response } from "express";
+import config from "@config";
+import { User } from "@models/User";
+import {
+  anyOf,
+  integerOf,
+  validNameOf,
+  validPasswordOf,
+} from "../validation-middleware";
+import {
+  extractJwtAuthorisedSuperAdminUser,
+  extractJwtAuthorizedUser,
+  fetchUnauthorizedOptionalUserByNameOrId,
+  fetchUnauthorizedRequiredUserByNameOrId,
+} from "../extract-middleware";
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+
+export const mapUser = (user: User): ApiLoggedInUserResponse => ({
+  id: user.id,
+  userName: user.username,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  globalPermission: user.globalPermission,
+  endUserAgreement: user.endUserAgreement,
+});
+
+export const mapUsers = (users: User[]) => users.map(mapUser);
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUserResponseSuccess {
+  userData: ApiLoggedInUserResponse;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUsersResponseSuccess {
+  usersList: ApiLoggedInUserResponse[];
+}
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
@@ -36,48 +69,54 @@ export default function (app: Application, baseUrl: string) {
    * @apiName RegisterUser
    * @apiGroup User
    *
-   * @apiParam {String} username Username for new user.
+   * @apiParam {String} userName Username for new user.
    * @apiParam {String} password Password for new user.
    * @apiParam {String} email Email for new user.
    * @apiParam {Integer} [endUserAgreement] Version of the end user agreement accepted.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
-   * @apiSuccess {JSON} userData Metadata of the user.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    *
    * @apiUse V1ResponseError
    */
   app.post(
     apiUrl,
-    [
-      middleware.isValidName(body, "username").custom((value) => {
-        return models.User.freeUsername(value);
-      }),
-      body("email")
-        .isEmail()
-        .custom((value) => {
-          return models.User.freeEmail(value);
-        }),
-      middleware.checkNewPassword("password"),
+    validateFields([
+      anyOf(validNameOf(body("username")), validNameOf(body("userName"))),
+      body("email").isEmail(),
+      validPasswordOf(body("password")),
       body("endUserAgreement").isInt().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    ]),
+    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
+    (request: Request, response: Response, next: NextFunction) => {
+      if (response.locals.user) {
+        return next(new ClientError("Username in use"));
+      } else {
+        next();
+      }
+    },
+    async (request: Request, Response: Response, next: NextFunction) => {
+      if (!(await models.User.freeEmail(request.body.email))) {
+        return next(new ClientError("Email address in use"));
+      } else {
+        next();
+      }
+    },
+    async (request: Request, response: Response) => {
       const user: User = await models.User.create({
-        username: request.body.username,
+        username: request.body.username || request.body.userName,
         password: request.body.password,
         email: request.body.email,
         endUserAgreement: request.body.endUserAgreement,
       });
-
-      const userData = await user.getDataValues();
-
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new user."],
-        token: "JWT " + auth.createEntityJWT(user),
-        userData: userData,
+        token: `JWT ${auth.createEntityJWT(user)}`,
+        userData: mapUser(user),
       });
-    })
+    }
   );
 
   /**
@@ -87,7 +126,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} [username] New username to set.
+   * @apiParam {String} [userName] New username to set.
    * @apiParam {String} [password] New password to set.
    * @apiParam {String} [email] New email to set.
    *
@@ -96,64 +135,81 @@ export default function (app: Application, baseUrl: string) {
    */
   app.patch(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware
-        .isValidName(body, "username")
-        .custom((value) => {
-          return models.User.freeUsername(value);
-        })
-        .optional(),
-      body("email")
-        .isEmail()
-        .custom((value) => {
-          return models.User.freeEmail(value);
-        })
-        .optional(),
-      middleware.checkNewPassword("password").optional(),
-      body("endUserAgreement").isInt().optional(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const validData = matchedData(request);
-      if (Object.keys(validData).length === 0) {
-        throw new ClientError(
-          "Must provide at least one of: username; email; password; endUserAgreement."
-        );
+    extractJwtAuthorizedUser,
+    validateFields([
+      anyOf(
+        validNameOf(body("username")),
+        validNameOf(body("userName")),
+        body("email").isEmail(),
+        validPasswordOf(body("password")),
+        integerOf(body("endUserAgreement"))
+      ),
+    ]),
+    async (request: Request, Response: Response, next: NextFunction) => {
+      if (
+        (request.body.username || request.body.userName) &&
+        !(await models.User.freeUsername(
+          request.body.username || request.body.userName
+        ))
+      ) {
+        return next(new ClientError("Username in use"));
+      } else {
+        next();
       }
-      const user: UserStatic = request.user;
-      await user.update(validData, {
-        where: {},
-        fields: user.apiSettableFields as string[],
-      });
+    },
+    async (request: Request, Response: Response, next: NextFunction) => {
+      if (
+        request.body.email &&
+        !(await models.User.freeEmail(request.body.email))
+      ) {
+        return next(new ClientError("Email address in use"));
+      } else {
+        next();
+      }
+    },
+    async (request: Request, response: Response) => {
+      // map matchedData to db fields.
+      const dataToUpdate = matchedData(request);
+      if (dataToUpdate.userName) {
+        dataToUpdate.username = dataToUpdate.userName;
+        delete dataToUpdate.userName;
+      }
+      const requestUser = await models.User.findByPk(
+        response.locals.requestUser.id
+      );
+      await requestUser.update(dataToUpdate);
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated user."],
       });
-    })
+    }
   );
 
   /**
-   * @api {get} api/v1/users/:username Get details for a user
+   * @api {get} api/v1/users/:userNameOrId Get details for a user
    * @apiName GetUser
    * @apiGroup User
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiSuccess {JSON} userData Metadata of the user.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:username`,
-    [auth.authenticateUser, middleware.getUserByName(param)],
-    middleware.requestWrapper(async (request, response) => {
+    `${apiUrl}/:userNameOrId`,
+    extractJwtAuthorizedUser,
+    validateFields([validNameOf(param("userNameOrId"))]),
+    fetchUnauthorizedRequiredUserByNameOrId(param("userNameOrId")),
+    // FIXME - should a regular user be able to get user information for any other user?
+    async (request, response) => {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        userData: await request.body.user.getDataValues(),
+        userData: mapUser(response.locals.user),
       });
-    })
+    }
   );
 
   /**
@@ -166,22 +222,22 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiSuccess {JSON} usersList List of usernames
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
    */
   app.get(
     `${baseUrl}/listUsers`,
-    [auth.authenticateAdmin],
-    middleware.requestWrapper(async (request, response) => {
-      const users = await AllModels.User.getAll({});
+    extractJwtAuthorisedSuperAdminUser,
+    async (request, response) => {
+      const users = await models.User.getAll({});
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        usersList: users,
+        usersList: mapUsers(users),
       });
-    })
+    }
   );
 
   /**
@@ -194,14 +250,11 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-  app.get(
-    baseUrl + "/endUserAgreement/latest",
-    middleware.requestWrapper(async (request, response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
-        euaVersion: config.euaVersion,
-      });
-    })
-  );
+  app.get(`${baseUrl}/endUserAgreement/latest`, async (request, response) => {
+    return responseUtil.send(response, {
+      statusCode: 200,
+      messages: [],
+      euaVersion: config.euaVersion,
+    });
+  });
 }

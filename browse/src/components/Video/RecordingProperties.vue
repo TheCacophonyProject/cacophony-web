@@ -2,6 +2,7 @@
   <div>
     <b-form>
       <b-form-group>
+        <!--        FIXME - Does user-entered ever exist? -->
         <div
           v-if="
             recording.additionalMetadata &&
@@ -22,7 +23,10 @@
           </div>
         </div>
 
-        <div class="simple-accordion-wrapper">
+        <div
+          class="simple-accordion-wrapper"
+          v-if="isSuperUserAndViewingAsSuperUser"
+        >
           <h5
             id="technical-details"
             class="simple-accordion-header"
@@ -80,8 +84,9 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import BatteryLevel from "../BatteryLevel.vue";
+import { shouldViewAsSuperUser } from "@/utils";
 
 export default {
   name: "RecordingProperties",
@@ -143,30 +148,25 @@ export default {
     };
   },
   computed: {
+    isSuperUserAndViewingAsSuperUser(): boolean {
+      return (
+        this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
+      );
+    },
     parseLocation: function () {
-      if (this.recording.location.type === "Point") {
-        return `Lat: ${this.recording.location.coordinates[0].toFixed(
+      if (this.recording.location) {
+        return `Lat: ${this.recording.location.lat.toFixed(
           2
-        )}, Long: ${this.recording.location.coordinates[1].toFixed(2)}`;
+        )}, Long: ${this.recording.location.lng.toFixed(2)}`;
       } else {
-        return this.recording.location;
+        return "No location";
       }
     },
     metaItems: function () {
-      const data = this.recording["additionalMetadata"];
-      const items = [];
-      if (!data) {
-        return items;
-      }
-      for (const key in data) {
-        if (key != "tracks") {
-          items.push({
-            key: key,
-            data: data[key],
-          });
-        }
-      }
-      return items;
+      return this.recording.additionalMetadata
+        ?.map((data) => Object.entries(data))
+        .filter(([key, data]) => key !== "tracks")
+        .map(([key, data]) => ({ key, data }));
     },
   },
 };

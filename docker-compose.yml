@@ -1,6 +1,4 @@
 version: "2.4"
-volumes:
-  node_modules:
 services:
   server:
     container_name: cacophony-api
@@ -12,10 +10,14 @@ services:
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: miniostorage
     ports:
-      - 1080:1080
-      - 2008:2008
-      - 5432:5432
-      - 9001:9001
+      - "1080:1080"
+      - "2008:2008"
+      - "5432:5432"
+      - "9001:9001"
     volumes:
-      - ./api:/app
-      - node_modules:/app/node_modules
+      - ./api:/app/api
+      - ./types:/app/types
+      # Exclude the following folders
+      - /app/api/docker-base/
+      - /app/api/node_modules/
+      - /app/api/sql/

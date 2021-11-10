@@ -18,9 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { DeviceId, Device } from "./Device";
-import { User } from "./User";
+import { Device } from "./Device";
 import { DetailSnapShot } from "./DetailSnapshot";
+import { DeviceId, UserId } from "@typedefs/api/common";
 
 const Op = Sequelize.Op;
 
@@ -45,25 +45,25 @@ export interface Event extends Sequelize.Model, ModelCommon<Event> {
 }
 
 export interface QueryOptions {
-  eventType: string | string[];
-  admin: boolean;
-  useCreatedDate: boolean;
+  eventType?: string | string[];
+  admin?: boolean;
+  useCreatedDate?: boolean;
 }
 
 export interface EventStatic extends ModelStaticCommon<Event> {
   query: (
-    user: User,
-    startTime: string | null | undefined,
-    endTime: string | null | undefined,
-    deviceId: DeviceId | null | undefined,
-    offset: number | null | undefined,
-    limit: number | null | undefined,
-    latest: boolean | null | undefined,
+    userId?: UserId,
+    startTime?: string,
+    endTime?: string,
+    deviceId?: DeviceId,
+    offset?: number,
+    limit?: number,
+    latest?: boolean,
     options?: QueryOptions
   ) => Promise<{ rows: Event[]; count: number }>;
   latestEvents: (
-    user: User,
-    deviceId: DeviceId | null | undefined,
+    userId?: UserId,
+    deviceId?: DeviceId,
     options?: QueryOptions
   ) => Promise<Event[]>;
 }
@@ -95,7 +95,7 @@ export default function (sequelize, DataTypes) {
    * arguments given.
    */
   Event.query = async function (
-    user,
+    userId,
     startTime,
     endTime,
     deviceId,
@@ -136,19 +136,24 @@ export default function (sequelize, DataTypes) {
       }
     }
 
-    let order: any[] = ["dateTime"];
+    let order: (string | string[])[] = ["dateTime"];
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
-
+    let user;
+    if (userId) {
+      // NOTE: This function is sometimes called by scripts without a user
+      user = await models.User.findByPk(userId);
+    }
     return this.findAndCountAll({
       where: {
         [Op.and]: [
           where, // User query
+          // FIXME: Move permissions stuff to middleware
           options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
-      order: order,
+      order,
       include: [
         {
           model: models.DetailSnapshot,
@@ -162,15 +167,15 @@ export default function (sequelize, DataTypes) {
         },
       ],
       attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      limit: limit,
-      offset: offset,
+      limit,
+      offset,
     });
   };
 
   /**
    * Return the latest event of each type grouped by device id
    */
-  Event.latestEvents = async function (user, deviceId, options) {
+  Event.latestEvents = async function (userId, deviceId, options) {
     const where: any = {};
 
     if (deviceId) {
@@ -186,20 +191,26 @@ export default function (sequelize, DataTypes) {
       }
     }
 
-    const order: any[] = [
+    const order = [
       ["EventDetail", "type", "DESC"],
       ["DeviceId", "DESC"],
       ["dateTime", "DESC"],
     ];
 
+    let user;
+    if (userId) {
+      // NOTE - This function is called by scripts without supplying a user.
+      user = await models.User.findByPk(userId);
+    }
     return this.findAll({
       where: {
         [Op.and]: [
           where, // User query
+          // FIXME: Move permissions stuff to middleware
           options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
-      order: order,
+      order,
       include: [
         {
           model: models.DetailSnapshot,

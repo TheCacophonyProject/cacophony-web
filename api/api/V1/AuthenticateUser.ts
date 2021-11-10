@@ -16,64 +16,125 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import middleware, { validateFields } from "../middleware";
 import auth from "../auth";
-import { body, oneOf } from "express-validator/check";
+import { body, oneOf } from "express-validator";
 import responseUtil from "./responseUtil";
-import { Application } from "express";
+import { Application, NextFunction, Request, Response } from "express";
+import {
+  deprecatedField,
+  validNameOf,
+  validPasswordOf,
+} from "../validation-middleware";
+import {
+  extractJwtAuthorisedSuperAdminUser,
+  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
+  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
+} from "../extract-middleware";
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
+
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiAuthenticateUserRequestBody {
+  password: string; // Password for the user account
+  userName?: string; // Username identifying a valid user account
+  nameOrEmail?: string; // Username or email of a valid user account.
+  email?: string; // Email identifying a valid user account
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUserResponseData {
+  userData: ApiLoggedInUserResponse;
+}
 
 export default function (app: Application) {
   /**
    * @api {post} /authenticate_user/ Authenticate a user
+   *
    * @apiName AuthenticateUser
    * @apiGroup Authentication
    * @apiDescription Checks the username corresponds to an existing user account
    * and the password matches the account.
-   * One of 'username', 'email', or 'nameOrEmail' is required.
+   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
    *
-   * @apiParam {String} username Username identifying a valid user account
-   * @apiParam {String} email Email identifying a valid user account
-   * @apiParam {String} nameOrEmail Username or email of a valid user account.
-   * @apiParam {String} password Password for the user account
+   * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    */
   app.post(
     "/authenticate_user",
-    [
+    validateFields([
       oneOf(
         [
-          middleware.getUserByName(body),
-          middleware.getUserByName(body, "nameOrEmail"),
-          middleware.getUserByEmail(body),
-          middleware.getUserByEmail(body, "nameOrEmail"),
+          deprecatedField(validNameOf(body("username"))),
+          validNameOf(body("userName")),
+          validNameOf(body("nameOrEmail")),
+          body("nameOrEmail").isEmail(),
+          body("email").isEmail(),
         ],
         "could not find a user with the given username or email"
       ),
-      body("password").exists(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const passwordMatch = await request.body.user.comparePassword(
+      // FIXME - How about not sending our passwords in the clear eh?
+      //  Ideally should generate hash on client side, and compare hashes with one
+      //  stored on the backend.  Salt on both sides with some timestamp
+      //  rounded to x minutes, so that if hash is compromised
+      //  it can't be reused for long.
+      validPasswordOf(body("password")),
+    ]),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
+      body(["username", "userName", "nameOrEmail", "email"])
+    ),
+    (request: Request, response: Response, next: NextFunction) => {
+      if (!response.locals.user) {
+        // NOTE: Don't give away the fact that the user may not exist - remain vague in the
+        //  error message as to whether the error is username or password related.
+        return responseUtil.send(response, {
+          statusCode: 401,
+          messages: ["Wrong password or username/email address."],
+        });
+      } else {
+        next();
+      }
+    },
+    async (request: Request, response: Response) => {
+      const passwordMatch = await response.locals.user.comparePassword(
         request.body.password
       );
       if (passwordMatch) {
-        const token = await auth.createEntityJWT(request.body.user);
-        const userData = await request.body.user.getDataValues();
+        const token = auth.createEntityJWT(response.locals.user);
+        const {
+          id,
+          username,
+          firstName,
+          lastName,
+          email,
+          globalPermission,
+          endUserAgreement,
+        } = response.locals.user;
         responseUtil.send(response, {
           statusCode: 200,
           messages: ["Successful login."],
-          token: "JWT " + token,
-          userData: userData,
+          token: `JWT ${token}`,
+          userData: {
+            id,
+            userName: username,
+            firstName,
+            lastName,
+            email,
+            globalPermission,
+            endUserAgreement,
+          },
         });
       } else {
         responseUtil.send(response, {
           statusCode: 401,
-          messages: ["Wrong password or username."],
+          messages: ["Wrong password or username/email address."],
         });
       }
-    })
+    }
   );
 
   /**
@@ -85,29 +146,42 @@ export default function (app: Application) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} name Username identifying a valid user account
+   * @apiBody {String} name Username identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    */
   app.post(
     "/admin_authenticate_as_other_user",
-    [
-      auth.authenticateAdmin,
-      oneOf(
-        [middleware.getUserByName(body, "name")],
-        "could not find a user with the given username"
-      ),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const token = await auth.createEntityJWT(request.body.user);
-      const userData = await request.body.user.getDataValues();
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([validNameOf(body("name"))]),
+    fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("name")),
+    async (request: Request, response: Response) => {
+      const token = auth.createEntityJWT(response.locals.user);
+      const {
+        id,
+        username,
+        firstName,
+        lastName,
+        email,
+        globalPermission,
+        endUserAgreement,
+      } = response.locals.user;
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got user token."],
-        token: "JWT " + token,
-        userData: userData,
+        token: `JWT ${token}`,
+        userData: {
+          id,
+          userName: username,
+          firstName,
+          lastName,
+          email,
+          globalPermission,
+          endUserAgreement,
+        },
       });
-    })
+    }
   );
 
   /**
@@ -134,6 +208,7 @@ export default function (app: Application) {
     "/token",
     [body("ttl").optional(), body("access").optional(), auth.authenticateUser],
     middleware.requestWrapper(async (request, response) => {
+      // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
       const token = auth.createEntityJWT(
         request.user,

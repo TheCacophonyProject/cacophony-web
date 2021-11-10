@@ -22,7 +22,13 @@
           />
           <font-awesome-icon
             v-else-if="option.type === 'device'"
-            icon="microchip"
+            :icon="
+              option.kind === 'thermal'
+                ? 'video'
+                : option.kind === 'audio'
+                ? 'music'
+                : 'microchip'
+            "
             size="xs"
           />
           <font-awesome-icon
@@ -32,8 +38,7 @@
           />
           <span class="tag">{{ option.name }}</span>
           <span v-if="option.type === 'group'" class="tag">
-            ({{ option.devices.length }} device<span
-              v-if="option.devices.length > 1"
+            ({{ option.deviceCount }} device<span v-if="option.deviceCount > 1"
               >s</span
             >)
           </span>
@@ -47,12 +52,18 @@
           ></i>
         </span>
       </template>
-      <template slot="option" slot-scope="{ option: { type, name } }">
+      <template slot="option" slot-scope="{ option: { type, name, kind } }">
         <span>
           <font-awesome-icon v-if="type === 'group'" icon="users" size="xs" />
           <font-awesome-icon
             v-else-if="type === 'device'"
-            icon="microchip"
+            :icon="
+              kind === 'thermal'
+                ? 'video'
+                : kind === 'audio'
+                ? 'music'
+                : 'microchip'
+            "
             size="xs"
           />
           <font-awesome-icon
@@ -67,7 +78,7 @@
   </b-form-group>
 </template>
 
-<script>
+<script lang="ts">
 import api from "@/api";
 
 export default {
@@ -125,7 +136,7 @@ export default {
         ...Object.values(this.devices),
         ...Object.values(this.groups),
         ...Object.values(this.stations),
-      ].sort((a, b) => a.name.localeCompare(b.name));
+      ].sort((a, b) => (a as any).name.localeCompare((b as any).name));
     },
   },
   methods: {
@@ -145,74 +156,93 @@ export default {
       this.$emit("update-device-selection", updatedSelection);
     },
     async maybeInitialiseValues() {
-      if (!this.options.length) {
-        await this.loadValues();
-      }
+      await this.loadValues();
     },
-    async loadValues() {
+    async loadValues(onLoad: boolean = false) {
       this.fetching = true;
-      try {
-        const [
-          {
-            result: {
-              devices: { rows: devices },
-            },
-          },
-          {
-            result: { groups },
-          },
-        ] = await Promise.all([
-          api.device.getDevices(),
-          api.groups.getGroups(),
-        ]);
-        this.devices = Object.freeze(
-          devices
-            .map(({ id, devicename }) => ({
-              id: Number(id),
-              type: "device",
-              name: devicename,
-              uid: `device_${id}`,
-            }))
-            .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
-        );
-        this.groups = Object.freeze(
-          groups
-            .map(({ id, groupname, Devices }) => ({
-              id: Number(id),
-              type: "group",
-              name: groupname,
-              devices: Devices,
-              uid: `group_${id}`,
-            }))
-            // NOTE: Filter out empty groups
-            .filter(({ devices }) => devices.length !== 0)
-            .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
-        );
 
-        // TODO(jon): Add stations for each group: in practice this shouldn't be too many for most people.
-        const stationPromises = [];
-        // TODO(jon): This should probably become a general api.stations.getStations() type thing.
-        for (const group of Object.values(this.groups)) {
-          stationPromises.push(api.groups.getStationsForGroup(group.id));
+      if (onLoad) {
+        // Just load information about the groups, devices and stations in the
+        // url route, to populate the names selected in the search box.
+        const loadDevicePromises = [];
+        const loadGroupPromises = [];
+        const loadStationPromises = [];
+        for (const deviceId of this.selectedDevices) {
+          loadDevicePromises.push(api.device.getDeviceById(deviceId));
         }
-        const stations = await Promise.all(stationPromises);
-        this.stations = Object.freeze(
-          stations.reduce((acc, curr) => {
-            for (const { name, id } of curr.result.stations.filter(
-              (station) => station.retiredAt === null
-            )) {
-              acc[id] = {
-                type: "station",
-                name,
-                id,
-                uid: `station_${id}`,
+        for (const groupId of this.selectedGroups) {
+          loadGroupPromises.push(api.groups.getGroupById(groupId));
+        }
+        for (const stationId of this.selectedStations) {
+          loadStationPromises.push(api.groups.getStationById(stationId));
+        }
+        const [devices, groups, stations] = await Promise.all([
+          Promise.all(loadDevicePromises),
+          Promise.all(loadGroupPromises),
+          Promise.all(loadStationPromises),
+        ]);
+        // TODO
+      } else {
+        // Load the entire set of available options.
+        try {
+          const {
+            result: { devices },
+          } = await api.device.getDevices();
+          this.devices = Object.freeze(
+            devices
+              .map(({ id, deviceName, type }) => ({
+                id: Number(id),
+                type: "device",
+                name: deviceName,
+                kind: type,
+                uid: `device_${id}`,
+              }))
+              .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
+          );
+
+          // FIXME - Both devices and stations can have name collisions, so
+          //  disambiguate and group by group.
+          this.groups = Object.freeze(
+            devices.reduce((acc, { groupId, groupName }) => {
+              acc[groupId] = acc[groupId] || {
+                id: groupId,
+                type: "group",
+                name: groupName,
+                uid: `group_${groupId}`,
+                deviceCount: 0,
               };
-            }
-            return acc;
-          }, {})
-        );
-      } catch (e) {
-        // ...
+              acc[groupId].deviceCount++;
+              return acc;
+            }, {})
+          );
+
+          // TODO(jon): Add stations for each group: in practice this shouldn't be too many for most people.
+          const stationPromises = [];
+          // TODO(jon): This should probably become a general api.stations.getStations() type thing.
+          for (const group of Object.values(this.groups)) {
+            stationPromises.push(
+              api.groups.getStationsForGroup((group as any).id)
+            );
+          }
+          const stations = await Promise.all(stationPromises);
+          this.stations = Object.freeze(
+            stations.reduce((acc, curr) => {
+              for (const { name, id } of curr.result.stations.filter(
+                (station) => station.retiredAt === null
+              )) {
+                acc[id] = {
+                  type: "station",
+                  name,
+                  id,
+                  uid: `station_${id}`,
+                };
+              }
+              return acc;
+            }, {})
+          );
+        } catch (e) {
+          // ...
+        }
       }
       this.fetching = false;
     },
@@ -223,7 +253,7 @@ export default {
       this.selectedDevices.length ||
       this.selectedGroups.length
     ) {
-      await this.loadValues();
+      await this.loadValues(); // TODO - only load names of selected items on load - set true
     }
   },
 };

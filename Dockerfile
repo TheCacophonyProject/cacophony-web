@@ -3,13 +3,7 @@
 
 FROM cacophonyproject/server-base:4
 
-# NOTE: Using locally for arm64
-# FROM cacophony-api
-
 WORKDIR /app
-COPY api/package*.json ./
-
-RUN npm install
 
 # API
 EXPOSE 1080
@@ -25,7 +19,10 @@ EXPOSE 5432
 
 COPY docker-entrypoint.sh /
 
-COPY api .
+COPY api ./api
 
+COPY types ./types
+
+RUN cd api && npm install
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

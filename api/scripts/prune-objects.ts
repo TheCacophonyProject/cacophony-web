@@ -1,3 +1,5 @@
+import registerAliases from "../module-aliases";
+registerAliases();
 import process from "process";
 import { program } from "commander";
 import { Client } from "pg";

@@ -1,4 +1,6 @@
-import { openS3 } from "../models/util/util";
+import registerAliases from "../module-aliases";
+registerAliases();
+import { openS3 } from "@models/util/util";
 import { exec as cp_exec } from "child_process";
 import util from "util";
 import * as config from "../config";

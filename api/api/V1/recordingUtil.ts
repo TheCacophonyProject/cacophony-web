@@ -16,32 +16,21 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import sharp from "sharp";
-import { AlertStatic } from "../../models/Alert";
-import { AI_MASTER } from "../../models/TrackTag";
+import zlib from "zlib";
+import { AlertStatic } from "@models/Alert";
+import { AI_MASTER } from "@models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
 import urljoin from "url-join";
-import { ClientError } from "../customErrors";
-import config from "../../config";
-import log from "../../logging";
-import models from "../../models";
-import responseUtil from "./responseUtil";
+import config from "@config";
+import models from "@models";
 import util from "./util";
-import { Request, Response } from "express";
-import {
-  AudioRecordingMetadata,
-  Recording,
-  RecordingId,
-  RecordingPermission,
-  RecordingProcessingState,
-  RecordingType,
-  TagMode,
-} from "../../models/Recording";
-import { Event, QueryOptions } from "../../models/Event";
-import { User } from "../../models/User";
+import { AudioRecordingMetadata, Recording } from "@models/Recording";
+import { Event, QueryOptions } from "@models/Event";
+import { User } from "@models/User";
 import { Order } from "sequelize";
-import { FileId } from "../../models/File";
+import { FileId } from "@models/File";
 import {
   DeviceSummary,
   DeviceVisitMap,
@@ -49,27 +38,54 @@ import {
   VisitEvent,
   VisitSummary,
 } from "./Visits";
-import { Station } from "../../models/Station";
-import modelsUtil from "../../models/util/util";
-import { dynamicImportESM } from "../../dynamic-import-esm";
+import { Station } from "@models/Station";
+import modelsUtil from "@models/util/util";
+import { dynamicImportESM } from "@/dynamic-import-esm";
 import Sequelize from "sequelize";
-import logger from "../../logging";
+import log from "@log";
+import {
+  ClassifierModelDescription,
+  ClassifierRawResult,
+  RawTrack,
+  TrackClassification,
+  TrackFramePosition,
+} from "@typedefs/api/fileProcessing";
+import { CptvFrame } from "cptv-decoder";
+import { GetObjectOutput } from "aws-sdk/clients/s3";
+import { AWSError } from "aws-sdk";
+import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
+import SendData = ManagedUpload.SendData;
+import { Track } from "@models/Track";
+import { DetailSnapshotId } from "@models/DetailSnapshot";
+import { Tag } from "@models/Tag";
+import { RecordingId, TrackTagId, UserId } from "@typedefs/api/common";
+import { AcceptableTag } from "@typedefs/api/consts";
+import { Device } from "@models/Device";
+import {
+  RecordingProcessingState,
+  RecordingType,
+  TagMode,
+} from "@typedefs/api/consts";
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { ApiTrackPosition } from "@typedefs/api/track";
+
+let CptvDecoder;
+(async () => {
+  CptvDecoder = (await dynamicImportESM("cptv-decoder")).CptvDecoder;
+})();
 
 // @ts-ignore
-export interface RecordingQuery extends Request {
-  user: User;
-  query: {
-    where: null | any;
-    tagMode: null | TagMode;
-    tags: null | string[];
-    offset: null | number;
-    limit: null | number;
-    order: null | Order;
-    distinct: boolean;
-    type: string;
-    audiobait: null | boolean;
-  };
-  filterOptions: null | any;
+export interface RecordingQuery {
+  where: null | any;
+  tagMode: null | TagMode;
+  tags: null | string[];
+  offset: null | number;
+  limit: null | number;
+  order: null | Order;
+  distinct: boolean;
+  type: string;
+  audiobait: null | boolean;
+  //filterOptions: null | any;
 }
 
 // How close is a station allowed to be to another station?
@@ -159,10 +175,11 @@ async function getThumbnail(rec: Recording) {
 const THUMBNAIL_MIN_SIZE = 64;
 const THUMBNAIL_PALETTE = "Viridis";
 // Gets a raw cptv frame from a recording
-async function getCPTVFrame(recording: Recording, frameNumber: number) {
-  const { CptvDecoder } = await dynamicImportESM("cptv-decoder");
-  const decoder = new CptvDecoder();
-  const fileData = await modelsUtil
+async function getCPTVFrame(
+  recording: Recording,
+  frameNumber: number
+): Promise<CptvFrame | undefined> {
+  const fileData: GetObjectOutput | AWSError = await modelsUtil
     .openS3()
     .getObject({
       Key: recording.rawFileKey,
@@ -173,7 +190,14 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
     });
   //work around for error in cptv-decoder
   //best to use createReadStream() from s3 when cptv-decoder has support
-  const data = new Uint8Array(fileData.Body);
+  if (fileData instanceof Error) {
+    return;
+  }
+  const data = new Uint8Array(
+    (fileData as GetObjectOutput).Body as ArrayBufferLike
+  );
+  const { CptvDecoder } = await dynamicImportESM("cptv-decoder");
+  const decoder = new CptvDecoder();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const meta = await decoder.getBytesMetadata(data);
   const result = await decoder.initWithLocalCptvFile(data);
@@ -184,7 +208,7 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
   let finished = false;
   let currentFrame = 0;
   let frame;
-  logger.info("Extracting frame #%d for thumbnail", frameNumber);
+  log.info("Extracting frame #%d for thumbnail", frameNumber);
   while (!finished) {
     frame = await decoder.getNextFrame();
     if (frame && frame.meta.isBackgroundFrame) {
@@ -202,10 +226,15 @@ async function getCPTVFrame(recording: Recording, frameNumber: number) {
 }
 
 // Creates and saves a thumbnail for a recording using specified thumbnail info
-async function saveThumbnailInfo(recording: Recording, thumbnail) {
+async function saveThumbnailInfo(
+  recording: Recording,
+  thumbnail: TrackFramePosition
+): Promise<SendData | Error> {
   const frame = await getCPTVFrame(recording, thumbnail.frame_number);
+  if (!frame) {
+    throw new Error(`Failed to extract CPTV frame ${thumbnail.frame_number}`);
+  }
   const thumb = await createThumbnail(frame, thumbnail);
-
   return await modelsUtil
     .openS3()
     .upload({
@@ -226,40 +255,42 @@ async function saveThumbnailInfo(recording: Recording, thumbnail) {
 //returns {data: buffer, meta: metadata about image}
 async function createThumbnail(
   frame,
-  thumbnail
+  thumbnail: TrackFramePosition
 ): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
   const frameMeta = frame.meta.imageData;
-  const res_x = frameMeta.width;
-  const res_y = frameMeta.height;
+  const resX = frameMeta.width;
+  const resY = frameMeta.height;
 
   const size = Math.max(THUMBNAIL_MIN_SIZE, thumbnail.height, thumbnail.width);
-  const thumbnail_data = new Uint8Array(size * size);
+  const thumbnailData = new Uint8Array(size * size);
 
   //dimensions to it is a square with a minimum size of THUMBNAIL_MIN_SIZE
-  const extra_width = (size - thumbnail.width) / 2;
-  thumbnail.x -= Math.ceil(extra_width);
+  const extraWidth = (size - thumbnail.width) / 2;
+  thumbnail.x -= Math.ceil(extraWidth);
   thumbnail.x = Math.max(0, thumbnail.x);
   thumbnail.width = size;
-  if (thumbnail.x + thumbnail.width > res_x) {
-    thumbnail.x = res_x - thumbnail.width;
+  if (thumbnail.x + thumbnail.width > resX) {
+    thumbnail.x = resX - thumbnail.width;
   }
 
-  const extra_height = (size - thumbnail.height) / 2;
-  thumbnail.y -= Math.ceil(extra_height);
+  const extraHeight = (size - thumbnail.height) / 2;
+  // noinspection JSSuspiciousNameCombination
+  thumbnail.y -= Math.ceil(extraHeight);
   thumbnail.y = Math.max(0, thumbnail.y);
   thumbnail.height = size;
-  if (thumbnail.y + thumbnail.height > res_y) {
-    thumbnail.y = res_y - thumbnail.height;
+  if (thumbnail.y + thumbnail.height > resY) {
+    thumbnail.y = resY - thumbnail.height;
   }
 
-  // get min max for normalizsation
-  let min;
-  let max;
-  let frame_start;
+  // FIXME(jon): Normalise to the thumbnail region, not the entire frame.
+  // get min max for normalisation
+  let min = 1 << 16;
+  let max = 0;
+  let frameStart;
   for (let i = 0; i < size; i++) {
-    frame_start = (i + thumbnail.y) * res_x + thumbnail.x;
+    frameStart = (i + thumbnail.y) * resX + thumbnail.x;
     for (let offset = 0; offset < thumbnail.width; offset++) {
-      const pixel = frame.data[frame_start + offset];
+      const pixel = frame.data[frameStart + offset];
       if (!min) {
         min = pixel;
         max = pixel;
@@ -274,19 +305,19 @@ async function createThumbnail(
     }
   }
 
-  let thumb_index = 0;
+  let thumbIndex = 0;
   for (let i = 0; i < size; i++) {
-    frame_start = (i + thumbnail.y) * res_x + thumbnail.x;
+    frameStart = (i + thumbnail.y) * resX + thumbnail.x;
     for (let offset = 0; offset < thumbnail.width; offset++) {
-      let pixel = frame.data[frame_start + offset];
+      let pixel = frame.data[frameStart + offset];
       pixel = (255 * (pixel - min)) / (max - min);
-      thumbnail_data[thumb_index] = pixel;
-      thumb_index++;
+      thumbnailData[thumbIndex] = pixel;
+      thumbIndex++;
     }
   }
   let greyScaleData;
   if (thumbnail.width != size || thumbnail.height != size) {
-    const resized_thumb = await sharp(thumbnail_data, {
+    const resized_thumb = await sharp(thumbnailData, {
       raw: { width: thumbnail.width, height: thumbnail.height, channels: 1 },
     })
       .greyscale()
@@ -296,7 +327,7 @@ async function createThumbnail(
     thumbnail.width = meta.width;
     thumbnail.height = meta.height;
   } else {
-    greyScaleData = thumbnail_data;
+    greyScaleData = thumbnailData;
   }
   const frameBuffer = new Uint8ClampedArray(4 * greyScaleData.length);
   const { renderFrameIntoFrameBuffer, ColourMaps } = await dynamicImportESM(
@@ -328,17 +359,26 @@ async function createThumbnail(
     .toBuffer();
   return { data: img, meta: thumbMeta };
 }
-
-function makeUploadHandler(mungeData?: (any) => any) {
-  return util.multipartUpload("raw", async (request, response, data, key) => {
-    if (mungeData) {
-      data = mungeData(data);
-    }
+export const uploadRawRecording = util.multipartUpload(
+  "raw",
+  async (
+    uploadingDevice: Device,
+    data: any, // FIXME - At least partially validate this data
+    key: string
+  ): Promise<Recording> => {
     const recording = models.Recording.buildSafely(data);
+
+    if (!uploadingDevice) {
+      log.error("No uploading device");
+    }
 
     // Add the filehash if present
     if (data.fileHash) {
       recording.rawFileHash = data.fileHash;
+    }
+
+    if (data.fileSize) {
+      recording.rawFileSize = data.fileSize;
     }
 
     let fileIsCorrupt = false;
@@ -353,17 +393,24 @@ function makeUploadHandler(mungeData?: (any) => any) {
         .catch((err) => {
           return err;
         });
-      const { CptvDecoder } = await dynamicImportESM("cptv-decoder");
-      const decoder = new CptvDecoder();
-      const metadata = await decoder.getBytesMetadata(
-        new Uint8Array(fileData.Body)
-      );
-      // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
-      fileIsCorrupt = await decoder.hasStreamError();
-      if (fileIsCorrupt) {
-        log.warning("CPTV Stream error: %s", await decoder.getStreamError());
+      let metadata;
+      {
+        // TODO - see if this is faster with synthesised test cptv files
+
+        const decoder = new CptvDecoder();
+        metadata = await decoder.getBytesMetadata(
+          new Uint8Array(fileData.Body)
+        );
+        // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
+        fileIsCorrupt = await decoder.hasStreamError();
+        if (fileIsCorrupt) {
+          log.warning(
+            "CPTV Stream error: %s - mark as Corrupt and don't queue for processing",
+            await decoder.getStreamError()
+          );
+        }
+        decoder.close();
       }
-      decoder.close();
 
       if (
         !data.hasOwnProperty("location") &&
@@ -404,15 +451,15 @@ function makeUploadHandler(mungeData?: (any) => any) {
 
     recording.rawFileKey = key;
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
-    recording.DeviceId = request.device.id;
-    recording.GroupId = request.device.GroupId;
+    recording.DeviceId = uploadingDevice.id;
+    recording.GroupId = uploadingDevice.GroupId;
     const matchingStation = await tryToMatchRecordingToStation(recording);
     if (matchingStation) {
       recording.StationId = matchingStation.id;
     }
 
-    if (typeof request.device.public === "boolean") {
-      recording.public = request.device.public;
+    if (typeof uploadingDevice.public === "boolean") {
+      recording.public = uploadingDevice.public;
     }
 
     await recording.save();
@@ -422,15 +469,16 @@ function makeUploadHandler(mungeData?: (any) => any) {
     }
     if (data.processingState) {
       recording.processingState = data.processingState;
+
       if (
-        recording.processingState ==
+        recording.processingState ===
         models.Recording.finishedState(data.type as RecordingType)
       ) {
         await sendAlerts(recording.id);
       }
     } else {
       if (!fileIsCorrupt) {
-        if (tracked && recording.type != RecordingType.Audio) {
+        if (tracked && recording.type !== RecordingType.Audio) {
           recording.processingState = RecordingProcessingState.AnalyseThermal;
           // already have done tracking pi skip to analyse state
         } else {
@@ -440,75 +488,78 @@ function makeUploadHandler(mungeData?: (any) => any) {
         }
       } else {
         // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
-        log.warning("File was corrupt, don't queue for processing");
         recording.processingState = RecordingProcessingState.Corrupt;
       }
     }
-    await recording.validate();
-    // NOTE: The documentation for save() claims that it also does validation,
-    //  so not sure if we really need the call to validate() here.
     await recording.save();
-
-    responseUtil.validRecordingUpload(response, recording.id);
     return recording;
-  });
-}
+  }
+);
 
 // Returns a promise for the recordings query specified in the
 // request.
 async function query(
-  request: RecordingQuery,
-  type?
+  requestUserId: UserId,
+  viewAsSuperUser: boolean,
+  where: any,
+  tagMode: any,
+  tags: string[],
+  limit: number,
+  offset: number,
+  order: any,
+  type: RecordingType
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
-    request.query.where.type = type;
+    where.type = type;
   }
 
+  // FIXME - Do this in extract-middleware as bulk recording extractor
+
   const builder = await new models.Recording.queryBuilder().init(
-    request.user,
-    request.query.where,
-    request.query.tagMode,
-    request.query.tags,
-    request.query.offset,
-    request.query.limit,
-    request.query.order,
-    request.body.viewAsSuperAdmin
+    requestUserId,
+    where,
+    tagMode,
+    tags,
+    offset,
+    limit,
+    order,
+    viewAsSuperUser
   );
   builder.query.distinct = true;
   const result = await models.Recording.findAndCountAll(builder.get());
-
+  // FIXME: Removed less location precision.  Look at addressing this
+  //  if and when we use the public recording feature.
   // This gives less location precision if the user isn't admin.
-  const filterOptions = models.Recording.makeFilterOptions(
-    request.user,
-    request.filterOptions
-  );
-  result.rows = result.rows.map((rec) => {
-    rec.filterData(filterOptions);
-    return handleLegacyTagFieldsForGetOnRecording(rec);
-  });
+  // const filterOptions = models.Recording.makeFilterOptions(
+  //   request.user,
+  //   request.filterOptions
+  // );
   return result;
 }
 
 // Returns a promise for report rows for a set of recordings. Takes
 // the same parameters as query() above.
-async function report(request: RecordingQuery) {
-  if (request.query.type == "visits") {
-    return reportVisits(request);
-  }
-  return reportRecordings(request);
-}
-
-async function reportRecordings(request: RecordingQuery) {
-  const includeAudiobait: boolean = request.query.audiobait;
+export async function reportRecordings(
+  userId: UserId,
+  viewAsSuperUser: boolean,
+  where: any,
+  tagMode: any,
+  tags: any,
+  offset: number,
+  limit: number,
+  order: any,
+  includeAudiobait: boolean
+) {
   const builder = (
     await new models.Recording.queryBuilder().init(
-      request.user,
-      request.query.where,
-      request.query.tagMode,
-      request.query.tags,
-      request.query.offset,
-      request.query.limit,
-      request.query.order
+      userId,
+      where,
+      tagMode,
+      tags,
+      offset,
+      limit,
+      order,
+      viewAsSuperUser
     )
   )
     .addColumn("comment")
@@ -527,10 +578,10 @@ async function reportRecordings(request: RecordingQuery) {
   //  of properties...
   const result: any[] = await models.Recording.findAll(builder.get());
 
-  const filterOptions = models.Recording.makeFilterOptions(
-    request.user,
-    request.filterOptions
-  );
+  // const filterOptions = models.Recording.makeFilterOptions(
+  //   request.user,
+  //   request.filterOptions
+  // );
 
   const audioFileNames = new Map();
   const audioEvents: Map<
@@ -592,9 +643,8 @@ async function reportRecordings(request: RecordingQuery) {
   labels.push("URL", "Cacophony Index", "Species Classification");
 
   const out = [labels];
-
   for (const r of result) {
-    r.filterData(filterOptions);
+    //r.filterData(filterOptions);
 
     const automatic_track_tags = new Set();
     const human_track_tags = new Set();
@@ -632,7 +682,6 @@ async function reportRecordings(request: RecordingQuery) {
       formatTags(human_track_tags),
       formatTags(recording_tags),
     ];
-
     if (includeAudiobait) {
       let audioBaitName = "";
       let audioBaitTime = null;
@@ -707,49 +756,7 @@ function formatTags(tags) {
   return out.join("+");
 }
 
-async function get(request, type?: RecordingType) {
-  const recording = await models.Recording.get(
-    request.user,
-    request.params.id,
-    RecordingPermission.VIEW,
-    {
-      type,
-      filterOptions: request.query.filterOptions,
-    }
-  );
-  if (!recording) {
-    throw new ClientError("No file found with given datapoint.");
-  }
-
-  const data: any = {
-    recording: handleLegacyTagFieldsForGetOnRecording(recording),
-  };
-
-  if (recording.fileKey) {
-    data.cookedJWT = signedToken(
-      recording.fileKey,
-      recording.getFileName(),
-      recording.fileMimeType
-    );
-    data.cookedSize = await util.getS3ObjectFileSize(recording.fileKey);
-  }
-
-  if (recording.rawFileKey) {
-    data.rawJWT = signedToken(
-      recording.rawFileKey,
-      recording.getRawFileName(),
-      recording.rawMimeType
-    );
-    data.rawSize = await util.getS3ObjectFileSize(recording.rawFileKey);
-  }
-
-  delete data.recording.rawFileKey;
-  delete data.recording.fileKey;
-
-  return data;
-}
-
-function signedToken(key, file, mimeType) {
+export function signedToken(key, file, mimeType) {
   return jsonwebtoken.sign(
     {
       _type: "fileDownload",
@@ -760,33 +767,6 @@ function signedToken(key, file, mimeType) {
     config.server.passportSecret,
     { expiresIn: 60 * 10 }
   );
-}
-
-async function delete_(request, response) {
-  const deleted: Recording = await models.Recording.deleteOne(
-    request.user,
-    request.params.id
-  );
-  if (deleted === null) {
-    return responseUtil.send(response, {
-      statusCode: 400,
-      messages: ["Failed to delete recording."],
-    });
-  }
-  if (deleted.rawFileKey) {
-    util.deleteS3Object(deleted.rawFileKey).catch((err) => {
-      log.warning(err);
-    });
-  }
-  if (deleted.fileKey) {
-    util.deleteS3Object(deleted.fileKey).catch((err) => {
-      log.warning(err);
-    });
-  }
-  responseUtil.send(response, {
-    statusCode: 200,
-    messages: ["Deleted recording."],
-  });
 }
 
 function guessRawMimeType(type, filename) {
@@ -804,141 +784,20 @@ function guessRawMimeType(type, filename) {
   }
 }
 
-async function addTag(user, recording, tag, response) {
-  if (!recording) {
-    throw new ClientError("No such recording.");
-  }
-
-  // If old tag fields are used, convert to new field names.
-  tag = handleLegacyTagFieldsForCreate(tag);
-
+// FIXME(jon): This should really be a method on Recording?
+const addTag = async (
+  user: User | null,
+  recording: Recording,
+  tag: ApiRecordingTagRequest
+): Promise<Tag> => {
   const tagInstance = models.Tag.buildSafely(tag);
-  tagInstance.RecordingId = recording.id;
+  (tagInstance as any).RecordingId = recording.id;
   if (user) {
     tagInstance.taggerId = user.id;
   }
   await tagInstance.save();
-
-  responseUtil.send(response, {
-    statusCode: 200,
-    messages: ["Added new tag."],
-    tagId: tagInstance.id,
-  });
-}
-
-function handleLegacyTagFieldsForCreate(tag) {
-  tag = moveLegacyField(tag, "animal", "what");
-  tag = moveLegacyField(tag, "event", "detail");
-  return tag;
-}
-
-function moveLegacyField(o, oldName, newName) {
-  if (o[oldName]) {
-    if (o[newName]) {
-      throw new ClientError(
-        `can't specify both '${oldName}' and '${newName}' fields at the same time`
-      );
-    }
-    o[newName] = o[oldName];
-    delete o[oldName];
-  }
-  return o;
-}
-
-function handleLegacyTagFieldsForGet(tag) {
-  tag.animal = tag.what;
-  tag.event = tag.detail;
-  return tag;
-}
-
-function handleLegacyTagFieldsForGetOnRecording(recording) {
-  recording = recording.get({ plain: true });
-  recording.Tags = recording.Tags.map(handleLegacyTagFieldsForGet);
-  return recording;
-}
-
-const statusCode = {
-  Success: 1,
-  Fail: 2,
-  Both: 3,
+  return tagInstance;
 };
-
-// reprocessAll expects request.body.recordings to be a list of recording_ids
-// will mark each recording to be reprocessed
-async function reprocessAll(request, response) {
-  const recordings = request.body.recordings;
-  const responseMessage = {
-    statusCode: 200,
-    messages: [],
-    reprocessed: [],
-    fail: [],
-  };
-
-  let status = 0;
-  for (let i = 0; i < recordings.length; i++) {
-    const resp = await reprocessRecording(request.user, recordings[i]);
-    if (resp.statusCode != 200) {
-      status = status | statusCode.Fail;
-      responseMessage.messages.push(resp.messages[0]);
-      responseMessage.statusCode = resp.statusCode;
-      responseMessage.fail.push(resp.recordingId);
-    } else {
-      responseMessage.reprocessed.push(resp.recordingId);
-      status = status | statusCode.Success;
-    }
-  }
-  responseMessage.messages.splice(0, 0, getReprocessMessage(status));
-  responseUtil.send(response, responseMessage);
-  return;
-}
-
-function getReprocessMessage(status) {
-  switch (status) {
-    case statusCode.Success:
-      return "All recordings scheduled for reprocessing";
-    case statusCode.Fail:
-      return "Recordings could not be scheduled for reprocessing";
-    case statusCode.Both:
-      return "Some recordings could not be scheduled for reprocessing";
-    default:
-      return "";
-  }
-}
-
-// reprocessRecording marks supplied recording_id for reprocessing,
-// under supplied user privileges
-async function reprocessRecording(user, recording_id) {
-  const recording = await models.Recording.get(
-    user,
-    recording_id,
-    RecordingPermission.UPDATE
-  );
-
-  if (!recording) {
-    return {
-      statusCode: 400,
-      messages: ["No such recording: " + recording_id],
-      recordingId: recording_id,
-    };
-  }
-
-  await recording.reprocess(user);
-
-  return {
-    statusCode: 200,
-    messages: ["Recording scheduled for reprocessing"],
-    recordingId: recording_id,
-  };
-}
-
-// reprocess a recording defined by request.user and request.params.id
-async function reprocess(request, response: Response) {
-  const responseInfo = await reprocessRecording(
-    request.user,
-    request.params.id
-  );
-  responseUtil.send(response, responseInfo);
-}
 
 async function tracksFromMeta(recording: Recording, metadata: any) {
   if (!("tracks" in metadata)) {
@@ -1018,7 +877,15 @@ async function updateMetadata(recording: any, metadata: any) {
 
 // Returns a promise for the recordings visits query specified in the
 // request.
-async function queryVisits(request: RecordingQuery): Promise<{
+async function queryVisits(
+  userId: UserId,
+  viewAsSuperUser: boolean,
+  where: any,
+  tagMode: any,
+  tags: string[],
+  offset: number,
+  limit: number
+): Promise<{
   visits: Visit[];
   summary: DeviceSummary;
   hasMoreVisits: boolean;
@@ -1028,34 +895,23 @@ async function queryVisits(request: RecordingQuery): Promise<{
   numVisits: number;
 }> {
   const maxVisitQueryResults = 5000;
-  const requestVisits =
-    request.query.limit == null
-      ? maxVisitQueryResults
-      : (request.query.limit as number);
-
+  const requestVisits = limit || maxVisitQueryResults;
   const queryMax = maxVisitQueryResults * 2;
-  let queryLimit = queryMax;
-  if (request.query.limit) {
-    queryLimit = Math.min(request.query.limit * 2, queryMax);
-  }
+  const queryLimit = Math.min(requestVisits * 2, queryMax);
 
   const builder = await new models.Recording.queryBuilder().init(
-    request.user,
-    request.query.where,
-    request.query.tagMode,
-    request.query.tags,
-    request.query.offset,
+    userId,
+    where,
+    tagMode,
+    tags,
+    offset,
     queryLimit,
     null,
-    request.body.viewAsSuperAdmin
+    viewAsSuperUser
   );
   builder.query.distinct = true;
 
   const devSummary = new DeviceSummary();
-  const filterOptions = models.Recording.makeFilterOptions(
-    request.user,
-    request.filterOptions
-  );
   let numRecordings = 0;
   let remainingVisits = requestVisits;
   let totalCount, recordings, gotAllRecordings;
@@ -1075,10 +931,10 @@ async function queryVisits(request: RecordingQuery): Promise<{
       break;
     }
 
-    for (const rec of recordings) {
-      rec.filterData(filterOptions);
-    }
-    devSummary.generateVisits(recordings, request.query.offset || 0);
+    // for (const rec of recordings) {
+    //   rec.filterData(filterOptions);
+    // }
+    devSummary.generateVisits(recordings, offset || 0);
 
     if (!gotAllRecordings) {
       devSummary.checkForCompleteVisits();
@@ -1103,7 +959,7 @@ async function queryVisits(request: RecordingQuery): Promise<{
       continue;
     }
     const events = await models.Event.query(
-      request.user,
+      userId,
       devVisits.startTime.clone().startOf("day").toISOString(),
       devVisits.endTime.toISOString(),
       parseInt(devId),
@@ -1211,8 +1067,24 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
   return device_summary_out;
 }
 
-async function reportVisits(request: RecordingQuery) {
-  const results = await queryVisits(request);
+export async function reportVisits(
+  userId: UserId,
+  viewAsSuperUser: boolean,
+  where: any,
+  tagMode: any,
+  tags: string[],
+  offset: number,
+  limit: number
+) {
+  const results = await queryVisits(
+    userId,
+    viewAsSuperUser,
+    where,
+    tagMode,
+    tags,
+    offset,
+    limit
+  );
   const out = reportDeviceVisits(results.summary.deviceMap);
   const recordingUrlBase = config.server.recording_url_base || "";
   out.push([]);
@@ -1390,7 +1262,7 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
   return await models.Recording.findByPk(id, query);
 }
 
-async function sendAlerts(recID: number) {
+async function sendAlerts(recID: RecordingId) {
   const recording = await getRecordingForVisit(recID);
   const recVisit = new Visit(recording, 0);
   recVisit.completeVisit();
@@ -1408,7 +1280,6 @@ async function sendAlerts(recID: number) {
   if (!matchedTag) {
     return;
   }
-
   const alerts = await (models.Alert as AlertStatic).getActiveAlerts(
     recording.DeviceId,
     matchedTag
@@ -1422,22 +1293,393 @@ async function sendAlerts(recID: number) {
         recording,
         matchedTrack,
         matchedTag,
-        thumbnail ? thumbnail.Body : thumbnail
+        thumbnail && (thumbnail.Body as Buffer)
       );
     }
   }
   return alerts;
 }
 
+const compressString = (text: string): Promise<Buffer> => {
+  return new Promise((resolve) => {
+    const buf = new Buffer(text, "utf-8"); // Choose encoding for the string.
+    zlib.gzip(buf, (_, result) => resolve(result));
+  });
+};
+
+interface TrackData {
+  start_s: number;
+  end_s: number;
+  positions: TrackFramePosition[];
+  frame_start: number;
+  frame_end: number;
+  num_frames: number;
+}
+
+const addTracksToRecording = async (
+  recording: Recording,
+  tracks: RawTrack[],
+  trackingAlgorithmId: DetailSnapshotId
+): Promise<Track[]> => {
+  const createTracks = [];
+  for (const {
+    positions,
+    start_s,
+    end_s,
+    frame_start,
+    frame_end,
+    num_frames,
+  } of tracks) {
+    const limitedTrack: TrackData = {
+      // TODO do we need id in the front-end?
+      start_s,
+      end_s,
+      frame_start,
+      frame_end,
+      num_frames,
+      positions,
+    };
+    createTracks.push(
+      recording.createTrack({
+        data: limitedTrack,
+        AlgorithmId: trackingAlgorithmId, // FIXME Should *tracks* have an algorithm id, or rather should it be on the TrackTag?
+      })
+    );
+  }
+  return await Promise.all(createTracks);
+};
+
+const addAITrackTags = async (
+  recording: Recording,
+  rawTracks: RawTrack[],
+  tracks: Track[],
+  models: ClassifierModelDescription[]
+): Promise<TrackTagId[]> => {
+  const trackTags = [];
+  for (let i = 0; i < rawTracks.length; i++) {
+    const rawTrack = rawTracks[i];
+    const createdTrack = tracks[i];
+    for (const {
+      label,
+      confidence,
+      classify_time,
+      all_class_confidences,
+      model_id,
+    } of rawTrack.predictions) {
+      trackTags.push(
+        createdTrack.addTag(label, confidence, true, {
+          name: models.find(({ id }) => model_id === id).name,
+          classify_time,
+          all_class_confidences,
+        })
+      );
+    }
+  }
+  return Promise.all(trackTags);
+};
+
+// FIXME - unused - why?
+const calculateAndAddAIMasterTag = async (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  recording: Recording,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  rawTracks: RawTrack[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  tracks: Track[]
+): Promise<TrackTagId> => {
+  return 0;
+};
+
+const calculateTrackMovement = (track: RawTrack): number => {
+  // FIXME(jon): Can positions be empty? Test a file that gets no tracks
+  if (!track.positions.length) {
+    return 0;
+  }
+  const midXs = [];
+  const midYs = [];
+  for (const position of track.positions) {
+    midXs.push(position.x + position.width / 2);
+    midYs.push(position.y + position.height / 2);
+  }
+  const deltaX = Math.max(...midXs) - Math.min(...midXs);
+  const deltaY = Math.max(...midYs) - Math.min(...midYs);
+
+  // FIXME(jon): Might be better to do this in two dimensions?
+  //  Or sum the total distance travelled?
+  return Math.max(deltaX, deltaY);
+};
+
+// FIXME - unused
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const WALLABY_DEVICES = [949, 954, 956, 1176];
+
+// Tags to ignore when checking predictions
+const IGNORE_TAGS = ["not"];
+
+// This is the minimum length of a track.
+const MIN_TRACK_FRAMES = 3;
+// FIXME(jon): These seem to be used interchangably for prediction.confidence
+
+// This is the minimum confidence (for an animal rating) a track should have to be considered a possible animal
+const MIN_PREDICTION_CONFIDENCE = 0.4;
+
+// This is the minimum confidence a track should have in order to tag as animal
+const MIN_TAG_CONFIDENCE = 0.8;
+
+const MIN_TRACK_MOVEMENT = 50;
+
+// This is the minimum difference in confidence between next choice a track should have in order to tag it as the chosen animal
+const MIN_TAG_CLARITY = 0.2;
+
+// If the same animal has clearly been identified in the video then a reduced clarity is acceptable.
+const MIN_TAG_CLARITY_SECONDARY = 0.05;
+
+// FIXME(jon): This description seems wrong
+// This is the minimum confidence a track should have in order to tag it as the chosen animal
+const MAX_TAG_NOVELTY = 0.7;
+const DEFAULT_CONFIDENCE = 0.85;
+
+const isSignificantTrack = (
+  track: RawTrack,
+  prediction: TrackClassification
+): boolean => {
+  if (track.num_frames < MIN_TRACK_FRAMES) {
+    track.message = "Short track";
+    return false;
+  }
+  if (prediction.confidence > MIN_PREDICTION_CONFIDENCE) {
+    return true;
+  }
+  if (calculateTrackMovement(track) > MIN_TRACK_MOVEMENT - 1) {
+    return true;
+  }
+  track.message = "Low movement and poor confidence - ignore";
+  return false;
+};
+
+const predictionIsClear = (prediction: TrackClassification): boolean => {
+  if (prediction.confidence < MIN_TAG_CONFIDENCE) {
+    prediction.message = "Low confidence - no tag";
+    return false;
+  }
+  if (prediction.clarity < MIN_TAG_CLARITY) {
+    prediction.message = "Confusion between two classes (similar confidence)";
+    return false;
+  }
+  if (prediction.average_novelty > MAX_TAG_NOVELTY) {
+    prediction.message = "High novelty";
+    return false;
+  }
+  return true;
+};
+
+const getSignificantTracks = (
+  tracks: RawTrack[]
+): [RawTrack[], RawTrack[], Record<string, { confidence: number }>] => {
+  const clearTracks = [];
+  const unclearTracks = [];
+  const tags: Record<string, { confidence: number }> = {};
+
+  for (const track of tracks) {
+    track.confidence = 0;
+    let hasClearPrediction = false;
+    for (const prediction of track.predictions) {
+      if (IGNORE_TAGS.includes(prediction.label)) {
+        continue;
+      }
+      if (isSignificantTrack(track, prediction)) {
+        if (
+          prediction.label === "false-positive" &&
+          prediction.clarity < MIN_TAG_CLARITY_SECONDARY
+        ) {
+          continue;
+        }
+        const confidence = prediction.confidence;
+        track.confidence = Math.max(track.confidence, confidence);
+        if (predictionIsClear(prediction)) {
+          hasClearPrediction = true;
+          const tag = prediction.label;
+          prediction.tag = tag;
+          if (tags.hasOwnProperty(tag)) {
+            tags[tag].confidence = Math.max(tags[tag].confidence, confidence);
+          } else {
+            tags[tag] = { confidence: 0 };
+          }
+        } else {
+          tags["unidentified"] = { confidence: DEFAULT_CONFIDENCE };
+          prediction.tag = "unidentified";
+        }
+      }
+      if (hasClearPrediction) {
+        clearTracks.push(track);
+      } else {
+        unclearTracks.push(track);
+      }
+    }
+  }
+  return [clearTracks, unclearTracks, tags];
+};
+
+const calculateMultipleAnimalConfidence = (tracks: RawTrack[]): number => {
+  let confidence = 0;
+  const allTracks = [...tracks].sort(
+    (a: RawTrack, b: RawTrack) => a.start_s - b.start_s
+  );
+  for (let i = 0; i < allTracks.length - 1; i++) {
+    for (let j = i + 1; j < allTracks.length; j++) {
+      if (allTracks[j].start_s + 1 < allTracks[i].end_s) {
+        const conf = Math.min(allTracks[i].confidence, allTracks[j].confidence);
+        confidence = Math.max(confidence, conf);
+      }
+    }
+  }
+  return confidence;
+};
+
+const MULTIPLE_ANIMAL_CONFIDENCE = 1;
+const calculateTags = (
+  tracks: RawTrack[]
+): [RawTrack[], Record<string, { confidence: number }>, boolean] => {
+  if (tracks.length === 0) {
+    return [tracks, {}, false];
+  }
+  const [clearTracks, unclearTracks, tags] = getSignificantTracks(tracks);
+  // This could happen outside this function, unless we discard tracks?
+  const multipleAnimalConfidence = calculateMultipleAnimalConfidence([
+    ...clearTracks,
+    ...unclearTracks,
+  ]);
+  const hasMultipleAnimals =
+    multipleAnimalConfidence > MULTIPLE_ANIMAL_CONFIDENCE;
+
+  if (hasMultipleAnimals) {
+    log.debug(
+      "multiple animals detected, (%d)",
+      multipleAnimalConfidence.toFixed(2)
+    );
+  }
+
+  return [tracks, tags, hasMultipleAnimals];
+};
+
+export const finishedProcessingRecording = async (
+  recording: Recording,
+  classifierResult: ClassifierRawResult,
+  prevState: RecordingProcessingState
+): Promise<void> => {
+  // See if we should tag the recording as having multiple animals
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_, tags, hasMultipleAnimals] = calculateTags(classifierResult.tracks);
+  if (hasMultipleAnimals) {
+    await addTag(null, recording, {
+      detail: AcceptableTag.MultipleAnimals,
+      confidence: 1,
+    });
+  }
+
+  // See if we should tag the recording as false-positive (with no tracks) (or missed tracks?)
+
+  // TODO(jon): Do we need to stringify this?
+  const algorithm = await models.DetailSnapshot.getOrCreateMatching(
+    "algorithm",
+    classifierResult.algorithm
+  );
+  // Add any tracks
+  const tracks = await addTracksToRecording(
+    recording,
+    classifierResult.tracks,
+    algorithm.id
+  );
+
+  // Add tags for those tracks
+  // FIXME - unused
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const trackTags = await addAITrackTags(
+    recording,
+    classifierResult.tracks,
+    tracks,
+    classifierResult.models
+  );
+
+  // Calculate the AI_MASTER tag from the tracks provided, and add that
+  // FIXME - unused
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const masterTrackTagId = await calculateAndAddAIMasterTag(
+    recording,
+    classifierResult.tracks,
+    tracks
+  );
+
+  // Add additionalMetadata to recording:
+  // model name + classify time (total?)
+  // algorithm - tracking_algorithm
+  // tracking_time
+  // thumbnail_region
+
+  // Save metadata about classification:
+  await modelsUtil
+    .openS3()
+    .upload({
+      Key: `${recording.rawFileKey}-classifier-metadata`,
+      Body: await compressString(JSON.stringify(classifierResult)),
+    })
+    .promise()
+    .catch((err) => {
+      return err;
+    });
+
+  // Save a thumbnail if there was one
+  if (classifierResult.thumbnail_region) {
+    const result = await saveThumbnailInfo(
+      recording,
+      classifierResult.thumbnail_region
+    );
+    if (result instanceof Error) {
+      log.warning(
+        "Failed to upload thumbnail for %s",
+        `${recording.rawFileKey}-thumb`
+      );
+      log.error("Reason: %s", result.message);
+    }
+  }
+  if (prevState !== RecordingProcessingState.Reprocess) {
+    await sendAlerts(recording.id);
+  }
+};
+
+// Mapping
+const mapPosition = (position: any): ApiTrackPosition => {
+  if (Array.isArray(position)) {
+    return {
+      x: position[1][0],
+      y: position[1][1],
+      width: position[1][2] - position[1][0],
+      height: position[1][3] - position[1][1],
+      frameTime: position[0],
+    };
+  } else {
+    return {
+      x: position.x,
+      y: position.y,
+      width: position.width,
+      height: position.height,
+      frameNumber: position.frame_number,
+    };
+  }
+};
+
+export const mapPositions = (
+  positions: any[]
+): ApiTrackPosition[] | undefined => {
+  if (positions && positions.length) {
+    return positions.map(mapPosition);
+  }
+  return [];
+};
+
 export default {
-  makeUploadHandler,
   query,
-  report,
-  get,
-  delete_,
   addTag,
-  reprocess,
-  reprocessAll,
   tracksFromMeta,
   updateMetadata,
   queryVisits,

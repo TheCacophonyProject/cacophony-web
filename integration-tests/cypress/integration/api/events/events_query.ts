@@ -1,15 +1,19 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { EventTypes } from "../../../commands/api/events";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
-import { ApiEventReturned } from "../../../commands/types";
+import { EventTypes } from "@commands/api/events";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
+import { ApiEventReturned } from "@commands/types";
 
-import { HTTP_Unprocessable, HTTP_OK200 } from "../../../commands/constants";
-
-const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values
+import {
+  HTTP_Unprocessable,
+  HTTP_OK200,
+  HTTP_Forbidden,
+} from "@commands/constants";
 
 describe("Events - query events", () => {
+  const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values
+
   const time1 = "2018-01-01T07:22:56.000Z";
   const time2 = "2018-01-02T07:22:56.000Z";
   const time3 = "2018-01-03T07:22:56.000Z";
@@ -34,21 +38,21 @@ describe("Events - query events", () => {
 
   before(() => {
     // group with 2 devices, admin and member users
-    cy.apiCreateUserGroupAndDevice("eqGroupAdmin", "eqGroup", "eqCamera");
-    cy.apiCreateUser("eqGroupMember");
-    cy.apiAddUserToGroup("eqGroupAdmin", "eqGroupMember", "eqGroup", false);
-    cy.apiCreateDevice("eqOtherCamera", "eqGroup");
+    cy.testCreateUserGroupAndDevice("eqGroupAdmin", "eqGroup", "eqCamera");
+    cy.apiUserAdd("eqGroupMember");
+    cy.apiGroupUserAdd("eqGroupAdmin", "eqGroupMember", "eqGroup", false);
+    cy.apiDeviceAdd("eqOtherCamera", "eqGroup");
 
     //admin and member for single device
-    cy.apiCreateUser("eqDeviceAdmin");
-    cy.apiCreateUser("eqDeviceMember");
-    cy.apiAddUserToDevice("eqGroupAdmin", "eqDeviceAdmin", "eqCamera", true);
-    cy.apiAddUserToDevice("eqGroupAdmin", "eqDeviceMember", "eqCamera", true);
+    cy.apiUserAdd("eqDeviceAdmin");
+    cy.apiUserAdd("eqDeviceMember");
+    cy.apiDeviceUserAdd("eqGroupAdmin", "eqDeviceAdmin", "eqCamera", true);
+    cy.apiDeviceUserAdd("eqGroupAdmin", "eqDeviceMember", "eqCamera", true);
 
     //another group and device
-    cy.apiCreateUserGroupAndDevice(
+    cy.testCreateUserGroupAndDevice(
       "eqOtherGroupAdmin",
-      "eqOherGroup",
+      "eqOtherGroup",
       "eqOtherGroupCamera"
     );
 
@@ -168,7 +172,8 @@ describe("Events - query events", () => {
       "eqOtherGroupCamera",
       {},
       [],
-      EXCL_TIME_ID
+      EXCL_TIME_ID,
+      HTTP_Forbidden
     );
   });
 
@@ -180,8 +185,22 @@ describe("Events - query events", () => {
       [expectedEvent1, expectedEvent2],
       EXCL_TIME_ID
     );
-    cy.apiEventsCheck("eqDeviceAdmin", "eqOtherCamera", {}, []);
-    cy.apiEventsCheck("eqDeviceAdmin", "eqOtherGroupCamera", {}, []);
+    cy.apiEventsCheck(
+      "eqDeviceAdmin",
+      "eqOtherCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
+    cy.apiEventsCheck(
+      "eqDeviceAdmin",
+      "eqOtherGroupCamera",
+      {},
+      [],
+      [],
+      HTTP_Forbidden
+    );
   });
 
   it("Verify time filtering works correctly", () => {
@@ -324,7 +343,7 @@ describe("Events - query events", () => {
       { offset: 4, count: 3 }
     );
 
-    cy.log("Arbitrary offset untelated to page length works");
+    cy.log("Arbitrary offset unrelated to page length works");
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,
@@ -658,9 +677,16 @@ describe("Events - query events", () => {
   });
 
   it("Handles invalid devices correctly", () => {
-    cy.log("Test for non existant device");
-    cy.apiEventsCheck("eqGroupAdmin", undefined, { deviceId: 999999 }, []);
-    cy.log("Bad value for devcice id");
+    cy.log("Test for non existent device");
+    cy.apiEventsCheck(
+      "eqGroupAdmin",
+      undefined,
+      { deviceId: 999999 },
+      [],
+      [],
+      HTTP_Forbidden
+    );
+    cy.log("Bad value for device id");
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,

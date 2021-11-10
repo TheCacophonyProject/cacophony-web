@@ -4,6 +4,7 @@ import process from "process";
 // Set some default configuration
 const server = {
   loggerLevel: "info",
+  isLocalDev: true,
 };
 
 const timeZone = "Pacific/Auckland";
@@ -63,4 +64,5 @@ export default {
   server,
   euaVersion: 3,
   ...loadConfigFromArgs(),
+  productionEnv: server.isLocalDev === true,
 };

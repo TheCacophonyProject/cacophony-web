@@ -24,6 +24,6 @@ module.exports = (on, config) => {
     "Cypress is running in CI env?",
     !(process.env["IS_CI_ENV"] === undefined)
   );
-  config.video = process.env["IS_CI_ENV"] === undefined;
+  config.video = false; //process.env["IS_CI_ENV"] === undefined;
   return config;
 };

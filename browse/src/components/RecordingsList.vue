@@ -53,6 +53,7 @@
           v-for="(item, index) in tableItems"
           :item="item"
           :ref="item.id"
+          :index="index"
           :is-even-row="index % 2 === 1"
           :key="`${index}_row`"
           display-style="row"
@@ -60,7 +61,7 @@
         />
 
         <div
-          v-for="i in queryPending ? 20 : 0"
+          v-for="i in queryPending ? 10 : 0"
           :key="i"
           class="recording-summary-row"
           :style="{
@@ -81,21 +82,13 @@
         </div>
       </div>
     </div>
-    <div v-if="allLoaded || atEnd" class="all-loaded">
+    <div v-if="recordings.length && (allLoaded || atEnd)" class="all-loaded">
       <span>That's all! No more recordings to load for the current query.</span>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import {
-  Location,
-  RecordingInfo,
-  RecordingType,
-  Tag,
-  Track,
-  TrackTag,
-} from "@/api/Recording.api";
 import RecordingSummary from "@/components/RecordingSummary.vue";
 import {
   toNZDateString,
@@ -103,11 +96,23 @@ import {
   startOfHour,
   toStringTodayYesterdayOrDate,
 } from "@/helpers/datetime";
+import { RecordingType } from "@typedefs/api/consts";
+import {
+  ApiAudioRecordingResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
+import { LatLng } from "@typedefs/api/common";
+import { ApiRecordingTagResponse } from "@typedefs/api/tag";
+import {
+  ApiAutomaticTrackTagResponse,
+  ApiHumanTrackTagResponse,
+} from "@typedefs/api/trackTag";
+import { ApiTrackResponse } from "@typedefs/api/track";
 
-const parseLocation = (location: Location): string => {
+const parseLocation = (location: LatLng): string => {
   if (location && typeof location === "object") {
-    const latitude = location.coordinates[0];
-    const longitude = location.coordinates[1];
+    const latitude = location.lat;
+    const longitude = location.lng;
     return latitude.toFixed(5) + ", " + longitude.toFixed(5);
   } else {
     return "(unknown)";
@@ -155,12 +160,16 @@ const addToListOfTags = (
   allTags[tagName] = tag;
 };
 
-const collateTags = (tags: Tag[], tracks: Track[]): DisplayTag[] => {
+const collateTags = (
+  tags: ApiRecordingTagResponse[],
+  tracks: ApiTrackResponse[]
+): DisplayTag[] => {
   // Build a collection of tagItems - one per animal
   const tagItems: Record<string, DisplayTag> = {};
   for (let i = 0; i < tags.length; i++) {
     const tag = tags[i];
-    const tagName = tag.animal === null ? tag.event : tag.animal;
+    // FIXME - check if we needed animal here
+    const tagName = tag.what || tag.detail; //tag.animal === null ? tag.event : tag.animal;
     const taggerId = tag.taggerId;
     addToListOfTags(tagItems, tagName, tag.automatic, taggerId);
   }
@@ -169,13 +178,15 @@ const collateTags = (tags: Tag[], tracks: Track[]): DisplayTag[] => {
     for (let j = 0; j < tracks.length; j++) {
       const track = tracks[j];
       // For track tags, pick the best one, which is the "master AI" tag.
-      const aiTag: TrackTag = track.TrackTags.find(
+      const aiTag = track.tags.find(
         (tag) =>
           tag.data &&
           (tag.data === "Master" ||
             (typeof tag.data === "object" && tag.data.name === "Master"))
-      );
-      const humanTags = track.TrackTags.filter((tag) => !tag.automatic);
+      ) as ApiAutomaticTrackTagResponse;
+      const humanTags = track.tags.filter(
+        (tag) => !tag.automatic
+      ) as ApiHumanTrackTagResponse[];
       // If the same track has one or more human tags, and none of them agree with the AI just show that:
       let humansDisagree = false;
       if (aiTag && humanTags.length !== 0) {
@@ -184,12 +195,12 @@ const collateTags = (tags: Tag[], tracks: Track[]): DisplayTag[] => {
       }
 
       if (aiTag && !humansDisagree) {
-        addToListOfTags(tagItems, aiTag.what, aiTag.automatic, aiTag.UserId);
+        addToListOfTags(tagItems, aiTag.what, aiTag.automatic, null);
       }
 
       // Also add human tags:
       for (const tag of humanTags) {
-        addToListOfTags(tagItems, tag.what, tag.automatic, tag.UserId);
+        addToListOfTags(tagItems, tag.what, tag.automatic, tag.userId);
       }
     }
   }
@@ -290,7 +301,10 @@ export default {
     },
     recordings() {
       let prevDate = null;
-      const recordings = this.recordings as RecordingInfo[];
+      const recordings = this.recordings as (
+        | ApiThermalRecordingResponse
+        | ApiAudioRecordingResponse
+      )[];
       if (recordings.length === 0) {
         this.tableItems = [];
         this.recordingsChunkedByDayAndHour = [];
@@ -306,47 +320,41 @@ export default {
         const thisDate = new Date(recording.recordingDateTime);
         if (
           prevDate === null ||
-          startOfDay(thisDate, true).getTime() !==
-            startOfDay(prevDate, true).getTime()
+          startOfDay(thisDate).getTime() !== startOfDay(prevDate).getTime()
         ) {
-          const item = {
+          items.push({
             kind: "dataSeparator",
             hour: thisDate,
             date: thisDate,
-          };
-          items.push(item);
-          prevDate = thisDate;
+          });
         } else if (
-          startOfHour(thisDate, true).getTime() !==
-          startOfHour(prevDate, true).getTime()
+          startOfHour(thisDate).getTime() !== startOfHour(prevDate).getTime()
         ) {
-          const item = {
+          items.push({
             kind: "dataSeparator",
             hour: thisDate,
-          };
-          items.push(item);
-          prevDate = thisDate;
+          });
         }
+        prevDate = thisDate;
         const itemData: ItemData = {
           kind: "dataRow",
           id: recording.id,
           type: recording.type,
-          deviceName: recording.Device.devicename,
-          groupName: recording.Group.groupname,
+          deviceName: recording.deviceName,
+          groupName: recording.groupName,
           location: parseLocation(recording.location),
           dateObj: thisDate,
           date: toNZDateString(thisDate),
           time: thisDate.toLocaleTimeString(),
           duration: recording.duration,
-          tags: collateTags(recording.Tags, recording.Tracks),
-          batteryLevel: recording.batteryLevel,
-          trackCount: recording.Tracks.length,
+          tags: collateTags(recording.tags, recording.tracks),
+          batteryLevel: (recording as ApiAudioRecordingResponse).batteryLevel,
+          trackCount: recording.tracks.length,
           processingState: parseProcessingState(recording.processingState),
           processing: recording.processing === true,
+          stationName: recording.stationName,
         };
-        if (recording.Station) {
-          itemData.stationName = recording.Station.name;
-        }
+
         items.push(itemData);
       }
       this.tableItems.push(...items);
@@ -368,11 +376,11 @@ export default {
             current[current.length - 1].push(item);
           }
         }
-        if (chunks.length === 0) {
-          // We've reached the end of the recordings.
-          this.atEnd = true;
-          // console.log("At end of recordings");
-        }
+        // if (chunks.length === 0) {
+        //   // We've reached the end of the recordings.
+        //   //this.atEnd = true;
+        //   // console.log("At end of recordings");
+        // }
         if (
           this.recordingsChunkedByDayAndHour.length !== 0 &&
           chunks.length !== 0
@@ -386,7 +394,6 @@ export default {
             lastDay[lastDay.length - 1][lastDay[lastDay.length - 1].length - 1];
           const firstDay = chunks[0];
           const firstHour = firstDay[0][0];
-
           if (lastHour.date === firstHour.date) {
             // We're going to push firstDay into lastDay
             if (lastHour.time.split(":")[0] === firstHour.time.split(":")[0]) {

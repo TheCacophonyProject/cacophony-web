@@ -1,8 +1,10 @@
+import registerAliases from "../module-aliases";
+registerAliases();
 import config from "../config";
-const winston = require("winston");
-import eventUtil from "../api/V1/eventUtil";
+import log from "../logging";
+import { errors } from "@api/V1/eventUtil";
 import moment, { Moment } from "moment";
-import { ServiceErrorMap } from "../api/V1/systemError";
+import { ServiceErrorMap } from "@api/V1/systemError";
 import { sendEmail } from "./emailUtil";
 async function main() {
   if (!config.smtpDetails) {
@@ -11,12 +13,13 @@ async function main() {
   const endDate = moment().tz(config.timeZone);
   const startDate = moment().tz(config.timeZone).subtract(24, "hours");
   const query = {
-    endTime: endDate.toDate(),
-    startTime: startDate.toDate(),
-    offset: null,
-    limit: null,
+    endTime: endDate.toDate().toISOString(),
+    startTime: startDate.toDate().toISOString(),
   };
-  const serviceErrors = await eventUtil.errors({ query: query }, true);
+  const serviceErrors = await errors(
+    { query: query, res: { locals: { requestUser: {} } } },
+    true
+  );
   if (Object.keys(serviceErrors).length == 0) {
     log.info("No service errors in the last 24 hours");
     return;
@@ -108,17 +111,6 @@ function generateHtml(
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
   return html;
 }
-
-const log = winston.createLogger({
-  transports: [
-    new winston.transports.Console({
-      timestamp: function () {
-        return moment().format();
-      },
-      colorize: true,
-    }),
-  ],
-});
 
 main()
   .catch(log.error)

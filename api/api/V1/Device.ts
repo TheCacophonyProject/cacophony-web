@@ -16,17 +16,122 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
+import { validateFields } from "../middleware";
 import auth from "../auth";
-import models from "../../models";
+import models from "@models";
 import responseUtil from "./responseUtil";
-import { body, param, query } from "express-validator/check";
-import Sequelize from "sequelize";
-import { Application } from "express";
-import { AccessLevel } from "../../models/GroupUsers";
-import { AuthorizationError } from "../customErrors";
+import { body, param, query } from "express-validator";
+import { Application, Response, Request, NextFunction } from "express";
+import { ClientError } from "../customErrors";
+import {
+  extractJwtAuthorizedUser,
+  extractJwtAuthorisedDevice,
+  fetchAuthorizedRequiredDeviceInGroup,
+  fetchAuthorizedRequiredDeviceById,
+  fetchUnauthorizedRequiredGroupByNameOrId,
+  fetchAdminAuthorizedRequiredDeviceById,
+  fetchUnauthorizedOptionalUserById,
+  fetchUnauthorizedOptionalUserByNameOrId,
+  fetchAuthorizedRequiredDevices,
+} from "../extract-middleware";
+import {
+  booleanOf,
+  checkDeviceNameIsUniqueInGroup,
+  anyOf,
+  idOf,
+  nameOf,
+  nameOrIdOf,
+  validNameOf,
+  validPasswordOf,
+  deprecatedField,
+  integerOfWithDefault,
+} from "../validation-middleware";
+import { Device } from "models/Device";
+import {
+  ApiDeviceResponse,
+  ApiDeviceUserRelationshipResponse,
+} from "@typedefs/api/device";
+import logging from "@log";
 
-const Op = Sequelize.Op;
+export const mapDeviceResponse = (
+  device: Device,
+  viewAsSuperUser: boolean
+): ApiDeviceResponse => {
+  try {
+    const mapped: ApiDeviceResponse = {
+      deviceName: device.devicename,
+      id: device.id,
+      type: device.kind,
+      groupName: device.Group?.groupname,
+      groupId: device.GroupId,
+      active: device.active,
+      saltId: device.saltId,
+      admin:
+        viewAsSuperUser ||
+        (
+          (device as any).Group?.Users[0]?.GroupUsers ||
+          (device as any).Users[0]?.DeviceUsers
+        )?.admin ||
+        false,
+    };
+    if (device.lastConnectionTime) {
+      mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
+    }
+    if (device.lastRecordingTime) {
+      mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
+    }
+    if (device.location) {
+      const { coordinates } = device.location;
+      mapped.location = {
+        lat: coordinates[0],
+        lng: coordinates[1],
+      };
+    }
+    if (device.public) {
+      mapped.public = true;
+    }
+
+    return mapped;
+  } catch (e) {
+    logging.warning("%s", e);
+  }
+};
+
+export const mapLegacyDevicesResponse = (devices: ApiDeviceResponse[]) =>
+  devices.map(({ deviceName, ...rest }) => ({
+    devicename: deviceName,
+    deviceName,
+    ...rest,
+  }));
+
+export const mapDevicesResponse = (
+  devices: Device[],
+  viewAsSuperUser: boolean
+): ApiDeviceResponse[] =>
+  devices.map((device) => mapDeviceResponse(device, viewAsSuperUser));
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiRegisterDeviceRequestBody {
+  group: string; // Name of group to assign the device to.
+  deviceName: string; // Unique (within group) device name.
+  password: string; // password Password for the device.
+  saltId?: number; // Salt ID of device. Will be set as device id if not given.
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDevicesResponseSuccess {
+  devices: ApiDeviceResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceResponseSuccess {
+  device: ApiDeviceResponse;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceUsersRelationshipResponseSuccess {
+  users: ApiDeviceUserRelationshipResponse[];
+}
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/devices`;
@@ -36,10 +141,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName RegisterDevice
    * @apiGroup Device
    *
-   * @apiParam {String} devicename Unique (within group) device name.
-   * @apiParam {String} password Password for the device.
-   * @apiParam {String} group Name of group to assign the device to.
-   * @apiParam {Integer} [saltId] Salt ID of device. Will be set as device id if not given.
+   * @apiInterface {apiBody::ApiRegisterDeviceRequestBody}
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the device ID and type.
@@ -49,53 +151,59 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [
-      middleware.getGroupByName(body),
-      middleware.isValidName(body, "devicename"),
-      middleware.checkNewPassword("password"),
-      body("saltId").optional().isInt(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      if (
-        !(await models.Device.freeDevicename(
-          request.body.devicename,
-          request.body.group.id
-        ))
-      ) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Device name in use."],
-        });
-      }
+    validateFields([
+      nameOf(body("group")),
+      anyOf(validNameOf(body("devicename")), validNameOf(body("deviceName"))),
+      validPasswordOf(body("password")),
+      idOf(body("saltId")).optional(),
+    ]),
+    fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
+    checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
+    async (request: Request, response: Response, next: NextFunction) => {
       const device = await models.Device.create({
-        devicename: request.body.devicename,
+        devicename: request.body.devicename || request.body.deviceName,
         password: request.body.password,
-        GroupId: request.body.group.id,
+        GroupId: response.locals.group.id,
       });
-
       if (request.body.saltId) {
+        /*
+        NOTE: We decided not to use this check, since damage caused by someone
+        spamming us with in-use saltIds is minimal.
+        const existingSaltId = await models.Device.findOne({
+          where: {
+            saltId: request.body.saltId,
+            active: true
+          },
+        });
+        if (existingSaltId !== null) {
+          return next(
+            new ClientError(
+              `saltId ${request.body.saltId} is already in use by another active device`
+            )
+          );
+        }
+        */
         await device.update({ saltId: request.body.saltId });
       } else {
         await device.update({ saltId: device.id });
       }
-
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new device."],
         id: device.id,
         saltId: device.saltId,
-        token: "JWT " + auth.createEntityJWT(device),
+        token: `JWT ${auth.createEntityJWT(device)}`,
       });
-    })
+    }
   );
 
   /**
    * @api {get} /api/v1/devices Get list of devices
    * @apiName GetDevices
    * @apiGroup Device
-   * @apiParam {Boolean} [onlyActive] Only return active devices, defaults to `true`
+   * @apiQuery {Boolean} [onlyActive] Only return active devices, defaults to `true`
    * If we want to return *all* devices this must be present and set to `false`
-   * @apiParam {string} [view-mode] `"user"` show only devices assigned to current user where
+   * @apiQuery {string} [view-mode] `"user"` show only devices assigned to current user where
    * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
    *
    * @apiDescription Returns all devices the user can access
@@ -104,59 +212,113 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} devices Devices details
-   * @apiSuccessExample {JSON} devices:
-   * {
-   * "count":1,
-   * "rows":
-   *  [{
-   *   "devicename":"device name",
-   *   "id":3836,
-   *   "active":true,
-   *   "Users":Array[]
-   *   "Group":{}
-   *  }]
-   * }
-   * @apiSuccessExample {JSON} Users:
-   * [{
-   *  "id":1564,
-   *  "username":"user name",
-   *  "DeviceUsers":
-   *   {
-   *    "admin":false,
-   *    "createdAt":"2021-07-20T01:00:44.467Z",
-   *    "updatedAt":"2021-07-20T01:00:44.467Z",
-   *    "DeviceId":3836,
-   *    "UserId":1564
-   *   }
-   * }]
-   * @apiSuccessExample {JSON} Group:
-   * {
-   *  "id":1016,
-   *  "groupname":"group name"
-   * }
+   * @apiInterface {apiSuccess::ApiDevicesResponseSuccess} devices Devices details
+   * @apiUse DevicesList
    * @apiUse V1ResponseError
    */
   app.get(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware.viewMode(),
-      query("onlyActive").optional().isBoolean().toBoolean(),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const onlyActiveDevices = request.query.onlyActive !== false;
-      const devices = await models.Device.allForUser(
-        request.user,
-        onlyActiveDevices,
-        request.body.viewAsSuperAdmin
-      );
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      deprecatedField(query("where")), // Sidekick
+      anyOf(
+        query("onlyActive").optional().isBoolean().toBoolean(),
+        query("only-active").optional().isBoolean().toBoolean()
+      ),
+    ]),
+    fetchAuthorizedRequiredDevices,
+    async (request: Request, response: Response) => {
+      if (request.headers["user-agent"].includes("okhttp")) {
+        return responseUtil.send(response, {
+          devices: {
+            rows: mapLegacyDevicesResponse(
+              mapDevicesResponse(
+                response.locals.devices,
+                response.locals.viewAsSuperUser
+              )
+            ),
+          },
+          statusCode: 200,
+          messages: ["Completed get devices query."],
+        });
+      }
+
       return responseUtil.send(response, {
-        devices: devices,
+        devices: mapDevicesResponse(
+          response.locals.devices,
+          response.locals.viewAsSuperUser
+        ),
         statusCode: 200,
         messages: ["Completed get devices query."],
       });
-    })
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/devices/:deviceId Get a single device by its unique id
+   * @apiName GetDeviceById
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiQuery {Boolean} [only-active=true] Only return active devices
+   *
+   * @apiDescription Returns details of the device if the user can access it either through
+   * group membership or direct assignment to the device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {apiSuccess::ApiDeviceResponseSuccess} device Device details
+   *
+   * @apiSuccessExample {JSON} device:
+   * {
+   * "deviceName": "device name",
+   *  "groupName": "group name",
+   *  "groupId": 1,
+   *  "deviceId: 2,
+   *  "saltId": 2,
+   *  "active": true,
+   *  "admin": false,
+   *  "type": "thermal",
+   *  "public": "false",
+   *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
+   *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "location": {
+   *   "lat": -43.5338812,
+   *    "lng": 172.6451473
+   *  },
+   *  "users": [{
+   *    "userName": "bob",
+   *    "userId": 10,
+   *    "admin": false,
+   *    "relation": "group"
+   *  }]
+   * }
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/device/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      deprecatedField(query("where")), // Sidekick
+      anyOf(
+        query("onlyActive").optional().isBoolean().toBoolean(),
+        query("only-active").optional().isBoolean().toBoolean()
+      ),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response) => {
+      return responseUtil.send(response, {
+        device: mapDeviceResponse(
+          response.locals.device,
+          response.locals.viewAsSuperUser
+        ),
+        statusCode: 200,
+        messages: ["Completed get device query."],
+      });
+    }
   );
 
   /**
@@ -165,6 +327,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {string} deviceName Name of the device
    * @apiParam {stringOrInt} groupIdOrName Identifier of group device belongs to
+   * @apiQuery {Boolean} [only-active=true] Only return active devices
    *
    * @apiDescription Returns details of the device if the user can access it either through
    * group membership or direct assignment to the device.
@@ -172,76 +335,57 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} device Device details
+   * @apiSuccess {apiSuccess::ApiDeviceResponseSuccess} device Device details
    *
    * @apiSuccessExample {JSON} device:
    * {
-   * "id":2008,
-   * "deviceName":"device name",
-   * "groupName":"group name",
-   * "userIsAdmin":true,
-   * "users":Array[]
+   * "deviceName": "device name",
+   *  "groupName": "group name",
+   *  "groupId": 1,
+   *  "deviceId: 2,
+   *  "saltId": 2,
+   *  "active": true,
+   *  "admin": false,
+   *  "type": "thermal",
+   *  "public": "false",
+   *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
+   *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "location": {
+   *   "lat": -43.5338812,
+   *    "lng": 172.6451473
+   *  },
+   *  "users": [{
+   *    "userName": "bob",
+   *    "userId": 10,
+   *    "admin": false,
+   *    "relation": "group"
+   *  }]
    * }
-   * @apiSuccessExample {JSON} users:
-   * [{
-   * "userName"=>"user name",
-   * "admin"=>false,
-   * "id"=>123
-   * }]
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:deviceName/in-group/:groupIdOrName`,
-    [
-      auth.authenticateUser,
-      middleware.getGroupByNameOrIdDynamic(param, "groupIdOrName"),
-      middleware.isValidName(param, "deviceName"),
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const device = await models.Device.findOne({
-        where: {
-          devicename: request.params.deviceName,
-          GroupId: request.body.group.id,
-        },
-        include: [
-          {
-            model: models.User,
-            attributes: ["id", "username"],
-          },
-        ],
-      });
-
-      let deviceReturn: any = {};
-      if (device) {
-        const accessLevel = await device.getAccessLevel(request.user);
-        if (accessLevel < AccessLevel.Read) {
-          throw new AuthorizationError(
-            "User is not authorized to access device"
-          );
-        }
-
-        deviceReturn = {
-          id: device.id,
-          deviceName: device.devicename,
-          groupName: request.body.group.groupname,
-          userIsAdmin: accessLevel == AccessLevel.Admin,
-        };
-        if (accessLevel == AccessLevel.Admin) {
-          deviceReturn.users = device.Users.map((user) => {
-            return {
-              userName: user.username,
-              admin: user.DeviceUsers.admin,
-              id: user.DeviceUsers.UserId,
-            };
-          });
-        }
-      }
+    extractJwtAuthorizedUser,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      nameOf(param("deviceName")),
+      query("only-active").optional().isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredDeviceInGroup(
+      param("deviceName"),
+      param("groupIdOrName")
+    ),
+    async (request: Request, response: Response) => {
       return responseUtil.send(response, {
         statusCode: 200,
-        device: deviceReturn,
-        messages: ["Request succesful"],
+        device: mapDeviceResponse(
+          response.locals.device,
+          response.locals.viewAsSuperUser
+        ),
+        messages: ["Request successful"],
       });
-    })
+    }
   );
 
   /**
@@ -253,55 +397,51 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} deviceId ID of the device.
+   * @apiQuery {Integer} deviceId ID of the device.
+   * @apiQuery {Boolean} [only-active=true] Only return active devices
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} rows Array of users who have access to the
+   * @apiInterface {apiSuccess::ApiDeviceUsersRelationshipResponseSuccess} users Array of users who have access to the
    * device.  `relation` indicates whether the user is a `group` or `device` member.
-   * @apiSuccessExample {JSON} rows:
+   * @apiSuccessExample {JSON} users:
    * [{
-   * "id":1564,
-   * "username":"user name",
-   * "email":"email@server.nz",
-   * "relation":"device",
-   * "admin":true
+   *  "id": 1564,
+   *  "userName": "user name",
+   *  "relation": "device",
+   *  "admin": true
    * }]
    *
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(query),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      let users = await request.body.device.users(request.user);
-
-      users = users.map((u) => {
-        u = u.get({ plain: true });
-
-        // Extract the useful parts from DeviceUsers/GroupUsers.
-        if (u.DeviceUsers) {
-          u.relation = "device";
-          u.admin = u.DeviceUsers.admin;
-          delete u.DeviceUsers;
-        } else if (u.GroupUsers) {
-          u.relation = "group";
-          u.admin = u.GroupUsers.admin;
-          delete u.GroupUsers;
-        }
-
-        return u;
-      });
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(query("deviceId")),
+      query("only-active").optional().isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    // Should this require admin access to the device?
+    fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
+    async (request: Request, response: Response) => {
+      const users = (
+        await response.locals.device.users(response.locals.requestUser, [
+          "id",
+          "username",
+        ])
+      ).map((user) => ({
+        userName: user.username,
+        id: user.id,
+        admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
+        relation: (user as any).DeviceUsers ? "device" : "group",
+      }));
 
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["OK."],
-        rows: users,
+        users,
       });
-    })
+    }
   );
 
   /**
@@ -314,45 +454,55 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} deviceId ID of the device.
-   * @apiParam {String} username Name of the user to add to the device.
-   * @apiParam {Boolean} admin If true, the user should have administrator access to the device..
+   * @apiBody {Number} deviceId ID of the device.
+   * @apiBody {String} userName Name of the user to add to the device.
+   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getUserByNameOrId(body),
-      middleware.getDeviceById(body),
-      body("admin").isIn(["true", "false"]),
-    ],
-    middleware.requestWrapper(async (request, response) => {
+    extractJwtAuthorizedUser,
+    validateFields([
+      anyOf(
+        nameOf(body("username")),
+        nameOf(body("userName")),
+        idOf(body("userId"))
+      ),
+      idOf(body("deviceId")),
+      booleanOf(body("admin")),
+      // Allow adding a user to an inactive device by default
+      query("only-active").default(false).isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchUnauthorizedOptionalUserById(body("userId")),
+    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
+    (request: Request, response: Response, next: NextFunction) => {
+      // Check that we found the user through one of the methods.
+      if (!response.locals.user) {
+        return next(new ClientError(`User not found`));
+      }
+      next();
+    },
+    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
+    async (request, response) => {
       const added = await models.Device.addUserToDevice(
-        request.user,
-        request.body.device,
-        request.body.user,
+        response.locals.device,
+        response.locals.user,
         request.body.admin
       );
 
-      if (added) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Added user to device."],
-        });
-      } else {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to add user to device."],
-        });
-      }
-    })
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: [added],
+      });
+    }
   );
 
   /**
-   * @api {delete} /api/v1/devices/users Removes a user from a device.
+   * @api {delete} /api/v1/devices/users Removes a user with a direct relationship with a device from a device.
    * @apiName RemoveUserFromDevice
    * @apiGroup Device
    * @apiDescription This call can remove a user from a device. Has to be
@@ -361,8 +511,10 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} username name of the user to delete from the device.
-   * @apiParam {Number} deviceId ID of the device.
+   * @apiBody {String} [userName] name of the user to delete from the device.
+   * @apiBody {Integer} [userId] id of the user to delete from the device.
+   * @apiBody {Integer} deviceId ID of the device.
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    *
    * @apiUse V1ResponseSuccess
 
@@ -370,18 +522,32 @@ export default function (app: Application, baseUrl: string) {
    */
   app.delete(
     `${apiUrl}/users`,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(body),
-      middleware.getUserByNameOrId(body),
-    ],
-    middleware.requestWrapper(async function (request, response) {
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(body("deviceId")),
+      anyOf(
+        nameOf(body("username")),
+        nameOf(body("userName")),
+        idOf(body("userId"))
+      ),
+      query("only-active").optional().isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchUnauthorizedOptionalUserById(body("userId")),
+    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
+    (request: Request, response: Response, next: NextFunction) => {
+      // Check that we found the user through one of the methods.
+      if (!response.locals.user) {
+        return next(new ClientError(`User not found`));
+      }
+      next();
+    },
+    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
+    async function (request: Request, response: Response) {
       const removed = await models.Device.removeUserFromDevice(
-        request.user,
-        request.body.device,
-        request.body.user
+        response.locals.device,
+        response.locals.user
       );
-
       if (removed) {
         return responseUtil.send(response, {
           statusCode: 200,
@@ -393,7 +559,7 @@ export default function (app: Application, baseUrl: string) {
           messages: ["Failed to remove user from the device."],
         });
       }
-    })
+    }
   );
 
   /**
@@ -404,99 +570,48 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1DeviceAuthorizationHeader
    *
-   * @apiParam {String} newName new name of the device.
-   * @apiParam {String} newGroup name of the group you want to move the device to.
-   * @apiParam {String} newPassword password for the device
+   * @apiBody {String} newName new name of the device.
+   * @apiBody {String} newGroup name of the group you want to move the device to.
+   * @apiBody {String} newPassword password for the device
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiSuccess {int} id id of device reregistered
+   * @apiSuccess {int} id id of device re-registered
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/reregister`,
-    [
-      auth.authenticateDevice,
-      middleware.getGroupByName(body, "newGroup"),
-      middleware.isValidName(body, "newName"),
-      middleware.checkNewPassword("newPassword"),
-    ],
-    middleware.requestWrapper(async function (request, response) {
-      const device = await request.device.reregister(
+    extractJwtAuthorisedDevice,
+    validateFields([
+      nameOf(body("newGroup")),
+      validNameOf(body("newName")),
+      validPasswordOf(body("newPassword")),
+      // NOTE: Reregister only works on currently active devices
+    ]),
+    fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
+    async function (request: Request, response: Response, next: NextFunction) {
+      const requestDevice = await models.Device.findByPk(
+        response.locals.requestDevice.id
+      );
+      const device = await requestDevice.reRegister(
         request.body.newName,
-        request.body.group,
+        response.locals.group,
         request.body.newPassword
       );
+      if (device === false) {
+        return next(
+          new ClientError(
+            `already a device in group '${response.locals.group.groupname}' with the name '${request.body.newName}'`
+          )
+        );
+      }
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Registered the device again."],
         id: device.id,
-        token: "JWT " + auth.createEntityJWT(device),
+        token: `JWT ${auth.createEntityJWT(device)}`,
       });
-    })
-  );
-
-  /**
-   * @api {get} /api/v1/devices/query Query devices by groups or devices.
-   * @apiName query
-   * @apiGroup Device
-   * @apiDescription This call is to query all devices by groupname and/or groupname & devicename.
-   * Both acitve and inactive devices are returned.
-   *
-   * @apiUse V1DeviceAuthorizationHeader
-   *
-   * @apiParam {JSON} [devices] array of Devices. Either groups or devices (or both) must be supplied.
-   * @apiParamExample {JSON} devices:
-   * [{
-   *   "devicename":"newdevice",
-   *   "groupname":"newgroup"
-   * }]
-   * @apiParam {String[]} [groups] array of group names. Either groups or devices (or both) must be supplied.
-   * @apiParam {String} [operator] to use when user supplies both groups and devices. Default is `"or"`.
-   * Accepted values are `"and"` or `"or"`.
-   * @apiSuccess {JSON} devices Array of devices which match fully (group or group and devicename)
-   * @apiSuccessExample {JSON} devices:
-   * [{
-   *  "groupname":"group name",
-   *  "devicename":"device name",
-   *  "id":2008,
-   *  "saltId":1007,
-   *  "Group.groupname":"group name"
-   * }]
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/query`,
-    [
-      middleware.parseJSON("devices", query).optional(),
-      middleware.parseArray("groups", query).optional(),
-      query("operator").isIn(["or", "and", "OR", "AND"]).optional(),
-      auth.authenticateAccess(["user"], { devices: "r" }),
-    ],
-    middleware.requestWrapper(async function (request, response) {
-      if (
-        request.query.operator &&
-        request.query.operator.toLowerCase() == "and"
-      ) {
-        request.query.operator = Op.and;
-      } else {
-        request.query.operator = Op.or;
-      }
-
-      const devices = await models.Device.queryDevices(
-        request.user,
-        request.query.devices,
-        request.query.groups,
-        request.query.operator
-      );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        devices: devices.devices,
-        nameMatches: devices.nameMatches,
-        messages: ["Completed get devices query."],
-      });
-    })
+    }
   );
 
   /**
@@ -510,35 +625,36 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer} deviceId ID of the device.
-   * @apiParam {String} [from] ISO8601 date string
-   * @apiParam {String} [window-size] length of rolling window in hours.  Default is 2160 (90 days)
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [window-size=2160] length of rolling window in hours.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    * @apiSuccess {Float} cacophonyIndex A number representing the average index over the period `from` minus `window-size`
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:deviceId/cacophony-index`,
-    [
-      param("deviceId").isInt().toInt(),
-      query("from").isISO8601().toDate().optional(),
-      query("window-size").isInt().toInt().optional(),
-      auth.authenticateUser,
-    ],
-    middleware.requestWrapper(async function (request, response) {
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request: Request, response: Response) {
       const cacophonyIndex = await models.Device.getCacophonyIndex(
-        request.user,
-        request.params.deviceId,
-        request.query.from || new Date(), // Get the current cacophony index
-        typeof request.query["window-size"] === "number"
-          ? request.query["window-size"]
-          : 2160 // Default to a three month rolling window
+        response.locals.requestUser,
+        response.locals.device,
+        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query["window-size"] as unknown as number
       );
       return responseUtil.send(response, {
         statusCode: 200,
         cacophonyIndex,
         messages: [],
       });
-    })
+    }
   );
 
   /**
@@ -552,34 +668,35 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer} deviceId ID of the device.
-   * @apiParam {String} [from] ISO8601 date string
-   * @apiParam {Integer} [window-size] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    * @apiSuccess {Object} cacophonyIndex in the format `[{hour: number, index: number}, ...]`
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:deviceId/cacophony-index-histogram`,
-    [
-      param("deviceId").isInt().toInt(),
-      query("from").isISO8601().toDate().optional(),
-      query("window-size").isInt().toInt().optional(),
-      auth.authenticateUser,
-    ],
-    middleware.requestWrapper(async function (request, response) {
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request: Request, response: Response) {
       const cacophonyIndex = await models.Device.getCacophonyIndexHistogram(
-        request.user,
-        request.params.deviceId,
-        request.query.from || new Date(), // Get the current cacophony index
-        typeof request.query["window-size"] === "number"
-          ? request.query["window-size"]
-          : 2160 // Default to a three month rolling window
+        response.locals.requestUser,
+        response.locals.device.id,
+        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query["window-size"] as unknown as number
       );
       return responseUtil.send(response, {
         statusCode: 200,
         cacophonyIndex,
         messages: [],
       });
-    })
+    }
   );
 }

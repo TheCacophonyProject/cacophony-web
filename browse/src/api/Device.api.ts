@@ -1,11 +1,18 @@
 import CacophonyApi from "./CacophonyApi";
 import * as querystring from "querystring";
 import { shouldViewAsSuperUser } from "@/utils";
-import recording, { DeviceId } from "./Recording.api";
+import recording, { FetchResult } from "./Recording.api";
+import {
+  ApiDeviceResponse,
+  ApiDeviceUserRelationshipResponse,
+} from "@typedefs/api/device";
+import { DeviceId } from "@typedefs/api/common";
 
 export default {
   getDevices,
   getDevice,
+  getDeviceById,
+  getUsers,
   addUserToDevice,
   removeUserFromDevice,
   getLatestSoftwareVersion,
@@ -26,37 +33,87 @@ export interface UserDetails {
   admin: boolean;
 }
 
-function getDevices() {
+function getDevices(
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
-    `/api/v1/devices${shouldViewAsSuperUser() ? "" : "?view-mode=user"}`
+    `/api/v1/devices${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
   );
 }
 
-function getDevice(groupName: string, deviceName: string) {
+function getUsers(
+  deviceId: DeviceId,
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{ users: ApiDeviceUserRelationshipResponse[] }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceName}/in-group/${groupName}`
+    `/api/v1/devices/users?deviceId=${deviceId}&${
+      shouldViewAsSuperUser()
+        ? `only-active=${activeAndInactive ? "false" : "true"}`
+        : `view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
   );
 }
 
-function addUserToDevice(username, deviceId, admin) {
+function getDevice(
+  groupName: string,
+  deviceName: string,
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceName}/in-group/${groupName}?${
+      shouldViewAsSuperUser()
+        ? `only-active=${activeAndInactive ? "false" : "true"}`
+        : `view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function getDeviceById(
+  id: DeviceId,
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/device/${id}${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function addUserToDevice(userName: string, deviceId: DeviceId, admin: boolean) {
   const suppressGlobalMessaging = true;
-
   return CacophonyApi.post(
-    "/api/v1/devices/users",
+    "/api/v1/devices/users?only-active=false",
     {
-      username: username,
-      deviceId: deviceId,
-      admin: admin,
+      userName,
+      deviceId,
+      admin,
     },
     suppressGlobalMessaging
   );
 }
 
-function removeUserFromDevice(username: string, deviceId: number) {
-  return CacophonyApi.delete("/api/v1/devices/users", {
-    username,
-    deviceId,
-  });
+function removeUserFromDevice(
+  userName: string,
+  deviceId: DeviceId,
+  activeAndInactive: boolean = true
+) {
+  return CacophonyApi.delete(
+    `/api/v1/devices/users${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`,
+    {
+      userName,
+      deviceId,
+    }
+  );
 }
 
 function getLatestSoftwareVersion(deviceId: number) {
@@ -111,7 +168,7 @@ function getLatestEvents(
   params?: EventApiParams
 ): Promise<{ result: { rows: DeviceEvent[] } }> {
   return CacophonyApi.get(
-    `/api/v1/events?latest=true&deviceId=${deviceId}&${querystring.stringify(
+    `/api/v1/events?only-active=false&latest=true&deviceId=${deviceId}&${querystring.stringify(
       params as any
     )}`
   );
@@ -121,9 +178,11 @@ async function getType(
   deviceId: number
 ): Promise<"AudioRecorder" | "VideoRecorder" | "UnknownDeviceType"> {
   const rec = await recording.latestForDevice(deviceId);
-  if (rec.result.rows.length) {
-    const type = rec.result.rows[0].type;
-    return type === "thermalRaw" ? "VideoRecorder" : "AudioRecorder";
+  if (rec.success) {
+    if (rec.result.rows.length) {
+      const type = rec.result.rows[0].type;
+      return type === "thermalRaw" ? "VideoRecorder" : "AudioRecorder";
+    }
   }
   return "UnknownDeviceType";
 }

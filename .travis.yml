@@ -1,6 +1,9 @@
 services:
   - docker
 
+before_install:
+  - echo $DOCKERHUB_TOKEN | docker login --username $DOCKERHUB_USER --password-stdin
+
 dist: bionic
 
 language: node_js
@@ -10,28 +13,24 @@ node_js:
 env:
   - IS_CI_ENV=true
 
-python:
-  - "3.6.1"
-
 install:
-  - npm install -g npm apidoc@0.20.0 eslint prettier
+  - npm install -g npm apidoc@0.50.0 eslint prettier
   - sudo apt update
-  - sudo apt install python3-pip
-  - sudo apt-get install python3-setuptools
 
 script:
+  # Run test checks
+  - cd types
+  - npm install
+  - npm run lint || travis_terminate 1;
   # Run browse checks
   - pwd
-  - cd browse
+  - cd ../browse
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
   - npm run lint || travis_terminate 1;
   # Run api checks
   - cd ../api
-  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
+  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin apidoc-plugin-ts
   - npm run lint || travis_terminate 1;
-  - python3 -m pip install -r test/requirements.txt
-  - black --diff --check ./test || travis_terminate 1;
-  - npm run apidoc
   # Run integration checks
   - cd ../integration-tests
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests
@@ -40,19 +39,19 @@ script:
   - cd ..
   - docker-compose build
   - docker-compose up --force-recreate &> dockerstart.log &
-  - ./api/wait-for-api || { docker ps; docker-compose logs; exit 1; }
+  - node ./api/waitForApi.js || { docker ps; docker-compose logs; travis_terminate 1; }
   # Apply migration undo and redo to test undo migration
-  - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate:undo --config /app/config/app_test_default.js --migrations-path /app/migrations
-  - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate --config /app/config/app_test_default.js --migrations-path /app/migrations
-  # Run python tests
-  - cd api/test
-  - python3 -m pytest --log-api-on-fail || travis_terminate 1;
+  - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate:undo --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
+  - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
   # Run cypress tests
-  - cd ../../integration-tests
+  - cd integration-tests
   - cp cypress.json.TEMPLATE cypress.json
   - npm install
   - npm run release
   - cd ../api
+  # Generate api docs
+  - npm update apidoc-plugin-ts
+  - npm run apidoc || travis_terminate 1;
 
 before_deploy:
   - version=${TRAVIS_TAG/v/}

@@ -11,6 +11,7 @@
       <group-user-add
         v-if="isGroupAdmin"
         :group-name="groupName"
+        :group-users="users"
         @user-added-to-group="$emit('user-added')"
       />
       <b-button
@@ -36,7 +37,7 @@
       <b-modal
         id="group-user-remove-self"
         title="Remove yourself from group"
-        @ok="removeGroupUser(currentUser.username)"
+        @ok="removeGroupUser(currentUser.userName)"
         ok-title="Remove"
         ok-variant="danger"
         v-model="showUserRemoveSelfModal"
@@ -73,7 +74,7 @@
         data-cy="users-table"
       >
         <template v-slot:cell(admin)="data">
-          {{ data.item.isGroupAdmin ? "Yes" : "No" }}
+          {{ data.item.admin ? "Yes" : "No" }}
         </template>
 
         <template v-slot:cell(controls)="data">
@@ -99,6 +100,7 @@ import GroupUserAdd from "./GroupUserAdd.vue";
 import Help from "@/components/Help.vue";
 import api from "@/api";
 import { mapState } from "vuex";
+import { shouldViewAsSuperUser } from "@/utils";
 
 // TODO(jon): Add device users - users who can't see the group, but who can see a particular device in the group.
 //  Then we need a way for those users to see their device.
@@ -128,6 +130,11 @@ export default {
     groupHasUsers() {
       return this.users.length !== 0;
     },
+    isSuperUserAndViewingAsSuperUser(): boolean {
+      return (
+        this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
+      );
+    },
   },
   methods: {
     async removeGroupUser(userName: string) {
@@ -141,8 +148,8 @@ export default {
     },
     async removeGroupUserCheckIfSelf(userName: string) {
       if (
-        !this.currentUser.isSuperUser &&
-        userName === this.currentUser.username
+        !this.isSuperUserAndViewingAsSuperUser &&
+        userName === this.currentUser.userName
       ) {
         this.showUserRemoveSelfModal = true;
       } else {

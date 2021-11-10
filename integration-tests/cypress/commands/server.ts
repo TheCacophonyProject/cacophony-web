@@ -1,9 +1,12 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
-export const AuthorizationError = 402;
 
 import { format as urlFormat } from "url";
+
+import { NOT_NULL } from "./constants";
+import { ApiLocation } from "./types";
 
 export function apiPath(): string {
   return Cypress.env("cacophony-api-server");
@@ -15,6 +18,17 @@ export function v1ApiPath(page: string, queryParams: any = {}): string {
     query: queryParams,
   });
   return `${Cypress.env("cacophony-api-server")}${urlpage}`;
+}
+
+export function processingApiPath(
+  page: string = "",
+  queryParams: any = {}
+): string {
+  const urlpage = urlFormat({
+    pathname: `/api/fileProcessing/${page}`,
+    query: queryParams,
+  });
+  return `${Cypress.env("cacophony-processing-api-server")}${urlpage}`;
 }
 
 // time string should look like "21:09"
@@ -37,23 +51,33 @@ export function convertToDate(timeOrDate: Date | string): Date {
 
 interface ApiCreds {
   name: string;
+  password: string;
   headers: {
     authorization: any;
   };
   jwt: string;
+  jobKey: string;
   id: number;
+  location: ApiLocation;
 }
 
 export function saveIdOnly(name: string, id: number) {
   const creds = {
-    name,
+    name: name,
+    password: "",
     headers: {
       authorization: "",
     },
     jwt: "",
-    id,
+    jobKey: "",
+    id: id,
+    location: undefined,
   };
   Cypress.env("testCreds")[name] = creds;
+}
+
+export function saveJobKeyByName(name: string, jobKey: string) {
+  Cypress.env("testCreds")[name].jobKey = jobKey;
 }
 
 export function getCreds(userName: string): ApiCreds {
@@ -66,12 +90,28 @@ export function saveCreds(
   id = 0
 ) {
   const creds = {
-    name,
+    name: name,
+    password: "",
     headers: {
       authorization: response.body.token,
     },
     jwt: response.body.token,
-    id,
+    jobKey: response.body.jobKey,
+    id: id,
+    location: response.body.location,
+  };
+  Cypress.env("testCreds")[name] = creds;
+}
+
+export function saveStation(location: ApiLocation, name: string, id = 0) {
+  const creds = {
+    name: name,
+    password: "",
+    headers: {},
+    jwt: "",
+    jobKey: "",
+    id: id,
+    location: location,
   };
   Cypress.env("testCreds")[name] = creds;
 }
@@ -143,6 +183,19 @@ export function checkResponse(response: Cypress.Response<any>, code: number) {
   return response;
 }
 
+export function sortArrayOnHash(theArray: any, theKey: string) {
+  theArray.sort(function (a: any, b: any) {
+    if (JSON.stringify(a[theKey]) < JSON.stringify(b[theKey])) {
+      return -1;
+    }
+    if (JSON.stringify(a[theKey]) > JSON.stringify(b[theKey])) {
+      return 1;
+    }
+    return 0;
+  });
+  return theArray;
+}
+
 export function sortArrayOn(theArray: any, theKey: string) {
   theArray.sort(function (a: any, b: any) {
     if (a[theKey] < b[theKey]) {
@@ -193,14 +246,15 @@ export function checkFlatStructuresAreEqualExcept(
 }
 // recursively search a JSON tree or array and match values in containing with contained, except any keys in excludeKeys.
 // excludeKeys should be in the form: ["a.b[].c", ...] where [] indicates and array and a,b and c are keys
-// treeSoFar is an internal varaible used to pass the current point in the tree when making recursive calls
+// treeSoFar is an internal variable used to pass the current point in the tree when making recursive calls
 // prettyTreeSoFar is same as treeSoFar but includes array element numbers and is used for display purposes only
 export function checkTreeStructuresAreEqualExcept(
   containedStruct: any,
   containingStruct: any,
   excludeKeys: any = [],
   treeSoFar: string = "",
-  prettyTreeSoFar: string = ""
+  prettyTreeSoFar: string = "",
+  approximateTimes: any = []
 ) {
   if (isArrayOrHash(containingStruct)) {
     if (Array.isArray(containingStruct)) {
@@ -210,7 +264,7 @@ export function checkTreeStructuresAreEqualExcept(
         `Expect ${prettyTreeSoFar} number of elements should match`
       ).to.equal(containedStruct.length);
 
-      //itterate over array
+      //iterate over array
       for (let count = 0; count < containingStruct.length; count++) {
         const prettyElementName = prettyTreeSoFar + "[" + count + "]";
         const elementName = treeSoFar + "[]";
@@ -222,7 +276,8 @@ export function checkTreeStructuresAreEqualExcept(
             containingStruct[count],
             excludeKeys,
             elementName,
-            prettyElementName
+            prettyElementName,
+            approximateTimes
           );
         } else {
           //otherwise, check the values are as expected
@@ -235,24 +290,26 @@ export function checkTreeStructuresAreEqualExcept(
         }
       }
     } else {
-      //Not an array so mush be a hash
-      //check lengths are equal
       expect(
-        Object.keys(containingStruct).length,
-        `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
-          containingStruct
-        ).toString()}]`
-      ).to.equal(Object.keys(containedStruct).length);
+        typeof containingStruct,
+        `Expect result includes parameter ${prettyTreeSoFar} :::`
+      ).equal(typeof containedStruct);
+
+      // expect(
+      //   Object.keys(containingStruct).length,
+      //   `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
+      //     containingStruct
+      //   ).toString()}]`
+      // ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order
       const containedKeys: string[] = Object.keys(containedStruct).sort();
       const containingKeys: string[] = Object.keys(containingStruct).sort();
 
-      //itterate over hash
+      //iterate over hash
       for (let count = 0; count < containedKeys.length; count++) {
         const elementName = treeSoFar + "." + containedKeys[count];
         const prettyElementName = prettyTreeSoFar + "." + containedKeys[count];
-
         //check if we asked to ignore this parameter
         if (!excludeKeys.includes(elementName)) {
           expect(
@@ -266,16 +323,55 @@ export function checkTreeStructuresAreEqualExcept(
               containingStruct[containedKeys[count]],
               excludeKeys,
               elementName,
-              prettyElementName
+              prettyElementName,
+              approximateTimes
             );
           } else {
-            //otherwise, check the values are as expected
-            expect(
-              containingStruct[containedKeys[count]],
-              `Expected ${prettyElementName} should equal ${JSON.stringify(
+            //check we were asked to validate, or validate NOT NULL
+            if (containedStruct[containedKeys[count]] == NOT_NULL) {
+              expect(
+                containingStruct[containedKeys[count]],
+                `Expected ${prettyElementName} should not be NULL`
+              ).to.not.be.null;
+            } else if (approximateTimes.includes(elementName)) {
+              const comparedTime = new Date(
+                containingStruct[containedKeys[count]]
+              ).getTime();
+              const expectedTime = new Date(
                 containedStruct[containedKeys[count]]
-              )}`
-            ).to.equal(containedStruct[containedKeys[count]]);
+              ).getTime();
+              expect(
+                new Date(comparedTime),
+                `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`
+              ).to.be.within(expectedTime - 60000, expectedTime + 60000);
+            } else {
+              //otherwise, check the values are as expected
+              const testVal = containingStruct[containedKeys[count]];
+              if (typeof testVal === "number" && !(testVal % 1 === 0)) {
+                // This is a floating point value, and we might have some precision issues, so allow a small
+                // 'epsilon' value of fuzziness when testing equality:
+                const EPSILON = 0.000001;
+                expect(
+                  testVal,
+                  `Expected ${prettyElementName} should be more than ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.be.gt(containedStruct[containedKeys[count]] - EPSILON);
+                expect(
+                  testVal,
+                  `Expected ${prettyElementName} should be less than ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.be.lt(containedStruct[containedKeys[count]] + EPSILON);
+              } else {
+                expect(
+                  containingStruct[containedKeys[count]],
+                  `Expected ${prettyElementName} should equal ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.equal(containedStruct[containedKeys[count]]);
+              }
+            }
           }
         }
       }
@@ -299,13 +395,16 @@ function isArrayOrHash(theObject: any) {
   );
 }
 
-export function removeUndefinedParams(jsStruct: any) {
-  const keys = Object.keys(jsStruct);
-  const resultStruct = {};
-  for (let count = 0; count < keys.length; count++) {
-    if (jsStruct[keys[count]] !== undefined) {
-      resultStruct[keys[count]] = jsStruct[keys[count]];
+export function removeUndefinedParams(jsStruct: any): any {
+  if (jsStruct !== undefined && jsStruct !== null) {
+    const resultStruct = {};
+    for (const [key, val] of Object.entries(jsStruct)) {
+      if (val !== undefined) {
+        resultStruct[key] = val;
+      }
     }
+    return resultStruct;
+  } else {
+    return jsStruct;
   }
-  return resultStruct;
 }

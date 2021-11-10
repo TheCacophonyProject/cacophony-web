@@ -1,13 +1,13 @@
 /// <reference path="../../../support/index.d.ts" />
-import { getTestName } from "../../../commands/names";
-import {
-  makeAuthorizedRequest,
-  v1ApiPath,
-  getCreds,
-} from "../../../commands/server";
-import { ApiDevicesDevice } from "../../../commands/types";
+import { getTestName } from "@commands/names";
+import { makeAuthorizedRequest, v1ApiPath, getCreds } from "@commands/server";
+import ApiDeviceResponse = Cypress.ApiDeviceResponse;
+import { DeviceType } from "@typedefs/api/consts";
 
 describe("Devices list", () => {
+  const superuser = getCreds("superuser")["name"];
+  const suPassword = getCreds("superuser")["password"];
+
   const groupAdmin = "Edith-groupAdmin";
   const groupMember = "Edwin-groupMember";
   const deviceMember = "Egbert-deviceMember";
@@ -24,108 +24,101 @@ describe("Devices list", () => {
   const camera2 = "second_E_camera";
   const camera3 = "Charlie-camera";
   const camera4 = "Debbie-camera";
-  const superuser = "admin_test";
-  const suPassword = "admin_test";
-  let expectedDeviceAdminView: ApiDevicesDevice;
-  let expectedDeviceMemberView: ApiDevicesDevice;
-  let expectedDevice2AdminView: ApiDevicesDevice;
-  let expectedDevice3AdminView: ApiDevicesDevice;
-  let expectedDevice4AdminView: ApiDevicesDevice;
+  let expectedDeviceAdminView: ApiDeviceResponse;
+  let expectedDeviceMemberView: ApiDeviceResponse;
+  let expectedDevice2AdminView: ApiDeviceResponse;
+  let expectedDevice3AdminView: ApiDeviceResponse;
+  let expectedDevice4AdminView: ApiDeviceResponse;
 
   before(() => {
-    cy.apiCreateUser(groupMember);
-    cy.apiCreateUser(deviceAdmin);
-    cy.apiCreateUser(deviceMember);
-    cy.apiCreateUser(hacker);
-    cy.apiCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
+    cy.apiUserAdd(groupMember);
+    cy.apiUserAdd(deviceAdmin);
+    cy.apiUserAdd(deviceMember);
+    cy.apiUserAdd(hacker);
+    cy.testCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
       expectedDeviceAdminView = {
         id: getCreds(camera).id,
-        devicename: getTestName(camera),
+        saltId: getCreds(camera).id,
+        deviceName: getTestName(camera),
+        groupName: getTestName(group),
+        groupId: getCreds(group).id,
         active: true,
-        Users: [
-          {
-            id: getCreds(deviceAdmin).id,
-            username: getTestName(deviceAdmin),
-            DeviceUsers: {
-              admin: true,
-              DeviceId: getCreds(camera).id,
-              UserId: getCreds(deviceAdmin).id,
-            },
-          },
-          {
-            id: getCreds(deviceMember).id,
-            username: getTestName(deviceMember),
-            DeviceUsers: {
-              admin: false,
-              DeviceId: getCreds(camera).id,
-              UserId: getCreds(deviceMember).id,
-            },
-          },
-        ],
+        admin: true,
+        type: DeviceType.Unknown,
       };
       expectedDeviceMemberView = {
         id: getCreds(camera).id,
-        devicename: getTestName(camera),
+        deviceName: getTestName(camera),
         active: true,
-        Users: null,
+        groupName: getTestName(group),
+        groupId: getCreds(group).id,
+        admin: false,
+        saltId: getCreds(camera).id,
+        type: DeviceType.Unknown,
       };
     });
-    cy.apiAddUserToGroup(groupAdmin, groupMember, group, NOT_ADMIN);
-    cy.apiAddUserToDevice(groupAdmin, deviceMember, camera);
-    cy.apiAddUserToDevice(groupAdmin, deviceAdmin, camera, ADMIN);
+    cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
+    cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
+    cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
 
     //second group
-    cy.apiCreateUserGroupAndDevice(user2, group2, camera2).then(() => {
+    cy.testCreateUserGroupAndDevice(user2, group2, camera2).then(() => {
       expectedDevice2AdminView = {
         id: getCreds(camera2).id,
-        devicename: getTestName(camera2),
+        saltId: getCreds(camera2).id,
+        deviceName: getTestName(camera2),
+        groupId: getCreds(group2).id,
+        groupName: getTestName(group2),
         active: true,
-        Users: [],
+        admin: true,
+        type: DeviceType.Unknown,
       };
     });
 
     //reregistered device
-    cy.apiCreateUserGroupAndDevice(user3, group3, camera3);
-    cy.apiAddUserToDevice(user3, user3, camera3);
+    cy.testCreateUserGroupAndDevice(user3, group3, camera3);
+    cy.apiDeviceUserAdd(user3, user3, camera3);
     cy.apiDeviceReregister(camera3, camera4, group3).then(() => {
       expectedDevice3AdminView = {
         id: getCreds(camera3).id,
-        devicename: getTestName(camera3),
+        saltId: getCreds(camera3).id,
+        deviceName: getTestName(camera3),
+        groupName: getTestName(group3),
+        groupId: getCreds(group3).id,
         active: false,
-        Users: [
-          {
-            id: getCreds(user3).id,
-            username: getTestName(user3),
-            DeviceUsers: {
-              admin: false,
-              DeviceId: getCreds(camera3).id,
-              UserId: getCreds(user3).id,
-            },
-          },
-        ],
+        admin: true,
+        type: DeviceType.Unknown,
       };
       expectedDevice4AdminView = {
         id: getCreds(camera4).id,
-        devicename: getTestName(camera4),
+        saltId: getCreds(camera4).id,
+        deviceName: getTestName(camera4),
         active: true,
-        Users: [],
+        admin: true,
+        groupName: getTestName(group3),
+        groupId: getCreds(group3).id,
+        type: DeviceType.Unknown,
       };
     });
   });
 
   //Do not run against a live server as we don't have superuser login
-  if (Cypress.env("test_using_default_superuser") == true) {
-    it("Super-user should see all devices including User details", () => {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    it("Super-user should see all devices", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
 
       const expectedDevice2AdminView = {
         id: getCreds(camera2).id,
-        devicename: getTestName(camera2),
+        saltId: getCreds(camera2).id,
+        deviceName: getTestName(camera2),
         active: true,
-        Users: [],
+        admin: true,
+        groupName: getTestName(group2),
+        groupId: getCreds(group2).id,
+        type: DeviceType.Unknown,
       };
 
-      cy.apiCheckDevicesContains(superuser, [
+      cy.apiDevicesCheckContains(superuser, [
         expectedDeviceAdminView,
         expectedDevice2AdminView,
       ]);
@@ -135,7 +128,7 @@ describe("Devices list", () => {
   }
 
   //Do not run against a live server as we don't have superuser login
-  if (Cypress.env("test_using_default_superuser") == true) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user 'as user' should see only their devices and users only where they are device admin", () => {
       // note: if this test fails and does not clean up after itself, it will continue to fail until the superuser is removed from the old test devices
       cy.apiSignInAs(null, null, superuser, suPassword);
@@ -153,7 +146,7 @@ describe("Devices list", () => {
         user2
       );
 
-      cy.apiCheckDevices(superuser, [expectedDevice2AdminView], {
+      cy.apiDevicesCheck(superuser, [expectedDevice2AdminView], {
         "view-mode": "user",
       });
 
@@ -174,36 +167,32 @@ describe("Devices list", () => {
     it.skip("Super-user 'as user' should see only their devices and users only where they are device admin", () => {});
   }
 
-  it("Group admin should see everything including device users", () => {
-    cy.apiCheckDevices(groupAdmin, [expectedDeviceAdminView]);
+  it("Group admin should see everything, and be listed as admin", () => {
+    cy.apiDevicesCheck(groupAdmin, [expectedDeviceAdminView]);
   });
 
-  it("Group member should be able to read all but device users", () => {
-    // TODO: View of users is allowed here but not in single device view.  Issue 62. Enable member view when fixed
-    //cy.apiCheckDevices(groupMember, [expectedDeviceMemberView]);
-    cy.apiCheckDevices(groupMember, [expectedDeviceAdminView]);
+  it("Group member should be able to see everything, but should be not listed as admin", () => {
+    cy.apiDevicesCheck(groupMember, [expectedDeviceMemberView]);
   });
 
-  it("Device admin should see everything including device users", () => {
-    cy.apiCheckDevices(deviceAdmin, [expectedDeviceAdminView]);
+  it("Device admin should see everything, and be listed as admin", () => {
+    cy.apiDevicesCheck(deviceAdmin, [expectedDeviceAdminView]);
   });
 
-  it("Device member should be able to read all but device users", () => {
-    // TODO: View of users is allowed here but not in single device view.  Issue 62. Enable member view when fixed
-    //cy.apiCheckDevices(deviceMember, [expectedDeviceMemberView]);
-    cy.apiCheckDevices(deviceMember, [expectedDeviceAdminView]);
+  it("Device member should be see everything, but should be not listed as admin", () => {
+    cy.apiDevicesCheck(deviceMember, [expectedDeviceMemberView]);
   });
 
   it("Non member should not have any access to any devices", () => {
-    cy.apiCheckDevices(hacker, []);
+    cy.apiDevicesCheck(hacker, []);
   });
 
   it("Should display inactive devices only when requested", () => {
     //verify inactive device is not shown by default
-    cy.apiCheckDevices(user3, [expectedDevice4AdminView]);
+    cy.apiDevicesCheck(user3, [expectedDevice4AdminView]);
 
     //verify inactive device is shown when inactive is requested
-    cy.apiCheckDevices(
+    cy.apiDevicesCheck(
       user3,
       [expectedDevice3AdminView, expectedDevice4AdminView],
       { onlyActive: false }

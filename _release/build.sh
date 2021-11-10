@@ -29,19 +29,35 @@ cp _release/* ${build_dir}/_release  # makes things easier while developing rele
 
 cd ${build_dir}
 
-cd api
+echo "Installing shared type definitions"
+cd types
+rm -rf node_modules
+npm install
+echo "Compiling TypeScript..."
+./node_modules/.bin/tsc
+npm run generate-schemas
+
+cd ..
+
 echo "Installing dependencies for build..."
+cd api
+
 rm -rf node_modules
 npm install
 
 echo "Compiling TypeScript..."
 ./node_modules/.bin/tsc
 
+echo "Creating API docs..."
+npm update apidoc-plugin-ts
+npm run apidoc
+
 echo "Removing external dependencies..."
 rm -rf node_modules
 
 echo "Removing TypeScript files..."
 find -name '*.ts' -print0 | xargs -0 rm
+
 
 # BROWSE: Update files which need the right version number, build the packed
 # release
@@ -51,12 +67,19 @@ rm -rf node_modules
 npm install
 npm run release
 rm -rf node_modules
+cd ../types
+
+echo "Removing typedefs external dependencies..."
+rm -rf node_modules
+echo "Removing typedefs TypeScript files..."
+find -name '*.ts' -print0 | xargs -0 rm
+
 cd ..
 
 # cron doesn't like it when cron.d files are writeable by anyone other than the
 # owner.
 echo "Fixing perms..."
-chmod 644 _release/{cacophony-api-prune-objects,cacophony-api-remove-dups,cacophony-api-report-stopped-devices,cacophony-api-report-errors,cacophony-api-archive-objects}
+chmod 644 _release/{cacophony-api-influx-metrics,cacophony-api-prune-objects,cacophony-api-remove-dups,cacophony-api-report-stopped-devices,cacophony-api-report-errors,cacophony-api-archive-objects}
 
 echo "Setting versions..."
 perl -pi -e "s/^version:.+/version: \"${version}\"/" _release/nfpm.yaml

@@ -16,10 +16,9 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import { GroupId, UserId } from "@typedefs/api/common";
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { GroupId } from "./Group";
-import { UserId } from "./User";
 
 export enum AccessLevel {
   None = 0,
@@ -47,6 +46,8 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
     name,
     attributes
   ) as unknown as GroupUsersStatic;
+
+  GroupUsers.addAssociations = function () {};
 
   //---------------
   // CLASS METHODS

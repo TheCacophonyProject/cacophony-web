@@ -43,7 +43,10 @@ export async function fetch(url, init, suppressGlobalMessaging = false) {
     await router.push("login");
   } else {
     if (!suppressGlobalMessaging) {
-      handleMessages(result, status); //TODO: don't have this on the fetch function; handle errors more explicitly (this should remove the suppressGlobalMessaging hack). Do we global error messages?
+      handleMessages(result, status);
+      //TODO: don't have this on the fetch function; handle errors more
+      // explicitly (this should remove the suppressGlobalMessaging hack).
+      // Do we need global error messages?
     }
     //console.log(result);
     //throw new Error(result);
@@ -70,7 +73,14 @@ function handleMessages(result, status) {
     result.messages.forEach((message) =>
       store.dispatch(`Messaging/${level}`, message)
     );
-  if (result.errorType == "client") {
-    store.dispatch("Messaging/ERROR", result.message);
+  result.message && store.dispatch(`Messaging/${level}`, result.message);
+  if (result.errorType === "client") {
+    if (result.messages) {
+      result.messages.forEach((message) =>
+        store.dispatch(`Messaging/ERROR`, message)
+      );
+    } else if (result.message) {
+      store.dispatch("Messaging/ERROR", result.message);
+    }
   }
 }

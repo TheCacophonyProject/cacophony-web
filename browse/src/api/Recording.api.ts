@@ -3,93 +3,53 @@ import * as querystring from "querystring";
 import { DeviceVisitMap } from "./visits";
 import * as moment from "moment";
 import { shouldViewAsSuperUser } from "@/utils";
+import {
+  DeviceId,
+  RecordingId,
+  TagId,
+  TrackId,
+  TrackTagId,
+} from "@typedefs/api/common";
+import { ApiRecordingResponse } from "@typedefs/api/recording";
+import {
+  ApiAutomaticTrackTagResponse,
+  ApiHumanTrackTagResponse,
+  ApiTrackTagRequest,
+} from "@typedefs/api/trackTag";
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { ApiTrackResponse } from "@typedefs/api/track";
 
-export default {
-  query,
-  queryVisits,
-  queryCount,
-  id,
-  comment,
-  del,
-  tracks,
-  addTrackTag,
-  deleteTrackTag,
-  replaceTrackTag,
-  needsTag,
-  makeApiQuery,
-  latestForDevice,
-};
-
-export type DeviceId = number;
-export type RecordingId = number;
-export type TrackId = number;
-export type TagId = number;
-export type UserId = number;
-export type StationId = number;
-export type TrackTagId = number;
-export type GroupId = number;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
 export type JwtToken<T> = string;
 type UtcTimestamp = string;
 
-export interface FetchResult<T> {
-  result: T;
-  success: boolean;
+export interface ErrorResult {
+  messages: string[];
+  errors?: string[];
+  errorType?: string;
+}
+
+interface SuccessFetchResult<SUCCESS> {
+  result: SUCCESS;
+  success: true;
   status: number;
 }
 
-interface Device {
-  id: DeviceId;
-  devicename: string;
+interface FailureFetchResult<FAILURE = ErrorResult> {
+  result: FAILURE;
+  success: false;
+  status: number;
 }
+
+export type FetchResult<T> = SuccessFetchResult<T> | FailureFetchResult;
 
 export interface Location {
   type: "Point" | string;
   coordinates: [number, number];
 }
 
-export type RecordingType = "thermalRaw" | "audio";
-
-export interface RecordingInfo {
-  id: RecordingId;
-  type: RecordingType;
-  recordingDateTime: UtcTimestamp;
-  rawMimeType: string;
-  fileMimeType: string;
-  processingState: "FINISHED"; // Or?
-  duration: number; //seconds
-  location: Location;
-  batteryLevel: null | number;
-  DeviceId: DeviceId;
-  GroupId: GroupId;
-  StationId: StationId | null;
-  Group: {
-    groupname: string;
-  };
-  Station?: {
-    name: string;
-  };
-  Tags: Tag[];
-  Tracks: Track[];
-  Device: Device;
-
-  fileKey?: string;
-  comment?: string | null;
-  rawFileKey?: string;
-  relativeToDawn?: null;
-  relativeToDusk?: null;
-  version?: null;
-  processing: boolean | null;
-  batteryCharging?: null;
-  airplaneModeOn?: null;
-  additionalMetadata?: {
-    algorithm: number;
-    previewSecs: number;
-  };
-}
-
 export interface LimitedTrack {
-  TrackId: TrackId;
+  trackId: TrackId;
   data: {
     start_s: number;
     end_s: number;
@@ -112,11 +72,11 @@ type Mp4File = "string";
 type CptvFile = "string";
 export interface Recording {
   messages: [];
-  recording: RecordingInfo;
-  rawSize: number; // CPTV size
-  fileSize: number; // MP4 size
-  downloadFileJWT: JwtToken<Mp4File>;
-  downloadRawJWT: JwtToken<CptvFile>;
+  recording: ApiRecordingResponse;
+  rawSize?: number; // CPTV size
+  fileSize?: number; // MP4 size
+  downloadFileJWT?: JwtToken<Mp4File>;
+  downloadRawJWT?: JwtToken<CptvFile>;
   success: boolean;
 }
 
@@ -152,36 +112,7 @@ export interface User {
   globalPermission: "read" | "write" | "off";
 }
 
-export interface TagCommon {
-  id?: TrackTagId;
-  TrackId: TrackId;
-  what: string;
-  confidence: number;
-}
-
-// export interface TrackTag {
-//   data: string | { name: string } | null;
-//   createdAt?: UtcTimestamp;
-//   updatedAt?: UtcTimestamp;
-//
-//   //user?: User;
-// }
-
-export interface AiTag extends TagCommon {
-  data: string | { name: string };
-  UserId: null;
-  User: null;
-  automatic: true;
-}
-
-export interface HumanTag extends TagCommon {
-  data: null;
-  UserId: UserId;
-  User: User;
-  automatic: false;
-}
-
-export type TrackTag = AiTag | HumanTag;
+export type TrackTag = ApiAutomaticTrackTagResponse | ApiHumanTrackTagResponse;
 
 export interface LimitedTrackTag {
   TrackTagId: TrackTagId;
@@ -258,7 +189,7 @@ const apiPath = "/api/v1/recordings";
 
 function query(
   queryParams: RecordingQuery
-): Promise<FetchResult<QueryResult<RecordingInfo>>> {
+): Promise<FetchResult<QueryResult<ApiRecordingResponse>>> {
   return CacophonyApi.get(
     `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
   );
@@ -368,14 +299,22 @@ function queryCount(
   );
 }
 
-function id(id: RecordingId): Promise<FetchResult<Recording>> {
+function id(id: RecordingId): Promise<
+  FetchResult<{
+    recording: ApiRecordingResponse;
+    rawSize?: number; // CPTV size
+    fileSize?: number; // MP4 size
+    downloadFileJWT?: JwtToken<Mp4File>;
+    downloadRawJWT?: JwtToken<CptvFile>;
+  }>
+> {
   return CacophonyApi.get(`${apiPath}/${id}`);
 }
 
 function comment(comment: string, id: RecordingId): Promise<FetchResult<any>> {
   return CacophonyApi.patch(`${apiPath}/${id}`, {
     updates: {
-      comment: comment,
+      comment,
     },
   });
 }
@@ -386,19 +325,18 @@ function del(id: RecordingId): Promise<FetchResult<any>> {
 
 function tracks(
   recordingId: RecordingId
-): Promise<FetchResult<{ tracks: Track[] }>> {
+): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
   return CacophonyApi.get(`${apiPath}/${recordingId}/tracks`);
 }
 
 function replaceTrackTag(
-  tag: TrackTag,
+  tag: ApiTrackTagRequest,
   recordingId: RecordingId,
   trackId: TrackId
-) {
-  const body = {
-    what: tag.what,
-    confidence: tag.confidence,
-    automatic: "false",
+): Promise<FetchResult<{ trackTagId?: number }>> {
+  const body: ApiTrackTagRequest = {
+    ...tag,
+    automatic: false,
   };
   return CacophonyApi.post(
     `${apiPath}/${recordingId}/tracks/${trackId}/replaceTag`,
@@ -407,12 +345,12 @@ function replaceTrackTag(
 }
 
 function addTrackTag(
-  tag: Tag,
+  tag: ApiTrackTagRequest,
   recordingId: RecordingId,
   trackId: TrackId,
   tagJWT?: JwtToken<TrackTag>
 ): Promise<FetchResult<{ trackTagId: number; success: boolean }>> {
-  const body: any = {
+  const body: ApiTrackTagRequest = {
     what: tag.what,
     confidence: tag.confidence,
     automatic: false,
@@ -427,30 +365,61 @@ function addTrackTag(
 }
 
 function deleteTrackTag(
-  tag: TrackTag,
-  recordingId: RecordingId,
+  id: RecordingId,
+  trackId: TrackId,
+  trackTagId: TrackTagId,
   tagJWT?: JwtToken<TrackTag>
 ): Promise<FetchResult<any>> {
-  let requestUri = `${apiPath}/${recordingId}/tracks/${tag.TrackId}/tags/${tag.id}`;
+  let requestUri = `${apiPath}/${id}/tracks/${trackId}/tags/${trackTagId}`;
   if (tagJWT !== undefined) {
     requestUri += `?tagJWT=${tagJWT}`;
   }
   return CacophonyApi.delete(requestUri);
 }
 
-interface RecordingToTag {
-  id: RecordingId;
-  deviceId: DeviceId;
-  tracks: Track[];
+function addRecordingTag(
+  tag: ApiRecordingTagRequest,
+  id: RecordingId
+): Promise<FetchResult<{ tagId: TagId }>> {
+  return CacophonyApi.post(`${apiPath}/${id}/tags`, {
+    tag,
+  });
 }
 
-function needsTag(biasToDeviceId?: DeviceId): Promise<RecordingToTag> {
+function deleteRecordingTag(
+  tagId: TagId,
+  id: RecordingId
+): Promise<FetchResult<void>> {
+  return CacophonyApi.delete(`${apiPath}/${id}/tags/${tagId}`);
+}
+
+function reprocess(id: RecordingId): Promise<FetchResult<void>> {
+  return CacophonyApi.get(`/api/v1/reprocess/${id}`);
+}
+
+interface RecordingToTag {
+  RecordingId: RecordingId;
+  DeviceId: DeviceId;
+  tracks: Track[];
+  duration: number;
+  fileKey: string;
+  fileMimeType: string;
+  recordingDateTime: string;
+  recordingJWT: string;
+  tagJWT: string;
+  fileSize: number;
+}
+
+// eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
+export const needsTag = async (
+  biasToDeviceId?: DeviceId
+): Promise<FetchResult<QueryResult<RecordingToTag>>> => {
   let requestUri = `${apiPath}/needs-tag`;
   if (biasToDeviceId != null) {
     requestUri += `?deviceId=${biasToDeviceId}`;
   }
   return CacophonyApi.get(requestUri);
-}
+};
 
 export function calculateFromTime(query: RecordingQuery): string {
   if (query.hasOwnProperty("from") && query.from && query.from.length > 0) {
@@ -469,10 +438,33 @@ export function calculateFromTime(query: RecordingQuery): string {
   return null;
 }
 
-export function latestForDevice(deviceId: number) {
+export function latestForDevice(
+  deviceId: DeviceId
+): Promise<
+  SuccessFetchResult<QueryResult<ApiRecordingResponse>> | FailureFetchResult
+> {
   return query({
     limit: 1,
     days: "all",
     device: [deviceId],
   });
 }
+
+export default {
+  query,
+  queryVisits,
+  queryCount,
+  id,
+  comment,
+  del,
+  tracks,
+  reprocess,
+  addTrackTag,
+  deleteTrackTag,
+  replaceTrackTag,
+  addRecordingTag,
+  deleteRecordingTag,
+  makeApiQuery,
+  needsTag,
+  latestForDevice,
+};

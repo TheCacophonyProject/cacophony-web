@@ -9,14 +9,15 @@ import {
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { getTestName, getUniq } from "../names";
-import { ApiAlert, ApiAlertConditions } from "../types";
+import { ApiAlert } from "../types";
+import { ApiAlertCondition } from "@typedefs/api/alerts";
 
 Cypress.Commands.add(
   "apiAlertAdd",
   (
     userName: string,
     alertName: string,
-    conditions: ApiAlertConditions[],
+    conditions: ApiAlertCondition[],
     deviceName: string,
     frequency: number | null = null,
     statusCode: number = 200
@@ -73,7 +74,7 @@ Cypress.Commands.add(
     name: string,
     alertName: string,
     frequencySeconds: number,
-    conditions: ApiAlertConditions[],
+    conditions: ApiAlertCondition[],
     lastAlert: boolean,
     userName: string,
     deviceName: string
@@ -98,7 +99,7 @@ Cypress.Commands.add(
       User: {
         id: getCreds(userName).id,
         username: getTestName(userName),
-        email: getTestName(userName) + "@api.created.com",
+        email: getTestName(userName).toLowerCase() + "@api.created.com",
       },
       Device: {
         id: getCreds(deviceName).id,
@@ -113,7 +114,7 @@ Cypress.Commands.add(
 function apiAlertsPost(
   userName: string,
   alertName: string,
-  conditions: ApiAlertConditions[],
+  conditions: ApiAlertCondition[],
   deviceName: string,
   frequency: number,
   testFailure: number
@@ -205,8 +206,10 @@ function checkExpectedAlerts(
   ).to.eq(expectedAlert.Device.id);
   expect(
     thealert.Device.devicename,
-    `device.devicename should have been ${expectedAlert.Device.devicename}`
-  ).to.eq(expectedAlert.Device.devicename);
+    `device.devicename should have been ${
+      (expectedAlert.Device as any).devicename
+    }`
+  ).to.eq((expectedAlert.Device as any).devicename);
   return response;
 }
 

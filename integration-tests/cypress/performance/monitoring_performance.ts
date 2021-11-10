@@ -6,17 +6,17 @@ describe("Monitoring : times and recording groupings", () => {
   const max_page_length = 100;
 
   before(() => {
-    cy.apiCreateUserGroup(Dexter, group);
+    cy.testCreateUserAndGroup(Dexter, group);
   });
 
   it("can handle maximum number of visits per page", () => {
     const camera = "visits-per-page";
     const visits = [];
     // add 1000 recordings
-    cy.apiCreateDevice(camera, group);
-    cy.uploadRecording(camera, { time: "20:55", duration: 10 });
+    cy.apiDeviceAdd(camera, group);
+    cy.apiRecordingAdd(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < max_page_length * 10 - 1; i++) {
-      cy.uploadRecording(camera, { minsLater: 11 });
+      cy.apiRecordingAdd(camera, { minsLater: 11 });
     }
 
     for (let i = 0; i < max_page_length; i++) {
@@ -45,10 +45,10 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "default_page_size";
     const visits = [];
     // add 1 page plus 1 worth of recordings
-    cy.apiCreateDevice(camera, group);
-    cy.uploadRecording(camera, { time: "20:55", duration: 10 });
+    cy.apiDeviceAdd(camera, group);
+    cy.apiRecordingAdd(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < max_page_length; i++) {
-      cy.uploadRecording(camera, { minsLater: 11 });
+      cy.apiRecordingAdd(camera, { minsLater: 11 });
     }
 
     // expected visits on 1st page is array of max_page_length of visits
@@ -69,10 +69,10 @@ describe("Monitoring : times and recording groupings", () => {
   it("can handle large number of recordings per visit", () => {
     const camera = "recordings-per-visit";
     // add 1000 recordings
-    cy.apiCreateDevice(camera, group);
-    cy.uploadRecording(camera, { time: "20:55", duration: 10 });
+    cy.apiDeviceAdd(camera, group);
+    cy.apiRecordingAdd(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < 999; i++) {
-      cy.uploadRecording(camera, { minsLater: 9 });
+      cy.apiRecordingAdd(camera, { minsLater: 9 });
     }
 
     const visits = [{ recordings: 1000 }];
@@ -88,10 +88,10 @@ describe("Monitoring : times and recording groupings", () => {
     const camera = "pages";
 
     // add 1000 recordings
-    cy.apiCreateDevice(camera, group);
-    cy.uploadRecording(camera, { time: "20:55", duration: 10 });
+    cy.apiDeviceAdd(camera, group);
+    cy.apiRecordingAdd(camera, { time: "20:55", duration: 10 });
     for (let i = 0; i < 999; i++) {
-      cy.uploadRecording(camera, { minsLater: 11 });
+      cy.apiRecordingAdd(camera, { minsLater: 11 });
     }
 
     const visits = [{ recordings: 1 }];

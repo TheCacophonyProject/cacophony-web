@@ -17,19 +17,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import _ from "lodash";
 import sequelize, { Order } from "sequelize";
-import { AuthorizationError } from "../api/customErrors";
+import { AuthorizationError } from "@api/customErrors";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import Sequelize from "sequelize";
-import { User, UserId as UserIdAlias } from "./User";
+import { User } from "./User";
+import { UserId } from "@typedefs/api/common";
 
 const Op = sequelize.Op;
 export type FileId = number;
 export interface File extends Sequelize.Model, ModelCommon<File> {
   id: FileId;
-  UserId: UserIdAlias;
+  UserId: UserId;
   details: any;
   type: any;
   fileKey: string;
+  fileSize: number;
 }
 export interface FileStatic extends ModelStaticCommon<File> {
   buildSafely: (fields: Record<string, any>) => File;

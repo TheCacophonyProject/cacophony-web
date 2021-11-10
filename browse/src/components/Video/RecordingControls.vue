@@ -133,7 +133,7 @@
           {{ whatDetail(row.item) }}
         </template>
         <template v-slot:cell(deleteButton)="row">
-          <button class="button btn">
+          <button class="button btn" :disabled="row.item.tag.id === -1">
             <font-awesome-icon
               icon="trash"
               @click="$emit('deleteTag', row.item.tag.id)"
@@ -146,7 +146,7 @@
 </template>
 
 <script>
-import api from "../../api";
+import api from "@api";
 import Comment from "./Comment.vue";
 
 export default {
@@ -221,8 +221,9 @@ export default {
     async deleteRecording() {
       this.deleteDisabled = true;
       const { success } = await api.recording.del(this.$route.params.id);
+      this.deleteDisabled = false;
       if (success) {
-        this.$emit("nextOrPreviousRecording");
+        this.$emit("deleted-recording");
       }
     },
     updateComment(event) {

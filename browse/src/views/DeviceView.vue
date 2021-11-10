@@ -33,7 +33,16 @@
           size="xs"
           style="color: #666; font-size: 16px"
         />
-        <font-awesome-icon icon="microchip" size="xs" />
+        <font-awesome-icon
+          :icon="
+            device && device.type === 'thermal'
+              ? 'video'
+              : device && device.type === 'audio'
+              ? 'music'
+              : 'microchip'
+          "
+          size="xs"
+        />
         <span>{{ deviceName }}</span>
       </h1>
       <p class="lead">Manage this device.</p>
@@ -49,7 +58,6 @@
         :user="currentUser"
         :software="softwareDetails"
         class="dev-details"
-        @reload-device="fetchDevice"
       />
     </div>
     <div v-else class="container no-tabs">
@@ -67,6 +75,13 @@ import Spinner from "../components/Spinner.vue";
 import api from "../api";
 import { isViewingAsOtherUser } from "@/components/NavBar.vue";
 import { shouldViewAsSuperUser } from "@/utils";
+import { ApiDeviceResponse } from "@typedefs/api/device";
+import { ApiGroupResponse } from "@typedefs/api/group";
+
+interface DeviceViewData {
+  device: ApiDeviceResponse;
+  group: ApiGroupResponse;
+}
 
 export default {
   name: "DeviceView",
@@ -82,14 +97,7 @@ export default {
       );
     },
     userIsMemberOfGroup() {
-      return (
-        this.userIsSuperUserAndViewingAsSuperUser ||
-        (this.group &&
-          this.group.GroupUsers &&
-          this.group.GroupUsers.find(
-            ({ username }) => username === this.currentUser.username
-          ) !== undefined)
-      );
+      return this.group !== null;
     },
     deviceName() {
       return this.$route.params.deviceName;
@@ -98,11 +106,11 @@ export default {
       return this.$route.params.groupName;
     },
   },
-  data() {
+  data(): Record<string, any> & DeviceViewData {
     return {
       loadedDevice: false,
-      device: {},
-      group: {},
+      device: null,
+      group: null,
       softwareDetails: { message: "Retrieving version information..." },
     };
   },
@@ -121,39 +129,32 @@ export default {
   methods: {
     async queryDevice() {
       this.loadedDevice = false;
-      try {
-        // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
-        const [{ result }, _] = await Promise.all([
-          api.groups.getGroup(this.groupName),
-          this.fetchDevice(),
-        ]);
-        if (result.groups.length) {
-          this.group = result.groups[0];
-        }
-        if (this.device) {
-          await this.getSoftwareDetails(this.device.id);
-        }
-      } catch (e) {
-        // TODO - we will move away from global error handling, and show any errors locally in the component
+      const [groupResponse, deviceResponse] = await Promise.all([
+        api.groups.getGroup(this.groupName),
+        api.device.getDevice(this.groupName, this.deviceName, true),
+      ]);
+      if (groupResponse.success) {
+        this.group = groupResponse.result.group;
+      }
+      if (deviceResponse.success) {
+        this.device = deviceResponse.result.device;
+        await this.getSoftwareDetails(this.device.id);
       }
       this.loadedDevice = true;
     },
-    async fetchDevice() {
-      const request = await api.device.getDevice(
-        this.groupName,
-        this.deviceName
-      );
-      this.device = request.result.device;
-    },
     async getSoftwareDetails(deviceId: number) {
-      const results = await api.device.getLatestSoftwareVersion(deviceId);
-      if (results.success && results.result.rows.length > 0) {
-        this.softwareDetails.message = "Success";
-        this.softwareDetails.result = results.result.rows[0];
-      } else {
-        this.softwareDetails = {
-          message: "No version information is available for this device.",
-        };
+      try {
+        const { result } = await api.device.getLatestSoftwareVersion(deviceId);
+        if (result.rows.length > 0) {
+          this.softwareDetails.message = "Success";
+          this.softwareDetails.result = result.rows[0];
+        } else {
+          this.softwareDetails = {
+            message: "No version information is available for this device.",
+          };
+        }
+      } catch (e) {
+        // ...
       }
     },
   },

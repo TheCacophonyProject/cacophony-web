@@ -54,8 +54,7 @@
             params: {
               deviceName: row.item.deviceName,
               groupName,
-              tabName:
-                row.item.type === 'VideoRecorder' ? 'visits' : 'recordings',
+              tabName: row.item.type === 'thermal' ? 'visits' : 'recordings',
             },
           }"
         >
@@ -71,17 +70,17 @@
             small
           />
           <font-awesome-icon
-            v-if="row.item.type === 'VideoRecorder'"
+            v-if="row.item.type === 'thermal'"
             icon="video"
             class="icon"
           />
           <font-awesome-icon
-            v-else-if="row.item.type === 'AudioRecorder'"
+            v-else-if="row.item.type === 'audio'"
             icon="music"
             class="icon"
           />
           <font-awesome-icon
-            v-else-if="row.item.type === 'UnknownDeviceType'"
+            v-else-if="row.item.type === 'unknown'"
             icon="question"
             class="icon"
           />
@@ -90,7 +89,7 @@
       <template v-slot:cell(deviceHealth)="row">
         <span
           :class="[{ healthy: row.item.isHealthy }, 'device-health']"
-          v-if="row.item.type === 'VideoRecorder'"
+          v-if="row.item.type === 'thermal'"
         >
           <font-awesome-icon
             v-if="row.item.isHealthy"
@@ -101,7 +100,7 @@
         </span>
         <b-spinner v-if="!row.item.type" type="border" small />
         <font-awesome-icon
-          v-else-if="row.item.type !== 'VideoRecorder'"
+          v-else-if="row.item.type !== 'thermal'"
           icon="question"
           class="icon"
         />
@@ -206,7 +205,7 @@ export default {
         formatDate(visit.timeEnd),
         visit.classification,
         visit.classificationAi,
-        visit.classFromUserTag,
+        !visit.classFromUserTag,
         getTrapNzSpecies(visit.classification),
         "cacophony",
         `${visit.classFromUserTag ? "User tagged: " : "AI tagged: "} ${
@@ -263,12 +262,11 @@ export default {
     tableItems() {
       return this.devices.map((device) => ({
         ...device,
-        _rowVariant:
-          device.type === "VideoRecorder"
-            ? device.isHealthy
-              ? "okay"
-              : "warn"
-            : "empty",
+        _rowVariant: device.lastConnectionTime
+          ? device.isHealthy
+            ? "okay"
+            : "warn"
+          : "empty",
       }));
     },
   },

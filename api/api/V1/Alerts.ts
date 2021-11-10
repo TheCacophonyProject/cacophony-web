@@ -16,15 +16,41 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
-import models from "../../models";
+import { expectedTypeOf, validateFields } from "../middleware";
+import models from "@models";
 import responseUtil from "./responseUtil";
-import { body, param } from "express-validator/check";
+import { body, param, query } from "express-validator";
 import { Application } from "express";
-import { isAlertCondition } from "../../models/Alert";
+import { arrayOf, jsonSchemaOf } from "../schema-validation";
+import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json";
+import {
+  extractJwtAuthorizedUser,
+  fetchAdminAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredDeviceById,
+  parseJSONField,
+} from "../extract-middleware";
+import {
+  idOf,
+  integerOfWithDefault,
+  validNameOf,
+} from "../validation-middleware";
+import { DeviceId, Seconds } from "@typedefs/api/common";
+import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiPostAlertRequestBody {
+  name: string;
+  deviceId: DeviceId;
+  conditions: ApiAlertCondition[];
+  frequencySeconds?: Seconds; // Defaults to 30 minutes
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGetAlertsResponse {
+  Alerts: ApiAlertResponse[];
+}
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/alerts`;
@@ -39,17 +65,17 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {JSON} alert Alert
+   * @apiInterface {apiBody::ApiPostAlertRequestBody}
    *
-   * @apiParamExample {JSON} alert:
+   * @apiParamExample {JSON} example alert body:
    * {
-   * "name":"alert name",
-   * "conditions":[{
-   *   "tag":"possum",
-   *   "automatic":true
+   * "name": "alert name",
+   * "conditions": [{
+   *   "tag": "possum",
+   *   "automatic": true
    * }],
-   * "deviceId":1234,
-   * "frequencySeconds":120
+   * "deviceId": 1234,
+   * "frequencySeconds": 120
    * }
    * @apiUse V1ResponseSuccess
    * @apiSuccess {number} id Unique id of the newly created alert.
@@ -58,51 +84,39 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(body),
-      auth.userCanAccessDevices,
-    ],
-    body("name").isString(),
-    middleware.parseJSON("conditions", body),
-    body("frequencySeconds").toInt().optional(),
-    middleware.getDeviceById(body),
-    middleware.requestWrapper(async (request, response) => {
-      if (!Array.isArray(request.body.conditions)) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Expecting array of conditions."],
-        });
-        return;
-      }
-      for (const condition of request.body.conditions) {
-        if (!isAlertCondition(condition)) {
-          responseUtil.send(response, {
-            statusCode: 400,
-            messages: ["Bad condition."],
-          });
-          return;
-        }
-      }
-      if (
-        request.body.frequencySeconds == undefined ||
-        request.body.frequencySeconds == null
-      ) {
-        request.body.frequencySeconds = DEFAULT_FREQUENCY;
-      }
+    // For authenticated requests, always extract a valid JWT first,
+    // so that we don't leak data in subsequent error messages for an
+    // unauthenticated request.
+    extractJwtAuthorizedUser,
+    // Validation: Make sure the request payload is well-formed,
+    // without regard for whether the described entities exist.
+    validateFields([
+      body("conditions")
+        .exists()
+        .withMessage(expectedTypeOf("ApiAlertConditions"))
+        .bail()
+        .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
+      validNameOf(body("name")),
+      integerOfWithDefault(body("frequencySeconds"), DEFAULT_FREQUENCY),
+      idOf(body("deviceId")),
+    ]),
+    // Now extract the items we need from the database.
+    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
+    parseJSONField(body("conditions")),
+    async (request, response) => {
       const newAlert = await models.Alert.create({
         name: request.body.name,
-        conditions: request.body.conditions,
+        conditions: response.locals.conditions,
         frequencySeconds: request.body.frequencySeconds,
-        UserId: request.user.id,
-        DeviceId: request.body.device.id,
+        UserId: response.locals.requestUser.id,
+        DeviceId: response.locals.device.id,
       });
       return responseUtil.send(response, {
         id: newAlert.id,
         statusCode: 200,
         messages: ["Created new Alert."],
       });
-    })
+    }
   );
 
   /**
@@ -118,7 +132,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {number} deviceId deviceId of the device to get alerts for
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Alerts[]} Alerts Array of Alerts
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
    *
    * @apiUse V1ResponseError
    *
@@ -146,23 +160,30 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/device/:deviceId`,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(param),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(async (request, response) => {
-      const Alerts = await models.Alert.query(
-        { DeviceId: request.body.device.id },
-        request.user,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+      query("view-mode").optional().equals("user"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async (request, response) => {
+      // FIXME - should require device admin, since it lets users see other users
+      //  email addresses.  Otherwise, should just show alerts for requesting user.
+
+      const alerts = await models.Alert.queryUserDevice(
+        response.locals.device.id,
+        response.locals.requestUser.id,
         null,
-        null
+        response.locals.viewAsSuperUser
       );
+      // FIXME validate schema of returned payload,
+      //  Reformat the response to conform to deviceName style etc.
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        Alerts,
+        Alerts: alerts,
       });
-    })
+    }
   );
 }

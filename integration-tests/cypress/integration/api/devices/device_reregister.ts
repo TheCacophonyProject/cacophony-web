@@ -2,11 +2,13 @@
 
 import {
   HTTP_BadRequest,
+  HTTP_Forbidden,
   HTTP_Unprocessable,
-} from "../../../commands/constants";
-import { getTestName } from "../../../commands/names";
-import { getCreds } from "../../../commands/server";
-import { ApiDevicesDevice } from "../../../commands/types";
+} from "@commands/constants";
+import { getTestName } from "@commands/names";
+import { getCreds } from "@commands/server";
+import ApiDeviceResponse = Cypress.ApiDeviceResponse;
+import { DeviceType } from "@typedefs/api/consts";
 
 describe("Device reregister", () => {
   const KEEP_DEVICE_NAME = false;
@@ -14,26 +16,30 @@ describe("Device reregister", () => {
   const GENERATE_PASSWORD = null;
 
   before(() => {
-    cy.apiCreateUserGroupAndDevice(
+    cy.testCreateUserGroupAndDevice(
       "Augustus",
       "RR_default_group",
       "RR_default_camera"
     );
-    cy.apiCreateGroup("Augustus", "RR_default_group_2", true);
+    cy.apiGroupAdd("Augustus", "RR_default_group_2", true);
   });
 
   it("re-register a device in same group with different name", () => {
-    let expectedDevice1: ApiDevicesDevice;
-    let expectedDevice1b: ApiDevicesDevice;
+    let expectedDevice1: ApiDeviceResponse;
+    let expectedDevice1b: ApiDeviceResponse;
 
     //register camera & store device details
-    cy.apiCreateUserGroup("RR_user1", "RR_group1");
-    cy.apiCreateDevice("RR_cam1", "RR_group1").then(() => {
+    cy.testCreateUserAndGroup("RR_user1", "RR_group1");
+    cy.apiDeviceAdd("RR_cam1", "RR_group1").then(() => {
       expectedDevice1 = {
         id: getCreds("RR_cam1").id,
-        devicename: getTestName("RR_cam1"),
+        saltId: getCreds("RR_cam1").id,
+        deviceName: getTestName("RR_cam1"),
         active: false,
-        Users: [],
+        admin: true,
+        type: DeviceType.Unknown,
+        groupName: getTestName("RR_group1"),
+        groupId: getCreds("RR_group1").id,
       };
     });
 
@@ -41,106 +47,130 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister("RR_cam1", "RR_cam1b", "RR_group1").then(() => {
       expectedDevice1b = {
         id: getCreds("RR_cam1b").id,
-        devicename: getTestName("RR_cam1b"),
+        saltId: getCreds("RR_cam1").id,
+        deviceName: getTestName("RR_cam1b"),
         active: true,
-        Users: [],
+        admin: true,
+        type: DeviceType.Unknown,
+        groupName: getTestName("RR_group1"),
+        groupId: getCreds("RR_group1").id,
       };
       //verify old device is not present and new one is
-      cy.apiCheckDevices("RR_user1", [expectedDevice1b]);
+      cy.apiDevicesCheck("RR_user1", [expectedDevice1b]);
       //verify old device is listed as inactive
-      cy.apiCheckDevices("RR_user1", [expectedDevice1, expectedDevice1b], {
+      cy.apiDevicesCheck("RR_user1", [expectedDevice1, expectedDevice1b], {
         onlyActive: false,
       });
     });
   });
 
   it("re-register a device in new group with same name", () => {
-    let expectedDevice2: ApiDevicesDevice;
-    let expectedDevice2b: ApiDevicesDevice;
+    let expectedDevice2: ApiDeviceResponse;
+    let expectedDevice2b: ApiDeviceResponse;
 
-    //register camera & store device details
-    cy.apiCreateUserGroupAndDevice("RR_user2", "RR_group2", "RR_cam2").then(
+    cy.log("register camera & store device details");
+    cy.testCreateUserGroupAndDevice("RR_user2", "RR_group2", "RR_cam2").then(
       () => {
         expectedDevice2 = {
           id: getCreds("RR_cam2").id,
-          devicename: getTestName("RR_cam2"),
+          saltId: getCreds("RR_cam2").id,
+          deviceName: getTestName("RR_cam2"),
           active: false,
-          Users: [],
+          admin: true,
+          type: DeviceType.Unknown,
+          groupName: getTestName("RR_group2"),
+          groupId: getCreds("RR_group2").id,
         };
       }
     );
 
-    //second group
-    cy.apiCreateUserGroup("RR_user2b", "RR_group2b");
+    cy.log("create second group");
+    cy.testCreateUserAndGroup("RR_user2b", "RR_group2b");
 
-    //re-register camera to 2nd group & store device details
+    cy.log("re-register camera to 2nd group & store device details");
     cy.apiDeviceReregister("RR_cam2", "RR_cam2", "RR_group2b").then(() => {
       expectedDevice2b = {
         id: getCreds("RR_cam2").id,
-        devicename: getTestName("RR_cam2"),
+        saltId: getCreds("RR_cam2").id,
+        deviceName: getTestName("RR_cam2"),
         active: true,
-        Users: [],
+        admin: true,
+        type: DeviceType.Unknown,
+        groupName: getTestName("RR_group2b"),
+        groupId: getCreds("RR_group2b").id,
       };
-      //verify new device listed in 2nd group
-      cy.apiCheckDevices("RR_user2b", [expectedDevice2b]);
-      //verify old device is listed in 1st group as inactive
-      cy.apiCheckDevices("RR_user2", [expectedDevice2], { onlyActive: false });
+      cy.log("verify new device listed in 2nd group");
+      cy.apiDevicesCheck("RR_user2b", [expectedDevice2b]);
+      cy.log("verify old device is listed in 1st group as inactive");
+      cy.apiDevicesCheck("RR_user2", [expectedDevice2], { onlyActive: false });
     });
   });
 
   it("re-register a device in different group with different name", () => {
-    let expectedDevice3: ApiDevicesDevice;
-    let expectedDevice3b: ApiDevicesDevice;
+    let expectedDevice3: ApiDeviceResponse;
+    let expectedDevice3b: ApiDeviceResponse;
 
-    //register camera & store device details
-    cy.apiCreateUserGroupAndDevice("RR_user3", "RR_group3", "RR_cam3").then(
+    cy.log("register camera & store device details");
+    cy.testCreateUserGroupAndDevice("RR_user3", "RR_group3", "RR_cam3").then(
       () => {
         expectedDevice3 = {
           id: getCreds("RR_cam3").id,
-          devicename: getTestName("RR_cam3"),
+          saltId: getCreds("RR_cam3").id,
+          deviceName: getTestName("RR_cam3"),
           active: false,
-          Users: [],
+          admin: true,
+          type: DeviceType.Unknown,
+          groupName: getTestName("RR_group3"),
+          groupId: getCreds("RR_group3").id,
         };
       }
     );
 
-    //second group
-    cy.apiCreateUserGroup("RR_user3b", "RR_group3b");
+    cy.log("create second group");
+    cy.testCreateUserAndGroup("RR_user3b", "RR_group3b");
 
-    //re-register camera to 3nd group & store device details
+    cy.log("re-register camera to 2nd group & store device details");
     cy.apiDeviceReregister("RR_cam3", "RR_cam3b", "RR_group3b").then(() => {
       expectedDevice3b = {
         id: getCreds("RR_cam3b").id,
-        devicename: getTestName("RR_cam3b"),
+        saltId: getCreds("RR_cam3b").id,
+        deviceName: getTestName("RR_cam3b"),
         active: true,
-        Users: [],
+        admin: true,
+        type: DeviceType.Unknown,
+        groupName: getTestName("RR_group3b"),
+        groupId: getCreds("RR_group3b").id,
       };
-      //verify new device listed in 3nd group
-      cy.apiCheckDevices("RR_user3b", [expectedDevice3b]);
-      //verify old device is listed in 1st group as inactive
-      cy.apiCheckDevices("RR_user3", [expectedDevice3], { onlyActive: false });
+      cy.log("verify new device listed in 2nd group");
+      cy.apiDevicesCheck("RR_user3b", [expectedDevice3b]);
+      cy.log("verify old device is listed in 1st group as inactive");
+      cy.apiDevicesCheck("RR_user3", [expectedDevice3], { onlyActive: false });
     });
   });
 
   it("But cannot re-register a device in same group with same name as another device", () => {
-    let expectedDevice5a: ApiDevicesDevice;
+    let expectedDevice5a: ApiDeviceResponse;
 
-    //register camera & store device details
-    cy.apiCreateUserGroupAndDevice("RR_user5", "RR_group5", "RR_cam5a").then(
+    cy.log("register camera & store device details");
+    cy.testCreateUserGroupAndDevice("RR_user5", "RR_group5", "RR_cam5a").then(
       () => {
         expectedDevice5a = {
           id: getCreds("RR_cam5a").id,
-          devicename: getTestName("RR_cam5a"),
+          saltId: getCreds("RR_cam5a").id,
+          deviceName: getTestName("RR_cam5a"),
           active: true,
-          Users: [],
+          admin: true,
+          type: DeviceType.Unknown,
+          groupName: getTestName("RR_group5"),
+          groupId: getCreds("RR_group5").id,
         };
       }
     );
 
-    //another pre-existing camera
-    cy.apiCreateDevice("RR_cam5", "RR_group5");
+    cy.log("another pre-existing camera");
+    cy.apiDeviceAdd("RR_cam5", "RR_group5");
 
-    //attempt to rename camera with duplicate name rejected
+    cy.log("attempt to rename camera with duplicate name rejected");
     //TODO: This should really return 422-Unprocessable.  It is not malformed - just  breaks our rules
     cy.apiDeviceReregister(
       "RR_cam5a",
@@ -150,8 +180,8 @@ describe("Device reregister", () => {
       GENERATE_UNIQUE_NAME,
       HTTP_BadRequest
     ).then(() => {
-      //check old device unaltered
-      cy.apiCheckDevicesContains("RR_user5", [expectedDevice5a]);
+      cy.log("check old device unaltered");
+      cy.apiDevicesCheckContains("RR_user5", [expectedDevice5a]);
     });
   });
 
@@ -175,7 +205,7 @@ describe("Device reregister", () => {
   });
 
   it("Should be able to create a device name that has -, _, and spaces in it", () => {
-    cy.apiCreateUserGroupAndDevice("RR_user6", "RR_group6", "RR_cam6");
+    cy.testCreateUserGroupAndDevice("RR_user6", "RR_group6", "RR_cam6");
     cy.apiDeviceReregister("RR_cam6", "funny device1", "RR_default_group");
     cy.apiDeviceReregister(
       "funny device1",
@@ -217,45 +247,57 @@ describe("Device reregister", () => {
   });
 
   it("Reregistered device can keep default salt id", () => {
-    cy.apiCreateUserGroup("RR_user7", "RR_group7");
-    cy.apiCreateDevice("RR_cam7", "RR_group7").then(() => {
-      const expectedDevice1 = {
-        devicename: getTestName("RR_cam7"),
-        groupname: getTestName("RR_group7"),
+    cy.testCreateUserAndGroup("RR_user7", "RR_group7");
+    cy.apiDeviceAdd("RR_cam7", "RR_group7").then(() => {
+      const expectedDevice1: ApiDeviceResponse = {
+        id: getCreds("RR_cam7").id,
+        deviceName: getTestName("RR_cam7"),
+        groupName: getTestName("RR_group7"),
         saltId: getCreds("RR_cam7").id,
+        groupId: getCreds("RR_group7").id,
+        admin: true,
+        active: true,
+        type: DeviceType.Unknown,
       };
-      cy.apiCheckDevicesQuery("RR_user7", [expectedDevice1], null, [
-        expectedDevice1,
-      ]);
+      cy.apiDevicesCheck("RR_user7", [expectedDevice1]);
 
       cy.apiDeviceReregister("RR_cam7", "RR_cam7b", "RR_group7");
 
       //Test with Salt Id = device id by default
-      const expectedDevice2 = {
-        devicename: getTestName("RR_cam7b"),
-        groupname: getTestName("RR_group7"),
+      const expectedDevice2: ApiDeviceResponse = {
+        deviceName: getTestName("RR_cam7b"),
+        groupName: getTestName("RR_group7"),
+        groupId: getCreds("RR_group7").id,
         saltId: getCreds("RR_cam7").id,
+        id: getCreds("RR_cam7").id,
+        admin: true,
+        active: true,
+        type: DeviceType.Unknown,
       };
-      cy.apiCheckDevicesQuery("RR_user7", [expectedDevice2], null, [
-        expectedDevice2,
-      ]);
+      cy.apiDevicesCheck("RR_user7", [expectedDevice2]);
     });
   });
 
   it("Reregistered device can keep specified salt id", () => {
-    cy.apiCreateUserGroup("RR_user8", "RR_group8");
-    cy.apiCreateDevice("specify salt", "RR_group8", 9997);
-    cy.apiDeviceReregister("specify salt", "specify salt2", "RR_group8");
-
-    //Test with Salt Id = device id by default
-    const expectedDevice2 = {
-      devicename: getTestName("specify salt2"),
-      groupname: getTestName("RR_group8"),
-      saltId: 9997,
-    };
-    cy.apiCheckDevicesQuery("RR_user8", [expectedDevice2], null, [
-      expectedDevice2,
-    ]);
+    cy.testCreateUserAndGroup("RR_user8", "RR_group8").then(() => {
+      cy.apiDeviceAdd("specify salt", "RR_group8", 9997);
+      cy.apiDeviceReregister("specify salt", "specify salt2", "RR_group8").then(
+        () => {
+          cy.log("Test with Salt Id = device id by default");
+          const expectedDevice2: ApiDeviceResponse = {
+            deviceName: getTestName("specify salt2"),
+            id: getCreds("specify salt2").id, // Unchecked and unknown
+            active: true,
+            admin: true,
+            saltId: 9997,
+            groupName: getTestName("RR_group8"),
+            groupId: getCreds("RR_group8").id,
+            type: DeviceType.Unknown,
+          };
+          cy.apiDevicesCheck("RR_user8", [expectedDevice2]);
+        }
+      );
+    });
   });
 
   it("When reregistering a device cannot specify an invalid password", () => {
@@ -263,8 +305,8 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "RR_default_camera",
       "valid_name",
-      "",
       "RR_default_group",
+      "",
       GENERATE_UNIQUE_NAME,
       HTTP_Unprocessable
     );
@@ -272,8 +314,8 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "RR_default_camera",
       "valid_name2",
-      " ",
       "RR_default_group",
+      " ",
       GENERATE_UNIQUE_NAME,
       HTTP_Unprocessable
     );
@@ -281,8 +323,8 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "RR_default_camera",
       "valid_name3",
-      "1234567",
       "RR_default_group",
+      "1234567",
       GENERATE_UNIQUE_NAME,
       HTTP_Unprocessable
     );
@@ -292,10 +334,10 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "RR_default_camera",
       "valid_name",
-      GENERATE_PASSWORD,
       "invalid-group",
+      GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HTTP_Unprocessable
+      HTTP_Forbidden
     );
   });
 

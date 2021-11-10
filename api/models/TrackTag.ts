@@ -16,12 +16,19 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import { TrackId, UserId } from "@typedefs/api/common";
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { UserId as UserIdAlias } from "./User";
-import { TrackId } from "./Track";
+import { User } from "./User";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
+
+export interface TrackTagData {
+  name: string;
+  all_class_confidences: null | Record<string, number>;
+  classify_time: number;
+  message?: string;
+}
 
 export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   isAdditionalTag: () => boolean;
@@ -29,10 +36,13 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   TrackId: TrackId;
   what: string;
   automatic: boolean;
-  UserId: UserIdAlias;
+  UserId: UserId;
+  User: User;
   confidence: number;
-  data: any;
+  data: string | TrackTagData;
   archivedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
 export default function (

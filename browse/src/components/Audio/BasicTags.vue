@@ -9,18 +9,21 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 /* eslint-disable no-console */
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+
 export default {
   name: "BasicTag",
   methods: {
     basicTag(tagValue) {
-      const tag = {};
-      tag.what = tagValue;
-      tag.confidence = 0.5;
-      tag.startTime = 0.5;
-      tag.duration = 0.5;
-      tag.automatic = false;
+      const tag: ApiRecordingTagRequest = {
+        what: tagValue,
+        confidence: 0.5,
+        startTime: 0.5,
+        duration: 0.5,
+        automatic: false,
+      };
       this.$emit("addAudioTag", tag);
     },
   },
