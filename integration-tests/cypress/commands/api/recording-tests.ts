@@ -621,7 +621,6 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
             trackId: -99,
             data: { name: "unknown" }, // FIXME - get model name from track.predictions[0].model_id
             confidence: track.predictions[0].confidence,
-            //TODO: issue ## id not present in returned data.  Reinstate when fixed
             id: 0,
           },
         ];

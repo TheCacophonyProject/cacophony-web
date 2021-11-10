@@ -44,7 +44,7 @@ describe("Recordings query using where", () => {
             trackId: 1,
             confidence: 0.9,
             data: { name: "master" },
-            //id: -1,
+            id: -1,
           },
         ],
         start: 2,
@@ -77,8 +77,7 @@ describe("Recordings query using where", () => {
             trackId: 1,
             confidence: 0.9,
             data: { name: "master" },
-            //TODO: ISSUE ##: Id missing in returned data.  Reinstate when fixed
-            //id: -1,
+            id: -1,
           },
         ],
         start: 2,
@@ -321,15 +320,11 @@ describe("Recordings query using where", () => {
                   confidence: 0.7,
                   data: "unknown",
                   trackId: -99,
-                  //TODO: issue ##: id missing, Uncomment when fixed
-                  //id: -1,
+                  id: -1,
                   userName: getTestName("rqGroupAdmin"),
                   userId: getCreds("rqGroupAdmin").id,
                 },
               ];
-              //TODO issue ## - id missing in retuened data.  Remove these deletes when fixed
-              delete expectedRecording1.tracks[0].tags[0].id;
-              delete expectedRecording2.tracks[0].tags[0].id;
               cy.apiRecordingsQueryCheck(
                 "rqGroupAdmin",
                 { where: { id: getCreds("rqRecording1").id } },
@@ -378,8 +373,6 @@ describe("Recordings query using where", () => {
           null,
           tempRecording
         );
-        ///TODO issue. Id missing
-        delete expectedRecording[count].tracks[0].tags[0].id;
       });
     }
   });

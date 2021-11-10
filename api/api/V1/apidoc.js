@@ -1,10 +1,4 @@
 /**
- * @apiDefine V1RecordingReprocessResponse
- * @apiSuccess {Number[]} reprocessed - list of recording ids marked for reprocessing
- * @apiSuccess {Number[]} fail - list of recording ids that failed to be marked for reprocessing
- * @apiSuccess {String[]} messages Messages about the request.
- */
-/**
  * @apiDefine V1ResponseSuccess
  * @apiSuccess {Boolean} success `true` - Request was successful.
  * @apiSuccess {String[]} messages Messages about the request.
@@ -24,14 +18,41 @@
  */
 /**
  * @apiDefine BaseQueryParams
- * @apiParam {JSON} [where] Selection criteria as a map of keys and requried value, or a list of possible values.
+ * @apiQuery {JSON} [where] Selection criteria as a map of keys and required value, or a list of possible values.
  * * For example {"device": 1}  or {"name": ["bob", "charles"]}.
  * * All matches must be exact.
  * * Records must match all criteria.
- * * Use a '.' to join keys embeded in other keys.  For example, use {"details.name": "sample"}
- * to match { "details": {"name": "sample"}}.  Note: Only some embeded keys will work.
- * @apiParam {Number} [offset] Zero-based page number. Use '0' to get the first page.  Each page has 'limit' number of records.
- * @apiParam {Number} [limit] Max number of records to be returned.
+ * * Use a '.' to join keys embedded in other keys.  For example, use {"details.name": "sample"}
+ * to match { "details": {"name": "sample"}}.  Note: Only some embedded keys will work.
+ * @apiQuery {Number} [offset] Zero-based page number. Use '0' to get the first page.  Each page has 'limit' number of records.
+ * @apiQuery {Number} [limit] Max number of records to be returned.
+ */
+/**
+ * @apiDefine DevicesList
+ * @apiSuccessExample {JSON} devices:
+ * [{
+ * "deviceName": "device name",
+ *  "groupName": "group name",
+ *  "groupId": 1,
+ *  "deviceId: 2,
+ *  "saltId": 2,
+ *  "active": true,
+ *  "admin": false,
+ *  "type": "thermal",
+ *  "public": "false",
+ *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
+ *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+ *  "location": {
+ *   "lat": -43.5338812,
+ *    "lng": 172.6451473
+ *  },
+ *  "users": [{
+ *    "userName": "bob",
+ *    "userId": 10,
+ *    "admin": false,
+ *    "relation": "group"
+ *  }]
+ * }]
  */
 /**
  * @apiDefine RecordingOrder
@@ -40,8 +61,8 @@
  */
 /**
  * @apiDefine MoreQueryParams
- * @apiParam {JSON} [tags] Only return recordings tagged with one or more of the listed tags (JSON array).
- * @apiParam {String} [tagMode] Only return recordings with specific types of tags. Valid values:
+ * @apiQuery {JSON} [tags] Only return recordings tagged with one or more of the listed tags (JSON array).
+ * @apiQuery {String} [tagMode] Only return recordings with specific types of tags. Valid values:
  * <ul>
  * <li>any: match recordings with any (or no) tag
  * <li>untagged: match only recordings with no tags
@@ -67,21 +88,6 @@
  * and a JSON Web Token (JWT) which can be used to retrieve the recorded
  * content. The web token should be used with the
  * [/api/v1/signedUrl API](#api-SignedUrl-GetFile) to retrieve the file.
- */
-/**
- * @apiDefine FilterOptions
- * @apiParam {JSON} [filterOptions] options for filtering the recordings data.
- * <ul>
- * <li>latLongPrec: Maximum precision of latitude longitude coordinates in meters. Minimum 100m
- * </ul>
- */
-/**
- * @apiDefine EventParams
- * @apiParam {JSON} [description] Description of the event. Either eventDetailId or description are required.
- * @apiParam {String} [description.type] Name of the type of event (required if description is included).
- * @apiParam {JSON} [description.details] Metadata of the event.
- * @apiParam {JSON} [eventDetailId] ID of existing event details entry if known. Either eventDetailId or description are required.
- * @apiParam {Array} dateTimes Array of event times in ISO standard format, eg ["2017-11-13T00:47:51.160Z"]
  */
 /**
  * @apiDefine ApiEvent
