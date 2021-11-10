@@ -403,10 +403,14 @@ export function TestCreateRecordingData(
 
 export function TestCreateExpectedProcessingData(
   template: ApiRecordingProcessingJob,
-  recordingName: string
+  recordingName: string,
+  recording: ApiRecordingSet
 ): ApiRecordingProcessingJob {
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
+  expected.duration = recording.duration;
+  expected.location = { coordinates: recording.location, type: 'Point' };
+  expected.recordingDateTime = recording.recordingDateTime;
   return expected;
 }
 
@@ -428,9 +432,11 @@ export function TestCreateExpectedNeedsTagData(
   inputRecording.metadata.tracks.forEach((track: any) => {
     expected.tracks.push({
       trackId: NOT_NULL,
+      id: NOT_NULL,
       start: track.start_s,
       end: track.end_s,
       needsTagging: true,
+      positions: []
     });
   });
 
@@ -547,12 +553,12 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   expected.deviceName = device.deviceName;
   expected.groupId = group.id;
   expected.groupName = group.groupName;
-  // expected.type = inputRecording.type;
-  // if (inputRecording.type == "thermalRaw") {
-  //   expected.rawMimeType = "application/x-cptv";
-  // } else {
-  //   expected.rawMimeType = "audio/mpeg";
-  // }
+  expected.type = inputRecording.type;
+  if (inputRecording.type == "thermalRaw") {
+    expected.rawMimeType = "application/x-cptv";
+  } else {
+    expected.rawMimeType = "audio/mpeg";
+  }
   if (inputRecording.duration !== undefined) {
     expected.duration = inputRecording.duration;
   }
@@ -588,11 +594,10 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
       JSON.stringify(inputRecording.additionalMetadata)
     );
   }
-  //TODO: filehash not in returned values - issue 87
-  //expected.fileHash=inputRecording.fileHash;
-  //if (inputRecording.location !== undefined) {
-  //  expected.location = { type: "Point", coordinates: inputRecording.location };
-  //}
+  if (inputRecording.location !== undefined) {
+    //expected.location = { type: "Point", coordinates: inputRecording.location };
+    expected.location = {lat: inputRecording.location[0], lng: inputRecording.location[1]};
+  }
   //expected.Station = station;
   expected.tags = [] as ApiRecordingTagResponse[];
   expected.tracks = [] as ApiTrackResponse[];
@@ -603,6 +608,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
         tags: [],
         start: track.start_s,
         end: track.end_s,
+        positions: []
       };
       if (
         track.predictions.length &&
@@ -615,6 +621,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
             trackId: -99,
             data: { name: "unknown" }, // FIXME - get model name from track.predictions[0].model_id
             confidence: track.predictions[0].confidence,
+            //TODO: issue ## id not present in returned data.  Reinstate when fixed
             id: 0,
           },
         ];

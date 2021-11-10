@@ -295,12 +295,12 @@ export function checkTreeStructuresAreEqualExcept(
         `Expect result includes parameter ${prettyTreeSoFar} :::`
       ).equal(typeof containedStruct);
 
-      // expect(
-      //   Object.keys(containingStruct).length,
-      //   `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
-      //     containingStruct
-      //   ).toString()}]`
-      // ).to.equal(Object.keys(containedStruct).length);
+       expect(
+         Object.keys(containingStruct).length,
+         `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
+           containingStruct
+         ).toString()}]`
+       ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order
       const containedKeys: string[] = Object.keys(containedStruct).sort();

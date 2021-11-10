@@ -8,6 +8,7 @@ import "../commands/api/device";
 import "../commands/api/alerts";
 import "../commands/api/events";
 import "../commands/api/recording";
+import "../commands/api/recording-tag";
 import "../commands/api/recording-tests";
 import "../commands/api/monitoring";
 import "../commands/api/stations";

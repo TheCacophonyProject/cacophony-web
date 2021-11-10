@@ -85,17 +85,29 @@ describe("Recordings - reprocessing tests", () => {
     id: 475,
     type: RecordingType.ThermalRaw,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawMimeType: "application/x-cptv",
+    fileKey: null,
+    fileMimeType: null,
+    processingState: "reprocess",
+    processingMeta: null,
+    GroupId: NOT_NULL,
+    DeviceId: NOT_NULL,
+    StationId: null,
+    recordingDateTime: "2021-01-01T01:01:01.018Z",
+    duration: 16.6666666666667,
+    location: {},
     hasAlert: false,
     processingStartTime: NOT_NULL,
-    updatedAt: NOT_NULL,
-    //    processingState: "analyse.test", // FIXME
-    //    processingMeta: null, // FIXME - check processing meta
+    processingEndTime: null,
+    processing: true,
+    updatedAt: NOT_NULL
+
   };
 
   const templateExpectedAudioRecording: ApiAudioRecordingResponse = {
-    // TODO: Issue 87.  Filehash missing on returned values
-    // fileHash: null,
     id: 204771,
+    type: RecordingType.Audio,
     rawMimeType: "audio/mp4",
     //rawMimeType: "video/mp4",
     processingState: RecordingProcessingState.Finished,
@@ -107,7 +119,6 @@ describe("Recordings - reprocessing tests", () => {
     batteryLevel: 87,
     batteryCharging: "DISCHARGING",
     airplaneModeOn: false,
-    type: RecordingType.Audio,
     additionalMetadata: {
       normal: "0",
       "SIM IMEI": "990006964660319",
@@ -144,11 +155,23 @@ describe("Recordings - reprocessing tests", () => {
     id: 475,
     type: RecordingType.Audio,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawMimeType: "video/mp4",
+    fileKey: null,
+    fileMimeType: null,
+    processingState: "reprocess",
+    processingMeta: null,
+    GroupId: NOT_NULL,
+    DeviceId: NOT_NULL,
+    StationId: null,
+    recordingDateTime: "2021-01-01T01:01:01.018Z",
+    duration: 16.6666666666667,
+    location: {},
     hasAlert: false,
     processingStartTime: NOT_NULL,
-    updatedAt: NOT_NULL,
-    //    processingState: "analyse.test", // FIXME
-    //    processingMeta: null, // FIXME - check processing meta
+    processingEndTime: null,
+    processing: true,
+    updatedAt: NOT_NULL
   };
 
   const templateAudioRecording: ApiRecordingSet = {
@@ -311,7 +334,8 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("pick up for processing");
         expectedProcessing1 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rrpRecording1"
+          "rrpRecording1",
+          recording1
         );
         expectedProcessing1.processingStartTime = NOT_NULL;
         expectedProcessing1.updatedAt = NOT_NULL;
@@ -667,7 +691,8 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("pick up for processing");
         expectedProcessing1 = TestCreateExpectedProcessingData(
           templateExpectedAudioProcessing,
-          "rrpRecording11"
+          "rrpRecording11",
+          recording1
         );
         expectedProcessing1.processingStartTime = NOT_NULL;
         expectedProcessing1.updatedAt = NOT_NULL;
@@ -748,7 +773,8 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("Send for processing");
         expectedProcessing18 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rrpRecording18"
+          "rrpRecording18",
+          recording18
         );
         expectedProcessing18.processingStartTime = NOT_NULL;
         expectedProcessing18.updatedAt = NOT_NULL;
@@ -780,6 +806,7 @@ describe("Recordings - reprocessing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
+                positions: []
               },
             ];
             cy.apiRecordingCheck(
@@ -804,6 +831,7 @@ describe("Recordings - reprocessing tests", () => {
                   start: 1,
                   end: 4,
                   id: 1,
+                  positions: []
                 },
               ];
 
