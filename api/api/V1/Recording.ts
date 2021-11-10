@@ -1367,6 +1367,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} id Recording id to add tag to
    * @apiInterface {apiBody::ApiRecordingTagRequest} tag
    *
+   * @apiSuccess {Integer} tagId id of the newly created tag
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
