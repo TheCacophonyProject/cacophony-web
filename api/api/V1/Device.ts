@@ -44,9 +44,13 @@ import {
   validNameOf,
   validPasswordOf,
   deprecatedField,
+  integerOfWithDefault,
 } from "../validation-middleware";
 import { Device } from "models/Device";
-import { ApiDeviceResponse } from "@typedefs/api/device";
+import {
+  ApiDeviceResponse,
+  ApiDeviceUserRelationshipResponse,
+} from "@typedefs/api/device";
 import logging from "@log";
 
 export const mapDeviceResponse = (
@@ -112,6 +116,21 @@ interface ApiRegisterDeviceRequestBody {
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
   saltId?: number; // Salt ID of device. Will be set as device id if not given.
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDevicesResponseSuccess {
+  devices: ApiDeviceResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceResponseSuccess {
+  device: ApiDeviceResponse;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceUsersRelationshipResponseSuccess {
+  users: ApiDeviceUserRelationshipResponse[];
 }
 
 export default function (app: Application, baseUrl: string) {
@@ -193,38 +212,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiDeviceResponse[]} devices Devices details
-   * @apiSuccessExample {JSON} devices:
-   * // FIXME - update example
-   * {
-   * "count":1,
-   * "rows":
-   *  [{
-   *   "devicename":"device name",
-   *   "id":3836,
-   *   "active":true,
-   *   "Users":Array[]
-   *   "Group":{}
-   *  }]
-   * }
-   * @apiSuccessExample {JSON} Users:
-   * [{
-   *  "id":1564,
-   *  "username":"user name",
-   *  "DeviceUsers":
-   *   {
-   *    "admin":false,
-   *    "createdAt":"2021-07-20T01:00:44.467Z",
-   *    "updatedAt":"2021-07-20T01:00:44.467Z",
-   *    "DeviceId":3836,
-   *    "UserId":1564
-   *   }
-   * }]
-   * @apiSuccessExample {JSON} Group:
-   * {
-   *  "id":1016,
-   *  "groupname":"group name"
-   * }
+   * @apiInterface {apiSuccess::ApiDevicesResponseSuccess} devices Devices details
+   * @apiUse DevicesList
    * @apiUse V1ResponseError
    */
   app.get(
@@ -266,6 +255,47 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  /**
+   * @api {get} /api/v1/devices/:deviceId Get a single device by its unique id
+   * @apiName GetDeviceById
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiQuery {Boolean} [only-active=true] Only return active devices
+   *
+   * @apiDescription Returns details of the device if the user can access it either through
+   * group membership or direct assignment to the device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {apiSuccess::ApiDeviceResponseSuccess} device Device details
+   *
+   * @apiSuccessExample {JSON} device:
+   * {
+   * "deviceName": "device name",
+   *  "groupName": "group name",
+   *  "groupId": 1,
+   *  "deviceId: 2,
+   *  "saltId": 2,
+   *  "active": true,
+   *  "admin": false,
+   *  "type": "thermal",
+   *  "public": "false",
+   *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
+   *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "location": {
+   *   "lat": -43.5338812,
+   *    "lng": 172.6451473
+   *  },
+   *  "users": [{
+   *    "userName": "bob",
+   *    "userId": 10,
+   *    "admin": false,
+   *    "relation": "group"
+   *  }]
+   * }
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/device/:id`,
     extractJwtAuthorizedUser,
@@ -297,6 +327,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {string} deviceName Name of the device
    * @apiParam {stringOrInt} groupIdOrName Identifier of group device belongs to
+   * @apiQuery {Boolean} [only-active=true] Only return active devices
    *
    * @apiDescription Returns details of the device if the user can access it either through
    * group membership or direct assignment to the device.
@@ -304,22 +335,32 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} device Device details
+   * @apiSuccess {apiSuccess::ApiDeviceResponseSuccess} device Device details
    *
    * @apiSuccessExample {JSON} device:
    * {
-   * "id":2008,
-   * "deviceName":"device name",
-   * "groupName":"group name",
-   * "userIsAdmin":true,
-   * "users":Array[]
+   * "deviceName": "device name",
+   *  "groupName": "group name",
+   *  "groupId": 1,
+   *  "deviceId: 2,
+   *  "saltId": 2,
+   *  "active": true,
+   *  "admin": false,
+   *  "type": "thermal",
+   *  "public": "false",
+   *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
+   *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "location": {
+   *   "lat": -43.5338812,
+   *    "lng": 172.6451473
+   *  },
+   *  "users": [{
+   *    "userName": "bob",
+   *    "userId": 10,
+   *    "admin": false,
+   *    "relation": "group"
+   *  }]
    * }
-   * @apiSuccessExample {JSON} users:
-   * [{
-   * "userName"=>"user name",
-   * "admin"=>false,
-   * "id"=>123
-   * }]
    * @apiUse V1ResponseError
    */
   app.get(
@@ -356,17 +397,18 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} deviceId ID of the device.
+   * @apiQuery {Integer} deviceId ID of the device.
+   * @apiQuery {Boolean} [only-active=true] Only return active devices
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} rows Array of users who have access to the
+   * @apiInterface {apiSuccess::ApiDeviceUsersRelationshipResponseSuccess} users Array of users who have access to the
    * device.  `relation` indicates whether the user is a `group` or `device` member.
-   * @apiSuccessExample {JSON} rows:
+   * @apiSuccessExample {JSON} users:
    * [{
-   * "id":1564,
-   * "username":"user name",
-   * "relation":"device",
-   * "admin":true
+   *  "id": 1564,
+   *  "userName": "user name",
+   *  "relation": "device",
+   *  "admin": true
    * }]
    *
    * @apiUse V1ResponseError
@@ -412,9 +454,10 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} deviceId ID of the device.
-   * @apiParam {String} username Name of the user to add to the device.
-   * @apiParam {Boolean} admin If true, the user should have administrator access to the device..
+   * @apiBody {Number} deviceId ID of the device.
+   * @apiBody {String} userName Name of the user to add to the device.
+   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -468,8 +511,10 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} userName name of the user to delete from the device.
-   * @apiParam {Number} deviceId ID of the device.
+   * @apiBody {String} [userName] name of the user to delete from the device.
+   * @apiBody {Integer} [userId] id of the user to delete from the device.
+   * @apiBody {Integer} deviceId ID of the device.
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    *
    * @apiUse V1ResponseSuccess
 
@@ -525,9 +570,9 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1DeviceAuthorizationHeader
    *
-   * @apiParam {String} newName new name of the device.
-   * @apiParam {String} newGroup name of the group you want to move the device to.
-   * @apiParam {String} newPassword password for the device
+   * @apiBody {String} newName new name of the device.
+   * @apiBody {String} newGroup name of the group you want to move the device to.
+   * @apiBody {String} newPassword password for the device
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {int} id id of device re-registered
@@ -580,8 +625,9 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer} deviceId ID of the device.
-   * @apiParam {String} [from] ISO8601 date string
-   * @apiParam {String} [window-size] length of rolling window in hours.  Default is 2160 (90 days)
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [window-size=2160] length of rolling window in hours.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    * @apiSuccess {Float} cacophonyIndex A number representing the average index over the period `from` minus `window-size`
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -592,7 +638,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
-      query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -622,8 +668,9 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer} deviceId ID of the device.
-   * @apiParam {String} [from] ISO8601 date string
-   * @apiParam {Integer} [window-size] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    * @apiSuccess {Object} cacophonyIndex in the format `[{hour: number, index: number}, ...]`
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -634,7 +681,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
-      query("window-size").isInt().toInt().default(2160), // Default to a three month rolling window
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),

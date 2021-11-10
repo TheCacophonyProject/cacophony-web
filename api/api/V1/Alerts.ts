@@ -25,12 +25,17 @@ import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json";
 import {
   extractJwtAuthorizedUser,
+  fetchAdminAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceById,
   parseJSONField,
 } from "../extract-middleware";
-import { idOf, validNameOf } from "../validation-middleware";
+import {
+  idOf,
+  integerOfWithDefault,
+  validNameOf,
+} from "../validation-middleware";
 import { DeviceId, Seconds } from "@typedefs/api/common";
-import { ApiAlertCondition } from "@typedefs/api/alerts";
+import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
@@ -40,6 +45,11 @@ interface ApiPostAlertRequestBody {
   deviceId: DeviceId;
   conditions: ApiAlertCondition[];
   frequencySeconds?: Seconds; // Defaults to 30 minutes
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGetAlertsResponse {
+  Alerts: ApiAlertResponse[];
 }
 
 export default function (app: Application, baseUrl: string) {
@@ -87,12 +97,11 @@ export default function (app: Application, baseUrl: string) {
         .bail()
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
       validNameOf(body("name")),
-      // FIXME - integer with default?
-      body("frequencySeconds").default(DEFAULT_FREQUENCY).isInt().toInt(),
+      integerOfWithDefault(body("frequencySeconds"), DEFAULT_FREQUENCY),
       idOf(body("deviceId")),
     ]),
     // Now extract the items we need from the database.
-    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
     parseJSONField(body("conditions")),
     async (request, response) => {
       const newAlert = await models.Alert.create({
@@ -123,7 +132,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {number} deviceId deviceId of the device to get alerts for
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Alerts[]} Alerts Array of Alerts
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
    *
    * @apiUse V1ResponseError
    *
@@ -159,13 +168,17 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request, response) => {
+      // FIXME - should require device admin, since it lets users see other users
+      //  email addresses.  Otherwise, should just show alerts for requesting user.
+
       const alerts = await models.Alert.queryUserDevice(
         response.locals.device.id,
         response.locals.requestUser.id,
         null,
         response.locals.viewAsSuperUser
       );
-      // FIXME validate schema of returned payload.
+      // FIXME validate schema of returned payload,
+      //  Reformat the response to conform to deviceName style etc.
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],

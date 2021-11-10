@@ -34,12 +34,19 @@ import {
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
 
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
   password: string; // Password for the user account
   userName?: string; // Username identifying a valid user account
   nameOrEmail?: string; // Username or email of a valid user account.
   email?: string; // Email identifying a valid user account
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUserResponseData {
+  userData: ApiLoggedInUserResponse;
 }
 
 export default function (app: Application) {
@@ -55,7 +62,7 @@ export default function (app: Application) {
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiSuccess {String} userData ApiLoggedInUserResponse
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    */
   app.post(
     "/authenticate_user",
@@ -142,6 +149,7 @@ export default function (app: Application) {
    * @apiBody {String} name Username identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    */
   app.post(
     "/admin_authenticate_as_other_user",
@@ -200,6 +208,7 @@ export default function (app: Application) {
     "/token",
     [body("ttl").optional(), body("access").optional(), auth.authenticateUser],
     middleware.requestWrapper(async (request, response) => {
+      // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
       const token = auth.createEntityJWT(
         request.user,

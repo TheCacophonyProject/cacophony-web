@@ -37,7 +37,24 @@ export const deprecatedField = (field: ValidationChain): ValidationChain => {
   return field;
 };
 
-export const integerOf = idOf;
+export const integerOfWithDefault = (
+  field: ValidationChain,
+  defaultVal: number
+): ValidationChain => integerOf(field, defaultVal);
+
+export const integerOf = (
+  field: ValidationChain,
+  defaultVal?: number
+): ValidationChain => {
+  if (defaultVal) {
+    return field
+      .default(defaultVal)
+      .isInt()
+      .toInt()
+      .withMessage(expectedTypeOf("integer"));
+  }
+  return field.exists().isInt().toInt().withMessage(expectedTypeOf("integer"));
+};
 
 export const nameOf = (field: ValidationChain): ValidationChain =>
   field.isString().withMessage(expectedTypeOf("string"));

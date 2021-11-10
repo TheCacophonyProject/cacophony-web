@@ -3,9 +3,6 @@
 
 FROM cacophonyproject/server-base:4
 
-# NOTE: Using locally for arm64
-#FROM hardiesoft/server-base:latest
-
 WORKDIR /app
 
 # API

@@ -2,8 +2,8 @@ import { EndUserAgreementVersion, UserId } from "./common";
 import { UserGlobalPermission } from "./consts";
 
 export interface ApiUserResponse {
-  userName: string;
-  id: UserId;
+  userName: string; // Username of user
+  id: UserId; // Unique id of user
 }
 
 export interface ApiLoggedInUserResponse extends ApiUserResponse {

@@ -206,8 +206,10 @@ function checkExpectedAlerts(
   ).to.eq(expectedAlert.Device.id);
   expect(
     thealert.Device.devicename,
-    `device.devicename should have been ${expectedAlert.Device.devicename}`
-  ).to.eq(expectedAlert.Device.devicename);
+    `device.devicename should have been ${
+      (expectedAlert.Device as any).devicename
+    }`
+  ).to.eq((expectedAlert.Device as any).devicename);
   return response;
 }
 

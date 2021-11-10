@@ -13,6 +13,11 @@ export interface ApiCreateStationData {
   lng: number;
 }
 
+export interface ApiCreateStationResponse {
+  stationIdsAddedOrUpdated: StationId[]; // Station ids that were created or changed by the request
+  updatedRecordingsPerStation: Record<StationId, number>; // The number of recordings updated for each station
+}
+
 export interface ApiStationResponse {
   id: StationId;
   name: string;

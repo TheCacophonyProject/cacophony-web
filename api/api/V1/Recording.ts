@@ -54,7 +54,6 @@ import {
   booleanOf,
   idOf,
   integerOf,
-  nameOf,
   stringOf,
   validNameOf,
 } from "../validation-middleware";
@@ -62,6 +61,7 @@ import util from "@api/V1/util";
 import {
   ApiAudioRecordingMetadataResponse,
   ApiAudioRecordingResponse,
+  ApiGenericRecordingResponse,
   ApiRecordingResponse,
   ApiRecordingUpdateRequest,
   ApiThermalRecordingMetadataResponse,
@@ -73,14 +73,18 @@ import { Validator } from "jsonschema";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { Tag } from "@models/Tag";
-import { ApiRecordingTagResponse } from "@typedefs/api/tag";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {
+  ApiRecordingTagResponse,
+  ApiRecordingTagRequest,
+} from "@typedefs/api/tag";
 import {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { jsonSchemaOf } from "@api/schema-validation";
-import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
+import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -225,13 +229,28 @@ const mapRecordingResponse = (
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiTracksResponseSuccess {
+  tracks: ApiTrackResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiUpdateRecordingRequestBody {
+  updates: ApiRecordingUpdateRequest;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiRecordingResponseSuccess {
+  recording: ApiGenericRecordingResponse;
+}
+
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/recordings`;
 
   /**
    * @apiDefine RecordingMetaData
    *
-   * @apiParam {JSON} data[metadata] recording tracks and predictions:
+   * @apiBody {JSON} data[metadata] recording tracks and predictions:
    *<ul>
    * <li>(REQUIRED) tracks - array of track JSON, each track should have
    *   <ul>
@@ -265,7 +284,7 @@ export default (app: Application, baseUrl: string) => {
   /**
    * @apiDefine RecordingParams
    *
-   * @apiParam {JSON} data Metadata about the recording.   Valid tags are:
+   * @apiBody {JSON} data Metadata about the recording.   Valid tags are:
    * <ul>
    * <li>(REQUIRED) type: 'thermalRaw', or 'audio'
    * <li>fileHash - Optional sha1 hexadecimal formatted hash of the file to be uploaded
@@ -280,7 +299,7 @@ export default (app: Application, baseUrl: string) => {
    * <li>comment
    * <li>processingState - Initial processing state to set recording at
    * </ul>
-   * @apiParam {File} file Recording file to upload
+   * @apiBody {File} file Recording file to upload
    */
 
   /**
@@ -312,6 +331,8 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {String} deviceName name of device to add recording for
+   * @apiParam {String} groupName name of group to add recording for
    * @apiUse RecordingParams
    *
    * @apiUse RecordingMetaData
@@ -346,7 +367,8 @@ export default (app: Application, baseUrl: string) => {
    * The user must have permission to view videos from the device or the call will return an
    * error.
    *
-   * @apiParam {String} deviceId ID of the device to upload on behalf of. If you don't have access to the ID the devicename can be used instead in it's place.
+   * @apiParam {Integer} deviceId ID of the device to upload on behalf of. If you don't have access to the ID the devicename can be used instead in it's place.
+   * @apiQuery {Boolean} [only-active=false] operate only on active devices
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse RecordingParams
@@ -371,7 +393,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/:devicename Legacy upload on behalf of
+   * @api {post} /api/v1/recordings/:deviceName Legacy upload on behalf of
    * @apiName PostRecordingOnBehalfLegacy
    * @apiGroup Recordings
    * @apiDeprecated use now (#Recordings:PostRecordingOnBehalf)
@@ -381,7 +403,7 @@ export default (app: Application, baseUrl: string) => {
    * name is unique across all groups. It should not be used for new code.
    *
    * @apiUse V1UserAuthorizationHeader
-   *
+   * @apiParam {Integer} deviceName
    * @apiUse RecordingParams
    *
    * @apiUse RecordingMetaData
@@ -425,7 +447,6 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse BaseQueryParams
    * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
-   * @apiUse FilterOptions
    * @apiUse V1ResponseSuccessQuery
    * @apiUse V1ResponseError
    */
@@ -485,13 +506,14 @@ export default (app: Application, baseUrl: string) => {
    * @apiName QueryRecordings
    * @apiGroup Recordings
    *
-   * @apiParam {string} view-mode (Optional) - can be set to "user"
-   *
    * @apiUse V1UserAuthorizationHeader
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
+   * @apiQuery {Boolean} [include-deleted=false] Include deleted recordings
+   * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
+   * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
+   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiUse BaseQueryParams
-   * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
-   * @apiUse FilterOptions
    * @apiUse V1ResponseSuccessQuery
    * @apiUse V1ResponseError
    */
@@ -554,12 +576,13 @@ export default (app: Application, baseUrl: string) => {
    * @apiName QueryRecordingsCount
    * @apiGroup Recordings
    *
-   * @apiParam {string} view-mode (Optional) - can be set to "user"
-   *
    * @apiUse V1UserAuthorizationHeader
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
+   * @apiQuery {Boolean} [include-deleted=false] Include deleted recordings
+   * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
+   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiUse BaseQueryParams
    * @apiUse MoreQueryParams
-   * @apiUse FilterOptions
    * @apiUse V1ResponseSuccessQuery
    * @apiUse V1ResponseError
    */
@@ -568,7 +591,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
-      query("type").optional().isIn(["thermalRaw", "audio"]),
+      query("type").optional().isIn(Object.values(RecordingType)),
       query("processingState")
         .optional()
         .isIn(Object.values(RecordingProcessingState)),
@@ -651,7 +674,7 @@ export default (app: Application, baseUrl: string) => {
    * formatted details of the selected recordings.
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {number} [deviceId] Optional deviceId to bias returned recording to.
+   * @apiParam {Integer} [deviceId] Optional deviceId to bias returned recording to.
    * @apiUse V1ResponseError
    */
   app.get(
@@ -699,7 +722,6 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
    * @apiParam {boolean} [audiobait] To add audiobait to a recording query set this to true.
-   * @apiUse FilterOptions
    * @apiUse V1ResponseError
    */
   app.get(
@@ -770,15 +792,17 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse MetaDataAndJWT
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiUse FilterOptions
    * @apiUse V1ResponseSuccess
+   *
+   * @apiParam {Integer} id Id of the recording to get.
+   * @apiQuery {Boolean} [include-deleted=false] Whether or not to include deleted recordings.
    * @apiSuccess {int} fileSize the number of bytes in recording file.
    * @apiSuccess {int} rawSize the number of bytes in raw recording file.
    * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
    * recording file.
    * @apiSuccess {String} downloadRawJWT JSON Web Token to use to download
    * the raw recording data.
-   * @apiSuccess {JSON} recording The recording data.
+   * @apiInterface {apiSuccess::ApiRecordingResponseSuccess} recording The recording data.
    *
    * @apiUse V1ResponseError
    */
@@ -843,6 +867,8 @@ export default (app: Application, baseUrl: string) => {
    * @apiGroup Recordings
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
    *
+   * @apiParam {Integer} id Id of the recording to get the thumbnail for.
+   *
    * @apiSuccess {file} file Raw data stream of the png.
    * @apiUse V1ResponseError
    */
@@ -890,6 +916,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiGroup Recordings
    *
    * @apiUse V1UserAuthorizationHeader
+   * @apiParam {Integer} id Id of the recording to delete.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -937,17 +964,10 @@ export default (app: Application, baseUrl: string) => {
    * @apiDescription This call is used for updating fields of a previously
    * submitted recording.
    *
-   * The following fields that may be updated are:
-   * - location
-   * - comment
-   * - additionalMetadata
-   *
-   * If a change to any other field is attempted the request will fail and no
-   * update will occur.
-   *
    * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {JSON} updates Object containing the fields to update and their new values.
+
+   * @apiParam {Integer} id Id of the recording to update.
+   * @apiInterface {apiBody::ApiRecordingUpdateRequestBody} updates Object containing the fields to update and their new values.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -981,12 +1001,13 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {number} id Id of the recording to add the track to.
+   * @apiParam {Integer} id Id of the recording to add the track to.
    * @apiParam {JSON} data Data which defines the track (type specific).
-   * @apiParam {JSON} algorithm (Optional) Description of algorithm that generated track
+   * @apiParam {JSON} [algorithm] Description of algorithm that generated track
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {int} trackId Unique id of the newly created track.
+   * @apiSuccess {Integer} trackId Unique id of the newly created track.
+   * @apiSuccess {Integer} algorithmId Id of tracking algorithm used
    *
    * @apiUse V1ResponseError
    *
@@ -1034,9 +1055,10 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} id Id of the recording
+   *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} tracks Array with elements containing id,
-   * algorithm, data and tags fields.
+   * @apiInterface {apiSuccess::ApiTracksResponseSuccess} tracks
    *
    * @apiUse V1ResponseError
    */
@@ -1060,6 +1082,9 @@ export default (app: Application, baseUrl: string) => {
    * @api {delete} /api/v1/recordings/:id/tracks/:trackId Remove track from recording
    * @apiName DeleteTrack
    * @apiGroup Tracks
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to remove
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiUse V1ResponseSuccess
@@ -1104,10 +1129,13 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} what Object/event to tag.
-   * @apiParam {Number} confidence Tag confidence score.
-   * @apiParam {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
-   * @apiParam {JSON} data Data Additional tag data.
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   *
+   * @apiBody {String} what Object/event to tag.
+   * @apiBody {Number} confidence Tag confidence score.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
+   * @apiBody {JSON} [data] Data Additional tag data.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
@@ -1171,10 +1199,14 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} what Object/event to tag.
-   * @apiParam {Number} confidence Tag confidence score.
-   * @apiParam {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
-   * @apiParam {JSON} data Data Additional tag data.
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   *
+   * @apiBody {String} what Object/event to tag.
+   * @apiBody {Number} confidence Tag confidence score.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
+   * @apiBody {String} [tagJWT] JWT token to tag a recording/track that the user would not otherwise have permission to view.
+   * @apiBody {JSON} [data] Data Additional tag data.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
@@ -1332,7 +1364,10 @@ export default (app: Application, baseUrl: string) => {
    * @apiGroup Recordings
    *
    * @apiUse V1UserAuthorizationHeader
+   * @apiParam {Integer} id Recording id to add tag to
+   * @apiInterface {apiBody::ApiRecordingTagRequest} tag
    *
+   * @apiSuccess {Integer} tagId id of the newly created tag
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -1342,7 +1377,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       body("tag")
-        .custom(jsonSchemaOf(ApiRecordingTagRequest))
+        .custom(jsonSchemaOf(ApiRecordingTagRequestSchema))
         .withMessage(expectedTypeOf("ApiRecordingTagRequest")),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),

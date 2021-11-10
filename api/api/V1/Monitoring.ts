@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields, expectedTypeOf, isIntArray } from "../middleware";
-import { Application, Response, Request } from "express";
+import { Application, Response, Request, NextFunction } from "express";
 import {
   calculateMonitoringPageCriteria,
   MonitoringParams,
@@ -28,6 +28,7 @@ import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import models from "@models";
+import { ClientError } from "@api/customErrors";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -45,15 +46,15 @@ export default function (app: Application, baseUrl: string) {
      * In some circumstances the number of visits returned may be slightly bigger or smaller than the page-size.
      *
      * @apiUse V1UserAuthorizationHeader
-     * @apiParam {number|number[]} devices  A single device id, or a JSON list of device ids to include.  eg 52, or [23, 42]
-     * @apiParam {number|number[]} groups  A single group id or a JSON list of group ids to include.  eg 20, or [23, 42]
-     * @apiParam {timestamp} from  Retrieve visits after this time
-     * @apiParam {timestamp} until Retrieve visits starting on or before this time
-     * @apiParam {number} page  Page number to retrieve
-     * @apiParam {number} page-size Maximum numbers of visits to show on each page.  Note: Number of visits is approximate per page.  In some situations number maybe slightly bigger or smaller than this.
-     * @apiParam {string} ai   Name of the AI to be used to compute the 'classificationAI' result.  Note: This will not affect the
+     * @apiQuery {number|number[]} [devices]  A single device id, or a JSON list of device ids to include.  eg 52, or [23, 42]
+     * @apiQuery {number|number[]} [groups]  A single group id or a JSON list of group ids to include.  eg 20, or [23, 42]
+     * @apiQuery {timestamp} [from]  Retrieve visits after this time
+     * @apiQuery {timestamp} [until] Retrieve visits starting on or before this time
+     * @apiQuery {number{1..10000}} page  Page number to retrieve
+     * @apiQuery {number{1..100}} page-size Maximum numbers of visits to show on each page.  Note: Number of visits is approximate per page.  In some situations number maybe slightly bigger or smaller than this.
+     * @apiQuery {string} [ai]   Name of the AI to be used to compute the 'classificationAI' result.  Note: This will not affect the
      * 'classification' result, which always uses a predefined AI/human choice.
-     * @apiParam {string} viewmode   View mode for super user.
+     * @apiQuery {string="user"} [view-mode]   View mode for super user.
      *
      * @apiSuccess {JSON} params The parameters used to retrieve these results.  Most of these fields are from the request.
      * Calculated fields are listed in the 'Params Details' section below.
@@ -166,14 +167,7 @@ export default function (app: Application, baseUrl: string) {
         .withMessage(
           "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
         ),
-      query("ai")
-        .optional()
-        .isLength({ min: 3 })
-        .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
-        .withMessage(
-          (val, { location, path }) =>
-            `'${location}.${path}' must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`
-        ),
+      query("ai").optional().isLength({ min: 3 }),
       query("from").optional().isISO8601().toDate(),
       query("until").optional().isISO8601().toDate(),
       query("view-mode").optional(),
@@ -181,7 +175,7 @@ export default function (app: Application, baseUrl: string) {
     // Extract resources
     // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
     //  Also don't require pulling out the user
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const requestUser: User = await models.User.findByPk(
         response.locals.requestUser.id
       );
@@ -192,6 +186,7 @@ export default function (app: Application, baseUrl: string) {
         page: request.query.page as unknown as number,
         pageSize: request.query["page-size"] as unknown as number,
       };
+      // FIXME - page-size is never actually used anywhere
       if (request.query.from) {
         params.from = request.query.from as unknown as Date;
       }
@@ -199,19 +194,20 @@ export default function (app: Application, baseUrl: string) {
         params.until = request.query.until as unknown as Date;
       }
 
-      const viewAsSuperAdmin = response.locals.viewAsSuperAdmin;
+      const viewAsSuperAdmin = response.locals.viewAsSuperUser;
       const searchDetails = await calculateMonitoringPageCriteria(
         params,
         viewAsSuperAdmin
       );
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
-
       const visits = await generateVisits(
         requestUser.id,
         searchDetails,
         viewAsSuperAdmin
       );
-
+      if (visits instanceof ClientError) {
+        return next(visits);
+      }
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed query."],

@@ -51,6 +51,16 @@ export const mapUser = (user: User): ApiLoggedInUserResponse => ({
 
 export const mapUsers = (users: User[]) => users.map(mapUser);
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUserResponseSuccess {
+  userData: ApiLoggedInUserResponse;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUsersResponseSuccess {
+  usersList: ApiLoggedInUserResponse[];
+}
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
 
@@ -59,14 +69,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiName RegisterUser
    * @apiGroup User
    *
-   * @apiParam {String} username Username for new user.
+   * @apiParam {String} userName Username for new user.
    * @apiParam {String} password Password for new user.
    * @apiParam {String} email Email for new user.
    * @apiParam {Integer} [endUserAgreement] Version of the end user agreement accepted.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
-   * @apiSuccess {JSON} userData Metadata of the user.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    *
    * @apiUse V1ResponseError
    */
@@ -116,7 +126,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} [username] New username to set.
+   * @apiParam {String} [userName] New username to set.
    * @apiParam {String} [password] New password to set.
    * @apiParam {String} [email] New email to set.
    *
@@ -182,7 +192,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiSuccess {JSON} userData Metadata of the user.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -212,7 +222,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiSuccess {JSON} usersList List of usernames
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError

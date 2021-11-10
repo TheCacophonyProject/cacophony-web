@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { User } from "@models/User";
 import { QueryTypes } from "sequelize";
 import models from "@models";
+import logger from "@log";
 
 const GROUPS_AND_DEVICES = "GROUPS_AND_DEVICES";
 const USER_PERMISSIONS = "USER_PERMISSIONS";
@@ -102,7 +103,6 @@ async function getDatesForSearch(
   );
   const approxVisitCount = parseInt(countRet[0].count);
   const returnVal = createPageCriteria(params, approxVisitCount);
-
   if (approxVisitCount < params.pageSize) {
     returnVal.pageFrom = returnVal.searchFrom;
     returnVal.pageUntil = returnVal.searchUntil;

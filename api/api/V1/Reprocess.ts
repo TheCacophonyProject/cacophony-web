@@ -40,13 +40,13 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/reprocess/:id
    * @apiName Reprocess
    * @apiGroup Recordings
-   * @apiParam {Number} id of recording to reprocess
+   * @apiParam {Integer} id of recording to reprocess
    * @apiDescription Marks a recording for reprocessing and archives existing tracks
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Number} recordingId - recording_id reprocessed
+   * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:id`,
@@ -66,15 +66,15 @@ export default (app: Application, baseUrl: string) => {
    * @api {post} /api/v1/reprocess Mark recordings for reprocessing
    * @apiName ReprocessMultiple
    * @apiGroup Recordings
-   * @apiParam {JSON} recordings an array of recording ids to reprocess
+   * @apiParam {Integer[]} recordings an array of recording ids to reprocess
    *
    * @apiDescription Mark one or more recordings for reprocessing,
    * archiving any tracks and recording tags that are associated with
    * them.
    *
    * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1RecordingReprocessResponse
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post(
     apiUrl,

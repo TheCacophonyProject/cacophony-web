@@ -34,23 +34,11 @@ import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.sche
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
 
-  // TODO - Deprecate this, functionality moved to Recording.
-
   /**
    * @api {post} /api/v1/tags Adds a new tag
    * @apiName AddTag
    * @apiGroup Tag
-   *
-   * @apiDescription This call is used to tag a recording. Only users that can
-   * view a recording can tag it. It takes a `tag` field which contains a JSON
-   * object string that may contain any of the following fields:
-   * - what (legacy name "animal" is also supported) {String}
-   * - detail (legacy name "event" is also supported) {String}
-   * - confidence {Float}
-   * - startTime (seconds) {Float}
-   * - duration (seconds) {Float}
-   * - version (hex coded, e.g. 0x0110 would be v1.10) {Integer}
-   *
+   * @apiDeprecated Functionality moved to "POST /api/v1/recordings/:recordingId/tags"
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Number} recordingId ID of the recording that you want to tag.
@@ -96,7 +84,18 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  // Delete a tag
+  /**
+   * @api {delete} /api/v1/tags Delete a given recording tag
+   * @apiName DeleteTag
+   * @apiGroup Tag
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} tagId id of the tag to delete.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiuse V1ResponseError
+   *
+   */
   app.delete(
     apiUrl,
     extractJwtAuthorizedUser,

@@ -1128,6 +1128,7 @@ from (
               archivedAt: null,
             },
             attributes: [
+              "id",
               "what",
               "automatic",
               "TrackId",

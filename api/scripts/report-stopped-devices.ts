@@ -51,43 +51,52 @@ async function main() {
 
   const userEvents = await getUserEvents(powerEvents);
 
-  let success = false;
+  const failedEmails = [];
   for (const userID in userEvents) {
     const userInfo = userEvents[userID];
     const html = generateHtml(userInfo.powerEvents);
     const text = generateText(userInfo.powerEvents);
-    success =
-      success ||
-      (await sendEmail(html, text, userInfo.user.email, "Stopped Devices"));
+    if (
+      !(await sendEmail(html, text, userInfo.user.email, "Stopped Devices"))
+    ) {
+      failedEmails.push(userInfo.user.email);
+    }
   }
 
   for (const email of ADMIN_EMAILS) {
     const html = generateHtml(powerEvents);
     const text = generateText(powerEvents);
-    success =
-      success || (await sendEmail(html, text, email, "Stopped Devices"));
+    if (!(await sendEmail(html, text, email, "Stopped Devices"))) {
+      failedEmails.push(email);
+    }
   }
-  if (success) {
-    const detail = await models.DetailSnapshot.getOrCreateMatching(
-      "stop-reported",
-      {}
-    );
-    const detailsId = detail.id;
-    const eventList = [];
-    const time = new Date();
 
-    for (const powerEvent of powerEvents) {
-      eventList.push({
-        DeviceId: powerEvent.Device.id,
-        EventDetailId: detailsId,
-        dateTime: time,
-      });
-    }
-    try {
-      await models.Event.bulkCreate(eventList);
-    } catch (exception) {
-      log.error("Failed to record stop-reported events. %s", exception.message);
-    }
+  if (failedEmails.length) {
+    log.error(
+      "Failed sending stopped devices email to %s",
+      failedEmails.join(", ")
+    );
+  }
+
+  const detail = await models.DetailSnapshot.getOrCreateMatching(
+    "stop-reported",
+    {}
+  );
+  const detailsId = detail.id;
+  const eventList = [];
+  const time = new Date();
+
+  for (const powerEvent of powerEvents) {
+    eventList.push({
+      DeviceId: powerEvent.Device.id,
+      EventDetailId: detailsId,
+      dateTime: time,
+    });
+  }
+  try {
+    await models.Event.bulkCreate(eventList);
+  } catch (exception) {
+    log.error("Failed to record stop-reported events. %s", exception.message);
   }
 }
 
