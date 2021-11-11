@@ -120,6 +120,24 @@ function createRouter() {
         beforeEnter: cancelPendingRequests,
       },
       {
+        path: "/passwordreset",
+        component: PasswordResetView,
+        meta: {
+          noAuth: true,
+          title: "Password Reset",
+        },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
+        path: "/newpassword",
+        component: NewPasswordView,
+        meta: {
+          noAuth: true,
+          title: "New Password",
+        },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
         path: "/recording/:id/:trackId?",
         //@ts-ignore
         component: RecordingView,

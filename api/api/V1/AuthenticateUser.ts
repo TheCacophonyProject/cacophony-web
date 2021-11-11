@@ -30,6 +30,8 @@ import {
   extractJwtAuthorisedSuperAdminUser,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrEmailOrId,
+  fetchUnauthorizedRequiredResetToken,
+  fetchUnauthorizedRequiredUserByToken,
 } from "../extract-middleware";
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
@@ -222,5 +224,53 @@ export default function (app: Application) {
         token: token,
       });
     })
+  );
+
+  app.post(
+    "/reset",
+    validateFields([
+      oneOf(
+        [
+          deprecatedField(validNameOf(body("username"))),
+          validNameOf(body("userName")),
+          validNameOf(body("nameOrEmail")),
+          body("nameOrEmail").isEmail(),
+          body("email").isEmail(),
+        ],
+        "could not find a user with the given username or email"
+      ),
+    ]),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
+      body(["username", "userName", "nameOrEmail", "email"])
+    ),
+    async (request: Request, response: Response) => {
+      if (response.locals.user) {
+      }
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Email has been sent"],
+      });
+    }
+  );
+
+  app.post(
+    "/validateToken",
+    validateFields([body("token")]),
+    fetchUnauthorizedRequiredResetToken(body("token")),
+    fetchUnauthorizedRequiredUserByToken(),
+    async (request: Request, response: Response) => {
+      if (
+        response.locals.user.password != response.locals.resetToken.password
+      ) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: ["Invalid token"],
+        });
+      }
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: [],
+      });
+    }
   );
 }

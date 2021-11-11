@@ -4,7 +4,9 @@ const http = require("http");
 (async function main() {
   const now = new Date();
   const waitMins = 5;
-  const fiveMinutesFromNow = new Date(now.setMinutes(now.getMinutes() + waitMins));
+  const fiveMinutesFromNow = new Date(
+    now.setMinutes(now.getMinutes() + waitMins)
+  );
   console.log(`Waiting up to ${waitMins} minutes for API sever...`);
   const apiServerIsUp = async (url) => {
     return new Promise((resolve, reject) => {

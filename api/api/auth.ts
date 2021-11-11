@@ -47,6 +47,23 @@ export interface DecodedJWTToken {
   id: number;
 }
 
+export interface ResetInfo {
+  password: string;
+  id: number;
+}
+
+export const getResetToken = (user: User, password: string): string => {
+  return jwt.sign({id: user.id, password: password},config.server.passportSecret);
+};
+
+export const getDecodedResetToken = (token: string): ResetInfo => {
+  try {
+    return jwt.verify(token, config.server.passportSecret) as ResetInfo;
+  } catch (e) {
+    throw new customErrors.AuthenticationError("Failed to verify JWT.");
+  }
+};
+
 export const getVerifiedJWT = (
   request: Request
 ): string | object | DecodedJWTToken => {

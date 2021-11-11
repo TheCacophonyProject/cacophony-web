@@ -53,6 +53,10 @@
 
           <p class="small mt-4">
             Don't have an account yet?
+            <b-link href="/resetpassword">Forgotten password</b-link>.
+          </p>
+          <p class="small mt-4">
+            Don't have an account yet?
             <b-link href="/register">Register here</b-link>.
           </p>
         </b-form>

@@ -7,7 +7,8 @@ import log from "../logging";
 import moment from "moment";
 import { SMTPClient, Message } from "emailjs";
 import { Readable } from "stream";
-
+import { User } from "@models/User";
+import { getResetToken } from "../api/auth";
 function alertBody(
   recording: Recording,
   tag: TrackTag,
@@ -29,6 +30,32 @@ function alertBody(
   text += `Go to ${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId} to view this recording\r\n`;
   text += "Thanks, Cacophony Team";
   return [html, text];
+}
+function resetBody(user: User, token:string): string[] {
+  let resetUrl = `${config.server.recording_url_base}/?token=${token}`;
+  let html = `Hello ${user.firstName}</b>`;
+  html += `We received a request to reset your Cacophony password</b>`;
+  html += `Click the link below to set a new password</b>`;
+  html += `<br><a  href="${resetUrl}>Set New Password</a></b>`;
+  html += "Thanks, Cacophony Team";
+
+  let text = `Hello ${user.firstName}\r\n`;
+  text += `We received a request to reset your Cacophony password\r\n`;
+  text += `Visit ${resetUrl} to set a new password\r\n`;
+  text += "Thanks, Cacophony Team";
+  return [html, text];
+}
+
+async function sendResetEmail(user: User, password: string): Promise<boolean> {
+  const token = getResetToken(user,password);
+
+  const [html, text] = resetBody(user,token);
+  return sendEmail(
+    html,
+    text,
+    user.email,
+    "Your request to reset your Cacophony acccount password"
+  );
 }
 
 async function sendEmail(
@@ -63,4 +90,4 @@ async function sendEmail(
   return true;
 }
 
-export { sendEmail, alertBody };
+export { sendEmail, alertBody, sendResetEmail };

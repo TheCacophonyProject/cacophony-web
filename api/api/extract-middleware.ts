@@ -4,6 +4,7 @@ import {
   DecodedJWTToken,
   getVerifiedJWT,
   lookupEntity,
+  getDecodedResetToken
 } from "./auth";
 import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
@@ -1158,6 +1159,30 @@ export const fetchAdminAuthorizedRequiredGroupById = (
     getGroupForRequestUserAsAdmin,
     groupNameOrId
   );
+
+export const fetchUnauthorizedRequiredResetToken =
+  (field: ValidationChain) =>
+  async (request: Request, response: Response, next: NextFunction) => {
+    const token = extractValFromRequest(request, field) as string;
+    if (!token) {
+      return next(new ClientError(`Invalid reset token`, 401));
+    }
+    const resetInfo = getDecodedResetToken(token);
+
+    response.locals.resetInfo = resetInfo;
+    next();
+  };
+
+export const fetchUnauthorizedRequiredUserByToken =
+  () => async (request: Request, response: Response, next: NextFunction) => {
+    fetchRequiredModel(
+      models.User,
+      true,
+      true,
+      getUser(),
+      response.locals.resetInfo.id
+    );
+  };
 
 export const fetchUnauthorizedRequiredUserByNameOrEmailOrId = (
   userNameOrEmailOrId: ValidationChain

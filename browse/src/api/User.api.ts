@@ -25,6 +25,22 @@ function loginOther(username) {
   });
 }
 
+function reset(
+  usernameOrEmail: string,
+): Promise<
+  FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
+> {
+  return CacophonyApi.post(
+    "/reset",
+    {
+      nameOrEmail: usernameOrEmail,
+    },
+    true
+  );
+}
+
+
+
 function list(): Promise<
   FetchResult<{ usersList: ApiLoggedInUserResponse[] }>
 > {

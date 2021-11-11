@@ -38,6 +38,7 @@ import {
   UserId,
 } from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
+import { sendResetEmail } from "../scripts/emailUtil";
 
 const Op = Sequelize.Op;
 
@@ -276,7 +277,6 @@ export default function (
       });
     });
   };
-
   // Returns the groups that are associated with this user (via
   // GroupUsers).
   User.prototype.getGroupsIds = async function () {
@@ -417,6 +417,10 @@ export default function (
         }
       });
     });
+  };
+
+  User.prototype.resetPassword = async function () {
+    await sendResetEmail(this, this.password);
   };
 
   return User;
