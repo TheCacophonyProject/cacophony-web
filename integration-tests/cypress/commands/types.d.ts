@@ -456,7 +456,7 @@ export interface ApiRecordingTrackData {
 
 //from api/v1/recordings (post)
 export interface ApiTrackSet {
-  positions?: number[][];
+  positions?: any;
   start_s: number;
   end_s: number;
   predictions: {

@@ -12,6 +12,7 @@ import "../commands/api/recording-tag";
 import "../commands/api/recording-tests";
 import "../commands/api/monitoring";
 import "../commands/api/stations";
+import "../commands/api/track";
 import "../commands/api/visits";
 import "../commands/browsegui/user";
 import "../commands/browsegui/groups";
