@@ -80,10 +80,13 @@ export function saveJobKeyByName(name: string, jobKey: string) {
   Cypress.env("testCreds")[name].jobKey = jobKey;
 }
 
+<<<<<<< HEAD
 export function saveJWTByName(name: string, jwt: string) {
     Cypress.env("testCreds")[name].jwt = jwt;
 }
 
+=======
+>>>>>>> main
 export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
@@ -299,12 +302,21 @@ export function checkTreeStructuresAreEqualExcept(
         `Expect result includes parameter ${prettyTreeSoFar} :::`
       ).equal(typeof containedStruct);
 
+<<<<<<< HEAD
        expect(
          Object.keys(containingStruct).length,
          `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
            containingStruct
          ).toString()}]`
        ).to.equal(Object.keys(containedStruct).length);
+=======
+      // expect(
+      //   Object.keys(containingStruct).length,
+      //   `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
+      //     containingStruct
+      //   ).toString()}]`
+      // ).to.equal(Object.keys(containedStruct).length);
+>>>>>>> main
 
       //push two hashes in same order
       const containedKeys: string[] = Object.keys(containedStruct).sort();

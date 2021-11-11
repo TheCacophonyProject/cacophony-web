@@ -73,26 +73,26 @@ describe("Recording thumbnails", () => {
   };
 
   const templateExpectedProcessing: ApiRecordingProcessingJob = {
-      id: 475,
-      type: RecordingType.ThermalRaw,
-      jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-      rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-      rawMimeType: "application/x-cptv",
-      fileKey: null,
-      fileMimeType: null,
-      processingState: "analyse",
-      processingMeta: null,
-      GroupId: NOT_NULL,
-      DeviceId: NOT_NULL,
-      StationId: null,
-      recordingDateTime: "2021-01-01T01:01:01.018Z",
-      duration: 16.6666666666667,
-      location: {},
-      hasAlert: false,
-      processingStartTime: NOT_NULL,
-      processingEndTime: null,
-      processing: true,
-      updatedAt: NOT_NULL
+    id: 475,
+    type: RecordingType.ThermalRaw,
+    jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawMimeType: "application/x-cptv",
+    fileKey: null,
+    fileMimeType: null,
+    processingState: "analyse",
+    processingMeta: null,
+    GroupId: NOT_NULL,
+    DeviceId: NOT_NULL,
+    StationId: null,
+    recordingDateTime: "2021-01-01T01:01:01.018Z",
+    duration: 16.6666666666667,
+    location: {},
+    hasAlert: false,
+    processingStartTime: NOT_NULL,
+    processingEndTime: null,
+    processing: true,
+    updatedAt: NOT_NULL
   };
 
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
