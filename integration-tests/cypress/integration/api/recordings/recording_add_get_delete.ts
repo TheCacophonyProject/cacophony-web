@@ -914,7 +914,7 @@ describe("Recordings (thermal): add, get, delete", () => {
 
     if (Cypress.env("running_in_a_dev_environment") == true) {
       cy.log("Check /recordings/needs-tag ignores deleted recording");
-      cy.apiRecordingNeedsTagCheck("raGroupAdmin", undefined, []);
+      cy.apiRecordingNeedsTagCheck("raGroupAdmin", undefined, null, []);
     } else {
       cy.log(
         "SKIPPING - Check /recordings/needs-tag ignores deleted recording - as can only do that on a dev server"

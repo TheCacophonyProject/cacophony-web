@@ -1,14 +1,14 @@
 {
-  "api/alerts.d.ts": "b1b23a2996ed1dc37a8ac12dfa4de91b90210d4c",
+  "api/alerts.d.ts": "18f29c245eca4d07dd9c9ddcc6c65635a4dc0bf6",
   "api/common.d.ts": "014e8a380b89ee43c941bf1a3277fadd7a2e8a75",
   "api/device.d.ts": "76d40a7e4fb563491b1e14113e10e4fe6e3123d1",
-  "api/event.d.ts": "74f6c332635b0be6bbbe2b242e7fa156d2f055ab",
-  "api/group.d.ts": "b294854cd04af87f0cfbc1339ffd13ecc7d671dc",
+  "api/event.d.ts": "b980fae2a44072d405936ca116332ce7958199a0",
+  "api/group.d.ts": "ed65e04ae69120a5a882572fbe24e9f6d4769b5f",
   "api/fileProcessing.d.ts": "d3aedeb72c5723433cbdf121473a0e51a75cc9b0",
-  "api/recording.d.ts": "b52aa8dc8d639381532edd1155b117ccbe2d8512",
-  "api/station.d.ts": "2f319dbe35628629974267c6cc4a6cfc8d094f20",
+  "api/recording.d.ts": "671b1df6512d2a9d59c7c00404848a1b66260cf3",
+  "api/station.d.ts": "115dd2f19f19bf01a264e1da83238c3fbc8b571a",
   "api/tag.d.ts": "ce8d5b1e00b1ac257bde3864b06c5bc49b228731",
   "api/track.d.ts": "30c79a828bca613d435cb3bfcbcf8d0000b1febc",
   "api/trackTag.d.ts": "d9137eee419b616bb506724bcfc5b2138faffaf4",
-  "api/user.d.ts": "8bc075c302b7d9a565ef3dba1eedb609035523e3"
+  "api/user.d.ts": "ae209af9ac22a5a8f56f74f51f2ebeb9ef366cb7"
 }

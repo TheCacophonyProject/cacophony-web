@@ -80,6 +80,10 @@ export function saveJobKeyByName(name: string, jobKey: string) {
   Cypress.env("testCreds")[name].jobKey = jobKey;
 }
 
+export function saveJWTByName(name: string, jwt: string) {
+    Cypress.env("testCreds")[name].jwt = jwt;
+}
+
 export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }

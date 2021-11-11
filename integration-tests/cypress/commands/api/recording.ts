@@ -12,6 +12,7 @@ import {
   saveJobKeyByName,
   checkTreeStructuresAreEqualExcept,
   removeUndefinedParams,
+  saveJWTByName,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import {
@@ -219,9 +220,7 @@ Cypress.Commands.add(
         );
       } else {
         if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages).to.contain(
-            additionalChecks["message"]
-          );
+          expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
         }
       }
     });
@@ -259,9 +258,7 @@ Cypress.Commands.add(
         saveIdOnly(recordingName, x.response.body.recordingId);
       }
       if (additionalChecks["message"] !== undefined) {
-        expect(x.response.body.messages).to.contain(
-          additionalChecks["message"]
-        );
+        expect(x.response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
       }
     });
   }
@@ -304,7 +301,7 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages).to.contain(additionalChecks["message"]);
+        expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
       }
     });
   }
@@ -339,7 +336,7 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages).to.contain(additionalChecks["message"]);
+        expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
       }
     });
   }
@@ -385,9 +382,7 @@ Cypress.Commands.add(
         );
       } else {
         if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages).to.contain(
-            additionalChecks["message"]
-          );
+          expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
         }
       }
     });
@@ -399,6 +394,7 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceNameOrId: string,
+    recordingName: string,
     expectedRecordings: ApiRecordingNeedsTagReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
@@ -432,7 +428,14 @@ Cypress.Commands.add(
       let expectedRecording: ApiRecordingNeedsTagReturned;
       if (statusCode === 200) {
         if (expectedRecordings.length > 0) {
+          //Store the tagJWT against the recordingName so we can tag later
+          if(recordingName!==null) {
+            saveIdOnly(recordingName, response.body.rows[0].RecordingId);
+            saveJWTByName(recordingName, response.body.rows[0].tagJWT)
+          }; 
+
           if (additionalChecks["doNotValidate"] != true) {
+
             //find returned recording in expectedRecordings
             let recordingIds = "";
             expectedRecordings.forEach((recording) => {
@@ -464,9 +467,7 @@ Cypress.Commands.add(
         }
       } else {
         if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages).to.contain(
-            additionalChecks["message"]
-          );
+          expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
         }
       }
     });
@@ -511,9 +512,7 @@ Cypress.Commands.add(
         }
       } else {
         if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages).to.contain(
-            additionalChecks["message"]
-          );
+          expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
         }
       }
     });
@@ -659,9 +658,7 @@ Cypress.Commands.add(
         );
       } else {
         if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages).to.contain(
-            additionalChecks["message"]
-          );
+          expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
         }
       }
     });
@@ -730,9 +727,7 @@ Cypress.Commands.add(
         }
       } else {
         if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages).to.contain(
-            additionalChecks["message"]
-          );
+          expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
         }
       }
     });
@@ -776,9 +771,7 @@ Cypress.Commands.add(
         cy.wrap(response.body.count);
       } else {
         if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages).to.contain(
-            additionalChecks["message"]
-          );
+          expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
         }
       }
     });
@@ -810,7 +803,7 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages).to.contain(additionalChecks["message"]);
+        expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
       }
       if (additionalChecks["fail"] !== undefined) {
         expect(
@@ -820,9 +813,6 @@ Cypress.Commands.add(
         additionalChecks["fail"].forEach((fail: any) => {
           expect(response.body.fail).to.contain(fail);
         });
-      }
-      if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
     });
   }

@@ -4,12 +4,24 @@ import { HTTP_BadRequest, HTTP_OK200, NOT_NULL } from "@commands/constants";
 import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
 import { getCreds } from "@commands/server";
+import { getTestName } from "@commands/names";
+
+import { ApiTrackDataRequest, ApiTrackResponse, ApiTrackPosition } from "@typedefs/api/track";
+import { ApiTrackTagRequest, ApiTrackTagResponse } from "@typedefs/api/trackTag";
 
 import {
   TestCreateExpectedNeedsTagData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+
+const EXCLUDE_IDS = [
+  "[].id",
+  "[].tags[].id",
+  "[].tags[].trackId"
+];
+
+const NO_SAVE_ID = null;
 
 describe("Recording needs-tag (power-tagger)", () => {
   const superuser = getCreds("superuser")["name"];
@@ -54,6 +66,69 @@ describe("Recording needs-tag (power-tagger)", () => {
     },
     comment: "This is a comment2",
     processingState: RecordingProcessingState.Finished,
+  };
+
+  //Tagging data below here
+  /////////////////////////////////////////////////////
+  let algorithm1 = {
+    "model_name": "inc3"
+  };
+
+  let positions1:ApiTrackPosition[] = [
+    {
+      x: 1,
+      y: 2,
+      width: 10,
+      height: 20,
+    }, {
+      x: 2,
+      y: 3,
+      width: 11,
+      height: 21,
+    }
+  ];
+
+  let expectedTrack1:ApiTrackResponse = {
+    id:-99,
+    start: 1,
+    end: 3,
+    positions: positions1,
+    tags:[]
+  };
+
+  let track1:ApiTrackDataRequest = {
+    start_s: 1,
+    end_s: 3,
+    positions: positions1,
+    //TODO - do the remaining parameters _do_ anything?!
+    label: "a label",
+    clarity: 0.9,
+    message: "a message",
+    tag: "a tag",
+    tracker_version: 2
+  };
+
+  let tag1:ApiTrackTagRequest = {
+    what: "possum",
+    confidence: 0.95,
+    automatic: false,
+    //data: {fieldName: "fieldValue"}
+  };
+
+  let expectedTag1:ApiTrackTagResponse = {
+    confidence: 0.95,
+    createdAt: NOT_NULL,
+    //TODO: cannot set data above, retuned as blank sting
+    //data: { "a parameter": "a value" },
+    data: "",
+    id: 99,
+    automatic: false,
+    trackId: 99,
+    updatedAt: NOT_NULL,
+    what: "possum",
+    //TODO: userId is missing in returned data
+    // userId: 99
+    userName: "xxx"
   };
 
   let dev_env = false;
@@ -123,6 +198,8 @@ describe("Recording needs-tag (power-tagger)", () => {
       cy.apiRecordingNeedsTagCheck(
         "rntNonMember",
         undefined,
+        NO_SAVE_ID,
+        "rntNeedsTag1",
         [expectedRecording1],
         [],
         HTTP_OK200,
@@ -149,7 +226,7 @@ describe("Recording needs-tag (power-tagger)", () => {
           "possum"
         ).then(() => {
           cy.log("Verify this recording not returned");
-          cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, []);
+          cy.apiRecordingNeedsTagCheck("rntNonMember", undefined,NO_SAVE_ID, []);
         });
       });
     });
@@ -162,7 +239,7 @@ describe("Recording needs-tag (power-tagger)", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it.skip("Can handle no returned matches", () => {
       cy.log("Verify non-member can view this recording");
-      cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, []);
+      cy.apiRecordingNeedsTagCheck("rntNonMember", undefined,NO_SAVE_ID, []);
     });
   } else {
     it.skip("Can handle no returned matches", () => {});
@@ -222,6 +299,7 @@ describe("Recording needs-tag (power-tagger)", () => {
           cy.apiRecordingNeedsTagCheck(
             "rntNonMember",
             "rntCamera1b",
+            NO_SAVE_ID,
             [expectedRecording3b],
             [],
             HTTP_OK200,
@@ -241,6 +319,7 @@ describe("Recording needs-tag (power-tagger)", () => {
             cy.apiRecordingNeedsTagCheck(
               "rntNonMember",
               "rntCamera1b",
+              NO_SAVE_ID,
               [expectedRecording3, expectedRecording4],
               [],
               HTTP_OK200,
@@ -258,6 +337,7 @@ describe("Recording needs-tag (power-tagger)", () => {
     cy.apiRecordingNeedsTagCheck(
       "rntNonMember",
       "999999",
+      NO_SAVE_ID,
       [],
       [],
       HTTP_BadRequest,
