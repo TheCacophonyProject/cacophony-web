@@ -6,8 +6,15 @@ import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 
-import { ApiTrackDataRequest, ApiTrackResponse, ApiTrackPosition } from "@typedefs/api/track";
-import { ApiTrackTagRequest, ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import {
+  ApiTrackDataRequest,
+  ApiTrackResponse,
+  ApiTrackPosition,
+} from "@typedefs/api/track";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
 
 import {
   TestCreateExpectedNeedsTagData,
@@ -15,11 +22,7 @@ import {
 } from "@commands/api/recording-tests";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
-const EXCLUDE_IDS = [
-  "[].id",
-  "[].tags[].id",
-  "[].tags[].trackId"
-];
+const EXCLUDE_IDS = ["[].id", "[].tags[].id", "[].tags[].trackId"];
 
 const NO_SAVE_ID = null;
 
@@ -70,33 +73,34 @@ describe("Recording needs-tag (power-tagger)", () => {
 
   //Tagging data below here
   /////////////////////////////////////////////////////
-  let algorithm1 = {
-    "model_name": "inc3"
+  const algorithm1 = {
+    model_name: "inc3",
   };
 
-  let positions1:ApiTrackPosition[] = [
+  const positions1: ApiTrackPosition[] = [
     {
       x: 1,
       y: 2,
       width: 10,
       height: 20,
-    }, {
+    },
+    {
       x: 2,
       y: 3,
       width: 11,
       height: 21,
-    }
+    },
   ];
 
-  let expectedTrack1:ApiTrackResponse = {
-    id:-99,
+  const expectedTrack1: ApiTrackResponse = {
+    id: -99,
     start: 1,
     end: 3,
     positions: positions1,
-    tags:[]
+    tags: [],
   };
 
-  let track1:ApiTrackDataRequest = {
+  const track1: ApiTrackDataRequest = {
     start_s: 1,
     end_s: 3,
     positions: positions1,
@@ -105,17 +109,17 @@ describe("Recording needs-tag (power-tagger)", () => {
     clarity: 0.9,
     message: "a message",
     tag: "a tag",
-    tracker_version: 2
+    tracker_version: 2,
   };
 
-  let tag1:ApiTrackTagRequest = {
+  const tag1: ApiTrackTagRequest = {
     what: "possum",
     confidence: 0.95,
     automatic: false,
     //data: {fieldName: "fieldValue"}
   };
 
-  let expectedTag1:ApiTrackTagResponse = {
+  const expectedTag1: ApiTrackTagResponse = {
     confidence: 0.95,
     createdAt: NOT_NULL,
     //TODO: cannot set data above, retuned as blank sting
@@ -128,7 +132,7 @@ describe("Recording needs-tag (power-tagger)", () => {
     what: "possum",
     //TODO: userId is missing in returned data
     // userId: 99
-    userName: "xxx"
+    userName: "xxx",
   };
 
   let dev_env = false;
@@ -226,7 +230,12 @@ describe("Recording needs-tag (power-tagger)", () => {
           "possum"
         ).then(() => {
           cy.log("Verify this recording not returned");
-          cy.apiRecordingNeedsTagCheck("rntNonMember", undefined,NO_SAVE_ID, []);
+          cy.apiRecordingNeedsTagCheck(
+            "rntNonMember",
+            undefined,
+            NO_SAVE_ID,
+            []
+          );
         });
       });
     });
@@ -239,7 +248,7 @@ describe("Recording needs-tag (power-tagger)", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it.skip("Can handle no returned matches", () => {
       cy.log("Verify non-member can view this recording");
-      cy.apiRecordingNeedsTagCheck("rntNonMember", undefined,NO_SAVE_ID, []);
+      cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, NO_SAVE_ID, []);
     });
   } else {
     it.skip("Can handle no returned matches", () => {});

@@ -6,7 +6,7 @@ import {
   getCreds,
   makeAuthorizedRequestWithStatus,
   checkTreeStructuresAreEqualExcept,
-  saveIdOnly
+  saveIdOnly,
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
@@ -21,10 +21,10 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(
-      `Adding tag to recording ${recordingNameOrId}`,
-      { recording: recordingNameOrId, requestData: data }
-    );
+    logTestDescription(`Adding tag to recording ${recordingNameOrId}`, {
+      recording: recordingNameOrId,
+      requestData: data,
+    });
 
     let recordingId: string;
     if (additionalChecks["useRawRecordingId"] === true) {
@@ -35,18 +35,18 @@ Cypress.Commands.add(
 
     const url = v1ApiPath(`recordings/${recordingId}/tags`);
 
-    const params = {tag: data};
+    const params = { tag: data };
 
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: url,
         body: params,
-       },
+      },
       userName,
       statusCode
     ).then((response) => {
-      if(statusCode==200) {
+      if (statusCode == 200) {
         if (tagName !== null) {
           saveIdOnly(tagName, response.body.tagId);
         }
@@ -125,7 +125,7 @@ Cypress.Commands.add(
     }
     const url = v1ApiPath(`recordings/${recordingId}`);
 
-        makeAuthorizedRequestWithStatus(
+    makeAuthorizedRequestWithStatus(
       {
         method: "GET",
         url: url,
@@ -147,7 +147,5 @@ Cypress.Commands.add(
         }
       }
     });
-
- });
-
-
+  }
+);

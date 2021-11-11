@@ -7,7 +7,7 @@ declare namespace Cypress {
 
   interface Chainable {
     /**
-     * Add a track to a recording. 
+     * Add a track to a recording.
      * Optionally check for a non-200 return statusCode
      * Saves the track Id against trackName
      *   Optionally set trackName=null to not save the id
@@ -67,7 +67,7 @@ declare namespace Cypress {
     ): any;
 
     /**
-     * Add or update a track tag for a recording. 
+     * Add or update a track tag for a recording.
      * Optionally check for a non-200 return statusCode
      * Saves the tag Id against tagName
      *   Optionally set tagName=null to not save the id
@@ -110,8 +110,7 @@ declare namespace Cypress {
       data: ApiTrackTagRequest,
       statusCode?: number,
       additionalChecks?: any
-      ): any;
-
+    ): any;
 
     /**
      * Delete a track tag from a recording.
@@ -135,7 +134,5 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
-
   }
 }
-

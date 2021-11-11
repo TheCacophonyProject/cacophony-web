@@ -409,7 +409,7 @@ export function TestCreateExpectedProcessingData(
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
   expected.duration = recording.duration;
-  expected.location = { coordinates: recording.location, type: 'Point' };
+  expected.location = { coordinates: recording.location, type: "Point" };
   expected.recordingDateTime = recording.recordingDateTime;
   return expected;
 }
@@ -436,7 +436,7 @@ export function TestCreateExpectedNeedsTagData(
       start: track.start_s,
       end: track.end_s,
       needsTagging: true,
-      positions: []
+      positions: [],
     });
   });
 
@@ -596,7 +596,10 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   }
   if (inputRecording.location !== undefined) {
     //expected.location = { type: "Point", coordinates: inputRecording.location };
-    expected.location = {lat: inputRecording.location[0], lng: inputRecording.location[1]};
+    expected.location = {
+      lat: inputRecording.location[0],
+      lng: inputRecording.location[1],
+    };
   }
   //expected.Station = station;
   expected.tags = [] as ApiRecordingTagResponse[];
@@ -608,7 +611,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
         tags: [],
         start: track.start_s,
         end: track.end_s,
-        positions: []
+        positions: [],
       };
       if (
         track.predictions.length &&

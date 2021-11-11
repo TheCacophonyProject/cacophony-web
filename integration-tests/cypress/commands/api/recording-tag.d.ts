@@ -1,11 +1,12 @@
 /// <reference types="../types" />
 
 declare namespace Cypress {
-  type ApiRecordingTagRequest = import("@typedefs/api/tag").ApiRecordingTagRequest;
+  type ApiRecordingTagRequest =
+    import("@typedefs/api/tag").ApiRecordingTagRequest;
 
   interface Chainable {
     /**
-     * Add a tag to a recording. 
+     * Add a tag to a recording.
      * Optionally check for a non-200 return statusCode
      * Saves the tag Id against tagName
      *   Optionally set tagName=null to not save the id
@@ -24,7 +25,7 @@ declare namespace Cypress {
     ): any;
 
     /**
-     * Delete a tag from a recording. 
+     * Delete a tag from a recording.
      * Optionally check for a non-200 return statusCode
      * By default recording ID is looked up by name using recordingNameOrId
      *   Optionally, use the ID provided in recordingNameOrId by specifying

@@ -101,8 +101,7 @@ describe("Recordings - reprocessing tests", () => {
     processingStartTime: NOT_NULL,
     processingEndTime: null,
     processing: true,
-    updatedAt: NOT_NULL
-
+    updatedAt: NOT_NULL,
   };
 
   const templateExpectedAudioRecording: ApiAudioRecordingResponse = {
@@ -171,7 +170,7 @@ describe("Recordings - reprocessing tests", () => {
     processingStartTime: NOT_NULL,
     processingEndTime: null,
     processing: true,
-    updatedAt: NOT_NULL
+    updatedAt: NOT_NULL,
   };
 
   const templateAudioRecording: ApiRecordingSet = {
@@ -806,7 +805,7 @@ describe("Recordings - reprocessing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
-                positions: []
+                positions: [],
               },
             ];
             cy.apiRecordingCheck(
@@ -831,7 +830,7 @@ describe("Recordings - reprocessing tests", () => {
                   start: 1,
                   end: 4,
                   id: 1,
-                  positions: []
+                  positions: [],
                 },
               ];
 

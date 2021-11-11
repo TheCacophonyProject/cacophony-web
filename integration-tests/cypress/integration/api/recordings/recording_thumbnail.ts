@@ -92,7 +92,7 @@ describe("Recording thumbnails", () => {
     processingStartTime: NOT_NULL,
     processingEndTime: null,
     processing: true,
-    updatedAt: NOT_NULL
+    updatedAt: NOT_NULL,
   };
 
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
@@ -187,7 +187,7 @@ describe("Recording thumbnails", () => {
                   start: 1,
                   end: 4,
                   id: 1,
-                  positions: []
+                  positions: [],
                 },
               ];
 
@@ -353,7 +353,7 @@ describe("Recording thumbnails", () => {
                   start: 1,
                   end: 4,
                   id: 1,
-                  positions: []
+                  positions: [],
                 },
               ];
 

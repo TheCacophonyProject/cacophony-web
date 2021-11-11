@@ -6,11 +6,14 @@ import {
   getCreds,
   makeAuthorizedRequestWithStatus,
   checkTreeStructuresAreEqualExcept,
-  saveIdOnly
+  saveIdOnly,
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { ApiTrackDataRequest, ApiTrackResponse } from "@typedefs/api/track";
-import { ApiTrackTagRequest, ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
 
 Cypress.Commands.add(
   "apiTrackAdd",
@@ -24,10 +27,10 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(
-      `Adding track to recording ${recordingNameOrId}`,
-      { recording: recordingNameOrId, requestData: data }
-    );
+    logTestDescription(`Adding track to recording ${recordingNameOrId}`, {
+      recording: recordingNameOrId,
+      requestData: data,
+    });
 
     let recordingId: string;
     if (additionalChecks["useRawRecordingId"] === true) {
@@ -39,8 +42,8 @@ Cypress.Commands.add(
     const url = v1ApiPath(`recordings/${recordingId}/tracks`);
 
     const params = {
-         data: JSON.stringify(data),
-         algorithm: JSON.stringify(algorithm),
+      data: JSON.stringify(data),
+      algorithm: JSON.stringify(algorithm),
     };
 
     makeAuthorizedRequestWithStatus(
@@ -48,11 +51,11 @@ Cypress.Commands.add(
         method: "POST",
         url: url,
         body: params,
-       },
+      },
       userName,
       statusCode
     ).then((response) => {
-      if(statusCode==200) {
+      if (statusCode == 200) {
         if (trackName !== null) {
           saveIdOnly(trackName, response.body.trackId);
         }
@@ -63,7 +66,9 @@ Cypress.Commands.add(
 
       //check for substring in _any_ of messages[]
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
       }
     });
   }
@@ -79,7 +84,8 @@ Cypress.Commands.add(
     additionalChecks: any = {}
   ) => {
     logTestDescription(`Delete track from recording ${recordingNameOrId} `, {
-      recordingName: recordingNameOrId, trackName: trackNameOrId
+      recordingName: recordingNameOrId,
+      trackName: trackNameOrId,
     });
 
     let recordingId: string;
@@ -107,7 +113,9 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
       }
     });
   }
@@ -135,7 +143,7 @@ Cypress.Commands.add(
     }
     const url = v1ApiPath(`recordings/${recordingId}/tracks`);
 
-        makeAuthorizedRequestWithStatus(
+    makeAuthorizedRequestWithStatus(
       {
         method: "GET",
         url: url,
@@ -151,12 +159,14 @@ Cypress.Commands.add(
         );
       } else {
         if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
+          expect(response.body.messages.join("|")).to.include(
+            additionalChecks["message"]
+          );
         }
       }
     });
-
- });
+  }
+);
 
 Cypress.Commands.add(
   "apiTrackTagReplaceTag",
@@ -169,10 +179,11 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(
-      `Adding tracktag to track ${trackNameOrId}`,
-      { recordinmg: recordingNameOrId, track: trackNameOrId, requestData: data }
-    );
+    logTestDescription(`Adding tracktag to track ${trackNameOrId}`, {
+      recordinmg: recordingNameOrId,
+      track: trackNameOrId,
+      requestData: data,
+    });
 
     let recordingId: string;
     if (additionalChecks["useRawRecordingId"] === true) {
@@ -187,25 +198,29 @@ Cypress.Commands.add(
       trackId = getCreds(trackNameOrId).id.toString();
     }
 
-    const url = v1ApiPath(`recordings/${recordingId}/tracks/${trackId}/replaceTag`);
+    const url = v1ApiPath(
+      `recordings/${recordingId}/tracks/${trackId}/replaceTag`
+    );
 
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: url,
         body: data,
-       },
+      },
       userName,
       statusCode
     ).then((response) => {
-      if(statusCode==200) {
+      if (statusCode == 200) {
         if (tagName !== null) {
           saveIdOnly(tagName, response.body.trackTagId);
         }
       }
 
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join('|')).to.include(additionalChecks["message"]);
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
       }
     });
   }
@@ -222,10 +237,11 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(
-      `Adding tracktag to track ${trackNameOrId}`,
-      { recording: recordingNameOrId, track: trackNameOrId, requestData: data }
-    );
+    logTestDescription(`Adding tracktag to track ${trackNameOrId}`, {
+      recording: recordingNameOrId,
+      track: trackNameOrId,
+      requestData: data,
+    });
 
     let recordingId: string;
     if (additionalChecks["useRawRecordingId"] === true) {
@@ -247,23 +263,24 @@ Cypress.Commands.add(
         method: "POST",
         url: url,
         body: data,
-       },
+      },
       userName,
       statusCode
     ).then((response) => {
-      if(statusCode==200) {
+      if (statusCode == 200) {
         if (tagName !== null) {
           saveIdOnly(tagName, response.body.trackTagId);
         }
       }
 
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join('|')).to.include(additionalChecks["message"]);
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
       }
     });
   }
 );
-
 
 Cypress.Commands.add(
   "apiTrackTagDelete",
@@ -276,7 +293,9 @@ Cypress.Commands.add(
     additionalChecks: any = {}
   ) => {
     logTestDescription(`Delete tracktag from recording ${recordingNameOrId} `, {
-      recordingName: recordingNameOrId, trackName: trackNameOrId, tagName: tagNameOrId
+      recordingName: recordingNameOrId,
+      trackName: trackNameOrId,
+      tagName: tagNameOrId,
     });
 
     let recordingId: string;
@@ -300,7 +319,9 @@ Cypress.Commands.add(
       tagId = getCreds(tagNameOrId).id.toString();
     }
 
-    const url = v1ApiPath(`recordings/${recordingId}/tracks/${trackId}/tags/${tagId}`);
+    const url = v1ApiPath(
+      `recordings/${recordingId}/tracks/${trackId}/tags/${tagId}`
+    );
 
     makeAuthorizedRequestWithStatus(
       {
@@ -311,9 +332,10 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join('|')).to.include(additionalChecks["message"  ]);
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
       }
     });
-    }
+  }
 );
-

@@ -50,7 +50,7 @@ describe("Recordings query using where", () => {
         start: 2,
         end: 5,
         id: 1,
-        positions: []
+        positions: [],
       },
     ],
     duration: 15.6666666666667,
@@ -83,7 +83,7 @@ describe("Recordings query using where", () => {
         start: 2,
         end: 5,
         id: 1,
-        positions: []
+        positions: [],
       },
     ],
     duration: 15.6666666666667,
