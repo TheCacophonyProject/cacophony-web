@@ -10,10 +10,7 @@ import {
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { ApiTrackDataRequest, ApiTrackResponse } from "@typedefs/api/track";
-import {
-  ApiTrackTagRequest,
-  ApiTrackTagResponse,
-} from "@typedefs/api/trackTag";
+import { ApiTrackTagRequest } from "@typedefs/api/trackTag";
 
 Cypress.Commands.add(
   "apiTrackAdd",

@@ -33,8 +33,6 @@ describe("Recordings - parameter tests", () => {
     tags: [],
     tracks: [],
     id: 892972,
-    // TODO: Issue 87.  Filehash missing on returned values
-    // fileHash: null,
     rawMimeType: "application/x-cptv",
     processingState: RecordingProcessingState.Finished,
     duration: 16.6666666666667,

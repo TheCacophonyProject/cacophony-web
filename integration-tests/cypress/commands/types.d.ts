@@ -286,8 +286,8 @@ export interface ApiRecordingForProcessing {
   fileMimeType: string;
   processingState: string;
   processingMeta: any;
-  GroupId: number;
-  DeviceId: number;
+  GroupId: number | string;
+  DeviceId: number | string;
   StationId: number;
   recordingDateTime: string;
   duration: number;
@@ -301,7 +301,7 @@ export interface ApiRecordingForProcessing {
 
 // from api/v1/recordings (post)
 export interface ApiRecordingSet {
-  type: RecordingType;
+  type: RecordingType | string;
   fileHash?: string;
   duration: number;
   location?: ApiLocation | number[];
@@ -315,7 +315,7 @@ export interface ApiRecordingSet {
   metadata?: ApiRecordingDataMetadata;
   additionalMetadata?: ApiThermalAdditionalMetadata | any;
   comment?: string;
-  processingState?: RecordingProcessingState;
+  processingState?: RecordingProcessingState | string;
 }
 
 // api/recordings/report

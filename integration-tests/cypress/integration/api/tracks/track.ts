@@ -6,8 +6,6 @@ import {
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
-import { getCreds } from "@commands/server";
-import { getTestName } from "@commands/names";
 
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {

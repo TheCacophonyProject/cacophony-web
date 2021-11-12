@@ -1,10 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
-  HTTP_OK200,
-  NOT_NULL,
-} from "@commands/constants";
+import { HTTP_Forbidden, HTTP_OK200, NOT_NULL } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
@@ -24,7 +19,7 @@ import {
 } from "@typedefs/api/track";
 import {
   ApiTrackTagRequest,
-  ApiTrackTagResponse,
+  ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 
 const EXCLUDE_IDS = ["[].id", "[].tags[].id", "[].tags[].trackId"];
@@ -100,7 +95,7 @@ describe("Track Tags: add, check, delete", () => {
     //data: {fieldName: "fieldValue"}
   };
 
-  const expectedTag1: ApiTrackTagResponse = {
+  const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
     createdAt: NOT_NULL,
     //TODO: cannot set data above, retuned as blank sting
@@ -116,7 +111,7 @@ describe("Track Tags: add, check, delete", () => {
     userName: "xxx",
   };
 
-  const expectedTag2: ApiTrackTagResponse = {
+  const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
     createdAt: NOT_NULL,
     //TODO: cannot set data above, retuned as blank sting
@@ -147,7 +142,6 @@ describe("Track Tags: add, check, delete", () => {
   };
 
   let dev_env = false;
-  let doNotValidate = true;
 
   before(() => {
     //Create group1 with 2 devices, admin and member
@@ -178,10 +172,8 @@ describe("Track Tags: add, check, delete", () => {
     //API calls work
     if (Cypress.env("running_in_a_dev_environment") == true) {
       dev_env = true;
-      doNotValidate = false;
       cy.apiSignInAs(null, null, superuser, suPassword);
     } else {
-      doNotValidate = true;
       cy.log(
         "Warning: validating returned returned data presence but not parameter values"
       );

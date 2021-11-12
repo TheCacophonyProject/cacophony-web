@@ -19,13 +19,11 @@ import {
   ApiRecordingStation,
   ApiTrackSet,
   TestThermalRecordingInfo,
+  ApiRecordingForProcessing,
 } from "../types";
 
 import { HTTP_OK200, NOT_NULL } from "../constants";
-import {
-  ApiRecordingProcessingJob,
-  ApiRecordingResponse,
-} from "@typedefs/api/recording";
+import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
@@ -402,10 +400,10 @@ export function TestCreateRecordingData(
 }
 
 export function TestCreateExpectedProcessingData(
-  template: ApiRecordingProcessingJob,
+  template: ApiRecordingForProcessing,
   recordingName: string,
   recording: ApiRecordingSet
-): ApiRecordingProcessingJob {
+): ApiRecordingForProcessing {
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
   expected.duration = recording.duration;

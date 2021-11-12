@@ -7,7 +7,7 @@ import {
 
 import { getCreds } from "@commands/server";
 
-import { ApiRecordingSet } from "@commands/types";
+import { ApiRecordingSet, ApiRecordingForProcessing } from "@commands/types";
 
 import {
   TestCreateExpectedProcessingData,
@@ -16,7 +16,6 @@ import {
 } from "@commands/api/recording-tests";
 import {
   ApiAudioRecordingResponse,
-  ApiRecordingProcessingJob,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
@@ -81,7 +80,7 @@ describe("Recordings - reprocessing tests", () => {
     processing: false,
   };
 
-  const templateExpectedProcessing: ApiRecordingProcessingJob = {
+  const templateExpectedProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: RecordingType.ThermalRaw,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
@@ -96,7 +95,7 @@ describe("Recordings - reprocessing tests", () => {
     StationId: null,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
-    location: {},
+    location: null,
     hasAlert: false,
     processingStartTime: NOT_NULL,
     processingEndTime: null,
@@ -150,7 +149,7 @@ describe("Recordings - reprocessing tests", () => {
     deviceId: 2023,
   };
 
-  const templateExpectedAudioProcessing: ApiRecordingProcessingJob = {
+  const templateExpectedAudioProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: RecordingType.Audio,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
@@ -165,7 +164,7 @@ describe("Recordings - reprocessing tests", () => {
     StationId: null,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
-    location: {},
+    location: null,
     hasAlert: false,
     processingStartTime: NOT_NULL,
     processingEndTime: null,
@@ -281,7 +280,7 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording2: ApiThermalRecordingResponse;
       let expectedRecording3: ApiThermalRecordingResponse;
       let expectedRecording4: ApiThermalRecordingResponse;
-      let expectedProcessing1: ApiRecordingProcessingJob;
+      let expectedProcessing1: ApiRecordingForProcessing;
       cy.log("Add recording as device");
       cy.apiRecordingAdd(
         "rrpCamera1",
@@ -639,7 +638,7 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording2: ApiAudioRecordingResponse;
       let expectedRecording3: ApiAudioRecordingResponse;
       let expectedRecording4: ApiAudioRecordingResponse;
-      let expectedProcessing1: ApiRecordingProcessingJob;
+      let expectedProcessing1: ApiRecordingForProcessing;
       cy.log("Add recording as device");
       cy.apiRecordingAdd(
         "rrpCamera1",
@@ -748,7 +747,7 @@ describe("Recordings - reprocessing tests", () => {
       const recording18 = TestCreateRecordingData(templateRecording);
       recording18.processingState = RecordingProcessingState.Finished;
       let expectedRecording18: ApiThermalRecordingResponse;
-      let expectedProcessing18: ApiRecordingProcessingJob;
+      let expectedProcessing18: ApiRecordingForProcessing;
 
       cy.log("Add recording as device");
       cy.apiRecordingAdd(

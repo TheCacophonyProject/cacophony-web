@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { ApiRecordingSet } from "@commands/types";
+import { ApiRecordingSet, ApiRecordingForProcessing } from "@commands/types";
 
 import {
   TestCreateExpectedProcessingData,
@@ -14,10 +14,7 @@ import {
   HTTP_OK200,
   NOT_NULL,
 } from "@commands/constants";
-import {
-  ApiRecordingProcessingJob,
-  ApiThermalRecordingResponse,
-} from "@typedefs/api/recording";
+import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recording thumbnails", () => {
@@ -72,7 +69,7 @@ describe("Recording thumbnails", () => {
     processingState: "analyse",
   };
 
-  const templateExpectedProcessing: ApiRecordingProcessingJob = {
+  const templateExpectedProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: RecordingType.ThermalRaw,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
@@ -87,7 +84,7 @@ describe("Recording thumbnails", () => {
     StationId: null,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
-    location: {},
+    location: null,
     hasAlert: false,
     processingStartTime: NOT_NULL,
     processingEndTime: null,

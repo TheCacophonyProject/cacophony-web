@@ -1,6 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
 import { NOT_NULL } from "@commands/constants";
-import { ApiAlertConditions, ApiRecordingSet } from "@commands/types";
+import {
+  ApiAlertConditions,
+  ApiRecordingSet,
+  ApiRecordingForProcessing,
+} from "@commands/types";
 import { getCreds } from "@commands/server";
 
 import {
@@ -10,7 +14,6 @@ import {
 } from "@commands/api/recording-tests";
 import {
   ApiAudioRecordingResponse,
-  ApiRecordingProcessingJob,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
@@ -37,8 +40,6 @@ describe("Recordings - processing tests", () => {
     tags: [],
     tracks: [],
     id: 892972,
-    // TODO: Issue 87.  Filehash missing on returned values
-    // fileHash: null,
     rawMimeType: "application/x-cptv",
     processingState: RecordingProcessingState.Finished,
     duration: 16.6666666666667,
@@ -75,7 +76,7 @@ describe("Recordings - processing tests", () => {
     version: "99",
   };
 
-  const templateExpectedProcessing: ApiRecordingProcessingJob = {
+  const templateExpectedProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: RecordingType.ThermalRaw,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
@@ -90,7 +91,7 @@ describe("Recordings - processing tests", () => {
     StationId: null,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
-    location: {},
+    location: null,
     hasAlert: false,
     processingStartTime: NOT_NULL,
     processingEndTime: null,
@@ -98,7 +99,7 @@ describe("Recordings - processing tests", () => {
     updatedAt: "xxx",
   };
 
-  const templateExpectedAudioProcessing: ApiRecordingProcessingJob = {
+  const templateExpectedAudioProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: RecordingType.Audio,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
@@ -113,7 +114,7 @@ describe("Recordings - processing tests", () => {
     StationId: null,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 60,
-    location: {},
+    location: null,
     hasAlert: false,
     processingStartTime: NOT_NULL,
     processingEndTime: null,
@@ -254,8 +255,8 @@ describe("Recordings - processing tests", () => {
       let expectedRecording1c: ApiThermalRecordingResponse;
       let expectedRecording1d: ApiThermalRecordingResponse;
       let expectedRecording1e: ApiThermalRecordingResponse;
-      let expectedProcessing1: ApiRecordingProcessingJob;
-      let expectedProcessing1c: ApiRecordingProcessingJob;
+      let expectedProcessing1: ApiRecordingForProcessing;
+      let expectedProcessing1c: ApiRecordingForProcessing;
 
       cy.log("Add recording as device");
       cy.apiRecordingAdd(
@@ -1180,7 +1181,7 @@ describe("Recordings - processing tests", () => {
       let expectedRecording21: ApiAudioRecordingResponse;
       let expectedRecording21b: ApiAudioRecordingResponse;
       let expectedRecording21c: ApiAudioRecordingResponse;
-      let expectedProcessing21: ApiRecordingProcessingJob;
+      let expectedProcessing21: ApiRecordingForProcessing;
 
       cy.log("Add recording as device");
       cy.apiRecordingAdd(

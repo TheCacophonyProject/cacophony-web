@@ -4,25 +4,12 @@ import { HTTP_BadRequest, HTTP_OK200, NOT_NULL } from "@commands/constants";
 import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
 import { getCreds } from "@commands/server";
-import { getTestName } from "@commands/names";
-
-import {
-  ApiTrackDataRequest,
-  ApiTrackResponse,
-  ApiTrackPosition,
-} from "@typedefs/api/track";
-import {
-  ApiTrackTagRequest,
-  ApiTrackTagResponse,
-} from "@typedefs/api/trackTag";
 
 import {
   TestCreateExpectedNeedsTagData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-
-const EXCLUDE_IDS = ["[].id", "[].tags[].id", "[].tags[].trackId"];
 
 const NO_SAVE_ID = null;
 
@@ -69,70 +56,6 @@ describe("Recording needs-tag (power-tagger)", () => {
     },
     comment: "This is a comment2",
     processingState: RecordingProcessingState.Finished,
-  };
-
-  //Tagging data below here
-  /////////////////////////////////////////////////////
-  const algorithm1 = {
-    model_name: "inc3",
-  };
-
-  const positions1: ApiTrackPosition[] = [
-    {
-      x: 1,
-      y: 2,
-      width: 10,
-      height: 20,
-    },
-    {
-      x: 2,
-      y: 3,
-      width: 11,
-      height: 21,
-    },
-  ];
-
-  const expectedTrack1: ApiTrackResponse = {
-    id: -99,
-    start: 1,
-    end: 3,
-    positions: positions1,
-    tags: [],
-  };
-
-  const track1: ApiTrackDataRequest = {
-    start_s: 1,
-    end_s: 3,
-    positions: positions1,
-    //TODO - do the remaining parameters _do_ anything?!
-    label: "a label",
-    clarity: 0.9,
-    message: "a message",
-    tag: "a tag",
-    tracker_version: 2,
-  };
-
-  const tag1: ApiTrackTagRequest = {
-    what: "possum",
-    confidence: 0.95,
-    automatic: false,
-    //data: {fieldName: "fieldValue"}
-  };
-
-  const expectedTag1: ApiTrackTagResponse = {
-    confidence: 0.95,
-    createdAt: NOT_NULL,
-    //TODO: cannot set data above, retuned as blank sting
-    //data: { "a parameter": "a value" },
-    data: "",
-    id: 99,
-    automatic: false,
-    trackId: 99,
-    updatedAt: NOT_NULL,
-    what: "possum",
-    //TODO: userId is missing in returned data
-    // userId: 99
-    userName: "xxx",
   };
 
   let dev_env = false;
@@ -203,7 +126,6 @@ describe("Recording needs-tag (power-tagger)", () => {
         "rntNonMember",
         undefined,
         NO_SAVE_ID,
-        "rntNeedsTag1",
         [expectedRecording1],
         [],
         HTTP_OK200,
