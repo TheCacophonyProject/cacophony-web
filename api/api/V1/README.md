@@ -43,7 +43,7 @@ To keep complex structures up to date with our TypeScript interface definitions,
 Before anything else, we need to decode the JWT, making sure it's the 'type' we want - _user_, _device_, or something else.
 This step doesn't hit the database, and if successful we get a sort of proxy object attached to `response.locals` using the key format `request${Objectname}`,
 so the authorised requesting user is stored in `response.locals.requestUser`, or in the case it's a device making the request `response.locals.requestDevice`.
-It's important to note that this is just an object storing the entity `id` i.e. `response.locals.requestUser.id` - since that is all that is needed for most
+It's important to note that this is just an object storing the entity `id` (plus information about whether or not the user is a super-admin user) i.e. `response.locals.requestUser.id` - since that is all that is needed for most
 requests.  If you need an actual `User` model object, you will need to obtain it manually using the `id`.
 
 ### 4. Request field validation

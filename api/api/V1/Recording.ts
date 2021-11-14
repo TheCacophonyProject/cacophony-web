@@ -544,10 +544,12 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       // FIXME Stop allowing arbitrary where queries
       const where = response.locals.where || {};
-      if (request.query.deleted) {
-        where.deletedAt = { [Op.ne]: null };
-      } else {
-        where.deletedAt = { [Op.eq]: null };
+      if (response.locals.hasOwnProperty('deleted')) {
+        if (response.locals.deleted) {
+          where.deletedAt = { [Op.ne]: null };
+        } else {
+          where.deletedAt = { [Op.eq]: null };
+        }
       }
       const result = await recordingUtil.query(
         response.locals.requestUser.id,
@@ -625,10 +627,12 @@ export default (app: Application, baseUrl: string) => {
           });
         }
       }
-      if ((request.query as any).deleted) {
-        (userWhere as any).deletedAt = { [Op.ne]: null };
-      } else {
-        (userWhere as any).deletedAt = { [Op.eq]: null };
+      if (response.locals.hasOwnProperty('deleted')) {
+        if (response.locals.deleted) {
+          (userWhere as any).deletedAt = { [Op.ne]: null };
+        } else {
+          (userWhere as any).deletedAt = { [Op.eq]: null };
+        }
       }
       const countQuery = {
         where: {
@@ -742,6 +746,7 @@ export default (app: Application, baseUrl: string) => {
           return models.Recording.isValidTagMode(value);
         }),
       query("view-mode").optional().equals("user"),
+      query("deleted").default(false).isBoolean().toBoolean(),
       //middleware.parseJSON("filterOptions", query).optional(),
     ]),
     parseJSONField(query("order")),
@@ -749,6 +754,13 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
     async (request: Request, response: Response) => {
       // FIXME - deprecate and generate report client-side from other available API data.
+      if (response.locals.hasOwnProperty('deleted')) {
+        if (response.locals.deleted) {
+          response.locals.where.deletedAt = { [Op.ne]: null };
+        } else {
+          response.locals.where.deletedAt = { [Op.eq]: null };
+        }
+      }
 
       // 10 minute timeout because the query can take a while to run
       // when the result set is large.
@@ -868,13 +880,17 @@ export default (app: Application, baseUrl: string) => {
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
    *
    * @apiParam {Integer} id Id of the recording to get the thumbnail for.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted recordings.
    *
    * @apiSuccess {file} file Raw data stream of the png.
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:id/thumbnail`,
-    validateFields([idOf(param("id"))]),
+    validateFields([
+        idOf(param("id")),
+        query("deleted").default(false).isBoolean().toBoolean(),
+    ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const rec = response.locals.recording;
@@ -910,6 +926,7 @@ export default (app: Application, baseUrl: string) => {
         });
     }
   );
+
   /**
    * @api {delete} /api/v1/recordings/:id Delete an existing recording
    * @apiName DeleteRecording
@@ -1008,6 +1025,42 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
+   * @api {patch} /api/v1/recordings/:id Undelete an existing soft-deleted recording
+   * @apiName UndeleteRecording
+   * @apiGroup Recordings
+   * @apiDescription This call is used for updating deletedAt and deletedBy fields of a previously
+   * soft-deleted recording.
+   *
+   * @apiUse V1UserAuthorizationHeader
+
+   * @apiParam {Integer} id Id of the recording to undelete.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+      `${apiUrl}/:id`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(param("id"))
+      ]),
+      (request: Request, response: Response, next: NextFunction) => {
+        // Make sure we restrict this to deleted recordings
+        response.locals.deleted = true;
+        next();
+      },
+      fetchAuthorizedRequiredRecordingById(param("id")),
+      async (request: Request, response: Response) => {
+        await response.locals.recording.update({ deletedAt: null, deletedBy: null });
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Undeleted recording."],
+        });
+      }
+  );
+
+
+  /**
    * @api {post} /api/v1/recordings/:id/tracks Add new track to recording
    * @apiName PostTrack
    * @apiGroup Tracks
@@ -1078,7 +1131,9 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/:id/tracks`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("id"))]),
+    validateFields([
+        idOf(param("id")),
+    ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const tracks =

@@ -365,6 +365,9 @@ export const fetchModel =
     ) {
       response.locals.onlyActive = false;
     }
+    if ("deleted" in request.query && Boolean(request.query.deleted)) {
+      response.locals.deleted = true;
+    }
 
     let model;
     try {
@@ -678,9 +681,16 @@ const getRecording =
     context?: any
   ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
     const recordingWhere = {
-      id: parseInt(recordingId),
-      deletedAt: { [Op.eq]: null },
+      id: parseInt(recordingId)
     };
+    if ('deleted' in context) {
+     if(context.deleted === true) {
+       (recordingWhere as any).deletedAt = { [Op.ne]: null };
+      } else if (context.deleted === false) {
+       (recordingWhere as any).deletedAt = { [Op.eq]: null };
+     }
+    }
+
     let getRecordingOptions;
     const groupWhere = {};
     const deviceWhere = {};
@@ -727,13 +737,19 @@ const getRecordings =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
   (
     recordingIds: string,
-    usused: string,
+    unused: string,
     context?: any
   ): Promise<ModelStaticCommon<Recording>[] | ClientError> => {
     const recordingWhere = {
       id: { [Op.in]: recordingIds },
     };
-
+    if ('deleted' in context) {
+      if(context.deleted === true) {
+        (recordingWhere as any).deletedAt = { [Op.ne]: null };
+      } else if (context.deleted === false) {
+        (recordingWhere as any).deletedAt = { [Op.eq]: null };
+      }
+    }
     let getRecordingOptions;
     const groupWhere = {};
     const deviceWhere = {};
