@@ -681,14 +681,14 @@ const getRecording =
     context?: any
   ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
     const recordingWhere = {
-      id: parseInt(recordingId)
+      id: parseInt(recordingId),
     };
-    if ('deleted' in context) {
-     if(context.deleted === true) {
-       (recordingWhere as any).deletedAt = { [Op.ne]: null };
+    if ("deleted" in context) {
+      if (context.deleted === true) {
+        (recordingWhere as any).deletedAt = { [Op.ne]: null };
       } else if (context.deleted === false) {
-       (recordingWhere as any).deletedAt = { [Op.eq]: null };
-     }
+        (recordingWhere as any).deletedAt = { [Op.eq]: null };
+      }
     }
 
     let getRecordingOptions;
@@ -743,8 +743,8 @@ const getRecordings =
     const recordingWhere = {
       id: { [Op.in]: recordingIds },
     };
-    if ('deleted' in context) {
-      if(context.deleted === true) {
+    if ("deleted" in context) {
+      if (context.deleted === true) {
         (recordingWhere as any).deletedAt = { [Op.ne]: null };
       } else if (context.deleted === false) {
         (recordingWhere as any).deletedAt = { [Op.eq]: null };

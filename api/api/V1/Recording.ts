@@ -544,7 +544,7 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       // FIXME Stop allowing arbitrary where queries
       const where = response.locals.where || {};
-      if (response.locals.hasOwnProperty('deleted')) {
+      if (response.locals.hasOwnProperty("deleted")) {
         if (response.locals.deleted) {
           where.deletedAt = { [Op.ne]: null };
         } else {
@@ -627,7 +627,7 @@ export default (app: Application, baseUrl: string) => {
           });
         }
       }
-      if (response.locals.hasOwnProperty('deleted')) {
+      if (response.locals.hasOwnProperty("deleted")) {
         if (response.locals.deleted) {
           (userWhere as any).deletedAt = { [Op.ne]: null };
         } else {
@@ -754,7 +754,7 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
     async (request: Request, response: Response) => {
       // FIXME - deprecate and generate report client-side from other available API data.
-      if (response.locals.hasOwnProperty('deleted')) {
+      if (response.locals.hasOwnProperty("deleted")) {
         if (response.locals.deleted) {
           response.locals.where.deletedAt = { [Op.ne]: null };
         } else {
@@ -888,8 +888,8 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/:id/thumbnail`,
     validateFields([
-        idOf(param("id")),
-        query("deleted").default(false).isBoolean().toBoolean(),
+      idOf(param("id")),
+      query("deleted").default(false).isBoolean().toBoolean(),
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
@@ -1039,26 +1039,26 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.patch(
-      `${apiUrl}/:id`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("id"))
-      ]),
-      (request: Request, response: Response, next: NextFunction) => {
-        // Make sure we restrict this to deleted recordings
-        response.locals.deleted = true;
-        next();
-      },
-      fetchAuthorizedRequiredRecordingById(param("id")),
-      async (request: Request, response: Response) => {
-        await response.locals.recording.update({ deletedAt: null, deletedBy: null });
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Undeleted recording."],
-        });
-      }
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    (request: Request, response: Response, next: NextFunction) => {
+      // Make sure we restrict this to deleted recordings
+      response.locals.deleted = true;
+      next();
+    },
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      await response.locals.recording.update({
+        deletedAt: null,
+        deletedBy: null,
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Undeleted recording."],
+      });
+    }
   );
-
 
   /**
    * @api {post} /api/v1/recordings/:id/tracks Add new track to recording
@@ -1131,9 +1131,7 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/:id/tracks`,
     extractJwtAuthorizedUser,
-    validateFields([
-        idOf(param("id")),
-    ]),
+    validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const tracks =
