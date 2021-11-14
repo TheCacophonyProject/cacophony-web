@@ -927,8 +927,8 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
     validateFields([
-        idOf(param("id")),
-        query("soft-delete").default(true).isBoolean().toBoolean()
+      idOf(param("id")),
+      query("soft-delete").default(true).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
