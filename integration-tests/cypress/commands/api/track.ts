@@ -7,10 +7,11 @@ import {
   makeAuthorizedRequestWithStatus,
   checkTreeStructuresAreEqualExcept,
   saveIdOnly,
+  sortArrayOnTwoKeys,
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { ApiTrackDataRequest, ApiTrackResponse } from "@typedefs/api/track";
-import { ApiTrackTagRequest } from "@typedefs/api/trackTag";
+import { ApiTrackTagRequest, ApiHumanTrackTagResponse, ApiAutomaticTrackTagResponse } from "@typedefs/api/trackTag";
 
 Cypress.Commands.add(
   "apiTrackAdd",
@@ -128,6 +129,9 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
+    let sortTracks: ApiTrackResponse[];
+    let sortExpectedTracks: ApiTrackResponse[];
+    let sortTags: ApiHumanTrackTagResponse[] | ApiAutomaticTrackTagResponse[];
     logTestDescription(`Check tracks for recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
     });
@@ -149,9 +153,26 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
+        //sort tracks
+        if (additionalChecks["doNotSort"] === true) {
+          sortTracks = response.body.tracks;
+          sortExpectedTracks = expectedTracks;
+        } else {
+          sortTracks = sortArrayOnTwoKeys(response.body.tracks, "start", "end");
+          sortExpectedTracks = sortArrayOnTwoKeys(expectedTracks, "start", "end");
+          sortTracks.forEach((track: ApiTrackResponse) => {
+            sortTags=sortArrayOnTwoKeys(track.tags, "confidence", "userName");
+            track.tags=sortTags;  
+          });
+          sortExpectedTracks.forEach((track: ApiTrackResponse) => {
+            sortTags=sortArrayOnTwoKeys(track.tags, "confidence", "userName");
+            track.tags=sortTags;  
+          });
+        }
+
         checkTreeStructuresAreEqualExcept(
-          expectedTracks,
-          response.body.tracks,
+          sortExpectedTracks,
+          sortTracks,
           excludeCheckOn
         );
       } else {

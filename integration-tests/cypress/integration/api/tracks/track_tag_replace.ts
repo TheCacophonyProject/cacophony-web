@@ -141,12 +141,12 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
   const poorTrackingTag = {
     what: "poor tracking",
-    confidence: 0.45,
+    confidence: 0.46,
     automatic: false,
   };
   const expectedPoorTrackingTag = {
     what: "poor tracking",
-    confidence: 0.45,
+    confidence: 0.46,
     automatic: false,
     createdAt: NOT_NULL,
     data: "",
@@ -620,13 +620,20 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("User can add duplicate to another user's track tag", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
+    const tag1a=JSON.parse(JSON.stringify(tag1));
+    const tag1b=JSON.parse(JSON.stringify(tag1));
+    tag1a.confidence=0.900;
+    tag1b.confidence=0.901;
+
     expectedTrackWithTags.tags = [
       JSON.parse(JSON.stringify(expectedTag1)),
       JSON.parse(JSON.stringify(expectedTag1)),
     ];
-    expectedTrackWithTags.tags[0].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTags.tags[0].userName = getTestName("ttgGroupMember");
+    expectedTrackWithTags.tags[0].confidence = 0.900;
     //expectedTrackWithTags.tags[0].userId=getCreds("ttgDeviceMember").id;
-    expectedTrackWithTags.tags[1].userName = getTestName("ttgGroupMember");
+    expectedTrackWithTags.tags[1].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTags.tags[1].confidence = 0.901;
     //expectedTrackWithTags.tags[1].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
@@ -644,7 +651,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording9",
       "ttgTrack9",
       "ttgTag9",
-      tag1
+      tag1a
     );
 
     cy.log("Another member can add duplicated tag");
@@ -653,7 +660,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording9",
       "ttgTrack9",
       "ttgTag9",
-      tag1
+      tag1b
     );
 
     cy.log("Check both tags shown");
@@ -871,7 +878,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       partTag
     );
 
-    cy.log("And anothe men=mber can add same suplementary tag");
+    cy.log("And another member can add same suplementary tag");
     cy.apiTrackTagReplaceTag(
       "ttgDeviceAdmin",
       "ttgRecording13",

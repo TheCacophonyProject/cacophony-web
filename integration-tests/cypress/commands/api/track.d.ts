@@ -55,6 +55,10 @@ declare namespace Cypress {
      * By default recording ID is looked up by name using recordingNameOrId
      *   Optionally, use the ID provided in recordingNameOrId by specifying
      *     additionalChecks["useRawRecordingId"]=true
+     * By default tracks/expectedTracks are sorted on start, end before comparison
+     * By default tags/expectedTags within each track are sorted by confidence,
+     * userName before comparison
+     *   Optionally, no not sort by specifying additionalChecks["doNotSort"]=true
      * Optionally, check that returned messages[] contains additionalChecks["message"]
      */
     apiTrackCheck(
