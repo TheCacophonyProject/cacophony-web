@@ -620,17 +620,17 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("User can add duplicate to another user's track tag", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
-    const tag1a=JSON.parse(JSON.stringify(tag1));
-    const tag1b=JSON.parse(JSON.stringify(tag1));
-    tag1a.confidence=0.900;
-    tag1b.confidence=0.901;
+    const tag1a = JSON.parse(JSON.stringify(tag1));
+    const tag1b = JSON.parse(JSON.stringify(tag1));
+    tag1a.confidence = 0.9;
+    tag1b.confidence = 0.901;
 
     expectedTrackWithTags.tags = [
       JSON.parse(JSON.stringify(expectedTag1)),
       JSON.parse(JSON.stringify(expectedTag1)),
     ];
     expectedTrackWithTags.tags[0].userName = getTestName("ttgGroupMember");
-    expectedTrackWithTags.tags[0].confidence = 0.900;
+    expectedTrackWithTags.tags[0].confidence = 0.9;
     //expectedTrackWithTags.tags[0].userId=getCreds("ttgDeviceMember").id;
     expectedTrackWithTags.tags[1].userName = getTestName("ttgDeviceMember");
     expectedTrackWithTags.tags[1].confidence = 0.901;

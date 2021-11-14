@@ -11,7 +11,11 @@ import {
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { ApiTrackDataRequest, ApiTrackResponse } from "@typedefs/api/track";
-import { ApiTrackTagRequest, ApiHumanTrackTagResponse, ApiAutomaticTrackTagResponse } from "@typedefs/api/trackTag";
+import {
+  ApiTrackTagRequest,
+  ApiHumanTrackTagResponse,
+  ApiAutomaticTrackTagResponse,
+} from "@typedefs/api/trackTag";
 
 Cypress.Commands.add(
   "apiTrackAdd",
@@ -159,14 +163,18 @@ Cypress.Commands.add(
           sortExpectedTracks = expectedTracks;
         } else {
           sortTracks = sortArrayOnTwoKeys(response.body.tracks, "start", "end");
-          sortExpectedTracks = sortArrayOnTwoKeys(expectedTracks, "start", "end");
+          sortExpectedTracks = sortArrayOnTwoKeys(
+            expectedTracks,
+            "start",
+            "end"
+          );
           sortTracks.forEach((track: ApiTrackResponse) => {
-            sortTags=sortArrayOnTwoKeys(track.tags, "confidence", "userName");
-            track.tags=sortTags;  
+            sortTags = sortArrayOnTwoKeys(track.tags, "confidence", "userName");
+            track.tags = sortTags;
           });
           sortExpectedTracks.forEach((track: ApiTrackResponse) => {
-            sortTags=sortArrayOnTwoKeys(track.tags, "confidence", "userName");
-            track.tags=sortTags;  
+            sortTags = sortArrayOnTwoKeys(track.tags, "confidence", "userName");
+            track.tags = sortTags;
           });
         }
 
