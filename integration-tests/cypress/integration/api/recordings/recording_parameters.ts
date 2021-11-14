@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
   HTTP_BadRequest,
-  HTTP_Forbidden,
+  HTTP_Forbidden, HTTP_OK200,
   HTTP_Unprocessable,
 } from "@commands/constants";
 
@@ -294,7 +294,6 @@ describe("Recordings - parameter tests", () => {
   it("Can read duration from file if not provided", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
-
     delete recording1.duration;
     cy.apiRecordingAdd(
       "rpaCamera1",
@@ -862,7 +861,7 @@ describe("Recordings - parameter tests", () => {
         recording1,
         "oneframe.cptv",
         "rpaRecording27",
-        HTTP_BadRequest
+        HTTP_OK200
       );
 
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording27");
