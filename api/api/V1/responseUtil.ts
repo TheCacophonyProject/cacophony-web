@@ -60,10 +60,10 @@ function badRequest(response: Response, messages: string[]) {
 }
 
 //======VALID REQUESTS=========
-function validRecordingUpload(response, idOfRecording) {
+function validRecordingUpload(response, idOfRecording, message = "") {
   send(response, {
     statusCode: 200,
-    messages: [VALID_DATAPOINT_UPLOAD_REQUEST],
+    messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
     recordingId: idOfRecording,
   });
 }

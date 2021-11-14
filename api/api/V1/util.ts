@@ -145,8 +145,9 @@ function multipartUpload(
             data.fileHash,
             uploadingDevice.id
           );
-          responseUtil.invalidDatapointUpload(
+          responseUtil.validRecordingUpload(
             response,
+            existingRecordingWithHashForDevice.id,
             "Duplicate recording found for device"
           );
           return;
