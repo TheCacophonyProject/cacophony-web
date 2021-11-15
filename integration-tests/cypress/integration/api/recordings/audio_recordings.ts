@@ -108,7 +108,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "App has root access": false,
     },
     comment: "A comment",
-    processingState: RecordingProcessingState.Finished
+    processingState: RecordingProcessingState.Finished,
   };
 
   before(() => {

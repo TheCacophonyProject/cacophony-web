@@ -118,8 +118,16 @@ describe("Recording thumbnails", () => {
     });
 
     beforeEach(() => {
-      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, RecordingProcessingState.Analyse);
-      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, RecordingProcessingState.Analyse);
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.Analyse
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.Analyse
+      );
     });
 
     it("Thumbnail generated as expected", () => {

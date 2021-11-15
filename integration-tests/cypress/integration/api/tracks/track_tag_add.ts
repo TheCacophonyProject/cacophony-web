@@ -1,5 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_Forbidden, HTTP_OK200, NOT_NULL_STRING } from "@commands/constants";
+import {
+  HTTP_Forbidden,
+  HTTP_OK200,
+  NOT_NULL_STRING,
+} from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
@@ -189,7 +193,11 @@ describe("Track Tags: add, check, delete", () => {
     //If running on dev, delete any recordings already present so that we know
     //what requires tagging by power-tagger
     if (dev_env == true) {
-      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, undefined);
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        undefined
+      );
       cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, undefined);
     }
   });

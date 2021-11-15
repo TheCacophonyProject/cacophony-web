@@ -119,7 +119,7 @@ describe("Recordings query using where", () => {
       ],
     },
     comment: "This is a comment",
-    processingState: RecordingProcessingState.Finished
+    processingState: RecordingProcessingState.Finished,
   };
 
   const templateRecording2: ApiRecordingSet = {
@@ -146,7 +146,7 @@ describe("Recordings query using where", () => {
       ],
     },
     comment: "This is a comment2",
-    processingState: RecordingProcessingState.Finished
+    processingState: RecordingProcessingState.Corrupt,
   };
 
   const templateRecording3: ApiRecordingSet = {
@@ -186,7 +186,7 @@ describe("Recordings query using where", () => {
       "App has root access": false,
     },
     comment: "test comment",
-    processingState: RecordingProcessingState.Analyse
+    processingState: RecordingProcessingState.Analyse,
   };
 
   const templateRecording4: ApiRecordingSet = {
@@ -604,7 +604,11 @@ describe("Recordings query using where", () => {
       [expectedRecording3],
       EXCLUDE_IDS
     );
-    cy.apiRecordingsCountCheck("rqGroupAdmin", { where: { type: RecordingType.Audio } }, 1);
+    cy.apiRecordingsCountCheck(
+      "rqGroupAdmin",
+      { where: { type: RecordingType.Audio } },
+      1
+    );
 
     cy.log("processingState");
     cy.apiRecordingsQueryCheck(

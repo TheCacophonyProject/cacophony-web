@@ -331,7 +331,11 @@ describe("Devices alerts", () => {
     //upload a recording tagged as possum
     cy.testUploadRecording(
       usera.camera,
-      { model: "different", processingState: RecordingProcessingState.Finished, tags: ["possum"] },
+      {
+        model: "different",
+        processingState: RecordingProcessingState.Finished,
+        tags: ["possum"],
+      },
       "recording2"
     );
 

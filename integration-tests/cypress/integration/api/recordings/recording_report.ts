@@ -72,7 +72,7 @@ describe("Recordings report using where", () => {
       ],
     },
     comment: "This is a comment2",
-    processingState: RecordingProcessingState.Finished,
+    processingState: RecordingProcessingState.Corrupt,
   };
 
   const templateRecording3: ApiRecordingSet = {

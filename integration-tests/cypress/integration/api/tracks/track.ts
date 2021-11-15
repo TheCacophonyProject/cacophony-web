@@ -2,7 +2,8 @@
 import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL, NOT_NULL_STRING,
+  NOT_NULL,
+  NOT_NULL_STRING,
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
@@ -15,7 +16,6 @@ import {
 } from "@typedefs/api/track";
 
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-
 
 const EXCLUDE_IDS = ["[].id"];
 
@@ -361,7 +361,11 @@ describe("Tracks: add, check, delete", () => {
       "trkRecording6",
       "trkTrack6",
       "trkAlgorithm6",
-      { start_s: 1, end_s: 2, positions: "badValue" } as unknown as ApiTrackDataRequest,
+      {
+        start_s: 1,
+        end_s: 2,
+        positions: "badValue",
+      } as unknown as ApiTrackDataRequest,
       undefined,
       HTTP_Unprocessable
     );

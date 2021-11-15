@@ -208,11 +208,31 @@ describe("Recordings - processing tests", () => {
     });
 
     beforeEach(() => {
-      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, RecordingProcessingState.Analyse);
-      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, RecordingProcessingState.Analyse);
-      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, RecordingProcessingState.Tracking);
-      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, RecordingProcessingState.Tracking);
-      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, "toMp3");
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.Analyse
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.Analyse
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.Tracking
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.Tracking
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        "toMp3"
+      );
       cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, "toMp3");
     });
 
@@ -664,25 +684,29 @@ describe("Recordings - processing tests", () => {
                 "rpRecording10",
                 recording10
               );
-              expectedProcessing10.processingState = RecordingProcessingState.Analyse;
+              expectedProcessing10.processingState =
+                RecordingProcessingState.Analyse;
               const expectedProcessing11 = TestCreateExpectedProcessingData(
                 templateExpectedAudioProcessing,
                 "rpRecording11",
                 recording11
               );
-              expectedProcessing11.processingState = RecordingProcessingState.Analyse;
+              expectedProcessing11.processingState =
+                RecordingProcessingState.Analyse;
               const expectedProcessing12 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
                 "rpRecording12",
                 recording12
               );
-              expectedProcessing12.processingState = RecordingProcessingState.Analyse;
+              expectedProcessing12.processingState =
+                RecordingProcessingState.Analyse;
               const expectedProcessing13 = TestCreateExpectedProcessingData(
                 templateExpectedAudioProcessing,
                 "rpRecording13",
                 recording13
               );
-              expectedProcessing13.processingState = RecordingProcessingState.Analyse;
+              expectedProcessing13.processingState =
+                RecordingProcessingState.Analyse;
 
               cy.log(
                 "Check recordings ordered by oldest first with audio and thermal in different queues"
@@ -1173,7 +1197,13 @@ describe("Recordings - processing tests", () => {
         undefined,
         EXCLUDE_KEYS
       );
-      cy.processingApiCheck(RecordingType.Audio, RecordingProcessingState.Analyse, "", undefined, EXCLUDE_KEYS);
+      cy.processingApiCheck(
+        RecordingType.Audio,
+        RecordingProcessingState.Analyse,
+        "",
+        undefined,
+        EXCLUDE_KEYS
+      );
     });
 
     it("Audio recordings follow correct workflow", () => {

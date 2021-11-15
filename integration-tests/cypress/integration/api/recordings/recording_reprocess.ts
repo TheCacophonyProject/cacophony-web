@@ -3,7 +3,7 @@ import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
   NOT_NULL,
-  NOT_NULL_STRING
+  NOT_NULL_STRING,
 } from "@commands/constants";
 
 import { getCreds } from "@commands/server";
@@ -263,14 +263,30 @@ describe("Recordings - reprocessing tests", () => {
     });
 
     beforeEach(() => {
-      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, "analyse.test");
-      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, "analyse.test");
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        "analyse.test"
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        "analyse.test"
+      );
       //TODO: API nees to implemnt a .test stream so we can avoid trashing (and picking up) analyse and reprocess files
       //from other users
       //cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, "reprocess.test");
       //cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, "reprocess.test");
-      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, RecordingProcessingState.Reprocess); //remove
-      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, RecordingProcessingState.Reprocess); //remove
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.Reprocess
+      ); //remove
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.Reprocess
+      ); //remove
     });
 
     //TODO: test to be updated when new processing workflow implemented
