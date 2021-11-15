@@ -32,7 +32,7 @@ function alertBody(
   return [html, text];
 }
 function resetBody(user: User, token: string): string[] {
-  let resetUrl = `${config.server.browse_url}/newpassword/?token=${token}`;
+  const resetUrl = `${config.server.browse_url}/newpassword/?token=${token}`;
   let name;
   if (user.firstName) {
     name = user.firstName;

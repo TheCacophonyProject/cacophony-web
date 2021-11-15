@@ -29,9 +29,6 @@
               autocapitalize="none"
             />
           </b-form-group>
-
-          </b-form-group>
-
           <b-button
             :disabled="usernameOrEmail === ''"
             type="submit"
@@ -47,11 +44,11 @@
               </p>
             </b-col>
             <b-col>
-            <p class="small mt-4">
-              <b-link href="/register">Register here</b-link>.
-            </p>
-          </b-col>
-        </b-row>
+              <p class="small mt-4">
+                <b-link href="/register">Register here</b-link>.
+              </p>
+            </b-col>
+          </b-row>
         </b-form>
       </div>
     </b-form-row>
@@ -76,7 +73,7 @@ export default {
       this.successMessage = null;
       evt.preventDefault();
       const response = await User.reset(this.usernameOrEmail);
-      this.successMessage = "An email has been sent to reset your password"
+      this.successMessage = "An email has been sent to reset your password";
     },
   },
 };
