@@ -3,11 +3,13 @@ import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
   HTTP_BadRequest,
-  NOT_NULL,
+  NOT_NULL_STRING,
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getTestName } from "@commands/names";
+
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {
@@ -24,7 +26,7 @@ const EXCLUDE_IDS = ["[].id", "[].tags[].id", "[].tags[].trackId"];
 
 describe("Track Tags: replaceTag, check, delete", () => {
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -38,7 +40,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       tracks: [],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   const positions1: ApiTrackPosition[] = [
@@ -92,14 +94,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
   const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
-    createdAt: NOT_NULL,
+    createdAt: NOT_NULL_STRING,
     //TODO: cannot set data above, retuned as blank sting
     //data: { "a parameter": "a value" },
     data: "",
     id: 99,
     automatic: false,
     trackId: 99,
-    updatedAt: NOT_NULL,
+    updatedAt: NOT_NULL_STRING,
     what: "possum",
     //TODO: userId is missing in returned data
     // userId: 99
@@ -108,14 +110,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
   const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
-    createdAt: NOT_NULL,
+    createdAt: NOT_NULL_STRING,
     //TODO: cannot set data above, retuned as blank sting
     //data: { "a parameter": "a value" },
     data: "",
     id: 99,
     automatic: false,
     trackId: 99,
-    updatedAt: NOT_NULL,
+    updatedAt: NOT_NULL_STRING,
     what: "cat",
     //TODO: userId is missing in returned data
     // userId: 99
@@ -131,11 +133,11 @@ describe("Track Tags: replaceTag, check, delete", () => {
     what: "part",
     confidence: 0.45,
     automatic: false,
-    createdAt: NOT_NULL,
+    createdAt: NOT_NULL_STRING,
     data: "",
     id: 99,
     trackId: 99,
-    updatedAt: NOT_NULL,
+    updatedAt: NOT_NULL_STRING,
     userName: "xxx",
   };
 
@@ -148,11 +150,11 @@ describe("Track Tags: replaceTag, check, delete", () => {
     what: "poor tracking",
     confidence: 0.46,
     automatic: false,
-    createdAt: NOT_NULL,
+    createdAt: NOT_NULL_STRING,
     data: "",
     id: 99,
     trackId: 99,
-    updatedAt: NOT_NULL,
+    updatedAt: NOT_NULL_STRING,
     userName: "xxx",
   };
   const algorithm1 = {

@@ -1,11 +1,13 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_Forbidden, HTTP_OK200, NOT_NULL } from "@commands/constants";
+import { HTTP_Forbidden, HTTP_OK200, NOT_NULL_STRING } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 
 import { ApiRecordingNeedsTagReturned } from "@commands/types";
+
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 import {
   TestCreateRecordingData,
@@ -29,7 +31,7 @@ describe("Track Tags: add, check, delete", () => {
   const suPassword = getCreds("superuser")["password"];
 
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -43,7 +45,7 @@ describe("Track Tags: add, check, delete", () => {
       tracks: [],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   const positions1: ApiTrackPosition[] = [
@@ -97,14 +99,14 @@ describe("Track Tags: add, check, delete", () => {
 
   const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
-    createdAt: NOT_NULL,
+    createdAt: NOT_NULL_STRING,
     //TODO: cannot set data above, retuned as blank sting
     //data: { "a parameter": "a value" },
     data: "",
     id: 99,
     automatic: false,
     trackId: 99,
-    updatedAt: NOT_NULL,
+    updatedAt: NOT_NULL_STRING,
     what: "possum",
     //TODO: userId is missing in returned data
     // userId: 99
@@ -113,14 +115,14 @@ describe("Track Tags: add, check, delete", () => {
 
   const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
-    createdAt: NOT_NULL,
+    createdAt: NOT_NULL_STRING,
     //TODO: cannot set data above, retuned as blank sting
     //data: { "a parameter": "a value" },
     data: "",
     id: 99,
     automatic: false,
     trackId: 99,
-    updatedAt: NOT_NULL,
+    updatedAt: NOT_NULL_STRING,
     what: "cat",
     //TODO: userId is missing in returned data
     // userId: 99
@@ -132,8 +134,8 @@ describe("Track Tags: add, check, delete", () => {
     RecordingId: 34,
     duration: 40,
     fileSize: 1,
-    recordingJWT: NOT_NULL,
-    tagJWT: NOT_NULL,
+    recordingJWT: NOT_NULL_STRING,
+    tagJWT: NOT_NULL_STRING,
     tracks: [],
   };
 
@@ -187,8 +189,8 @@ describe("Track Tags: add, check, delete", () => {
     //If running on dev, delete any recordings already present so that we know
     //what requires tagging by power-tagger
     if (dev_env == true) {
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", undefined);
-      cy.testDeleteRecordingsInState(superuser, "audio", undefined);
+      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, undefined);
+      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, undefined);
     }
   });
 

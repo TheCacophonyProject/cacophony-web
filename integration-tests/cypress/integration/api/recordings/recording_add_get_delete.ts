@@ -33,6 +33,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     groupId: 246,
     comment: "This is a comment",
     processing: false,
+    version: null,
     tags: [],
     tracks: [
       {
@@ -54,7 +55,7 @@ describe("Recordings (thermal): add, get, delete", () => {
   };
 
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.Audio,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -74,7 +75,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       ],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished
   };
 
   before(() => {
@@ -854,7 +855,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       const superuser = getCreds("superuser")["name"];
       const suPassword = getCreds("superuser")["password"];
       cy.apiSignInAs(null, null, superuser, suPassword);
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", undefined);
+      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, undefined);
     }
 
     cy.log("Add recording as device");

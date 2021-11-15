@@ -1,5 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_BadRequest, HTTP_OK200, NOT_NULL } from "@commands/constants";
+import { HTTP_BadRequest, HTTP_OK200, NOT_NULL_STRING } from "@commands/constants";
 
 import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
@@ -22,8 +22,8 @@ describe("Recording needs-tag (power-tagger)", () => {
     RecordingId: 34,
     duration: 40,
     fileSize: 1,
-    recordingJWT: NOT_NULL,
-    tagJWT: NOT_NULL,
+    recordingJWT: NOT_NULL_STRING,
+    tagJWT: NOT_NULL_STRING,
     tracks: [],
   };
 
@@ -102,8 +102,8 @@ describe("Recording needs-tag (power-tagger)", () => {
     //If running on dev, delete any recordings already present so that we know
     //what requires tagging
     if (dev_env == true) {
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", undefined);
-      cy.testDeleteRecordingsInState(superuser, "audio", undefined);
+      cy.testDeleteRecordingsInState(superuser, RecordingType.ThermalRaw, undefined);
+      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, undefined);
     }
   });
 

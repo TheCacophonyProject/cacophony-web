@@ -72,7 +72,7 @@ describe("Recordings - audio recording parameter tests", () => {
   };
 
   const templateRecording: ApiRecordingSet = {
-    type: "audio",
+    type: RecordingType.Audio,
     fileHash: null,
     duration: 60,
     recordingDateTime: "2021-08-24T01:35:00.000Z",
@@ -108,7 +108,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "App has root access": false,
     },
     comment: "A comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished
   };
 
   before(() => {

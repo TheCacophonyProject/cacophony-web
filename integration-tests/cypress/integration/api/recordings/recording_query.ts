@@ -98,7 +98,7 @@ describe("Recordings query using where", () => {
   //TODO: Issue ##. Several parameters not propogated to returned recordings query (but present in /recording (get)).  Commented out here
   //Either fix API to be consistent or remove this comment and remove commented lines below
   const templateRecording1: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -119,11 +119,11 @@ describe("Recordings query using where", () => {
       ],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished
   };
 
   const templateRecording2: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
@@ -146,11 +146,11 @@ describe("Recordings query using where", () => {
       ],
     },
     comment: "This is a comment2",
-    processingState: "CORRUPT",
+    processingState: RecordingProcessingState.Finished
   };
 
   const templateRecording3: ApiRecordingSet = {
-    type: "audio",
+    type: RecordingType.Audio,
     fileHash: null,
     duration: 60,
     recordingDateTime: "2021-08-24T01:35:00.000Z",
@@ -186,11 +186,11 @@ describe("Recordings query using where", () => {
       "App has root access": false,
     },
     comment: "test comment",
-    processingState: "analyse",
+    processingState: RecordingProcessingState.Analyse
   };
 
   const templateRecording4: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
@@ -208,7 +208,7 @@ describe("Recordings query using where", () => {
       tracks: [{ start_s: 2, end_s: 5, predictions: [] }],
     },
     comment: "This is a comment2",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   //Four recording templates for setting and their expected return values
@@ -600,22 +600,22 @@ describe("Recordings query using where", () => {
     cy.log("type");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: { type: "audio" } },
+      { where: { type: RecordingType.Audio } },
       [expectedRecording3],
       EXCLUDE_IDS
     );
-    cy.apiRecordingsCountCheck("rqGroupAdmin", { where: { type: "audio" } }, 1);
+    cy.apiRecordingsCountCheck("rqGroupAdmin", { where: { type: RecordingType.Audio } }, 1);
 
     cy.log("processingState");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: { processingState: "CORRUPT" } },
+      { where: { processingState: RecordingProcessingState.Corrupt } },
       [expectedRecording2],
       EXCLUDE_IDS
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
-      { where: { processingState: "CORRUPT" } },
+      { where: { processingState: RecordingProcessingState.Corrupt } },
       1
     );
 

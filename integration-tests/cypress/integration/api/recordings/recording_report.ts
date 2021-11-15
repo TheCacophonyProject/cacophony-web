@@ -1,6 +1,8 @@
 /// <reference path="../../../support/index.d.ts" />
 import { HTTP_Unprocessable, HTTP_OK200 } from "@commands/constants";
 
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+
 import { ApiRecordingColumns, ApiRecordingSet } from "@commands/types";
 
 import { getCreds } from "@commands/server";
@@ -15,7 +17,7 @@ describe("Recordings report using where", () => {
   const suPassword = getCreds("superuser")["password"];
 
   const templateRecording1: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -40,11 +42,11 @@ describe("Recordings report using where", () => {
       ],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   const templateRecording2: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
@@ -70,11 +72,11 @@ describe("Recordings report using where", () => {
       ],
     },
     comment: "This is a comment2",
-    processingState: "CORRUPT",
+    processingState: RecordingProcessingState.Finished,
   };
 
   const templateRecording3: ApiRecordingSet = {
-    type: "audio",
+    type: RecordingType.Audio,
     fileHash: null,
     duration: 60,
     recordingDateTime: "2021-08-24T01:35:00.000Z",
@@ -120,11 +122,11 @@ describe("Recordings report using where", () => {
       "App has root access": false,
     },
     comment: null,
-    processingState: "analyse",
+    processingState: RecordingProcessingState.Analyse,
   };
 
   const templateRecording4: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
@@ -144,7 +146,7 @@ describe("Recordings report using where", () => {
       tracks: [{ start_s: 2, end_s: 5, predictions: [] }],
     },
     comment: "This is a comment2",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   //TODO: Travis does not handle timezones well. So ignoring datetime for now as in report we have no idea
@@ -440,7 +442,7 @@ describe("Recordings report using where", () => {
     cy.log("type");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
-      { where: { type: "audio" } },
+      { where: { type: RecordingType.Audio } },
       [expectedRecording3],
       EXCLUDE_COLUMNS
     );
@@ -448,7 +450,7 @@ describe("Recordings report using where", () => {
     cy.log("processingState");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
-      { where: { processingState: "CORRUPT" } },
+      { where: { processingState: RecordingProcessingState.Corrupt } },
       [expectedRecording2],
       EXCLUDE_COLUMNS
     );

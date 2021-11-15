@@ -2,7 +2,7 @@
 import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL,
+  NOT_NULL, NOT_NULL_STRING,
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
@@ -14,11 +14,14 @@ import {
   ApiTrackPosition,
 } from "@typedefs/api/track";
 
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+
+
 const EXCLUDE_IDS = ["[].id"];
 
 describe("Tracks: add, check, delete", () => {
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -32,7 +35,7 @@ describe("Tracks: add, check, delete", () => {
       tracks: [],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   const positions1: ApiTrackPosition[] = [
@@ -291,7 +294,7 @@ describe("Tracks: add, check, delete", () => {
       "trkRecording6",
       "trkTrack6",
       "trkAlgorithm6",
-      minTrack,
+      minTrack as unknown as ApiTrackDataRequest,
       undefined
     );
 
@@ -327,7 +330,7 @@ describe("Tracks: add, check, delete", () => {
       "trkRecording6",
       "trkTrack6",
       "trkAlgorithm6",
-      { start_s: 2 },
+      { start_s: 2 } as unknown as ApiTrackDataRequest,
       undefined,
       HTTP_Unprocessable
     );
@@ -336,7 +339,7 @@ describe("Tracks: add, check, delete", () => {
       "trkRecording6",
       "trkTrack6",
       "trkAlgorithm6",
-      { end_s: 2 },
+      { end_s: 2 } as unknown as ApiTrackDataRequest,
       undefined,
       HTTP_Unprocessable
     );
@@ -347,7 +350,7 @@ describe("Tracks: add, check, delete", () => {
       "trkRecording6",
       "trkTrack6",
       "trkAlgorithm6",
-      { badField: 2 },
+      { badField: 2 } as unknown as ApiTrackDataRequest,
       undefined,
       HTTP_Unprocessable
     );
@@ -358,7 +361,7 @@ describe("Tracks: add, check, delete", () => {
       "trkRecording6",
       "trkTrack6",
       "trkAlgorithm6",
-      { start_s: 1, end_s: 2, positions: "badValue" },
+      { start_s: 1, end_s: 2, positions: "badValue" } as unknown as ApiTrackDataRequest,
       undefined,
       HTTP_Unprocessable
     );
@@ -369,7 +372,7 @@ describe("Tracks: add, check, delete", () => {
       "trkRecording6",
       "trkTrack6",
       "trkAlgorithm6",
-      { start_s: 1, end_s: 2 },
+      { start_s: 1, end_s: 2 } as unknown as ApiTrackDataRequest,
       "bad value",
       HTTP_Unprocessable
     );
@@ -405,12 +408,12 @@ describe("Tracks: add, check, delete", () => {
       {
         automatic: true,
         confidence: 0.9,
-        createdAt: NOT_NULL,
+        createdAt: NOT_NULL_STRING,
         //NOTE: assume this is model name and defaults to unknown where mode_id does not match known model?
         data: { name: "unknown" },
         id: NOT_NULL,
         trackId: NOT_NULL,
-        updatedAt: NOT_NULL,
+        updatedAt: NOT_NULL_STRING,
         what: "cat",
       },
     ];

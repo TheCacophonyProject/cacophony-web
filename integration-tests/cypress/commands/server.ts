@@ -5,7 +5,7 @@ export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 
 import { format as urlFormat } from "url";
 
-import { NOT_NULL } from "./constants";
+import { NOT_NULL_STRING } from "./constants";
 import { ApiLocation } from "./types";
 
 export function apiPath(): string {
@@ -332,7 +332,7 @@ export function checkTreeStructuresAreEqualExcept(
             );
           } else {
             //check we were asked to validate, or validate NOT NULL
-            if (containedStruct[containedKeys[count]] == NOT_NULL) {
+            if (containedStruct[containedKeys[count]] == NOT_NULL_STRING) {
               expect(
                 containingStruct[containedKeys[count]],
                 `Expected ${prettyElementName} should not be NULL`

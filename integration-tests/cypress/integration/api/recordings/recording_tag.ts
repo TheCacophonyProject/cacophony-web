@@ -2,9 +2,10 @@
 import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL,
+  NOT_NULL_STRING,
 } from "@commands/constants";
 
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
@@ -19,7 +20,7 @@ const EXCLUDE_IDS = ["[].id"];
 
 describe("Recordings: tag", () => {
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -39,7 +40,7 @@ describe("Recordings: tag", () => {
       ],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   const tag1: ApiRecordingTagRequest = {
@@ -56,7 +57,7 @@ describe("Recordings: tag", () => {
     automatic: false,
     taggerId: 99,
     taggerName: "xxx",
-    createdAt: NOT_NULL,
+    createdAt: NOT_NULL_STRING,
   };
 
   before(() => {
@@ -280,7 +281,7 @@ describe("Recordings: tag", () => {
       automatic: true,
       //TODO: version not returned
       //  version: 1,
-      createdAt: NOT_NULL,
+      createdAt: NOT_NULL_STRING,
       taggerId: getCreds("tagGroupAdmin").id,
       taggerName: getTestName("tagGroupAdmin"),
     };

@@ -22,7 +22,7 @@ import {
   ApiRecordingForProcessing,
 } from "../types";
 
-import { HTTP_OK200, NOT_NULL } from "../constants";
+import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
@@ -34,7 +34,7 @@ let lastUsedTime = DEFAULT_DATE;
 
 Cypress.Commands.add(
   "testDeleteRecordingsInState",
-  (superuser: string, type: string, state: string) => {
+  (superuser: string, type: RecordingType, state: RecordingProcessingState) => {
     cy.apiRecordingsCountCheck(
       superuser,
       {
@@ -424,8 +424,8 @@ export function TestCreateExpectedNeedsTagData(
   expected.DeviceId = deviceId;
   expected.RecordingId = getCreds(recordingName).id;
   expected.duration = inputRecording.duration;
-  expected.recordingJWT = NOT_NULL;
-  expected.tagJWT = NOT_NULL;
+  expected.recordingJWT = NOT_NULL_STRING;
+  expected.tagJWT = NOT_NULL_STRING;
   expected.tracks = [];
   inputRecording.metadata.tracks.forEach((track: any) => {
     expected.tracks.push({
