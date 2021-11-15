@@ -57,9 +57,7 @@ function resetBody(user: User, token: string): string[] {
 
 async function sendResetEmail(user: User, password: string): Promise<boolean> {
   const token = getResetToken(user, password);
-  console.log("got token", token);
   const [html, text] = resetBody(user, token);
-  console.log("Send reset email", html);
   return sendEmail(
     html,
     text,

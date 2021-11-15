@@ -265,12 +265,6 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     validPasswordOf(body("password")),
     async (request: Request, response: Response) => {
-      console.log(
-        "password a",
-        response.locals.resetInfo.password,
-        "oasswrod b",
-        response.locals.user.password
-      );
       if (response.locals.user.password != response.locals.resetInfo.password) {
         return responseUtil.send(response, {
           statusCode: 403,

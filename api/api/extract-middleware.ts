@@ -353,7 +353,6 @@ export const fetchModel =
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
     const id = extractValFromRequest(request, primary) as string;
-
     if (!id && !required) {
       return next();
     }

@@ -226,7 +226,7 @@ export default function (app: Application) {
   );
 
   app.post(
-    "/reset",
+    "/resetpassword",
     validateFields([
       oneOf(
         [

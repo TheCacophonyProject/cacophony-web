@@ -31,7 +31,7 @@ function reset(
   FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
 > {
   return CacophonyApi.post(
-    "/reset",
+    "/resetpassword",
     {
       nameOrEmail: usernameOrEmail,
     },

@@ -47,7 +47,6 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   getDataValues: () => Promise<UserData>;
   comparePassword: (password: string) => Promise<boolean>;
   updatePassword: (password: string) => Promise<boolean>;
-
   getAllDeviceIds: () => Promise<number[]>;
   getGroupsIds: () => Promise<number[]>;
   getGroups: (options: {
