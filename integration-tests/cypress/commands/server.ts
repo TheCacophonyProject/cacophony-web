@@ -5,7 +5,7 @@ export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 
 import { format as urlFormat } from "url";
 
-import { NOT_NULL } from "./constants";
+import { NOT_NULL_STRING } from "./constants";
 import { ApiLocation } from "./types";
 
 export function apiPath(): string {
@@ -78,6 +78,10 @@ export function saveIdOnly(name: string, id: number) {
 
 export function saveJobKeyByName(name: string, jobKey: string) {
   Cypress.env("testCreds")[name].jobKey = jobKey;
+}
+
+export function saveJWTByName(name: string, jwt: string) {
+  Cypress.env("testCreds")[name].jwt = jwt;
 }
 
 export function getCreds(userName: string): ApiCreds {
@@ -295,12 +299,12 @@ export function checkTreeStructuresAreEqualExcept(
         `Expect result includes parameter ${prettyTreeSoFar} :::`
       ).equal(typeof containedStruct);
 
-      // expect(
-      //   Object.keys(containingStruct).length,
-      //   `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
-      //     containingStruct
-      //   ).toString()}]`
-      // ).to.equal(Object.keys(containedStruct).length);
+      expect(
+        Object.keys(containingStruct).length,
+        `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
+          containingStruct
+        ).toString()}]`
+      ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order
       const containedKeys: string[] = Object.keys(containedStruct).sort();
@@ -328,7 +332,7 @@ export function checkTreeStructuresAreEqualExcept(
             );
           } else {
             //check we were asked to validate, or validate NOT NULL
-            if (containedStruct[containedKeys[count]] == NOT_NULL) {
+            if (containedStruct[containedKeys[count]] == NOT_NULL_STRING) {
               expect(
                 containingStruct[containedKeys[count]],
                 `Expected ${prettyElementName} should not be NULL`

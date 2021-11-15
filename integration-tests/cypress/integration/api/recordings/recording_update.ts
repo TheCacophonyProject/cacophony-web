@@ -39,7 +39,7 @@ describe("Update recordings", () => {
   };
 
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
@@ -62,7 +62,7 @@ describe("Update recordings", () => {
       ],
     },
     comment: "This is a comment2",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   //TODO: Issue 98 - only comments and additional metadata succeed at update
@@ -79,7 +79,7 @@ describe("Update recordings", () => {
     //batteryLevel: 87,
     //batteryCharging: "CHARGING",
     //airplaneModeOn: true,
-    //type: "audio"
+    //type: RecordingType.Audio
     comment: "This is a new comment",
     // add newFields, change algorithm, set previewSecs to null, leave totalFrames unchanged
     additionalMetadata: {
@@ -348,7 +348,7 @@ describe("Update recordings", () => {
 
 //TODO: Issue 98 - mosty parameters appear unsupported. Commented out - remove from here if we will never support them
 function updateExpected(expectedRecording: any) {
-  expectedRecording.processingState = "FINISHED";
+  expectedRecording.processingState = RecordingProcessingState.Finished;
   //expectedRecording.processing = false;
   //expectedRecording.rawMimeType= "application/test";
   //expectedRecording.fileMimeType= "application/test2";
@@ -360,7 +360,7 @@ function updateExpected(expectedRecording: any) {
   //expectedRecording.batteryLevel= 87;
   //expectedRecording.batteryCharging= "CHARGING";
   //expectedRecording.airplaneModeOn= true;
-  //expectedRecording.type= "audio";
+  //expectedRecording.type= RecordingType.Audio;
   expectedRecording.comment = "This is a new comment";
   expectedRecording.location = {
     lat: -46.29105,
