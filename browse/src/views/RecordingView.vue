@@ -207,7 +207,7 @@ export default {
           {
             on: {
               click: async () => {
-                await this.recording.undelete(id);
+                await api.recording.undelete(id);
                 this.$bvToast.hide(id.toString());
               },
             },
@@ -217,7 +217,7 @@ export default {
         this.$bvToast.toast([undoButton], {
           id: id.toString(),
           title: `Deleted recording #${id}`,
-          autoHideDelay: 5000,
+          autoHideDelay: 15000,
           appendToast: true,
         });
       } else {
