@@ -3,7 +3,8 @@ export const HTTP_Forbidden = 403;
 export const HTTP_BadRequest = 400;
 export const HTTP_Unprocessable = 422;
 export const HTTP_OK200 = 200;
-export const NOT_NULL = "not null";
+export const NOT_NULL = -99;
+export const NOT_NULL_STRING = NOT_NULL.toString();
 
 export const ApiRecordingColumnNames = [
   "Id",

@@ -19,13 +19,11 @@ import {
   ApiRecordingStation,
   ApiTrackSet,
   TestThermalRecordingInfo,
+  ApiRecordingForProcessing,
 } from "../types";
 
-import { HTTP_OK200, NOT_NULL } from "../constants";
-import {
-  ApiRecordingProcessingJob,
-  ApiRecordingResponse,
-} from "@typedefs/api/recording";
+import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
+import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
@@ -36,7 +34,7 @@ let lastUsedTime = DEFAULT_DATE;
 
 Cypress.Commands.add(
   "testDeleteRecordingsInState",
-  (superuser: string, type: string, state: string) => {
+  (superuser: string, type: RecordingType, state: RecordingProcessingState) => {
     cy.apiRecordingsCountCheck(
       superuser,
       {
@@ -402,11 +400,15 @@ export function TestCreateRecordingData(
 }
 
 export function TestCreateExpectedProcessingData(
-  template: ApiRecordingProcessingJob,
-  recordingName: string
-): ApiRecordingProcessingJob {
+  template: ApiRecordingForProcessing,
+  recordingName: string,
+  recording: ApiRecordingSet
+): ApiRecordingForProcessing {
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
+  expected.duration = recording.duration;
+  expected.location = { coordinates: recording.location, type: "Point" };
+  expected.recordingDateTime = recording.recordingDateTime;
   return expected;
 }
 
@@ -422,15 +424,17 @@ export function TestCreateExpectedNeedsTagData(
   expected.DeviceId = deviceId;
   expected.RecordingId = getCreds(recordingName).id;
   expected.duration = inputRecording.duration;
-  expected.recordingJWT = NOT_NULL;
-  expected.tagJWT = NOT_NULL;
+  expected.recordingJWT = NOT_NULL_STRING;
+  expected.tagJWT = NOT_NULL_STRING;
   expected.tracks = [];
   inputRecording.metadata.tracks.forEach((track: any) => {
     expected.tracks.push({
       trackId: NOT_NULL,
+      id: NOT_NULL,
       start: track.start_s,
       end: track.end_s,
       needsTagging: true,
+      positions: [],
     });
   });
 
@@ -547,12 +551,12 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   expected.deviceName = device.deviceName;
   expected.groupId = group.id;
   expected.groupName = group.groupName;
-  // expected.type = inputRecording.type;
-  // if (inputRecording.type == "thermalRaw") {
-  //   expected.rawMimeType = "application/x-cptv";
-  // } else {
-  //   expected.rawMimeType = "audio/mpeg";
-  // }
+  expected.type = inputRecording.type;
+  if (inputRecording.type == "thermalRaw") {
+    expected.rawMimeType = "application/x-cptv";
+  } else {
+    expected.rawMimeType = "audio/mpeg";
+  }
   if (inputRecording.duration !== undefined) {
     expected.duration = inputRecording.duration;
   }
@@ -588,11 +592,13 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
       JSON.stringify(inputRecording.additionalMetadata)
     );
   }
-  //TODO: filehash not in returned values - issue 87
-  //expected.fileHash=inputRecording.fileHash;
-  //if (inputRecording.location !== undefined) {
-  //  expected.location = { type: "Point", coordinates: inputRecording.location };
-  //}
+  if (inputRecording.location !== undefined) {
+    //expected.location = { type: "Point", coordinates: inputRecording.location };
+    expected.location = {
+      lat: inputRecording.location[0],
+      lng: inputRecording.location[1],
+    };
+  }
   //expected.Station = station;
   expected.tags = [] as ApiRecordingTagResponse[];
   expected.tracks = [] as ApiTrackResponse[];
@@ -603,6 +609,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
         tags: [],
         start: track.start_s,
         end: track.end_s,
+        positions: [],
       };
       if (
         track.predictions.length &&
