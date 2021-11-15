@@ -1025,7 +1025,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id Undelete an existing soft-deleted recording
+   * @api {patch} /api/v1/recordings/undelete/:id Undelete an existing soft-deleted recording
    * @apiName UndeleteRecording
    * @apiGroup Recordings
    * @apiDescription This call is used for updating deletedAt and deletedBy fields of a previously
@@ -1039,7 +1039,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.patch(
-    `${apiUrl}/:id`,
+    `${apiUrl}/undelete/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     (request: Request, response: Response, next: NextFunction) => {

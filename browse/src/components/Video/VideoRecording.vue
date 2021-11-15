@@ -1,5 +1,7 @@
 <template>
-  <b-container class="video-elements-wrapper">
+  <b-container
+    :class="['video-elements-wrapper', { 'loading-next': loadingNext }]"
+  >
     <b-row class="no-gutters">
       <b-col cols="12" lg="8">
         <CptvPlayer
@@ -61,20 +63,30 @@
     <b-row>
       <b-col cols="12" lg="8">
         <div class="img-buttons">
-          <button
-            v-b-tooltip.hover.bottomleft="'Earlier in search'"
-            @click="gotoNextRecording('previous')"
-            :disabled="!canGoBackwardInSearch"
+          <span id="disabled-wrapper-prev" class="d-inline-block" tabindex="0">
+            <b-button
+              @click="gotoNextRecording('previous')"
+              tabindex="0"
+              :disabled="loadingNext || !canGoBackwardInSearch"
+            >
+              <font-awesome-icon icon="angle-left" class="fa-3x" />
+            </b-button>
+          </span>
+          <b-tooltip target="disabled-wrapper-prev" placement="bottomleft"
+            >Earlier in search</b-tooltip
           >
-            <font-awesome-icon icon="angle-left" class="fa-3x" />
-          </button>
-          <button
-            v-b-tooltip.hover.bottomleft="'Later in search'"
-            @click="gotoNextRecording('next')"
-            :disabled="!canGoForwardInSearch"
+          <span id="disabled-wrapper-next" class="d-inline-block" tabindex="0">
+            <b-button
+              tabindex="0"
+              @click="gotoNextRecording('next')"
+              :disabled="loadingNext || !canGoForwardInSearch"
+            >
+              <font-awesome-icon icon="angle-right" class="fa-3x" />
+            </b-button>
+          </span>
+          <b-tooltip target="disabled-wrapper-next" placement="bottomleft"
+            >Later in search</b-tooltip
           >
-            <font-awesome-icon icon="angle-right" class="fa-3x" />
-          </button>
         </div>
 
         <RecordingControls
@@ -86,7 +98,6 @@
           @deleteTag="deleteTag($event)"
           @addTag="addTag($event)"
           @updateComment="updateComment($event)"
-          @nextOrPreviousRecording="gotoNextRecording('either')"
           @requested-export="requestedMp4Export"
           @deleted-recording="deletedRecording"
         />
@@ -154,6 +165,7 @@ export default {
       canGoBackwardInSearch: false,
       requestedExport: false,
       localTags: [],
+      loadingNext: false,
     };
   },
   computed: {
@@ -241,12 +253,19 @@ export default {
     "recording.tags": function () {
       this.updateLocalTags();
     },
+    async recording() {
+      await this.checkPreviousAndNextRecordings();
+      this.loadingNext = false;
+    },
   },
   methods: {
     async reprocess() {
       const { success } = await api.recording.reprocess(this.recordingId);
       if (success) {
-        this.$emit("recording-updated", this.recordingId);
+        this.$emit("recording-updated", {
+          id: this.recordingId,
+          action: "updated",
+        });
       } else {
         // TODO
       }
@@ -305,15 +324,15 @@ export default {
       return;
     },
     async deletedRecording() {
+      this.loadingNext = true;
+      const recordingId = Number(this.$route.params.id);
+      this.$emit("recording-updated", { id: recordingId, action: "deleted" });
       if (this.canGoBackwardInSearch || this.canGoForwardInSearch) {
         if (this.canGoForwardInSearch) {
           await this.gotoNextRecording("next");
         } else {
           await this.gotoNextRecording("previous");
         }
-      } else {
-        const recordingId = Number(this.$route.params.id);
-        this.$emit("recording-updated", recordingId);
       }
     },
     async gotoNextRecording(
@@ -322,6 +341,7 @@ export default {
       tags: false | string[] = false,
       skipMessage = false
     ) {
+      this.loadingNext = true;
       const idsList = this.getListOfRecordingsIds();
       if (idsList) {
         await this.goToNextRecordingInList(direction, idsList);
@@ -330,33 +350,12 @@ export default {
         searchQueryCopy.type = RecordingType.ThermalRaw;
         const resolvedTagMode = tagMode || searchQueryCopy.tagMode;
         const resolvedTags = tags || searchQueryCopy.tags;
-        try {
-          const hasNext = await this.getNextRecording(
-            direction,
-            resolvedTagMode,
-            resolvedTags,
-            skipMessage
-          );
-          if (hasNext) {
-            const prevNext = await Promise.all([
-              this.hasNextRecording(
-                "previous",
-                resolvedTagMode,
-                resolvedTags,
-                true
-              ),
-              this.hasNextRecording(
-                "next",
-                resolvedTagMode,
-                resolvedTags,
-                true
-              ),
-            ]);
-            this.canGoBackwardInSearch = prevNext[0];
-            this.canGoForwardInSearch = prevNext[1];
-          }
-          // eslint-disable-next-line no-empty
-        } catch (e) {}
+        await this.getNextRecording(
+          direction,
+          resolvedTagMode,
+          resolvedTags,
+          skipMessage
+        );
       }
     },
     async goToNextRecordingInList(direction, list: string[]) {
@@ -561,7 +560,7 @@ export default {
     async updateComment(comment: string) {
       const recordingId = Number(this.$route.params.id);
       await api.recording.comment(comment, recordingId);
-      this.$emit("recording-updated", recordingId);
+      this.$emit("recording-updated", { id: recordingId, action: "updated" });
     },
   },
 };
@@ -593,7 +592,7 @@ export default {
   span:hover {
     opacity: 1;
   }
-  > button {
+  > span > button {
     cursor: pointer;
     width: 4em;
     max-height: 4em;
@@ -622,5 +621,10 @@ export default {
   .img-buttons {
     font-size: 80%;
   }
+}
+
+.loading-next {
+  pointer-events: none;
+  opacity: 0.1;
 }
 </style>

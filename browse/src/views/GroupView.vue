@@ -109,7 +109,7 @@
       <!--        <RecordingsTab-->
       <!--          :loading="deletedRecordingsCountLoading"-->
       <!--          :group-name="groupName"-->
-      <!--          :recordings-query="recordingQueryFinal"-->
+      <!--          :recordings-query="deletedRecordingQueryFinal"-->
       <!--        />-->
       <!--      </b-tab>-->
     </b-tabs>
@@ -158,6 +158,7 @@ export default {
       groupId: null,
       group: null,
       recordingQueryFinal: {},
+      deletedRecordingQueryFinal: {},
       visitsQueryFinal: {},
       users: [],
       devices: [],
@@ -178,7 +179,13 @@ export default {
     },
     tabNames() {
       if (!this.limitedView) {
-        return ["users", "devices", "stations", "recordings"];
+        return [
+          "users",
+          "devices",
+          "stations",
+          "recordings",
+          "deleted-recordings",
+        ];
       } else {
         return ["limited-devices", "limited-recordings"];
       }
@@ -301,7 +308,22 @@ export default {
     },
     async fetchDeletedRecordingCount() {
       this.deletedRecordingsCountLoading = true;
-
+      this.groupId = this.group.id;
+      this.deletedRecordingQueryFinal = {
+        ...this.recordingQuery(),
+        deleted: true,
+      };
+      const countResponse = await api.recording.queryCount({
+        ...this.deletedRecordingQueryFinal,
+      });
+      if (countResponse.success) {
+        const {
+          result: { count },
+        } = countResponse;
+        if (count !== 0) {
+          this.deletedRecordingsCount = count;
+        }
+      }
       this.deletedRecordingsCountLoading = false;
     },
     async fetchRecordingCount() {
