@@ -365,8 +365,8 @@ export const fetchModel =
     ) {
       response.locals.onlyActive = false;
     }
-    if ("deleted" in request.query && Boolean(request.query.deleted)) {
-      response.locals.deleted = true;
+    if ("deleted" in request.query) {
+      response.locals.deleted = Boolean(request.query.deleted);
     }
 
     let model;
