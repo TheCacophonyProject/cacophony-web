@@ -225,6 +225,13 @@ export default function (app: Application) {
     })
   );
 
+  /**
+   * @api {post} /api/v1/resetpassword Sends an email to a user for resetting password
+   * @apiName ResetPassword
+   * @apiGroup Authentication
+   * @apiParam {String} userName Username for new user.
+   * @apiUse V1ResponseSuccess
+   */
   app.post(
     "/resetpassword",
     validateFields([
@@ -253,6 +260,15 @@ export default function (app: Application) {
     }
   );
 
+  /**
+   * @api {post} /api/v1/validateToken Validates a reset token
+   * @apiName ValidateToken
+   * @apiGroup Authentication
+   * @apiParam {String} [token] password reset token to validate
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.post(
     "/validateToken",
     validateFields([body("token")]),

@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "webpack serve --config webpack/webpack.dev.js --progress",
     "release": "webpack --config webpack/webpack.release.js --progress",
-    "lint": "eslint src --ext .js,.vue,.ts && (npx prettier --check './**/*.ts' './**/*.js' './**/*.vue' || (echo \"Please run 'npm lint:fix' to clean up formatting of files.\"; false))",
+    "lint": "eslint src --ext .js,.vue,.ts && (npx prettier --check './**/*.ts' './**/*.js' './**/*.vue' || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
     "lint:fix": "eslint src --fix --ext .js,.vue,.ts && npx prettier --write './**/*.ts' './**/*.js' './**/*.vue'",
     "postinstall": "npm update cptv-player-vue"
   },

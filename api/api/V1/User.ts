@@ -40,6 +40,10 @@ import {
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUserResponseSuccess {
+  userData: ApiLoggedInUserResponse;
+}
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
   userName: user.username,
@@ -51,11 +55,6 @@ export const mapUser = (user: User): ApiLoggedInUserResponse => ({
 });
 
 export const mapUsers = (users: User[]) => users.map(mapUser);
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUserResponseSuccess {
-  userData: ApiLoggedInUserResponse;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -259,11 +258,25 @@ export default function (app: Application, baseUrl: string) {
     });
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ApiChangePasswordRequestBody {
+    password: string; // Password for the user account
+    token: string; // Valid password reset token
+  }
+
+  /**
+   * @api {patch} /api/v1/user/changePassword Updates a users password with reset token authentication
+   * @apiName ChangePassword
+   * @apiGroup User
+   * @apiInterface {apiBody::ApiChangePasswordRequestBody}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.patch(
     `${apiUrl}/changePassword`,
-    validateFields([body("token"), body("password")]),
+    validateFields([body("token"), validPasswordOf(body("password"))]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
-    validPasswordOf(body("password")),
     async (request: Request, response: Response) => {
       if (response.locals.user.password != response.locals.resetInfo.password) {
         return responseUtil.send(response, {
