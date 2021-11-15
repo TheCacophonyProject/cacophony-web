@@ -54,7 +54,7 @@ describe("Recordings (thermal): add, get, delete", () => {
   };
 
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -74,7 +74,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       ],
     },
     comment: "This is a comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   before(() => {
@@ -854,7 +854,11 @@ describe("Recordings (thermal): add, get, delete", () => {
       const superuser = getCreds("superuser")["name"];
       const suPassword = getCreds("superuser")["password"];
       cy.apiSignInAs(null, null, superuser, suPassword);
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", undefined);
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        undefined
+      );
     }
 
     cy.log("Add recording as device");
@@ -914,7 +918,7 @@ describe("Recordings (thermal): add, get, delete", () => {
 
     if (Cypress.env("running_in_a_dev_environment") == true) {
       cy.log("Check /recordings/needs-tag ignores deleted recording");
-      cy.apiRecordingNeedsTagCheck("raGroupAdmin", undefined, []);
+      cy.apiRecordingNeedsTagCheck("raGroupAdmin", undefined, null, []);
     } else {
       cy.log(
         "SKIPPING - Check /recordings/needs-tag ignores deleted recording - as can only do that on a dev server"

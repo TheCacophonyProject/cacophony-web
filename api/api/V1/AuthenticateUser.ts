@@ -46,7 +46,7 @@ interface ApiAuthenticateUserRequestBody {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUserResponseData {
+export interface ApiLoggedInUserResponseData {
   userData: ApiLoggedInUserResponse;
 }
 
@@ -281,7 +281,15 @@ export default function (app: Application) {
         });
       }
 
-      const { id, username, firstName, lastName } = response.locals.user;
+      const {
+        id,
+        username,
+        firstName,
+        lastName,
+        email,
+        globalPermission,
+        endUserAgreement,
+      } = response.locals.user;
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
@@ -290,6 +298,9 @@ export default function (app: Application) {
           userName: username,
           firstName,
           lastName,
+          email,
+          globalPermission,
+          endUserAgreement,
         },
       });
     }

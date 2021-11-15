@@ -161,6 +161,7 @@ declare namespace Cypress {
     apiRecordingNeedsTagCheck(
       userName: string,
       deviceNameOrId: string,
+      recordingName: string,
       expectedRecordings: ApiRecordingNeedsTagReturned[],
       excludeCheckOn?: string[],
       statusCode?: number,

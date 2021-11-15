@@ -39,11 +39,8 @@ import {
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import { ApiLoggedInUserResponseData } from "./AuthenticateUser";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUserResponseSuccess {
-  userData: ApiLoggedInUserResponse;
-}
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
   userName: user.username,
@@ -55,11 +52,6 @@ export const mapUser = (user: User): ApiLoggedInUserResponse => ({
 });
 
 export const mapUsers = (users: User[]) => users.map(mapUser);
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUsersResponseSuccess {
-  usersList: ApiLoggedInUserResponse[];
-}
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
@@ -76,7 +68,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData}
    *
    * @apiUse V1ResponseError
    */
@@ -192,7 +184,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -222,7 +214,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -269,7 +261,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ChangePassword
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
