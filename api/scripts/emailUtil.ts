@@ -31,25 +31,35 @@ function alertBody(
   text += "Thanks, Cacophony Team";
   return [html, text];
 }
-function resetBody(user: User, token:string): string[] {
-  let resetUrl = `${config.server.recording_url_base}/?token=${token}`;
-  let html = `Hello ${user.firstName}</b>`;
-  html += `We received a request to reset your Cacophony password</b>`;
-  html += `Click the link below to set a new password</b>`;
-  html += `<br><a  href="${resetUrl}>Set New Password</a></b>`;
-  html += "Thanks, Cacophony Team";
+function resetBody(user: User, token: string): string[] {
+  let resetUrl = `${config.server.browse_url}/newpassword/?token=${token}`;
+  let name;
+  if (user.firstName) {
+    name = user.firstName;
+  } else {
+    name = user.username;
+  }
+  let html = `Hello ${name},<br>`;
+  html += `We received a request to reset your Cacophony password<br>`;
+  html += `Click the link below to set a new password<br>`;
+  html += `<br><a href="${resetUrl}">Set New Password</a><br><br>`;
+  html += `If this was not you, ignore this email<br><br>`;
+  html += "Thanks, Cacophony Team<br>";
+  html += `<br>Having trouble with the link, use this url to reset your password ${resetUrl}<br><br>`;
 
-  let text = `Hello ${user.firstName}\r\n`;
+  let text = `Hello ${name}\r\n`;
   text += `We received a request to reset your Cacophony password\r\n`;
-  text += `Visit ${resetUrl} to set a new password\r\n`;
+  text += `Visit ${resetUrl} to set a new password\r\n\r\n`;
+  html += `If this was not you, ignore this email\r\n\r\n`;
   text += "Thanks, Cacophony Team";
   return [html, text];
 }
 
 async function sendResetEmail(user: User, password: string): Promise<boolean> {
-  const token = getResetToken(user,password);
-
-  const [html, text] = resetBody(user,token);
+  const token = getResetToken(user, password);
+  console.log("got token", token);
+  const [html, text] = resetBody(user, token);
+  console.log("Send reset email", html);
   return sendEmail(
     html,
     text,

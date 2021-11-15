@@ -30,8 +30,7 @@ import {
   extractJwtAuthorisedSuperAdminUser,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredResetToken,
-  fetchUnauthorizedRequiredUserByToken,
+  fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
@@ -237,7 +236,7 @@ export default function (app: Application) {
           body("nameOrEmail").isEmail(),
           body("email").isEmail(),
         ],
-        "could not find a user with the given username or email"
+        "Missing user name in request"
       ),
     ]),
     fetchUnauthorizedOptionalUserByNameOrEmailOrId(
@@ -245,6 +244,7 @@ export default function (app: Application) {
     ),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
+        response.locals.user.resetPassword();
       }
       return responseUtil.send(response, {
         statusCode: 200,
@@ -256,20 +256,25 @@ export default function (app: Application) {
   app.post(
     "/validateToken",
     validateFields([body("token")]),
-    fetchUnauthorizedRequiredResetToken(body("token")),
-    fetchUnauthorizedRequiredUserByToken(),
+    fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response) => {
-      if (
-        response.locals.user.password != response.locals.resetToken.password
-      ) {
+      if (response.locals.user.password != response.locals.resetInfo.password) {
         return responseUtil.send(response, {
           statusCode: 403,
-          messages: ["Invalid token"],
+          messages: ["Your password has already been changed"],
         });
       }
+
+      const { id, username, firstName, lastName } = response.locals.user;
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
+        userData: {
+          id,
+          userName: username,
+          firstName,
+          lastName,
+        },
       });
     }
   );

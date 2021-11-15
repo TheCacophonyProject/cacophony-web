@@ -46,6 +46,8 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
   getDataValues: () => Promise<UserData>;
   comparePassword: (password: string) => Promise<boolean>;
+  updatePassword: (password: string) => Promise<boolean>;
+
   getAllDeviceIds: () => Promise<number[]>;
   getGroupsIds: () => Promise<number[]>;
   getGroups: (options: {
@@ -418,8 +420,12 @@ export default function (
       });
     });
   };
+  User.prototype.updatePassword = async function (password: string) {
+    return this.update({ password: password });
+  };
 
   User.prototype.resetPassword = async function () {
+    console.log("resetting");
     await sendResetEmail(this, this.password);
   };
 

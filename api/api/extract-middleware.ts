@@ -4,7 +4,7 @@ import {
   DecodedJWTToken,
   getVerifiedJWT,
   lookupEntity,
-  getDecodedResetToken
+  getDecodedResetToken,
 } from "./auth";
 import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
@@ -353,6 +353,7 @@ export const fetchModel =
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
     const id = extractValFromRequest(request, primary) as string;
+
     if (!id && !required) {
       return next();
     }
@@ -1160,7 +1161,7 @@ export const fetchAdminAuthorizedRequiredGroupById = (
     groupNameOrId
   );
 
-export const fetchUnauthorizedRequiredResetToken =
+export const fetchUnauthorizedRequiredUserByResetToken =
   (field: ValidationChain) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const token = extractValFromRequest(request, field) as string;
@@ -1170,18 +1171,17 @@ export const fetchUnauthorizedRequiredResetToken =
     const resetInfo = getDecodedResetToken(token);
 
     response.locals.resetInfo = resetInfo;
+    const user = await getUser()(response.locals.resetInfo.id);
+    if (!user) {
+      return next(
+        new ClientError(
+          `Could not find a user with id '${response.locals.resetInfo.id}'`,
+          403
+        )
+      );
+    }
+    response.locals.user = user;
     next();
-  };
-
-export const fetchUnauthorizedRequiredUserByToken =
-  () => async (request: Request, response: Response, next: NextFunction) => {
-    fetchRequiredModel(
-      models.User,
-      true,
-      true,
-      getUser(),
-      response.locals.resetInfo.id
-    );
   };
 
 export const fetchUnauthorizedRequiredUserByNameOrEmailOrId = (

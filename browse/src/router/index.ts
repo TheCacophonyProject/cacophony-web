@@ -17,6 +17,8 @@ import VisitsView from "@/views/VisitsView.vue";
 import TaggingView from "@/views/TaggingView.vue";
 import EndUserAgreementView from "@/views/EndUserAgreementView.vue";
 import AiMetricsView from "@/views/AiMetricsView.vue";
+import ForgotPasswordView from "@/views/ForgotPasswordView.vue";
+import NewPasswordView from "@/views/NewPasswordView.vue";
 
 // TODO(jon): We should be lazy loading some of these components for better code-splitting
 import MonitoringTimeline from "@/views/MonitoringTimeline.vue";
@@ -120,11 +122,11 @@ function createRouter() {
         beforeEnter: cancelPendingRequests,
       },
       {
-        path: "/passwordreset",
-        component: PasswordResetView,
+        path: "/forgot",
+        component: ForgotPasswordView,
         meta: {
           noAuth: true,
-          title: "Password Reset",
+          title: "Forgot Passowrd",
         },
         beforeEnter: cancelPendingRequests,
       },

@@ -26,7 +26,7 @@ function loginOther(username) {
 }
 
 function reset(
-  usernameOrEmail: string,
+  usernameOrEmail: string
 ): Promise<
   FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
 > {
@@ -39,7 +39,26 @@ function reset(
   );
 }
 
+function validateToken(
+  token: string
+): Promise<
+  FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
+> {
+  return CacophonyApi.post(
+    "/validateToken",
+    {
+      token: token,
+    },
+    true
+  );
+}
 
+function changePassword(token: string, newPassword: string) {
+  return CacophonyApi.patch("/api/v1/Users/changePassword", {
+    token: token,
+    password: newPassword,
+  });
+}
 
 function list(): Promise<
   FetchResult<{ usersList: ApiLoggedInUserResponse[] }>
@@ -115,4 +134,7 @@ export default {
   persistFields,
   getEUAVersion,
   token,
+  reset,
+  validateToken,
+  changePassword,
 };

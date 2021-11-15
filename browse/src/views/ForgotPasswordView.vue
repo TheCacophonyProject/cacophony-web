@@ -4,16 +4,16 @@
       <div class="sign-form-wrapper bg-white rounded text-center">
         <div class="logo" />
 
-        <h1>Login</h1>
+        <h1>Reset Password</h1>
 
         <b-form @submit="onSubmit">
           <b-alert
-            :show="!!errorMessage"
-            variant="danger"
+            :show="!!successMessage"
+            variant="success"
             dismissible
-            @dismissed="errorMessage = undefined"
+            @dismissed="successMessage = undefined"
           >
-            {{ errorMessage }}
+            {{ successMessage }}
           </b-alert>
 
           <b-form-group
@@ -33,17 +33,25 @@
           </b-form-group>
 
           <b-button
-            :disabled="usernameOrEmail === '' || loggingIn"
+            :disabled="usernameOrEmail === ''"
             type="submit"
             variant="primary"
             class="btn-block"
-            >Sign in
+            >Reset Password
           </b-button>
 
-
-          <p class="small mt-4 text-center">
-            Already registered? <b-link href="/login">Login here</b-link>.
-          </p>
+          <b-row>
+            <b-col>
+              <p class="small mt-4">
+                <b-link href="/login">Login here</b-link>.
+              </p>
+            </b-col>
+            <b-col>
+            <p class="small mt-4">
+              <b-link href="/register">Register here</b-link>.
+            </p>
+          </b-col>
+        </b-row>
         </b-form>
       </div>
     </b-form-row>
@@ -51,38 +59,24 @@
 </template>
 
 <script lang="ts">
+import User from "../api/User.api";
+
 export default {
   name: "ResetPasswordView",
   props: {},
   data() {
     return {
       usernameOrEmail: "",
-      errorMessage: null,
+      successMessage: null,
     };
   },
   computed: {},
   methods: {
     async onSubmit(evt) {
-      this.errorMessage = null;
+      this.successMessage = null;
       evt.preventDefault();
-
-      const response = await this.$store.dispatch("User/RESET", {
-        username: this.usernameOrEmail,
-      });
-      if (response.success) {
-        if (this.$store.getters["User/isLoggedIn"]) {
-          console.log("Redirect to", this.$route.query.nextUrl);
-          if (this.$route.query.nextUrl) {
-            await this.$router.push(this.$route.query.nextUrl);
-          } else {
-            this.$router.go("home");
-          }
-        }
-      } else {
-        this.errorMessage =
-          response.result.messages.length && response.result.messages[0];
-      }
-      this.loggingIn = false;
+      const response = await User.reset(this.usernameOrEmail);
+      this.successMessage = "An email has been sent to reset your password"
     },
   },
 };

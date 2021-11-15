@@ -36,6 +36,7 @@ import {
   extractJwtAuthorizedUser,
   fetchUnauthorizedOptionalUserByNameOrId,
   fetchUnauthorizedRequiredUserByNameOrId,
+  fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
@@ -257,4 +258,40 @@ export default function (app: Application, baseUrl: string) {
       euaVersion: config.euaVersion,
     });
   });
+
+  app.patch(
+    `${apiUrl}/changePassword`,
+    validateFields([body("token"), body("password")]),
+    fetchUnauthorizedRequiredUserByResetToken(body("token")),
+    validPasswordOf(body("password")),
+    async (request: Request, response: Response) => {
+      console.log(
+        "password a",
+        response.locals.resetInfo.password,
+        "oasswrod b",
+        response.locals.user.password
+      );
+      if (response.locals.user.password != response.locals.resetInfo.password) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: ["Your password has alread been changed"],
+        });
+      }
+      const result = await response.locals.user.updatePassword(
+        request.body.password
+      );
+      if (!result) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: ["Error changing password please contact sys admin"],
+        });
+      }
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: [],
+        token: `JWT ${auth.createEntityJWT(response.locals.user)}`,
+        userData: mapUser(response.locals.user),
+      });
+    }
+  );
 }

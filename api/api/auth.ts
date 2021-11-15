@@ -53,7 +53,12 @@ export interface ResetInfo {
 }
 
 export const getResetToken = (user: User, password: string): string => {
-  return jwt.sign({id: user.id, password: password},config.server.passportSecret);
+  // expires in a day
+  return jwt.sign(
+    { id: user.id, password: password },
+    config.server.passportSecret,
+    { expiresIn: 60 * 60 * 24 }
+  );
 };
 
 export const getDecodedResetToken = (token: string): ResetInfo => {

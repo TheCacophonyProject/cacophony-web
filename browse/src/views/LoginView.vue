@@ -50,15 +50,18 @@
             class="btn-block"
             >Sign in
           </b-button>
-
-          <p class="small mt-4">
-            Don't have an account yet?
-            <b-link href="/resetpassword">Forgotten password</b-link>.
-          </p>
-          <p class="small mt-4">
-            Don't have an account yet?
-            <b-link href="/register">Register here</b-link>.
-          </p>
+          <b-row>
+            <b-col>
+              <p class="small mt-4">
+                <b-link href="/register">Register here</b-link>.
+              </p>
+            </b-col>
+            <b-col>
+              <p class="small mt-4">
+                <b-link href="/forgot">Forgot password?</b-link>.
+              </p>
+            </b-col>
+          </b-row>
         </b-form>
       </div>
     </b-form-row>

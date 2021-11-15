@@ -82,6 +82,26 @@ const actions = {
     }
     return loginResponse;
   },
+  async CHANGE_PASSWORD({ commit }, payload) {
+    const { result, success } = await api.user.changePassword(
+      payload.token,
+      payload.password
+    );
+    commit("invalidateLogin");
+    if (success) {
+      api.user.persistUser(
+        result.userData.userName,
+        result.token,
+        result.userData.email,
+        result.userData.globalPermission,
+        result.userData.id,
+        result.userData.endUserAgreement
+      );
+      result.userData.acceptedEUA = result.userData.endUserAgreement;
+      commit("receiveLogin", result);
+    }
+    return { result, success };
+  },
   async LOGIN_OTHER({ commit }, result) {
     api.user.persistUser(
       result.userData.userName,
