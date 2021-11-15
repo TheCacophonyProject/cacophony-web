@@ -58,7 +58,7 @@
             </b-col>
             <b-col>
               <p class="small mt-4">
-                <b-link href="/forgot">Forgot password?</b-link>.
+                <b-link href="/forgot">Forgot password?</b-link>
               </p>
             </b-col>
           </b-row>

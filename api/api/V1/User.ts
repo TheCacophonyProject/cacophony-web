@@ -39,7 +39,11 @@ import {
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import { ApiLoggedInUserResponseData } from "./AuthenticateUser";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUserResponseData {
+  userData: ApiLoggedInUserResponse;
+}
 
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
@@ -52,6 +56,12 @@ export const mapUser = (user: User): ApiLoggedInUserResponse => ({
 });
 
 export const mapUsers = (users: User[]) => users.map(mapUser);
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiChangePasswordRequestBody {
+  password: string; // Password for the user account
+  token: string; // Valid password reset token
+}
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
@@ -249,12 +259,6 @@ export default function (app: Application, baseUrl: string) {
       euaVersion: config.euaVersion,
     });
   });
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ApiChangePasswordRequestBody {
-    password: string; // Password for the user account
-    token: string; // Valid password reset token
-  }
 
   /**
    * @api {patch} /api/v1/user/changePassword Updates a users password with reset token authentication
