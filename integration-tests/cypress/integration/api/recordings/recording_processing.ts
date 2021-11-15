@@ -231,9 +231,13 @@ describe("Recordings - processing tests", () => {
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
-        "toMp3"
+        RecordingProcessingState.ToMp3
       );
-      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, "toMp3");
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.ToMp3
+      );
     });
 
     it("Check default state for uploaded thermal recording is tracking", () => {
@@ -1251,7 +1255,7 @@ describe("Recordings - processing tests", () => {
         expectedProcessing21.updatedAt = NOT_NULL_STRING;
         cy.processingApiCheck(
           RecordingType.Audio,
-          "toMp3",
+          RecordingProcessingState.ToMp3,
           "rpRecording21",
           expectedProcessing21,
           EXCLUDE_KEYS
