@@ -544,8 +544,8 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       // FIXME Stop allowing arbitrary where queries
       const where = response.locals.where || {};
-      if (response.locals.hasOwnProperty("deleted")) {
-        if (response.locals.deleted) {
+      if (request.query.hasOwnProperty("deleted")) {
+        if (request.query.deleted) {
           where.deletedAt = { [Op.ne]: null };
         } else {
           where.deletedAt = { [Op.eq]: null };
@@ -627,8 +627,8 @@ export default (app: Application, baseUrl: string) => {
           });
         }
       }
-      if (response.locals.hasOwnProperty("deleted")) {
-        if (response.locals.deleted) {
+      if (request.query.hasOwnProperty("deleted")) {
+        if (request.query.deleted) {
           (userWhere as any).deletedAt = { [Op.ne]: null };
         } else {
           (userWhere as any).deletedAt = { [Op.eq]: null };
@@ -754,8 +754,8 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
     async (request: Request, response: Response) => {
       // FIXME - deprecate and generate report client-side from other available API data.
-      if (response.locals.hasOwnProperty("deleted")) {
-        if (response.locals.deleted) {
+      if (request.query.hasOwnProperty("deleted")) {
+        if (request.query.deleted) {
           response.locals.where.deletedAt = { [Op.ne]: null };
         } else {
           response.locals.where.deletedAt = { [Op.eq]: null };
