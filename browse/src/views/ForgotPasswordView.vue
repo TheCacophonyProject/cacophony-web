@@ -4,7 +4,7 @@
       <div class="sign-form-wrapper bg-white rounded text-center">
         <div class="logo" />
 
-        <h1>Reset Password</h1>
+        <h2>Reset Password</h2>
 
         <b-form @submit="onSubmit">
           <b-alert

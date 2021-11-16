@@ -4,7 +4,7 @@
       <div class="sign-form-wrapper bg-white rounded text-center">
         <div class="logo" />
 
-        <h1>Password</h1>
+        <h2>New Password</h2>
         <h2>{{ nameOrUserName }}</h2>
         <b-form @submit="onSubmit">
           <b-alert

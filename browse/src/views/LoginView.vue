@@ -4,7 +4,7 @@
       <div class="sign-form-wrapper bg-white rounded text-center">
         <div class="logo" />
 
-        <h1>Login</h1>
+        <h2>Login</h2>
 
         <b-form @submit="onSubmit">
           <b-alert

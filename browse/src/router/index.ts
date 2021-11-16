@@ -126,7 +126,7 @@ function createRouter() {
         component: ForgotPasswordView,
         meta: {
           noAuth: true,
-          title: "Forgot Passowrd",
+          title: "Forgot Password",
         },
         beforeEnter: cancelPendingRequests,
       },

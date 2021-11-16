@@ -39,18 +39,18 @@ function resetBody(user: User, token: string): string[] {
   } else {
     name = user.username;
   }
-  let html = `Hello ${name},<br>`;
-  html += `We received a request to reset your Cacophony password<br>`;
-  html += `Click the link below to set a new password<br>`;
+  let html = `Hello ${name},<br><br>`;
+  html += `We received a request to reset your Cacophony password.<br>`;
+  html += `Click the link below to set a new password<br><br>`;
   html += `<br><a href="${resetUrl}">Set New Password</a><br><br>`;
-  html += `If this was not you, ignore this email<br><br>`;
-  html += "Thanks, Cacophony Team<br>";
-  html += `<br>Having trouble with the link, use this url to reset your password ${resetUrl}<br><br>`;
+  html += `If this was not you, ignore this email.<br><br>`;
+  html += "Thanks,<br> Cacophony Team<br><br>";
+  html += `<br>Having trouble with the link? Use this url to reset your password<br>${resetUrl}`;
 
-  let text = `Hello ${name}\r\n`;
-  text += `We received a request to reset your Cacophony password\r\n`;
-  text += `Visit ${resetUrl} to set a new password\r\n\r\n`;
-  html += `If this was not you, ignore this email\r\n\r\n`;
+  let text = `Hello ${name},\r\n\r\n`;
+  text += `We received a request to reset your Cacophony password.\r\n`;
+  text += `Visit ${resetUrl} to set a new password.\r\n\r\n`;
+  text += `If this was not you, ignore this email.\r\n\r\n`;
   text += "Thanks, Cacophony Team";
   return [html, text];
 }
