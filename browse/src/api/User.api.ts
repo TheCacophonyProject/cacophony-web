@@ -53,7 +53,12 @@ function validateToken(
   );
 }
 
-function changePassword(token: string, newPassword: string) {
+function changePassword(
+  token: string,
+  newPassword: string
+): Promise<
+  FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
+> {
   return CacophonyApi.patch("/api/v1/Users/changePassword", {
     token: token,
     password: newPassword,

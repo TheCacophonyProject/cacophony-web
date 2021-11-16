@@ -83,12 +83,13 @@ const actions = {
     return loginResponse;
   },
   async CHANGE_PASSWORD({ commit }, payload) {
-    const { result, success } = await api.user.changePassword(
+    const changePasswordResponse = await api.user.changePassword(
       payload.token,
       payload.password
     );
     commit("invalidateLogin");
-    if (success) {
+    if (changePasswordResponse.success) {
+      const { result } = changePasswordResponse;
       api.user.persistUser(
         result.userData.userName,
         result.token,
@@ -97,10 +98,10 @@ const actions = {
         result.userData.id,
         result.userData.endUserAgreement
       );
-      result.userData.acceptedEUA = result.userData.endUserAgreement;
+      (result.userData as any).acceptedEUA = result.userData.endUserAgreement;
       commit("receiveLogin", result);
     }
-    return { result, success };
+    return changePasswordResponse;
   },
   async LOGIN_OTHER({ commit }, result) {
     api.user.persistUser(
