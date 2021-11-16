@@ -39,8 +39,11 @@ import {
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import { ApiLoggedInUserResponseData } from "./AuthenticateUser";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUsersResponseSuccess {
+  usersList: ApiLoggedInUserResponse[];
+}
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
   userName: user.username,
@@ -68,7 +71,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData}
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
    *
    * @apiUse V1ResponseError
    */
@@ -184,7 +187,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData}
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -214,7 +217,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData}
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -261,7 +264,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ChangePassword
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess} userData
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
