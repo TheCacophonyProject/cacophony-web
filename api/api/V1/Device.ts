@@ -717,9 +717,9 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedDevice,
     validateFields([body("nextHeartbeat").isISO8601().toDate()]),
     async function (request: Request, response: Response, next: NextFunction) {
-      const requestDevice = await models.Device.findByPk(
+      const requestDevice = (await models.Device.findByPk(
         response.locals.requestDevice.id
-      ) as Device;
+      )) as Device;
       requestDevice.updateHeartbeat(request.body.nextHeartbeat);
 
       return responseUtil.send(response, {
