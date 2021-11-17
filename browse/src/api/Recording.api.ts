@@ -331,7 +331,7 @@ function del(id: RecordingId): Promise<FetchResult<any>> {
 }
 
 function undelete(id: RecordingId): Promise<FetchResult<any>> {
-  return CacophonyApi.patch(`${apiPath}/undelete/${id}`, {});
+  return CacophonyApi.patch(`${apiPath}/${id}/undelete`, {});
 }
 
 function tracks(
