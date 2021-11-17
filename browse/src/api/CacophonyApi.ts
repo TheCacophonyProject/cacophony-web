@@ -21,6 +21,7 @@ async function fetchJsonWithMethod(
 }
 
 export default {
+  url: (endpoint) => `${config.api}${endpoint}`,
   /**
    * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.
    * The result field is the JSON blob from the response body.

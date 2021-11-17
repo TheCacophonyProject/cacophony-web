@@ -1,8 +1,5 @@
 <template>
-  <span
-    v-b-tooltip="getTagTitle(tag.class)"
-    :class="['tag', 'badge', tag.class]"
-  >
+  <span v-b-tooltip="tagTitle" :class="['tag', 'badge', tag.class, tag.text]">
     <span class="tag-icon">
       <font-awesome-icon
         v-if="tag.class === 'automatic'"
@@ -20,34 +17,49 @@
         size="xs"
       />
     </span>
-    <span class="tag-label">{{ mapLabel(tag) }}</span>
+    <span class="tag-label">{{ tagLabel }}</span>
   </span>
 </template>
 
-<script>
+<script lang="ts">
+type TagClass = "automatic" | "human" | "automatic human";
+interface Tag {
+  text: string;
+  class: TagClass;
+  order: number;
+}
+
 export default {
   name: "TagBadge",
   props: {
-    tag: {
+    tagObj: {
       type: Object,
       required: true,
     },
   },
-  methods: {
-    mapLabel(tag) {
-      if (tag.text === "unknown" && tag.class.includes("human")) {
+  computed: {
+    tag(): Tag {
+      return this.tagObj;
+    },
+    tagLabel(): string {
+      if (
+        this.tag.text === "unknown" &&
+        this.tag.class.includes("human")
+      ) {
         return "not identifiable";
       }
-      return tag.text.replace(/-/g, " ");
+      return this.tag.text.replace(/-/g, " ");
     },
-    getTagTitle(str) {
-      switch (str) {
+    tagTitle(): string {
+      switch (this.tag.class) {
         case "automatic":
           return "Tagged by Cacophony AI";
         case "human":
           return "Tagged by human";
         case "automatic human":
           return "Tagged by Cacophony AI and human";
+        default:
+          return "";
       }
     },
   },
@@ -76,6 +88,9 @@ export default {
   }
   &.automatic.human {
     background: $aihuman;
+  }
+  &.false-positive {
+    background: #999;
   }
   .svg-inline--fa {
     color: $white;

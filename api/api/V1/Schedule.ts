@@ -16,12 +16,33 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
+import {validateFields} from "../middleware";
 import { body, param } from "express-validator";
 import models from "@models";
 import responseUtil from "./responseUtil";
-import { Application, Response } from "express";
+import {Application, NextFunction, Response, Request} from "express";
+import {
+  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredDeviceById, fetchAuthorizedRequiredGroupById,
+  fetchUnauthorizedRequiredScheduleById,
+  parseJSONField
+} from "@api/extract-middleware";
+import { idOf } from "../validation-middleware";
+import {jsonSchemaOf} from "@api/schema-validation";
+import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfigSchema.schema.json";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { ScheduleConfig } from "@typedefs/api/schedule";
+import {Schedule} from "@models/Schedule";
+
+export const mapSchedule = (schedule: Schedule): ScheduleConfig => {
+  return schedule.schedule as ScheduleConfig;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiScheduleConfig {
+  schedule: ScheduleConfig;
+}
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/schedules`;
@@ -36,38 +57,33 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Int[]} devices List of device Ids that schedule should apply to
-   * @apiParam {JSON} schedule Schedule
+   * @apiBody {Int[]} devices List of device Ids that schedule should apply to
+   * @apiInterface {apiBody::ApiScheduleConfig} schedule Schedule
    *
    * @apiUse V1ResponseSuccess
    * @apiuse V1ResponseError
    */
   app.post(
     apiUrl,
-    [
-      auth.authenticateUser,
-      middleware.parseArray("devices", body),
-      middleware.parseJSON("schedule", body),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(async function (request, response) {
-      const deviceIds = request.body.devices;
-
-      const instance = models.Schedule.buildSafely(request.body);
-      instance.UserId = request.user.id;
-      // TODO make the device and schedule changes apply in a single transaction
-      await instance.save();
-
-      await models.Device.update(
-        { ScheduleId: instance.id },
-        { where: { id: deviceIds } }
-      );
-
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(body("groupId")),
+      body("schedule").custom(jsonSchemaOf(ScheduleConfigSchema))
+    ]),
+    parseJSONField(body("schedule")),
+    fetchAuthorizedRequiredGroupById(body("groupId")),
+    async function (request, response) {
+      // Enforce that all of these devices are part of the same group.
+      // If a device gets moved to another group - then what?
+      const schedule = models.Schedule.buildSafely({ schedule: response.locals.schedule });
+      schedule.GroupId = response.locals.group.id;
+      await schedule.save();
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Added new schedule for the calling device(s)."],
+        id: schedule.id,
+        messages: ["Created new schedule."],
       });
-    })
+    }
   );
 
   /**
@@ -78,73 +94,58 @@ export default (app: Application, baseUrl: string) => {
    * schedule.
    * @apiUse V1DeviceAuthorizationHeader
    *
-   * @apiSuccess {JSON} schedule Metadata of the schedule.
+   * @apiInterface {apiSuccess::ApiScheduleConfig} schedule Metadata of the schedule.
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
    */
   app.get(
     apiUrl,
-    [auth.authenticateDevice],
-    middleware.requestWrapper(async (request, response) => {
-      return getSchedule(request.device, response);
-    })
+    extractJwtAuthorisedDevice,
+      async (request: Request, response: Response, next: NextFunction) => {
+        // FIXME - Does this actually work?
+        await fetchUnauthorizedRequiredScheduleById(response.locals.requestDevice.ScheduleId)(request, response, next);
+        next();
+      },
+      async (request: Request, response: Response) => {
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: [],
+          schedule: mapSchedule(response.locals.schedule),
+        });
+      }
   );
 
   /**
-   * @api {get} api/v1/schedules/:deviceId Get audio bait schedule (for a user's device)
+   * @api {get} api/v1/schedules/:deviceId Get audio bait schedule for a device
    * @apiName GetScheduleForDevice
    * @apiGroup Schedules
    * @apiDescription This call is used by a user to retrieve the audio bait
    * schedule for one of their devices.
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiSuccess {JSON} userData Metadata of the scedule.
+   * @apiInterface {apiSuccess::ApiScheduleConfig} schedule Metadata of the schedule.
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:deviceId`,
-    [
-      auth.authenticateUser,
-      middleware.getDeviceById(param),
-      auth.userCanAccessDevices,
-    ],
-    middleware.requestWrapper(async (request, response) =>
-      getSchedule(request.device, response, request.user)
-    )
-  );
-};
-
-async function getSchedule(device: any, response: Response, user = null) {
-  let schedule = { schedule: {} };
-
-  if (device.ScheduleId) {
-    schedule = await models.Schedule.findByPk(device.ScheduleId);
-    if (!schedule) {
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // FIXME - Does this actually work?
+      await fetchUnauthorizedRequiredScheduleById(response.locals.device.ScheduleId)(request, response, next);
+      next();
+    },
+    async (request: Request, response: Response) => {
       return responseUtil.send(response, {
-        statusCode: 400,
-        devicename: device.devicename,
-        messages: ["Cannot find schedule."],
+        statusCode: 200,
+        messages: [],
+        schedule: mapSchedule(response.locals.schedule),
       });
-    }
-  }
-
-  const resData: any = {
-    statusCode: 200,
-    messages: [],
-    schedule: schedule.schedule,
-  };
-  // get all the users devices that are also associated with this same schedule
-  if (user && device.ScheduleId) {
-    resData.devices = await models.Device.onlyUsersDevicesMatching(user, {
-      ScheduleId: device.ScheduleId,
     });
-  } else if (user) {
-    resData.devices = await models.Device.onlyUsersDevicesMatching(user, {
-      id: device.id,
-    });
-  }
-  return responseUtil.send(response, resData);
-}
+};

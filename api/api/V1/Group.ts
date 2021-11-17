@@ -30,6 +30,7 @@ import {
   fetchUnauthorizedRequiredUserByNameOrId,
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
+   fetchAuthorizedRequiredSchedulesForGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -53,9 +54,10 @@ import { ApiDeviceResponse } from "@typedefs/api/device";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   ApiCreateStationData,
-  ApiCreateStationResponse,
   ApiStationResponse,
 } from "@typedefs/api/station";
+import { ScheduleConfig } from "@typedefs/api/schedule";
+import {mapSchedule} from "@api/V1/Schedule";
 
 const mapGroup = (
   group: Group,
@@ -113,6 +115,11 @@ interface ApiCreateStationDataBody {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationResponseSuccess {
   stations: ApiStationResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiScheduleConfigs {
+  schedules: ScheduleConfig[];
 }
 
 export default function (app: Application, baseUrl: string) {
@@ -329,6 +336,33 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+  /**
+   * @api {get} api/v1/groups/:groupIdOrName/schedules Get audio bait schedules for a group
+   * @apiName GetSchedulesForGroup
+   * @apiGroup Schedules
+   * @apiDescription This call is used to retrieve the any audio bait schedules for a group.
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiInterface {apiSuccess::ApiScheduleConfigs} schedules Metadata of the schedules.
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+      `${apiUrl}/:groupIdOrName/schedules`,
+      extractJwtAuthorizedUser,
+      validateFields([
+          idOf(param("groupIdOrName")),
+      ]),
+      fetchAuthorizedRequiredSchedulesForGroup(param("groupIdOrName")),
+      async (request: Request, response: Response) => {
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got schedules for group"],
+          schedules: response.locals.schedules.map(mapSchedule),
+        });
+      });
 
   /**
    * @api {post} /api/v1/groups/users Add a user to a group.

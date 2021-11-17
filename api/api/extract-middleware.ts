@@ -14,11 +14,12 @@ import { ClientError } from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
-import { UserId } from "@typedefs/api/common";
+import {ScheduleId, UserId} from "@typedefs/api/common";
 import { Group } from "models/Group";
 import { Recording } from "models/Recording";
 import { SuperUsers } from "@/Server";
 import { Station } from "@/models/Station";
+import { Schedule } from "@/models/Schedule";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -208,6 +209,39 @@ const getDeviceInclude =
     ],
   });
 
+const getStationOrScheduleInclude =
+    (groupWhere: any) =>
+        (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+          where: {
+            [Op.and]: [
+              { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
+            ],
+          },
+          include: [
+            {
+              model: models.Group,
+              attributes: ["id", "groupname"],
+              required:
+                  Object.keys(groupWhere).length !== 0,
+              where: groupWhere,
+              include: [
+                {
+                  model: models.User,
+                  attributes: ["id"],
+                  required: false,
+                  through: {
+                    where: {
+                      ...useAdminAccess,
+                    },
+                    attributes: ["admin", "UserId"],
+                  },
+                  where: { id: requestUserId },
+                },
+              ],
+            }
+          ],
+        });
+
 const getRecordingInclude =
   (recordingsWhere: any, groupWhere: any, deviceWhere: any) =>
   (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
@@ -346,12 +380,17 @@ export const fetchModel =
     byName: boolean,
     byId: boolean,
     modelGetter: ModelGetter<T> | ModelsGetter<T>,
-    primary: ValidationChain,
+    primary: ValidationChain | number,
     secondary?: ValidationChain
   ) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
-    const id = extractValFromRequest(request, primary) as string;
+    let id;
+    if (typeof primary === "number") {
+      id = primary;
+    } else {
+      id = extractValFromRequest(request, primary) as string;
+    }
     if (!id && !required) {
       return next();
     }
@@ -434,7 +473,7 @@ export const fetchRequiredModel = <T>(
   byName: boolean,
   byId: boolean,
   modelGetter: ModelGetter<T>,
-  primary: ValidationChain,
+  primary: ValidationChain | number,
   secondary?: ValidationChain
 ) => fetchModel(modelType, true, byName, byId, modelGetter, primary, secondary);
 
@@ -530,12 +569,13 @@ const getStations =
     unused2?: string,
     context?: any
   ): Promise<ModelStaticCommon<Station>[] | ClientError | null> => {
+    let getStationsOptions;
     let groupWhere = {};
 
     const groupIsId =
-      groupNameOrId &&
-      !isNaN(parseInt(groupNameOrId)) &&
-      parseInt(groupNameOrId).toString() === String(groupNameOrId);
+        groupNameOrId &&
+        !isNaN(parseInt(groupNameOrId)) &&
+        parseInt(groupNameOrId).toString() === String(groupNameOrId);
     if (groupNameOrId) {
       if (groupIsId) {
         groupWhere = { id: parseInt(groupNameOrId) };
@@ -544,11 +584,103 @@ const getStations =
       }
     }
 
-    // TODO
-    // All stations where the user is a member of the device or group.
-    // So this is essentially getDevices, then join on recording station, right?
-    return models.Station.findAll({});
+    const allStationsOptions = {
+      where: {},
+      include: [
+        {
+          model: models.Group,
+          required: true,
+          where: groupWhere,
+        },
+      ],
+    };
+
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getStationsOptions = getIncludeForUser(
+            context,
+            getStationOrScheduleInclude(groupWhere),
+            asAdmin
+        );
+      } else {
+        return Promise.resolve(
+            new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getStationsOptions = allStationsOptions;
+    }
+
+    if (!getStationsOptions.where) {
+      getStationsOptions = allStationsOptions;
+    }
+
+    if (context.onlyActive) {
+      (getStationsOptions as any).where = (getStationsOptions as any).where || {};
+      (getStationsOptions as any).where.retiredAt = {[Op.eq]: null};
+    }
+    return models.Station.findAll({
+      ...getStationsOptions,
+      order: ["name"],
+    });
   };
+
+const getSchedules =
+    (forRequestUser: boolean = false, asAdmin: boolean) =>
+        (
+            groupNameOrId?: string,
+            unused2?: string,
+            context?: any
+        ): Promise<ModelStaticCommon<Schedule>[] | ClientError | null> => {
+          let getScheduleOptions;
+          let groupWhere = {};
+
+          const groupIsId =
+              groupNameOrId &&
+              !isNaN(parseInt(groupNameOrId)) &&
+              parseInt(groupNameOrId).toString() === String(groupNameOrId);
+          if (groupNameOrId) {
+            if (groupIsId) {
+              groupWhere = { id: parseInt(groupNameOrId) };
+            } else {
+              groupWhere = { groupname: groupNameOrId };
+            }
+          }
+
+          const allSchedulesOptions = {
+            where: {},
+            include: [
+              {
+                model: models.Group,
+                required: true,
+                where: groupWhere,
+              },
+            ],
+          };
+
+          if (forRequestUser) {
+            if (context && context.requestUser) {
+              // Insert request user constraints
+              getScheduleOptions = getIncludeForUser(
+                  context,
+                  getStationOrScheduleInclude(groupWhere),
+                  asAdmin
+              );
+            } else {
+              return Promise.resolve(
+                  new ClientError("No authorizing user specified")
+              );
+            }
+          } else {
+            getScheduleOptions = allSchedulesOptions;
+          }
+
+          if (!getScheduleOptions.where) {
+            getScheduleOptions = allSchedulesOptions;
+          }
+          return models.Schedule.findAll(getScheduleOptions);
+        };
 
 const getGroups =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
@@ -983,8 +1115,8 @@ const getUser =
 
 const getUnauthorizedGenericModelById =
   <T>(modelType: ModelStaticCommon<T>) =>
-  <T>(id: string): Promise<ModelStaticCommon<T> | ClientError | null> => {
-    return modelType.findByPk(id);
+  <T>(id: string): Promise<T | ClientError | null> => {
+    return modelType.findByPk(id) as unknown as Promise<T | null>;
   };
 
 const getDeviceUnauthenticated = getDevice();
@@ -1265,6 +1397,14 @@ export const fetchAuthorizedRequiredStations = fetchRequiredModels(
   getStations(true, false)
 );
 
+export const fetchAuthorizedRequiredSchedulesForGroup = (groupNameOrId: ValidationChain) => fetchRequiredModels(
+    models.Schedule,
+    false,
+    false,
+    getSchedules(true, false),
+    groupNameOrId
+);
+
 export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
   models.Group,
   false,
@@ -1313,3 +1453,14 @@ export const fetchUnauthorizedRequiredRecordingTagById = (
     getUnauthorizedGenericModelById(models.Tag),
     tagId
   );
+
+export const fetchUnauthorizedRequiredScheduleById = (
+    scheduleId: ValidationChain | ScheduleId
+) =>
+    fetchRequiredModel(
+        models.Schedule,
+        false,
+        true,
+        getUnauthorizedGenericModelById(models.Schedule),
+        scheduleId
+    );

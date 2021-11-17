@@ -408,6 +408,10 @@ function reprocess(id: RecordingId): Promise<FetchResult<void>> {
   return CacophonyApi.get(`/api/v1/reprocess/${id}`);
 }
 
+function thumbnail(id: RecordingId): string {
+  return CacophonyApi.url(`/api/v1/recordings/${id}/thumbnail`);
+}
+
 interface RecordingToTag {
   RecordingId: RecordingId;
   DeviceId: DeviceId;
@@ -466,6 +470,7 @@ export default {
   queryVisits,
   queryCount,
   id,
+  thumbnail,
   comment,
   del,
   undelete,

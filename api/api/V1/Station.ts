@@ -15,7 +15,7 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["TODO: Unimplmented"],
+        messages: ["TODO: Unimplemented"],
       });
     }
   );

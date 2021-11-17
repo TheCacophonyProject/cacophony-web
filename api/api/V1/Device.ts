@@ -32,7 +32,7 @@ import {
   fetchAdminAuthorizedRequiredDeviceById,
   fetchUnauthorizedOptionalUserById,
   fetchUnauthorizedOptionalUserByNameOrId,
-  fetchAuthorizedRequiredDevices,
+  fetchAuthorizedRequiredDevices, fetchUnauthorizedRequiredScheduleById,
 } from "../extract-middleware";
 import {
   booleanOf,
@@ -442,6 +442,53 @@ export default function (app: Application, baseUrl: string) {
         users,
       });
     }
+  );
+
+
+
+  /**
+   * @api {post} /api/v1/devices/schedule Assign a schedule to a device.
+   * @apiName AssignScheduleToDevice
+   * @apiGroup Schedule
+   * @apiDescription This call assigns a schedule to a device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {Number} deviceId ID of the device.
+   * @apiBody {Number} scheduleId ID of the schedule to assign to the device.
+   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+      `${apiUrl}/schedule`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(body("scheduleId")),
+        idOf(body("deviceId")),
+        // Allow adding a schedule to an inactive device by default
+        query("only-active").default(false).isBoolean().toBoolean(),
+        query("view-mode").optional().equals("user"),
+      ]),
+      fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
+      fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
+      (request, response, next) => {
+        if (response.locals.schedule.GroupId !== response.locals.device.GroupId) {
+          return next(new ClientError("Schedule doesn't belong to device group", 403));
+        }
+        next();
+      },
+      async (request, response) => {
+        await response.locals.device.update({
+          ScheduleId: response.locals.schedule.id
+        });
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["schedule assigned"],
+        });
+      }
   );
 
   /**
