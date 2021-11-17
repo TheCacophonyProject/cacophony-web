@@ -567,7 +567,10 @@ order by hour;
   };
 
   Device.prototype.updateHeartbeat = async function (nextHeartbeat) {
-    return this.update({nextHeartbeat: nextHeartbeat });
+    return this.update({
+      lastConnectionTime: new Date(),
+      nextHeartbeat: nextHeartbeat,
+    });
   };
 
   return Device;
