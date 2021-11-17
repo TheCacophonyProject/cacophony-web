@@ -719,8 +719,8 @@ export default function (app: Application, baseUrl: string) {
     async function (request: Request, response: Response, next: NextFunction) {
       const requestDevice = await models.Device.findByPk(
         response.locals.requestDevice.id
-      );
-      response.locals.requestDevice.updateHeartbeat(request.body.nextHeartbeat);
+      ) as Device;
+      requestDevice.updateHeartbeat(request.body.nextHeartbeat);
 
       return responseUtil.send(response, {
         statusCode: 200,
