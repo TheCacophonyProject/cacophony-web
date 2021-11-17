@@ -699,4 +699,30 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+  /**
+     * @api {post} /api/v1/devices/heartbeat send device heartbeat
+     * @apiName heartbeat
+     * @apiGroup Device
+     *
+     * @apiUse V1DeviceAuthorizationHeader
+     *
+     * @apiBody {Date} NextHeartbeat time next heart beat is expected
+
+     * @apiUse V1ResponseSuccess
+     * @apiUse V1ResponseError
+     */
+  app.post(
+    `${apiUrl}/heartbeat`,
+    extractJwtAuthorisedDevice,
+    validateFields([body("nextHeartBeat").isISO8601().toDate()]),
+    async function (request: Request, response: Response, next: NextFunction) {
+      response.locals.requestDevice.updateHeartBeat();
+
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Heartbeat updated."],
+      });
+    }
+  );
 }

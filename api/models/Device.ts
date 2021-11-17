@@ -54,6 +54,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;
   users: (authUser: User, attrs?: string[]) => Promise<User[]>;
+  updateHeartBeat: (nextHeartBeat: Date) => Promise<boolean>;
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
@@ -560,6 +561,10 @@ order by hour;
       return false;
     }
     return newDevice;
+  };
+
+  Device.prototype.updateHeartBeat = async function (nextHeartBeat) {
+    return this.update({ heartBeat: new Date(), nextHeartBeat: nextHeartBeat });
   };
 
   return Device;
