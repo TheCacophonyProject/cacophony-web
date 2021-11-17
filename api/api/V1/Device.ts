@@ -720,7 +720,7 @@ export default function (app: Application, baseUrl: string) {
       const requestDevice = (await models.Device.findByPk(
         response.locals.requestDevice.id
       )) as Device;
-      requestDevice.updateHeartbeat(request.body.nextHeartbeat);
+      await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
 
       return responseUtil.send(response, {
         statusCode: 200,
