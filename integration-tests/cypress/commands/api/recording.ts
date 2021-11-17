@@ -321,6 +321,7 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
+    const additionalParams = additionalChecks["additionalParams"];
     logTestDescription(`Delete recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
     });
@@ -331,12 +332,53 @@ Cypress.Commands.add(
     } else {
       recordingId = getCreds(recordingNameOrId).id.toString();
     }
-    const url = v1ApiPath(`recordings/${recordingId}`);
+    const url = v1ApiPath(`recordings/${recordingId}`, additionalParams);
 
     makeAuthorizedRequestWithStatus(
       {
         method: "DELETE",
         url: url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingUndelete",
+  (
+    userName: string,
+    recordingNameOrId: string,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    const additionalParams = additionalChecks["additionalParams"];
+    logTestDescription(`Undelete recording ${recordingNameOrId} `, {
+      recordingName: recordingNameOrId,
+    });
+
+    let recordingId: string;
+    if (additionalChecks["useRawRecordingId"] === true) {
+      recordingId = recordingNameOrId;
+    } else {
+      recordingId = getCreds(recordingNameOrId).id.toString();
+    }
+    //FIXME in API thhen remove workaround
+    //const url = v1ApiPath(`recordings/${recordingId}/undelete`);
+    const url = v1ApiPath(`recordings/undelete/${recordingId}`);
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "PATCH",
+        url: url,
+        body: additionalParams,
       },
       userName,
       statusCode
@@ -360,6 +402,7 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
+    const additionalParams = additionalChecks["additionalParams"];
     logTestDescription(`Check recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
     });
@@ -376,6 +419,7 @@ Cypress.Commands.add(
       {
         method: "GET",
         url: url,
+        body: additionalParams,
       },
       userName,
       statusCode
