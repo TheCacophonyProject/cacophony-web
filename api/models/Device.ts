@@ -54,7 +54,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;
   users: (authUser: User, attrs?: string[]) => Promise<User[]>;
-  updateHeartBeat: (nextHeartBeat: Date) => Promise<boolean>;
+  updateHeartbeat: (nextHeartbeat: Date) => Promise<boolean>;
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
@@ -144,6 +144,9 @@ export default function (
       type: DataTypes.ENUM,
       values: Object.values(DeviceType),
       defaultValue: DeviceType.Unknown,
+    },
+    nextHeartbeat: {
+      type: DataTypes.DATE,
     },
   };
 
@@ -563,8 +566,8 @@ order by hour;
     return newDevice;
   };
 
-  Device.prototype.updateHeartBeat = async function (nextHeartBeat) {
-    return this.update({ heartBeat: new Date(), nextHeartBeat: nextHeartBeat });
+  Device.prototype.updateHeartbeat = async function (nextHeartbeat) {
+    return this.update({nextHeartbeat: nextHeartbeat });
   };
 
   return Device;

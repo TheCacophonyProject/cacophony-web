@@ -707,7 +707,7 @@ export default function (app: Application, baseUrl: string) {
      *
      * @apiUse V1DeviceAuthorizationHeader
      *
-     * @apiBody {Date} NextHeartbeat time next heart beat is expected
+     * @apiBody {Date} nextHeartbeat time next heart beat is expected
 
      * @apiUse V1ResponseSuccess
      * @apiUse V1ResponseError
@@ -715,9 +715,9 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     `${apiUrl}/heartbeat`,
     extractJwtAuthorisedDevice,
-    validateFields([body("nextHeartBeat").isISO8601().toDate()]),
+    validateFields([body("nextHeartbeat").isISO8601().toDate()]),
     async function (request: Request, response: Response, next: NextFunction) {
-      response.locals.requestDevice.updateHeartBeat();
+      response.locals.requestDevice.updateHeartbeat();
 
       return responseUtil.send(response, {
         statusCode: 200,
