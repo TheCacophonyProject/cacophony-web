@@ -42,7 +42,7 @@ function resetBody(user: User, token: string): string[] {
   let html = `Hello ${name},<br><br>`;
   html += `We received a request to reset your Cacophony password.<br>`;
   html += `Click the link below to set a new password<br><br>`;
-  html += `<br><a href="${resetUrl}">Set New Password</a><br><br>`;
+  html += `<a href="${resetUrl}">Set New Password</a><br><br>`;
   html += `If this was not you, ignore this email.<br><br>`;
   html += "Thanks,<br> Cacophony Team<br><br>";
   html += `<br>Having trouble with the link? Use this url to reset your password<br>${resetUrl}`;
