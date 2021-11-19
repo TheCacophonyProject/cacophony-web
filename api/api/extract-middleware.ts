@@ -1167,8 +1167,12 @@ export const fetchUnauthorizedRequiredUserByResetToken =
     if (!token) {
       return next(new ClientError(`Invalid reset token`, 401));
     }
-    const resetInfo = getDecodedResetToken(token);
-
+    let resetInfo;
+    try {
+      resetInfo = getDecodedResetToken(token);
+    } catch (e) {
+      return next(new ClientError(`Reset token expired`, 401));
+    }
     response.locals.resetInfo = resetInfo;
     const user = await getUser()(response.locals.resetInfo.id);
     if (!user) {
