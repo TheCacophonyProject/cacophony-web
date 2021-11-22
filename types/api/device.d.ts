@@ -3,7 +3,8 @@ import {
   GroupId,
   IsoFormattedDateString,
   LatLng,
-  SaltId, ScheduleId,
+  SaltId,
+  ScheduleId,
 } from "./common";
 import { ApiUserResponse } from "./user";
 import { DeviceType } from "./consts";

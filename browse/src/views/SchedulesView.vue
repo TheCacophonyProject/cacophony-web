@@ -1,54 +1,122 @@
 <template>
-  <b-container>
-    <h1>Your schedules</h1>
-    <b-table
-      striped
-      hover
-      :items="schedulesTable"
-      :fields="[
-        {
-          key: 'name',
-          label: 'Name',
-        },
-        {
-          key: 'devices',
-          label: 'Devices',
-        },
-        {
-          key: 'assign',
-          label: 'Assign',
-        },
-        {
-          key: 'controls',
-          label: '',
-        },
-      ]"
-    >
-      <template v-slot:cell(controls)="data">
-        <b-button
-          v-b-tooltip.hover
-          title="Remove schedule"
-          class="trash-button"
-          variant="light"
-          @click="deleteSchedule(data.item.id)"
+  <b-container fluid class="admin">
+    <b-jumbotron class="group-jumbotron" fluid>
+      <h1>
+        <font-awesome-icon icon="users" size="xs" />
+        <span>Your audio-bait schedules</span>
+      </h1>
+      <p class="lead">
+        Manage your audio-bait schedules, sounds, and the devices assigned to
+        play them.
+      </p>
+    </b-jumbotron>
+    <b-container class="py-3">
+      <p>
+        <strong>IMPORTANT:</strong> There is currently no form validation when
+        adding schedules or audio-bait sounds, so use with care!
+      </p>
+      <h2 v-if="schedulesTable.length">Schedules</h2>
+      <b-table
+        v-if="schedulesTable.length"
+        striped
+        hover
+        :items="schedulesTable"
+        :fields="[
+          {
+            key: 'name',
+            label: 'Name',
+          },
+          {
+            key: 'devices',
+            label: 'Assigned devices',
+          },
+          {
+            key: 'assign',
+            label: '',
+          },
+          {
+            key: 'controls',
+            label: '',
+          },
+        ]"
+      >
+        <template v-slot:cell(controls)="data">
+          <b-button
+            v-b-tooltip.hover
+            title="Remove schedule"
+            class="trash-button"
+            variant="light"
+            @click="deleteSchedule(data.item.id)"
+          >
+            <font-awesome-icon icon="trash" size="1x" />
+          </b-button>
+        </template>
+        <template v-slot:cell(assign)="data">
+          <b-button
+            title="Add/remove devices"
+            @click="assignScheduleToDevices(data.item.id)"
+          >
+            Add or remove devices
+          </b-button>
+        </template>
+        <template v-slot:cell(devices)="data">
+          {{ data.item.devices.map((device) => device.deviceName).join(", ") }}
+        </template>
+      </b-table>
+      <h2 v-if="files.length">Audio-bait sounds</h2>
+      <b-table
+        v-if="files.length"
+        striped
+        hover
+        :items="files"
+        :fields="[
+          { key: 'name', label: 'Name' },
+          { key: 'filename', label: 'Filename' },
+          { key: 'sound', label: 'Sound' },
+          { key: 'description', label: 'Description' },
+          { key: 'source', label: 'Source' },
+          { key: 'remove', label: '' },
+        ]"
+      >
+        <template v-slot:cell(name)="data">
+          {{ data.item.details.name }}
+        </template>
+        <template v-slot:cell(filename)="data">
+          {{ data.item.details.originalName }}
+        </template>
+        <template v-slot:cell(sound)="data">
+          {{ data.item.details.sound }}
+        </template>
+        <template v-slot:cell(description)="data">
+          {{ data.item.details.description }}
+        </template>
+        <template v-slot:cell(source)="data">
+          {{ data.item.details.source }}
+        </template>
+        <template v-slot:cell(remove)="data">
+          <b-button
+            v-if="data.item.userId === currentUserId"
+            v-b-tooltip.hover
+            title="Delete file"
+            class="trash-button"
+            variant="light"
+            @click="removeFile(data.item.id)"
+          >
+            <font-awesome-icon icon="trash" size="1x" />
+          </b-button>
+        </template>
+      </b-table>
+
+      <div class="d-flex flex-column flex-sm-row justify-content-between">
+        <b-btn :disabled="!files.length" class="mb-2" @click="createSchedule()"
+          >Create new schedule</b-btn
         >
-          <font-awesome-icon icon="trash" size="1x" />
-        </b-button>
-      </template>
-      <template v-slot:cell(assign)="data">
-        <b-button
-          v-b-tooltip.hover
-          title="Add devices"
-          @click="assignScheduleToDevices(data.item.id)"
+        <b-btn class="mb-2" @click="manageSoundFiles()"
+          >Upload audio-bait sounds</b-btn
         >
-          Add devices
-        </b-button>
-      </template>
-      <template v-slot:cell(devices)="data">
-        {{ data.item.devices.map((device) => device.deviceName).join(", ") }}
-      </template>
-    </b-table>
-    <b-btn @click="createSchedule()">Create new schedule</b-btn>
+      </div>
+    </b-container>
+
     <b-modal
       v-model="creatingSchedule"
       scrollable
@@ -218,14 +286,96 @@
         </template>
       </multiselect>
     </b-modal>
+    <b-modal
+      v-model="managingSounds"
+      title="Manage audio-bait sounds"
+      ok-title="Finish"
+      @ok="uploadNewSounds"
+      @cancel="pendingSounds = []"
+      scrollable
+    >
+      <div
+        class="row my-3"
+        v-for="(sound, index) in pendingSounds"
+        :key="index"
+      >
+        <div class="col">
+          <b-form-row class="my-2">
+            <label :for="`sound-${index}-file`">Choose mp3 file</label>
+            <b-form-file
+              :state="Boolean(sound.file)"
+              :disabled="uploadingSounds"
+              :id="`sound-${index}-file`"
+              v-model="sound.file"
+              accept="audio/mpeg"
+            ></b-form-file>
+          </b-form-row>
+          <b-form-row class="my-2">
+            <label :for="`sound-${index}-name`">Name</label>
+            <b-form-input
+              :disabled="uploadingSounds"
+              :id="`sound-${index}-name`"
+              v-model="sound.details.name"
+            ></b-form-input>
+          </b-form-row>
+          <b-form-row class="my-2">
+            <label :for="`sound-${index}-description`">Description</label>
+            <b-form-input
+              :disabled="uploadingSounds"
+              :id="`sound-${index}-description`"
+              v-model="sound.details.description"
+            ></b-form-input>
+          </b-form-row>
+          <b-form-row class="my-2">
+            <label :for="`sound-${index}-source`">Source</label>
+            <b-form-input
+              :disabled="uploadingSounds"
+              :id="`sound-${index}-source`"
+              v-model="sound.details.source"
+            ></b-form-input>
+          </b-form-row>
+          <b-form-row class="my-2">
+            <label :for="`sound-${index}-animal`">Animal</label>
+            <b-form-input
+              :disabled="uploadingSounds"
+              :id="`sound-${index}-animal`"
+              v-model="sound.details.animal"
+            ></b-form-input>
+          </b-form-row>
+          <b-form-row class="my-2">
+            <label :for="`sound-${index}-sound`">Sound</label>
+            <b-form-input
+              :disabled="uploadingSounds"
+              :id="`sound-${index}-sound`"
+              v-model="sound.details.sound"
+            ></b-form-input>
+          </b-form-row>
+        </div>
+      </div>
+      <div v-if="pendingSounds.length && uploadingSounds">
+        <span>Uploading sounds</span>
+        <b-spinner />
+      </div>
+      <b-btn @click="newSound()">+ New sound</b-btn>
+    </b-modal>
+    <b-modal
+      v-model="confirmFileRemoval"
+      title="Confirm file deletion"
+      @ok="removeFile(removingFile, true)"
+    >
+      <span
+        >This file is used by one or more audio-bait schedules. Are you sure you
+        want to delete it?</span
+      >
+    </b-modal>
   </b-container>
 </template>
 
 <script lang="ts">
 import api from "@/api";
 import { ApiScheduleResponse, ScheduleConfig } from "@typedefs/api/schedule";
-import { ApiFileResponse } from "@typedefs/api/file";
-import { ScheduleId } from "@typedefs/api/common";
+import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
+import { FileId, ScheduleId, UserId } from "@typedefs/api/common";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import Vue from "vue";
 
@@ -241,18 +391,21 @@ const newSchedule = (): ScheduleConfig => ({
 const mapSchedule = (schedule: ScheduleConfig): ScheduleConfig => {
   schedule.combos = schedule.combos.map((combo) => ({
     waits: combo.waits.map(Number),
-    every: Number(combo.every),
+    every: parseInt(combo.every.toString()),
     volumes: combo.volumes.map(Number),
     sounds: combo.sounds.map(String),
     from: combo.from,
     until: combo.until,
   }));
+  schedule.playNights = parseInt(schedule.playNights.toString());
+  schedule.controlNights = parseInt(schedule.controlNights.toString());
+  schedule.startday = parseInt(schedule.startday.toString());
   return schedule;
 };
 
 const populateAllSounds = (
   schedule: ScheduleConfig,
-  availableSounds: ApiFileResponse[]
+  availableSounds: ApiAudiobaitFileResponse[]
 ) => {
   const usedSounds = Object.keys(
     schedule.combos.reduce((acc, combo) => {
@@ -278,12 +431,17 @@ export default {
       schedules: [],
       creatingSchedule: false,
       assigningToDevices: false,
+      confirmFileRemoval: false,
+      managingSounds: false,
+      uploadingSounds: false,
       pendingSchedule: newSchedule(),
+      pendingSounds: [],
       files: [],
       devices: [],
       selectedDevices: [],
       fetchingDevices: false,
       assigningTo: null,
+      removingFile: null,
     };
   },
   computed: {
@@ -297,7 +455,7 @@ export default {
           value: "same",
           text: "Repeat the last sound",
         },
-        ...this.files.map((file: ApiFileResponse) => ({
+        ...this.files.map((file: ApiAudiobaitFileResponse) => ({
           value: file.id,
           text: file.details.name,
         })),
@@ -328,6 +486,9 @@ export default {
       }
       return {};
     },
+    currentUserId(): UserId {
+      return this.$store.state.User.userData.id;
+    },
   },
   async created() {
     const [schedulesResponse, filesResponse, devicesResponse] =
@@ -351,8 +512,53 @@ export default {
       this.pendingSchedule = newSchedule();
       this.creatingSchedule = true;
     },
+    manageSoundFiles() {
+      this.managingSounds = true;
+    },
+    newSound() {
+      this.pendingSounds.push({
+        details: {
+          name: "",
+          description: "",
+          originalName: "",
+          source: "",
+          animal: "",
+          sound: "",
+        },
+        file: null,
+      });
+    },
+    async uploadNewSounds() {
+      this.uploadingSounds = true;
+      while (this.pendingSounds.length) {
+        const sound = ((sound) => {
+          sound.details.originalName = (sound.file as File).name;
+          return sound;
+        })(this.pendingSounds.pop());
+        const formData = new FormData();
+        formData.append(
+          "data",
+          JSON.stringify({
+            details: sound.details,
+            type: "audioBait",
+          })
+        );
+        formData.append("file", sound.file);
+        const fileUploadResponse = await api.schedule.uploadAudiobaitFile(
+          formData
+        );
+        if (fileUploadResponse.success) {
+          this.files.push({
+            ...sound,
+            id: fileUploadResponse.result.id,
+            userId: this.currentUserId,
+          });
+        }
+      }
+      this.uploadingSounds = false;
+      this.managingSounds = false;
+    },
     async createPendingSchedule() {
-      // TODO - if the schedule uses random sounds, then we need to include allSounds
       const typedSchedule = populateAllSounds(
         mapSchedule(this.pendingSchedule),
         this.files
@@ -369,7 +575,6 @@ export default {
         this.errorMessage = "Error creating schedule";
         this.schedules.pop();
       }
-      // TODO - push to server.
     },
     async deleteSchedule(id: ScheduleId) {
       const deleteResponse = await api.schedule.deleteSchedule(id);
@@ -445,9 +650,25 @@ export default {
       rule.waits.push(0);
       rule.volumes.push(10);
       rule.sounds.push("");
-      console.log(
-        this.pendingSchedule.combos[this.pendingSchedule.combos.indexOf(rule)]
-      );
+    },
+    async removeFile(fileId: FileId, force: boolean = false) {
+      // First check if the file is used by any of our schedules.
+      if (
+        !force &&
+        this.schedules.find(({ schedule }: { schedule: ScheduleConfig }) =>
+          schedule.allsounds.includes(fileId)
+        )
+      ) {
+        this.confirmFileRemoval = true;
+        this.removingFile = fileId;
+      } else {
+        const removeResponse = await api.schedule.deleteAudiobaitFile(fileId);
+        if (removeResponse.success) {
+          const index = this.files.findIndex((file) => file.id === fileId);
+          this.files.splice(index, 1);
+        }
+        this.removingFile = null;
+      }
     },
   },
 };

@@ -31,8 +31,6 @@ const cancelPendingRequests = (to, from, next) => {
 
 function createRouter() {
   // @ts-ignore
-  // @ts-ignore
-  // @ts-ignore
   const router = new Router({
     mode: "history",
     fallback: false,
@@ -211,7 +209,11 @@ function createRouter() {
     const euaUpdatedAt = new Date(store.getters["User/euaUpdatedAt"]).getTime();
     // Update latest User Agreement once an hour
     if (now - euaUpdatedAt > 1000 * 60 * 60) {
-      await store.dispatch("User/GET_END_USER_AGREEMENT_VERSION");
+      try {
+        await store.dispatch("User/GET_END_USER_AGREEMENT_VERSION");
+      } catch (e) {
+        // ...
+      }
     }
     const isLoggedIn = store.getters["User/isLoggedIn"];
     const hasEmail = store.getters["User/hasEmail"];

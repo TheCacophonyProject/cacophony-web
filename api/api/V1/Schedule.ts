@@ -16,26 +16,27 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import {validateFields} from "../middleware";
+import { validateFields } from "../middleware";
 import { body, param } from "express-validator";
 import models from "@models";
 import responseUtil from "./responseUtil";
-import {Application, NextFunction, Response, Request} from "express";
+import { Application, NextFunction, Response, Request } from "express";
 import {
   extractJwtAuthorisedDevice,
-  extractJwtAuthorizedUser, extractJwtAuthorizedUserOrDevice,
+  extractJwtAuthorizedUser,
+  extractJwtAuthorizedUserOrDevice,
   fetchAuthorizedRequiredDeviceById,
   fetchUnauthorizedRequiredScheduleById,
-  parseJSONField
+  parseJSONField,
 } from "@api/extract-middleware";
 import { idOf } from "../validation-middleware";
-import {jsonSchemaOf} from "@api/schema-validation";
+import { jsonSchemaOf } from "@api/schema-validation";
 import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import {ApiScheduleResponse, ScheduleConfig} from "@typedefs/api/schedule";
-import {Schedule} from "@models/Schedule";
-import {Device} from "@models/Device";
-import {ClientError} from "@api/customErrors";
+import { ApiScheduleResponse, ScheduleConfig } from "@typedefs/api/schedule";
+import { Schedule } from "@models/Schedule";
+import { Device } from "@models/Device";
+import { ClientError } from "@api/customErrors";
 
 export const mapSchedule = (schedule: Schedule): ApiScheduleResponse => ({
   id: schedule.id,
@@ -69,11 +70,13 @@ export default (app: Application, baseUrl: string) => {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
-      body("schedule").custom(jsonSchemaOf(ScheduleConfigSchema))
+      body("schedule").custom(jsonSchemaOf(ScheduleConfigSchema)),
     ]),
     parseJSONField(body("schedule")),
     async function (request, response) {
-      const schedule = models.Schedule.buildSafely({ schedule: response.locals.schedule });
+      const schedule = models.Schedule.buildSafely({
+        schedule: response.locals.schedule,
+      });
       schedule.UserId = response.locals.requestUser.id;
       await schedule.save();
       return responseUtil.send(response, {
@@ -100,19 +103,26 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     apiUrl,
     extractJwtAuthorisedDevice,
-      async (request: Request, response: Response, next: NextFunction) => {
-          const device = (await models.Device.getFromId(response.locals.requestDevice.id)) as Device;
-          const schedule = await models.Schedule.findByPk(device.ScheduleId);
-          if (schedule) {
-            return responseUtil.send(response, {
-              statusCode: 200,
-              messages: [],
-              schedule: schedule.schedule as ScheduleConfig,
-            });
-          } else {
-            return next(new ClientError(`Could not find schedule for device ${device.id}`, 403));
-          }
+    async (request: Request, response: Response, next: NextFunction) => {
+      const device = (await models.Device.getFromId(
+        response.locals.requestDevice.id
+      )) as Device;
+      const schedule = await models.Schedule.findByPk(device.ScheduleId);
+      if (schedule) {
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: [],
+          schedule: schedule.schedule as ScheduleConfig,
+        });
+      } else {
+        return next(
+          new ClientError(
+            `Could not find schedule for device ${device.id}`,
+            403
+          )
+        );
       }
+    }
   );
 
   /**
@@ -129,20 +139,22 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.get(
-      `${apiUrl}/for-user`,
-      extractJwtAuthorizedUser,
-      async (request: Request, response: Response) => {
-        // TODO - Should we allow super-users to see all schedules?
-        const schedules = await models.Schedule.findAll({ where: {
-            UserId: response.locals.requestUser.id
-          }});
+    `${apiUrl}/for-user`,
+    extractJwtAuthorizedUser,
+    async (request: Request, response: Response) => {
+      // TODO - Should we allow super-users to see all schedules?
+      const schedules = await models.Schedule.findAll({
+        where: {
+          UserId: response.locals.requestUser.id,
+        },
+      });
 
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got schedules for user"],
-          schedules: schedules.map(mapSchedule),
-        });
-      }
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Got schedules for user"],
+        schedules: schedules.map(mapSchedule),
+      });
+    }
   );
 
   /**
@@ -161,13 +173,13 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/:deviceId`,
     extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("deviceId")),
-    ]),
+    validateFields([idOf(param("deviceId"))]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request: Request, response: Response, next: NextFunction) => {
       // FIXME - Does this actually work?
-      await fetchUnauthorizedRequiredScheduleById(response.locals.device.ScheduleId)(request, response, next);
+      await fetchUnauthorizedRequiredScheduleById(
+        response.locals.device.ScheduleId
+      )(request, response, next);
       next();
     },
     async (request: Request, response: Response) => {
@@ -176,7 +188,8 @@ export default (app: Application, baseUrl: string) => {
         messages: [],
         schedule: response.locals.schedule.schedule as ApiScheduleConfig,
       });
-    });
+    }
+  );
 
   /**
    * @api {delete} api/v1/schedules/:scheduleId Delete audio bait schedule and remove from all devices
@@ -191,21 +204,28 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.delete(
-      `${apiUrl}/:scheduleId`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("scheduleId")),
-      ]),
-      fetchUnauthorizedRequiredScheduleById(param("scheduleId")),
-      async (request: Request, response: Response, next: NextFunction) => {
-        if (response.locals.schedule.UserId === response.locals.requestUser.id || response.locals.requestUser.hasGlobalWrite()) {
-          await response.locals.schedule.destroy();
-        } else {
-          return next(new ClientError(`User #${response.locals.requestUser.id} doesn't have permission to delete schedule`, 403));
-        }
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["schedule deleted"],
-        });
+    `${apiUrl}/:scheduleId`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("scheduleId"))]),
+    fetchUnauthorizedRequiredScheduleById(param("scheduleId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (
+        response.locals.schedule.UserId === response.locals.requestUser.id ||
+        response.locals.requestUser.hasGlobalWrite()
+      ) {
+        await response.locals.schedule.destroy();
+      } else {
+        return next(
+          new ClientError(
+            `User #${response.locals.requestUser.id} doesn't have permission to delete schedule`,
+            403
+          )
+        );
+      }
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["schedule deleted"],
       });
+    }
+  );
 };

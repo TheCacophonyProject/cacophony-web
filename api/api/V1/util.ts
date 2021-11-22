@@ -26,21 +26,23 @@ import crypto from "crypto";
 import { NextFunction, Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
-import models, { ModelCommon } from "@models";
+import models, { ModelCommon, ModelStaticCommon } from "@models";
 import { DeviceType, RecordingType } from "@typedefs/api/consts";
 import { ClientError } from "@api/customErrors";
+import logger from "@log";
+import { User } from "@models/User";
 
 function multipartUpload(
   keyPrefix: string,
   onSaved: <T>(
-    uploadingDevice: Device | null,
+    uploadingDeviceOrUser: Device | User | null,
     data: any,
     key: string
   ) => Promise<ModelCommon<T> | string>
 ) {
   return async (request: Request, response: Response, next: NextFunction) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
-
+    logger.warning("Got upload request");
     let data;
     let filename;
     let upload;
@@ -76,6 +78,7 @@ function multipartUpload(
       }
 
       try {
+        logger.warning("Got data field");
         data = JSON.parse(value);
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
@@ -90,6 +93,7 @@ function multipartUpload(
         part.resume();
         return;
       }
+      logger.warning("Got file field");
       filename = part.filename;
       upload = modelsUtil
         .openS3()
@@ -156,6 +160,7 @@ function multipartUpload(
 
       let dbRecordOrFileKey: any;
       try {
+        logger.warning("Trying to upload");
         // Wait for the upload to complete.
         const uploadResult = await upload;
         if (uploadResult instanceof Error) {
@@ -210,7 +215,11 @@ function multipartUpload(
         data.filename = filename;
         data.fileSize = fileSize;
         // Store a record for the upload.
-        dbRecordOrFileKey = await onSaved(uploadingDevice || null, data, key);
+        dbRecordOrFileKey = await onSaved(
+          uploadingDevice || response.locals.requestUser || null,
+          data,
+          key
+        );
         if (uploadingDevice) {
           // Update the device location and lastRecordingTime from the recording data,
           // if the recording time is *later* than the last recording time, or there
@@ -252,8 +261,14 @@ function multipartUpload(
         }
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();
-          responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
+          if (dbRecordOrFileKey.type === "audioBait") {
+            // FIXME - this is pretty nasty.
+            responseUtil.validAudiobaitUpload(response, dbRecordOrFileKey.id);
+          } else {
+            responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
+          }
         } else {
+          logger.warning("Got key %s", dbRecordOrFileKey);
           // Returning the s3 key of an uploaded asset - will be entered against
           // the recording in the DB by a subsequent api call.
           responseUtil.validFileUpload(response, dbRecordOrFileKey);

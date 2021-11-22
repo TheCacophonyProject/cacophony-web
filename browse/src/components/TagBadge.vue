@@ -42,10 +42,7 @@ export default {
       return this.tagObj;
     },
     tagLabel(): string {
-      if (
-        this.tag.text === "unknown" &&
-        this.tag.class.includes("human")
-      ) {
+      if (this.tag.text === "unknown" && this.tag.class.includes("human")) {
         return "not identifiable";
       }
       return this.tag.text.replace(/-/g, " ");

@@ -30,7 +30,7 @@ import {
   fetchUnauthorizedRequiredUserByNameOrId,
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
-   fetchAuthorizedRequiredSchedulesForGroup,
+  fetchAuthorizedRequiredSchedulesForGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -57,7 +57,7 @@ import {
   ApiStationResponse,
 } from "@typedefs/api/station";
 import { ScheduleConfig } from "@typedefs/api/schedule";
-import {mapSchedule} from "@api/V1/Schedule";
+import { mapSchedule } from "@api/V1/Schedule";
 
 const mapGroup = (
   group: Group,
@@ -350,19 +350,18 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-      `${apiUrl}/:groupIdOrName/schedules`,
-      extractJwtAuthorizedUser,
-      validateFields([
-          idOf(param("groupIdOrName")),
-      ]),
-      fetchAuthorizedRequiredSchedulesForGroup(param("groupIdOrName")),
-      async (request: Request, response: Response) => {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got schedules for group"],
-          schedules: response.locals.schedules.map(mapSchedule),
-        });
+    `${apiUrl}/:groupIdOrName/schedules`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("groupIdOrName"))]),
+    fetchAuthorizedRequiredSchedulesForGroup(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Got schedules for group"],
+        schedules: response.locals.schedules.map(mapSchedule),
       });
+    }
+  );
 
   /**
    * @api {post} /api/v1/groups/users Add a user to a group.

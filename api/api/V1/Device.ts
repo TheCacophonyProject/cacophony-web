@@ -32,7 +32,8 @@ import {
   fetchAdminAuthorizedRequiredDeviceById,
   fetchUnauthorizedOptionalUserById,
   fetchUnauthorizedOptionalUserByNameOrId,
-  fetchAuthorizedRequiredDevices, fetchUnauthorizedRequiredScheduleById,
+  fetchAuthorizedRequiredDevices,
+  fetchUnauthorizedRequiredScheduleById,
 } from "../extract-middleware";
 import {
   booleanOf,
@@ -447,8 +448,6 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-
-
   /**
    * @api {post} /api/v1/devices/assign-schedule Assign a schedule to a device.
    * @apiName AssignScheduleToDevice
@@ -466,33 +465,36 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-      `${apiUrl}/assign-schedule`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(body("scheduleId")),
-        idOf(body("deviceId")),
-        // Allow adding a schedule to an inactive device by default
-        query("only-active").default(false).isBoolean().toBoolean(),
-        query("view-mode").optional().equals("user"),
-      ]),
-      fetchAuthorizedRequiredDeviceById(body("deviceId")),
-      fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
-      (request, response, next) => {
-        if (response.locals.schedule.UserId == response.locals.requestUser.id || (response.locals.requestUser.hasGlobalWrite())) {
-          next();
-        } else {
-          return next(new ClientError("Schedule doesn't belong to user", 403));
-        }
-      },
-      async (request, response) => {
-        await response.locals.device.update({
-          ScheduleId: response.locals.schedule.id
-        });
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["schedule assigned"],
-        });
+    `${apiUrl}/assign-schedule`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(body("scheduleId")),
+      idOf(body("deviceId")),
+      // Allow adding a schedule to an inactive device by default
+      query("only-active").default(false).isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
+    (request, response, next) => {
+      if (
+        response.locals.schedule.UserId == response.locals.requestUser.id ||
+        response.locals.requestUser.hasGlobalWrite()
+      ) {
+        next();
+      } else {
+        return next(new ClientError("Schedule doesn't belong to user", 403));
       }
+    },
+    async (request, response) => {
+      await response.locals.device.update({
+        ScheduleId: response.locals.schedule.id,
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["schedule assigned"],
+      });
+    }
   );
 
   /**
@@ -512,33 +514,36 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-      `${apiUrl}/remove-schedule`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(body("scheduleId")),
-        idOf(body("deviceId")),
-        // Allow adding a schedule to an inactive device by default
-        query("only-active").default(false).isBoolean().toBoolean(),
-        query("view-mode").optional().equals("user"),
-      ]),
-      fetchAuthorizedRequiredDeviceById(body("deviceId")),
-      fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
-      (request, response, next) => {
-        if (response.locals.schedule.UserId == response.locals.requestUser.id || (response.locals.requestUser.hasGlobalWrite())) {
-          next();
-        } else {
-          return next(new ClientError("Schedule doesn't belong to user", 403));
-        }
-      },
-      async (request, response) => {
-        await response.locals.device.update({
-          ScheduleId: null
-        });
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["schedule removed"],
-        });
+    `${apiUrl}/remove-schedule`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(body("scheduleId")),
+      idOf(body("deviceId")),
+      // Allow adding a schedule to an inactive device by default
+      query("only-active").default(false).isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
+    (request, response, next) => {
+      if (
+        response.locals.schedule.UserId == response.locals.requestUser.id ||
+        response.locals.requestUser.hasGlobalWrite()
+      ) {
+        next();
+      } else {
+        return next(new ClientError("Schedule doesn't belong to user", 403));
       }
+    },
+    async (request, response) => {
+      await response.locals.device.update({
+        ScheduleId: null,
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["schedule removed"],
+      });
+    }
   );
 
   /**

@@ -14,7 +14,7 @@ import { ClientError } from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
-import {ScheduleId, UserId} from "@typedefs/api/common";
+import { ScheduleId, UserId } from "@typedefs/api/common";
 import { Group } from "models/Group";
 import { Recording } from "models/Recording";
 import { SuperUsers } from "@/Server";
@@ -118,7 +118,10 @@ const extractJwtAuthenticatedEntity =
   };
 
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
-export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity(["user", "device"]);
+export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity([
+  "user",
+  "device",
+]);
 export const extractJwtAuthorisedSuperAdminUser = extractJwtAuthenticatedEntity(
   ["user"],
   undefined,
@@ -211,70 +214,64 @@ const getDeviceInclude =
   });
 
 const getStationInclude =
-    (groupWhere: any) =>
-        (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
-          where: {
-            [Op.and]: [
-              { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
-            ],
+  (groupWhere: any) =>
+  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+    where: {
+      [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+    },
+    include: [
+      {
+        model: models.Group,
+        attributes: ["id", "groupname"],
+        required: Object.keys(groupWhere).length !== 0,
+        where: groupWhere,
+        include: [
+          {
+            model: models.User,
+            attributes: ["id"],
+            required: false,
+            through: {
+              where: {
+                ...useAdminAccess,
+              },
+              attributes: ["admin", "UserId"],
+            },
+            where: { id: requestUserId },
           },
-          include: [
-            {
-              model: models.Group,
-              attributes: ["id", "groupname"],
-              required:
-                  Object.keys(groupWhere).length !== 0,
-              where: groupWhere,
-              include: [
-                {
-                  model: models.User,
-                  attributes: ["id"],
-                  required: false,
-                  through: {
-                    where: {
-                      ...useAdminAccess,
-                    },
-                    attributes: ["admin", "UserId"],
-                  },
-                  where: { id: requestUserId },
-                },
-              ],
-            }
-          ],
-        });
+        ],
+      },
+    ],
+  });
 
 const getScheduleInclude =
-    (groupWhere: any) =>
-        (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
-          where: {
-            [Op.and]: [
-              { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
-            ],
+  (groupWhere: any) =>
+  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+    where: {
+      [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+    },
+    include: [
+      {
+        model: models.Group,
+        attributes: ["id", "groupname"],
+        required: Object.keys(groupWhere).length !== 0,
+        where: groupWhere,
+        include: [
+          {
+            model: models.User,
+            attributes: ["id"],
+            required: false,
+            through: {
+              where: {
+                ...useAdminAccess,
+              },
+              attributes: ["admin", "UserId"],
+            },
+            where: { id: requestUserId },
           },
-          include: [
-            {
-              model: models.Group,
-              attributes: ["id", "groupname"],
-              required:
-                  Object.keys(groupWhere).length !== 0,
-              where: groupWhere,
-              include: [
-                {
-                  model: models.User,
-                  attributes: ["id"],
-                  required: false,
-                  through: {
-                    where: {
-                      ...useAdminAccess,
-                    },
-                    attributes: ["admin", "UserId"],
-                  },
-                  where: { id: requestUserId },
-                },
-              ],
-            }
-          ],
-        });
+        ],
+      },
+    ],
+  });
 
 const getRecordingInclude =
   (recordingsWhere: any, groupWhere: any, deviceWhere: any) =>
@@ -607,9 +604,9 @@ const getStations =
     let groupWhere = {};
 
     const groupIsId =
-        groupNameOrId &&
-        !isNaN(parseInt(groupNameOrId)) &&
-        parseInt(groupNameOrId).toString() === String(groupNameOrId);
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
     if (groupNameOrId) {
       if (groupIsId) {
         groupWhere = { id: parseInt(groupNameOrId) };
@@ -633,13 +630,13 @@ const getStations =
       if (context && context.requestUser) {
         // Insert request user constraints
         getStationsOptions = getIncludeForUser(
-            context,
-            getStationInclude(groupWhere),
-            asAdmin
+          context,
+          getStationInclude(groupWhere),
+          asAdmin
         );
       } else {
         return Promise.resolve(
-            new ClientError("No authorizing user specified")
+          new ClientError("No authorizing user specified")
         );
       }
     } else {
@@ -651,8 +648,9 @@ const getStations =
     }
 
     if (context.onlyActive) {
-      (getStationsOptions as any).where = (getStationsOptions as any).where || {};
-      (getStationsOptions as any).where.retiredAt = {[Op.eq]: null};
+      (getStationsOptions as any).where =
+        (getStationsOptions as any).where || {};
+      (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
     }
     return models.Station.findAll({
       ...getStationsOptions,
@@ -661,60 +659,60 @@ const getStations =
   };
 
 const getSchedules =
-    (forRequestUser: boolean = false, asAdmin: boolean) =>
-        (
-            groupNameOrId?: string,
-            unused2?: string,
-            context?: any
-        ): Promise<ModelStaticCommon<Schedule>[] | ClientError | null> => {
-          let getScheduleOptions;
-          let groupWhere = {};
+  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (
+    groupNameOrId?: string,
+    unused2?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Schedule>[] | ClientError | null> => {
+    let getScheduleOptions;
+    let groupWhere = {};
 
-          const groupIsId =
-              groupNameOrId &&
-              !isNaN(parseInt(groupNameOrId)) &&
-              parseInt(groupNameOrId).toString() === String(groupNameOrId);
-          if (groupNameOrId) {
-            if (groupIsId) {
-              groupWhere = { id: parseInt(groupNameOrId) };
-            } else {
-              groupWhere = { groupname: groupNameOrId };
-            }
-          }
+    const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
+    if (groupNameOrId) {
+      if (groupIsId) {
+        groupWhere = { id: parseInt(groupNameOrId) };
+      } else {
+        groupWhere = { groupname: groupNameOrId };
+      }
+    }
 
-          const allSchedulesOptions = {
-            where: {},
-            include: [
-              {
-                model: models.Group,
-                required: true,
-                where: groupWhere,
-              },
-            ],
-          };
+    const allSchedulesOptions = {
+      where: {},
+      include: [
+        {
+          model: models.Group,
+          required: true,
+          where: groupWhere,
+        },
+      ],
+    };
 
-          if (forRequestUser) {
-            if (context && context.requestUser) {
-              // Insert request user constraints
-              getScheduleOptions = getIncludeForUser(
-                  context,
-                  getScheduleInclude(groupWhere),
-                  asAdmin
-              );
-            } else {
-              return Promise.resolve(
-                  new ClientError("No authorizing user specified")
-              );
-            }
-          } else {
-            getScheduleOptions = allSchedulesOptions;
-          }
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getScheduleOptions = getIncludeForUser(
+          context,
+          getScheduleInclude(groupWhere),
+          asAdmin
+        );
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getScheduleOptions = allSchedulesOptions;
+    }
 
-          if (!getScheduleOptions.where) {
-            getScheduleOptions = allSchedulesOptions;
-          }
-          return models.Schedule.findAll(getScheduleOptions);
-        };
+    if (!getScheduleOptions.where) {
+      getScheduleOptions = allSchedulesOptions;
+    }
+    return models.Schedule.findAll(getScheduleOptions);
+  };
 
 const getGroups =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
@@ -1431,13 +1429,16 @@ export const fetchAuthorizedRequiredStations = fetchRequiredModels(
   getStations(true, false)
 );
 
-export const fetchAuthorizedRequiredSchedulesForGroup = (groupNameOrId: ValidationChain) => fetchRequiredModels(
+export const fetchAuthorizedRequiredSchedulesForGroup = (
+  groupNameOrId: ValidationChain
+) =>
+  fetchRequiredModels(
     models.Schedule,
     false,
     false,
     getSchedules(true, false),
     groupNameOrId
-);
+  );
 
 export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
   models.Group,
@@ -1478,13 +1479,13 @@ export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>
   );
 
 export const fetchUnauthorizedRequiredFileById = (fileId: ValidationChain) =>
-    fetchRequiredModel(
-        models.File,
-        false,
-        true,
-        getUnauthorizedGenericModelById(models.File),
-        fileId
-    );
+  fetchRequiredModel(
+    models.File,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.File),
+    fileId
+  );
 
 export const fetchUnauthorizedRequiredRecordingTagById = (
   tagId: ValidationChain
@@ -1498,12 +1499,12 @@ export const fetchUnauthorizedRequiredRecordingTagById = (
   );
 
 export const fetchUnauthorizedRequiredScheduleById = (
-    scheduleId: ValidationChain | ScheduleId
+  scheduleId: ValidationChain | ScheduleId
 ) =>
-    fetchRequiredModel(
-        models.Schedule,
-        false,
-        true,
-        getUnauthorizedGenericModelById(models.Schedule),
-        scheduleId
-    );
+  fetchRequiredModel(
+    models.Schedule,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.Schedule),
+    scheduleId
+  );

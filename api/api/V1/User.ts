@@ -26,19 +26,21 @@ import { Application, NextFunction, Request, Response } from "express";
 import config from "@config";
 import { User } from "@models/User";
 import {
-  anyOf, idOf,
+  anyOf,
+  idOf,
   integerOf,
   validNameOf,
   validPasswordOf,
 } from "../validation-middleware";
 import {
   extractJwtAuthorisedSuperAdminUser,
-  extractJwtAuthorizedUser, fetchAuthorizedRequiredSchedulesForGroup,
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredSchedulesForGroup,
   fetchUnauthorizedOptionalUserByNameOrId,
   fetchUnauthorizedRequiredUserByNameOrId,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import {mapSchedule} from "@api/V1/Schedule";
+import { mapSchedule } from "@api/V1/Schedule";
 
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
@@ -258,5 +260,4 @@ export default function (app: Application, baseUrl: string) {
       euaVersion: config.euaVersion,
     });
   });
-
 }

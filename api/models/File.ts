@@ -20,7 +20,7 @@ import sequelize, { Order } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import Sequelize from "sequelize";
 import { User } from "./User";
-import {FileId, UserId } from "@typedefs/api/common";
+import { FileId, UserId } from "@typedefs/api/common";
 
 const Op = sequelize.Op;
 export interface File extends Sequelize.Model, ModelCommon<File> {

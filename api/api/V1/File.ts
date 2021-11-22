@@ -16,35 +16,35 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import {validateFields} from "../middleware";
+import { validateFields } from "../middleware";
 import models from "@models";
 import util from "./util";
 import responseUtil from "./responseUtil";
 import config from "@config";
 import jsonwebtoken from "jsonwebtoken";
 import { param, query } from "express-validator";
-import {Application, NextFunction, Request, Response} from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import {
-    extractJwtAuthorizedUser,
-    extractJwtAuthorizedUserOrDevice,
-    fetchUnauthorizedRequiredFileById,
+  extractJwtAuthorizedUser,
+  extractJwtAuthorizedUserOrDevice,
+  fetchUnauthorizedRequiredFileById,
 } from "../extract-middleware";
 import { File } from "@models/File";
-import {Op} from "sequelize";
-import {idOf} from "@api/validation-middleware";
-import {AuthorizationError} from "@api/customErrors";
-import { ApiFileResponse } from "@typedefs/api/file";
+import { Op } from "sequelize";
+import { idOf } from "@api/validation-middleware";
+import { AuthorizationError } from "@api/customErrors";
+import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
 
-const mapFile = (file: File): ApiFileResponse => {
+const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
-      id: file.id,
-      details: file.details,
-      userId: file.UserId,
+    id: file.id,
+    details: file.details,
+    userId: file.UserId,
   };
 };
 
-const mapFiles = (files: File[]): ApiFileResponse[] => {
-  return files.map(mapFile);
+const mapAudiobaitFiles = (files: File[]): ApiAudiobaitFileResponse[] => {
+  return files.map(mapAudiobaitFile);
 };
 
 export default (app: Application, baseUrl: string) => {
@@ -69,16 +69,14 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     extractJwtAuthorizedUser,
-    (request: Request, response: Response) => {
-      util.multipartUpload("f", async (uploader, data, key): Promise<File> => {
-        const dbRecord = models.File.buildSafely(data);
-        dbRecord.UserId = response.locals.requestUser.id;
-        dbRecord.fileKey = key;
-        dbRecord.fileSize = data.fileSize;
-        await dbRecord.save();
-        return dbRecord;
-      });
-    }
+    util.multipartUpload("f", async (uploader, data, key): Promise<File> => {
+      const dbRecord = models.File.buildSafely(data);
+      dbRecord.UserId = uploader.id;
+      dbRecord.fileKey = key;
+      dbRecord.fileSize = data.fileSize;
+      await dbRecord.save();
+      return dbRecord;
+    })
   );
 
   /**
@@ -93,13 +91,11 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     apiUrl,
     extractJwtAuthorizedUser,
-    validateFields([
-      query("type").equals("audioBait"),
-    ]),
+    validateFields([query("type").equals("audioBait")]),
     async (request: Request, response: Response) => {
       const result = await models.File.query(
-          {
-              type: {[Op.eq]: request.query.type }
+        {
+          type: { [Op.eq]: request.query.type },
         },
         0,
         1000
@@ -109,7 +105,7 @@ export default (app: Application, baseUrl: string) => {
         statusCode: 200,
         messages: ["Completed query."],
         count: result.count,
-        files: mapFiles(result.rows),
+        files: mapAudiobaitFiles(result.rows),
       });
     }
   );
@@ -133,9 +129,9 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/:id`,
-      extractJwtAuthorizedUserOrDevice,
+    extractJwtAuthorizedUserOrDevice,
     validateFields([idOf(param("id"))]),
-      fetchUnauthorizedRequiredFileById(param("id")),
+    fetchUnauthorizedRequiredFileById(param("id")),
     async (request: Request, response: Response) => {
       const file = response.locals.file;
       const downloadFileData = {
@@ -172,17 +168,21 @@ export default (app: Application, baseUrl: string) => {
    */
   app.delete(
     `${apiUrl}/:id`,
-      extractJwtAuthorizedUser,
+    extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-      fetchUnauthorizedRequiredFileById(param("id")),
+    fetchUnauthorizedRequiredFileById(param("id")),
     async (request, response, next: NextFunction) => {
-        const user = response.locals.requestUser;
-        const file = response.locals.file;
-        if (user.hasGlobalWrite() || user.id === file.UserId) {
-            await file.destroy();
-        } else {
-            return next(new AuthorizationError("The user does not own that file and is not a global admin!"));
-        }
+      const user = response.locals.requestUser;
+      const file = response.locals.file;
+      if (user.hasGlobalWrite() || user.id === file.UserId) {
+        await file.destroy();
+      } else {
+        return next(
+          new AuthorizationError(
+            "The user does not own that file and is not a global admin!"
+          )
+        );
+      }
 
       responseUtil.send(response, {
         statusCode: 200,
