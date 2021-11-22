@@ -17,6 +17,8 @@ import VisitsView from "@/views/VisitsView.vue";
 import TaggingView from "@/views/TaggingView.vue";
 import EndUserAgreementView from "@/views/EndUserAgreementView.vue";
 import AiMetricsView from "@/views/AiMetricsView.vue";
+import ForgotPasswordView from "@/views/ForgotPasswordView.vue";
+import NewPasswordView from "@/views/NewPasswordView.vue";
 import SchedulesView from "@/views/SchedulesView.vue";
 
 // TODO(jon): We should be lazy loading some of these components for better code-splitting
@@ -125,6 +127,24 @@ function createRouter() {
         beforeEnter: cancelPendingRequests,
       },
       {
+        path: "/forgot",
+        component: ForgotPasswordView,
+        meta: {
+          noAuth: true,
+          title: "Forgot Password",
+        },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
+        path: "/newpassword",
+        component: NewPasswordView,
+        meta: {
+          noAuth: true,
+          title: "New Password",
+        },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
         path: "/recording/:id/:trackId?",
         //@ts-ignore
         component: RecordingView,
@@ -209,11 +229,7 @@ function createRouter() {
     const euaUpdatedAt = new Date(store.getters["User/euaUpdatedAt"]).getTime();
     // Update latest User Agreement once an hour
     if (now - euaUpdatedAt > 1000 * 60 * 60) {
-      try {
-        await store.dispatch("User/GET_END_USER_AGREEMENT_VERSION");
-      } catch (e) {
-        // ...
-      }
+      await store.dispatch("User/GET_END_USER_AGREEMENT_VERSION");
     }
     const isLoggedIn = store.getters["User/isLoggedIn"];
     const hasEmail = store.getters["User/hasEmail"];
