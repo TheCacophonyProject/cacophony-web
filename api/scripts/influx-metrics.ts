@@ -25,10 +25,10 @@ const timeout = 1000;
     ...config.default.loadConfig(options.config),
   };
 
-  const pgClient = await pgConnect();
-  const influx = await influxConnect();
-
   try {
+    const pgClient = await pgConnect();
+    const influx = await influxConnect();
+
     await Promise.all([
       stateCount(influx, pgClient),
       measureProcessingWaitTime(influx, pgClient),

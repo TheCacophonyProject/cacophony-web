@@ -30,11 +30,13 @@ module.exports = {
       queryInterface.removeColumn("Devices", "lastRecordingTime"),
       queryInterface.removeColumn("Groups", "lastRecordingTime"),
       queryInterface.removeColumn("Recordings", "fileSize", Sequelize.INTEGER),
-      queryInterface.removeColumn("Recordings", "rawFileSize", Sequelize.INTEGER),
+      queryInterface.removeColumn(
+        "Recordings",
+        "rawFileSize",
+        Sequelize.INTEGER
+      ),
     ]);
-    await queryInterface.sequelize.query(
-      'drop type "enum_Devices_kind"'
-    );
+    await queryInterface.sequelize.query('drop type "enum_Devices_kind"');
     await Promise.all([
       queryInterface.addColumn("Devices", "currentConfig", Sequelize.JSONB),
       queryInterface.addColumn("Devices", "newConfig", Sequelize.JSONB),

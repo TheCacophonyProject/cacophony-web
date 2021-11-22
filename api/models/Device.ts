@@ -42,6 +42,8 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   lastRecordingTime: Date | null;
   password?: string;
   location?: { type: "Point"; coordinates: [number, number] };
+  heartbeat: Date | null;
+  nextHeartbeat: Date | null;
   comparePassword: (password: string) => Promise<boolean>;
   reRegister: (
     devicename: string,
@@ -55,6 +57,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;
   users: (authUser: User, attrs?: string[]) => Promise<User[]>;
+  updateHeartbeat: (nextHeartbeat: Date) => Promise<boolean>;
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
@@ -102,6 +105,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     from: Date,
     windowSize: number
   ) => Promise<{ hour: number; index: number }>;
+  stoppedDevices: () => Promise<Device[]>;
 }
 
 export default function (
@@ -144,6 +148,12 @@ export default function (
       type: DataTypes.ENUM,
       values: Object.values(DeviceType),
       defaultValue: DeviceType.Unknown,
+    },
+    heartbeat: {
+      type: DataTypes.DATE,
+    },
+    nextHeartbeat: {
+      type: DataTypes.DATE,
     },
   };
 
@@ -356,6 +366,23 @@ export default function (
     return this.findAll({ where: { devicename: name } });
   };
 
+  Device.stoppedDevices = async function () {
+    return this.findAll({
+      where: {
+        nextHeartbeat: {
+          [Op.and]: [
+            { [Op.lt]: new Date(Date.now() - 1000 * 60) }, //60 seconds deviance
+            { [Op.ne]: null },
+          ],
+        },
+      },
+      include: [
+        {
+          model: models.Group,
+        },
+      ],
+    });
+  };
   Device.getFromNameAndGroup = async function (name, groupName) {
     return this.findOne({
       where: { devicename: name },
@@ -561,6 +588,14 @@ order by hour;
       return false;
     }
     return newDevice;
+  };
+
+  Device.prototype.updateHeartbeat = async function (nextHeartbeat: Date) {
+    return this.update({
+      lastConnectionTime: new Date(),
+      nextHeartbeat: nextHeartbeat,
+      heartbeat: new Date(),
+    });
   };
 
   return Device;

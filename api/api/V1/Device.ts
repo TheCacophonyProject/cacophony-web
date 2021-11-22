@@ -801,4 +801,33 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+  /**
+     * @api {post} /api/v1/devices/heartbeat send device heartbeat
+     * @apiName heartbeat
+     * @apiGroup Device
+     *
+     * @apiUse V1DeviceAuthorizationHeader
+     *
+     * @apiBody {Date} nextHeartbeat time next heart beat is expected
+
+     * @apiUse V1ResponseSuccess
+     * @apiUse V1ResponseError
+     */
+  app.post(
+    `${apiUrl}/heartbeat`,
+    extractJwtAuthorisedDevice,
+    validateFields([body("nextHeartbeat").isISO8601().toDate()]),
+    async function (request: Request, response: Response, next: NextFunction) {
+      const requestDevice = (await models.Device.findByPk(
+        response.locals.requestDevice.id
+      )) as Device;
+      await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
+
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Heartbeat updated."],
+      });
+    }
+  );
 }

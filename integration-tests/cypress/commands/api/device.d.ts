@@ -62,6 +62,26 @@ declare namespace Cypress {
     /**
      * Retrieve device details using name and groupname from /device/XX/in-group/YY
      * use groupId if provided, otherwise groupName - the unused parameter should be set to null
+     */
+    apiDevice(userName: string, deviceName: string, statusCode?: number): any;
+
+    /**
+     * Retrieve device details using name and groupname from /device/XX/in-group/YY
+     * use groupId if provided, otherwise groupName - the unused parameter should be set to null
+     */
+    apiDeviceInGroup(
+      userName: string,
+      deviceName: string,
+      groupName: string | null,
+      groupId: number | null,
+      expectedDevices: ApiDeviceResponse,
+      params?: any,
+      statusCode?: number
+    ): any;
+
+    /**
+     * Retrieve device details using name and groupname from /device/XX/in-group/YY
+     * use groupId if provided, otherwise groupName - the unused parameter should be set to null
      * compare with expected device details (JSON equivalent to that returned by API)
      * optionally check for a non-200 status code
      */
@@ -107,20 +127,18 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    // FIXME - Delete?  Doesn't disambiguate by group
-    /**
-     * Remove user from a device using /device/users
-     * takes deviceName and looks up the device Id to pass tot he API.  Hence deviceName must be unique within test environment
-     * optionally check for a non-200 status code
-     * By default user name is made unique. Specify
-     * additionalChecks.useRawUserName=true to keep name as supplied.
-     */
     apiDeviceUserRemove(
       deviceAdminUser: string,
       userName: string,
       deviceName: string,
       statusCode?: number,
       additionalChecks?: any
+    ): any;
+
+    apiDeviceHeartbeat(
+      deviceName: string,
+      nextHeartbeat: Date,
+      statusCode: number
     ): any;
   }
 }
