@@ -9,13 +9,15 @@ export interface AudiobaitDetails {
   originalName: string;
 }
 
-export interface ApiFileResponse<T> {
+export interface ApiFileResponse {
   id: FileId;
-  details: T;
+  details: any;
   userId: UserId;
 }
 
-export type ApiAudiobaitFileResponse = ApiFileResponse<AudiobaitDetails>;
+export interface ApiAudiobaitFileResponse extends ApiFileResponse {
+  details: AudiobaitDetails;
+}
 
 export interface ApiAudiobaitFileRequest {
   details: AudiobaitDetails;
