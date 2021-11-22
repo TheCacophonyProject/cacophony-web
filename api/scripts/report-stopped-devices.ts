@@ -2,7 +2,7 @@ import registerAliases from "../module-aliases";
 registerAliases();
 import config from "../config";
 import log from "../logging";
-import   {Device}  from "../models/Device"
+import { Device } from "../models/Device";
 
 import moment from "moment";
 import { sendEmail } from "./emailUtil";
@@ -17,8 +17,8 @@ async function getUserEvents(devices: Device[]) {
   for (const device of devices) {
     if (!groupAdmins.hasOwnProperty(device.GroupId)) {
       const adminUsers = await device.Group.getUsers({
-        through: { where: { admin: true}},
-        where:{id:device.GroupId},
+        through: { where: { admin: true } },
+        where: { id: device.GroupId },
       });
       groupAdmins[device.GroupId] = adminUsers;
     }
@@ -37,10 +37,20 @@ async function main() {
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
-  let devices = await models.Device.stoppedDevices()
-  const stoppedEvents = await models.Event.latestEvents(null, null, {useCreatedDate:false, admin:true,eventType: ["stop-reported"]})
- //filter devices which have already been alerted on
-  devices  = devices.filter(device =>!stoppedEvents.find((event) => event.DeviceId == device.id && event.dateTime > device.nextHeartbeat));
+  let devices = await models.Device.stoppedDevices();
+  const stoppedEvents = await models.Event.latestEvents(null, null, {
+    useCreatedDate: false,
+    admin: true,
+    eventType: ["stop-reported"],
+  });
+  //filter devices which have already been alerted on
+  devices = devices.filter(
+    (device) =>
+      !stoppedEvents.find(
+        (event) =>
+          event.DeviceId == device.id && event.dateTime > device.nextHeartbeat
+      )
+  );
 
   if (devices.length == 0) {
     log.info("No new stopped devices");
@@ -86,7 +96,7 @@ async function main() {
 
   for (const device of devices) {
     eventList.push({
-      DeviceId:device.id,
+      DeviceId: device.id,
       EventDetailId: detailsId,
       dateTime: time,
     });
@@ -101,9 +111,7 @@ async function main() {
 function generateText(stoppedDevices: Device[]): string {
   let textBody = `Stopped Devices ${moment().format("MMM ddd Do ha")}\r\n`;
   for (const device of stoppedDevices) {
-    const deviceText = `${device.Group.groupname}- ${
-      device.devicename
-    } id: ${
+    const deviceText = `${device.Group.groupname}- ${device.devicename} id: ${
       device.id
     } has stopped, last last message at ${moment(device.heartbeat).format(
       "MMM ddd Do ha"
@@ -122,13 +130,11 @@ function generateHtml(stoppedDevices: Device[]): string {
   for (const device of stoppedDevices) {
     const deviceText = `<li>${device.Group.groupname}-${
       device.devicename
-    } id: ${
-      device.id
-    } has stopped, received last message at ${moment(device.heartbeat).format(
-      "MMM ddd Do ha"
-    )} expected to hear again at ${moment(device.nextHeartbeat).format(
-      "MMM ddd Do ha"
-    )}</li>`;
+    } id: ${device.id} has stopped, received last message at ${moment(
+      device.heartbeat
+    ).format("MMM ddd Do ha")} expected to hear again at ${moment(
+      device.nextHeartbeat
+    ).format("MMM ddd Do ha")}</li>`;
     html += deviceText;
   }
   html += "</ul>";

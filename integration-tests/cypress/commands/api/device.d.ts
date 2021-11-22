@@ -63,11 +63,7 @@ declare namespace Cypress {
      * Retrieve device details using name and groupname from /device/XX/in-group/YY
      * use groupId if provided, otherwise groupName - the unused parameter should be set to null
      */
-    apiDevice(
-      userName: string,
-      deviceName: string,
-      statusCode?: number
-    ): any;
+    apiDevice(userName: string, deviceName: string, statusCode?: number): any;
 
     /**
      * Retrieve device details using name and groupname from /device/XX/in-group/YY
@@ -142,8 +138,7 @@ declare namespace Cypress {
     apiDeviceHeartbeat(
       deviceName: string,
       nextHeartbeat: Date,
-      statusCode: number,
+      statusCode: number
     ): any;
-
   }
 }

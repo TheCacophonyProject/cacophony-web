@@ -246,66 +246,57 @@ Cypress.Commands.add(
   }
 );
 
-
-
 Cypress.Commands.add(
   "apiDevice",
-  (    userName: string,
-      deviceName: string,
-      statusCode: number = 200
+  (userName: string, deviceName: string, statusCode: number = 200) => {
+    logTestDescription(`Get device ${deviceName} for ${userName}`, {
+      deviceName,
+      userName,
+    });
+    const fullUrl = v1ApiPath("devices/" + getCreds(deviceName).id);
 
-    ) => {
-      logTestDescription(
-        `Get device ${deviceName} for ${userName}`,
-        {deviceName,userName}
-      );
-      const fullUrl = v1ApiPath(
-        "devices/" + getCreds(deviceName).id)
-
-      return makeAuthorizedRequestWithStatus(
-        {
-          method: "GET",
-          url: fullUrl,
-        },
-        userName,
-        statusCode
-      )
-    }
-  );
+    return makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: fullUrl,
+      },
+      userName,
+      statusCode
+    );
+  }
+);
 
 Cypress.Commands.add(
   "apiDeviceInGroup",
-  (    userName: string,
-      deviceName: string,
-      groupName: string | null,
-      groupId: number | null,
-      params: any = {},
-      statusCode: number = 200
+  (
+    userName: string,
+    deviceName: string,
+    groupName: string | null,
+    groupId: number | null,
+    params: any = {},
+    statusCode: number = 200
+  ) => {
+    const group = groupId !== null ? groupId : getTestName(groupName);
+    const fullUrl = v1ApiPath(
+      "devices/" + getTestName(deviceName) + "/in-group/" + group,
+      params
+    );
+    logTestDescription(
+      `Get device ${deviceName} in group ${group} for ${userName}`,
+      {}
+    );
 
-    ) => {
-      const group = groupId !== null? groupId  :getTestName(groupName)
-      const fullUrl = v1ApiPath(
-        "devices/" + getTestName(deviceName) + "/in-group/" + group,
-        params
-      );
-      logTestDescription(
-        `Get device ${deviceName} in group ${group} for ${userName}`,
-        {}
-      );
-
-      return makeAuthorizedRequestWithStatus(
-        {
-          method: "GET",
-          url: fullUrl,
-          body: null,
-        },
-        userName,
-        statusCode
-      )
-
-    }
-  );
-
+    return makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: fullUrl,
+        body: null,
+      },
+      userName,
+      statusCode
+    );
+  }
+);
 
 Cypress.Commands.add(
   "apiDeviceInGroupCheck",
@@ -323,7 +314,14 @@ Cypress.Commands.add(
       { user: userName, groupName, deviceName },
       true
     );
-    cy.apiDeviceInGroup(userName,deviceName,groupName,groupId,params,statusCode).then((response) => {
+    cy.apiDeviceInGroup(
+      userName,
+      deviceName,
+      groupName,
+      groupId,
+      params,
+      statusCode
+    ).then((response) => {
       if (statusCode === null || statusCode == 200) {
         const device = response.body.device;
         expect(device.id).to.equal(getCreds(deviceName).id);
@@ -454,14 +452,10 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiDeviceHeartbeat",
-  (
-    deviceName: string,
-    nextHeartbeat: Date,
-    statusCode: number = 200,
-  ) => {
-
+  (deviceName: string, nextHeartbeat: Date, statusCode: number = 200) => {
     logTestDescription(
-      `${deviceName} Sending heart beat, next heart beat ${nextHeartbeat}'`,{deviceName,nextHeartbeat}
+      `${deviceName} Sending heart beat, next heart beat ${nextHeartbeat}'`,
+      { deviceName, nextHeartbeat }
     );
 
     makeAuthorizedRequestWithStatus(
@@ -476,5 +470,4 @@ Cypress.Commands.add(
       statusCode
     );
   }
-
 );

@@ -42,8 +42,8 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   lastRecordingTime: Date | null;
   password?: string;
   location?: { type: "Point"; coordinates: [number, number] };
-  heartbeat: Date| null;
-  nextHeartbeat: Date| null;
+  heartbeat: Date | null;
+  nextHeartbeat: Date | null;
   comparePassword: (password: string) => Promise<boolean>;
   reRegister: (
     devicename: string,
@@ -104,8 +104,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     from: Date,
     windowSize: number
   ) => Promise<{ hour: number; index: number }>;
-  stoppedDevices: (deviceId?:number) => Promise<Device[]>;
-
+  stoppedDevices: () => Promise<Device[]>;
 }
 
 export default function (
@@ -149,7 +148,7 @@ export default function (
       values: Object.values(DeviceType),
       defaultValue: DeviceType.Unknown,
     },
-    heratbeat: {
+    heartbeat: {
       type: DataTypes.DATE,
     },
     nextHeartbeat: {
@@ -366,26 +365,23 @@ export default function (
     return this.findAll({ where: { devicename: name } });
   };
 
-  Device.stoppedDevices = async function (deviceId) {
-    const where = {
-      nextHeartbeat: {
-        [Op.and]: [
-          {[Op.lt]: new Date(Date.now() - 1000* 60)},//60 seconds deviance
-          {[Op.ne]: null},
-        ]
-      }
-    } as any
-    if (deviceId){
-      where.id = deviceId
-    }
-    return this.findAll({ where: where,
+  Device.stoppedDevices = async function () {
+    return this.findAll({
+      where: {
+        nextHeartbeat: {
+          [Op.and]: [
+            { [Op.lt]: new Date(Date.now() - 1000 * 60) }, //60 seconds deviance
+            { [Op.ne]: null },
+          ],
+        },
+      },
       include: [
         {
           model: models.Group,
         },
       ],
     });
-  }
+  };
   Device.getFromNameAndGroup = async function (name, groupName) {
     return this.findOne({
       where: { devicename: name },
