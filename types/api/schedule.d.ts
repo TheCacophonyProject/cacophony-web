@@ -16,7 +16,7 @@ export interface ScheduleConfig {
     description: string;
 }
 
-export interface Schedule {
+export interface ApiScheduleResponse {
     id: ScheduleId;
     schedule: ScheduleConfig;
 }

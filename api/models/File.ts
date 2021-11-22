@@ -17,14 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import _ from "lodash";
 import sequelize, { Order } from "sequelize";
-import { AuthorizationError } from "@api/customErrors";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import Sequelize from "sequelize";
 import { User } from "./User";
-import { UserId } from "@typedefs/api/common";
+import {FileId, UserId } from "@typedefs/api/common";
 
 const Op = sequelize.Op;
-export type FileId = number;
 export interface File extends Sequelize.Model, ModelCommon<File> {
   id: FileId;
   UserId: UserId;
@@ -86,15 +84,6 @@ export default function (sequelize, DataTypes) {
       offset: offset,
     };
     return this.findAndCountAll(q);
-  };
-
-  File.deleteIfAllowedElseThrow = async function (user, file) {
-    if (!user.hasGlobalWrite() && user.id != file.UserId) {
-      throw new AuthorizationError(
-        "The user does not own that file and is not a global admin!"
-      );
-    }
-    await file.destroy();
   };
 
   File.getMultiple = async function (ids) {

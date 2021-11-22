@@ -17,6 +17,7 @@ import VisitsView from "@/views/VisitsView.vue";
 import TaggingView from "@/views/TaggingView.vue";
 import EndUserAgreementView from "@/views/EndUserAgreementView.vue";
 import AiMetricsView from "@/views/AiMetricsView.vue";
+import SchedulesView from "@/views/SchedulesView.vue";
 
 // TODO(jon): We should be lazy loading some of these components for better code-splitting
 import MonitoringTimeline from "@/views/MonitoringTimeline.vue";
@@ -108,6 +109,12 @@ function createRouter() {
         path: "/ai-metrics",
         component: AiMetricsView,
         meta: { title: "AI Metrics" },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
+        path: "/schedules",
+        component: SchedulesView,
+        meta: { title: "Schedules" },
         beforeEnter: cancelPendingRequests,
       },
       {

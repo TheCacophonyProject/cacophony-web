@@ -118,6 +118,7 @@ const extractJwtAuthenticatedEntity =
   };
 
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
+export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity(["user", "device"]);
 export const extractJwtAuthorisedSuperAdminUser = extractJwtAuthenticatedEntity(
   ["user"],
   undefined,
@@ -209,7 +210,40 @@ const getDeviceInclude =
     ],
   });
 
-const getStationOrScheduleInclude =
+const getStationInclude =
+    (groupWhere: any) =>
+        (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+          where: {
+            [Op.and]: [
+              { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
+            ],
+          },
+          include: [
+            {
+              model: models.Group,
+              attributes: ["id", "groupname"],
+              required:
+                  Object.keys(groupWhere).length !== 0,
+              where: groupWhere,
+              include: [
+                {
+                  model: models.User,
+                  attributes: ["id"],
+                  required: false,
+                  through: {
+                    where: {
+                      ...useAdminAccess,
+                    },
+                    attributes: ["admin", "UserId"],
+                  },
+                  where: { id: requestUserId },
+                },
+              ],
+            }
+          ],
+        });
+
+const getScheduleInclude =
     (groupWhere: any) =>
         (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
           where: {
@@ -600,7 +634,7 @@ const getStations =
         // Insert request user constraints
         getStationsOptions = getIncludeForUser(
             context,
-            getStationOrScheduleInclude(groupWhere),
+            getStationInclude(groupWhere),
             asAdmin
         );
       } else {
@@ -664,7 +698,7 @@ const getSchedules =
               // Insert request user constraints
               getScheduleOptions = getIncludeForUser(
                   context,
-                  getStationOrScheduleInclude(groupWhere),
+                  getScheduleInclude(groupWhere),
                   asAdmin
               );
             } else {
@@ -1442,6 +1476,15 @@ export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>
     getUnauthorizedGenericModelById(models.Track),
     trackId
   );
+
+export const fetchUnauthorizedRequiredFileById = (fileId: ValidationChain) =>
+    fetchRequiredModel(
+        models.File,
+        false,
+        true,
+        getUnauthorizedGenericModelById(models.File),
+        fileId
+    );
 
 export const fetchUnauthorizedRequiredRecordingTagById = (
   tagId: ValidationChain

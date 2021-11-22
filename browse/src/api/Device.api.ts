@@ -6,19 +6,7 @@ import {
   ApiDeviceResponse,
   ApiDeviceUserRelationshipResponse,
 } from "@typedefs/api/device";
-import { DeviceId } from "@typedefs/api/common";
-
-export default {
-  getDevices,
-  getDevice,
-  getDeviceById,
-  getUsers,
-  addUserToDevice,
-  removeUserFromDevice,
-  getLatestSoftwareVersion,
-  getLatestEvents,
-  getType,
-};
+import { DeviceId, ScheduleId } from "@typedefs/api/common";
 
 export interface DeviceInfo {
   deviceName: string;
@@ -97,6 +85,46 @@ function addUserToDevice(userName: string, deviceId: DeviceId, admin: boolean) {
     suppressGlobalMessaging
   );
 }
+
+const assignScheduleToDevice = (
+  deviceId: DeviceId,
+  scheduleId: ScheduleId,
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{}>> => {
+  const suppressGlobalMessaging = true;
+  return CacophonyApi.post(
+    `/api/v1/devices/assign-schedule${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`,
+    {
+      deviceId,
+      scheduleId,
+    },
+    suppressGlobalMessaging
+  );
+};
+
+const removeScheduleFromDevice = (
+  deviceId: DeviceId,
+  scheduleId: ScheduleId,
+  activeAndInactive: boolean = false
+): Promise<FetchResult<{}>> => {
+  const suppressGlobalMessaging = true;
+  return CacophonyApi.post(
+    `/api/v1/devices/remove-schedule${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`,
+    {
+      deviceId,
+      scheduleId,
+    },
+    suppressGlobalMessaging
+  );
+};
 
 function removeUserFromDevice(
   userName: string,
@@ -186,3 +214,17 @@ async function getType(
   }
   return "UnknownDeviceType";
 }
+
+export default {
+  getDevices,
+  getDevice,
+  getDeviceById,
+  getUsers,
+  addUserToDevice,
+  removeUserFromDevice,
+  getLatestSoftwareVersion,
+  getLatestEvents,
+  getType,
+  assignScheduleToDevice,
+  removeScheduleFromDevice,
+};

@@ -50,6 +50,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   ) => Promise<Device | false>;
   Group: Group;
   GroupId: number;
+  ScheduleId: ScheduleId;
   kind: DeviceType;
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;

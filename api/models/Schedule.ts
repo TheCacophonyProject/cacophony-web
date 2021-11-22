@@ -19,12 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import _ from "lodash";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import Sequelize from "sequelize";
-import { ScheduleId, GroupId } from "@typedefs/api/common";
+import { ScheduleId, UserId } from "@typedefs/api/common";
 import {ScheduleConfig} from "@typedefs/api/schedule";
 
 export interface Schedule extends Sequelize.Model, ModelCommon<Schedule> {
   id: ScheduleId;
-  GroupId: GroupId;
+  UserId: UserId;
   schedule: ScheduleConfig
 }
 
@@ -50,9 +50,7 @@ export default function (sequelize, DataTypes): ScheduleStatic {
   };
 
   Schedule.addAssociations = function (models) {
-
-    // FIXME - Make schedule belong to group.
-    models.Schedule.belongsTo(models.Group);
+    models.Schedule.belongsTo(models.User);
     models.Schedule.hasMany(models.Device);
   };
 

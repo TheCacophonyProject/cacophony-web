@@ -90,6 +90,9 @@ export const mapDeviceResponse = (
     if (device.public) {
       mapped.public = true;
     }
+    if (device.ScheduleId) {
+      mapped.scheduleId = device.ScheduleId;
+    }
 
     return mapped;
   } catch (e) {
@@ -447,9 +450,9 @@ export default function (app: Application, baseUrl: string) {
 
 
   /**
-   * @api {post} /api/v1/devices/schedule Assign a schedule to a device.
+   * @api {post} /api/v1/devices/assign-schedule Assign a schedule to a device.
    * @apiName AssignScheduleToDevice
-   * @apiGroup Schedule
+   * @apiGroup Schedules
    * @apiDescription This call assigns a schedule to a device.
    *
    * @apiUse V1UserAuthorizationHeader
@@ -463,7 +466,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-      `${apiUrl}/schedule`,
+      `${apiUrl}/assign-schedule`,
       extractJwtAuthorizedUser,
       validateFields([
         idOf(body("scheduleId")),
@@ -472,13 +475,14 @@ export default function (app: Application, baseUrl: string) {
         query("only-active").default(false).isBoolean().toBoolean(),
         query("view-mode").optional().equals("user"),
       ]),
-      fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
+      fetchAuthorizedRequiredDeviceById(body("deviceId")),
       fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
       (request, response, next) => {
-        if (response.locals.schedule.GroupId !== response.locals.device.GroupId) {
-          return next(new ClientError("Schedule doesn't belong to device group", 403));
+        if (response.locals.schedule.UserId == response.locals.requestUser.id || (response.locals.requestUser.hasGlobalWrite())) {
+          next();
+        } else {
+          return next(new ClientError("Schedule doesn't belong to user", 403));
         }
-        next();
       },
       async (request, response) => {
         await response.locals.device.update({
@@ -487,6 +491,52 @@ export default function (app: Application, baseUrl: string) {
         return responseUtil.send(response, {
           statusCode: 200,
           messages: ["schedule assigned"],
+        });
+      }
+  );
+
+  /**
+   * @api {post} /api/v1/devices/remove-schedule Assign a schedule to a device.
+   * @apiName RemoveScheduleFromDevice
+   * @apiGroup Schedules
+   * @apiDescription This call assigns a schedule to a device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {Number} deviceId ID of the device.
+   * @apiBody {Number} scheduleId ID of the schedule to remove from the device.
+   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+      `${apiUrl}/remove-schedule`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(body("scheduleId")),
+        idOf(body("deviceId")),
+        // Allow adding a schedule to an inactive device by default
+        query("only-active").default(false).isBoolean().toBoolean(),
+        query("view-mode").optional().equals("user"),
+      ]),
+      fetchAuthorizedRequiredDeviceById(body("deviceId")),
+      fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
+      (request, response, next) => {
+        if (response.locals.schedule.UserId == response.locals.requestUser.id || (response.locals.requestUser.hasGlobalWrite())) {
+          next();
+        } else {
+          return next(new ClientError("Schedule doesn't belong to user", 403));
+        }
+      },
+      async (request, response) => {
+        await response.locals.device.update({
+          ScheduleId: null
+        });
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["schedule removed"],
         });
       }
   );

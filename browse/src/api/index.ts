@@ -4,6 +4,7 @@ import device from "./Device.api";
 import recording from "./Recording.api";
 import tag from "./Tag.api";
 import monitoring from "./Monitoring.api";
+import schedule from "./Schedule.api";
 
 export default {
   user,
@@ -12,4 +13,5 @@ export default {
   recording,
   tag,
   monitoring,
+  schedule
 };

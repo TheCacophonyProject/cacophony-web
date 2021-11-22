@@ -3,7 +3,7 @@ import {
   GroupId,
   IsoFormattedDateString,
   LatLng,
-  SaltId,
+  SaltId, ScheduleId,
 } from "./common";
 import { ApiUserResponse } from "./user";
 import { DeviceType } from "./consts";
@@ -33,5 +33,6 @@ export interface ApiDeviceResponse {
   lastConnectionTime?: IsoFormattedDateString;
   lastRecordingTime?: IsoFormattedDateString;
   location?: LatLng;
+  scheduleId?: ScheduleId;
   users?: ApiDeviceUserRelationshipResponse[];
 }
