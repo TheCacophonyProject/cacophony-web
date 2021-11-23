@@ -399,21 +399,13 @@ export default {
       {
         const now = new Date();
         now.setDate(now.getDate() - 1);
-        const oneDayAgo = new Date(now);
         if (!this.limitedView) {
           try {
             const getDevicesResponse = await api.groups.getDevicesForGroup(
               this.groupName
             );
             if (getDevicesResponse.success) {
-              this.devices = getDevicesResponse.result.devices.map(
-                (device) => ({
-                  ...device,
-                  isHealthy:
-                    device.lastConnectionTime &&
-                    new Date(device.lastConnectionTime) > oneDayAgo,
-                })
-              );
+              this.devices = getDevicesResponse.result.devices;
             } else {
               this.limitedView = true;
               await this.fetchDevices();
@@ -426,14 +418,9 @@ export default {
           const devicesResponse = await api.device.getDevices();
           if (devicesResponse.success) {
             const { result } = devicesResponse;
-            this.devices = result.devices
-              .filter((device) => device.groupName === this.groupName)
-              .map((device) => ({
-                ...device,
-                isHealthy:
-                  device.lastConnectionTime &&
-                  new Date(device.lastConnectionTime) > oneDayAgo,
-              }));
+            this.devices = result.devices.filter(
+              (device) => device.groupName === this.groupName
+            );
           }
         }
       }

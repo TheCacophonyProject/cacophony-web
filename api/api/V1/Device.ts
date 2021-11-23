@@ -81,6 +81,9 @@ export const mapDeviceResponse = (
     if (device.lastRecordingTime) {
       mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
     }
+    if (device.heartbeat && device.nextHeartbeat) {
+      mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
+    }
     if (device.location) {
       const { coordinates } = device.location;
       mapped.location = {

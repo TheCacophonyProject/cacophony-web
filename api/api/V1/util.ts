@@ -42,7 +42,6 @@ function multipartUpload(
 ) {
   return async (request: Request, response: Response, next: NextFunction) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
-    logger.warning("Got upload request");
     let data;
     let filename;
     let upload;
@@ -78,7 +77,6 @@ function multipartUpload(
       }
 
       try {
-        logger.warning("Got data field");
         data = JSON.parse(value);
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
@@ -93,7 +91,6 @@ function multipartUpload(
         part.resume();
         return;
       }
-      logger.warning("Got file field");
       filename = part.filename;
       upload = modelsUtil
         .openS3()
@@ -160,7 +157,6 @@ function multipartUpload(
 
       let dbRecordOrFileKey: any;
       try {
-        logger.warning("Trying to upload");
         // Wait for the upload to complete.
         const uploadResult = await upload;
         if (uploadResult instanceof Error) {
@@ -268,7 +264,6 @@ function multipartUpload(
             responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
           }
         } else {
-          logger.warning("Got key %s", dbRecordOrFileKey);
           // Returning the s3 key of an uploaded asset - will be entered against
           // the recording in the DB by a subsequent api call.
           responseUtil.validFileUpload(response, dbRecordOrFileKey);

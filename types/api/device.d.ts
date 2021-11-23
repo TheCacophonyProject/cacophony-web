@@ -30,6 +30,7 @@ export interface ApiDeviceResponse {
   admin: boolean;
   type: DeviceType;
 
+  isHealthy?: boolean;
   public?: boolean; // Assumed to be private unless otherwise specified.
   lastConnectionTime?: IsoFormattedDateString;
   lastRecordingTime?: IsoFormattedDateString;
