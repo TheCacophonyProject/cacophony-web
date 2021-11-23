@@ -497,7 +497,6 @@ export const fetchModel =
         response.locals[modelName] = model;
       }
     }
-    logger.warning("GOT HERE");
     next();
   };
 
