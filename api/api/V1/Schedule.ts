@@ -176,11 +176,9 @@ export default (app: Application, baseUrl: string) => {
     validateFields([idOf(param("deviceId"))]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request: Request, response: Response, next: NextFunction) => {
-      // FIXME - Does this actually work?
       await fetchUnauthorizedRequiredScheduleById(
         response.locals.device.ScheduleId
       )(request, response, next);
-      next();
     },
     async (request: Request, response: Response) => {
       return responseUtil.send(response, {

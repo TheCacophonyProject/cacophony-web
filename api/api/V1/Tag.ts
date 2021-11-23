@@ -55,8 +55,11 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       body("tag")
-        .custom(jsonSchemaOf(ApiRecordingTagRequest))
-        .withMessage(expectedTypeOf("ApiRecordingTagRequest")),
+        .exists()
+        .withMessage(expectedTypeOf("ApiRecordingTagRequest"))
+        .bail()
+        .custom(jsonSchemaOf(ApiRecordingTagRequest)),
+
       idOf(body("recordingId")),
     ]),
     parseJSONField(body("tag")),

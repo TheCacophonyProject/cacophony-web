@@ -51,6 +51,7 @@ import {
   parseJSONField,
 } from "../extract-middleware";
 import {
+  anyOf,
   booleanOf,
   idOf,
   integerOf,
@@ -69,6 +70,7 @@ import {
 } from "@typedefs/api/recording";
 import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
+import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json";
 import { Validator } from "jsonschema";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
@@ -85,6 +87,7 @@ import {
 } from "@typedefs/api/trackTag";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
+import logger from "@log";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -1083,9 +1086,11 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      // FIXME - JSON schema for update data?
-      body("data").isJSON(),
-      body("algorithm").isJSON().optional(),
+      body("data").custom(jsonSchemaOf(ApiTrackDataRequestSchema)),
+      anyOf(
+        body("algorithm").isJSON().optional(),
+        body("algorithm").isArray().optional()
+      ),
     ]),
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),
@@ -1290,9 +1295,12 @@ export default (app: Application, baseUrl: string) => {
       body("confidence").isFloat().toFloat(),
       booleanOf(body("automatic")),
       body("tagJWT").optional().isString(),
-      body("data").optional().isJSON(),
+      anyOf(
+        body("data").isJSON().optional(),
+        body("data").isObject().optional()
+      ),
     ]),
-    // FIXME - JSON schema fo allowed data? At least a limit to how many chars etc?
+    // FIXME - JSON schema for allowed data? At least a limit to how many chars etc?
     parseJSONField(body("data")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (request.body.tagJWT) {
@@ -1303,7 +1311,6 @@ export default (app: Application, baseUrl: string) => {
           response,
           next
         );
-        return next();
       }
     },
     async (request: Request, response: Response) => {
@@ -1314,12 +1321,12 @@ export default (app: Application, baseUrl: string) => {
         track = await loadTrackForTagJWT(request, response);
       } else {
         // Otherwise, just check that the user can update this track.
-        const track = await response.locals.recording.getTrack(
+        track = await response.locals.recording.getTrack(
           request.params.trackId
         );
         if (!track) {
           responseUtil.send(response, {
-            statusCode: 400,
+            statusCode: 403,
             messages: ["No such track."],
           });
           return;
@@ -1443,8 +1450,10 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       body("tag")
-        .custom(jsonSchemaOf(ApiRecordingTagRequestSchema))
-        .withMessage(expectedTypeOf("ApiRecordingTagRequest")),
+        .exists()
+        .withMessage(expectedTypeOf("ApiRecordingTagRequest"))
+        .bail()
+        .custom(jsonSchemaOf(ApiRecordingTagRequestSchema)),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     parseJSONField(body("tag")),

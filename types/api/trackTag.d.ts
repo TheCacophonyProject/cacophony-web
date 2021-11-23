@@ -10,7 +10,7 @@ export interface ApiTrackTagRequest {
 interface ApiTrackTagResponse {
   what: string;
   id: TrackTagId;
-  trackId: TrackId; // FIXME? Needed
+  trackId: TrackId;
   confidence: number;
   automatic: boolean;
   data: any; // FIXME - validation?
