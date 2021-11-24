@@ -1457,6 +1457,17 @@ export const fetchAuthorizedRequiredStations = fetchRequiredModels(
   getStations(true, false)
 );
 
+export const fetchAuthorizedRequiredStationsForGroup = (
+  groupNameOrId: ValidationChain
+) =>
+  fetchRequiredModels(
+    models.Station,
+    false,
+    false,
+    getStations(true, false),
+    groupNameOrId
+  );
+
 export const fetchAuthorizedRequiredSchedulesForGroup = (
   groupNameOrId: ValidationChain
 ) =>

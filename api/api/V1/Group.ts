@@ -31,6 +31,8 @@ import {
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
+  fetchAuthorizedRequiredStations,
+  fetchAuthorizedRequiredStationsForGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -58,6 +60,9 @@ import {
 } from "@typedefs/api/station";
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
+import { Station } from "@models/Station";
+import { stat } from "fs";
+import { mapStations } from "./Station";
 
 const mapGroup = (
   group: Group,
@@ -552,15 +557,18 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/:groupIdOrName/stations`,
     extractJwtAuthorizedUser,
-    validateFields([nameOrIdOf(param("groupIdOrName"))]),
-    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      query("view-mode").optional().equals("user"),
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      // FIXME - A flag to only get non-retired stations?
-      const stations = await response.locals.group.getStations();
+      const stations = await response.locals.stations;
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got stations for group"],
-        stations,
+        stations: mapStations(stations),
       });
     }
   );

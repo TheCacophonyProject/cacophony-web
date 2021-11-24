@@ -5,6 +5,7 @@ import recording from "./Recording.api";
 import tag from "./Tag.api";
 import monitoring from "./Monitoring.api";
 import schedule from "./Schedule.api";
+import station from "./Station.api";
 
 export default {
   user,
@@ -14,4 +15,5 @@ export default {
   tag,
   monitoring,
   schedule,
+  station,
 };

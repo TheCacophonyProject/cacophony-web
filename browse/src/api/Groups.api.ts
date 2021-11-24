@@ -89,9 +89,16 @@ function getDevicesForGroup(
   );
 }
 
-function getStationsForGroup(groupNameOrId: string) {
+function getStationsForGroup(
+  groupNameOrId: string,
+  activeAndInactive: boolean = false
+) {
   return CacophonyApi.get(
-    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/stations`
+    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/stations${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
   );
 }
 
