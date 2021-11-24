@@ -186,8 +186,7 @@ export default {
   },
   methods: {
     getState(formItem) {
-      // console.log(ex,"formItem",formItem)
-      if (!formItem.anyDirty ){
+      if (!formItem.$anyDirty ){
         return null;
       }
       return !formItem.$error;

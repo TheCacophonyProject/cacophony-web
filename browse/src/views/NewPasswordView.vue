@@ -19,12 +19,14 @@
             :state="getState($v.form.password)"
             :invalid-feedback="passwordFeedback"
             label="Password"
+            autocomplete="off"
             label-for="input-password"
           >
             <b-form-input
               id="input-password"
               v-model="$v.form.password.$model"
               :state="getState($v.form.password)"
+              autocomplete="new-password"
               type="password"
             />
           </b-form-group>
@@ -38,6 +40,7 @@
             <b-form-input
               v-model="$v.form.passwordConfirm.$model"
               :state="getState($v.form.passwordConfirm)"
+              autocomplete="new-password"
               type="password"
             />
           </b-form-group>
@@ -127,7 +130,7 @@ export default {
   },
   methods: {
     getState(formItem) {
-      if (!formItem.$dirty ){
+      if (!formItem.$anyDirty ){
         return null;
       }
       return !formItem.$error;
