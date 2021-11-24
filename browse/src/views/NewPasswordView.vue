@@ -16,7 +16,7 @@
             {{ errorMessage }}
           </b-alert>
           <b-form-group
-            :state="!$v.form.password.$error"
+            :state="getState($v.form.password)"
             :invalid-feedback="passwordFeedback"
             label="Password"
             label-for="input-password"
@@ -24,20 +24,20 @@
             <b-form-input
               id="input-password"
               v-model="$v.form.password.$model"
-              :state="!$v.form.password.$error"
+              :state="getState($v.form.password)"
               type="password"
             />
           </b-form-group>
 
           <b-form-group
-            :state="!$v.form.passwordConfirm.$error"
             :invalid-feedback="passwordConfirmFeedback"
+            :state="getState($v.form.passwordConfirm)"
             label="Retype password"
             label-for="input-password-retype"
           >
             <b-form-input
               v-model="$v.form.passwordConfirm.$model"
-              :state="!$v.form.passwordConfirm.$error"
+              :state="getState($v.form.passwordConfirm)"
               type="password"
             />
           </b-form-group>
@@ -126,6 +126,12 @@ export default {
     },
   },
   methods: {
+    getState(formItem) {
+      if (!formItem.$dirty ){
+        return null;
+      }
+      return !formItem.$error;
+    },
     async queryUser() {
       const response = await User.validateToken(this.token);
       if (response.success) {
