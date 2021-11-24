@@ -33,7 +33,7 @@
           </b-form-group>
 
           <b-form-group
-          :state="getState($v.form.email)"
+            :state="getState($v.form.email)"
             label="Email"
             label-for="input-email"
           >
@@ -186,7 +186,7 @@ export default {
   },
   methods: {
     getState(formItem) {
-      if (!formItem.$anyDirty ){
+      if (!formItem.$anyDirty) {
         return null;
       }
       return !formItem.$error;

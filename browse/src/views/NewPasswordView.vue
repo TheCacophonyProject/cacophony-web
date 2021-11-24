@@ -130,7 +130,7 @@ export default {
   },
   methods: {
     getState(formItem) {
-      if (!formItem.$anyDirty ){
+      if (!formItem.$anyDirty) {
         return null;
       }
       return !formItem.$error;
