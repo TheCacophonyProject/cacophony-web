@@ -25,11 +25,7 @@ function loginOther(username) {
   });
 }
 
-function reset(
-  usernameOrEmail: string
-): Promise<
-  FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
-> {
+function reset(usernameOrEmail: string): Promise<FetchResult<{}>> {
   return CacophonyApi.post(
     "/resetpassword",
     {

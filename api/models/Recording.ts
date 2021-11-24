@@ -862,9 +862,6 @@ from (
                 attributes: ["username"],
               },
             ],
-            attributes: {
-              exclude: ["UserId"],
-            },
             required: false,
           },
         ],
