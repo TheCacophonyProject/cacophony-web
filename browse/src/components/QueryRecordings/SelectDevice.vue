@@ -37,7 +37,10 @@
             size="xs"
           />
           <span class="tag">{{ option.name }}</span>
-          <span v-if="option.type === 'group'" class="tag">
+          <span
+            v-if="option.type === 'group' && option.deviceCount"
+            class="tag"
+          >
             ({{ option.deviceCount }} device<span v-if="option.deviceCount > 1"
               >s</span
             >)
@@ -92,10 +95,10 @@ const disambiguateDeviceNames = (devices) => {
       seenNames[device.name].push(device);
       if (seenNames[device.name].length === 2) {
         for (const d of seenNames[device.name]) {
-          d.name += `(${d.groupName})`;
+          d.name += ` (${d.groupName})`;
         }
       } else {
-        seenNames[device.name][seenNames[device.name].length - 1].name += `(${
+        seenNames[device.name][seenNames[device.name].length - 1].name += ` (${
           (device as any).groupName
         })`;
       }
@@ -115,12 +118,20 @@ const disambiguateStationNames = (stations, groups) => {
       seenNames[station.name].push(station);
       if (seenNames[station.name].length === 2) {
         for (const d of seenNames[station.name]) {
-          d.name += `(${d.groupName})`;
+          if (groups[d.groupId]) {
+            d.name += ` (${groups[d.groupId].name})`;
+          } else {
+            // In this case, the group wasn't populated because it has no devices.
+          }
         }
       } else {
-        seenNames[station.name][seenNames[station.name].length - 1].name += `(${
-          groups[(station as any).groupId].name
-        })`;
+        if (groups[(station as any).groupId]) {
+          seenNames[station.name][
+            seenNames[station.name].length - 1
+          ].name += ` (${groups[(station as any).groupId].name})`;
+        } else {
+          // In this case, the group wasn't populated because it has no devices.
+        }
       }
     }
   }
@@ -227,7 +238,6 @@ export default {
             Promise.all(loadGroupPromises),
             Promise.all(loadStationPromises),
           ]);
-
         this.devices = Object.freeze(
           disambiguateDeviceNames(
             devicesResponses
@@ -254,14 +264,13 @@ export default {
             .map(
               ({
                 result: {
-                  group: { groupId, groupName },
+                  group: { id, groupName },
                 },
               }) => ({
-                id: groupId,
+                id: id,
                 type: "group",
                 name: groupName,
-                uid: `group_${groupId}`,
-                deviceCount: 0,
+                uid: `group_${id}`,
               })
             )
             .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
@@ -273,12 +282,13 @@ export default {
               .map(
                 ({
                   result: {
-                    station: { name, id },
+                    station: { name, id, groupId },
                   },
                 }) => ({
                   type: "station",
                   name,
                   id,
+                  groupId,
                   uid: `station_${id}`,
                 })
               )
@@ -296,11 +306,12 @@ export default {
           this.devices = Object.freeze(
             disambiguateDeviceNames(
               devicesResponse.result.devices
-                .map(({ id, deviceName, type }) => ({
+                .map(({ id, deviceName, type, groupName }) => ({
                   id: Number(id),
                   type: "device",
                   name: deviceName,
                   kind: type,
+                  groupName,
                   uid: `device_${id}`,
                 }))
                 .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
@@ -327,15 +338,19 @@ export default {
         if (stationsResponse.success) {
           this.stations = Object.freeze(
             disambiguateStationNames(
-              stationsResponse.result.stations.reduce((acc, { name, id }) => {
-                acc[id] = {
-                  type: "station",
-                  name,
-                  id,
-                  uid: `station_${id}`,
-                };
-                return acc;
-              }, {}),
+              stationsResponse.result.stations.reduce(
+                (acc, { name, id, groupId }) => {
+                  acc[id] = {
+                    type: "station",
+                    name,
+                    id,
+                    groupId,
+                    uid: `station_${id}`,
+                  };
+                  return acc;
+                },
+                {}
+              ),
               this.groups
             )
           );

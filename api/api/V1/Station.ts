@@ -1,13 +1,15 @@
 import { Application, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStations,
 } from "@api/extract-middleware";
 import responseUtil from "@api/V1/responseUtil";
 import { validateFields } from "@api/middleware";
-import { query } from "express-validator";
+import { param, query } from "express-validator";
 import { Station } from "@models/Station";
 import { ApiStationResponse } from "@typedefs/api/station";
+import { idOf } from "../validation-middleware";
 
 const mapStation = (station: Station): ApiStationResponse => {
   const stationResponse: ApiStationResponse = {
@@ -34,6 +36,7 @@ export const mapStations = (stations: Station[]): ApiStationResponse[] =>
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/stations`;
 
+  // TODO - document
   app.get(
     apiUrl,
     extractJwtAuthorizedUser,
@@ -47,6 +50,25 @@ export default function (app: Application, baseUrl: string) {
         statusCode: 200,
         messages: ["Got stations"],
         stations: mapStations(response.locals.stations),
+      });
+    }
+  );
+
+  // TODO - document
+  app.get(
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response) => {
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Got station"],
+        stations: mapStation(response.locals.station),
       });
     }
   );

@@ -659,6 +659,89 @@ const getStations =
     });
   };
 
+const getStation =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    stationId: string,
+    groupNameOrId?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
+    const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
+
+    let stationWhere;
+    let groupWhere = {};
+    if (groupIsId) {
+      stationWhere = {
+        id: parseInt(stationId),
+        GroupId: parseInt(groupNameOrId),
+      };
+    } else if (groupNameOrId) {
+      stationWhere = {
+        id: parseInt(stationId),
+        "$Group.groupname$": groupNameOrId,
+      };
+    } else if (!groupNameOrId) {
+      stationWhere = {
+        id: parseInt(stationId),
+      };
+    }
+    if (groupIsId) {
+      groupWhere = {
+        id: parseInt(groupNameOrId),
+      };
+    } else if (groupNameOrId) {
+      groupWhere = { groupname: groupNameOrId };
+    }
+
+    let getStationOptions;
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getStationOptions = getIncludeForUser(
+          context,
+          getStationInclude(groupWhere),
+          asAdmin
+        );
+        if (!getStationOptions.where && stationWhere) {
+          getStationOptions = {
+            where: stationWhere,
+            include: [
+              {
+                model: models.Group,
+                required: true,
+                where: groupWhere,
+              },
+            ],
+          };
+        }
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getStationOptions = {
+        where: stationWhere,
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            where: groupWhere,
+          },
+        ],
+      };
+    }
+
+    if (context.onlyActive) {
+      (getStationOptions as any).where = (getStationOptions as any).where || {};
+      (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
+    }
+    return models.Device.findOne(getStationOptions);
+  };
+
 const getSchedules =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
   (
@@ -1466,6 +1549,17 @@ export const fetchAuthorizedRequiredStationsForGroup = (
     false,
     getStations(true, false),
     groupNameOrId
+  );
+
+export const fetchAuthorizedRequiredStationById = (
+  stationId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Station,
+    false,
+    true,
+    getStation(true, false),
+    stationId
   );
 
 export const fetchAuthorizedRequiredSchedulesForGroup = (

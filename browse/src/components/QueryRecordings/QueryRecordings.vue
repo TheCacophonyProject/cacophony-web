@@ -173,8 +173,8 @@ export default {
           Number(item)
         );
       }
-      if (routeQuery.hasOwnProperty("stations")) {
-        this.selectedStations = makeArray(routeQuery.stations).map((item) =>
+      if (routeQuery.hasOwnProperty("station")) {
+        this.selectedStations = makeArray(routeQuery.station).map((item) =>
           Number(item)
         );
       }
