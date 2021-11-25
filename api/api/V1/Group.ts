@@ -562,6 +562,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("only-active").default(false).isBoolean().toBoolean(),
     ]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const stations = await response.locals.stations;

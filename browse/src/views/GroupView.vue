@@ -291,17 +291,11 @@ export default {
     async fetchUsers() {
       this.usersLoading = true;
       if (!this.limitedView) {
-        try {
-          const usersResponse = await api.groups.getUsersForGroup(
-            this.groupName
-          );
-          if (!usersResponse.success && usersResponse.status === 403) {
-            this.limitedView = true;
-          } else if (usersResponse.success) {
-            this.users = usersResponse.result.users;
-          }
-        } catch (e) {
-          // ...
+        const usersResponse = await api.groups.getUsersForGroup(this.groupName);
+        if (!usersResponse.success && usersResponse.status === 403) {
+          this.limitedView = true;
+        } else if (usersResponse.success) {
+          this.users = usersResponse.result.users;
         }
       }
       this.usersLoading = false;
@@ -400,18 +394,14 @@ export default {
         const now = new Date();
         now.setDate(now.getDate() - 1);
         if (!this.limitedView) {
-          try {
-            const getDevicesResponse = await api.groups.getDevicesForGroup(
-              this.groupName
-            );
-            if (getDevicesResponse.success) {
-              this.devices = getDevicesResponse.result.devices;
-            } else {
-              this.limitedView = true;
-              await this.fetchDevices();
-            }
-          } catch (e) {
-            // ...
+          const getDevicesResponse = await api.groups.getDevicesForGroup(
+            this.groupName
+          );
+          if (getDevicesResponse.success) {
+            this.devices = getDevicesResponse.result.devices;
+          } else {
+            this.limitedView = true;
+            await this.fetchDevices();
           }
         } else {
           // FIXME: Do we still need this branch?  I feel like maybe not.
@@ -429,17 +419,13 @@ export default {
     async fetchStations() {
       this.stationsLoading = true;
       {
-        try {
-          const { result, status } = await api.groups.getStationsForGroup(
-            this.groupName
-          );
-          if (status === 200) {
-            this.stations = result.stations;
-          } else {
-            this.limitedView = true;
-          }
-        } catch (e) {
-          // ...
+        const stationsResponse = await api.groups.getStationsForGroup(
+          this.groupName
+        );
+        if (stationsResponse.success) {
+          this.stations = stationsResponse.result.stations;
+        } else {
+          this.limitedView = true;
         }
       }
       this.stationsLoading = false;

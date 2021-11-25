@@ -92,7 +92,7 @@ function getDevicesForGroup(
 function getStationsForGroup(
   groupNameOrId: string,
   activeAndInactive: boolean = false
-) {
+): Promise<FetchResult<{ stations: ApiStationResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/stations${
       shouldViewAsSuperUser()
