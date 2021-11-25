@@ -739,7 +739,7 @@ const getStation =
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
-    return models.Device.findOne(getStationOptions);
+    return models.Station.findOne(getStationOptions);
   };
 
 const getSchedules =
