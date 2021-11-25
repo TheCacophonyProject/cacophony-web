@@ -18,7 +18,6 @@ async function getUserEvents(devices: Device[]) {
     if (!groupAdmins.hasOwnProperty(device.GroupId)) {
       const adminUsers = await device.Group.getUsers({
         through: { where: { admin: true } },
-        where: { id: device.GroupId },
       });
       groupAdmins[device.GroupId] = adminUsers;
     }
