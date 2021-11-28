@@ -389,13 +389,17 @@ const newSchedule = (): ScheduleConfig => ({
 });
 
 const mapSchedule = (schedule: ScheduleConfig): ScheduleConfig => {
+  const trimToHoursMinutes = (time: string) => {
+    const parts = time.split(":");
+    return `${parts[0]}:${parts[1]}`;
+  };
   schedule.combos = schedule.combos.map((combo) => ({
     waits: combo.waits.map(Number),
     every: parseInt(combo.every.toString()),
     volumes: combo.volumes.map(Number),
     sounds: combo.sounds.map(String),
-    from: combo.from,
-    until: combo.until,
+    from: trimToHoursMinutes(combo.from),
+    until: trimToHoursMinutes(combo.until),
   }));
   schedule.playNights = parseInt(schedule.playNights.toString());
   schedule.controlNights = parseInt(schedule.controlNights.toString());
