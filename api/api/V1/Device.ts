@@ -501,10 +501,10 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/devices/remove-schedule Assign a schedule to a device.
+   * @api {post} /api/v1/devices/remove-schedule Remove a schedule from a device.
    * @apiName RemoveScheduleFromDevice
    * @apiGroup Schedules
-   * @apiDescription This call assigns a schedule to a device.
+   * @apiDescription This call removes a schedule from a device.
    *
    * @apiUse V1UserAuthorizationHeader
    *

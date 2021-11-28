@@ -60,8 +60,6 @@ import {
 } from "@typedefs/api/station";
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
-import { Station } from "@models/Station";
-import { stat } from "fs";
 import { mapStations } from "./Station";
 
 const mapGroup = (
@@ -535,21 +533,21 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer|String} groupIdOrName Group name or group id
+   * @apiQuery {Boolean} [only-active=false] Returns both retired and active stations by default.  Set true to only
+   * return currently active stations.
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations Array of ApiStationDetail[] showing details of stations in group
-   * @apiSuccessExample {JSON} ApiStationDetail:
+   * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations Array of ApiStationResponse[] showing details of stations in group
+   * @apiSuccessExample {JSON} ApiStationResponse:
    * [{
    *   "groupId": 1338,
    *   "createdAt": "2021-08-27T21:04:35.851Z",
    *   "id": 415,
    *   "lastUpdatedById": 2069,
    *   "location":  {
-   *     "type": 'Point',
-   *     "coordinates": [ -45.0, 172.9 ] // Note: these coordinates are currently reversed (Issue 73).
+   *    "lat": -45.0, "lng": 172.9
    *   },
    *   "name": "station1",
-   *   "retiredAt": null,
    *   "updatedAt": "2021-08-27T21:04:35.855Z"
    * }]
    * @apiUse V1ResponseError
