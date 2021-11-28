@@ -159,7 +159,7 @@
             </div>
             <div class="col px-0">
               <label :for="`combo-${index}-frequency`"
-                >Every {{ (combo.every / 60).toFixed(1) }} minutes</label
+                >Every {{ combo.every }} seconds</label
               ><b-form-input
                 placeholder="seconds"
                 type="number"
@@ -200,7 +200,7 @@
             </div>
             <div class="col px-0">
               <label :for="`combo-${index}-${soundIndex}-wait`"
-                >Then wait (secs)</label
+                >Then wait {{ combo.waits[soundIndex] }} seconds</label
               >
               <b-form-input
                 type="number"
