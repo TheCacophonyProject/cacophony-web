@@ -29,7 +29,8 @@ cd /app/api
 
 CONFIG=/app/api/config/app.js
 if [ ! -f "$CONFIG" ]; then
-  CONFIG=/app/api/config/app_test_default.js
+  cp /app/api/config/app_test_default.js $CONFIG
+  echo "---- Using config copying /app/api/config/app_test_default.js to $CONFIG ----"
 fi
 echo "---- Using config $CONFIG ----"
 
