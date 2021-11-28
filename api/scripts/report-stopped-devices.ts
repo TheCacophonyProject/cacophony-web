@@ -8,8 +8,6 @@ import moment from "moment";
 import { sendEmail } from "./emailUtil";
 import models from "../models";
 
-const ADMIN_EMAILS = ["support@2040.co.nz"];
-
 async function getUserEvents(devices: Device[]) {
   const groupAdmins = {};
   const userEvents = {};
@@ -42,6 +40,7 @@ async function main() {
     admin: true,
     eventType: ["stop-reported"],
   });
+
   //filter devices which have already been alerted on
   devices = devices.filter(
     (device) =>
@@ -69,12 +68,13 @@ async function main() {
       failedEmails.push(userInfo.user.email);
     }
   }
-
-  for (const email of ADMIN_EMAILS) {
-    const html = generateHtml(devices);
-    const text = generateText(devices);
-    if (!(await sendEmail(html, text, email, "Stopped Devices"))) {
-      failedEmails.push(email);
+  if (config.server.adminEmails) {
+    for (const email of config.server.adminEmails) {
+      const html = generateHtml(devices);
+      const text = generateText(devices);
+      if (!(await sendEmail(html, text, email, "Stopped Devices"))) {
+        failedEmails.push(email);
+      }
     }
   }
 
