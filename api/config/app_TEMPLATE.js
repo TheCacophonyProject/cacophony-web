@@ -9,6 +9,7 @@ const server = {
     port: 80,
   },
   recording_url_base: "http://localhost/recording",
+  adminEmails: [],
 };
 
 const fileProcessing = {
