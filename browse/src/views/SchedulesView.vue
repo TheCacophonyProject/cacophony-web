@@ -674,8 +674,4 @@ export default {
 };
 </script>
 
-<style scoped lang="scss">
-.schedule-rule {
-  //background: lightgray;
-}
-</style>
+<style scoped lang="scss"></style>

@@ -235,7 +235,7 @@ const getStationInclude =
               where: {
                 ...useAdminAccess,
               },
-              attributes: ["admin", "UserId"],
+              attributes: ["UserId"],
             },
             where: { id: requestUserId },
           },
@@ -623,6 +623,7 @@ const getStations =
           model: models.Group,
           required: true,
           where: groupWhere,
+          attributes: ["id", "groupname"],
         },
       ],
     };
@@ -712,6 +713,7 @@ const getStation =
               {
                 model: models.Group,
                 required: true,
+                attributes: ["groupname"],
                 where: groupWhere,
               },
             ],
@@ -729,6 +731,7 @@ const getStation =
           {
             model: models.Group,
             required: true,
+            attributes: ["groupname"],
             where: groupWhere,
           },
         ],
