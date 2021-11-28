@@ -107,31 +107,26 @@ const disambiguateDeviceNames = (devices) => {
   return devices;
 };
 
-const disambiguateStationNames = (stations, groups) => {
+const disambiguateStationNames = (stations) => {
   // If stations have name collisions, add the groupName:
   const seenNames = {};
   for (const item of Object.values(stations)) {
-    const station: { name: string } = item as { name: string };
+    const station: { name: string; groupName: string } = item as {
+      name: string;
+      groupName: string;
+    };
     if (!(station.name in seenNames)) {
       seenNames[station.name] = [station];
     } else {
       seenNames[station.name].push(station);
       if (seenNames[station.name].length === 2) {
         for (const d of seenNames[station.name]) {
-          if (groups[d.groupId]) {
-            d.name += ` (${groups[d.groupId].name})`;
-          } else {
-            // In this case, the group wasn't populated because it has no devices.
-          }
+          d.name += ` (${station.groupName})`;
         }
       } else {
-        if (groups[(station as any).groupId]) {
-          seenNames[station.name][
-            seenNames[station.name].length - 1
-          ].name += ` (${groups[(station as any).groupId].name})`;
-        } else {
-          // In this case, the group wasn't populated because it has no devices.
-        }
+        seenNames[station.name][
+          seenNames[station.name].length - 1
+        ].name += ` (${station.groupName})`;
       }
     }
   }
@@ -282,18 +277,17 @@ export default {
               .map(
                 ({
                   result: {
-                    station: { name, id, groupId },
+                    station: { name, id, groupName },
                   },
                 }) => ({
                   type: "station",
                   name,
                   id,
-                  groupId,
+                  groupName,
                   uid: `station_${id}`,
                 })
               )
-              .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {}),
-            this.groups
+              .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
           )
         );
       } else {
@@ -339,19 +333,18 @@ export default {
           this.stations = Object.freeze(
             disambiguateStationNames(
               stationsResponse.result.stations.reduce(
-                (acc, { name, id, groupId }) => {
+                (acc, { name, id, groupName }) => {
                   acc[id] = {
                     type: "station",
                     name,
                     id,
-                    groupId,
+                    groupName,
                     uid: `station_${id}`,
                   };
                   return acc;
                 },
                 {}
-              ),
-              this.groups
+              )
             )
           );
         }
