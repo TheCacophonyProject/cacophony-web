@@ -421,3 +421,40 @@ Cypress.Commands.add(
     );
   }
 );
+
+Cypress.Commands.add(
+  "apiDeviceHeartbeat",
+  (
+    deviceName: string,
+    nextHeartbeat: string,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(
+      `Register heartbeat for camera '${deviceName}'`,
+      {
+        camera: deviceName,
+        nextHeartbeat: nextHeartbeat
+      }
+    );
+
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath("devices/heartbeat"),
+        body: {
+          nextHeartbeat: nextHeartbeat
+        },
+      },
+      deviceName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
+    });
+  }
+);

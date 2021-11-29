@@ -2,6 +2,8 @@
 import { checkResponse } from "@commands/server";
 import { getNewIdentity } from "@commands/names";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
+import { createExpectedAlert } from "@commands/api/alerts";
+import { createExpectedEvent } from "@commands/api/events";
 
 import {
   HTTP_Forbidden,
@@ -68,26 +70,26 @@ describe("Devices alerts", () => {
       usera.camera,
       0,
       HTTP_OK200
-    );
+    ).then(() => {
 
-    // crete an example alert to compare against
-    cy.createExpectedAlert(
-      "emptyExpectedAlert",
-      "alert1",
-      0,
-      POSSUM_ALERT,
-      false,
-      usera.name,
-      usera.camera
-    );
+      // crete an example alert to compare against
+      const emptyExpectedAlert=createExpectedAlert(
+        "alert1",
+        0,
+        POSSUM_ALERT,
+        false,
+        usera.name,
+        usera.camera
+      );
 
-    //check we created an alert wth no last alerted time
-    cy.apiAlertCheck(usera.name, usera.camera, "emptyExpectedAlert");
-
-    //check we have no events
-    cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
+      //check we created an alert wth no last alerted time
+      cy.apiAlertCheck(usera.name, usera.camera, emptyExpectedAlert);
+  
+      //check we have no events
+      cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
+    });
   });
-
+  
   it("Can receive an alert", () => {
     const usera = getNewIdentity("andrew");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
@@ -108,30 +110,26 @@ describe("Devices alerts", () => {
       { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
       "recording1"
     ).then(() => {
-      cy.createExpectedAlert(
-        "expectedAlert1",
+      const expectedAlert=createExpectedAlert(
         "alert1",
         0,
         POSSUM_ALERT,
         true,
         usera.name,
         usera.camera
-      ).then(() => {
-        cy.createExpectedEvent(
-          "event1",
-          usera.name,
-          usera.camera,
-          "recording1",
-          "alert1"
-        );
+      );
+      const expectedEvent=createExpectedEvent(
+        usera.camera,
+        "recording1",
+        "alert1"
+      );
+
+      //check that an alert is present and has a 'last alerted'
+      cy.apiAlertCheck(usera.name, usera.camera, expectedAlert);
+
+      //check expected event is received
+      cy.testEventsCheckAgainstExpected(usera.name, usera.camera, expectedEvent);
       });
-    });
-
-    //check that an alert is present and has a 'last alerted'
-    cy.apiAlertCheck(usera.name, usera.camera, "expectedAlert1");
-
-    //check expected event is received
-    cy.testEventsCheckAgainstExpected(usera.name, usera.camera, "event1");
   });
 
   it("No possum alert is sent for a rat", () => {
@@ -154,8 +152,7 @@ describe("Devices alerts", () => {
       { processingState: RecordingProcessingState.Finished, tags: ["rat"] },
       "recording1b"
     ).then(() => {
-      cy.createExpectedAlert(
-        "emptyAlert",
+      const emptyAlert=createExpectedAlert(
         "alert1b",
         0,
         POSSUM_ALERT,
@@ -163,13 +160,13 @@ describe("Devices alerts", () => {
         usera.name,
         usera.camera
       );
+
+      //check that an alert is present and has no 'last alerted'
+      cy.apiAlertCheck(usera.name, usera.camera, emptyAlert);
+
+      //check we have no events
+      cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
     });
-
-    //check that an alert is present and has no 'last alerted'
-    cy.apiAlertCheck(usera.name, usera.camera, "emptyAlert");
-
-    //check we have no events
-    cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
   });
 
   it("No possum alert is sent for a possum on a different device", () => {
@@ -194,8 +191,7 @@ describe("Devices alerts", () => {
       { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
       "recording1c"
     ).then(() => {
-      cy.createExpectedAlert(
-        "emptyAlert",
+      const emptyAlert=createExpectedAlert(
         "alert1c",
         0,
         POSSUM_ALERT,
@@ -203,14 +199,14 @@ describe("Devices alerts", () => {
         usera.name,
         usera.camera
       );
+
+      //check that an alert is present and has no 'last alerted'
+      cy.apiAlertCheck(usera.name, usera.camera, emptyAlert);
+
+      //check we have no events against either camera
+      cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
+      cy.testEventsCheckAgainstExpected(usera.name, camera2, null, 0);
     });
-
-    //check that an alert is present and has no 'last alerted'
-    cy.apiAlertCheck(usera.name, usera.camera, "emptyAlert");
-
-    //check we have no events against either camera
-    cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
-    cy.testEventsCheckAgainstExpected(usera.name, camera2, null, 0);
   });
 
   it("Recording with multiple tags - majority tag alerts", () => {
@@ -236,30 +232,26 @@ describe("Devices alerts", () => {
       },
       "recording1d"
     ).then(() => {
-      cy.createExpectedAlert(
-        "expectedAlert1d",
+      const expectedAlert1d=createExpectedAlert(
         "alert1d",
         0,
         POSSUM_ALERT,
         true,
         usera.name,
         usera.camera
-      ).then(() => {
-        cy.createExpectedEvent(
-          "event1d",
-          usera.name,
-          usera.camera,
-          "recording1d",
-          "alert1d"
-        );
-      });
+      );
+      const expectedEvent1d=createExpectedEvent(
+        usera.camera,
+        "recording1d",
+        "alert1d"
+      );
+
+      //check that an alert is present and has a 'last alerted'
+      cy.apiAlertCheck(usera.name, usera.camera, expectedAlert1d);
+
+      //check expected event is received
+      cy.testEventsCheckAgainstExpected(usera.name, usera.camera, expectedEvent1d);
     });
-
-    //check that an alert is present and has a 'last alerted'
-    cy.apiAlertCheck(usera.name, usera.camera, "expectedAlert1d");
-
-    //check expected event is received
-    cy.testEventsCheckAgainstExpected(usera.name, usera.camera, "event1d");
   });
 
   it("Recording with multiple tags - minority tag does not alert", () => {
@@ -285,8 +277,7 @@ describe("Devices alerts", () => {
       },
       "recording1d"
     ).then(() => {
-      cy.createExpectedAlert(
-        "expectedAlert1d",
+      const expectedAlert1e=createExpectedAlert(
         "alert1d",
         0,
         POSSUM_ALERT,
@@ -294,13 +285,13 @@ describe("Devices alerts", () => {
         usera.name,
         usera.camera
       );
+
+      //check that an alert is present and has no 'last alerted'
+      cy.apiAlertCheck(usera.name, usera.camera, expectedAlert1e);
+
+      //check we have no events against camera
+      cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
     });
-
-    //check that an alert is present and has no 'last alerted'
-    cy.apiAlertCheck(usera.name, usera.camera, "expectedAlert1d");
-
-    //check we have no events against camera
-    cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
   });
 
   it("Does not alert on non-master tags", () => {
@@ -317,17 +308,6 @@ describe("Devices alerts", () => {
       HTTP_OK200
     );
 
-    //expected alert to compare against (latestEvent is false)
-    cy.createExpectedAlert(
-      "emptyAlert",
-      "alert1",
-      0,
-      POSSUM_ALERT,
-      false,
-      usera.name,
-      usera.camera
-    );
-
     //upload a recording tagged as possum
     cy.testUploadRecording(
       usera.camera,
@@ -337,13 +317,24 @@ describe("Devices alerts", () => {
         tags: ["possum"],
       },
       "recording2"
-    );
-
-    //check we have an alert with no latestEvent
-    cy.apiAlertCheck(usera.name, usera.camera, "emptyAlert");
-
-    //check we have no events
-    cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
+    ).then(() => {;
+      //expected alert to compare against (latestEvent is false)
+      const emptyAlert=createExpectedAlert(
+        "alert1",
+        0,
+        POSSUM_ALERT,
+        false,
+        usera.name,
+        usera.camera
+      );
+  
+  
+      //check we have an alert with no latestEvent
+      cy.apiAlertCheck(usera.name, usera.camera, emptyAlert);
+  
+      //check we have no events
+      cy.testEventsCheckAgainstExpected(usera.name, usera.camera, null, 0);
+    });
   });
 
   it("Alerts for recording uploaded on behalf using deviceId", () => {
@@ -373,35 +364,31 @@ describe("Devices alerts", () => {
       { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
       "recording3"
     ).then(() => {
-      cy.createExpectedAlert(
-        "expectedAlert3",
+      const expectedAlert3=createExpectedAlert(
         "alert3",
         0,
         POSSUM_ALERT,
         true,
         usera.name,
         usera.camera
-      ).then(() => {
-        cy.createExpectedEvent(
-          "expectedEvent3",
-          usera.name,
-          usera.camera,
-          "recording3",
-          "alert3"
-        );
-      });
+      );
+      const expectedEvent3=createExpectedEvent(
+        usera.camera,
+        "recording3",
+        "alert3"
+      );
+
+      //check we have an alert with a latestEvent
+      cy.apiAlertCheck(usera.name, usera.camera, expectedAlert3);
+
+      //check we have one event
+      cy.testEventsCheckAgainstExpected(
+        usera.name,
+        usera.camera,
+        expectedEvent3,
+        1
+      );
     });
-
-    //check we have an alert with a latestEvent
-    cy.apiAlertCheck(usera.name, usera.camera, "expectedAlert3");
-
-    //check we have one event
-    cy.testEventsCheckAgainstExpected(
-      usera.name,
-      usera.camera,
-      "expectedEvent3",
-      1
-    );
   });
 
   it("Alerts for recording uploaded on behalf using devicename and groupname", () => {
@@ -432,35 +419,31 @@ describe("Devices alerts", () => {
       { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
       "recording4"
     ).then(() => {
-      cy.createExpectedAlert(
-        "expectedAlert4",
+      const expectedAlert4=createExpectedAlert(
         "alert4",
         0,
         POSSUM_ALERT,
         true,
         usera.name,
         usera.camera
-      ).then(() => {
-        cy.createExpectedEvent(
-          "expectedEvent4",
-          usera.name,
-          usera.camera,
-          "recording4",
-          "alert4"
-        );
-      });
+      );
+      const expectedEvent4=createExpectedEvent(
+        usera.camera,
+        "recording4",
+        "alert4"
+      );
+
+      //check alert is present and as expected shows latest event
+      cy.apiAlertCheck(usera.name, usera.camera, expectedAlert4);
+
+      //check we have new event
+      cy.testEventsCheckAgainstExpected(
+        usera.name,
+        usera.camera,
+        expectedEvent4,
+        1
+      );
     });
-
-    //check alert is present and as expected shows latest event
-    cy.apiAlertCheck(usera.name, usera.camera, "expectedAlert4");
-
-    //check we have new event
-    cy.testEventsCheckAgainstExpected(
-      usera.name,
-      usera.camera,
-      "expectedEvent4",
-      1
-    );
   });
 
   it("Can generate and report multiple events", () => {
@@ -485,107 +468,95 @@ describe("Devices alerts", () => {
       { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
       "recording1"
     ).then(() => {
-      cy.createExpectedAlert(
-        "expectedAlert1",
+      const expectedAlert1=createExpectedAlert(
         "alert1",
         0,
         POSSUM_ALERT,
         true,
         usera.name,
         usera.camera
+      );
+      const expectedEvent1=createExpectedEvent(
+        usera.camera,
+        "recording1",
+        "alert1"
+      );
+
+      //check that an alert is present and has a 'last alerted'
+      cy.apiAlertCheck(usera.name, usera.camera, expectedAlert1);
+
+      //check there is now 1 event and that expected event has been received
+      cy.testEventsCheckAgainstExpected(
+        usera.name,
+        usera.camera,
+        expectedEvent1,
+        1
+      );
+
+      //upload a 2nd recording tagged as possum using device
+      cy.testUploadRecordingOnBehalfUsingDevice(
+        usera.name,
+        usera.camera,
+        { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
+        "recording2"
       ).then(() => {
-        cy.createExpectedEvent(
-          "expectedEvent1",
+        const expectedAlert2=createExpectedAlert(
+          "alert1",
+          0,
+          POSSUM_ALERT,
+          true,
           usera.name,
-          usera.camera,
-          "recording1",
-          "alert1"
+          usera.camera
         );
-      });
-    });
-
-    //check that an alert is present and has a 'last alerted'
-    cy.apiAlertCheck(usera.name, usera.camera, "expectedAlert1");
-
-    //check there is now 1 event and that expected event has been received
-    cy.testEventsCheckAgainstExpected(
-      usera.name,
-      usera.camera,
-      "expectedEvent1",
-      1
-    );
-
-    //upload a 2nd recording tagged as possum using device
-    cy.testUploadRecordingOnBehalfUsingDevice(
-      usera.name,
-      usera.camera,
-      { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
-      "recording2"
-    ).then(() => {
-      cy.createExpectedAlert(
-        "expectedAlert2",
-        "alert1",
-        0,
-        POSSUM_ALERT,
-        true,
-        usera.name,
-        usera.camera
-      ).then(() => {
-        cy.createExpectedEvent(
-          "expectedEvent2",
-          usera.name,
+        const expectedEvent2=createExpectedEvent(
           usera.camera,
           "recording2",
           "alert1"
         );
-      });
-    });
 
-    //check that an alert is present and has a 'last alerted'
-    cy.apiAlertCheck(usera.name, usera.camera, "expectedAlert2");
+        //check that an alert is present and has a 'last alerted'
+        cy.apiAlertCheck(usera.name, usera.camera, expectedAlert2);
 
-    //check there are now 2 events and 2nd expected event has been received
-    cy.testEventsCheckAgainstExpected(
-      usera.name,
-      usera.camera,
-      "expectedEvent2",
-      2
-    );
-
-    //upload a 3rd recording tagged as possum and  build an expected event using the returned recording details
-    cy.testUploadRecording(
-      usera.camera,
-      { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
-      "recording3"
-    ).then(() => {
-      cy.createExpectedAlert(
-        "expectedAlert3",
-        "alert1",
-        0,
-        POSSUM_ALERT,
-        true,
-        usera.name,
-        usera.camera
-      ).then(() => {
-        cy.createExpectedEvent(
-          "expectedEvent3",
+        //check there are now 2 events and 2nd expected event has been received
+        cy.testEventsCheckAgainstExpected(
           usera.name,
           usera.camera,
-          "recording3",
-          "alert1"
+          expectedEvent2,
+          2
         );
+
+        //upload a 3rd recording tagged as possum and  build an expected event using the returned recording details
+        cy.testUploadRecording(
+          usera.camera,
+          { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
+          "recording3"
+        ).then(() => {
+          const expectedAlert3=createExpectedAlert(
+            "alert1",
+            0,
+            POSSUM_ALERT,
+            true,
+            usera.name,
+            usera.camera
+          );
+          const expectedEvent3=createExpectedEvent(
+            usera.camera,
+            "recording3",
+            "alert1"
+          );
+
+          //check that an alert is present and has a 'last alerted'
+          cy.apiAlertCheck(usera.name, usera.camera, expectedAlert3);
+
+          //check there are 3 events and 3rd expected event has been received
+          cy.testEventsCheckAgainstExpected(
+            usera.name,
+            usera.camera,
+            expectedEvent3,
+            3
+          );
+        });
       });
     });
-
-    //check that an alert is present and has a 'last alerted'
-    cy.apiAlertCheck(usera.name, usera.camera, "expectedAlert3");
-
-    //check there are 3 events and 3rd expected event has been received
-    cy.testEventsCheckAgainstExpected(
-      usera.name,
-      usera.camera,
-      "expectedEvent3",
-      3
-    );
   });
 });

@@ -357,12 +357,12 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    eventName: string,
+    expectedEvent: any,
     eventNumber: number = 1,
     statusCode: number = 200
   ) => {
     logTestDescription(
-      `Check for expected event ${getUniq(eventName)} for ${deviceName} `,
+      `Check for expected event for ${deviceName} `,
       {
         userName,
         deviceName,
@@ -373,7 +373,7 @@ Cypress.Commands.add(
     checkEvents(
       userName,
       deviceName,
-      getUniq(eventName),
+      expectedEvent,
       eventNumber,
       ["success", "trackId", "dateTime"],
       statusCode
@@ -381,23 +381,11 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add(
-  "createExpectedEvent",
-  (
-    name: string,
-    userName: string,
-    deviceName: string,
-    recording: string,
-    alertName: string
-  ) => {
-    logTestDescription(
-      `Create expected event ${getUniq(name)} for ${getUniq(alertName)} `,
-      {
-        userName,
-        name,
-        id: getUniq(alertName),
-      }
-    );
+export function createExpectedEvent (
+  deviceName: string,
+  recording: string,
+  alertName: string
+):any {
     const expectedEvent = {
       id: 1,
       dateTime: "2021-05-19T01:39:41.376Z",
@@ -414,9 +402,8 @@ Cypress.Commands.add(
       },
       Device: { devicename: getTestName(getCreds(deviceName).name) },
     };
-    Cypress.env("testCreds")[getUniq(name)] = expectedEvent;
-  }
-);
+    return(expectedEvent);
+};
 
 function checkPowerEvents(
   userName: string,
@@ -438,7 +425,7 @@ function checkPowerEvents(
 function checkEvents(
   userName: string,
   deviceName: string,
-  eventName: string,
+  expectedEvent: any,
   eventNumber: number,
   ignoreParams: string[],
   statusCode: number
@@ -452,7 +439,6 @@ function checkEvents(
     userName,
     statusCode
   ).then((response) => {
-    const expectedEvent = getExpectedEvent(eventName);
     if (statusCode === 200) {
       expect(response.body.rows.length).to.equal(eventNumber);
       if (eventNumber > 0) {

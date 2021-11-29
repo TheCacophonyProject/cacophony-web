@@ -370,9 +370,7 @@ Cypress.Commands.add(
     } else {
       recordingId = getCreds(recordingNameOrId).id.toString();
     }
-    //FIXME in API thhen remove workaround
-    //const url = v1ApiPath(`recordings/${recordingId}/undelete`);
-    const url = v1ApiPath(`recordings/undelete/${recordingId}`);
+    const url = v1ApiPath(`recordings/${recordingId}/undelete`);
 
     makeAuthorizedRequestWithStatus(
       {
