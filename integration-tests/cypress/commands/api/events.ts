@@ -12,7 +12,8 @@ import {
   removeUndefinedParams,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { getTestName, getUniq } from "../names";
+import { getTestName } from "../names";
+import { NOT_NULL, NOT_NULL_STRING } from "../constants";
 import {
   TestComparableEvent,
   TestComparablePowerEvent,
@@ -395,7 +396,7 @@ export function createExpectedEvent (
         type: "alert",
         details: {
           recId: getCreds(recording).id,
-          alertId: getCreds(getUniq(alertName)).id,
+          alertId: getCreds(alertName).id,
           success: true,
           trackId: 1,
         },
@@ -509,6 +510,18 @@ function checkPowerEventMatches(
     }`
   ).to.eq(expectedEvent.hasAlerted);
 }
+
+export function testCreateExpectedEvent(deviceName: string, eventDetail: any) {
+    const expectedEvent={
+      id: NOT_NULL,
+      dateTime: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      DeviceId: getCreds(deviceName).id,
+      EventDetail: eventDetail,
+      Device: { devicename: getTestName(deviceName) },
+    };
+    return(expectedEvent);
+  };
 
 export function getExpectedEvent(name: string): TestComparableEvent {
   return Cypress.env("testCreds")[name];

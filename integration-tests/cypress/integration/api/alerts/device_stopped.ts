@@ -1,9 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
 import moment from "moment";
-import { getCreds } from "@commands/server";
-import { getTestName } from "@commands/names";
-import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
-import { EventTypes } from "@commands/api/events";
+import { EventTypes, testCreateExpectedEvent } from "@commands/api/events";
+import { runReportStoppedDevicesScript } from "@commands/api/alerts";
 
 describe("Devices stopped alerts", () => {
   const group = "stoppers";
@@ -270,27 +268,3 @@ describe("Devices stopped alerts", () => {
 
 });
 
-function runReportStoppedDevicesScript() {
-    testRunOnApi('"cp /app/api/config/app_test_default.js /app/api/config/app.js"');
-    testRunOnApi('"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"'); 
-};
-
-function testRunOnApi(command: string) {
-  if (Cypress.env("running_in_a_dev_environment") == true) {
-     cy.exec(`cd ../api && docker-compose exec -T server bash -lic ${command}`)   
-  } else {
-     alert("Don't know how to do this in test");
-  };
-};
-
-function testCreateExpectedEvent(deviceName: string, eventDetail: any) {
-  const expectedEvent={
-    id: NOT_NULL,
-    dateTime: NOT_NULL_STRING,
-    createdAt: NOT_NULL_STRING,
-    DeviceId: getCreds(deviceName).id,
-    EventDetail: eventDetail,
-    Device: { devicename: getTestName(deviceName) },
-  };
-  return(expectedEvent);
-};

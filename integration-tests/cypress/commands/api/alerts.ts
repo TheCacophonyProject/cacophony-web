@@ -8,7 +8,8 @@ import {
   makeAuthorizedRequestWithStatus,
 } from "../server";
 import { logTestDescription } from "../descriptions";
-import { getTestName, getUniq } from "../names";
+import { getTestName } from "../names";
+import { testRunOnApi } from "../server";
 import { ApiAlert } from "../types";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 
@@ -23,25 +24,40 @@ Cypress.Commands.add(
     statusCode: number = 200
   ) => {
     logTestDescription(
-      `Create alert ${getUniq(alertName)} for ${deviceName} `,
+      `Create alert ${getTestName(alertName)} for ${deviceName} `,
       {
         userName,
         deviceName,
         conditions,
         frequency,
-        id: getUniq(alertName),
+        id: getTestName(alertName),
       }
     );
-    apiAlertsPost(
+    const deviceId = getCreds(deviceName).id;
+    const alertJson = {
+      name: getTestName(alertName),
+      conditions: conditions,
+      deviceId: deviceId,
+    };
+  
+    if (frequency !== null) {
+      alertJson["frequencySeconds"] = frequency;
+    }
+  
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath("alerts"),
+        body: alertJson,
+      },
       userName,
-      alertName,
-      conditions,
-      deviceName,
-      frequency,
       statusCode
-    );
-  }
-);
+    ).then((response) => {
+      if (statusCode === null || statusCode == 200) {
+        saveIdOnly(alertName, response.body.id);
+      }
+    });
+});
 
 Cypress.Commands.add(
   "apiAlertCheck",
@@ -76,11 +92,11 @@ export function createExpectedAlert (
     deviceName: string
   ): any {
     //alertId will have been saved when we created the alert
-    const alertId = getCreds(getUniq(alertName)).id;
+    const alertId = getCreds(alertName).id;
     const expectedAlert = {
       id: alertId,
       name: alertName,
-      alertName: getUniq(alertName),
+      alertName: getTestName(alertName),
       frequencySeconds: frequencySeconds,
       conditions: conditions,
       lastAlert: lastAlert,
@@ -97,40 +113,6 @@ export function createExpectedAlert (
 
     return(expectedAlert);
 };
-
-function apiAlertsPost(
-  userName: string,
-  alertName: string,
-  conditions: ApiAlertCondition[],
-  deviceName: string,
-  frequency: number,
-  testFailure: number
-) {
-  const deviceId = getCreds(deviceName).id;
-  const alertJson = {
-    name: getUniq(alertName),
-    conditions: conditions,
-    deviceId: deviceId,
-  };
-
-  if (frequency !== null) {
-    alertJson["frequencySeconds"] = frequency;
-  }
-
-  makeAuthorizedRequestWithStatus(
-    {
-      method: "POST",
-      url: v1ApiPath("alerts"),
-      body: alertJson,
-    },
-    userName,
-    testFailure
-  ).then((response) => {
-    if (testFailure === null || testFailure == 200) {
-      saveIdOnly(getUniq(alertName), response.body.id);
-    }
-  });
-}
 
 function apiAlertsGet(
   userName: string,
@@ -202,3 +184,13 @@ function checkExpectedAlerts(
 export function getExpectedAlert(name: string): ApiAlert {
   return Cypress.env("testCreds")[name];
 }
+
+export function runReportStoppedDevicesScript() {
+    if (Cypress.env("running_in_a_dev_environment") == true) {
+      testRunOnApi('"cp /app/api/config/app_test_default.js /app/api/config/app.js"');
+      testRunOnApi('"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"');
+    } else {
+      testRunOnApi('"node --no-warnings=ExperimentalWarnings --experimental-json-modules /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"');
+    };
+};
+

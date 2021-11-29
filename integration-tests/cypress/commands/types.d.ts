@@ -532,7 +532,7 @@ export interface ApiStationDataReturned {
   createdAt: string;
   retiredAt: string;
   updatedAt: string;
-  GroupId: number;
+  groupId: number;
 }
 
 /*******************************************************************
