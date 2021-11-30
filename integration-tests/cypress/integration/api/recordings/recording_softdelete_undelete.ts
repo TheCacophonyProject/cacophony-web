@@ -66,7 +66,7 @@ describe("Recordings: soft delete, undelete", () => {
     type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
+    recordingDateTime: "2021-07-17T11:00:01.248Z",
     location: [-45.29115, 169.30845],
     additionalMetadata: {
       algorithm: 31143,
