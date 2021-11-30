@@ -30,6 +30,9 @@ import {
   fetchUnauthorizedRequiredUserByNameOrId,
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
+  fetchAuthorizedRequiredSchedulesForGroup,
+  fetchAuthorizedRequiredStations,
+  fetchAuthorizedRequiredStationsForGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -53,9 +56,11 @@ import { ApiDeviceResponse } from "@typedefs/api/device";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   ApiCreateStationData,
-  ApiCreateStationResponse,
   ApiStationResponse,
 } from "@typedefs/api/station";
+import { ScheduleConfig } from "@typedefs/api/schedule";
+import { mapSchedule } from "@api/V1/Schedule";
+import { mapStations } from "./Station";
 
 const mapGroup = (
   group: Group,
@@ -113,6 +118,11 @@ interface ApiCreateStationDataBody {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationResponseSuccess {
   stations: ApiStationResponse[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiScheduleConfigs {
+  schedules: ScheduleConfig[];
 }
 
 export default function (app: Application, baseUrl: string) {
@@ -331,6 +341,32 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
+   * @api {get} api/v1/groups/:groupIdOrName/schedules Get audio bait schedules for a group
+   * @apiName GetSchedulesForGroup
+   * @apiGroup Schedules
+   * @apiDescription This call is used to retrieve the any audio bait schedules for a group.
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiInterface {apiSuccess::ApiScheduleConfigs} schedules Metadata of the schedules.
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:groupIdOrName/schedules`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("groupIdOrName"))]),
+    fetchAuthorizedRequiredSchedulesForGroup(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Got schedules for group"],
+        schedules: response.locals.schedules.map(mapSchedule),
+      });
+    }
+  );
+
+  /**
    * @api {post} /api/v1/groups/users Add a user to a group.
    * @apiName AddUserToGroup
    * @apiGroup Group
@@ -497,21 +533,21 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer|String} groupIdOrName Group name or group id
+   * @apiQuery {Boolean} [only-active=false] Returns both retired and active stations by default.  Set true to only
+   * return currently active stations.
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations Array of ApiStationDetail[] showing details of stations in group
-   * @apiSuccessExample {JSON} ApiStationDetail:
+   * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations Array of ApiStationResponse[] showing details of stations in group
+   * @apiSuccessExample {JSON} ApiStationResponse:
    * [{
    *   "groupId": 1338,
    *   "createdAt": "2021-08-27T21:04:35.851Z",
    *   "id": 415,
    *   "lastUpdatedById": 2069,
    *   "location":  {
-   *     "type": 'Point',
-   *     "coordinates": [ -45.0, 172.9 ] // Note: these coordinates are currently reversed (Issue 73).
+   *    "lat": -45.0, "lng": 172.9
    *   },
    *   "name": "station1",
-   *   "retiredAt": null,
    *   "updatedAt": "2021-08-27T21:04:35.855Z"
    * }]
    * @apiUse V1ResponseError
@@ -519,15 +555,19 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/:groupIdOrName/stations`,
     extractJwtAuthorizedUser,
-    validateFields([nameOrIdOf(param("groupIdOrName"))]),
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      query("view-mode").optional().equals("user"),
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      // FIXME - A flag to only get non-retired stations?
-      const stations = await response.locals.group.getStations();
+      const stations = await response.locals.stations;
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got stations for group"],
-        stations,
+        stations: mapStations(stations),
       });
     }
   );

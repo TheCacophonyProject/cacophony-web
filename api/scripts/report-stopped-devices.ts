@@ -2,29 +2,28 @@ import registerAliases from "../module-aliases";
 registerAliases();
 import config from "../config";
 import log from "../logging";
-import { PowerEvents, powerEventsPerDevice } from "@api/V1/eventUtil";
+import { Device } from "../models/Device";
+
 import moment from "moment";
 import { sendEmail } from "./emailUtil";
 import models from "../models";
 
-const ADMIN_EMAILS = ["support@2040.co.nz"];
-
-async function getUserEvents(powerEvents: PowerEvents[]) {
+async function getUserEvents(devices: Device[]) {
   const groupAdmins = {};
   const userEvents = {};
 
-  for (const event of powerEvents) {
-    if (!groupAdmins.hasOwnProperty(event.Device.GroupId)) {
-      const adminUsers = await event.Device.Group.getUsers({
+  for (const device of devices) {
+    if (!groupAdmins.hasOwnProperty(device.GroupId)) {
+      const adminUsers = await device.Group.getUsers({
         through: { where: { admin: true } },
       });
-      groupAdmins[event.Device.GroupId] = adminUsers;
+      groupAdmins[device.GroupId] = adminUsers;
     }
-    for (const user of groupAdmins[event.Device.GroupId]) {
+    for (const user of groupAdmins[device.GroupId]) {
       if (userEvents.hasOwnProperty(user.id)) {
-        userEvents[user.id].powerEvents.push(event);
+        userEvents[user.id].devices.push(device);
       } else {
-        userEvents[user.id] = { user: user, powerEvents: [event] };
+        userEvents[user.id] = { user: user, devices: [device] };
       }
     }
   }
@@ -35,39 +34,47 @@ async function main() {
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
-  const powerEvents = (
-    await powerEventsPerDevice(
-      { query: {}, res: { locals: { requestUser: {} } } },
-      true
-    )
-  ).filter(
-    (device: PowerEvents) =>
-      device.hasStopped == true && device.hasAlerted == false
+  let devices = await models.Device.stoppedDevices();
+  const stoppedEvents = await models.Event.latestEvents(null, null, {
+    useCreatedDate: false,
+    admin: true,
+    eventType: ["stop-reported"],
+  });
+
+  //filter devices which have already been alerted on
+  devices = devices.filter(
+    (device) =>
+      !stoppedEvents.find(
+        (event) =>
+          event.DeviceId == device.id && event.dateTime > device.nextHeartbeat
+      )
   );
-  if (powerEvents.length == 0) {
+
+  if (devices.length == 0) {
     log.info("No new stopped devices");
     return;
   }
 
-  const userEvents = await getUserEvents(powerEvents);
+  const userEvents = await getUserEvents(devices);
 
   const failedEmails = [];
   for (const userID in userEvents) {
     const userInfo = userEvents[userID];
-    const html = generateHtml(userInfo.powerEvents);
-    const text = generateText(userInfo.powerEvents);
+    const html = generateHtml(userInfo.devices);
+    const text = generateText(userInfo.devices);
     if (
       !(await sendEmail(html, text, userInfo.user.email, "Stopped Devices"))
     ) {
       failedEmails.push(userInfo.user.email);
     }
   }
-
-  for (const email of ADMIN_EMAILS) {
-    const html = generateHtml(powerEvents);
-    const text = generateText(powerEvents);
-    if (!(await sendEmail(html, text, email, "Stopped Devices"))) {
-      failedEmails.push(email);
+  if (config.server.adminEmails) {
+    for (const email of config.server.adminEmails) {
+      const html = generateHtml(devices);
+      const text = generateText(devices);
+      if (!(await sendEmail(html, text, email, "Stopped Devices"))) {
+        failedEmails.push(email);
+      }
     }
   }
 
@@ -86,9 +93,9 @@ async function main() {
   const eventList = [];
   const time = new Date();
 
-  for (const powerEvent of powerEvents) {
+  for (const device of devices) {
     eventList.push({
-      DeviceId: powerEvent.Device.id,
+      DeviceId: device.id,
       EventDetailId: detailsId,
       dateTime: time,
     });
@@ -100,14 +107,14 @@ async function main() {
   }
 }
 
-function generateText(stoppedDevices: PowerEvents[]): string {
+function generateText(stoppedDevices: Device[]): string {
   let textBody = `Stopped Devices ${moment().format("MMM ddd Do ha")}\r\n`;
-  for (const event of stoppedDevices) {
-    const deviceText = `${event.Device.Group.groupname}- ${
-      event.Device.devicename
-    } id: ${
-      event.Device.id
-    } has stopped, last powered on ${event.lastStarted.format(
+  for (const device of stoppedDevices) {
+    const deviceText = `${device.Group.groupname}- ${device.devicename} id: ${
+      device.id
+    } has stopped, last last message at ${moment(device.heartbeat).format(
+      "MMM ddd Do ha"
+    )} expected to hear again at  ${moment(device.nextHeartbeat).format(
       "MMM ddd Do ha"
     )}\r\n`;
     textBody += deviceText;
@@ -116,17 +123,17 @@ function generateText(stoppedDevices: PowerEvents[]): string {
   return textBody;
 }
 
-function generateHtml(stoppedDevices: PowerEvents[]): string {
+function generateHtml(stoppedDevices: Device[]): string {
   let html = `<b>Stopped Devices ${moment().format("MMM ddd Do ha")} </b>`;
   html += "<ul>";
-  for (const event of stoppedDevices) {
-    const deviceText = `<li>${event.Device.Group.groupname}-${
-      event.Device.devicename
-    } id: ${
-      event.Device.id
-    } has stopped, last powered on ${event.lastStarted.format(
-      "MMM ddd Do ha"
-    )}</li>`;
+  for (const device of stoppedDevices) {
+    const deviceText = `<li>${device.Group.groupname}-${
+      device.devicename
+    } id: ${device.id} has stopped, received last message at ${moment(
+      device.heartbeat
+    ).format("MMM ddd Do ha")} expected to hear again at ${moment(
+      device.nextHeartbeat
+    ).format("MMM ddd Do ha")}</li>`;
     html += deviceText;
   }
   html += "</ul>";

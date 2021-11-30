@@ -17,7 +17,7 @@
           </b-alert>
 
           <b-form-group
-            :state="!$v.form.username.$error"
+            :state="getState($v.form.username)"
             :invalid-feedback="usernameFeedback"
             label="Username"
             label-for="input-username"
@@ -25,7 +25,7 @@
             <b-form-input
               id="input-username"
               v-model="$v.form.username.$model"
-              :state="!$v.form.username.$error"
+              :state="getState($v.form.username)"
               type="text"
               autofocus
               required
@@ -33,21 +33,21 @@
           </b-form-group>
 
           <b-form-group
-            :state="!$v.form.email.$error"
+            :state="getState($v.form.email)"
             label="Email"
             label-for="input-email"
           >
             <b-form-input
               id="input-email"
               v-model="$v.form.email.$model"
-              :state="!$v.form.email.$error"
+              :state="getState($v.form.email)"
               type="email"
               required
             />
           </b-form-group>
 
           <b-form-group
-            :state="!$v.form.password.$error"
+            :state="getState($v.form.password)"
             :invalid-feedback="passwordFeedback"
             label="Password"
             label-for="input-password"
@@ -55,20 +55,20 @@
             <b-form-input
               id="input-password"
               v-model="$v.form.password.$model"
-              :state="!$v.form.password.$error"
+              :state="getState($v.form.password)"
               type="password"
             />
           </b-form-group>
 
           <b-form-group
-            :state="!$v.form.passwordConfirm.$error"
+            :state="getState($v.form.passwordConfirm)"
             :invalid-feedback="passwordConfirmFeedback"
             label="Retype password"
             label-for="input-password-retype"
           >
             <b-form-input
               v-model="$v.form.passwordConfirm.$model"
-              :state="!$v.form.passwordConfirm.$error"
+              :state="getState($v.form.passwordConfirm)"
               type="password"
             />
           </b-form-group>
@@ -185,6 +185,12 @@ export default {
     },
   },
   methods: {
+    getState(formItem) {
+      if (!formItem.$anyDirty) {
+        return null;
+      }
+      return !formItem.$error;
+    },
     async onSubmit(evt) {
       evt.preventDefault();
 

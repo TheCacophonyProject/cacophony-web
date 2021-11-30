@@ -38,6 +38,7 @@ import {
   UserId,
 } from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
+import { sendResetEmail } from "../scripts/emailUtil";
 
 const Op = Sequelize.Op;
 
@@ -45,6 +46,7 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
   getDataValues: () => Promise<UserData>;
   comparePassword: (password: string) => Promise<boolean>;
+  updatePassword: (password: string) => Promise<boolean>;
   getAllDeviceIds: () => Promise<number[]>;
   getGroupsIds: () => Promise<number[]>;
   getGroups: (options: {
@@ -276,7 +278,6 @@ export default function (
       });
     });
   };
-
   // Returns the groups that are associated with this user (via
   // GroupUsers).
   User.prototype.getGroupsIds = async function () {
@@ -417,6 +418,14 @@ export default function (
         }
       });
     });
+  };
+  User.prototype.updatePassword = async function (password: string) {
+    return this.update({ password: password });
+  };
+
+  User.prototype.resetPassword = async function () {
+    console.log("resetting");
+    await sendResetEmail(this, this.password);
   };
 
   return User;

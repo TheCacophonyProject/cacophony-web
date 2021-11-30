@@ -100,7 +100,11 @@
         </span>
       </div>
       <div v-if="item.tags.length !== 0" class="recording-tags">
-        <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag="tag" />
+        <TagBadge
+          v-for="(tag, index) in item.tags"
+          :key="index"
+          :tag-obj="tag"
+        />
       </div>
       <div class="recording-time-duration">
         <div class="recording-time">
@@ -119,6 +123,14 @@
         </div>
       </div>
     </div>
+    <!--    <div class="recording-thumb">-->
+    <!--      <img-->
+    <!--        :src="thumbnailSrc"-->
+    <!--        width="64"-->
+    <!--        height="64"-->
+    <!--        :alt="`thumbnail for #${item.id}`"-->
+    <!--      />-->
+    <!--    </div>-->
     <div v-if="item.location !== '(unknown)'" class="recording-location">
       <b-modal
         v-model="showingLocation"
@@ -170,7 +182,7 @@
     <span class="recording-time">{{ item.time }}</span>
     <span>{{ Math.round(item.duration) }}s</span>
     <span>
-      <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag="tag" />
+      <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag-obj="tag" />
     </span>
     <span>
       <b-link
@@ -219,6 +231,7 @@ import BatteryLevel from "./BatteryLevel.vue";
 import TagBadge from "./TagBadge.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
+import api from "@/api";
 
 export default {
   name: "RecordingSummary",
@@ -243,6 +256,9 @@ export default {
     };
   },
   computed: {
+    thumbnailSrc(): string {
+      return api.recording.thumbnail(this.item.id);
+    },
     hasBattery() {
       return this.item.batteryLevel;
     },

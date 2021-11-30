@@ -154,10 +154,7 @@ export default {
     },
     location() {
       if (this.station) {
-        return latLng(
-          this.station.location.coordinates[0],
-          this.station.location.coordinates[1]
-        );
+        return latLng(this.station.location.lat, this.station.location.lng);
       }
       return null;
     },

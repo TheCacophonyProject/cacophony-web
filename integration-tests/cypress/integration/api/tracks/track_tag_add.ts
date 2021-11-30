@@ -29,7 +29,12 @@ import {
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 
-const EXCLUDE_IDS = ["[].id", "[].tags[].id", "[].tags[].trackId"];
+const EXCLUDE_IDS = [
+  "[].id",
+  "[].tags[].id",
+  "[].tags[].trackId",
+  "[].tags[].userId",
+];
 
 describe("Track Tags: add, check, delete", () => {
   const superuser = getCreds("superuser")["name"];
@@ -113,8 +118,7 @@ describe("Track Tags: add, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "possum",
-    //TODO: userId is missing in returned data
-    // userId: 99
+    userId: 99,
     userName: "xxx",
     userId: NOT_NULL,
   };
@@ -130,8 +134,7 @@ describe("Track Tags: add, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "cat",
-    //TODO: userId is missing in returned data
-    // userId: 99
+    userId: 99,
     userName: "xxx",
     userId: NOT_NULL,
   };

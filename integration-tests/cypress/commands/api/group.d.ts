@@ -1,6 +1,8 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+import { ApiStationResponse } from "../../../../types/api/station";
+
 declare namespace Cypress {
   type ApiGroupsUserReturned = import("../types").ApiGroupsUserReturned;
   type ApiGroupReturned = import("../types").ApiGroupReturned;
@@ -151,7 +153,7 @@ declare namespace Cypress {
     apiGroupsStationsCheck(
       userName: string,
       groupIdOrName: any,
-      expectedStations: ApiStationDataReturned[],
+      expectedStations: ApiStationResponse[],
       excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any

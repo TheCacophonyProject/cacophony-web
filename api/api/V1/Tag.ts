@@ -42,12 +42,12 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Number} recordingId ID of the recording that you want to tag.
-   * @apiparam {JSON} tag Tag data in JSON format.
+   * @apiParam {JSON} tag Tag data in JSON format.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} tagId ID of the tag just added.
    *
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.post(
@@ -55,8 +55,11 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       body("tag")
-        .custom(jsonSchemaOf(ApiRecordingTagRequest))
-        .withMessage(expectedTypeOf("ApiRecordingTagRequest")),
+        .exists()
+        .withMessage(expectedTypeOf("ApiRecordingTagRequest"))
+        .bail()
+        .custom(jsonSchemaOf(ApiRecordingTagRequest)),
+
       idOf(body("recordingId")),
     ]),
     parseJSONField(body("tag")),
@@ -93,15 +96,17 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {Integer} tagId id of the tag to delete.
    *
    * @apiUse V1ResponseSuccess
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.delete(
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([idOf(body("tagId"))]),
+
+    // FIXME - Get the recording, if the user has access to it then we're good.
     async function (request: Request, response: Response) {
-      const user = models.User.findByPk(response.locals.requestUser.id);
+      const user = await models.User.findByPk(response.locals.requestUser.id);
       const tagDeleteResult = await models.Tag.deleteFromId(
         request.body.tagId,
         user

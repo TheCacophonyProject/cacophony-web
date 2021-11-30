@@ -22,13 +22,14 @@ export interface ApiTrackResponse {
 }
 
 export interface ApiTrackDataRequest {
-  // FIXME - make this consistent once we know who calls this
   start_s: Seconds;
   end_s: Seconds;
-  label: string;
-  clarity: number;
-  positions: any;
-  message: string;
-  tag: string;
-  tracker_version: number;
+
+  // FIXME - Make more of these fields mandatory once we know who calls this with what.
+  label?: string;
+  clarity?: number;
+  positions?: any;
+  message?: string;
+  tag?: string;
+  tracker_version?: number;
 }

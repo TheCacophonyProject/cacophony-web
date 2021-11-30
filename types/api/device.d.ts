@@ -4,6 +4,7 @@ import {
   IsoFormattedDateString,
   LatLng,
   SaltId,
+  ScheduleId,
 } from "./common";
 import { ApiUserResponse } from "./user";
 import { DeviceType } from "./consts";
@@ -29,9 +30,11 @@ export interface ApiDeviceResponse {
   admin: boolean;
   type: DeviceType;
 
+  isHealthy?: boolean;
   public?: boolean; // Assumed to be private unless otherwise specified.
   lastConnectionTime?: IsoFormattedDateString;
   lastRecordingTime?: IsoFormattedDateString;
   location?: LatLng;
+  scheduleId?: ScheduleId;
   users?: ApiDeviceUserRelationshipResponse[];
 }

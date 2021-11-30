@@ -62,6 +62,26 @@ declare namespace Cypress {
     /**
      * Retrieve device details using name and groupname from /device/XX/in-group/YY
      * use groupId if provided, otherwise groupName - the unused parameter should be set to null
+     */
+    apiDevice(userName: string, deviceName: string, statusCode?: number): any;
+
+    /**
+     * Retrieve device details using name and groupname from /device/XX/in-group/YY
+     * use groupId if provided, otherwise groupName - the unused parameter should be set to null
+     */
+    apiDeviceInGroup(
+      userName: string,
+      deviceName: string,
+      groupName: string | null,
+      groupId: number | null,
+      expectedDevices: ApiDeviceResponse,
+      params?: any,
+      statusCode?: number
+    ): any;
+
+    /**
+     * Retrieve device details using name and groupname from /device/XX/in-group/YY
+     * use groupId if provided, otherwise groupName - the unused parameter should be set to null
      * compare with expected device details (JSON equivalent to that returned by API)
      * optionally check for a non-200 status code
      */

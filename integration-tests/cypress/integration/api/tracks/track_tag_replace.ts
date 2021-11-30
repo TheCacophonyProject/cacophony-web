@@ -23,7 +23,12 @@ import {
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 
-const EXCLUDE_IDS = ["[].id", "[].tags[].id", "[].tags[].trackId"];
+const EXCLUDE_IDS = [
+  "[].id",
+  "[].tags[].id",
+  "[].tags[].trackId",
+  "[].tags[].userId",
+];
 
 describe("Track Tags: replaceTag, check, delete", () => {
   const templateRecording: ApiRecordingSet = {
@@ -96,7 +101,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
     createdAt: NOT_NULL_STRING,
-    //TODO: cannot set data above, retuned as blank sting
+    //TODO: cannot set data above, returned as blank sting
     //data: { "a parameter": "a value" },
     data: "",
     id: 99,
@@ -104,8 +109,6 @@ describe("Track Tags: replaceTag, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "possum",
-    //TODO: userId is missing in returned data
-    // userId: 99
     userName: "xxx",
     userId: NOT_NULL,
   };
@@ -113,7 +116,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
     createdAt: NOT_NULL_STRING,
-    //TODO: cannot set data above, retuned as blank sting
+    //TODO: cannot set data above, returned as blank sting
     //data: { "a parameter": "a value" },
     data: "",
     id: 99,
@@ -121,8 +124,6 @@ describe("Track Tags: replaceTag, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "cat",
-    //TODO: userId is missing in returned data
-    // userId: 99
     userName: "xxx",
     userId: NOT_NULL,
   };
