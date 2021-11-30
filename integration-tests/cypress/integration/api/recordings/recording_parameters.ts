@@ -3,6 +3,7 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_Unprocessable,
+  HTTP_OK200,
 } from "@commands/constants";
 
 import {
@@ -860,7 +861,8 @@ describe("Recordings - parameter tests", () => {
         recording1,
         "oneframe.cptv",
         "rpaRecording27",
-        HTTP_BadRequest
+        HTTP_OK200,
+        { message: "Duplicate recording found for device" }
       );
 
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording27");

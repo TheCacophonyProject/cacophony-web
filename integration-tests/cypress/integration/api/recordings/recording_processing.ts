@@ -1018,7 +1018,7 @@ describe("Recordings - processing tests", () => {
         "oneframe.cptv",
         "rpRecording20"
       ).then(() => {
-        const expectedAlert20=createExpectedAlert(
+        const expectedAlert20 = createExpectedAlert(
           "rpAlert1b",
           0,
           POSSUM_ALERT,
@@ -1026,7 +1026,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpCamera1b"
         );
-        const expectedEvent20=createExpectedEvent(
+        const expectedEvent20 = createExpectedEvent(
           "rpCamera1b",
           "rpRecording20",
           "rpAlert1b"
@@ -1077,11 +1077,7 @@ describe("Recordings - processing tests", () => {
                 undefined
               ).then(() => {
                 cy.log("Check an event was generated");
-                cy.apiAlertCheck(
-                  "rpGroupAdmin",
-                  "rpCamera1b",
-                  expectedAlert20
-                );
+                cy.apiAlertCheck("rpGroupAdmin", "rpCamera1b", expectedAlert20);
                 cy.testEventsCheckAgainstExpected(
                   "rpGroupAdmin",
                   "rpCamera1b",

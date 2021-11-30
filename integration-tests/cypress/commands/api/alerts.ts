@@ -39,11 +39,11 @@ Cypress.Commands.add(
       conditions: conditions,
       deviceId: deviceId,
     };
-  
+
     if (frequency !== null) {
       alertJson["frequencySeconds"] = frequency;
     }
-  
+
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
@@ -57,7 +57,8 @@ Cypress.Commands.add(
         saveIdOnly(alertName, response.body.id);
       }
     });
-});
+  }
+);
 
 Cypress.Commands.add(
   "apiAlertCheck",
@@ -67,13 +68,10 @@ Cypress.Commands.add(
     expectedAlert: any,
     statusCode: number = 200
   ) => {
-    logTestDescription(
-      `Check for expected alert for ${deviceName} `,
-      {
-        userName,
-        deviceName,
-      }
-    );
+    logTestDescription(`Check for expected alert for ${deviceName} `, {
+      userName,
+      deviceName,
+    });
 
     apiAlertsGet(userName, deviceName, statusCode).then((response) => {
       if (statusCode == 200) {
@@ -83,36 +81,36 @@ Cypress.Commands.add(
   }
 );
 
-export function createExpectedAlert (
-    alertName: string,
-    frequencySeconds: number,
-    conditions: ApiAlertCondition[],
-    lastAlert: boolean,
-    userName: string,
-    deviceName: string
-  ): any {
-    //alertId will have been saved when we created the alert
-    const alertId = getCreds(alertName).id;
-    const expectedAlert = {
-      id: alertId,
-      name: alertName,
-      alertName: getTestName(alertName),
-      frequencySeconds: frequencySeconds,
-      conditions: conditions,
-      lastAlert: lastAlert,
-      User: {
-        id: getCreds(userName).id,
-        username: getTestName(userName),
-        email: getTestName(userName).toLowerCase() + "@api.created.com",
-      },
-      Device: {
-        id: getCreds(deviceName).id,
-        devicename: getTestName(getCreds(deviceName).name),
-      },
-    };
+export function createExpectedAlert(
+  alertName: string,
+  frequencySeconds: number,
+  conditions: ApiAlertCondition[],
+  lastAlert: boolean,
+  userName: string,
+  deviceName: string
+): any {
+  //alertId will have been saved when we created the alert
+  const alertId = getCreds(alertName).id;
+  const expectedAlert = {
+    id: alertId,
+    name: alertName,
+    alertName: getTestName(alertName),
+    frequencySeconds: frequencySeconds,
+    conditions: conditions,
+    lastAlert: lastAlert,
+    User: {
+      id: getCreds(userName).id,
+      username: getTestName(userName),
+      email: getTestName(userName).toLowerCase() + "@api.created.com",
+    },
+    Device: {
+      id: getCreds(deviceName).id,
+      devicename: getTestName(getCreds(deviceName).name),
+    },
+  };
 
-    return(expectedAlert);
-};
+  return expectedAlert;
+}
 
 function apiAlertsGet(
   userName: string,
@@ -131,7 +129,7 @@ function apiAlertsGet(
 
 function checkExpectedAlerts(
   response: Cypress.Response<any>,
-  expectedAlert:any 
+  expectedAlert: any
 ) {
   expect(response.body.Alerts.length, `Expected 1 alert`).to.eq(1);
   const thealert = response.body.Alerts[0];
@@ -186,11 +184,16 @@ export function getExpectedAlert(name: string): ApiAlert {
 }
 
 export function runReportStoppedDevicesScript() {
-    if (Cypress.env("running_in_a_dev_environment") == true) {
-      testRunOnApi('"cp /app/api/config/app_test_default.js /app/api/config/app.js"');
-      testRunOnApi('"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"');
-    } else {
-      testRunOnApi('"node --no-warnings=ExperimentalWarnings --experimental-json-modules /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"');
-    };
-};
-
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    testRunOnApi(
+      '"cp /app/api/config/app_test_default.js /app/api/config/app.js"'
+    );
+    testRunOnApi(
+      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"'
+    );
+  } else {
+    testRunOnApi(
+      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"'
+    );
+  }
+}

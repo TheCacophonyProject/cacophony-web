@@ -362,14 +362,11 @@ Cypress.Commands.add(
     eventNumber: number = 1,
     statusCode: number = 200
   ) => {
-    logTestDescription(
-      `Check for expected event for ${deviceName} `,
-      {
-        userName,
-        deviceName,
-        eventNumber,
-      }
-    );
+    logTestDescription(`Check for expected event for ${deviceName} `, {
+      userName,
+      deviceName,
+      eventNumber,
+    });
 
     checkEvents(
       userName,
@@ -382,29 +379,29 @@ Cypress.Commands.add(
   }
 );
 
-export function createExpectedEvent (
+export function createExpectedEvent(
   deviceName: string,
   recording: string,
   alertName: string
-):any {
-    const expectedEvent = {
-      id: 1,
-      dateTime: "2021-05-19T01:39:41.376Z",
-      createdAt: "2021-05-19T01:39:41.771Z",
-      DeviceId: getCreds(deviceName).id,
-      EventDetail: {
-        type: "alert",
-        details: {
-          recId: getCreds(recording).id,
-          alertId: getCreds(alertName).id,
-          success: true,
-          trackId: 1,
-        },
+): any {
+  const expectedEvent = {
+    id: 1,
+    dateTime: "2021-05-19T01:39:41.376Z",
+    createdAt: "2021-05-19T01:39:41.771Z",
+    DeviceId: getCreds(deviceName).id,
+    EventDetail: {
+      type: "alert",
+      details: {
+        recId: getCreds(recording).id,
+        alertId: getCreds(alertName).id,
+        success: true,
+        trackId: 1,
       },
-      Device: { devicename: getTestName(getCreds(deviceName).name) },
-    };
-    return(expectedEvent);
-};
+    },
+    Device: { devicename: getTestName(getCreds(deviceName).name) },
+  };
+  return expectedEvent;
+}
 
 function checkPowerEvents(
   userName: string,
@@ -512,16 +509,16 @@ function checkPowerEventMatches(
 }
 
 export function testCreateExpectedEvent(deviceName: string, eventDetail: any) {
-    const expectedEvent={
-      id: NOT_NULL,
-      dateTime: NOT_NULL_STRING,
-      createdAt: NOT_NULL_STRING,
-      DeviceId: getCreds(deviceName).id,
-      EventDetail: eventDetail,
-      Device: { devicename: getTestName(deviceName) },
-    };
-    return(expectedEvent);
+  const expectedEvent = {
+    id: NOT_NULL,
+    dateTime: NOT_NULL_STRING,
+    createdAt: NOT_NULL_STRING,
+    DeviceId: getCreds(deviceName).id,
+    EventDetail: eventDetail,
+    Device: { devicename: getTestName(deviceName) },
   };
+  return expectedEvent;
+}
 
 export function getExpectedEvent(name: string): TestComparableEvent {
   return Cypress.env("testCreds")[name];

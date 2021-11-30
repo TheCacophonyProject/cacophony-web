@@ -430,21 +430,17 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(
-      `Register heartbeat for camera '${deviceName}'`,
-      {
-        camera: deviceName,
-        nextHeartbeat: nextHeartbeat
-      }
-    );
-
+    logTestDescription(`Register heartbeat for camera '${deviceName}'`, {
+      camera: deviceName,
+      nextHeartbeat: nextHeartbeat,
+    });
 
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: v1ApiPath("devices/heartbeat"),
         body: {
-          nextHeartbeat: nextHeartbeat
+          nextHeartbeat: nextHeartbeat,
         },
       },
       deviceName,

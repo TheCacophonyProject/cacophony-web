@@ -128,7 +128,7 @@ declare namespace Cypress {
      * Looks up the JWT using deviceName
      * Requires nextHeartbeat as an ISO timestamp
      * Optionally check for a non-200 statusCode
-     * Optionally check for returned messages includes substring of 
+     * Optionally check for returned messages includes substring of
      *   additionalChecks["message"]
      */
     apiDeviceHeartbeat(
@@ -137,6 +137,5 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
-
   }
 }
