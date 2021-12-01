@@ -26,6 +26,8 @@ const EXCLUDE_IDS_RECORDINGS = [
   "[].tracks[].id",
 ];
 
+const EXCLUDE_COLUMNS = ["Date", "Time"];
+
 describe("Recordings: soft delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = {
     deviceId: 0,
@@ -546,7 +548,8 @@ describe("Recordings: soft delete, undelete", () => {
         cy.apiRecordingsReportCheck(
           "rsdGroupAdmin",
           { deleted: true, where: { id: getCreds("rsdRecording8").id } },
-          [expectedReportFromQuery1]
+          [expectedReportFromQuery1],
+          EXCLUDE_COLUMNS
         );
       });
     });
