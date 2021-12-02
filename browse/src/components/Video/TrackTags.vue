@@ -130,7 +130,7 @@ export default {
 
     tagItems() {
       let items;
-      if (this.isSuperUser) {
+      if (this.isSuperUserAndViewingAsSuperUser) {
         items = [...this.items];
       } else {
         // Remove AI tags other than master, as they'll just be confusing

@@ -80,12 +80,12 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/files Query available files
+   * @api {get} /api/v1/files List all current audioBait files
    * @apiName QueryFiles
    * @apiGroup Files
-   *
    * @apiHeader {String} Authorization Signed JSON web token for a user or device.
-   * @apiUse BaseQueryParams
+   * @apiQuery {String="audioBait"} type Currently the only type of file you can query is "audioBait"
+   *
    * @apiUse V1ResponseSuccessQuery
    */
   app.get(
