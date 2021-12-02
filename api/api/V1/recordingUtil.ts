@@ -30,7 +30,6 @@ import { AudioRecordingMetadata, Recording } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
 import { Order } from "sequelize";
-import { FileId } from "@models/File";
 import {
   DeviceSummary,
   DeviceVisitMap,
@@ -58,7 +57,7 @@ import SendData = ManagedUpload.SendData;
 import { Track } from "@models/Track";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Tag } from "@models/Tag";
-import { RecordingId, TrackTagId, UserId } from "@typedefs/api/common";
+import { FileId, RecordingId, TrackTagId, UserId } from "@typedefs/api/common";
 import { AcceptableTag } from "@typedefs/api/consts";
 import { Device } from "@models/Device";
 import {

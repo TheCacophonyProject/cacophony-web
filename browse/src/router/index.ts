@@ -17,6 +17,9 @@ import VisitsView from "@/views/VisitsView.vue";
 import TaggingView from "@/views/TaggingView.vue";
 import EndUserAgreementView from "@/views/EndUserAgreementView.vue";
 import AiMetricsView from "@/views/AiMetricsView.vue";
+import ForgotPasswordView from "@/views/ForgotPasswordView.vue";
+import NewPasswordView from "@/views/NewPasswordView.vue";
+import SchedulesView from "@/views/SchedulesView.vue";
 
 // TODO(jon): We should be lazy loading some of these components for better code-splitting
 import MonitoringTimeline from "@/views/MonitoringTimeline.vue";
@@ -29,8 +32,6 @@ const cancelPendingRequests = (to, from, next) => {
 };
 
 function createRouter() {
-  // @ts-ignore
-  // @ts-ignore
   // @ts-ignore
   const router = new Router({
     mode: "history",
@@ -111,11 +112,35 @@ function createRouter() {
         beforeEnter: cancelPendingRequests,
       },
       {
+        path: "/schedules",
+        component: SchedulesView,
+        meta: { title: "Schedules" },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
         path: "/register",
         component: RegisterView,
         meta: {
           noAuth: true,
           title: "Register Account",
+        },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
+        path: "/forgot",
+        component: ForgotPasswordView,
+        meta: {
+          noAuth: true,
+          title: "Forgot Password",
+        },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
+        path: "/newpassword",
+        component: NewPasswordView,
+        meta: {
+          noAuth: true,
+          title: "New Password",
         },
         beforeEnter: cancelPendingRequests,
       },

@@ -109,14 +109,14 @@
     <div class="bottom-buttons">
       <b-modal v-model="isExportingCSV" title="Export Visits CSV" hide-footer>
         <div v-if="!exportInProgress">
-          <label for="export-from-date">Export from</label>
+          <label :for="'export-from-date'">Export from</label>
           <b-form-datepicker
             id="export-from-date"
             v-model="exportFrom"
             :max="new Date()"
             class="mb-2"
           ></b-form-datepicker>
-          <label for="export-to-date">Until</label>
+          <label :for="'export-to-date'">Until</label>
           <b-form-datepicker
             id="export-to-date"
             :min="minDate"
@@ -262,7 +262,7 @@ export default {
     tableItems() {
       return this.devices.map((device) => ({
         ...device,
-        _rowVariant: device.lastConnectionTime
+        _rowVariant: device.hasOwnProperty("isHealthy")
           ? device.isHealthy
             ? "okay"
             : "warn"
@@ -279,9 +279,9 @@ export default {
 @import "~bootstrap/scss/mixins";
 
 .device-health {
-  color: #dc3545;
+  color: #555;
   &.healthy {
-    color: #555;
+    color: darkgreen;
   }
 }
 .table-okay {

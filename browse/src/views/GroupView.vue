@@ -109,7 +109,7 @@
       <!--        <RecordingsTab-->
       <!--          :loading="deletedRecordingsCountLoading"-->
       <!--          :group-name="groupName"-->
-      <!--          :recordings-query="recordingQueryFinal"-->
+      <!--          :recordings-query="deletedRecordingQueryFinal"-->
       <!--        />-->
       <!--      </b-tab>-->
     </b-tabs>
@@ -158,6 +158,7 @@ export default {
       groupId: null,
       group: null,
       recordingQueryFinal: {},
+      deletedRecordingQueryFinal: {},
       visitsQueryFinal: {},
       users: [],
       devices: [],
@@ -178,7 +179,13 @@ export default {
     },
     tabNames() {
       if (!this.limitedView) {
-        return ["users", "devices", "stations", "recordings"];
+        return [
+          "users",
+          "devices",
+          "stations",
+          "recordings",
+          "deleted-recordings",
+        ];
       } else {
         return ["limited-devices", "limited-recordings"];
       }
@@ -284,24 +291,33 @@ export default {
     async fetchUsers() {
       this.usersLoading = true;
       if (!this.limitedView) {
-        try {
-          const usersResponse = await api.groups.getUsersForGroup(
-            this.groupName
-          );
-          if (!usersResponse.success && usersResponse.status === 403) {
-            this.limitedView = true;
-          } else if (usersResponse.success) {
-            this.users = usersResponse.result.users;
-          }
-        } catch (e) {
-          // ...
+        const usersResponse = await api.groups.getUsersForGroup(this.groupName);
+        if (!usersResponse.success && usersResponse.status === 403) {
+          this.limitedView = true;
+        } else if (usersResponse.success) {
+          this.users = usersResponse.result.users;
         }
       }
       this.usersLoading = false;
     },
     async fetchDeletedRecordingCount() {
       this.deletedRecordingsCountLoading = true;
-
+      this.groupId = this.group.id;
+      this.deletedRecordingQueryFinal = {
+        ...this.recordingQuery(),
+        deleted: true,
+      };
+      const countResponse = await api.recording.queryCount({
+        ...this.deletedRecordingQueryFinal,
+      });
+      if (countResponse.success) {
+        const {
+          result: { count },
+        } = countResponse;
+        if (count !== 0) {
+          this.deletedRecordingsCount = count;
+        }
+      }
       this.deletedRecordingsCountLoading = false;
     },
     async fetchRecordingCount() {
@@ -377,41 +393,24 @@ export default {
       {
         const now = new Date();
         now.setDate(now.getDate() - 1);
-        const oneDayAgo = new Date(now);
         if (!this.limitedView) {
-          try {
-            const getDevicesResponse = await api.groups.getDevicesForGroup(
-              this.groupName
-            );
-            if (getDevicesResponse.success) {
-              this.devices = getDevicesResponse.result.devices.map(
-                (device) => ({
-                  ...device,
-                  isHealthy:
-                    device.lastConnectionTime &&
-                    new Date(device.lastConnectionTime) > oneDayAgo,
-                })
-              );
-            } else {
-              this.limitedView = true;
-              await this.fetchDevices();
-            }
-          } catch (e) {
-            // ...
+          const getDevicesResponse = await api.groups.getDevicesForGroup(
+            this.groupName
+          );
+          if (getDevicesResponse.success) {
+            this.devices = getDevicesResponse.result.devices;
+          } else {
+            this.limitedView = true;
+            await this.fetchDevices();
           }
         } else {
           // FIXME: Do we still need this branch?  I feel like maybe not.
           const devicesResponse = await api.device.getDevices();
           if (devicesResponse.success) {
             const { result } = devicesResponse;
-            this.devices = result.devices
-              .filter((device) => device.groupName === this.groupName)
-              .map((device) => ({
-                ...device,
-                isHealthy:
-                  device.lastConnectionTime &&
-                  new Date(device.lastConnectionTime) > oneDayAgo,
-              }));
+            this.devices = result.devices.filter(
+              (device) => device.groupName === this.groupName
+            );
           }
         }
       }
@@ -420,17 +419,13 @@ export default {
     async fetchStations() {
       this.stationsLoading = true;
       {
-        try {
-          const { result, status } = await api.groups.getStationsForGroup(
-            this.groupName
-          );
-          if (status === 200) {
-            this.stations = result.stations;
-          } else {
-            this.limitedView = true;
-          }
-        } catch (e) {
-          // ...
+        const stationsResponse = await api.groups.getStationsForGroup(
+          this.groupName
+        );
+        if (stationsResponse.success) {
+          this.stations = stationsResponse.result.stations;
+        } else {
+          this.limitedView = true;
         }
       }
       this.stationsLoading = false;

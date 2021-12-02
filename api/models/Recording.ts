@@ -862,9 +862,6 @@ from (
                 attributes: ["username"],
               },
             ],
-            attributes: {
-              exclude: ["UserId"],
-            },
             required: false,
           },
         ],
@@ -1030,7 +1027,7 @@ from (
     }
 
     // Don't include deleted recordings
-    where.deletedAt = { [Op.eq]: null };
+    where.deletedAt = where.deletedAt || { [Op.eq]: null };
 
     delete where._tagged; // remove legacy tag mode selector (if included)
 

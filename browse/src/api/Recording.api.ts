@@ -176,6 +176,7 @@ export interface RecordingQuery {
   page?: number;
   perPage?: number;
   days?: number | "all";
+  deleted?: boolean;
   from?: string;
   to?: string;
   group?: number[];
@@ -269,6 +270,9 @@ function makeApiQuery(query: RecordingQuery): any {
   if (query.tagMode) {
     apiParams["tagMode"] = query.tagMode;
   }
+  if (query.deleted) {
+    apiParams["deleted"] = query.deleted;
+  }
   if (query.tag && query.tag.length > 0) {
     if (typeof query.tag === "string") {
       query.tag = [query.tag];
@@ -299,7 +303,10 @@ function queryCount(
   );
 }
 
-function id(id: RecordingId): Promise<
+function id(
+  id: RecordingId,
+  deleted: boolean = false
+): Promise<
   FetchResult<{
     recording: ApiRecordingResponse;
     rawSize?: number; // CPTV size
@@ -308,7 +315,7 @@ function id(id: RecordingId): Promise<
     downloadRawJWT?: JwtToken<CptvFile>;
   }>
 > {
-  return CacophonyApi.get(`${apiPath}/${id}`);
+  return CacophonyApi.get(`${apiPath}/${id}?deleted=${deleted}`);
 }
 
 function comment(comment: string, id: RecordingId): Promise<FetchResult<any>> {
@@ -321,6 +328,10 @@ function comment(comment: string, id: RecordingId): Promise<FetchResult<any>> {
 
 function del(id: RecordingId): Promise<FetchResult<any>> {
   return CacophonyApi.delete(`${apiPath}/${id}`);
+}
+
+function undelete(id: RecordingId): Promise<FetchResult<any>> {
+  return CacophonyApi.patch(`${apiPath}/${id}/undelete`, {});
 }
 
 function tracks(
@@ -397,6 +408,10 @@ function reprocess(id: RecordingId): Promise<FetchResult<void>> {
   return CacophonyApi.get(`/api/v1/reprocess/${id}`);
 }
 
+function thumbnail(id: RecordingId): string {
+  return CacophonyApi.url(`/api/v1/recordings/${id}/thumbnail`);
+}
+
 interface RecordingToTag {
   RecordingId: RecordingId;
   DeviceId: DeviceId;
@@ -455,8 +470,10 @@ export default {
   queryVisits,
   queryCount,
   id,
+  thumbnail,
   comment,
   del,
+  undelete,
   tracks,
   reprocess,
   addTrackTag,

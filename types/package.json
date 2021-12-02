@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "scripts": {
         "generate-schemas": "tsc && node build-schemas.js",
-        "lint": "eslint ./ --ext .ts && (npx prettier --check './**/*.ts' || (echo \"Please run 'npm lint:fix' to clean up formatting of files.\"; false))",
+        "lint": "eslint ./ --ext .ts && (npx prettier --check './**/*.ts' || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
         "lint:fix": "eslint ./ --fix --ext .ts && npx prettier --write './**/*.ts'"
     },
     "dependencies": {

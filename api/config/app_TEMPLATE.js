@@ -8,7 +8,9 @@ const server = {
     active: true,
     port: 80,
   },
-  recording_url_base: "http://localhost/recording",
+  recording_url_base: "http://localhost:8080/recording",
+  browse_url: "http://localhost:8080",
+  adminEmails: [],
 };
 
 const fileProcessing = {

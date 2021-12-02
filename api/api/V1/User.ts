@@ -27,6 +27,7 @@ import config from "@config";
 import { User } from "@models/User";
 import {
   anyOf,
+  idOf,
   integerOf,
   validNameOf,
   validPasswordOf,
@@ -34,11 +35,18 @@ import {
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredSchedulesForGroup,
   fetchUnauthorizedOptionalUserByNameOrId,
   fetchUnauthorizedRequiredUserByNameOrId,
+  fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import { mapSchedule } from "@api/V1/Schedule";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUsersResponseSuccess {
+  usersList: ApiLoggedInUserResponse[];
+}
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
   userName: user.username,
@@ -52,13 +60,9 @@ export const mapUser = (user: User): ApiLoggedInUserResponse => ({
 export const mapUsers = (users: User[]) => users.map(mapUser);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUserResponseSuccess {
-  userData: ApiLoggedInUserResponse;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUsersResponseSuccess {
-  usersList: ApiLoggedInUserResponse[];
+interface ApiChangePasswordRequestBody {
+  password: string; // Password for the user account
+  token: string; // Valid password reset token
 }
 
 export default function (app: Application, baseUrl: string) {
@@ -76,7 +80,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
    *
    * @apiUse V1ResponseError
    */
@@ -192,7 +196,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -257,4 +261,42 @@ export default function (app: Application, baseUrl: string) {
       euaVersion: config.euaVersion,
     });
   });
+
+  /**
+   * @api {patch} /api/v1/user/changePassword Updates a users password with reset token authentication
+   * @apiName ChangePassword
+   * @apiGroup User
+   * @apiInterface {apiBody::ApiChangePasswordRequestBody}
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/changePassword`,
+    validateFields([body("token"), validPasswordOf(body("password"))]),
+    fetchUnauthorizedRequiredUserByResetToken(body("token")),
+    async (request: Request, response: Response) => {
+      if (response.locals.user.password != response.locals.resetInfo.password) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: ["Your password has alread been changed"],
+        });
+      }
+      const result = await response.locals.user.updatePassword(
+        request.body.password
+      );
+      if (!result) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: ["Error changing password please contact sys admin"],
+        });
+      }
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: [],
+        token: `JWT ${auth.createEntityJWT(response.locals.user)}`,
+        userData: mapUser(response.locals.user),
+      });
+    }
+  );
 }

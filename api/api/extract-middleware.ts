@@ -4,6 +4,7 @@ import {
   DecodedJWTToken,
   getVerifiedJWT,
   lookupEntity,
+  getDecodedResetToken,
 } from "./auth";
 import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
@@ -14,11 +15,12 @@ import { ClientError } from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
-import { UserId } from "@typedefs/api/common";
+import { ScheduleId, UserId } from "@typedefs/api/common";
 import { Group } from "models/Group";
 import { Recording } from "models/Recording";
 import { SuperUsers } from "@/Server";
 import { Station } from "@/models/Station";
+import { Schedule } from "@/models/Schedule";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -117,6 +119,10 @@ const extractJwtAuthenticatedEntity =
   };
 
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
+export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity([
+  "user",
+  "device",
+]);
 export const extractJwtAuthorisedSuperAdminUser = extractJwtAuthenticatedEntity(
   ["user"],
   undefined,
@@ -204,6 +210,66 @@ const getDeviceInclude =
         },
         required: false,
         where: { id: requestUserId },
+      },
+    ],
+  });
+
+const getStationInclude =
+  (groupWhere: any) =>
+  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+    where: {
+      [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+    },
+    include: [
+      {
+        model: models.Group,
+        attributes: ["id", "groupname"],
+        required: Object.keys(groupWhere).length !== 0,
+        where: groupWhere,
+        include: [
+          {
+            model: models.User,
+            attributes: ["id"],
+            required: false,
+            through: {
+              where: {
+                ...useAdminAccess,
+              },
+              attributes: ["UserId"],
+            },
+            where: { id: requestUserId },
+          },
+        ],
+      },
+    ],
+  });
+
+const getScheduleInclude =
+  (groupWhere: any) =>
+  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+    where: {
+      [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+    },
+    include: [
+      {
+        model: models.Group,
+        attributes: ["id", "groupname"],
+        required: Object.keys(groupWhere).length !== 0,
+        where: groupWhere,
+        include: [
+          {
+            model: models.User,
+            attributes: ["id"],
+            required: false,
+            through: {
+              where: {
+                ...useAdminAccess,
+              },
+              attributes: ["admin", "UserId"],
+            },
+            where: { id: requestUserId },
+          },
+        ],
       },
     ],
   });
@@ -346,12 +412,17 @@ export const fetchModel =
     byName: boolean,
     byId: boolean,
     modelGetter: ModelGetter<T> | ModelsGetter<T>,
-    primary: ValidationChain,
+    primary: ValidationChain | number,
     secondary?: ValidationChain
   ) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
-    const id = extractValFromRequest(request, primary) as string;
+    let id;
+    if (typeof primary === "number") {
+      id = primary;
+    } else {
+      id = extractValFromRequest(request, primary) as string;
+    }
     if (!id && !required) {
       return next();
     }
@@ -364,6 +435,9 @@ export const fetchModel =
         Boolean(request.query["only-active"]) === false)
     ) {
       response.locals.onlyActive = false;
+    }
+    if ("deleted" in request.query) {
+      response.locals.deleted = Boolean(request.query.deleted);
     }
 
     let model;
@@ -431,7 +505,7 @@ export const fetchRequiredModel = <T>(
   byName: boolean,
   byId: boolean,
   modelGetter: ModelGetter<T>,
-  primary: ValidationChain,
+  primary: ValidationChain | number,
   secondary?: ValidationChain
 ) => fetchModel(modelType, true, byName, byId, modelGetter, primary, secondary);
 
@@ -527,6 +601,7 @@ const getStations =
     unused2?: string,
     context?: any
   ): Promise<ModelStaticCommon<Station>[] | ClientError | null> => {
+    let getStationsOptions;
     let groupWhere = {};
 
     const groupIsId =
@@ -541,10 +616,189 @@ const getStations =
       }
     }
 
-    // TODO
-    // All stations where the user is a member of the device or group.
-    // So this is essentially getDevices, then join on recording station, right?
-    return models.Station.findAll({});
+    const allStationsOptions = {
+      where: {},
+      include: [
+        {
+          model: models.Group,
+          required: true,
+          where: groupWhere,
+          attributes: ["id", "groupname"],
+        },
+      ],
+    };
+
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getStationsOptions = getIncludeForUser(
+          context,
+          getStationInclude(groupWhere),
+          asAdmin
+        );
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getStationsOptions = allStationsOptions;
+    }
+
+    if (!getStationsOptions.where) {
+      getStationsOptions = allStationsOptions;
+    }
+
+    if (context.onlyActive) {
+      (getStationsOptions as any).where =
+        (getStationsOptions as any).where || {};
+      (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
+    }
+    return models.Station.findAll({
+      ...getStationsOptions,
+      order: ["name"],
+    });
+  };
+
+const getStation =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    stationId: string,
+    groupNameOrId?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
+    const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
+
+    let stationWhere;
+    let groupWhere = {};
+    if (groupIsId) {
+      stationWhere = {
+        id: parseInt(stationId),
+        GroupId: parseInt(groupNameOrId),
+      };
+    } else if (groupNameOrId) {
+      stationWhere = {
+        id: parseInt(stationId),
+        "$Group.groupname$": groupNameOrId,
+      };
+    } else if (!groupNameOrId) {
+      stationWhere = {
+        id: parseInt(stationId),
+      };
+    }
+    if (groupIsId) {
+      groupWhere = {
+        id: parseInt(groupNameOrId),
+      };
+    } else if (groupNameOrId) {
+      groupWhere = { groupname: groupNameOrId };
+    }
+
+    let getStationOptions;
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getStationOptions = getIncludeForUser(
+          context,
+          getStationInclude(groupWhere),
+          asAdmin
+        );
+        if (!getStationOptions.where && stationWhere) {
+          getStationOptions = {
+            where: stationWhere,
+            include: [
+              {
+                model: models.Group,
+                required: true,
+                attributes: ["groupname"],
+                where: groupWhere,
+              },
+            ],
+          };
+        }
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getStationOptions = {
+        where: stationWhere,
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            attributes: ["groupname"],
+            where: groupWhere,
+          },
+        ],
+      };
+    }
+
+    if (context.onlyActive) {
+      (getStationOptions as any).where = (getStationOptions as any).where || {};
+      (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
+    }
+    return models.Station.findOne(getStationOptions);
+  };
+
+const getSchedules =
+  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (
+    groupNameOrId?: string,
+    unused2?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Schedule>[] | ClientError | null> => {
+    let getScheduleOptions;
+    let groupWhere = {};
+
+    const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
+    if (groupNameOrId) {
+      if (groupIsId) {
+        groupWhere = { id: parseInt(groupNameOrId) };
+      } else {
+        groupWhere = { groupname: groupNameOrId };
+      }
+    }
+
+    const allSchedulesOptions = {
+      where: {},
+      include: [
+        {
+          model: models.Group,
+          required: true,
+          where: groupWhere,
+        },
+      ],
+    };
+
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getScheduleOptions = getIncludeForUser(
+          context,
+          getScheduleInclude(groupWhere),
+          asAdmin
+        );
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getScheduleOptions = allSchedulesOptions;
+    }
+
+    if (!getScheduleOptions.where) {
+      getScheduleOptions = allSchedulesOptions;
+    }
+    return models.Schedule.findAll(getScheduleOptions);
   };
 
 const getGroups =
@@ -679,8 +933,15 @@ const getRecording =
   ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
     const recordingWhere = {
       id: parseInt(recordingId),
-      deletedAt: { [Op.eq]: null },
     };
+    if ("deleted" in context) {
+      if (context.deleted === true) {
+        (recordingWhere as any).deletedAt = { [Op.ne]: null };
+      } else if (context.deleted === false) {
+        (recordingWhere as any).deletedAt = { [Op.eq]: null };
+      }
+    }
+
     let getRecordingOptions;
     const groupWhere = {};
     const deviceWhere = {};
@@ -727,13 +988,19 @@ const getRecordings =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
   (
     recordingIds: string,
-    usused: string,
+    unused: string,
     context?: any
   ): Promise<ModelStaticCommon<Recording>[] | ClientError> => {
     const recordingWhere = {
       id: { [Op.in]: recordingIds },
     };
-
+    if ("deleted" in context) {
+      if (context.deleted === true) {
+        (recordingWhere as any).deletedAt = { [Op.ne]: null };
+      } else if (context.deleted === false) {
+        (recordingWhere as any).deletedAt = { [Op.eq]: null };
+      }
+    }
     let getRecordingOptions;
     const groupWhere = {};
     const deviceWhere = {};
@@ -967,8 +1234,8 @@ const getUser =
 
 const getUnauthorizedGenericModelById =
   <T>(modelType: ModelStaticCommon<T>) =>
-  <T>(id: string): Promise<ModelStaticCommon<T> | ClientError | null> => {
-    return modelType.findByPk(id);
+  <T>(id: string): Promise<T | ClientError | null> => {
+    return modelType.findByPk(id) as unknown as Promise<T | null>;
   };
 
 const getDeviceUnauthenticated = getDevice();
@@ -1159,6 +1426,33 @@ export const fetchAdminAuthorizedRequiredGroupById = (
     groupNameOrId
   );
 
+export const fetchUnauthorizedRequiredUserByResetToken =
+  (field: ValidationChain) =>
+  async (request: Request, response: Response, next: NextFunction) => {
+    const token = extractValFromRequest(request, field) as string;
+    if (!token) {
+      return next(new ClientError(`Invalid reset token`, 401));
+    }
+    let resetInfo;
+    try {
+      resetInfo = getDecodedResetToken(token);
+    } catch (e) {
+      return next(new ClientError(`Reset token expired`, 401));
+    }
+    response.locals.resetInfo = resetInfo;
+    const user = await getUser()(response.locals.resetInfo.id);
+    if (!user) {
+      return next(
+        new ClientError(
+          `Could not find a user with id '${response.locals.resetInfo.id}'`,
+          403
+        )
+      );
+    }
+    response.locals.user = user;
+    next();
+  };
+
 export const fetchUnauthorizedRequiredUserByNameOrEmailOrId = (
   userNameOrEmailOrId: ValidationChain
 ) =>
@@ -1249,6 +1543,39 @@ export const fetchAuthorizedRequiredStations = fetchRequiredModels(
   getStations(true, false)
 );
 
+export const fetchAuthorizedRequiredStationsForGroup = (
+  groupNameOrId: ValidationChain
+) =>
+  fetchRequiredModels(
+    models.Station,
+    false,
+    false,
+    getStations(true, false),
+    groupNameOrId
+  );
+
+export const fetchAuthorizedRequiredStationById = (
+  stationId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Station,
+    false,
+    true,
+    getStation(true, false),
+    stationId
+  );
+
+export const fetchAuthorizedRequiredSchedulesForGroup = (
+  groupNameOrId: ValidationChain
+) =>
+  fetchRequiredModels(
+    models.Schedule,
+    false,
+    false,
+    getSchedules(true, false),
+    groupNameOrId
+  );
+
 export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
   models.Group,
   false,
@@ -1287,6 +1614,15 @@ export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>
     trackId
   );
 
+export const fetchUnauthorizedRequiredFileById = (fileId: ValidationChain) =>
+  fetchRequiredModel(
+    models.File,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.File),
+    fileId
+  );
+
 export const fetchUnauthorizedRequiredRecordingTagById = (
   tagId: ValidationChain
 ) =>
@@ -1296,4 +1632,15 @@ export const fetchUnauthorizedRequiredRecordingTagById = (
     true,
     getUnauthorizedGenericModelById(models.Tag),
     tagId
+  );
+
+export const fetchUnauthorizedRequiredScheduleById = (
+  scheduleId: ValidationChain | ScheduleId
+) =>
+  fetchRequiredModel(
+    models.Schedule,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.Schedule),
+    scheduleId
   );

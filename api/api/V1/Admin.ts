@@ -45,7 +45,6 @@ export default function (app: Application, baseUrl: string) {
      * @apiParam {String|Number} userNameOrId name or id of user to update
      * @apiInterface {apiBody::ApiUpdateGlobalPermissionRequestBody}
      * @apiUse V1ResponseSuccess
-     *
      * @apiUse V1ResponseError
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -8,6 +8,7 @@ exports.server = {
     port: 1080,
   },
   recording_url_base: "http://test.site/recording",
+  browse_url: "http://test.site",
 };
 exports.s3Local = {
   publicKey: "minio",

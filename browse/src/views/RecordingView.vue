@@ -22,7 +22,8 @@
           </router-link>
         </h4>
 
-        <h5 class="text-muted">{{ dateString }}, {{ timeString }}</h5>
+        <h5 class="text-muted" v-if="loadingNext">Loading recording...</h5>
+        <h5 class="text-muted" v-else>{{ dateString }}, {{ timeString }}</h5>
 
         <b-alert
           :show="showAlert"
@@ -98,6 +99,8 @@ export default {
       downloadRawJWT: null,
       rawSize: 0,
       fileSize: 0,
+      loadingNext: false,
+      deletedRecordings: [],
     };
   },
   computed: {
@@ -181,91 +184,117 @@ export default {
   watch: {
     async $route(to) {
       if (Number(to.params.id) !== this.recording.id) {
-        await this.fetchRecording(to.params.id);
+        await this.fetchRecording({ id: to.params.id, action: "updated" });
+        this.loadingNext = false;
       }
     },
   },
   methods: {
-    async fetchRecording(id: RecordingId): Promise<void> {
-      try {
-        const {
-          success,
-          result: {
-            recording,
-            downloadRawJWT,
-            downloadFileJWT,
-            rawSize,
-            fileSize,
+    async fetchRecording({
+      id,
+      action,
+    }: {
+      id: RecordingId;
+      action: "deleted" | "updated";
+    }): Promise<void> {
+      if (action === "deleted") {
+        this.deletedRecordings.push(id);
+
+        // Use a shorter name for `this.$createElement`
+        // Create the custom close button
+        const undoButton = this.$createElement(
+          "b-button",
+          {
+            on: {
+              click: async () => {
+                await api.recording.undelete(id);
+                this.$bvToast.hide(id.toString());
+              },
+            },
           },
-        } = await api.recording.id(id);
-        if (!success) {
+          "Undo"
+        );
+        this.$bvToast.toast([undoButton], {
+          id: id.toString(),
+          title: `Deleted recording #${id}`,
+          autoHideDelay: 15000,
+          appendToast: true,
+        });
+      } else {
+        try {
+          const recordingResponse = await api.recording.id(id);
+          if (recordingResponse.success) {
+            const {
+              result: {
+                recording,
+                downloadRawJWT,
+                downloadFileJWT,
+                rawSize,
+                fileSize,
+              },
+            } = recordingResponse;
+            this.recordingInternal = recording;
+            this.downloadFileJWT = downloadFileJWT;
+            this.downloadRawJWT = downloadRawJWT;
+            this.rawSize = rawSize;
+            this.fileSize = fileSize;
+          } else {
+            this.errorMessage =
+              "We couldn't find the recording you're looking for.";
+            this.recordingInternal = null;
+          }
+        } catch (err) {
           this.errorMessage =
             "We couldn't find the recording you're looking for.";
           this.recordingInternal = null;
-        } else {
-          this.recordingInternal = recording;
-          this.downloadFileJWT = downloadFileJWT;
-          this.downloadRawJWT = downloadRawJWT;
-          this.rawSize = rawSize;
-          this.fileSize = fileSize;
         }
-      } catch (err) {
-        this.errorMessage =
-          "We couldn't find the recording you're looking for.";
-        this.recordingInternal = null;
       }
     },
     async loadNextRecording(params: any): Promise<void> {
-      const {
-        result: { rows },
-        success,
-      } = await api.recording.query(params);
-      if (!success || !rows || rows.length == 0) {
-        //  store.dispatch("Messaging/WARN", `No more recordings for this search.`);
-      } else {
-        // FIXME - Loading this twice here seems a wee bit silly
-        delete params.from;
-        delete params.to;
-        delete params.order;
-        delete params.type;
-        delete params.limit;
-        delete params.offset;
-        await this.$router.push({
-          path: `/recording/${rows[0].id}`,
-          query: params,
-        });
+      this.loadingNext = true;
+      const recordingQueryResponse = await api.recording.query(params);
+      if (recordingQueryResponse.success) {
+        const {
+          result: { rows },
+        } = recordingQueryResponse;
+        if (rows.length) {
+          delete params.from;
+          delete params.to;
+          delete params.order;
+          delete params.type;
+          delete params.limit;
+          delete params.offset;
+          await this.$router.push({
+            path: `/recording/${rows[0].id}`,
+            query: params,
+          });
+        }
       }
     },
     async refreshTrackTagData(trackId: TrackId): Promise<void> {
       // Resync all tags for the track from the API.
-      const {
-        success,
-        result: { tracks },
-      } = await api.recording.tracks(this.recording.id);
-      if (!success) {
+      const tracksResponse = await api.recording.tracks(this.recording.id);
+      if (!tracksResponse.success) {
         return;
+      } else {
+        const {
+          result: { tracks },
+        } = tracksResponse;
+        const track = tracks.find((track) => track.id === trackId);
+        this.recording.tracks.find((track) => track.id === trackId).tags =
+          track.tags;
       }
-      const track = tracks.find((track) => track.id === trackId);
-      this.recording.tracks.find((track) => track.id === trackId).tags =
-        track.tags;
     },
     async refreshRecordingTagData(tagId: TagId): Promise<void> {
       // Resync all recording tags from the API.
-      const {
-        success,
-        result: {
-          recording: { tags },
-        },
-      } = await api.recording.id(this.recording.id);
-      if (success) {
-        this.recording.tags = tags;
-      } else {
-        // FIXME - can this ever really happen in a recoverable way?
+      const tagsResponse = await api.recording.id(this.recording.id);
+      if (tagsResponse.success) {
+        this.recording.tags = tagsResponse.result.recording.tags;
       }
     },
   },
   mounted: async function () {
-    await this.fetchRecording(this.$route.params.id);
+    await this.fetchRecording({ id: this.$route.params.id, action: "updated" });
   },
 };
 </script>

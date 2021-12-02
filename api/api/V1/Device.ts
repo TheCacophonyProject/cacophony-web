@@ -33,6 +33,7 @@ import {
   fetchUnauthorizedOptionalUserById,
   fetchUnauthorizedOptionalUserByNameOrId,
   fetchAuthorizedRequiredDevices,
+  fetchUnauthorizedRequiredScheduleById,
 } from "../extract-middleware";
 import {
   booleanOf,
@@ -80,6 +81,9 @@ export const mapDeviceResponse = (
     if (device.lastRecordingTime) {
       mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
     }
+    if (device.heartbeat && device.nextHeartbeat) {
+      mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
+    }
     if (device.location) {
       const { coordinates } = device.location;
       mapped.location = {
@@ -89,6 +93,9 @@ export const mapDeviceResponse = (
     }
     if (device.public) {
       mapped.public = true;
+    }
+    if (device.ScheduleId) {
+      mapped.scheduleId = device.ScheduleId;
     }
 
     return mapped;
@@ -445,6 +452,104 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
+   * @api {post} /api/v1/devices/assign-schedule Assign a schedule to a device.
+   * @apiName AssignScheduleToDevice
+   * @apiGroup Schedules
+   * @apiDescription This call assigns a schedule to a device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {Number} deviceId ID of the device.
+   * @apiBody {Number} scheduleId ID of the schedule to assign to the device.
+   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/assign-schedule`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(body("scheduleId")),
+      idOf(body("deviceId")),
+      // Allow adding a schedule to an inactive device by default
+      query("only-active").default(false).isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
+    (request, response, next) => {
+      if (
+        response.locals.schedule.UserId == response.locals.requestUser.id ||
+        response.locals.requestUser.hasGlobalWrite()
+      ) {
+        next();
+      } else {
+        return next(new ClientError("Schedule doesn't belong to user", 403));
+      }
+    },
+    async (request, response) => {
+      await response.locals.device.update({
+        ScheduleId: response.locals.schedule.id,
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["schedule assigned"],
+      });
+    }
+  );
+
+  /**
+   * @api {post} /api/v1/devices/remove-schedule Remove a schedule from a device.
+   * @apiName RemoveScheduleFromDevice
+   * @apiGroup Schedules
+   * @apiDescription This call removes a schedule from a device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {Number} deviceId ID of the device.
+   * @apiBody {Number} scheduleId ID of the schedule to remove from the device.
+   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/remove-schedule`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(body("scheduleId")),
+      idOf(body("deviceId")),
+      // Allow adding a schedule to an inactive device by default
+      query("only-active").default(false).isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
+    (request, response, next) => {
+      if (
+        response.locals.schedule.UserId == response.locals.requestUser.id ||
+        response.locals.requestUser.hasGlobalWrite()
+      ) {
+        next();
+      } else {
+        return next(new ClientError("Schedule doesn't belong to user", 403));
+      }
+    },
+    async (request, response) => {
+      await response.locals.device.update({
+        ScheduleId: null,
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["schedule removed"],
+      });
+    }
+  );
+
+  /**
    * @api {post} /api/v1/devices/users Add a user to a device.
    * @apiName AddUserToDevice
    * @apiGroup Device
@@ -696,6 +801,35 @@ export default function (app: Application, baseUrl: string) {
         statusCode: 200,
         cacophonyIndex,
         messages: [],
+      });
+    }
+  );
+
+  /**
+     * @api {post} /api/v1/devices/heartbeat send device heartbeat
+     * @apiName heartbeat
+     * @apiGroup Device
+     *
+     * @apiUse V1DeviceAuthorizationHeader
+     *
+     * @apiBody {Date} nextHeartbeat time next heart beat is expected
+
+     * @apiUse V1ResponseSuccess
+     * @apiUse V1ResponseError
+     */
+  app.post(
+    `${apiUrl}/heartbeat`,
+    extractJwtAuthorisedDevice,
+    validateFields([body("nextHeartbeat").isISO8601().toDate()]),
+    async function (request: Request, response: Response, next: NextFunction) {
+      const requestDevice = (await models.Device.findByPk(
+        response.locals.requestDevice.id
+      )) as Device;
+      await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
+
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Heartbeat updated."],
       });
     }
   );

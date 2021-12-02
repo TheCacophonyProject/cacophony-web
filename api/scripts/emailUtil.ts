@@ -7,7 +7,8 @@ import log from "../logging";
 import moment from "moment";
 import { SMTPClient, Message } from "emailjs";
 import { Readable } from "stream";
-
+import { User } from "@models/User";
+import { getResetToken } from "../api/auth";
 function alertBody(
   recording: Recording,
   tag: TrackTag,
@@ -29,6 +30,40 @@ function alertBody(
   text += `Go to ${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId} to view this recording\r\n`;
   text += "Thanks, Cacophony Team";
   return [html, text];
+}
+function resetBody(user: User, token: string): string[] {
+  const resetUrl = `${config.server.browse_url}/newpassword/?token=${token}`;
+  let name;
+  if (user.firstName) {
+    name = user.firstName;
+  } else {
+    name = user.username;
+  }
+  let html = `Hello ${name},<br><br>`;
+  html += `We received a request to reset your Cacophony password.<br>`;
+  html += `Click the link below to set a new password<br><br>`;
+  html += `<a href="${resetUrl}">Set New Password</a><br><br>`;
+  html += `If this was not you, ignore this email.<br><br>`;
+  html += "Thanks,<br> Cacophony Team<br><br>";
+  html += `<br>Having trouble with the link? Use this url to reset your password<br>${resetUrl}`;
+
+  let text = `Hello ${name},\r\n\r\n`;
+  text += `We received a request to reset your Cacophony password.\r\n`;
+  text += `Visit ${resetUrl} to set a new password.\r\n\r\n`;
+  text += `If this was not you, ignore this email.\r\n\r\n`;
+  text += "Thanks, Cacophony Team";
+  return [html, text];
+}
+
+async function sendResetEmail(user: User, password: string): Promise<boolean> {
+  const token = getResetToken(user, password);
+  const [html, text] = resetBody(user, token);
+  return sendEmail(
+    html,
+    text,
+    user.email,
+    "Your request to reset your Cacophony acccount password"
+  );
 }
 
 async function sendEmail(
@@ -63,4 +98,4 @@ async function sendEmail(
   return true;
 }
 
-export { sendEmail, alertBody };
+export { sendEmail, alertBody, sendResetEmail };

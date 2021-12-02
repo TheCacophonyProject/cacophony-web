@@ -20,7 +20,7 @@ import Sequelize, { BuildOptions, ModelAttributes } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import util from "./util/util";
 import validation from "./util/validation";
-import { StationId, UserId } from "@typedefs/api/common";
+import { GroupId, StationId, UserId } from "@typedefs/api/common";
 
 // Station data as supplied to API on creation.
 export interface CreateStationData {
@@ -37,7 +37,9 @@ export interface Station extends Sequelize.Model, ModelCommon<Station> {
   };
   lastUpdatedById: UserId;
   createdAt: Date;
+  updatedAt: Date;
   retiredAt: Date | null;
+  GroupId: GroupId;
 }
 
 export interface StationStatic extends ModelStaticCommon<Station> {
@@ -65,6 +67,9 @@ export default function (
       type: DataTypes.INTEGER,
     },
     createdAt: {
+      type: DataTypes.DATE,
+    },
+    updatedAt: {
       type: DataTypes.DATE,
     },
     retiredAt: {
