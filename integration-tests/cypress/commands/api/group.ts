@@ -19,7 +19,6 @@ import {
   ApiGroupReturned,
   ApiGroupsDevice,
   ApiStationData,
-  ApiStationDataReturned,
 } from "../types";
 import { ApiStationResponse } from "@typedefs/api/station";
 
