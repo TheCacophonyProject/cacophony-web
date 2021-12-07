@@ -2,29 +2,106 @@
 /// <reference types="cypress" />
 
 import { getTestName } from "../names";
-import { apiPath, saveCreds } from "../server";
+import { apiPath, v1ApiPath, getCreds, saveCreds, expectRequestHasFailed, makeAuthorizedRequestWithStatus, sortArrayOn, checkTreeStructuresAreEqualExcept, removeUndefinedParams } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
+import { LATEST_END_USER_AGREEMENT } from "../constants";
+import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
-Cypress.Commands.add("apiUserAdd", (userName: string, log = true) => {
-  logTestDescription(`Create user '${userName}'`, { user: userName }, log);
+Cypress.Commands.add(
+  "apiUserAdd", 
+  (
+    userName: string, 
+    password: string = "p" + getTestName(userName),
+    email: string = "p" + getTestName(userName) + "@api.created.com",
+    endUserAgreement: number = LATEST_END_USER_AGREEMENT,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+  logTestDescription(`Create user '${userName}'`, { user: userName }, true);
 
   const usersUrl = apiPath() + "/api/v1/users";
+  var fullName: string;
+  var email: string;
 
-  const fullName = getTestName(userName);
-  const password = "p" + fullName;
-
+  if (additionalChecks["useRawUserName"]===true) {
+    fullName = userName;
+  } else {
+    fullName = getTestName(userName);
+  };
   const data = {
-    username: fullName,
+    userName: fullName,
     password: password,
-    email: fullName + "@api.created.com",
-    endUserAgreement: 3,
+    email: email,
+    endUserAgreement: endUserAgreement,
+    ...additionalChecks["additionalParams"]
   };
 
-  cy.request("POST", usersUrl, data).then((response) => {
-    const id = response.body.userData.id;
-    saveCreds(response, userName, id);
-  });
+  if (statusCode && statusCode > 200) {
+    cy.request({
+      method: "POST",
+      url: usersUrl,
+      body: data,
+      failOnStatusCode: false,
+    }).then((response) => {
+      //expect fail
+      expectRequestHasFailed(response, statusCode);
+      //check messages[] contain expected error`
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
+    });
+  } else {
+    cy.request("POST", usersUrl, data).then((response) => {
+      if (statusCode == 200) {
+        const id = response.body.userData.id;
+        saveCreds(response, userName, id);
+      }
+    });
+  }
 });
+
+Cypress.Commands.add(
+  "apiUserCheck",
+  (
+    userName: string,
+    checkedUserNameOrId: string,
+    expectedUser: ApiLoggedInUserResponse,
+    excludeCheckOn: string[] = [],
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(`Check user ${checkedUserNameOrId} `, {
+    });
+
+    const url = v1ApiPath(`users/${checkedUserNameOrId}`);
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (statusCode === 200) {
+        checkTreeStructuresAreEqualExcept(
+          expectedUser,
+          response.body.userData,
+          excludeCheckOn
+        );
+      } else {
+        if (additionalChecks["message"] !== undefined) {
+          expect(response.body.messages.join("|")).to.include(
+            additionalChecks["message"]
+          );
+        }
+      }
+    });
+  }
+);
+
 
 Cypress.Commands.add(
   "testCreateUserGroupAndDevice",
@@ -65,3 +142,18 @@ Cypress.Commands.add(
     });
   }
 );
+
+export function TestCreateExpectedUser(userName: string, params: any):ApiLoggedInUserResponse {
+  var user: ApiLoggedInUserResponse =
+    {
+      email: params["email"]||(("p" + getTestName(userName) + "@api.created.com").toLowerCase()),
+      userName: getTestName(userName),
+      globalPermission: params["globalPermission"]||"off",
+      endUserAgreement: params["endUserAgreement"]||LATEST_END_USER_AGREEMENT,
+      id: getCreds(userName).id,
+      firstName: params["firstName"]||null,
+      lastName: params["lastName"]||null
+    };
+
+  return(user);
+};
