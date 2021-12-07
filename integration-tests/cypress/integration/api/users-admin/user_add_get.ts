@@ -53,23 +53,24 @@ describe("User: add, get", () => {
   });
 
   it("Register accepts all valid parameter values", () => {
-    cy.log("end user agreement");
+    cy.log("end user agreement values");
     cy.apiUserAdd("uagUser5-1", "uagPassword1", "p"+getTestName("uagUser5-1")+"@api.created.com", 1).then(() => {
       const expectedUser=TestCreateExpectedUser("uagUser5-1", { email: "p"+getTestName("uaguser5-1")+"@api.created.com", firstName: null, lastName: null, globalPermission: "off", endUserAgreement: 1 });
       cy.apiUserCheck("uagUser5-1", getTestName("uagUser5-1"), expectedUser);
     });
 
-    cy.log("firstName");
-    cy.apiUserAdd("uagUser5-2", undefined, undefined, undefined, undefined, {additionalParams: {firstName: "bob"}}).then(() => {
-      const expectedUser=TestCreateExpectedUser("uagUser5-2", { firstName: "bob" });
-      cy.apiUserCheck("uagUser5-2", getTestName("uagUser5-2"), expectedUser);
-    });
  
   });
 
   it.skip("Duplicate parameters in user registration");
 
-  it.skip("Invalid parameters in user registration");
+  it.skip("Invalid parameters in user registration", () => {
+    cy.log("firstName");
+    cy.apiUserAdd("uagUser5-2", undefined, undefined, undefined, undefined, {additionalParams: {firstName: "bob"}}).then(() => {
+      const expectedUser=TestCreateExpectedUser("uagUser5-2", { firstName: "bob" });
+      cy.apiUserCheck("uagUser5-2", getTestName("uagUser5-2"), expectedUser);
+    });
+  });
 
   it.skip("Invalid parameters in user get");
 
