@@ -1,6 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 type ApiLoggedInUserResponse = import("@typedefs/api/user").ApiLoggedInUserResponse;
+type ApiUserResponse = import("@typedefs/api/user").ApiUserResponse;
 
 declare namespace Cypress {
   interface Chainable {
@@ -22,6 +23,33 @@ declare namespace Cypress {
       additionalChecks?: any,
     ): any;
 
+    /**
+     * Update user with parameters supplied in updates. Valid updates parameters are:
+     * { userName: "..", password: "..", email: "..." }
+     * Optionally, check for non-200 return statusCode
+     * Optionally, check that returned error messages[] contains additionalChecks["message"]
+     * By default makes the userNameOrId unique. 
+     * Optionally: Use the raw provided userNameOrId additionalChecks["useRawUserName"]==true
+     */
+    apiAdminUpdate (
+      userName: string,
+      updateUserNameOrId: string,
+      permission: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /**
+     * Update user's super-user (global) permisssions
+     * Optionally, check for non-200 return statusCode
+     * Optionally, check that returned error messages[] contains additionalChecks["message"]
+     */
+    apiUserUpdate (
+      userName: string,
+      updates: any,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
 
     /**
      * Query an individual user's details by name or id and check returned values
@@ -39,6 +67,29 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
+    /**
+     * Query an all users' details and check returned values
+     * Optionally: exclude checks on specific parameters detailed in excludeCheckOn
+     * Optionally, check for non-200 return statusCode
+     * Optionally, check that returned error messages[] contains additionalChecks["message"]
+     * By default returned usersList and expectedUsers are sorted by username before comparison
+     * Optionally do not sort by specifcying additionalChecks["doNotSort"]=true
+     * By default checks that the returned usersList MATCHES the expectedUsers
+     * Optionally, check that usersLists CONTAINS expectedUsers (additionalChecks["contains"]=true)
+     */
+    apiUsersCheck(
+      userName: string,
+      expectedUsers: ApiUserResponse[],
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /**
+     * Query latest end user agreement version
+     */
+    apiEUACheck ( expectedVersion: number ): number;
 
     /**
      * create a group for the given user (who has already been referenced in the test

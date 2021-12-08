@@ -47,6 +47,9 @@ import { mapSchedule } from "@api/V1/Schedule";
 interface ApiLoggedInUsersResponseSuccess {
   usersList: ApiLoggedInUserResponse[];
 }
+interface ApiLoggedInUserResponseSuccess {
+  userData: ApiLoggedInUserResponse;
+}
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
   userName: user.username,
@@ -80,7 +83,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    *
    * @apiUse V1ResponseError
    */
@@ -133,6 +136,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {String} [userName] New username to set.
    * @apiParam {String} [password] New password to set.
    * @apiParam {String} [email] New email to set.
+   * @apiParam {Number} [endUserAgreement] New version of the end user agreement accepted to set.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -196,7 +200,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -267,7 +271,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ChangePassword
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess} userData
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
