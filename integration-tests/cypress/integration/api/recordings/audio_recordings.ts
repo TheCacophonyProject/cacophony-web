@@ -19,8 +19,6 @@ describe("Recordings - audio recording parameter tests", () => {
   const EXCLUDE_IDS = [
     ".Tracks[].TrackTags[].TrackId",
     ".Tracks[].id",
-    //TODO: workaround for issue 81 - imprecise locations by default.  Remove when fixed.
-    //TODO: workaround for issue 88, inconsistent mime type for audio (audio/mpeg vs video/mp4)
     ".rawMimeType",
   ];
 
@@ -74,7 +72,7 @@ describe("Recordings - audio recording parameter tests", () => {
   };
 
   const templateRecording: ApiRecordingSet = {
-    type: "audio",
+    type: RecordingType.Audio,
     fileHash: null,
     duration: 60,
     recordingDateTime: "2021-08-24T01:35:00.000Z",
@@ -110,7 +108,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "App has root access": false,
     },
     comment: "A comment",
-    processingState: "FINISHED",
+    processingState: RecordingProcessingState.Finished,
   };
 
   before(() => {
@@ -360,7 +358,7 @@ describe("Recordings - audio recording parameter tests", () => {
   //Grenwich meridian at equator (0 deg long, 0 deg lat)
   //North and south poles (+/-90 deg lat)
   //International date line (+/-180 deg)
-  //Locations retunred inaccurately (rounded to 100m) - issue 82
+  //Locations returned inaccurately (rounded to 100m) - issue 82
   it.skip("Location parameters processed correctly", () => {
     //locations 0-180 degrees long and 0-89 lat accepted
     const recording11 = TestCreateRecordingData(templateRecording);

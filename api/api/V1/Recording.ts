@@ -51,6 +51,7 @@ import {
   parseJSONField,
 } from "../extract-middleware";
 import {
+  anyOf,
   booleanOf,
   idOf,
   integerOf,
@@ -69,6 +70,7 @@ import {
 } from "@typedefs/api/recording";
 import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
+import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json";
 import { Validator } from "jsonschema";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
@@ -85,6 +87,7 @@ import {
 } from "@typedefs/api/trackTag";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
+import logger from "@log";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -508,7 +511,7 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
-   * @apiQuery {Boolean} [include-deleted=false] Include deleted recordings
+   * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
    * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
@@ -531,7 +534,7 @@ export default (app: Application, baseUrl: string) => {
       integerOf(query("limit")).optional(),
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
-      query("include-deleted").default(false).isBoolean().toBoolean(),
+      query("deleted").default(false).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
@@ -544,10 +547,12 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       // FIXME Stop allowing arbitrary where queries
       const where = response.locals.where || {};
-      if (request.query["include-deleted"]) {
-        where.deletedAt = { [Op.ne]: null };
-      } else {
-        where.deletedAt = { [Op.eq]: null };
+      if (request.query.hasOwnProperty("deleted")) {
+        if (request.query.deleted) {
+          where.deletedAt = { [Op.ne]: null };
+        } else {
+          where.deletedAt = { [Op.eq]: null };
+        }
       }
       const result = await recordingUtil.query(
         response.locals.requestUser.id,
@@ -578,7 +583,7 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
-   * @apiQuery {Boolean} [include-deleted=false] Include deleted recordings
+   * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiUse BaseQueryParams
@@ -600,7 +605,7 @@ export default (app: Application, baseUrl: string) => {
       integerOf(query("limit")).optional(),
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
-      query("include-deleted").default(false).isBoolean().toBoolean(),
+      query("deleted").default(false).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
@@ -625,10 +630,12 @@ export default (app: Application, baseUrl: string) => {
           });
         }
       }
-      if (request.query["include-deleted"]) {
-        (userWhere as any).deletedAt = { [Op.ne]: null };
-      } else {
-        (userWhere as any).deletedAt = { [Op.eq]: null };
+      if (request.query.hasOwnProperty("deleted")) {
+        if (request.query.deleted) {
+          (userWhere as any).deletedAt = { [Op.ne]: null };
+        } else {
+          (userWhere as any).deletedAt = { [Op.eq]: null };
+        }
       }
       const countQuery = {
         where: {
@@ -742,6 +749,7 @@ export default (app: Application, baseUrl: string) => {
           return models.Recording.isValidTagMode(value);
         }),
       query("view-mode").optional().equals("user"),
+      query("deleted").default(false).isBoolean().toBoolean(),
       //middleware.parseJSON("filterOptions", query).optional(),
     ]),
     parseJSONField(query("order")),
@@ -749,6 +757,13 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
     async (request: Request, response: Response) => {
       // FIXME - deprecate and generate report client-side from other available API data.
+      if (request.query.hasOwnProperty("deleted")) {
+        if (request.query.deleted) {
+          response.locals.where.deletedAt = { [Op.ne]: null };
+        } else {
+          response.locals.where.deletedAt = { [Op.eq]: null };
+        }
+      }
 
       // 10 minute timeout because the query can take a while to run
       // when the result set is large.
@@ -795,7 +810,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseSuccess
    *
    * @apiParam {Integer} id Id of the recording to get.
-   * @apiQuery {Boolean} [include-deleted=false] Whether or not to include deleted recordings.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted recordings.
    * @apiSuccess {int} fileSize the number of bytes in recording file.
    * @apiSuccess {int} rawSize the number of bytes in raw recording file.
    * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
@@ -811,7 +826,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      query("include-deleted").default(false).isBoolean().toBoolean(),
+      query("deleted").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
@@ -868,13 +883,17 @@ export default (app: Application, baseUrl: string) => {
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
    *
    * @apiParam {Integer} id Id of the recording to get the thumbnail for.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted recordings.
    *
    * @apiSuccess {file} file Raw data stream of the png.
    * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/:id/thumbnail`,
-    validateFields([idOf(param("id"))]),
+    validateFields([
+      idOf(param("id")),
+      query("deleted").default(false).isBoolean().toBoolean(),
+    ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const rec = response.locals.recording;
@@ -910,6 +929,7 @@ export default (app: Application, baseUrl: string) => {
         });
     }
   );
+
   /**
    * @api {delete} /api/v1/recordings/:id Delete an existing recording
    * @apiName DeleteRecording
@@ -917,6 +937,8 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiParam {Integer} id Id of the recording to delete.
+   * @apiQuery {Boolean} [soft-delete=true] Pass false to actually permanently delete this recording, otherwise by default
+   * it will just be marked as deleted and hidden from the UI.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -924,36 +946,47 @@ export default (app: Application, baseUrl: string) => {
   app.delete(
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("id"))]),
+    validateFields([
+      idOf(param("id")),
+      query("soft-delete").default(true).isBoolean().toBoolean(),
+    ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
-      //let deleted = false;
-      const recording: Recording = response.locals.recording;
-      recording.deletedAt = new Date();
-      recording.deletedBy = response.locals.requestUser.id;
-      await recording.save();
-      // const rawFileKey = recording.rawFileKey;
-      // const fileKey = recording.fileKey;
-      // try {
-      //   await recording.destroy();
-      //   deleted = true;
-      // } catch (e) {
-      //   // ..
-      // }
-      // if (deleted && rawFileKey) {
-      //   await util.deleteS3Object(rawFileKey).catch((err) => {
-      //     log.warning(err);
-      //   });
-      // }
-      // if (deleted && fileKey) {
-      //   await util.deleteS3Object(fileKey).catch((err) => {
-      //     log.warning(err);
-      //   });
-      // }
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Deleted recording."],
-      });
+      if (request.query["soft-delete"]) {
+        const recording: Recording = response.locals.recording;
+        recording.deletedAt = new Date();
+        recording.deletedBy = response.locals.requestUser.id;
+        await recording.save();
+        responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Deleted recording."],
+        });
+      } else {
+        let deleted = false;
+        const recording: Recording = response.locals.recording;
+        const rawFileKey = recording.rawFileKey;
+        const fileKey = recording.fileKey;
+        try {
+          await recording.destroy();
+          deleted = true;
+        } catch (e) {
+          // ..
+        }
+        if (deleted && rawFileKey) {
+          await util.deleteS3Object(rawFileKey).catch((err) => {
+            log.warning(err);
+          });
+        }
+        if (deleted && fileKey) {
+          await util.deleteS3Object(fileKey).catch((err) => {
+            log.warning(err);
+          });
+        }
+        responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Hard deleted recording."],
+        });
+      }
     }
   );
 
@@ -995,6 +1028,42 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
+   * @api {patch} /api/v1/recordings/:id/undelete Undelete an existing soft-deleted recording
+   * @apiName UndeleteRecording
+   * @apiGroup Recordings
+   * @apiDescription This call is used for updating deletedAt and deletedBy fields of a previously
+   * soft-deleted recording.
+   *
+   * @apiUse V1UserAuthorizationHeader
+
+   * @apiParam {Integer} id Id of the recording to undelete.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/:id/undelete`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    (request: Request, response: Response, next: NextFunction) => {
+      // Make sure we restrict this to deleted recordings
+      response.locals.deleted = true;
+      next();
+    },
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      await response.locals.recording.update({
+        deletedAt: null,
+        deletedBy: null,
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Undeleted recording."],
+      });
+    }
+  );
+
+  /**
    * @api {post} /api/v1/recordings/:id/tracks Add new track to recording
    * @apiName PostTrack
    * @apiGroup Tracks
@@ -1017,9 +1086,11 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      // FIXME - JSON schema for update data?
-      body("data").isJSON(),
-      body("algorithm").isJSON().optional(),
+      body("data").custom(jsonSchemaOf(ApiTrackDataRequestSchema)),
+      anyOf(
+        body("algorithm").isJSON().optional(),
+        body("algorithm").isArray().optional()
+      ),
     ]),
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),
@@ -1224,9 +1295,12 @@ export default (app: Application, baseUrl: string) => {
       body("confidence").isFloat().toFloat(),
       booleanOf(body("automatic")),
       body("tagJWT").optional().isString(),
-      body("data").optional().isJSON(),
+      anyOf(
+        body("data").isJSON().optional(),
+        body("data").isObject().optional()
+      ),
     ]),
-    // FIXME - JSON schema fo allowed data? At least a limit to how many chars etc?
+    // FIXME - JSON schema for allowed data? At least a limit to how many chars etc?
     parseJSONField(body("data")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (request.body.tagJWT) {
@@ -1237,7 +1311,6 @@ export default (app: Application, baseUrl: string) => {
           response,
           next
         );
-        return next();
       }
     },
     async (request: Request, response: Response) => {
@@ -1248,12 +1321,12 @@ export default (app: Application, baseUrl: string) => {
         track = await loadTrackForTagJWT(request, response);
       } else {
         // Otherwise, just check that the user can update this track.
-        const track = await response.locals.recording.getTrack(
+        track = await response.locals.recording.getTrack(
           request.params.trackId
         );
         if (!track) {
           responseUtil.send(response, {
-            statusCode: 400,
+            statusCode: 403,
             messages: ["No such track."],
           });
           return;
@@ -1377,8 +1450,10 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       body("tag")
-        .custom(jsonSchemaOf(ApiRecordingTagRequestSchema))
-        .withMessage(expectedTypeOf("ApiRecordingTagRequest")),
+        .exists()
+        .withMessage(expectedTypeOf("ApiRecordingTagRequest"))
+        .bail()
+        .custom(jsonSchemaOf(ApiRecordingTagRequestSchema)),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     parseJSONField(body("tag")),

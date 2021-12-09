@@ -1,14 +1,15 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { ApiStationDataReturned } from "@commands/types";
 import { getCreds } from "@commands/server";
 
 import {
   HTTP_OK200,
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL,
+  NOT_NULL_STRING,
 } from "@commands/constants";
+import { ApiStationResponse } from "@typedefs/api/station";
+import { getTestName } from "@commands/names";
 
 describe("Groups - add/update/query/remove stations from group", () => {
   const ADMIN = true;
@@ -24,55 +25,55 @@ describe("Groups - add/update/query/remove stations from group", () => {
   const station3a = { name: "station3", lat: -45.1, lng: 172.3 };
 
   //TODO: These coordinates are back to front.  Issue 73. Reverse once database & API are corrected. Should be X,Y
-  const expectedStation1a: ApiStationDataReturned = {
+  const expectedStation1a: ApiStationResponse = {
     id: 0,
     name: "station1",
-    location: { type: "Point", coordinates: [-45.1, 172.1] },
+    location: { lat: -45.1, lng: 172.1 },
     lastUpdatedById: 0,
     createdAt: null,
-    retiredAt: null,
     updatedAt: null,
-    GroupId: null,
+    groupId: null,
+    groupName: null,
   };
-  const expectedStation1b: ApiStationDataReturned = {
+  const expectedStation1b: ApiStationResponse = {
     id: 0,
     name: "station1",
-    location: { type: "Point", coordinates: [-45.2, 172.1] },
+    location: { lat: -45.2, lng: 172.1 },
     lastUpdatedById: 0,
     createdAt: null,
-    retiredAt: null,
     updatedAt: null,
-    GroupId: null,
+    groupId: null,
+    groupName: null,
   };
-  const expectedStation2a: ApiStationDataReturned = {
+  const expectedStation2a: ApiStationResponse = {
     id: 0,
     name: "station2",
-    location: { type: "Point", coordinates: [-45.1, 172.2] },
+    location: { lat: -45.1, lng: 172.2 },
     lastUpdatedById: 0,
     createdAt: null,
-    retiredAt: null,
     updatedAt: null,
-    GroupId: null,
+    groupId: null,
+    groupName: null,
   };
-  const expectedStation2b: ApiStationDataReturned = {
+  const expectedStation2b: ApiStationResponse = {
     id: 0,
     name: "station2",
-    location: { type: "Point", coordinates: [-45.2, 172.2] },
+    location: { lat: -45.2, lng: 172.2 },
     lastUpdatedById: 0,
     createdAt: null,
-    retiredAt: null,
     updatedAt: null,
-    GroupId: null,
+    groupId: null,
+    groupName: null,
   };
-  const expectedStation3a: ApiStationDataReturned = {
+  const expectedStation3a: ApiStationResponse = {
     id: 0,
     name: "station3",
-    location: { type: "Point", coordinates: [-45.1, 172.3] },
+    location: { lat: -45.1, lng: 172.3 },
     lastUpdatedById: 0,
     createdAt: null,
-    retiredAt: null,
     updatedAt: null,
-    GroupId: null,
+    groupId: null,
+    groupName: null,
   };
 
   before(() => {
@@ -103,8 +104,9 @@ describe("Groups - add/update/query/remove stations from group", () => {
     cy.apiGroupAdd("gsGroupAdmin", "gsGroupA");
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupA", [station1a]).then(
       () => {
-        expectedStation1a["GroupId"] = getCreds("gsGroupA").id;
-        expectedStation1a["retiredAt"] = null;
+        expectedStation1a["groupId"] = getCreds("gsGroupA").id;
+        expectedStation1a["groupName"] = getTestName("gsGroupA");
+        delete expectedStation1a["retiredAt"];
         expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         cy.apiGroupsStationsCheck(
@@ -119,8 +121,9 @@ describe("Groups - add/update/query/remove stations from group", () => {
     //TODO: FAIL - issue 43
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupA", [station1b]).then(
       () => {
-        expectedStation1b["GroupId"] = getCreds("gsGroupA").id;
-        expectedStation1b["retiredAt"] = null;
+        expectedStation1b["groupId"] = getCreds("gsGroupA").id;
+        expectedStation1b["groupName"] = getTestName("gsGroupA");
+        delete expectedStation1b["retiredAt"];
         expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         cy.apiGroupsStationsCheck(
@@ -134,8 +137,9 @@ describe("Groups - add/update/query/remove stations from group", () => {
 
     //TODO: FAIL - Issue 44
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupA", []).then(() => {
-      expectedStation1b["GroupId"] = getCreds("gsGroupA").id;
-      expectedStation1b["retiredAt"] = NOT_NULL;
+      expectedStation1b["groupId"] = getCreds("gsGroupA").id;
+      expectedStation1b["groupName"] = getTestName("gsGroupA");
+      expectedStation1b["retiredAt"] = NOT_NULL_STRING;
       expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
       cy.apiGroupsStationsCheck(
         "gsGroupAdmin",
@@ -150,8 +154,9 @@ describe("Groups - add/update/query/remove stations from group", () => {
     cy.log("Add a station as admin to test with");
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroup", [station1a]).then(
       () => {
-        expectedStation1a["GroupId"] = getCreds("gsGroup").id;
-        expectedStation1a["retiredAt"] = null;
+        expectedStation1a["groupId"] = getCreds("gsGroup").id;
+        expectedStation1a["groupName"] = getTestName("gsGroup");
+        delete expectedStation1a["retiredAt"];
         expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         cy.log("Check member can view station");
@@ -219,8 +224,9 @@ describe("Groups - add/update/query/remove stations from group", () => {
   it("Non group members cannot add, update, retire or query stations", () => {
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroup", [station1a]).then(
       () => {
-        expectedStation1a["GroupId"] = getCreds("gsGroup").id;
-        expectedStation1a["retiredAt"] = null;
+        expectedStation1a["groupId"] = getCreds("gsGroup").id;
+        expectedStation1a["groupName"] = getTestName("gsGroup");
+        delete expectedStation1a["retiredAt"];
         expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         cy.log("Check non-member cannot view station");
@@ -294,11 +300,13 @@ describe("Groups - add/update/query/remove stations from group", () => {
       station1a,
       station2a,
     ]).then(() => {
-      expectedStation1a["GroupId"] = getCreds("gsGroupD").id;
-      expectedStation1a["retiredAt"] = null;
+      expectedStation1a["groupId"] = getCreds("gsGroupD").id;
+      expectedStation1a["groupName"] = getTestName("gsGroupD");
+      delete expectedStation1a["retiredAt"];
       expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-      expectedStation2a["GroupId"] = getCreds("gsGroupD").id;
-      expectedStation2a["retiredAt"] = null;
+      expectedStation2a["groupId"] = getCreds("gsGroupD").id;
+      expectedStation2a["groupName"] = getTestName("gsGroupD");
+      delete expectedStation2a["retiredAt"];
       expectedStation2a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //stations added
@@ -316,11 +324,13 @@ describe("Groups - add/update/query/remove stations from group", () => {
       station1b,
       station2b,
     ]).then(() => {
-      expectedStation1b["GroupId"] = getCreds("gsGroupD").id;
-      expectedStation1b["retiredAt"] = null;
+      expectedStation1b["groupId"] = getCreds("gsGroupD").id;
+      expectedStation1b["groupName"] = getTestName("gsGroupD");
+      delete expectedStation1b["retiredAt"];
       expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-      expectedStation2b["GroupId"] = getCreds("gsGroupD").id;
-      expectedStation2b["retiredAt"] = null;
+      expectedStation2b["groupId"] = getCreds("gsGroupD").id;
+      expectedStation2b["groupName"] = getTestName("gsGroupD");
+      delete expectedStation2b["retiredAt"];
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //stations updated
@@ -335,11 +345,13 @@ describe("Groups - add/update/query/remove stations from group", () => {
     //TODO: FAILS: Issue 44
     cy.log("retire two stations");
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupD", []).then(() => {
-      expectedStation1b["GroupId"] = getCreds("gsGroupD").id;
-      expectedStation1b["retiredAt"] = NOT_NULL;
+      expectedStation1b["groupId"] = getCreds("gsGroupD").id;
+      expectedStation1b["groupName"] = getTestName("gsGroupD");
+      expectedStation1b["retiredAt"] = NOT_NULL_STRING;
       expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-      expectedStation2b["GroupId"] = getCreds("gsGroupD").id;
-      expectedStation2b["retiredAt"] = NOT_NULL;
+      expectedStation2b["groupId"] = getCreds("gsGroupD").id;
+      expectedStation2b["groupName"] = getTestName("gsGroupD");
+      expectedStation2b["retiredAt"] = NOT_NULL_STRING;
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //stations retired
@@ -364,11 +376,13 @@ describe("Groups - add/update/query/remove stations from group", () => {
       station1b,
       station2b,
     ]).then(() => {
-      expectedStation1b["GroupId"] = getCreds("gsGroupE").id;
-      expectedStation1b["retiredAt"] = null;
+      expectedStation1b["groupId"] = getCreds("gsGroupE").id;
+      expectedStation1b["groupName"] = getTestName("gsGroupE");
+      delete expectedStation1b["retiredAt"];
       expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-      expectedStation2b["GroupId"] = getCreds("gsGroupE").id;
-      expectedStation2b["retiredAt"] = null;
+      expectedStation2b["groupId"] = getCreds("gsGroupE").id;
+      expectedStation2b["groupName"] = getTestName("gsGroupE");
+      delete expectedStation2b["retiredAt"];
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //stations updated and added
@@ -383,11 +397,13 @@ describe("Groups - add/update/query/remove stations from group", () => {
     cy.log("retire a station");
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupE", [station1b]).then(
       () => {
-        expectedStation1b["GroupId"] = getCreds("gsGroupE").id;
-        expectedStation1b["retiredAt"] = null;
+        expectedStation1b["groupId"] = getCreds("gsGroupE").id;
+        expectedStation1b["groupName"] = getTestName("gsGroupE");
+        delete expectedStation1b["retiredAt"];
         expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-        expectedStation2b["GroupId"] = getCreds("gsGroupE").id;
-        expectedStation2b["retiredAt"] = NOT_NULL;
+        expectedStation2b["groupId"] = getCreds("gsGroupE").id;
+        expectedStation2b["groupName"] = getTestName("gsGroupE");
+        expectedStation2b["retiredAt"] = NOT_NULL_STRING;
         expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         //stations deleted
@@ -403,14 +419,17 @@ describe("Groups - add/update/query/remove stations from group", () => {
     cy.log("retire and add a station");
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroupE", [station3a]).then(
       () => {
-        expectedStation1b["GroupId"] = getCreds("gsGroupE").id;
-        expectedStation1b["retiredAt"] = NOT_NULL;
+        expectedStation1b["groupId"] = getCreds("gsGroupE").id;
+        expectedStation1b["groupName"] = getTestName("gsGroupE");
+        expectedStation1b["retiredAt"] = NOT_NULL_STRING;
         expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-        expectedStation2b["GroupId"] = getCreds("gsGroupE").id;
-        expectedStation2b["retiredAt"] = NOT_NULL;
+        expectedStation2b["groupId"] = getCreds("gsGroupE").id;
+        expectedStation2b["groupName"] = getTestName("gsGroupE");
+        expectedStation2b["retiredAt"] = NOT_NULL_STRING;
         expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-        expectedStation3a["GroupId"] = getCreds("gsGroupE").id;
-        expectedStation3a["retiredAt"] = null;
+        expectedStation3a["groupId"] = getCreds("gsGroupE").id;
+        expectedStation3a["groupName"] = getTestName("gsGroupE");
+        delete expectedStation3a["retiredAt"];
         expectedStation3a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
         //stations deleted and added
@@ -579,14 +598,17 @@ describe("Groups - add/update/query/remove stations from group", () => {
       station1a,
       station2b,
     ]).then(() => {
-      expectedStation1a["GroupId"] = getCreds("gsGroupF").id;
-      expectedStation1a["retiredAt"] = null;
+      expectedStation1a["groupId"] = getCreds("gsGroupF").id;
+      expectedStation1a["groupName"] = getTestName("gsGroupF");
+      delete expectedStation1a["retiredAt"];
       expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-      expectedStation2a["GroupId"] = getCreds("gsGroupF").id;
-      expectedStation2a["retiredAt"] = NOT_NULL;
+      expectedStation2a["groupId"] = getCreds("gsGroupF").id;
+      expectedStation2a["groupName"] = getTestName("gsGroupF");
+      expectedStation2a["retiredAt"] = NOT_NULL_STRING;
       expectedStation2a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
-      expectedStation2b["GroupId"] = getCreds("gsGroupF").id;
-      expectedStation2b["retiredAt"] = null;
+      expectedStation2b["groupId"] = getCreds("gsGroupF").id;
+      expectedStation2b["groupName"] = getTestName("gsGroupF");
+      delete expectedStation2b["retiredAt"];
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
       //check both retired and new station shows

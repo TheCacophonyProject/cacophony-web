@@ -1,6 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
-import { NOT_NULL } from "@commands/constants";
-import { ApiAlertConditions, ApiRecordingSet } from "@commands/types";
+import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
+import {
+  ApiAlertConditions,
+  ApiRecordingSet,
+  ApiRecordingForProcessing,
+} from "@commands/types";
 import { getCreds } from "@commands/server";
 
 import {
@@ -10,7 +14,6 @@ import {
 } from "@commands/api/recording-tests";
 import {
   ApiAudioRecordingResponse,
-  ApiRecordingProcessingJob,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
@@ -37,8 +40,6 @@ describe("Recordings - processing tests", () => {
     tags: [],
     tracks: [],
     id: 892972,
-    // TODO: Issue 87.  Filehash missing on returned values
-    // fileHash: null,
     rawMimeType: "application/x-cptv",
     processingState: RecordingProcessingState.Finished,
     duration: 16.6666666666667,
@@ -52,44 +53,77 @@ describe("Recordings - processing tests", () => {
   };
 
   const templateExpectedAudioRecording: ApiAudioRecordingResponse = {
+    additionalMetadata: {} as any,
+    airplaneModeOn: false,
+    batteryCharging: "CHARGING",
+    batteryLevel: 99,
+    comment: "This is a comment",
     deviceId: 0,
     deviceName: "",
+    duration: 16.6666666666667,
+    groupId: 246,
     groupName: "",
+    id: 892972,
+    location: { lat: -43.53345, lng: 172.64745 },
+    processing: false,
+    processingState: RecordingProcessingState.Finished,
+    rawMimeType: "application/x-cptv",
+    recordingDateTime: "2021-07-17T20:13:17.248Z",
+    relativeToDusk: 100,
     tags: [],
     tracks: [],
-    id: 892972,
-    // TODO: Issue 87.  Filehash missing on returned values
-    // fileHash: null,
-    rawMimeType: "application/x-cptv",
-    processingState: RecordingProcessingState.Finished,
-    duration: 16.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: { lat: -43.53345, lng: 172.64745 },
     type: RecordingType.Audio,
-    additionalMetadata: {} as any,
-    groupId: 246,
-    comment: "This is a comment",
-    processing: false,
+    version: "99",
   };
 
-  const templateExpectedProcessing: ApiRecordingProcessingJob = {
+  const templateExpectedProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: RecordingType.ThermalRaw,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawMimeType: "application/x-cptv",
+    fileKey: null,
+    fileMimeType: null,
+    processingState: "xxx",
+    processingMeta: null,
+    GroupId: NOT_NULL,
+    DeviceId: NOT_NULL,
+    StationId: null,
+    recordingDateTime: "2021-01-01T01:01:01.018Z",
+    duration: 16.6666666666667,
+    location: null,
     hasAlert: false,
-    updatedAt: "",
+    processingStartTime: NOT_NULL_STRING,
+    processingEndTime: null,
+    processing: true,
+    updatedAt: "xxx",
   };
 
-  const templateExpectedAudioProcessing: ApiRecordingProcessingJob = {
+  const templateExpectedAudioProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: RecordingType.Audio,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawMimeType: "video/mp4",
+    fileKey: null,
+    fileMimeType: null,
+    processingState: "xxx",
+    processingMeta: null,
+    GroupId: NOT_NULL,
+    DeviceId: NOT_NULL,
+    StationId: null,
+    recordingDateTime: "2021-01-01T01:01:01.018Z",
+    duration: 60,
+    location: null,
     hasAlert: false,
+    processingStartTime: NOT_NULL_STRING,
+    processingEndTime: null,
+    processing: true,
     updatedAt: "",
   };
 
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 15.6666666666667,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
@@ -101,11 +135,11 @@ describe("Recordings - processing tests", () => {
     },
     metadata: {},
     comment: "This is a comment",
-    //    processingState: "analyse",
+    //    processingState: RecordingProcessingState.Analyse,
   };
 
   const templateAudioRecording: ApiRecordingSet = {
-    type: "audio",
+    type: RecordingType.Audio,
     fileHash: null,
     duration: 60,
     recordingDateTime: "2021-08-24T01:35:00.000Z",
@@ -140,7 +174,7 @@ describe("Recordings - processing tests", () => {
       "App has root access": false,
     },
     comment: "A comment",
-    //    processingState: "analyse",
+    //    processingState: RecordingProcessingState.Analyse,
   };
 
   const POSSUM_ALERT: ApiAlertConditions[] = [
@@ -174,15 +208,39 @@ describe("Recordings - processing tests", () => {
     });
 
     beforeEach(() => {
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", "analyse");
-      cy.testDeleteRecordingsInState(superuser, "audio", "analyse");
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", "tracking");
-      cy.testDeleteRecordingsInState(superuser, "audio", "tracking");
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", "toMp3");
-      cy.testDeleteRecordingsInState(superuser, "audio", "toMp3");
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.Analyse
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.Analyse
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.Tracking
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.Tracking
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.ToMp3
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.ToMp3
+      );
     });
 
-    it("Check default state for uploaded recording is analyse", () => {
+    it("Check default state for uploaded thermal recording is tracking", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       delete recording1.processingState;
       let expectedRecording1: ApiThermalRecordingResponse;
@@ -221,8 +279,8 @@ describe("Recordings - processing tests", () => {
       let expectedRecording1c: ApiThermalRecordingResponse;
       let expectedRecording1d: ApiThermalRecordingResponse;
       let expectedRecording1e: ApiThermalRecordingResponse;
-      let expectedProcessing1: ApiRecordingProcessingJob;
-      let expectedProcessing1c: ApiRecordingProcessingJob;
+      let expectedProcessing1: ApiRecordingForProcessing;
+      let expectedProcessing1c: ApiRecordingForProcessing;
 
       cy.log("Add recording as device");
       cy.apiRecordingAdd(
@@ -241,12 +299,14 @@ describe("Recordings - processing tests", () => {
         );
         expectedProcessing1 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording1"
+          "rpRecording1",
+          recording1
         );
 
         cy.log("Check recording status is 'tracking'");
         expectedRecording1.processingState = RecordingProcessingState.Tracking;
         expectedRecording1.processing = false;
+        expectedProcessing1.processingState = RecordingProcessingState.Tracking;
         cy.apiRecordingCheck(
           "rpGroupAdmin",
           "rpRecording1",
@@ -255,11 +315,11 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Send for processing (tracking)");
-        expectedProcessing1.processingStartTime = NOT_NULL;
-        expectedProcessing1.updatedAt = NOT_NULL;
+        expectedProcessing1.processingStartTime = NOT_NULL_STRING;
+        expectedProcessing1.updatedAt = NOT_NULL_STRING;
         cy.processingApiCheck(
-          "thermalRaw",
-          "tracking",
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Tracking,
           "rpRecording1",
           expectedProcessing1,
           EXCLUDE_KEYS
@@ -308,13 +368,16 @@ describe("Recordings - processing tests", () => {
         cy.log("Send for processing (analyse)");
         expectedProcessing1c = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording1"
+          "rpRecording1",
+          recording1
         );
-        expectedProcessing1c.processingStartTime = NOT_NULL;
-        expectedProcessing1c.updatedAt = NOT_NULL;
+        expectedProcessing1c.processingStartTime = NOT_NULL_STRING;
+        expectedProcessing1c.updatedAt = NOT_NULL_STRING;
+        expectedProcessing1c.processingState =
+          RecordingProcessingState.AnalyseThermal;
         cy.processingApiCheck(
-          "thermalRaw",
-          "analyse",
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Analyse,
           "rpRecording1",
           expectedProcessing1c,
           EXCLUDE_KEYS
@@ -392,37 +455,47 @@ describe("Recordings - processing tests", () => {
           ).then(() => {
             const expectedProcessing3 = TestCreateExpectedProcessingData(
               templateExpectedProcessing,
-              "rpRecording3"
+              "rpRecording3",
+              recording3
             );
+            expectedProcessing3.processingState =
+              RecordingProcessingState.Tracking;
             const expectedProcessing4 = TestCreateExpectedProcessingData(
               templateExpectedProcessing,
-              "rpRecording4"
+              "rpRecording4",
+              recording4
             );
+            expectedProcessing4.processingState =
+              RecordingProcessingState.Tracking;
+
             const expectedProcessing5 = TestCreateExpectedProcessingData(
               templateExpectedProcessing,
-              "rpRecording5"
+              "rpRecording5",
+              recording5
             );
+            expectedProcessing5.processingState =
+              RecordingProcessingState.Tracking;
 
             cy.log(
               "Check recordings ordered by recordingDateTime (3,5,4) for TRACKING"
             );
             cy.processingApiCheck(
-              "thermalRaw",
-              "tracking",
+              RecordingType.ThermalRaw,
+              RecordingProcessingState.Tracking,
               "rpRecording3",
               expectedProcessing3,
               EXCLUDE_KEYS
             );
             cy.processingApiCheck(
-              "thermalRaw",
-              "tracking",
+              RecordingType.ThermalRaw,
+              RecordingProcessingState.Tracking,
               "rpRecording5",
               expectedProcessing5,
               EXCLUDE_KEYS
             );
             cy.processingApiCheck(
-              "thermalRaw",
-              "tracking",
+              RecordingType.ThermalRaw,
+              RecordingProcessingState.Tracking,
               "rpRecording4",
               expectedProcessing4,
               EXCLUDE_KEYS
@@ -431,31 +504,40 @@ describe("Recordings - processing tests", () => {
             cy.log("mark as done (tracking->analyse)");
             cy.processingApiPut("rpRecording3", true, {}, undefined);
             cy.processingApiPut("rpRecording4", true, {}, undefined);
-            cy.processingApiPut("rpRecording5", true, {}, undefined);
+            cy.processingApiPut("rpRecording5", true, {}, undefined).then(
+              () => {
+                expectedProcessing3.processingState =
+                  RecordingProcessingState.AnalyseThermal;
+                expectedProcessing4.processingState =
+                  RecordingProcessingState.AnalyseThermal;
+                expectedProcessing5.processingState =
+                  RecordingProcessingState.AnalyseThermal;
 
-            cy.log(
-              "Check recordings ordered by recordingDateTime (3,5,4) for ANALYSE"
-            );
-            cy.processingApiCheck(
-              "thermalRaw",
-              "analyse",
-              "rpRecording3",
-              expectedProcessing3,
-              EXCLUDE_KEYS
-            );
-            cy.processingApiCheck(
-              "thermalRaw",
-              "analyse",
-              "rpRecording5",
-              expectedProcessing5,
-              EXCLUDE_KEYS
-            );
-            cy.processingApiCheck(
-              "thermalRaw",
-              "analyse",
-              "rpRecording4",
-              expectedProcessing4,
-              EXCLUDE_KEYS
+                cy.log(
+                  "Check recordings ordered by recordingDateTime (3,5,4) for ANALYSE"
+                );
+                cy.processingApiCheck(
+                  RecordingType.ThermalRaw,
+                  RecordingProcessingState.Analyse,
+                  "rpRecording3",
+                  expectedProcessing3,
+                  EXCLUDE_KEYS
+                );
+                cy.processingApiCheck(
+                  RecordingType.ThermalRaw,
+                  RecordingProcessingState.Analyse,
+                  "rpRecording5",
+                  expectedProcessing5,
+                  EXCLUDE_KEYS
+                );
+                cy.processingApiCheck(
+                  RecordingType.ThermalRaw,
+                  RecordingProcessingState.Analyse,
+                  "rpRecording4",
+                  expectedProcessing4,
+                  EXCLUDE_KEYS
+                );
+              }
             );
           });
         });
@@ -498,50 +580,62 @@ describe("Recordings - processing tests", () => {
             ).then(() => {
               const expectedProcessing6 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording6"
+                "rpRecording6",
+                recording6
               );
+              expectedProcessing6.processingState =
+                RecordingProcessingState.Tracking;
               const expectedProcessing7 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording7"
+                "rpRecording7",
+                recording7
               );
               expectedProcessing7.hasAlert = true;
+              expectedProcessing7.processingState =
+                RecordingProcessingState.Tracking;
               const expectedProcessing8 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording8"
+                "rpRecording8",
+                recording8
               );
+              expectedProcessing8.processingState =
+                RecordingProcessingState.Tracking;
               const expectedProcessing9 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording9"
+                "rpRecording9",
+                recording9
               );
               expectedProcessing9.hasAlert = true;
+              expectedProcessing9.processingState =
+                RecordingProcessingState.Tracking;
 
               cy.log(
                 "Check recordings ordered by alerts first, oldest first (9,7,8,6)"
               );
               cy.processingApiCheck(
-                "thermalRaw",
-                "tracking",
+                RecordingType.ThermalRaw,
+                RecordingProcessingState.Tracking,
                 "rpRecording9",
                 expectedProcessing9,
                 EXCLUDE_KEYS
               );
               cy.processingApiCheck(
-                "thermalRaw",
-                "tracking",
+                RecordingType.ThermalRaw,
+                RecordingProcessingState.Tracking,
                 "rpRecording7",
                 expectedProcessing7,
                 EXCLUDE_KEYS
               );
               cy.processingApiCheck(
-                "thermalRaw",
-                "tracking",
+                RecordingType.ThermalRaw,
+                RecordingProcessingState.Tracking,
                 "rpRecording9",
                 expectedProcessing8,
                 EXCLUDE_KEYS
               );
               cy.processingApiCheck(
-                "thermalRaw",
-                "tracking",
+                RecordingType.ThermalRaw,
+                RecordingProcessingState.Tracking,
                 "rpRecording6",
                 expectedProcessing6,
                 EXCLUDE_KEYS
@@ -561,10 +655,10 @@ describe("Recordings - processing tests", () => {
       recording11.recordingDateTime = "2021-01-01T00:08:00.000Z";
       recording12.recordingDateTime = "2021-01-01T00:07:00.000Z";
       recording13.recordingDateTime = "2021-01-01T00:06:00.000Z";
-      recording10.processingState = "analyse";
-      recording11.processingState = "analyse";
-      recording12.processingState = "analyse";
-      recording13.processingState = "analyse";
+      recording10.processingState = RecordingProcessingState.Analyse;
+      recording11.processingState = RecordingProcessingState.Analyse;
+      recording12.processingState = RecordingProcessingState.Analyse;
+      recording13.processingState = RecordingProcessingState.Analyse;
       cy.apiRecordingAdd(
         "rpCamera1",
         recording10,
@@ -591,48 +685,60 @@ describe("Recordings - processing tests", () => {
             ).then(() => {
               const expectedProcessing10 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording10"
+                "rpRecording10",
+                recording10
               );
+              expectedProcessing10.processingState =
+                RecordingProcessingState.Analyse;
               const expectedProcessing11 = TestCreateExpectedProcessingData(
                 templateExpectedAudioProcessing,
-                "rpRecording11"
+                "rpRecording11",
+                recording11
               );
+              expectedProcessing11.processingState =
+                RecordingProcessingState.Analyse;
               const expectedProcessing12 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
-                "rpRecording12"
+                "rpRecording12",
+                recording12
               );
+              expectedProcessing12.processingState =
+                RecordingProcessingState.Analyse;
               const expectedProcessing13 = TestCreateExpectedProcessingData(
                 templateExpectedAudioProcessing,
-                "rpRecording13"
+                "rpRecording13",
+                recording13
               );
+              expectedProcessing13.processingState =
+                RecordingProcessingState.Analyse;
 
               cy.log(
                 "Check recordings ordered by oldest first with audio and thermal in different queues"
               );
               cy.processingApiCheck(
-                "thermalRaw",
-                "analyse",
+                RecordingType.ThermalRaw,
+                RecordingProcessingState.Analyse,
                 "rpRecording12",
                 expectedProcessing12,
                 EXCLUDE_KEYS
               );
               cy.processingApiCheck(
-                "thermalRaw",
-                "analyse",
+                RecordingType.ThermalRaw,
+                RecordingProcessingState.Analyse,
                 "rpRecording10",
                 expectedProcessing10,
                 EXCLUDE_KEYS
               );
               cy.processingApiCheck(
-                "audio",
-                "analyse",
+                RecordingType.Audio,
+                RecordingProcessingState.Analyse,
                 "rpRecording13",
                 expectedProcessing13,
                 EXCLUDE_KEYS
               );
               cy.processingApiCheck(
-                "audio",
-                "analyse",
+                RecordingType.Audio,
+                RecordingProcessingState.Analyse,
                 "rpRecording11",
                 expectedProcessing11,
                 EXCLUDE_KEYS
@@ -653,8 +759,11 @@ describe("Recordings - processing tests", () => {
       ).then(() => {
         const expectedProcessing18 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording18"
+          "rpRecording18",
+          recording18
         );
+        expectedProcessing18.processingState =
+          RecordingProcessingState.Tracking;
         const expectedRecording18 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording18",
@@ -668,8 +777,8 @@ describe("Recordings - processing tests", () => {
 
         cy.log("Send for processing");
         cy.processingApiCheck(
-          "thermalRaw",
-          "tracking",
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Tracking,
           "rpRecording18",
           expectedProcessing18,
           EXCLUDE_KEYS
@@ -695,6 +804,7 @@ describe("Recordings - processing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
+                positions: [],
               },
             ];
             cy.apiRecordingCheck(
@@ -703,13 +813,15 @@ describe("Recordings - processing tests", () => {
               expectedRecording18,
               EXCLUDE_IDS
             ).then(() => {
+              expectedProcessing18.processingState =
+                RecordingProcessingState.AnalyseThermal;
               cy.log("Complete tracking");
               cy.processingApiPut("rpRecording18", true, {}, undefined);
 
               cy.log("Start analyse");
               cy.processingApiCheck(
-                "thermalRaw",
-                "analyse",
+                RecordingType.ThermalRaw,
+                RecordingProcessingState.Analyse,
                 "rpRecording18",
                 expectedProcessing18,
                 EXCLUDE_KEYS
@@ -735,6 +847,7 @@ describe("Recordings - processing tests", () => {
                   start: 1,
                   end: 4,
                   id: 1,
+                  positions: [],
                 },
               ];
 
@@ -779,8 +892,11 @@ describe("Recordings - processing tests", () => {
       ).then(() => {
         const expectedProcessing19 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording19"
+          "rpRecording19",
+          recording19
         );
+        expectedProcessing19.processingState =
+          RecordingProcessingState.Tracking;
         const expectedRecording19 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording19",
@@ -792,8 +908,8 @@ describe("Recordings - processing tests", () => {
 
         cy.log("Send for processing");
         cy.processingApiCheck(
-          "thermalRaw",
-          "tracking",
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Tracking,
           "rpRecording19",
           expectedProcessing19,
           EXCLUDE_KEYS
@@ -819,6 +935,7 @@ describe("Recordings - processing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
+                positions: [],
               },
             ];
             cy.apiRecordingCheck(
@@ -843,6 +960,7 @@ describe("Recordings - processing tests", () => {
                   start: 1,
                   end: 4,
                   id: 1,
+                  positions: [],
                 },
               ];
               cy.processingApiTracksTagsPost(
@@ -918,14 +1036,17 @@ describe("Recordings - processing tests", () => {
 
         const expectedProcessing20 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording20"
+          "rpRecording20",
+          recording20
         );
+        expectedProcessing20.processingState =
+          RecordingProcessingState.Tracking;
         expectedProcessing20.hasAlert = true;
 
         cy.log("Send for processing and check is flagges as hasAlert");
         cy.processingApiCheck(
-          "thermalRaw",
-          "analyse",
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Analyse,
           "rpRecording20",
           expectedProcessing20,
           EXCLUDE_KEYS
@@ -988,7 +1109,7 @@ describe("Recordings - processing tests", () => {
         batteryLevel: 87,
         batteryCharging: "CHARGING",
         airplaneModeOn: true,
-        type: "audio",
+        type: RecordingType.Audio,
         comment: "This is a new comment",
         // add newFields, change algorithm, set previewSecs to null, leave totalFrames unchanged
         additionalMetadata: {
@@ -1009,8 +1130,11 @@ describe("Recordings - processing tests", () => {
       ).then(() => {
         const expectedProcessing17 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rpRecording17"
+          "rpRecording17",
+          recording17
         );
+        expectedProcessing17.processingState =
+          RecordingProcessingState.Tracking;
         const expectedRecording17 = TestCreateExpectedRecordingData(
           templateExpectedAudioRecording,
           "rpRecording17",
@@ -1047,8 +1171,8 @@ describe("Recordings - processing tests", () => {
         } as any;
 
         cy.processingApiCheck(
-          "thermalRaw",
-          "tracking",
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Tracking,
           "rpRecording17",
           expectedProcessing17,
           EXCLUDE_KEYS
@@ -1071,13 +1195,19 @@ describe("Recordings - processing tests", () => {
 
     it("No files to process handled correctly", () => {
       cy.processingApiCheck(
-        "thermalRaw",
-        "analyse",
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.Analyse,
         "",
         undefined,
         EXCLUDE_KEYS
       );
-      cy.processingApiCheck("audio", "analyse", "", undefined, EXCLUDE_KEYS);
+      cy.processingApiCheck(
+        RecordingType.Audio,
+        RecordingProcessingState.Analyse,
+        "",
+        undefined,
+        EXCLUDE_KEYS
+      );
     });
 
     it("Audio recordings follow correct workflow", () => {
@@ -1085,7 +1215,7 @@ describe("Recordings - processing tests", () => {
       let expectedRecording21: ApiAudioRecordingResponse;
       let expectedRecording21b: ApiAudioRecordingResponse;
       let expectedRecording21c: ApiAudioRecordingResponse;
-      let expectedProcessing21: ApiRecordingProcessingJob;
+      let expectedProcessing21: ApiRecordingForProcessing;
 
       cy.log("Add recording as device");
       cy.apiRecordingAdd(
@@ -1104,12 +1234,13 @@ describe("Recordings - processing tests", () => {
         );
         expectedProcessing21 = TestCreateExpectedProcessingData(
           templateExpectedAudioProcessing,
-          "rpRecording21"
+          "rpRecording21",
+          recording21
         );
+        expectedProcessing21.processingState = RecordingProcessingState.ToMp3;
 
         cy.log("Check recording status is 'toMp3'");
         expectedRecording21.processingState = RecordingProcessingState.ToMp3;
-        delete expectedRecording21.processing;
         expectedRecording21.rawMimeType = "video/mp4";
         cy.apiRecordingCheck(
           "rpGroupAdmin",
@@ -1119,11 +1250,12 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Send for processing (toMp3)");
-        expectedProcessing21.processingStartTime = NOT_NULL;
-        expectedProcessing21.updatedAt = NOT_NULL;
+        expectedProcessing21.processingState = RecordingProcessingState.ToMp3;
+        expectedProcessing21.processingStartTime = NOT_NULL_STRING;
+        expectedProcessing21.updatedAt = NOT_NULL_STRING;
         cy.processingApiCheck(
-          "audio",
-          "toMp3",
+          RecordingType.Audio,
+          RecordingProcessingState.ToMp3,
           "rpRecording21",
           expectedProcessing21,
           EXCLUDE_KEYS
@@ -1152,7 +1284,6 @@ describe("Recordings - processing tests", () => {
             cy.log("Check recording status is 'analyse'");
             expectedRecording21.processingState =
               RecordingProcessingState.Analyse;
-            delete expectedRecording21.processing;
             expectedRecording21.rawMimeType = "video/mp4";
             cy.apiRecordingCheck(
               "rpGroupAdmin",
@@ -1162,11 +1293,13 @@ describe("Recordings - processing tests", () => {
             );
 
             cy.log("Send for processing (analyse)");
-            expectedProcessing21.processingStartTime = NOT_NULL;
-            expectedProcessing21.updatedAt = NOT_NULL;
+            expectedProcessing21.processingStartTime = NOT_NULL_STRING;
+            expectedProcessing21.updatedAt = NOT_NULL_STRING;
+            expectedProcessing21.processingState =
+              RecordingProcessingState.Analyse;
             cy.processingApiCheck(
-              "audio",
-              "analyse",
+              RecordingType.Audio,
+              RecordingProcessingState.Analyse,
               "rpRecording21",
               expectedProcessing21,
               EXCLUDE_KEYS
@@ -1224,11 +1357,11 @@ describe("Recordings - processing tests", () => {
 
     it("Recordings in other states not picked up for processing", () => {
       const recording14 = TestCreateRecordingData(templateRecording);
-      recording14.processingState = "FINIHED";
+      recording14.processingState = RecordingProcessingState.Finished;
       const recording15 = TestCreateRecordingData(templateRecording);
-      recording15.processingState = "CORRUPT";
+      recording15.processingState = RecordingProcessingState.Corrupt;
       const recording16 = TestCreateRecordingData(templateRecording);
-      recording16.processingState = "analyse.failed";
+      recording16.processingState = RecordingProcessingState.AnalyseFailed;
       cy.log("Add recording as device");
       cy.apiRecordingAdd(
         "rpCamera1",
@@ -1252,8 +1385,8 @@ describe("Recordings - processing tests", () => {
               "Check none of above (non-'analyze') recordings are picked up for processing"
             );
             cy.processingApiCheck(
-              "thermalRaw",
-              "analyse",
+              RecordingType.ThermalRaw,
+              RecordingProcessingState.Analyse,
               "",
               undefined,
               EXCLUDE_KEYS
@@ -1263,6 +1396,6 @@ describe("Recordings - processing tests", () => {
       });
     });
   } else {
-    it.skip("NOTE: Processing tests skipped superuser diabled in environment variables", () => {});
+    it.skip("NOTE: Processing tests skipped superuser disabled in environment variables", () => {});
   }
 });

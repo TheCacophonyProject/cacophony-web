@@ -27,4 +27,5 @@ export interface ApiStationResponse {
   retiredAt?: IsoFormattedDateString;
   updatedAt: IsoFormattedDateString;
   groupId: GroupId;
+  groupName: string;
 }

@@ -1,5 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_BadRequest, HTTP_OK200, NOT_NULL } from "@commands/constants";
+import {
+  HTTP_BadRequest,
+  HTTP_OK200,
+  NOT_NULL_STRING,
+} from "@commands/constants";
 
 import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
@@ -11,6 +15,8 @@ import {
 } from "@commands/api/recording-tests";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
+const NO_SAVE_ID = null;
+
 describe("Recording needs-tag (power-tagger)", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
@@ -20,8 +26,8 @@ describe("Recording needs-tag (power-tagger)", () => {
     RecordingId: 34,
     duration: 40,
     fileSize: 1,
-    recordingJWT: NOT_NULL,
-    tagJWT: NOT_NULL,
+    recordingJWT: NOT_NULL_STRING,
+    tagJWT: NOT_NULL_STRING,
     tracks: [],
   };
 
@@ -100,8 +106,12 @@ describe("Recording needs-tag (power-tagger)", () => {
     //If running on dev, delete any recordings already present so that we know
     //what requires tagging
     if (dev_env == true) {
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", undefined);
-      cy.testDeleteRecordingsInState(superuser, "audio", undefined);
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        undefined
+      );
+      cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, undefined);
     }
   });
 
@@ -123,6 +133,7 @@ describe("Recording needs-tag (power-tagger)", () => {
       cy.apiRecordingNeedsTagCheck(
         "rntNonMember",
         undefined,
+        NO_SAVE_ID,
         [expectedRecording1],
         [],
         HTTP_OK200,
@@ -149,7 +160,12 @@ describe("Recording needs-tag (power-tagger)", () => {
           "possum"
         ).then(() => {
           cy.log("Verify this recording not returned");
-          cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, []);
+          cy.apiRecordingNeedsTagCheck(
+            "rntNonMember",
+            undefined,
+            NO_SAVE_ID,
+            []
+          );
         });
       });
     });
@@ -162,7 +178,7 @@ describe("Recording needs-tag (power-tagger)", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it.skip("Can handle no returned matches", () => {
       cy.log("Verify non-member can view this recording");
-      cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, []);
+      cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, NO_SAVE_ID, []);
     });
   } else {
     it.skip("Can handle no returned matches", () => {});
@@ -222,6 +238,7 @@ describe("Recording needs-tag (power-tagger)", () => {
           cy.apiRecordingNeedsTagCheck(
             "rntNonMember",
             "rntCamera1b",
+            NO_SAVE_ID,
             [expectedRecording3b],
             [],
             HTTP_OK200,
@@ -241,6 +258,7 @@ describe("Recording needs-tag (power-tagger)", () => {
             cy.apiRecordingNeedsTagCheck(
               "rntNonMember",
               "rntCamera1b",
+              NO_SAVE_ID,
               [expectedRecording3, expectedRecording4],
               [],
               HTTP_OK200,
@@ -258,6 +276,7 @@ describe("Recording needs-tag (power-tagger)", () => {
     cy.apiRecordingNeedsTagCheck(
       "rntNonMember",
       "999999",
+      NO_SAVE_ID,
       [],
       [],
       HTTP_BadRequest,

@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { ApiRecordingSet } from "@commands/types";
+import { ApiRecordingSet, ApiRecordingForProcessing } from "@commands/types";
 
 import {
   TestCreateExpectedProcessingData,
@@ -13,11 +13,9 @@ import {
   HTTP_Forbidden,
   HTTP_OK200,
   NOT_NULL,
+  NOT_NULL_STRING,
 } from "@commands/constants";
-import {
-  ApiRecordingProcessingJob,
-  ApiThermalRecordingResponse,
-} from "@typedefs/api/recording";
+import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 describe("Recording thumbnails", () => {
@@ -54,7 +52,7 @@ describe("Recording thumbnails", () => {
   };
 
   const templateRecording: ApiRecordingSet = {
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     fileHash: null,
     duration: 40,
     recordingDateTime: "0121-01-01T00:00:00.000Z",
@@ -69,18 +67,30 @@ describe("Recording thumbnails", () => {
       tracks: [],
     },
     comment: "This is a comment2",
-    processingState: "analyse",
+    processingState: RecordingProcessingState.Analyse,
   };
 
-  const templateExpectedProcessing: ApiRecordingProcessingJob = {
+  const templateExpectedProcessing: ApiRecordingForProcessing = {
     id: 475,
     type: RecordingType.ThermalRaw,
     jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    // processingMeta: null, // FIXME - check
+    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
+    rawMimeType: "application/x-cptv",
+    fileKey: null,
+    fileMimeType: null,
+    processingState: RecordingProcessingState.Analyse,
+    processingMeta: null,
+    GroupId: NOT_NULL,
+    DeviceId: NOT_NULL,
+    StationId: null,
+    recordingDateTime: "2021-01-01T01:01:01.018Z",
+    duration: 16.6666666666667,
+    location: null,
     hasAlert: false,
-    processingStartTime: NOT_NULL,
+    processingStartTime: NOT_NULL_STRING,
     processingEndTime: null,
-    updatedAt: NOT_NULL,
+    processing: true,
+    updatedAt: NOT_NULL_STRING,
   };
 
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
@@ -108,8 +118,16 @@ describe("Recording thumbnails", () => {
     });
 
     beforeEach(() => {
-      cy.testDeleteRecordingsInState(superuser, "thermalRaw", "analyse");
-      cy.testDeleteRecordingsInState(superuser, "audio", "analyse");
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.ThermalRaw,
+        RecordingProcessingState.Analyse
+      );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.Audio,
+        RecordingProcessingState.Analyse
+      );
     });
 
     it("Thumbnail generated as expected", () => {
@@ -122,7 +140,8 @@ describe("Recording thumbnails", () => {
       ).then(() => {
         const expectedProcessing01 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rtRecording01"
+          "rtRecording01",
+          recording01
         );
         const expectedRecording01 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
@@ -135,8 +154,8 @@ describe("Recording thumbnails", () => {
 
         cy.log("Send for processing");
         cy.processingApiCheck(
-          "thermalRaw",
-          "analyse",
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Analyse,
           "rtRecording01",
           expectedProcessing01,
           EXCLUDE_KEYS
@@ -174,6 +193,7 @@ describe("Recording thumbnails", () => {
                   start: 1,
                   end: 4,
                   id: 1,
+                  positions: [],
                 },
               ];
 
@@ -286,7 +306,8 @@ describe("Recording thumbnails", () => {
       ).then(() => {
         const expectedProcessing02 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
-          "rtRecording02"
+          "rtRecording02",
+          recording02
         );
         const expectedRecording02 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
@@ -299,8 +320,8 @@ describe("Recording thumbnails", () => {
 
         cy.log("Send for processing");
         cy.processingApiCheck(
-          "thermalRaw",
-          "analyse",
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Analyse,
           "rtRecording02",
           expectedProcessing02,
           EXCLUDE_KEYS
@@ -338,6 +359,7 @@ describe("Recording thumbnails", () => {
                   start: 1,
                   end: 4,
                   id: 1,
+                  positions: [],
                 },
               ];
 

@@ -30,6 +30,7 @@ import {
   extractJwtAuthorisedSuperAdminUser,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrEmailOrId,
+  fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
@@ -45,7 +46,7 @@ interface ApiAuthenticateUserRequestBody {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUserResponseData {
+export interface ApiLoggedInUserResponseData {
   userData: ApiLoggedInUserResponse;
 }
 
@@ -222,5 +223,86 @@ export default function (app: Application) {
         token: token,
       });
     })
+  );
+
+  /**
+   * @api {post} /api/v1/resetpassword Sends an email to a user for resetting password
+   * @apiName ResetPassword
+   * @apiGroup Authentication
+   * @apiParam {String} userName Username for new user.
+   * @apiUse V1ResponseSuccess
+   */
+  app.post(
+    "/resetpassword",
+    validateFields([
+      oneOf(
+        [
+          deprecatedField(validNameOf(body("username"))),
+          validNameOf(body("userName")),
+          validNameOf(body("nameOrEmail")),
+          body("nameOrEmail").isEmail(),
+          body("email").isEmail(),
+        ],
+        "Missing user name in request"
+      ),
+    ]),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
+      body(["username", "userName", "nameOrEmail", "email"])
+    ),
+    async (request: Request, response: Response) => {
+      if (response.locals.user) {
+        response.locals.user.resetPassword();
+      }
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Email has been sent"],
+      });
+    }
+  );
+
+  /**
+   * @api {post} /api/v1/validateToken Validates a reset token
+   * @apiName ValidateToken
+   * @apiGroup Authentication
+   * @apiParam {String} [token] password reset token to validate
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    "/validateToken",
+    validateFields([body("token")]),
+    fetchUnauthorizedRequiredUserByResetToken(body("token")),
+    async (request: Request, response: Response) => {
+      if (response.locals.user.password != response.locals.resetInfo.password) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: ["Your password has already been changed"],
+        });
+      }
+
+      const {
+        id,
+        username,
+        firstName,
+        lastName,
+        email,
+        globalPermission,
+        endUserAgreement,
+      } = response.locals.user;
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: [],
+        userData: {
+          id,
+          userName: username,
+          firstName,
+          lastName,
+          email,
+          globalPermission,
+          endUserAgreement,
+        },
+      });
+    }
   );
 }

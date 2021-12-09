@@ -193,8 +193,8 @@ export default {
         .filter(({ retiredAt }) => retiredAt === null)
         .map(({ name, location }) => ({
           name,
-          latitude: location.coordinates[0],
-          longitude: location.coordinates[1],
+          latitude: location.lat,
+          longitude: location.lng,
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },

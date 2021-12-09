@@ -160,6 +160,7 @@ export interface ModelStaticCommon<T> extends Sequelize.ModelCtor<any> {
   addAssociations: (models: Record<string, ModelStaticCommon<any>>) => void;
   userGetAttributes: readonly string[];
   getDataValue: (fieldName: string) => any;
+  findByPk: (id: number | string) => Promise<T | null>;
 }
 
 const AllModels = {

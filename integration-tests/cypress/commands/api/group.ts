@@ -21,6 +21,7 @@ import {
   ApiStationData,
   ApiStationDataReturned,
 } from "../types";
+import { ApiStationResponse } from "@typedefs/api/station";
 
 Cypress.Commands.add(
   "apiGroupUserAdd",
@@ -460,7 +461,7 @@ Cypress.Commands.add(
   (
     userName: string,
     groupIdOrName: string,
-    expectedStations: ApiStationDataReturned[],
+    expectedStations: ApiStationResponse[],
     excludeCheckOn: any = [],
     statusCode: number = 200,
     additionalChecks: any = {}
@@ -470,8 +471,8 @@ Cypress.Commands.add(
       groupIdOrName,
     });
     let fullGroupName: string;
-    let sortStations: ApiStationDataReturned[];
-    let sortExpectedStations: ApiStationDataReturned[];
+    let sortStations: ApiStationResponse[];
+    let sortExpectedStations: ApiStationResponse[];
 
     //Make group name unique unless we're asked not to
     if (additionalChecks["useRawGroupName"] === true) {

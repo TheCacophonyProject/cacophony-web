@@ -20,10 +20,12 @@ import _ from "lodash";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import Sequelize from "sequelize";
 import { ScheduleId, UserId } from "@typedefs/api/common";
+import { ScheduleConfig } from "@typedefs/api/schedule";
 
 export interface Schedule extends Sequelize.Model, ModelCommon<Schedule> {
   id: ScheduleId;
   UserId: UserId;
+  schedule: ScheduleConfig;
 }
 
 export interface ScheduleStatic extends ModelStaticCommon<Schedule> {
