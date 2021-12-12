@@ -3,3 +3,5 @@
 */node_modules
 /types/jsonSchemas
 /types/build-schemas.js
+/types/schema-cache.json
+/types/api/*.js
