@@ -5,6 +5,7 @@ export const HTTP_Unprocessable = 422;
 export const HTTP_OK200 = 200;
 export const NOT_NULL = -99;
 export const NOT_NULL_STRING = NOT_NULL.toString();
+export const LATEST_END_USER_AGREEMENT = 3;
 
 export const ApiRecordingColumnNames = [
   "Id",
