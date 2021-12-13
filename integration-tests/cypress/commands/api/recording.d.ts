@@ -86,6 +86,7 @@ declare namespace Cypress {
 
     /** Delete from /api/fileProcessing/:id/tracks
      * recordingId is looked up using recordingName
+     * Optionally: add additional parameters from additionalParams
      * Optionally: check for a non-200 statusCode
      */
     processingApiTracksDelete(recordingName: string, statusCode?: number): any;
@@ -246,8 +247,23 @@ declare namespace Cypress {
      * By default function looks up the recording Id using the recordingNameOrId supplied when
      * recording was created
      * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+     * Optionally: add additional paramaters to request (additionalChecks["additionalParams"]={...})
      */
     apiRecordingDelete(
+      userName: string,
+      recordingNameOrId: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /* Undelete a single recording using api/v1/recordings/{id}/undelete GET
+     * Optionally: check for a non-200 statusCode
+     * By default function looks up the recording Id using the recordingNameOrId supplied when
+     * recording was created
+     * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+     * Optionally: add additional paramaters to request (additionalChecks["additionalParams"]={...})
+     */
+    apiRecordingUndelete(
       userName: string,
       recordingNameOrId: string,
       statusCode?: number,

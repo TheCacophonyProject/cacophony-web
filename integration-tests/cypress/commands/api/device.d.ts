@@ -127,6 +127,14 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
+    // FIXME - Delete?  Doesn't disambiguate by group
+    /**
+     * Remove user from a device using /device/users
+     * takes deviceName and looks up the device Id to pass to the API.  Hence deviceName must be unique within test environment
+     * optionally check for a non-200 status code
+     * By default user name is made unique. Specify
+     * additionalChecks.useRawUserName=true to keep name as supplied.
+     */
     apiDeviceUserRemove(
       deviceAdminUser: string,
       userName: string,
@@ -135,10 +143,19 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
+    /**
+     * Register a heartbeat for a device using /devices/heartbeat (POST)
+     * Looks up the JWT using deviceName
+     * Requires nextHeartbeat as an ISO timestamp
+     * Optionally check for a non-200 statusCode
+     * Optionally check for returned messages includes substring of
+     *   additionalChecks["message"]
+     */
     apiDeviceHeartbeat(
       deviceName: string,
-      nextHeartbeat: Date,
-      statusCode: number
+      nextHeartbeat: string,
+      statusCode?: number,
+      additionalChecks?: any
     ): any;
   }
 }
