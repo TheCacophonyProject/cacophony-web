@@ -181,7 +181,6 @@ export default function (app: Application) {
         }
         const nextJob = recording.getNextState();
         recording.set("processingState", nextJob);
-
         // Process extra data from file processing
 
         // FIXME Is fieldUpdates ever set by current processing?
