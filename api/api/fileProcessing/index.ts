@@ -204,6 +204,7 @@ export default function (app: Application) {
           jobKey: null,
           processing: false,
           processingEndTime: new Date().toISOString(), // Still set processingEndTime, since we might want to know how long it took to fail.
+          currentStateStartTime: null,
         });
         await recording.save();
         return response.status(200).json({

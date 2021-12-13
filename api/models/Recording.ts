@@ -208,6 +208,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   DeviceId: DeviceId;
   GroupId: GroupId;
   StationId: StationId;
+  currentStateStartTime: Date | null;
+  processingFailedCount: number;
   // Recording columns end
 
   getFileBaseName: () => string;
@@ -365,6 +367,7 @@ export default function (
     batteryCharging: DataTypes.STRING,
     airplaneModeOn: DataTypes.BOOLEAN,
     processingFailedCount: DataTypes.INTEGER,
+    currentStateStartTime: DataTypes.DATE,
   };
 
   const Recording = sequelize.define(
@@ -415,7 +418,7 @@ export default function (
               {
                 [Op.and]: {
                   processing: true,
-                  processingStartTime: {
+                  currentStateStartTime: {
                     [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
                   },
                   processingFailedCount: { [Op.lt]: MaxProcessingRetries },
@@ -455,11 +458,13 @@ export default function (
           if (!recording.processingStartTime) {
             recording.set("processingStartTime", date.toISOString());
           }
+
           if (recording.processing) {
             recording.processingFailedCount += 1;
           }
           recording.set(
             {
+              currentStateStartTime: date.toISOString(),
               processingEndTime: null,
               jobKey: uuidv4(),
               processing: true,
