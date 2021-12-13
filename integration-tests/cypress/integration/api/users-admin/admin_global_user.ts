@@ -52,7 +52,7 @@ describe("User: manage global access permissions", () => {
 
 
   //NOTE:  This test only looks as enabling and disabling global access
-  //Verifications are tested here against a single endpoint.  Test scripts for individual 
+  //Verifications are tested here against a single endpoint.  Test scripts for individual
   //endpoints must all verify correct superuser access to their endpoint.
   //
   //
@@ -84,7 +84,7 @@ describe("User: manage global access permissions", () => {
     });
   } else {
     it.skip("Super-user can set global read access");
-  };
+  }
 
   //Do not run against a live server as we don't have superuser login
   if (Cypress.env("running_in_a_dev_environment") == true) {
@@ -112,7 +112,7 @@ describe("User: manage global access permissions", () => {
     });
   } else {
     it.skip("Super-user can set global write access");
-  };
+  }
 
   //Do not run against a live server as we don't have superuser login
   if (Cypress.env("running_in_a_dev_environment") == true) {
@@ -128,7 +128,7 @@ describe("User: manage global access permissions", () => {
     });
   } else {
     it.skip("Super-user can set global write access");
-  };
+  }
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Correct handling of bad parameters", () => {
@@ -137,7 +137,7 @@ describe("User: manage global access permissions", () => {
     });
   } else {
     it.skip("Correct handling of bad parameters");
-  };
+  }
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Correct handling of bad parameters", () => {
@@ -146,7 +146,7 @@ describe("User: manage global access permissions", () => {
     });
   } else {
     it.skip("Correct handling of bad parameters");
-  };
+  }
 
   it("Non superuser cannot set global access", () => {
     cy.log("Cannot set global read");

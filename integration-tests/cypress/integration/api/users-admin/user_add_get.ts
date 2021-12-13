@@ -39,8 +39,8 @@ describe("User: add, get", () => {
       });
     });
   } else {
-    it.skip("Super-user should see all users");  
-  };
+    it.skip("Super-user should see all users");
+  }
 
   //ISSUE ##: Can view any user's data
   it.skip("User cannot view another user", () => {
@@ -70,7 +70,7 @@ describe("User: add, get", () => {
       cy.apiUserCheck("uagUser5-1", getTestName("uagUser5-1"), expectedUser);
     });
 
- 
+
   });
 
   it("Invalid parameters in user registration", () => {
@@ -139,7 +139,7 @@ describe("User: add, get", () => {
 
   //TODO: Issue ## - query User by ID not working
   it("Invalid parameters in user get", () => {
-    cy.apiUserAdd("uagUser11").then(() => {      
+    cy.apiUserAdd("uagUser11").then(() => {
       //cy.log("Non existant userId");
       //cy.apiUserCheck("uagUser11", "9999999", undefined, [], HTTP_Forbidden, {useRawUserId: true });
       cy.log("Non existant username");

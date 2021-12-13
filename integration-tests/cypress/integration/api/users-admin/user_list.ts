@@ -11,9 +11,9 @@ import { getCreds } from "@commands/server";
 import { ApiUserResponse } from "@typedefs/api/user";
 
 
-var expectedUser1={} as ApiUserResponse;
-var expectedUser2={} as ApiUserResponse;
-var expectedUser3={} as ApiUserResponse;
+const expectedUser1={} as ApiUserResponse;
+const expectedUser2={} as ApiUserResponse;
+const expectedUser3={} as ApiUserResponse;
 
 describe("User: list", () => {
   const superuser = getCreds("superuser")["name"];
@@ -42,8 +42,8 @@ describe("User: list", () => {
       cy.apiUsersCheck(superuser, [expectedUser1, expectedUser2, expectedUser3],[],HTTP_OK200, { contains: true });
     });
   } else {
-    it.skip("Super-user should see all users");  
-  };
+    it.skip("Super-user should see all users");
+  }
 
   it("Non-superuser cannot view users list", () => {
     cy.apiUsersCheck("uliUser1", [], [], HTTP_Forbidden);
