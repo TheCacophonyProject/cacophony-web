@@ -168,6 +168,7 @@ export default function (app: Application) {
 
       const prevState = recording.processingState;
       if (success) {
+        recording.set("currentStateStartTime", null);
         if (newProcessedFileKey) {
           recording.set("fileKey", newProcessedFileKey);
         }
@@ -180,6 +181,7 @@ export default function (app: Application) {
         }
         const nextJob = recording.getNextState();
         recording.set("processingState", nextJob);
+
         // Process extra data from file processing
 
         // FIXME Is fieldUpdates ever set by current processing?
@@ -204,7 +206,6 @@ export default function (app: Application) {
           jobKey: null,
           processing: false,
           processingEndTime: new Date().toISOString(), // Still set processingEndTime, since we might want to know how long it took to fail.
-          currentStateStartTime: null,
         });
         await recording.save();
         return response.status(200).json({
