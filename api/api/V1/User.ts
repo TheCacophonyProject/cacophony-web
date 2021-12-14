@@ -136,6 +136,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {String} [userName] New username to set.
    * @apiParam {String} [password] New password to set.
    * @apiParam {String} [email] New email to set.
+   * @apiParam {Number} [endUserAgreement] New version of the end user agreement accepted to set.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
