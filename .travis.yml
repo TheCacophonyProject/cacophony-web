@@ -11,8 +11,7 @@ node_js:
   - "lts/*"
 
 env:
-  - IS_CI_ENV=true
-  - CXX=g++-4.8
+  - IS_CI_ENV=true CXX=g++-4.8
 addons:
   apt:
     sources:
