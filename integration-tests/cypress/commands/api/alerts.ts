@@ -8,7 +8,8 @@ import {
   makeAuthorizedRequestWithStatus,
 } from "../server";
 import { logTestDescription } from "../descriptions";
-import { getTestName, getUniq } from "../names";
+import { getTestName } from "../names";
+import { testRunOnApi } from "../server";
 import { ApiAlert } from "../types";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 
@@ -23,23 +24,39 @@ Cypress.Commands.add(
     statusCode: number = 200
   ) => {
     logTestDescription(
-      `Create alert ${getUniq(alertName)} for ${deviceName} `,
+      `Create alert ${getTestName(alertName)} for ${deviceName} `,
       {
         userName,
         deviceName,
         conditions,
         frequency,
-        id: getUniq(alertName),
+        id: getTestName(alertName),
       }
     );
-    apiAlertsPost(
+    const deviceId = getCreds(deviceName).id;
+    const alertJson = {
+      name: getTestName(alertName),
+      conditions: conditions,
+      deviceId: deviceId,
+    };
+
+    if (frequency !== null) {
+      alertJson["frequencySeconds"] = frequency;
+    }
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath("alerts"),
+        body: alertJson,
+      },
       userName,
-      alertName,
-      conditions,
-      deviceName,
-      frequency,
       statusCode
-    );
+    ).then((response) => {
+      if (statusCode === null || statusCode == 200) {
+        saveIdOnly(alertName, response.body.id);
+      }
+    });
   }
 );
 
@@ -48,51 +65,36 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    alertName: string,
+    expectedAlert: any,
     statusCode: number = 200
   ) => {
-    logTestDescription(
-      `Check for expected alert ${getUniq(alertName)} for ${deviceName} `,
-      {
+    logTestDescription(`Check for expected alert for ${deviceName} `, {
         userName,
         deviceName,
-        id: getUniq(alertName),
-      }
-    );
+    });
 
     apiAlertsGet(userName, deviceName, statusCode).then((response) => {
       if (statusCode == 200) {
-        checkExpectedAlerts(response, getUniq(alertName));
+        checkExpectedAlerts(response, expectedAlert);
       }
     });
   }
 );
 
-Cypress.Commands.add(
-  "createExpectedAlert",
-  (
-    name: string,
+export function createExpectedAlert(
     alertName: string,
     frequencySeconds: number,
     conditions: ApiAlertCondition[],
     lastAlert: boolean,
     userName: string,
     deviceName: string
-  ) => {
-    logTestDescription(
-      `Create expected alert ${getUniq(name)} for ${deviceName} `,
-      {
-        userName,
-        deviceName,
-        id: getUniq(name),
-      }
-    );
+): any {
     //alertId will have been saved when we created the alert
-    const alertId = getCreds(getUniq(alertName)).id;
+  const alertId = getCreds(alertName).id;
     const expectedAlert = {
       id: alertId,
       name: alertName,
-      alertName: getUniq(alertName),
+    alertName: getTestName(alertName),
       frequencySeconds: frequencySeconds,
       conditions: conditions,
       lastAlert: lastAlert,
@@ -107,42 +109,7 @@ Cypress.Commands.add(
       },
     };
 
-    Cypress.env("testCreds")[getUniq(name)] = expectedAlert;
-  }
-);
-
-function apiAlertsPost(
-  userName: string,
-  alertName: string,
-  conditions: ApiAlertCondition[],
-  deviceName: string,
-  frequency: number,
-  testFailure: number
-) {
-  const deviceId = getCreds(deviceName).id;
-  const alertJson = {
-    name: getUniq(alertName),
-    conditions: conditions,
-    deviceId: deviceId,
-  };
-
-  if (frequency !== null) {
-    alertJson["frequencySeconds"] = frequency;
-  }
-
-  makeAuthorizedRequestWithStatus(
-    {
-      method: "POST",
-      url: v1ApiPath("alerts"),
-      body: alertJson,
-    },
-    userName,
-    testFailure
-  ).then((response) => {
-    if (testFailure === null || testFailure == 200) {
-      saveIdOnly(getUniq(alertName), response.body.id);
-    }
-  });
+  return expectedAlert;
 }
 
 function apiAlertsGet(
@@ -162,9 +129,8 @@ function apiAlertsGet(
 
 function checkExpectedAlerts(
   response: Cypress.Response<any>,
-  alertName: string
+  expectedAlert: any
 ) {
-  const expectedAlert = getExpectedAlert(alertName);
   expect(response.body.Alerts.length, `Expected 1 alert`).to.eq(1);
   const thealert = response.body.Alerts[0];
 
@@ -215,4 +181,19 @@ function checkExpectedAlerts(
 
 export function getExpectedAlert(name: string): ApiAlert {
   return Cypress.env("testCreds")[name];
+}
+
+export function runReportStoppedDevicesScript() {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    testRunOnApi(
+      '"cp /app/api/config/app_test_default.js /app/api/config/app.js"'
+    );
+    testRunOnApi(
+      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"'
+    );
+  } else {
+    testRunOnApi(
+      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"'
+    );
+  }
 }

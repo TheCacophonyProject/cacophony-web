@@ -3,6 +3,7 @@ import {
   HTTP_Forbidden,
   HTTP_OK200,
   NOT_NULL_STRING,
+  NOT_NULL,
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
@@ -119,6 +120,7 @@ describe("Track Tags: add, check, delete", () => {
     what: "possum",
     userId: 99,
     userName: "xxx",
+    userId: NOT_NULL,
   };
 
   const expectedTag2: ApiHumanTrackTagResponse = {
@@ -134,6 +136,7 @@ describe("Track Tags: add, check, delete", () => {
     what: "cat",
     userId: 99,
     userName: "xxx",
+    userId: NOT_NULL,
   };
 
   const templateExpectedNeedsTagRecording: ApiRecordingNeedsTagReturned = {
