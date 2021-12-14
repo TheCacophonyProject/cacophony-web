@@ -12,6 +12,15 @@ node_js:
 
 env:
   - IS_CI_ENV=true
+  global:
+    - CXX=g++-4.8
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-4.8
 
 install:
   - npm install -g npm apidoc@0.50.0 eslint prettier
