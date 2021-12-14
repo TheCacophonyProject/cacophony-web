@@ -477,8 +477,8 @@ Cypress.Commands.add(
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages.join("|")).to.include(
           additionalChecks["message"]
-    );
-  }
+        );
+      }
     });
   }
 );

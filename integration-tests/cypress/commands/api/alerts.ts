@@ -69,8 +69,8 @@ Cypress.Commands.add(
     statusCode: number = 200
   ) => {
     logTestDescription(`Check for expected alert for ${deviceName} `, {
-        userName,
-        deviceName,
+      userName,
+      deviceName,
     });
 
     apiAlertsGet(userName, deviceName, statusCode).then((response) => {
@@ -82,32 +82,32 @@ Cypress.Commands.add(
 );
 
 export function createExpectedAlert(
-    alertName: string,
-    frequencySeconds: number,
-    conditions: ApiAlertCondition[],
-    lastAlert: boolean,
-    userName: string,
-    deviceName: string
+  alertName: string,
+  frequencySeconds: number,
+  conditions: ApiAlertCondition[],
+  lastAlert: boolean,
+  userName: string,
+  deviceName: string
 ): any {
-    //alertId will have been saved when we created the alert
+  //alertId will have been saved when we created the alert
   const alertId = getCreds(alertName).id;
-    const expectedAlert = {
-      id: alertId,
-      name: alertName,
+  const expectedAlert = {
+    id: alertId,
+    name: alertName,
     alertName: getTestName(alertName),
-      frequencySeconds: frequencySeconds,
-      conditions: conditions,
-      lastAlert: lastAlert,
-      User: {
-        id: getCreds(userName).id,
-        username: getTestName(userName),
-        email: getTestName(userName).toLowerCase() + "@api.created.com",
-      },
-      Device: {
-        id: getCreds(deviceName).id,
-        devicename: getTestName(getCreds(deviceName).name),
-      },
-    };
+    frequencySeconds: frequencySeconds,
+    conditions: conditions,
+    lastAlert: lastAlert,
+    User: {
+      id: getCreds(userName).id,
+      username: getTestName(userName),
+      email: getTestName(userName).toLowerCase() + "@api.created.com",
+    },
+    Device: {
+      id: getCreds(deviceName).id,
+      devicename: getTestName(getCreds(deviceName).name),
+    },
+  };
 
   return expectedAlert;
 }
