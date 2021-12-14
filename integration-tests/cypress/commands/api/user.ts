@@ -20,14 +20,13 @@ Cypress.Commands.add(
   logTestDescription(`Create user '${userName}'`, { user: userName }, true);
 
   const usersUrl = apiPath() + "/api/v1/users";
-  var fullName: string;
-  var email: string;
+  let fullName: string;
 
   if (additionalChecks["useRawUserName"]===true) {
     fullName = userName;
   } else {
     fullName = getTestName(userName);
-  };
+  }
   const data = {
     userName: fullName,
     password: password,
@@ -75,11 +74,11 @@ Cypress.Commands.add(
 
     const url = v1ApiPath(`users`);
 
-    let newUserName=updates["userName"];
+    const newUserName = updates["userName"];
     //make name unique if supplied, unless asked not to
     if (additionalChecks["useRawUserName"]!=true && newUserName!==undefined) {
       updates["userName"]=getTestName(newUserName);
-    };
+    }
 
     makeAuthorizedRequestWithStatus(
       {
@@ -123,7 +122,7 @@ Cypress.Commands.add(
       fullUserName=updateUserNameOrId;
     } else {
       fullUserName=getTestName(updateUserNameOrId);
-    };
+    }
 
     const url = v1ApiPath(`admin/global-permission/${fullUserName}`);
     const data = { permission: permission };
@@ -231,7 +230,7 @@ Cypress.Commands.add(
         if(additionalChecks["contains"] === true) {
           expectedUsers.forEach((expectedUser) => {
             //check expectedUser is in returned usersList
-            let index = response.body.usersList.findIndex( user => user.userName===expectedUser.userName );
+            const index = response.body.usersList.findIndex( user => user.userName===expectedUser.userName );
             expect(index, `User ${expectedUser.userName} is in returned usersList`).to.be.gt(0);
 
             //check expectedUser and usersList[x] entries match
@@ -242,8 +241,8 @@ Cypress.Commands.add(
             );
           });
         } else { //!contains so check for match
-          var sortUsers: ApiUserResponse[];
-          var sortExpectedUsers: ApiUserResponse[];
+          let sortUsers: ApiUserResponse[];
+          let sortExpectedUsers: ApiUserResponse[];
 
 
           if(additionalChecks["doNotSort"] === true) {
@@ -252,14 +251,14 @@ Cypress.Commands.add(
           } else {
             sortUsers = sortArrayOn(response.body.usersList, "userName");
             sortExpectedUsers = sortArrayOn( expectedUsers, "userName");
-          };
+          }
 
           checkTreeStructuresAreEqualExcept(
             sortExpectedUsers,
             sortUsers,
             excludeCheckOn
           );
-        };
+        }
       } else { //statusCode!=200
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages.join("|")).to.include(
@@ -312,7 +311,7 @@ Cypress.Commands.add(
 );
 
 export function TestCreateExpectedUser(userName: string, params: any):ApiLoggedInUserResponse {
-  var user: ApiLoggedInUserResponse =
+  const user: ApiLoggedInUserResponse =
     {
       email: params["email"]||(("p" + getTestName(userName) + "@api.created.com").toLowerCase()),
       userName: getTestName(userName),
@@ -324,4 +323,4 @@ export function TestCreateExpectedUser(userName: string, params: any):ApiLoggedI
     };
 
   return(user);
-};
+}
