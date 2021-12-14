@@ -38,7 +38,6 @@ script:
   - npm run lint || travis_terminate 1;
   # Run api checks
   - cd ../api
-  - npm update apidoc-plugin-ts
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin apidoc-plugin-ts
   - npm run lint || travis_terminate 1;
   # Run integration checks
