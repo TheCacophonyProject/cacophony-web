@@ -47,6 +47,9 @@ import { mapSchedule } from "@api/V1/Schedule";
 interface ApiLoggedInUsersResponseSuccess {
   usersList: ApiLoggedInUserResponse[];
 }
+interface ApiLoggedInUserResponseSuccess {
+  userData: ApiLoggedInUserResponse;
+}
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
   userName: user.username,
@@ -196,7 +199,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -267,7 +270,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ChangePassword
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess} userData
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -279,7 +282,7 @@ export default function (app: Application, baseUrl: string) {
       if (response.locals.user.password != response.locals.resetInfo.password) {
         return responseUtil.send(response, {
           statusCode: 403,
-          messages: ["Your password has alread been changed"],
+          messages: ["Your password has already been changed"],
         });
       }
       const result = await response.locals.user.updatePassword(

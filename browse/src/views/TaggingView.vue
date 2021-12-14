@@ -322,13 +322,12 @@ export default Vue.extend({
       }, 300);
     },
     async getRecording(biasToDeviceId?: DeviceId): Promise<boolean> {
-      try {
-        const recordingResponse = await api.recording.needsTag(biasToDeviceId);
+      const recordingResponse = await api.recording.needsTag(biasToDeviceId);
+      if (recordingResponse.success) {
         const {
           result: { rows },
-          success,
         } = recordingResponse;
-        if (success && rows.length) {
+        if (rows.length) {
           const recording = rows[0];
           this.fileSize = recording.fileSize;
           // Make sure it's not a recording we've seen before and skipped tracks from.
@@ -365,10 +364,8 @@ export default Vue.extend({
           }
           this.currentTrackIndex = nextIndex;
         }
-        return success;
-      } catch (e) {
-        return false;
       }
+      return recordingResponse.success;
     },
   },
   computed: {

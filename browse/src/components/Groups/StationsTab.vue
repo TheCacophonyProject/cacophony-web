@@ -190,7 +190,6 @@ export default {
   computed: {
     stations() {
       return this.items
-        .filter(({ retiredAt }) => retiredAt === null)
         .map(({ name, location }) => ({
           name,
           latitude: location.lat,
