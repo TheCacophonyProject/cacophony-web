@@ -14,19 +14,21 @@ env:
   - IS_CI_ENV=true
 
 install:
-  - npm install -g npm apidoc@0.50.0 eslint prettier @typescript-eslint/parser @typescript-eslint/eslint-plugin
+  - npm install -g npm apidoc@0.50.0 eslint prettier
   - sudo apt update
 
 script:
-  # Run api checks
-  - cd api
-  - npm run lint || travis_terminate 1;
   # Run test checks
-  - cd ../types
+  - cd types
   - npm install
   - npm run lint || travis_terminate 1;
   # Run browse checks
+  - pwd
   - cd ../browse
+  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
+  - npm run lint || travis_terminate 1;
+  # Run api checks
+  - cd ../api
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
   - npm run lint || travis_terminate 1;
   # Run integration checks
@@ -48,6 +50,7 @@ script:
   - npm run release
   - cd ../api
   # Generate api docs
+  - npm update apidoc-plugin-ts
   - npm run apidoc || travis_terminate 1;
 
 before_deploy:
