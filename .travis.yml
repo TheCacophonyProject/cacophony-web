@@ -3,6 +3,17 @@ services:
 
 before_install:
   - echo $DOCKERHUB_TOKEN | docker login --username $DOCKERHUB_USER --password-stdin
+  - npm install -g node-gyp
+
+# Fix issue with bcrypt?
+sudo: required
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - g++-5
+
 
 dist: bionic
 
