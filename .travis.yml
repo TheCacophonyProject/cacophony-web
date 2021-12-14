@@ -3,17 +3,6 @@ services:
 
 before_install:
   - echo $DOCKERHUB_TOKEN | docker login --username $DOCKERHUB_USER --password-stdin
-  - npm install -g node-gyp
-
-# Fix issue with bcrypt?
-sudo: required
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - g++-5
-
 
 dist: bionic
 
@@ -40,6 +29,7 @@ script:
   - npm run lint || travis_terminate 1;
   # Run api checks
   - cd ../api
+  - npm update apidoc-plugin-ts
   - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin apidoc-plugin-ts
   - npm run lint || travis_terminate 1;
   # Run integration checks
