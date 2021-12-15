@@ -163,10 +163,13 @@ export default {
       }
     },
     metaItems: function () {
-      return this.recording.additionalMetadata
-        ?.map((data) => Object.entries(data))
-        .filter(([key, data]) => key !== "tracks")
-        .map(([key, data]) => ({ key, data }));
+      return (
+        this.recording.additionalMetadata
+          ?.map((data) => Object.entries(data))
+          // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
+          .filter(([key, _]) => key !== "tracks")
+          .map(([key, data]) => ({ key, data }))
+      );
     },
   },
 };

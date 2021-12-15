@@ -78,6 +78,7 @@ import { Tag } from "@models/Tag";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   ApiRecordingTagResponse,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ApiRecordingTagRequest,
 } from "@typedefs/api/tag";
 import {
@@ -87,7 +88,6 @@ import {
 } from "@typedefs/api/trackTag";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
-import logger from "@log";
 
 const mapTrackTag = (
   trackTag: TrackTag

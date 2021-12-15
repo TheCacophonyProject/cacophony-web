@@ -1,11 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_BadRequest,
-  LATEST_END_USER_AGREEMENT,
-  HTTP_Unprocessable,
-} from "@commands/constants";
+import { HTTP_BadRequest, HTTP_Unprocessable } from "@commands/constants";
 
 import { TestCreateExpectedUser } from "@commands/api/user";
 

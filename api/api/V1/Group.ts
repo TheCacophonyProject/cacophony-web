@@ -31,7 +31,6 @@ import {
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
-  fetchAuthorizedRequiredStations,
   fetchAuthorizedRequiredStationsForGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";

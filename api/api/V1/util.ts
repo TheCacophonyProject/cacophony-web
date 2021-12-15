@@ -23,13 +23,11 @@ import log from "@log";
 import responseUtil from "./responseUtil";
 import modelsUtil from "@models/util/util";
 import crypto from "crypto";
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
-import models, { ModelCommon, ModelStaticCommon } from "@models";
+import models, { ModelCommon } from "@models";
 import { DeviceType, RecordingType } from "@typedefs/api/consts";
-import { ClientError } from "@api/customErrors";
-import logger from "@log";
 import { User } from "@models/User";
 
 function multipartUpload(
@@ -40,7 +38,7 @@ function multipartUpload(
     key: string
   ) => Promise<ModelCommon<T> | string>
 ) {
-  return async (request: Request, response: Response, next: NextFunction) => {
+  return async (request: Request, response: Response) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;

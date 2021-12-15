@@ -285,6 +285,7 @@ export default {
           track.tags;
       }
     },
+    // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
     async refreshRecordingTagData(tagId: TagId): Promise<void> {
       // Resync all recording tags from the API.
       const tagsResponse = await api.recording.id(this.recording.id);

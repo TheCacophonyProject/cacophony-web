@@ -52,7 +52,7 @@ describe("User: add, get", () => {
   }
 
   //ISSUE ##: Can view any user's data
-  it.skip("User cannot view another user", () => {
+  it("User cannot view another user", () => {
     cy.log("Add first user");
     cy.apiUserAdd("uagUser3-1");
 
@@ -68,7 +68,7 @@ describe("User: add, get", () => {
   });
 
   //ISSUE ##: userNameOrId does not accept ID
-  it.skip("Can query user by either name or id", () => {
+  it("Can query user by either name or id", () => {
     cy.apiUserAdd("uagUser4-1").then(() => {
       const expectedUser = TestCreateExpectedUser("uagUser4-1", {});
       cy.log("Query by name");
