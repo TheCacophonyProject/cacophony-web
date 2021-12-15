@@ -339,13 +339,8 @@ export default Vue.extend({
             return await this.getRecording();
           }
 
-          // FIXME: Dedupe these tracks, we seem to not be getting DISTINCT tracks on the DB side.
           if (recording.tracks.length) {
-            const tracks = recording.tracks.reduce((acc, track) => {
-              acc[track.id] = track;
-              return acc;
-            }, {});
-            this.tracks = Object.values(tracks)
+            this.tracks = recording.tracks
               .map((track) => ({
                 ...(track as object),
                 tags: [],
