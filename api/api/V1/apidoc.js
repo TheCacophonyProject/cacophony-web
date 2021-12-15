@@ -3,23 +3,19 @@
  * @apiSuccess {Boolean} success `true` - Request was successful.
  * @apiSuccess {String[]} messages Messages about the request.
  */
-
 /**
  * @apiDefine V1ResponseError
  * @apiError {Boolean} success `false` - Request failed.
  * @apiError {String[]} messages Messages about the error.
  */
-
 /**
  * @apiDefine V1UserAuthorizationHeader
  * @apiHeader {String} Authorization Signed JSON web token for a user.
  */
-
 /**
  * @apiDefine V1DeviceAuthorizationHeader
  * @apiHeader {String} Authorization Signed JSON web token for a device.
  */
-
 /**
  * @apiDefine BaseQueryParams
  * @apiQuery {JSON} [where] Selection criteria as a map of keys and required value, or a list of possible values.
@@ -31,7 +27,6 @@
  * @apiQuery {Number} [offset] Zero-based page number. Use '0' to get the first page.  Each page has 'limit' number of records.
  * @apiQuery {Number} [limit] Max number of records to be returned.
  */
-
 /**
  * @apiDefine DevicesList
  * @apiSuccessExample {JSON} devices:
@@ -59,13 +54,11 @@
  *  }]
  * }]
  */
-
 /**
  * @apiDefine RecordingOrder
  * @apiParam {JSON} [order] Sorting order for records.
  * * For example, ["recordingDateTime"] or [["recordingDateTime", "ASC"]].
  */
-
 /**
  * @apiDefine MoreQueryParams
  * @apiQuery {JSON} [tags] Only return recordings tagged with one or more of the listed tags (JSON array).
@@ -80,7 +73,6 @@
  * <li>automatic+human: match only recordings which have been both automatically & manually tagged
  * </ul>
  */
-
 /**
  * @apiDefine V1ResponseSuccessQuery
  * @apiSuccess {Boolean} success `true` - Request was successful.
@@ -90,7 +82,6 @@
  * @apiSuccess {Number} count Total number of records which match the query.
  * @apiSuccess {JSON} rows List of details for records which matched the query.
  */
-
 /**
  * @apiDefine MetaDataAndJWT
  * @apiDescription This call returns metadata in JSON format
@@ -98,7 +89,6 @@
  * content. The web token should be used with the
  * [/api/v1/signedUrl API](#api-SignedUrl-GetFile) to retrieve the file.
  */
-
 /**
  * @apiDefine ApiEvent
  * @apiSuccessExample {json} ApiEvent:
@@ -119,7 +109,6 @@
  *    }
  *  }
  */
-
 /**
  * @apiDefine EventExampleDescription
  * @apiParamExample {json} Using description:
@@ -131,7 +120,6 @@
  *    "dateTimes": ["2017-11-13T00:47:51.160Z"]
  *  }
  */
-
 /**
  * @apiDefine EventExampleEventDetailId
  * @apiParamExample {json} Using eventDetailId:
