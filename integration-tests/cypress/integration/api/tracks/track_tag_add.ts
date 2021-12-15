@@ -118,7 +118,6 @@ describe("Track Tags: add, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "possum",
-    userId: 99,
     userName: "xxx",
     userId: NOT_NULL,
   };
@@ -134,7 +133,6 @@ describe("Track Tags: add, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "cat",
-    userId: 99,
     userName: "xxx",
     userId: NOT_NULL,
   };

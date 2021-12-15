@@ -1,13 +1,14 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-type ApiLoggedInUserResponse = import("@typedefs/api/user").ApiLoggedInUserResponse;
+type ApiLoggedInUserResponse =
+  import("@typedefs/api/user").ApiLoggedInUserResponse;
 type ApiUserResponse = import("@typedefs/api/user").ApiUserResponse;
 
 declare namespace Cypress {
   interface Chainable {
     /**
      * Create user and save api credentials further use
-     * By default makes the userName unique. 
+     * By default makes the userName unique.
      * Optionally: Use the raw provided username additionalChecks["useRawUserName"]==true
      * By default unique password, email are generated.  Optionally supply these parameters
      * By default set endUserAgreement to latest value. Optionally supply this parameter
@@ -20,7 +21,7 @@ declare namespace Cypress {
       email?: string,
       endUserAgreement?: number,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -28,10 +29,10 @@ declare namespace Cypress {
      * { userName: "..", password: "..", email: "..." }
      * Optionally, check for non-200 return statusCode
      * Optionally, check that returned error messages[] contains additionalChecks["message"]
-     * By default makes the userNameOrId unique. 
+     * By default makes the userNameOrId unique.
      * Optionally: Use the raw provided userNameOrId additionalChecks["useRawUserName"]==true
      */
-    apiAdminUpdate (
+    apiAdminUpdate(
       userName: string,
       updateUserNameOrId: string,
       permission: string,
@@ -44,7 +45,7 @@ declare namespace Cypress {
      * Optionally, check for non-200 return statusCode
      * Optionally, check that returned error messages[] contains additionalChecks["message"]
      */
-    apiUserUpdate (
+    apiUserUpdate(
       userName: string,
       updates: any,
       statusCode?: number,
@@ -89,7 +90,7 @@ declare namespace Cypress {
     /**
      * Query latest end user agreement version
      */
-    apiEUACheck ( expectedVersion: number ): number;
+    apiEUACheck(expectedVersion: number): number;
 
     /**
      * create a group for the given user (who has already been referenced in the test
