@@ -12,7 +12,7 @@ Cypress.Commands.add(
   (
     userName: string, 
     password: string = "p" + getTestName(userName),
-    email: string = "p" + getTestName(userName) + "@api.created.com",
+    email: string = getTestName(userName) + "@api.created.com",
     endUserAgreement: number = LATEST_END_USER_AGREEMENT,
     statusCode: number = 200,
     additionalChecks: any = {}
@@ -314,7 +314,7 @@ Cypress.Commands.add(
 export function TestCreateExpectedUser(userName: string, params: any):ApiLoggedInUserResponse {
   var user: ApiLoggedInUserResponse =
     {
-      email: params["email"]||(("p" + getTestName(userName) + "@api.created.com").toLowerCase()),
+      email: params["email"]||((getTestName(userName) + "@api.created.com").toLowerCase()),
       userName: getTestName(userName),
       globalPermission: params["globalPermission"]||"off",
       endUserAgreement: params["endUserAgreement"]||LATEST_END_USER_AGREEMENT,

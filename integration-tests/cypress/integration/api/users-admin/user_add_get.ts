@@ -21,8 +21,8 @@ describe("User: add, get", () => {
   });
 
   it("Can register a new user, user can view themselves", () => {
-    cy.apiUserAdd("uagUser1", "uagPassword1", "p"+getTestName("uagUser1")+"@api.created.com", LATEST_END_USER_AGREEMENT).then(() => {
-      const expectedUser=TestCreateExpectedUser("uagUser1", { email: "p"+getTestName("uaguser1")+"@api.created.com", firstName: null, lastName: null, globalPermission: "off", endUserAgreement: LATEST_END_USER_AGREEMENT });
+    cy.apiUserAdd("uagUser1", "uagPassword1", getTestName("uagUser1")+"@api.created.com", LATEST_END_USER_AGREEMENT).then(() => {
+      const expectedUser=TestCreateExpectedUser("uagUser1", { email: getTestName("uaguser1")+"@api.created.com", firstName: null, lastName: null, globalPermission: "off", endUserAgreement: LATEST_END_USER_AGREEMENT });
       cy.apiUserCheck("uagUser1", getTestName("uagUser1"), expectedUser);
     });
   });
@@ -65,8 +65,8 @@ describe("User: add, get", () => {
 
   it("Register accepts all valid parameter values", () => {
     cy.log("end user agreement values");
-    cy.apiUserAdd("uagUser5-1", "uagPassword1", "p"+getTestName("uagUser5-1")+"@api.created.com", 1).then(() => {
-      const expectedUser=TestCreateExpectedUser("uagUser5-1", { email: "p"+getTestName("uaguser5-1")+"@api.created.com", firstName: null, lastName: null, globalPermission: "off", endUserAgreement: 1 });
+    cy.apiUserAdd("uagUser5-1", "uagPassword1", getTestName("uagUser5-1")+"@api.created.com", 1).then(() => {
+      const expectedUser=TestCreateExpectedUser("uagUser5-1", { email: getTestName("uaguser5-1")+"@api.created.com", firstName: null, lastName: null, globalPermission: "off", endUserAgreement: 1 });
       cy.apiUserCheck("uagUser5-1", getTestName("uagUser5-1"), expectedUser);
     });
 
