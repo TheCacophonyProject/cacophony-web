@@ -21,11 +21,11 @@ import { format } from "util";
 import { asyncLocalStorage } from "@/Globals";
 import { NextFunction, Request, Response } from "express";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function errorHandler(
   err: Error,
   request: Request,
   response: Response,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction
 ) {
   if (
