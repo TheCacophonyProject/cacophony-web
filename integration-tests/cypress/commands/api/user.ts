@@ -12,7 +12,7 @@ Cypress.Commands.add(
   (
     userName: string, 
     password: string = "p" + getTestName(userName),
-    email: string = "p" + getTestName(userName) + "@api.created.com",
+    email: string = getTestName(userName) + "@api.created.com",
     endUserAgreement: number = LATEST_END_USER_AGREEMENT,
     statusCode: number = 200,
     additionalChecks: any = {}
@@ -272,6 +272,51 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiResetPassword",
+  (userName: string, statusCode: number = 200, additionalChecks: any = {}) => {
+  const fullUrl= apiPath() + "/resetpassword";
+  let fullName: string;
+
+  if (additionalChecks["useRawUserName"]===true) {
+    fullName = userName;
+  } else {
+    fullName = getTestName(userName);
+  };
+
+  const data = {
+    userName: fullName
+  };
+  
+  cy.request({
+    method: "POST",
+    url: fullUrl,
+      body: data,
+      failOnStatusCode: true,
+    }).then((response) => {
+  });
+});
+
+Cypress.Commands.add(
+  "apiUserChangePassword",
+  (token: string, password: string, statusCode: number = 200, additionalChecks: any = {}) => {
+  const fullUrl= v1ApiPath(`users/changePassword`);
+
+  const data = {
+    token: token,
+    password: password
+  };
+
+  cy.request({
+    method: "PATCH",
+    url: fullUrl,
+      body: data,
+      failOnStatusCode: true,
+    }).then((response) => {
+  });
+});
+
+
+Cypress.Commands.add(
   "testCreateUserGroupAndDevice",
   (userName, group, camera) => {
     logTestDescription(
@@ -314,7 +359,7 @@ Cypress.Commands.add(
 export function TestCreateExpectedUser(userName: string, params: any):ApiLoggedInUserResponse {
   var user: ApiLoggedInUserResponse =
     {
-      email: params["email"]||(("p" + getTestName(userName) + "@api.created.com").toLowerCase()),
+      email: params["email"]||((getTestName(userName) + "@api.created.com").toLowerCase()),
       userName: getTestName(userName),
       globalPermission: params["globalPermission"]||"off",
       endUserAgreement: params["endUserAgreement"]||LATEST_END_USER_AGREEMENT,

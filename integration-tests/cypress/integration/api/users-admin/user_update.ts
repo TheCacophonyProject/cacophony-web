@@ -126,8 +126,8 @@ describe("User: update", () => {
     cy.apiUserAdd("uupUser5a");
     cy.apiUserAdd("uupUser5b").then(() => {
       cy.log("Change to duplicate email");
-      cy.apiUserUpdate("uupUser5b", { email: "p"+getTestName("uupUser5a")+"@api.created.com" }, HTTP_BadRequest, { message: "Email address in use" });
-      cy.apiUserUpdate("uupUser5b", { email: "p"+getTestName("UUPUSER5A")+"@api.created.com" }, HTTP_BadRequest, { message: "Email address in use" });
+      cy.apiUserUpdate("uupUser5b", { email: getTestName("uupUser5a")+"@api.created.com" }, HTTP_BadRequest, { message: "Email address in use" });
+      cy.apiUserUpdate("uupUser5b", { email: getTestName("UUPUSER5A")+"@api.created.com" }, HTTP_BadRequest, { message: "Email address in use" });
     });
   });
 

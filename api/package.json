@@ -63,7 +63,8 @@
     "eslint-utils": "^3.0.0",
     "prettier": "^2.3.2",
     "tsc-watch": "^4.4.0",
-    "typescript": "^4.4.3"
+    "typescript": "^4.4.3",
+    "smtp-tester": "^1.2.0"
   },
   "scripts": {
     "lint": "eslint --ext .ts --ignore-path .gitignore . && (npx prettier --check './**/*.ts' !./apidoc/** || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
