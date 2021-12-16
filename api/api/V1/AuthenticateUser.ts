@@ -226,7 +226,7 @@ export default function (app: Application) {
   );
 
   /**
-   * @api {post} /api/v1/resetpassword Sends an email to a user for resetting password
+   * @api {post} /resetpassword Sends an email to a user for resetting password
    * @apiName ResetPassword
    * @apiGroup Authentication
    * @apiParam {String} userName Username for new user.
@@ -261,7 +261,7 @@ export default function (app: Application) {
   );
 
   /**
-   * @api {post} /api/v1/validateToken Validates a reset token
+   * @api {post} /validateToken Validates a reset token
    * @apiName ValidateToken
    * @apiGroup Authentication
    * @apiParam {String} [token] password reset token to validate

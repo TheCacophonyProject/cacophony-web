@@ -267,7 +267,7 @@ export default function (app: Application, baseUrl: string) {
   });
 
   /**
-   * @api {patch} /api/v1/user/changePassword Updates a users password with reset token authentication
+   * @api {patch} /api/v1/users/changePassword Updates a users password with reset token authentication
    * @apiName ChangePassword
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
