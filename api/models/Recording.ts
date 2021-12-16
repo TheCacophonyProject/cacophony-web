@@ -703,7 +703,7 @@ from (
     // NOTE: We bundle everything we need into this one specialised request.
     const flattenedResult = result.reduce(
       (acc, item) => {
-        if (!acc.tracks.find(({ id }) => id === item.id)) {
+        if (!acc.tracks.find(({ id }) => id === item.TrackId)) {
           acc.RecordingId = item.RecordingId;
           acc.DeviceId = item.DeviceId;
           acc.fileKey = item.rawFileKey;
