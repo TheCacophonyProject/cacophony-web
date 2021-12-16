@@ -19,10 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "../logging";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals";
-import { Request, Response } from "express";
+import {NextFunction, Request, Response} from "express";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function errorHandler(err: Error, request: Request, response: Response) {
+function errorHandler(err: Error, request: Request, response: Response, next: NextFunction) {
   if (
     err instanceof SyntaxError &&
     (err as any).type === "entity.parse.failed"
@@ -86,7 +86,7 @@ class CustomError extends Error {
   }
 }
 
-class ValidationError extends CustomError {
+export class ValidationError extends CustomError {
   errors: Record<string, any>;
   constructor(errors) {
     const message = errors
