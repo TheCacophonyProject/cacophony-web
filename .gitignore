@@ -3,3 +3,4 @@
 */node_modules
 /types/jsonSchemas
 /types/build-schemas.js
+/scripts/audio_files/*
