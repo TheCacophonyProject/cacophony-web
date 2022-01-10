@@ -48,6 +48,10 @@ export default {
       type: Array,
       required: true,
     },
+    groupName: {
+      type: String,
+      required: false,
+    },
     queryPending: {
       type: Boolean,
       required: true,
@@ -132,6 +136,7 @@ export default {
             ? "duskDawn"
             : "dataRow",
           name: visit.classification,
+          groupName: this.groupName,
           fromDate,
           toDate,
           time: fromDate.toLocaleTimeString(),

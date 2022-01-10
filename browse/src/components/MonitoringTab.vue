@@ -6,8 +6,14 @@
         All visits ever recorded for this
         {{ `${deviceName ? "device" : stationName ? "station" : "group"}` }}
       </help>
+      <ExportVisits
+        v-if="visits.length !== 0"
+        :groups="visitsQuery.group"
+        :devices="visitsQuery.device"
+      />
     </h2>
     <VisitsList
+      :group-name="groupName"
       :query-pending="loading"
       :visits="visits"
       :all-loaded="allLoaded"
@@ -27,6 +33,7 @@ import api from "@/api";
 import VisitsList from "@/components/VisitsList.vue";
 import { startOfEvening } from "@/helpers/datetime";
 import SunCalc from "suncalc";
+import ExportVisits from "@/components/Monitoring/ExportVisits.vue";
 const LOAD_PER_PAGE_CARDS = 10;
 
 // TODO(jon): A histogram of activity by hour of the night.  Total visits, and by species.
@@ -198,6 +205,7 @@ const getPowerEventsAndLocationForDevice = async (
 export default {
   name: "MonitoringTab",
   components: {
+    ExportVisits,
     VisitsList,
     Help,
   },
@@ -263,16 +271,26 @@ export default {
             currentVisits.push(extraVisits.shift());
           }
         }
-        // eslint-disable-next-line no-console
-        console.assert(
-          this.visitsQuery.device.length === 1,
-          "Should only have one device"
-        );
-        const { location, devicePowerEvents } =
-          await getPowerEventsAndLocationForDevice(
-            this.visitsQuery.device[0],
-            this.currentPage === 2
+        let location;
+        let devicePowerEvents;
+        if (this.visitsQuery.device.length !== 0) {
+          // eslint-disable-next-line no-console
+          console.assert(
+            this.visitsQuery.device.length === 1,
+            "Should only have one device"
           );
+          const powerEventsAndLocation =
+            await getPowerEventsAndLocationForDevice(
+              this.visitsQuery.device[0],
+              this.currentPage === 2
+            );
+          location = powerEventsAndLocation.location;
+          devicePowerEvents = powerEventsAndLocation.devicePowerEvents;
+        } else {
+          // TODO - Should we try to get an average location for the group?  We can probably assume that devices
+          //  in a group are mostly in the same region, and share sunset/sunrise times.
+          devicePowerEvents = [];
+        }
         const oldestVisit = currentVisits[currentVisits.length - 1];
         const oldestVisitDay = startOfEvening(new Date(oldestVisit.timeStart));
         // Now request again until we get a day that is less than oldestVisitDay.  Split the remaining array into before and after.

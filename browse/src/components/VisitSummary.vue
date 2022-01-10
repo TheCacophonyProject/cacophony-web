@@ -88,6 +88,19 @@
           <font-awesome-icon :icon="['far', 'clock']" size="xs" />
           {{ visitLength }}
         </span>
+        <DeviceLink
+          v-if="isAtGroupLevel"
+          :group-name="item.groupName"
+          type="thermalRaw"
+          :device-name="item.item.device"
+          context="visits"
+        />
+        <StationLink
+          v-if="isAtGroupLevel && item.item.station"
+          :group-name="item.groupName"
+          :station-name="item.item.station"
+          context="visits"
+        />
         <a
           class="recordings-link"
           :href="recordingsListLink"
@@ -104,6 +117,9 @@
 <script lang="ts">
 import { imgSrc } from "@/const";
 import { formatName } from "./VisitsListDayItem.vue";
+import { MonitoringRequest } from "@typedefs/api/monitoring";
+import DeviceLink from "@/components/DeviceLink.vue";
+import StationLink from "@/components/StationLink.vue";
 
 const timeElapsed = (start: Date, end: Date): string => {
   const seconds = Math.round((end.getTime() - start.getTime()) / 1000);
@@ -133,6 +149,7 @@ const timeFormat = (fromDate: Date): string => {
 
 export default {
   name: "VisitSummary",
+  components: { StationLink, DeviceLink },
   props: {
     item: {
       type: Object,
@@ -144,6 +161,10 @@ export default {
     },
   },
   computed: {
+    isAtGroupLevel(): boolean {
+      const group = (this.futureSearchQuery as MonitoringRequest).group;
+      return group && group.length !== 0;
+    },
     imgSrc() {
       if (this.item.name === "none" || this.item.name === "conflicting-tags") {
         return imgSrc("unidentified");

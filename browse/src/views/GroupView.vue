@@ -39,20 +39,20 @@
           @user-removed="(userName) => removedUser(userName)"
         />
       </b-tab>
-      <!--      <b-tab>-->
-      <!--        <template #title>-->
-      <!--          <TabTemplate-->
-      <!--            title="Visits"-->
-      <!--            :isLoading="visitsCountLoading"-->
-      <!--            :value="visitsCount"-->
-      <!--          />-->
-      <!--        </template>-->
-      <!--        <MonitoringTab-->
-      <!--          :loading="visitsCountLoading"-->
-      <!--          :group-name="groupName"-->
-      <!--          :visits-query="visitsQueryFinal"-->
-      <!--        />-->
-      <!--      </b-tab>-->
+      <b-tab lazy v-if="!limitedView">
+        <template #title>
+          <TabTemplate
+            title="Visits"
+            :isLoading="visitsCountLoading"
+            :value="visitsCount"
+          />
+        </template>
+        <MonitoringTab
+          :loading="visitsCountLoading"
+          :group-name="groupName"
+          :visits-query="visitsQueryFinal"
+        />
+      </b-tab>
       <b-tab title="Devices" lazy>
         <template #title>
           <TabTemplate
@@ -127,7 +127,7 @@ import RecordingsTab from "@/components/RecordingsTab.vue";
 import { ApiGroupResponse } from "@typedefs/api/group";
 import { GroupId } from "@typedefs/api/common";
 import { DeviceType } from "@typedefs/api/consts";
-//import MonitoringTab from "@/components/MonitoringTab.vue";
+import MonitoringTab from "@/components/MonitoringTab.vue";
 
 interface GroupViewData {
   group: ApiGroupResponse | null;
@@ -142,7 +142,7 @@ export default {
     StationsTab,
     DevicesTab,
     TabTemplate,
-    //MonitoringTab,
+    MonitoringTab,
   },
   data(): Record<string, any> & GroupViewData {
     return {
@@ -181,6 +181,7 @@ export default {
       if (!this.limitedView) {
         return [
           "users",
+          "visits",
           "devices",
           "stations",
           "recordings",
@@ -284,7 +285,7 @@ export default {
         type: "video",
         device: [],
         group: [this.groupId],
-        perPage: 10,
+        perPage: 100,
         page: 1,
       };
     },

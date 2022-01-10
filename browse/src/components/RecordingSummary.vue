@@ -15,67 +15,19 @@
     </div>
     <div class="recording-main">
       <div class="recording-details">
-        <span class="recording-group">
-          <font-awesome-icon icon="users" size="xs" />
-          <span class="label">
-            <b-link
-              :to="{
-                name: 'group',
-                params: {
-                  groupName: item.groupName,
-                  tabName: 'recordings',
-                },
-              }"
-            >
-              {{ item.groupName }}
-            </b-link>
-          </span>
-        </span>
-        <span class="recording-station" v-if="item.stationName">
-          <font-awesome-icon icon="map-marker-alt" size="xs" />
-          <span class="label">
-            <b-link
-              :to="{
-                name: 'station',
-                params: {
-                  groupName: item.groupName,
-                  stationName: item.stationName,
-                  tabName: 'recordings',
-                },
-              }"
-            >
-              {{ item.stationName }}
-            </b-link>
-          </span>
-        </span>
-        <span class="recording-device">
-          <font-awesome-icon
-            v-if="item.type === 'thermalRaw'"
-            icon="video"
-            class="icon"
-            size="xs"
-          />
-          <font-awesome-icon
-            v-else-if="item.type === 'audio'"
-            icon="music"
-            class="icon"
-            size="xs"
-          />
-          <span class="label">
-            <b-link
-              :to="{
-                name: 'device',
-                params: {
-                  groupName: item.groupName,
-                  deviceName: item.deviceName,
-                  tabName: 'recordings',
-                },
-              }"
-            >
-              {{ item.deviceName }}
-            </b-link>
-          </span>
-        </span>
+        <GroupLink :group-name="item.groupName" context="recordings" />
+        <StationLink
+          v-if="item.stationName"
+          :station-name="item.stationName"
+          :group-name="item.groupName"
+          context="recordings"
+        />
+        <DeviceLink
+          :group-name="item.groupName"
+          :device-name="item.deviceName"
+          context="recordings"
+          :type="item.type"
+        />
         <span class="recording-tracks">
           <b-spinner small v-if="queuedForProcessing || processing" />
           <font-awesome-icon
@@ -232,10 +184,20 @@ import TagBadge from "./TagBadge.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import api from "@/api";
+import DeviceLink from "@/components/DeviceLink.vue";
+import StationLink from "@/components/StationLink.vue";
+import GroupLink from "@/components/GroupLink.vue";
 
 export default {
   name: "RecordingSummary",
-  components: { MapWithPoints, TagBadge, BatteryLevel },
+  components: {
+    GroupLink,
+    StationLink,
+    DeviceLink,
+    MapWithPoints,
+    TagBadge,
+    BatteryLevel,
+  },
   props: {
     item: {
       type: Object,

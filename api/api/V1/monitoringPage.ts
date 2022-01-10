@@ -20,6 +20,27 @@ import { User } from "@models/User";
 import { QueryTypes } from "sequelize";
 import models from "@models";
 
+export interface MonitoringParams {
+  groups: number[];
+  devices: number[];
+  from?: Date;
+  until?: Date;
+  page: number;
+  pageSize: number;
+}
+
+export interface MonitoringPageCriteria {
+  compareAi: string;
+  devices?: number[];
+  groups?: number[];
+  page: number;
+  pagesEstimate: number;
+  pageFrom?: Date;
+  pageUntil?: Date;
+  searchFrom?: Date;
+  searchUntil?: Date;
+}
+
 const GROUPS_AND_DEVICES = "GROUPS_AND_DEVICES";
 const USER_PERMISSIONS = "USER_PERMISSIONS";
 const DATE_SELECTION = "DATE_SELECTION";
@@ -50,36 +71,16 @@ ${WHERE_IS_VISIT_START}
 order by "recordingDateTime" desc
 {${PAGING}}`;
 
-export interface MonitoringParams {
-  user: User;
-  groups?: number[];
-  devices?: number[];
-  from?: Date;
-  until?: Date;
-  page: number;
-  pageSize: number;
-}
-
-export interface MonitoringPageCriteria {
-  compareAi: string;
-  devices?: number[];
-  groups?: number[];
-  page: number;
-  pagesEstimate: number;
-  pageFrom?: Date;
-  pageUntil?: Date;
-  searchFrom?: Date;
-  searchUntil?: Date;
-}
-
 export async function calculateMonitoringPageCriteria(
+  user: User,
   params: MonitoringParams,
   viewAsSuperAdmin: boolean
 ): Promise<MonitoringPageCriteria> {
-  return getDatesForSearch(params, viewAsSuperAdmin);
+  return getDatesForSearch(user, params, viewAsSuperAdmin);
 }
 
 async function getDatesForSearch(
+  user: User,
   params: MonitoringParams,
   viewAsSuperAdmin: boolean
 ): Promise<MonitoringPageCriteria> {
@@ -89,7 +90,7 @@ async function getDatesForSearch(
       params.groups
     ),
     USER_PERMISSIONS: await makeGroupsAndDevicesPermissions(
-      params.user,
+      user,
       viewAsSuperAdmin
     ),
     DATE_SELECTION: makeDatesCriteria(params),
@@ -140,11 +141,11 @@ function createPageCriteria(
     compareAi: "Master",
   };
 
-  if (params.devices) {
+  if (params.devices.length !== 0) {
     criteria.devices = params.devices;
   }
 
-  if (params.groups) {
+  if (params.groups.length !== 0) {
     criteria.groups = params.groups;
   }
 
@@ -162,17 +163,13 @@ function replaceInSQL(
 }
 
 function makeGroupsAndDevicesCriteria(
-  deviceIds?: number[],
-  groupIds?: number[]
+  deviceIds: number[],
+  groupIds: number[]
 ): string {
   const devString =
-    deviceIds && deviceIds.length > 0
-      ? `"DeviceId" IN (${deviceIds.join(",")})`
-      : null;
+    deviceIds.length > 0 ? `"DeviceId" IN (${deviceIds.join(",")})` : null;
   const grpString =
-    groupIds && groupIds.length > 0
-      ? `"GroupId" IN (${groupIds.join(",")})`
-      : null;
+    groupIds.length > 0 ? `"GroupId" IN (${groupIds.join(",")})` : null;
 
   if (devString && grpString) {
     return ` and (${devString} or ${grpString})`;
