@@ -141,7 +141,8 @@ export function geometrySetter(val) {
   if (typeof val === "string") {
     return;
   }
-  this.setDataValue("location", { type: "Point", coordinates: val });
+  // Flip coordinates to X,Y, expected by PostGIS (Longitude, Latitude)
+  this.setDataValue("location", { type: "Point", coordinates: [val[1], val[0]] });
 }
 
 export function getFromId(id: number, user: User, attributes) {
