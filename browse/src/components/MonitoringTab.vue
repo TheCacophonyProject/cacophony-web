@@ -34,6 +34,7 @@ import VisitsList from "@/components/VisitsList.vue";
 import { startOfEvening } from "@/helpers/datetime";
 import SunCalc from "suncalc";
 import ExportVisits from "@/components/Monitoring/ExportVisits.vue";
+import {LatLng} from "@typedefs/api/common";
 const LOAD_PER_PAGE_CARDS = 10;
 
 // TODO(jon): A histogram of activity by hour of the night.  Total visits, and by species.
@@ -48,7 +49,7 @@ interface DateSortable {
 const addSupplementaryEvents = (
   visits: DateSortable[],
   devicePowerEvents: DateSortable[],
-  location?: [number, number]
+  location?: LatLng
 ): DateSortable[] => {
   // Get the days for visits, work out the days covered:
   const daysCovered = new Set();
@@ -113,7 +114,7 @@ const addSupplementaryEvents = (
         //dayDate <= latestVisitDay &&
         dayDate < thisAfternoon
       ) {
-        const times = SunCalc.getTimes(dayDate, location[0], location[1]);
+        const times = SunCalc.getTimes(dayDate, location.lat, location.lng);
         duskDawn.push({
           sortDate: times.sunsetStart,
           timeStart: times.sunsetStart,
@@ -128,7 +129,7 @@ const addSupplementaryEvents = (
         //nextDayDate <= latestVisitDay &&
         nextDayDate <= thisAfternoon
       ) {
-        const times = SunCalc.getTimes(nextDayDate, location[0], location[1]);
+        const times = SunCalc.getTimes(nextDayDate, location.lat, location.lng);
         duskDawn.push({
           sortDate: times.sunrise,
           timeStart: times.sunrise,
@@ -158,10 +159,10 @@ const getPowerEventsAndLocationForDevice = async (
   isFirstPage: boolean
 ): Promise<{
   devicePowerEvents: DateSortable[];
-  location: [number, number] | undefined;
+  location: LatLng | undefined;
 }> => {
   const devicePowerEvents = [];
-  let location;
+  let location: LatLng;
   if (currentVisits.length && device) {
     let nextDay = new Date(currentVisits[0].timeEnd);
 
@@ -181,7 +182,7 @@ const getPowerEventsAndLocationForDevice = async (
       endTime: endOfCurrentDay.toISOString(),
       startTime: beginningOfDayOfEarliestDay.toISOString(),
     };
-    const [latestRecording, powerEvents] = await Promise.all([
+    const [latestRecordingResponse, powerEvents] = await Promise.all([
       // Calculate dusk/dawn, moonrise/set events for range.
       api.recording.latestForDevice(device),
       api.device.getLatestEvents(device, eventParams),
@@ -194,7 +195,9 @@ const getPowerEventsAndLocationForDevice = async (
         timeEnd: row.dateTime,
       }))
     );
-    location = latestRecording.result.rows[0].location?.coordinates;
+    if (latestRecordingResponse.success) {
+      location = latestRecordingResponse.result.rows[0].location;
+    }
   }
   return {
     devicePowerEvents,
@@ -271,7 +274,7 @@ export default {
             currentVisits.push(extraVisits.shift());
           }
         }
-        let location;
+        let location: LatLng | undefined;
         let devicePowerEvents;
         if (this.visitsQuery.device.length !== 0) {
           // eslint-disable-next-line no-console

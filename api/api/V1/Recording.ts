@@ -189,9 +189,9 @@ const mapRecordingResponse = (
     duration: recording.duration,
     location: recording.location && {
       lat: (recording.location as { coordinates: [number, number] })
-        .coordinates[0],
-      lng: (recording.location as { coordinates: [number, number] })
         .coordinates[1],
+      lng: (recording.location as { coordinates: [number, number] })
+        .coordinates[0],
     },
     rawMimeType: recording.rawMimeType,
     comment: ifNotNull(recording.comment),

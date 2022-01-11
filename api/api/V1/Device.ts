@@ -87,8 +87,8 @@ export const mapDeviceResponse = (
     if (device.location) {
       const { coordinates } = device.location;
       mapped.location = {
-        lat: coordinates[0],
-        lng: coordinates[1],
+        lat: coordinates[1],
+        lng: coordinates[0],
       };
     }
     if (device.public) {
