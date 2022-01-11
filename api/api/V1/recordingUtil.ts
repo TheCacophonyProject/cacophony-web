@@ -57,7 +57,13 @@ import SendData = ManagedUpload.SendData;
 import { Track } from "@models/Track";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Tag } from "@models/Tag";
-import {FileId, LatLng, RecordingId, TrackTagId, UserId} from "@typedefs/api/common";
+import {
+  FileId,
+  LatLng,
+  RecordingId,
+  TrackTagId,
+  UserId,
+} from "@typedefs/api/common";
 import { AcceptableTag } from "@typedefs/api/consts";
 import { Device } from "@models/Device";
 import {
@@ -94,10 +100,7 @@ export const MIN_STATION_SEPARATION_METERS = 60;
 export const MAX_DISTANCE_FROM_STATION_FOR_RECORDING =
   MIN_STATION_SEPARATION_METERS / 2;
 
-export function latLngApproxDistance(
-  a: LatLng,
-  b: LatLng
-): number {
+export function latLngApproxDistance(a: LatLng, b: LatLng): number {
   const R = 6371e3;
   // Using 'spherical law of cosines' from https://www.movable-type.co.uk/scripts/latlong.html
   const lat1 = (a.lat * Math.PI) / 180;
@@ -136,8 +139,14 @@ export async function tryToMatchRecordingToStation(
       recordingCoords = recordingCoords.coordinates;
     }
     const distanceToStation = latLngApproxDistance(
-        { lat: station.location.coordinates[1], lng: station.location.coordinates[0] },
-        { lat: (recordingCoords as [number, number])[1], lng: (recordingCoords as [number, number])[0] }
+      {
+        lat: station.location.coordinates[1],
+        lng: station.location.coordinates[0],
+      },
+      {
+        lat: (recordingCoords as [number, number])[1],
+        lng: (recordingCoords as [number, number])[0],
+      }
     );
     stationDistances.push({ distanceToStation, station });
   }

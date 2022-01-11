@@ -51,11 +51,6 @@ const retireMissingStations = (
 
 const EPSILON = 0.000000000001;
 
-interface NamedLocation {
-  name: string;
-  location: [number, number];
-}
-
 const stationLocationHasChanged = (
   oldStation: Station,
   newStation: CreateStationData
@@ -85,10 +80,7 @@ const checkThatStationsAreNotTooCloseTogether = (
   for (const a of allStations) {
     for (const b of allStations) {
       if (a !== b && a.name !== b.name) {
-        if (
-          latLngApproxDistance(a, b) <
-          MIN_STATION_SEPARATION_METERS
-        ) {
+        if (latLngApproxDistance(a, b) < MIN_STATION_SEPARATION_METERS) {
           if (!tooClosePairs.hasOwnProperty(a.name)) {
             tooClosePairs[a.name] = { station: a, others: [] };
           }

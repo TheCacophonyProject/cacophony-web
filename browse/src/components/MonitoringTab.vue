@@ -34,7 +34,7 @@ import VisitsList from "@/components/VisitsList.vue";
 import { startOfEvening } from "@/helpers/datetime";
 import SunCalc from "suncalc";
 import ExportVisits from "@/components/Monitoring/ExportVisits.vue";
-import {LatLng} from "@typedefs/api/common";
+import { LatLng } from "@typedefs/api/common";
 const LOAD_PER_PAGE_CARDS = 10;
 
 // TODO(jon): A histogram of activity by hour of the night.  Total visits, and by species.
