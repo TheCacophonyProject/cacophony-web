@@ -24,6 +24,10 @@ export default {
       duration: 0,
     };
   },
+  beforeDestroy() {
+    this.audio.removeEventListener("loadedmetadata", this.setDuration);
+    this.audio.removeEventListener("timeupdate", this.updateProgress);
+  },
   methods: {
     setDuration(): void {
       this.duration = this.audio.duration;
