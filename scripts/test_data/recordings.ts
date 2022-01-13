@@ -20,11 +20,13 @@ async function createDeviceRecording(
   file: File,
 ) {
   try {
+    console.log("===== createDeviceRecording =====", device);
     const token = await getAdminToken();
     // create multi-part request body for data and file
     const body = new FormData();
     body.append("data", JSON.stringify(data));
     body.append("file", file);
+    console.log(body);
     const response = await fetch(
       recordingDeviceUrl(device),
       {
@@ -35,6 +37,7 @@ async function createDeviceRecording(
         body,
       },
     );
+    console.log(response);
     if (response.ok) {
       const json = await response.json();
       console.log(json);

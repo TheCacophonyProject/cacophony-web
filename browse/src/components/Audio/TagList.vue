@@ -11,6 +11,15 @@
       striped
       responsive
     >
+      <template v-slot:cell(startTime)="row">
+        <span>{{
+          `${Math.floor(
+            (row.item.startTime - (row.item.startTime % 60)) / 60
+          )}:${Math.floor(row.item.startTime % 60)
+            .toString()
+            .padStart(2, "0")}`
+        }}</span>
+      </template>
       <template v-slot:cell(replayButton)="row">
         <font-awesome-icon
           v-b-tooltip.hover="'Replay'"

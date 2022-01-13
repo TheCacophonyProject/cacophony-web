@@ -25,7 +25,7 @@ async function getDevice(
   group: string,
 ): Promise<number | null> {
   try {
-    console.log("===== getDevice =====");
+    console.log(`===== getDevice ${name} ${group} =====`);
     const body = await getBody();
     const res = await fetch(`${devicesUrl}/${name}/in-group/${group}`, body);
     if (res.status === 200) {

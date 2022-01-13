@@ -14,98 +14,116 @@
       </span>
     </div>
     <div class="recording-main">
-      <div class="recording-details">
-        <span class="recording-group">
-          <font-awesome-icon icon="users" size="xs" />
-          <span class="label">
-            <b-link
-              :to="{
-                name: 'group',
-                params: {
-                  groupName: item.groupName,
-                  tabName: 'recordings',
-                },
-              }"
-            >
-              {{ item.groupName }}
-            </b-link>
-          </span>
-        </span>
-        <span class="recording-station" v-if="item.stationName">
-          <font-awesome-icon icon="map-marker-alt" size="xs" />
-          <span class="label">
-            <b-link
-              :to="{
-                name: 'station',
-                params: {
-                  groupName: item.groupName,
-                  stationName: item.stationName,
-                  tabName: 'recordings',
-                },
-              }"
-            >
-              {{ item.stationName }}
-            </b-link>
-          </span>
-        </span>
-        <span class="recording-device">
-          <font-awesome-icon
-            v-if="item.type === 'thermalRaw'"
-            icon="video"
-            class="icon"
-            size="xs"
+      <div>
+        <div class="recording-details">
+          <div>
+            <span class="recording-group">
+              <font-awesome-icon icon="users" size="xs" />
+              <span class="label">
+                <b-link
+                  :to="{
+                    name: 'group',
+                    params: {
+                      groupName: item.groupName,
+                      tabName: 'recordings',
+                    },
+                  }"
+                >
+                  {{ item.groupName }}
+                </b-link>
+              </span>
+            </span>
+            <span class="recording-station" v-if="item.stationName">
+              <font-awesome-icon icon="map-marker-alt" size="xs" />
+              <span class="label">
+                <b-link
+                  :to="{
+                    name: 'station',
+                    params: {
+                      groupName: item.groupName,
+                      stationName: item.stationName,
+                      tabName: 'recordings',
+                    },
+                  }"
+                >
+                  {{ item.stationName }}
+                </b-link>
+              </span>
+            </span>
+            <span class="recording-device">
+              <font-awesome-icon
+                v-if="item.type === 'thermalRaw'"
+                icon="video"
+                class="icon"
+                size="xs"
+              />
+              <font-awesome-icon
+                v-else-if="item.type === 'audio'"
+                icon="music"
+                class="icon"
+                size="xs"
+              />
+              <span class="label">
+                <b-link
+                  :to="{
+                    name: 'device',
+                    params: {
+                      groupName: item.groupName,
+                      deviceName: item.deviceName,
+                      tabName: 'recordings',
+                    },
+                  }"
+                >
+                  {{ item.deviceName }}
+                </b-link>
+              </span>
+            </span>
+            <span class="recording-tracks">
+              <b-spinner small v-if="queuedForProcessing || processing" />
+              <font-awesome-icon
+                icon="stream"
+                size="xs"
+                v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
+              />
+              <span class="label" v-if="queuedForProcessing">Queued</span>
+              <span class="label" v-else-if="processing">Processing</span>
+              <span class="label" v-else-if="corruptedOrFailed">
+                Processing failed
+              </span>
+              <span
+                class="label"
+                v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
+              >
+                {{ item.trackCount }} track<span v-if="item.trackCount > 1"
+                  >s</span
+                >
+              </span>
+              <span class="label" v-else-if="item.type === 'thermalRaw'"
+                >No tracks</span
+              >
+            </span>
+          </div>
+        </div>
+        <div class="recording-tags">
+          <TagBadge
+            v-for="(tag, index) in item.tags"
+            :key="index"
+            :tag-obj="tag"
           />
-          <font-awesome-icon
-            v-else-if="item.type === 'audio'"
-            icon="music"
-            class="icon"
-            size="xs"
-          />
-          <span class="label">
-            <b-link
-              :to="{
-                name: 'device',
-                params: {
-                  groupName: item.groupName,
-                  deviceName: item.deviceName,
-                  tabName: 'recordings',
-                },
-              }"
-            >
-              {{ item.deviceName }}
-            </b-link>
-          </span>
-        </span>
-        <span class="recording-tracks">
-          <b-spinner small v-if="queuedForProcessing || processing" />
-          <font-awesome-icon
-            icon="stream"
-            size="xs"
-            v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
-          />
-          <span class="label" v-if="queuedForProcessing">Queued</span>
-          <span class="label" v-else-if="processing">Processing</span>
-          <span class="label" v-else-if="corruptedOrFailed">
-            Processing failed
-          </span>
-          <span
-            class="label"
-            v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
-          >
-            {{ item.trackCount }} track<span v-if="item.trackCount > 1">s</span>
-          </span>
-          <span class="label" v-else-if="item.type === 'thermalRaw'"
-            >No tracks</span
-          >
-        </span>
+        </div>
       </div>
-      <div v-if="item.tags.length !== 0" class="recording-tags">
-        <TagBadge
-          v-for="(tag, index) in item.tags"
-          :key="index"
-          :tag-obj="tag"
+      <b-container
+        v-b-tooltip.hover
+        title="Cacophony Index: Measures Richness of Audio"
+        class="cacophony-container"
+        v-if="item.type === 'audio' && item.cacophonyIndex !== undefined"
+      >
+        <CacophonyIndexGraph
+          :id="item.id"
+          :cacophonyIndex="item.cacophonyIndex"
+          :simplify="true"
         />
-      </div>
+      </b-container>
       <div class="recording-time-duration">
         <div class="recording-time">
           <font-awesome-icon :icon="['far', 'calendar']" size="xs" />
@@ -230,12 +248,14 @@
 import BatteryLevel from "./BatteryLevel.vue";
 import TagBadge from "./TagBadge.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
+import CacophonyIndexGraph from "@/components/Audio/CacophonyIndexGraph.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
+import { CacophonyIndex } from "@typedefs/api/recording";
 import api from "@/api";
 
 export default {
   name: "RecordingSummary",
-  components: { MapWithPoints, TagBadge, BatteryLevel },
+  components: { MapWithPoints, TagBadge, BatteryLevel, CacophonyIndexGraph },
   props: {
     item: {
       type: Object,
@@ -294,6 +314,9 @@ export default {
           location: this.item.location,
         },
       ];
+    },
+    dataset(): number[] {
+      return [35.4, 54.9, 48.2];
     },
   },
   methods: {
@@ -418,7 +441,8 @@ $recording-side-padding-small: 0.5rem;
 .recording-main {
   flex: 1 1 auto;
   display: flex;
-  flex-flow: column nowrap;
+  justify-content: space-between;
+  flex-wrap: wrap;
   min-height: 110px;
   @include media-breakpoint-up(xs) {
     min-height: unset;
@@ -428,8 +452,12 @@ $recording-side-padding-small: 0.5rem;
     width: 16px;
   }
   .recording-details {
-    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 0.7rem $recording-side-padding;
+    //Put last flex element on the right
+
     @include media-breakpoint-down(xs) {
       padding: 0.25rem $recording-side-padding-small;
     }
@@ -459,6 +487,7 @@ $recording-side-padding-small: 0.5rem;
   .recording-time-duration {
     display: flex;
     flex-flow: row wrap;
+    width: 100%;
     border-top: 1px solid $border-color;
     > div {
       padding: 0.5rem $recording-side-padding;
@@ -499,5 +528,15 @@ $recording-side-padding-small: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.cacophony-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 90px;
+  margin: 0.5em;
+  border-radius: 0.5em;
+  padding: 0.4em;
+  border: 2px solid $gray-300;
 }
 </style>

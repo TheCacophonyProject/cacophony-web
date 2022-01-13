@@ -23,8 +23,13 @@ if (!device) {
 }
 
 for await (const dirEntry of Deno.readDir("./audio_files")) {
-  // Get File with Hash
   const fileName = dirEntry.name;
+  console.log(`=== Reading file ${fileName} ===`);
+  //check is mp3 else skip
+  if (!fileName.endsWith(".mp3")) {
+    console.log(`File ${fileName} is not mp3 file, skipping`);
+    continue;
+  }
   const filePath = `./audio_files/${fileName}`;
   const fileOpen = await Deno.open(filePath);
   const buffer = new Buffer();

@@ -11,6 +11,18 @@
           class="audio"
         />
       </b-col>
+      <b-col
+        cols="12"
+        lg="6"
+        v-if="
+          recording.cacophonyIndex
+        "
+      >
+        <CacophonyIndexGraph
+          :id="recording.id"
+          :cacophonyIndex="recording.cacophonyIndex"
+        />
+      </b-col>
     </b-row>
     <b-row>
       <b-col cols="2" class="db">
@@ -62,6 +74,7 @@ import api from "@api";
 import BasicTags from "../Audio/BasicTags.vue";
 import CustomTags from "../Audio/CustomTags.vue";
 import TagList from "../Audio/TagList.vue";
+import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import {
   ApiRecordingTagRequest,
@@ -79,6 +92,7 @@ export default {
     CustomTags,
     BasicTags,
     TagList,
+    CacophonyIndexGraph,
   },
   props: {
     recording: {
@@ -96,10 +110,7 @@ export default {
   },
   computed: {
     tagItems() {
-      const tags: ApiRecordingTagResponse[] =
-        (this.recording && this.recording.tags) || [];
-      const tagItems = [];
-      tags.map((tag) => {
+      const tagItems = this.recording.tags.map((tag) => {
         const tagItem: any = {};
         if (tag.what) {
           tagItem.what = tag.what;
@@ -116,15 +127,20 @@ export default {
         }
         tagItem.when = new Date(tag.createdAt).toLocaleString();
         const startTime = tag.startTime || 0;
-        tagItem.startTime = `${Math.floor(
-          (startTime - (startTime % 60)) / 60
-        )}:${Math.floor(startTime % 60)
-          .toString()
-          .padStart(2, "0")}`;
+        tagItem.startTime = startTime;
         tagItem.tag = tag;
-        tagItems.push(tagItem);
+        return tagItem;
       });
-      return tagItems;
+      return this.recording.tracks
+        .flatMap((track) => {
+          return track.tags.map((tag) => ({
+            what: tag.what,
+            who: tag.data.name,
+            when: new Date().toLocaleString(),
+            startTime: track.start,
+          }));
+        })
+        .concat(tagItems);
     },
     audioRecording(): ApiAudioRecordingResponse {
       return this.recording;
@@ -213,7 +229,7 @@ export default {
     async done() {
       await this.getNextRecording("either");
     },
-    replay(time) {
+    replay(time: string) {
       this.$refs.player.currentTime = time;
       this.$refs.player.play();
     },

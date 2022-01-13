@@ -100,6 +100,7 @@ import { RecordingType } from "@typedefs/api/consts";
 import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
+  CacophonyIndex,
 } from "@typedefs/api/recording";
 import { LatLng } from "@typedefs/api/common";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
@@ -166,13 +167,12 @@ const collateTags = (
 ): DisplayTag[] => {
   // Build a collection of tagItems - one per animal
   const tagItems: Record<string, DisplayTag> = {};
-  for (let i = 0; i < tags.length; i++) {
-    const tag = tags[i];
-    // FIXME - check if we needed animal here
+  tags.forEach((tag) => {
     const tagName = tag.what || tag.detail; //tag.animal === null ? tag.event : tag.animal;
     const taggerId = tag.taggerId;
     addToListOfTags(tagItems, tagName, tag.automatic, taggerId);
-  }
+  });
+  tracks.forEach((track) => {});
 
   if (tracks) {
     for (let j = 0; j < tracks.length; j++) {
@@ -184,9 +184,11 @@ const collateTags = (
           (tag.data === "Master" ||
             (typeof tag.data === "object" && tag.data.name === "Master"))
       ) as ApiAutomaticTrackTagResponse;
+
       const humanTags = track.tags.filter(
         (tag) => !tag.automatic
       ) as ApiHumanTrackTagResponse[];
+
       // If the same track has one or more human tags, and none of them agree with the AI just show that:
       let humansDisagree = false;
       if (aiTag && humanTags.length !== 0) {
@@ -258,6 +260,7 @@ interface ItemData {
   deviceName: string;
   groupName: string;
   stationName?: string;
+  cacophonyIndex?: CacophonyIndex[];
   location: string;
   dateObj: Date;
   date: string;
@@ -342,6 +345,7 @@ export default {
           type: recording.type,
           deviceName: recording.deviceName,
           groupName: recording.groupName,
+          cacophonyIndex: recording.cacophonyIndex,
           location: parseLocation(recording.location),
           dateObj: thisDate,
           date: toNZDateString(thisDate),

@@ -76,7 +76,7 @@ export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
   type: RecordingType.ThermalRaw;
 }
 
-interface CacophonyIndex {
+export interface CacophonyIndex {
   begin_s: Seconds;
   end_s: Seconds;
   index_percent: number;
@@ -89,6 +89,7 @@ export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
   airplaneModeOn?: boolean;
   relativeToDawn?: number;
   relativeToDusk?: number;
+  cacophonyIndex?: CacophonyIndex[];
   type: RecordingType.Audio;
   fileMimeType?: string;
   additionalMetadata?: ApiAudioRecordingMetadataResponse;
@@ -110,5 +111,6 @@ export interface ApiRecordingUpdateRequest {
   location?: [number, number];
 }
 
-export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
-  ApiAudioRecordingResponse;
+export type ApiGenericRecordingResponse =
+  & ApiThermalRecordingResponse
+  & ApiAudioRecordingResponse;

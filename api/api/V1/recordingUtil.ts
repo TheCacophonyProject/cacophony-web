@@ -661,7 +661,7 @@ export async function reportRecordings(
     const recording_tags = r.Tags.map((t) => t.what || t.detail);
 
     const cacophonyIndex = getCacophonyIndex(r);
-    const speciesClassifications = getSpeciesIdentification(r);
+    const speciesClassifications = await getSpeciesIdentification(r);
 
     const thisRow = [
       r.id,
@@ -718,21 +718,19 @@ export async function reportRecordings(
 }
 
 function getCacophonyIndex(recording: Recording): string | null {
-  return (
-    recording.additionalMetadata as AudioRecordingMetadata
-  )?.analysis?.cacophony_index
-    ?.map((val) => val.index_percent)
-    .join(";");
+  return recording.cacophonyIndex?.map((val) => val.index_percent).join(";");
 }
 
-function getSpeciesIdentification(recording: Recording): string | null {
-  return (
-    recording.additionalMetadata as AudioRecordingMetadata
-  )?.analysis?.species_identify
-    ?.map(
-      (classification) => `${classification.species}: ${classification.begin_s}`
-    )
-    .join(";");
+async function getSpeciesIdentification(recording: Recording): Promise<string> {
+  const tracks = await recording.getTracks({});
+  const trackTags = await Promise.all(
+    tracks.map((track) => {
+      return track.TrackTags.map((tag) => {
+        return tag.what;
+      });
+    })
+  );
+  return trackTags.join(";");
 }
 
 function findLatestEvent(events: Event[]): Event | null {

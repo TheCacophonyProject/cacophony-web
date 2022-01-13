@@ -77,8 +77,8 @@ import { ApiTrackResponse } from "@typedefs/api/track";
 import { Tag } from "@models/Tag";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
-  ApiRecordingTagResponse,
   ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import {
   ApiAutomaticTrackTagResponse,
@@ -216,6 +216,7 @@ const mapRecordingResponse = (
         recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
     };
   } else if (recording.type === RecordingType.Audio) {
+    log.debug(recording);
     return {
       ...commonRecording,
       fileMimeType: ifNotNull(recording.fileMimeType),
@@ -226,6 +227,7 @@ const mapRecordingResponse = (
       batteryLevel: ifNotNull(recording.batteryLevel),
       relativeToDawn: ifNotNull(recording.relativeToDawn),
       relativeToDusk: ifNotNull(recording.relativeToDusk),
+      cacophonyIndex: ifNotNull(recording.cacophonyIndex),
       type: recording.type,
       version: recording.version,
     };
@@ -254,7 +256,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiDefine RecordingMetaData
    *
    * @apiBody {JSON} data[metadata] recording tracks and predictions:
-   *<ul>
+   * <ul>
    * <li>(REQUIRED) tracks - array of track JSON, each track should have
    *   <ul>
    *    <li> positions - array of track positions
@@ -267,7 +269,7 @@ export default (app: Application, baseUrl: string) => {
    *    <li>(OPTIONAL) all_class_confidences - dictionary of confidence per class
    *  </ul>
    *  <li>  algorithm(OPTIONAL) - dictionary describing algorithm, model_name should be present
-   *</ul>
+   * </ul>
    * @apiParamExample {JSON} Example recording track metadata:
    * {
    *  "algorithm"{
@@ -564,6 +566,11 @@ export default (app: Application, baseUrl: string) => {
         request.query.offset && parseInt(request.query.offset as string),
         response.locals.order,
         request.query.type as RecordingType
+      );
+      log.debug(
+        `Query recordings: ${JSON.stringify(request.query)} - ${JSON.stringify(
+          result.rows.map(mapRecordingResponse)
+        )}`
       );
       responseUtil.send(response, {
         statusCode: 200,
@@ -1079,7 +1086,6 @@ export default (app: Application, baseUrl: string) => {
    * @apiSuccess {Integer} algorithmId Id of tracking algorithm used
    *
    * @apiUse V1ResponseError
-   *
    */
   app.post(
     `${apiUrl}/:id/tracks`,
@@ -1160,7 +1166,6 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1UserAuthorizationHeader
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
-   *
    */
   app.delete(
     `${apiUrl}/:id/tracks/:trackId`,
@@ -1212,7 +1217,6 @@ export default (app: Application, baseUrl: string) => {
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
    *
    * @apiUse V1ResponseError
-   *
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replaceTag`,
@@ -1283,7 +1287,6 @@ export default (app: Application, baseUrl: string) => {
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
    *
    * @apiUse V1ResponseError
-   *
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/tags`,

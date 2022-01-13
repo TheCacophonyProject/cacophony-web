@@ -42,19 +42,19 @@ import {
   tryToMatchRecordingToStation,
 } from "@api/V1/recordingUtil";
 import {
+  DeviceId,
   GroupId,
   RecordingId,
-  UserId,
-  TrackId,
-  DeviceId,
   StationId,
+  TrackId,
+  UserId,
 } from "@typedefs/api/common";
 import {
+  AcceptableTag,
   RecordingPermission,
   RecordingProcessingState,
   RecordingType,
   TagMode,
-  AcceptableTag,
 } from "@typedefs/api/consts";
 import { DeviceBatteryChargeState } from "@typedefs/api/device";
 
@@ -182,6 +182,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   relativeToDusk: number;
   version: string;
   additionalMetadata: AudioRecordingMetadata | VideoRecordingMetadata;
+  cacophonyIndex: CacophonyIndex[];
   comment: string;
   public: boolean;
   rawFileKey: string;
@@ -335,6 +336,7 @@ export default function (
     relativeToDusk: DataTypes.INTEGER,
     version: DataTypes.STRING,
     additionalMetadata: DataTypes.JSONB,
+    cacophonyIndex: DataTypes.JSONB,
     comment: DataTypes.STRING,
     deletedAt: DataTypes.DATE,
     deletedBy: DataTypes.INTEGER,
@@ -1413,6 +1415,7 @@ from (
     "GroupId",
     "StationId",
     "rawFileKey",
+    "cacophonyIndex",
     "processing",
     "comment",
   ];
