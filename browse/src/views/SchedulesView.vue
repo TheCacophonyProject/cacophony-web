@@ -79,6 +79,7 @@
         ]"
       >
         <template v-slot:cell(name)="data">
+          <AudioPlayerButton :src-getter="() => getAudioSrc(data.item.id)" />
           {{ data.item.details.name }}
         </template>
         <template v-slot:cell(filename)="data">
@@ -377,7 +378,9 @@ import { ApiScheduleResponse, ScheduleConfig } from "@typedefs/api/schedule";
 import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
 import { FileId, ScheduleId, UserId } from "@typedefs/api/common";
 import { ApiDeviceResponse } from "@typedefs/api/device";
+import AudioPlayerButton from "@/components/AudioPlayerButton.vue";
 import Vue from "vue";
+import config from "../config";
 
 const newSchedule = (): ScheduleConfig => ({
   allsounds: [],
@@ -430,6 +433,9 @@ const populateAllSounds = (
 
 export default {
   name: "SchedulesView",
+  components: {
+    AudioPlayerButton
+  },
   data() {
     return {
       schedules: [],
@@ -531,6 +537,12 @@ export default {
         },
         file: null,
       });
+    },
+    async getAudioSrc(fileId: FileId): Promise<string> {
+      const fileResponse = await api.schedule.getAudioBaitFileSource(fileId);
+      if (fileResponse.success) {
+        return `${config.api}/api/v1/signedUrl?jwt=${fileResponse.result.jwt}`;
+      }
     },
     async uploadNewSounds() {
       this.uploadingSounds = true;

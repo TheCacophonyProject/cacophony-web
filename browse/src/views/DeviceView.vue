@@ -2,48 +2,20 @@
   <b-container fluid class="admin">
     <b-jumbotron class="jumbotron" fluid>
       <h1>
-        <router-link
-          :to="
-            userIsMemberOfGroup
-              ? {
-                  name: 'group',
-                  params: {
-                    groupName,
-                    tabName: 'devices',
-                  },
-                }
-              : {
-                  name: 'group',
-                  params: {
-                    groupName,
-                    tabName: 'limited-devices',
-                  },
-                }
-          "
-        >
-          <font-awesome-icon
-            icon="users"
-            size="xs"
-            style="color: #666; font-size: 16px"
-          />
-          <span>{{ groupName }}</span>
-        </router-link>
+        <GroupLink
+          :group-name="groupName"
+          :context="userIsMemberOfGroup ? 'devices' : 'limited-devices'"
+        />
         <font-awesome-icon
           icon="chevron-right"
           size="xs"
           style="color: #666; font-size: 16px"
         />
-        <font-awesome-icon
-          :icon="
-            device && device.type === 'thermal'
-              ? 'video'
-              : device && device.type === 'audio'
-              ? 'music'
-              : 'microchip'
-          "
-          size="xs"
+        <DeviceLink
+          :group-name="groupName"
+          :device-name="deviceName"
+          :type="device && device.type"
         />
-        <span>{{ deviceName }}</span>
       </h1>
       <p class="lead">Manage this device.</p>
     </b-jumbotron>
@@ -77,6 +49,8 @@ import { isViewingAsOtherUser } from "@/components/NavBar.vue";
 import { shouldViewAsSuperUser } from "@/utils";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import { ApiGroupResponse } from "@typedefs/api/group";
+import GroupLink from "@/components/GroupLink.vue";
+import DeviceLink from "@/components/DeviceLink.vue";
 
 interface DeviceViewData {
   device: ApiDeviceResponse;
@@ -85,7 +59,7 @@ interface DeviceViewData {
 
 export default {
   name: "DeviceView",
-  components: { DeviceDetail, Spinner },
+  components: { DeviceLink, GroupLink, DeviceDetail, Spinner },
   computed: {
     ...mapState({
       currentUser: (state) => (state as any).User.userData,

@@ -38,7 +38,16 @@ const deleteAudiobaitFile = (fileId: FileId): Promise<FetchResult<{}>> => {
   return CacophonyApi.delete(`/api/v1/files/${fileId}`);
 };
 
+const getAudioBaitFileSource = async (
+  fileId: FileId
+): Promise<
+  FetchResult<{ file: ApiAudiobaitFileResponse; fileSize: number; jwt: string }>
+> => {
+  return CacophonyApi.get(`/api/v1/files/${fileId}`);
+};
+
 export default {
+  getAudioBaitFileSource,
   getSchedulesForCurrentUser,
   getAudioBaitFiles,
   createSchedule,

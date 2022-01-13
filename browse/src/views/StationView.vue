@@ -12,38 +12,17 @@
     <b-jumbotron class="jumbotron" fluid>
       <div>
         <h1>
-          <router-link
-            v-if="userIsMemberOfGroup"
-            :to="{
-              name: 'group',
-              params: {
-                groupName,
-                tabName: 'stations',
-              },
-            }"
-          >
-            <font-awesome-icon
-              icon="users"
-              size="xs"
-              style="color: #666; font-size: 16px"
-            />
-            <span>{{ groupName }}</span>
-          </router-link>
-          <span v-else>
-            <font-awesome-icon
-              icon="users"
-              size="xs"
-              style="color: #666; font-size: 16px"
-            />
-            <span>{{ groupName }}</span>
-          </span>
+          <GroupLink
+            :group-name="groupName"
+            context="stations"
+            :use-link="userIsMemberOfGroup"
+          />
           <font-awesome-icon
             icon="chevron-right"
             size="xs"
             style="color: #666; font-size: 16px"
           />
-          <font-awesome-icon icon="map-marker-alt" size="xs" />
-          <span>{{ stationName }}</span>
+          <StationLink :group-name="groupName" :station-name="stationName" />
           <span v-if="stationIsRetired">(retired)</span>
         </h1>
       </div>
@@ -112,12 +91,16 @@ import { latLng } from "leaflet";
 import { isViewingAsOtherUser } from "@/components/NavBar.vue";
 import { shouldViewAsSuperUser } from "@/utils";
 import MapWithPoints from "@/components/MapWithPoints.vue";
+import GroupLink from "@/components/GroupLink.vue";
+import StationLink from "@/components/StationLink.vue";
 
 // TODO(jon): Implement visits/monitoring page for stations - this will require API changes.
 
 export default {
   name: "StationView",
   components: {
+    StationLink,
+    GroupLink,
     MapWithPoints,
     Spinner,
     TabTemplate,

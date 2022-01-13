@@ -20,3 +20,4 @@ export interface ApiScheduleResponse {
   id: ScheduleId;
   schedule: ScheduleConfig;
 }
+

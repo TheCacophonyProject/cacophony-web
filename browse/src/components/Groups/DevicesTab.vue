@@ -9,13 +9,12 @@
     </h2>
     <div>
       <p v-if="groupHasDevices">
-        Devices associated with <strong>{{ groupName }}</strong
-        >:
+        Devices associated with
+        <strong><GroupLink :group-name="groupName" /></strong>:
       </p>
       <p v-else class="description-and-button-wrapper">
-        There are currently no devices associated with&nbsp;<strong>{{
-          groupName
-        }}</strong
+        There are currently no devices associated with&nbsp;<strong
+          ><GroupLink :group-name="groupName" /></strong
         >.
       </p>
     </div>
@@ -35,11 +34,6 @@
           formatter: sortBool,
           sortByFormatted: true,
         },
-        {
-          key: 'type',
-          label: 'Device Type',
-          sortable: true,
-        },
       ]"
       sort-by="deviceName"
       hover
@@ -48,43 +42,12 @@
       data-cy="devices-table"
     >
       <template v-slot:cell(deviceName)="row">
-        <b-link
-          :to="{
-            name: 'device',
-            params: {
-              deviceName: row.item.deviceName,
-              groupName,
-              tabName: row.item.type === 'thermal' ? 'visits' : 'recordings',
-            },
-          }"
-        >
-          {{ row.item.deviceName }}
-        </b-link>
-      </template>
-      <template v-slot:cell(type)="row">
-        <span>
-          <b-spinner
-            v-if="!row.item.type"
-            class="spinner"
-            type="border"
-            small
-          />
-          <font-awesome-icon
-            v-if="row.item.type === 'thermal'"
-            icon="video"
-            class="icon"
-          />
-          <font-awesome-icon
-            v-else-if="row.item.type === 'audio'"
-            icon="music"
-            class="icon"
-          />
-          <font-awesome-icon
-            v-else-if="row.item.type === 'unknown'"
-            icon="question"
-            class="icon"
-          />
-        </span>
+        <DeviceLink
+          :group-name="groupName"
+          :device-name="row.item.deviceName"
+          :type="row.item.type"
+          :context="row.item.type === 'thermal' ? 'visits' : 'recordings'"
+        />
       </template>
       <template v-slot:cell(deviceHealth)="row">
         <span
@@ -106,20 +69,19 @@
         />
       </template>
     </b-table>
-    <div class="bottom-buttons">
-      <ExportVisits v-if="groupHasDevices" :group-name="groupName" />
-    </div>
   </div>
 </template>
 
 <script lang="ts">
 import Help from "@/components/Help.vue";
-import ExportVisits from "@/components/Monitoring/ExportVisits.vue";
+import DeviceLink from "@/components/DeviceLink.vue";
+import GroupLink from "@/components/GroupLink.vue";
 
 export default {
   name: "DevicesTab",
   components: {
-    ExportVisits,
+    DeviceLink,
+    GroupLink,
     Help,
   },
   props: {
@@ -173,22 +135,5 @@ export default {
 }
 .spinner {
   color: #ccc;
-}
-
-@include media-breakpoint-up(md) {
-  .bottom-buttons {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-  }
-}
-@include media-breakpoint-down(sm) {
-  .bottom-buttons {
-    display: flex;
-    flex-direction: column;
-    > * {
-      margin-bottom: 10px;
-    }
-  }
 }
 </style>

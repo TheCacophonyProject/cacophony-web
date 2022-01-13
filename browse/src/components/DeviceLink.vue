@@ -1,7 +1,7 @@
 <template>
   <span class="link">
     <font-awesome-icon
-      v-if="type === 'thermalRaw'"
+      v-if="type === 'thermalRaw' || type === 'thermal'"
       icon="video"
       class="icon"
       size="xs"
@@ -12,15 +12,13 @@
       class="icon"
       size="xs"
     />
+    <font-awesome-icon v-else icon="question" class="icon" size="xs" />
     <span class="label">
       <b-link
+        :disabled="!shouldLink"
         :to="{
           name: 'device',
-          params: {
-            groupName: groupName,
-            deviceName: deviceName,
-            tabName: context,
-          },
+          params,
         }"
       >
         {{ deviceName }}
@@ -38,7 +36,6 @@ export default {
       required: true,
     },
     type: {
-      type: String,
       required: true,
     },
     deviceName: {
@@ -47,7 +44,41 @@ export default {
     },
     context: {
       type: String,
-      required: true,
+    },
+    useLink: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  computed: {
+    shouldLink() {
+      if (this.useLink === false) {
+        return this.useLink;
+      }
+      if (
+        this.$route.name === "device" &&
+        this.$route.params.groupName &&
+        this.$route.params.groupName === this.groupName &&
+        this.$route.params.deviceName &&
+        this.$route.params.deviceName === this.deviceName
+      ) {
+        return false;
+      }
+      return this.useLink;
+    },
+    params() {
+      if (typeof this.context !== "undefined" && this.context !== "") {
+        return {
+          groupName: this.groupName,
+          deviceName: this.deviceName,
+          tabName: this.context,
+        };
+      }
+      return {
+        groupName: this.groupName,
+        deviceName: this.deviceName,
+        tabName: this.context,
+      };
     },
   },
 };
@@ -60,14 +91,18 @@ export default {
 .link {
   display: inline-block;
   word-break: break-word;
-  margin-right: 0.5rem;
+  margin: 0 0.25rem;
 }
 .svg-inline--fa {
-  // set a fixed width on fontawesome icons so they align neatly when stacked
-  width: 16px;
   color: $gray-600;
+  min-width: 1rem;
+  vertical-align: baseline;
 }
 .label {
-  vertical-align: middle;
+  vertical-align: baseline;
+}
+a.disabled {
+  pointer-events: none;
+  color: inherit;
 }
 </style>

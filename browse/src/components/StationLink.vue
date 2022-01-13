@@ -3,13 +3,10 @@
     <font-awesome-icon icon="map-marker-alt" size="xs" />
     <span class="label">
       <b-link
+        :disabled="!shouldLink"
         :to="{
           name: 'station',
-          params: {
-            groupName: groupName,
-            stationName: stationName,
-            tabName: context,
-          },
+          params,
         }"
       >
         {{ stationName }}
@@ -32,7 +29,41 @@ export default {
     },
     context: {
       type: String,
-      required: true,
+    },
+    useLink: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  computed: {
+    shouldLink() {
+      if (this.useLink === false) {
+        return this.useLink;
+      }
+      if (
+        this.$route.name === "station" &&
+        this.$route.params.groupName &&
+        this.$route.params.groupName === this.groupName &&
+        this.$route.params.stationName &&
+        this.$route.params.stationName === this.stationName
+      ) {
+        return false;
+      }
+      return this.useLink;
+    },
+    params() {
+      if (typeof this.context !== "undefined" && this.context !== "") {
+        return {
+          groupName: this.groupName,
+          stationName: this.stationName,
+          tabName: this.context,
+        };
+      }
+      return {
+        groupName: this.groupName,
+        stationName: this.stationName,
+        tabName: this.context,
+      };
     },
   },
 };
@@ -45,14 +76,18 @@ export default {
 .link {
   display: inline-block;
   word-break: break-word;
-  margin-right: 0.5rem;
+  margin: 0 0.25rem;
 }
 .svg-inline--fa {
-  // set a fixed width on fontawesome icons so they align neatly when stacked
-  width: 16px;
   color: $gray-600;
+  min-width: 1rem;
+  vertical-align: baseline;
 }
 .label {
-  vertical-align: middle;
+  vertical-align: baseline;
+}
+a.disabled {
+  pointer-events: none;
+  color: inherit;
 }
 </style>

@@ -93,9 +93,8 @@ const addSupplementaryEvents = (
   // );
 
   // FIXME(jon): We should still push "no activity" events for days where we don't have a device location?
-  //  If I only get this done today, that will be fine.
 
-  if (location !== undefined) {
+  if (location) {
     // Add sunrise and set events for each day that has visits
     const now = new Date();
     //now.setHours(17);
@@ -385,6 +384,10 @@ export default {
 @import "~bootstrap/scss/functions";
 @import "~bootstrap/scss/variables";
 @import "~bootstrap/scss/mixins";
+
+.container.visits-container h2 {
+  max-width: 640px;
+}
 
 @include media-breakpoint-down(sm) {
   .container.visits-container {

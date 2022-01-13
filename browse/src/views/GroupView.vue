@@ -8,8 +8,7 @@
         </b-link>
       </div>
       <h1>
-        <font-awesome-icon icon="users" size="xs" />
-        <span>{{ groupName }}</span>
+        <GroupLink :group-name="groupName" />
       </h1>
       <p class="lead">
         Manage the users associated with this group and view the devices
@@ -128,6 +127,7 @@ import { ApiGroupResponse } from "@typedefs/api/group";
 import { GroupId } from "@typedefs/api/common";
 import { DeviceType } from "@typedefs/api/consts";
 import MonitoringTab from "@/components/MonitoringTab.vue";
+import GroupLink from "@/components/GroupLink.vue";
 
 interface GroupViewData {
   group: ApiGroupResponse | null;
@@ -137,6 +137,7 @@ interface GroupViewData {
 export default {
   name: "GroupView",
   components: {
+    GroupLink,
     RecordingsTab,
     UsersTab,
     StationsTab,

@@ -142,7 +142,7 @@ export default (app: Application, baseUrl: string) => {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        file,
+        file: mapAudiobaitFile(file),
         fileSize: await util.getS3ObjectFileSize(file.fileKey),
         jwt: jsonwebtoken.sign(downloadFileData, config.server.passportSecret, {
           expiresIn: 60 * 10,

@@ -454,6 +454,10 @@ $recording-side-padding-small: 0.5rem;
 }
 .recording-tracks {
   display: inline-block;
+  .label,
+  .svg-inline--fa {
+    vertical-align: baseline;
+  }
 }
 .location-link {
   width: 100%;

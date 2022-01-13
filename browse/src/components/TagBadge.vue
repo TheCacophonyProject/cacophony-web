@@ -75,6 +75,7 @@ export default {
     color: $white;
     background: $secondary;
     margin-right: 0.3rem;
+    vertical-align: middle;
     line-height: 0.7;
   }
   &.automatic {
@@ -91,6 +92,9 @@ export default {
   }
   .svg-inline--fa {
     color: $white;
+  }
+  .tag-icon, .tag-label {
+    vertical-align: middle;
   }
 }
 </style>
