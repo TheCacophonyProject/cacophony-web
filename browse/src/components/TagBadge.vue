@@ -93,7 +93,8 @@ export default {
   .svg-inline--fa {
     color: $white;
   }
-  .tag-icon, .tag-label {
+  .tag-icon,
+  .tag-label {
     vertical-align: middle;
   }
 }

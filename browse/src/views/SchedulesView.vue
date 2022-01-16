@@ -434,7 +434,7 @@ const populateAllSounds = (
 export default {
   name: "SchedulesView",
   components: {
-    AudioPlayerButton
+    AudioPlayerButton,
   },
   data() {
     return {
