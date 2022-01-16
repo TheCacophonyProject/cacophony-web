@@ -1,37 +1,49 @@
 <template>
-  <b-container fluid class="admin">
+  <b-container fluid class="admin outer">
+    <MapWithPoints
+      v-if="device && device.location"
+      :height="200"
+      :radius="60"
+      :can-change-base-map="false"
+      :is-interactive="false"
+      :zoom="false"
+      :points="[{ name: deviceName, location: device.location }]"
+    ></MapWithPoints>
     <b-jumbotron class="jumbotron" fluid>
-      <h1>
-        <GroupLink
-          :group-name="groupName"
-          :context="userIsMemberOfGroup ? 'devices' : 'limited-devices'"
-        />
-        <font-awesome-icon
-          icon="chevron-right"
-          size="xs"
-          style="color: #666; font-size: 16px"
-        />
-        <DeviceLink
-          :group-name="groupName"
-          :device-name="deviceName"
-          :type="device && device.type"
-        />
-      </h1>
-      <p class="lead">Manage this device.</p>
+      <div>
+        <h1>
+          <GroupLink
+            :group-name="groupName"
+            :context="userIsMemberOfGroup ? 'devices' : 'limited-devices'"
+          />
+          <font-awesome-icon
+            icon="chevron-right"
+            size="xs"
+            style="color: #666; font-size: 16px"
+          />
+          <DeviceLink
+            :group-name="groupName"
+            :device-name="deviceName"
+            :type="device && device.type"
+          />
+        </h1>
+      </div>
+      <div>
+        <p class="lead">Manage this device.</p>
+      </div>
     </b-jumbotron>
 
     <div v-if="!loadedDevice" class="container no-tabs">
       Loading device...
       <spinner :fetching="!loadedDevice" />
     </div>
-    <div v-else-if="device && device.id">
-      <device-detail
-        :device="device"
-        :user="currentUser"
-        :software="softwareDetails"
-        class="dev-details"
-      />
-    </div>
+    <device-detail
+      v-else-if="device && device.id"
+      :device="device"
+      :user="currentUser"
+      :software="softwareDetails"
+      class="dev-details"
+    />
     <div v-else class="container no-tabs">
       Sorry but group <i> &nbsp; {{ groupName }} &nbsp; </i> does not have a
       device called <i> &nbsp; {{ deviceName }}</i
@@ -51,6 +63,7 @@ import { ApiDeviceResponse } from "@typedefs/api/device";
 import { ApiGroupResponse } from "@typedefs/api/group";
 import GroupLink from "@/components/GroupLink.vue";
 import DeviceLink from "@/components/DeviceLink.vue";
+import MapWithPoints from "@/components/MapWithPoints.vue";
 
 interface DeviceViewData {
   device: ApiDeviceResponse;
@@ -59,7 +72,7 @@ interface DeviceViewData {
 
 export default {
   name: "DeviceView",
-  components: { DeviceLink, GroupLink, DeviceDetail, Spinner },
+  components: { DeviceLink, GroupLink, DeviceDetail, Spinner, MapWithPoints },
   computed: {
     ...mapState({
       currentUser: (state) => (state as any).User.userData,
@@ -146,5 +159,38 @@ div .dev-details {
 
 .no-tabs {
   padding: 2em 0;
+}
+
+.admin .jumbotron {
+  margin-bottom: unset;
+}
+.admin.outer {
+  position: relative;
+  .jumbotron {
+    top: 0;
+    position: absolute;
+    width: 100%;
+    background: transparent;
+    z-index: 1000;
+    h1,
+    p.lead {
+      padding: 3px;
+      background: white;
+      display: inline-block;
+    }
+  }
+  .tabs-container {
+    position: relative;
+    z-index: 1001;
+    margin-top: -53px;
+    .device-tabs .card-header {
+      background: unset;
+    }
+    .nav-item {
+      border-top-left-radius: 3px;
+      border-top-right-radius: 3px;
+      background: transparentize(whitesmoke, 0.15);
+    }
+  }
 }
 </style>

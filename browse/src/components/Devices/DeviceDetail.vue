@@ -1,5 +1,5 @@
 <template>
-  <b-container>
+  <b-container class="tabs-container">
     <b-tabs
       card
       class="device-tabs"

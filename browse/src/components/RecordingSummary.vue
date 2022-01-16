@@ -5,6 +5,14 @@
     class="recording-summary"
     @click="(event) => navigateToRecording(event, item.id)"
   >
+    <b-modal
+      v-model="showingLocation"
+      hide-footer
+      :title="`${item.deviceName}: #${item.id}`"
+      lazy
+    >
+      <MapWithPoints :points="itemLocation" />
+    </b-modal>
     <div class="recording-type">
       <span v-if="item.type === 'audio'">
         <font-awesome-icon :icon="['far', 'file-audio']" size="2x" />
@@ -50,6 +58,15 @@
             >No tracks</span
           >
         </span>
+        <div v-if="item.location !== '(unknown)'" class="recording-location">
+          <a
+            @click.stop.prevent="showLocation"
+            title="View location"
+            class="location-link"
+          >
+            <font-awesome-icon icon="map-marker-alt" />
+          </a>
+        </div>
       </div>
       <div v-if="item.tags.length !== 0" class="recording-tags">
         <TagBadge
@@ -84,24 +101,12 @@
     <!--      />-->
     <!--    </div>-->
     <div v-if="item.location !== '(unknown)'" class="recording-location">
-      <b-modal
-        v-model="showingLocation"
-        hide-footer
-        :title="`${item.deviceName}: #${item.id}`"
-        lazy
-      >
-        <MapWithPoints :points="itemLocation" />
-      </b-modal>
       <a
         @click.stop.prevent="showLocation"
         title="View location"
         class="location-link"
       >
-        <font-awesome-icon
-          icon="map-marker-alt"
-          size="3x"
-          style="color: #bbb"
-        />
+        <font-awesome-icon icon="map-marker-alt" size="3x" />
       </a>
     </div>
   </a>
@@ -397,13 +402,25 @@ $recording-side-padding-small: 0.5rem;
     }
     .recording-station,
     .recording-group,
-    .recording-device {
+    .recording-device,
+    .recording-location {
       // all elements that are the direct descendants of this div
       display: inline-block;
       word-break: break-word;
       margin-right: 0.5rem;
       @include media-breakpoint-down(xs) {
         //display: block;
+      }
+    }
+
+    .recording-location {
+      color: $gray-600;
+      .svg-inline--fa {
+        //color: inherit;
+        vertical-align: baseline;
+      }
+      @include media-breakpoint-up(md) {
+        display: none;
       }
     }
   }
@@ -440,7 +457,7 @@ $recording-side-padding-small: 0.5rem;
 }
 
 // map
-.recording-location {
+.recording-summary > .recording-location {
   display: flex;
   flex: 0 1 110px;
   min-width: 109px;
@@ -448,6 +465,9 @@ $recording-side-padding-small: 0.5rem;
   align-items: center;
   justify-content: center;
   background: $gray-100;
+  .svg-inline--fa {
+    color: #bbb;
+  }
   @include media-breakpoint-between(xs, sm) {
     display: none;
   }

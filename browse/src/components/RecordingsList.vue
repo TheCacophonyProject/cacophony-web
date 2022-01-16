@@ -444,6 +444,10 @@ export default {
         this.$refs["list-container"].style.height = `${maxY[0][0]}px`;
       }
       this.observer && this.observer.observe(observerTrigger);
+    } else {
+      if (this.showCards) {
+        this.$refs["list-container"].style.height = "auto";
+      }
     }
   },
   methods: {

@@ -18,6 +18,20 @@
         >.
       </p>
     </div>
+    <MapWithPoints
+      :points="devicesForMap"
+      :radius="60"
+      :navigate-to-point="
+        (point) => ({
+          name: 'device',
+          params: {
+            groupName,
+            deviceName: point.name,
+            tabName: 'recordings',
+          },
+        })
+      "
+    />
     <b-table
       v-if="groupHasDevices"
       :items="tableItems"
@@ -76,6 +90,8 @@
 import Help from "@/components/Help.vue";
 import DeviceLink from "@/components/DeviceLink.vue";
 import GroupLink from "@/components/GroupLink.vue";
+import MapWithPoints from "@/components/MapWithPoints.vue";
+import { latLng } from "leaflet";
 
 export default {
   name: "DevicesTab",
@@ -83,6 +99,7 @@ export default {
     DeviceLink,
     GroupLink,
     Help,
+    MapWithPoints,
   },
   props: {
     isGroupAdmin: { type: Boolean, default: false },
@@ -98,6 +115,15 @@ export default {
   computed: {
     groupHasDevices() {
       return this.devices.length !== 0;
+    },
+    devicesForMap() {
+      // Stations lat/lng as leaflet lat/lng objects
+      return this.devices
+        .filter((device) => device.location !== undefined)
+        .map(({ deviceName, location }) => ({
+          name: deviceName,
+          location,
+        }));
     },
     tableItems() {
       return this.devices.map((device) => ({
