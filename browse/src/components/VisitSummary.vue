@@ -62,7 +62,15 @@
         </div>
       </div>
     </div>
-    <div v-else :class="['visit-item', 'visit', item.name]">
+    <div
+      v-else
+      :class="[
+        'visit-item',
+        'visit',
+        item.name,
+        { 'group-level': isAtGroupLevel },
+      ]"
+    >
       <div class="icon-name">
         <div class="visit-badge">
           <img
@@ -245,9 +253,11 @@ export default {
   .duration {
     display: inline-block;
     min-width: 120px;
+    margin: 0 0.25rem;
   }
   .recordings-link {
     text-decoration: underline;
+    margin: 0 0.25rem;
   }
 
   &.dusk-dawn {
@@ -319,6 +329,19 @@ export default {
   }
 }
 
+.visit-item.group-level {
+  .duration-view {
+    display: flex;
+    flex-direction: column;
+    .duration {
+      display: inline;
+    }
+    .recordings-link {
+      margin-left: 0.25rem;
+    }
+  }
+}
+
 @include media-breakpoint-down(sm) {
   .visit-item {
     .duration-view {
@@ -328,7 +351,7 @@ export default {
         display: inline;
       }
       .recordings-link {
-        margin-left: 0;
+        margin-left: 0.25rem;
       }
     }
   }

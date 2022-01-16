@@ -196,7 +196,7 @@ export default {
         // eslint-disable-next-line no-unused-vars
         const [groupResponse, stationsResponse] = await Promise.all([
           api.groups.getGroup(this.groupName),
-          api.groups.getStationsForGroup(this.groupName),
+          api.groups.getStationsForGroup(this.groupName, true),
         ]);
         if (groupResponse.success) {
           this.group = groupResponse.result.group;
