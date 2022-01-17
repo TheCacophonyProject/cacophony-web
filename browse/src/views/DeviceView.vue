@@ -1,5 +1,5 @@
 <template>
-  <b-container fluid class="admin outer">
+  <b-container fluid :class="['admin', { outer: device && device.location }]">
     <MapWithPoints
       v-if="device && device.location"
       :height="200"
