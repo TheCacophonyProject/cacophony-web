@@ -841,6 +841,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     "duration",
     "recordingDateTime",
     "location",
+    "cacophonyIndex",
     "relativeToDawn",
     "airplaneModeOn",
     "relativeToDusk",

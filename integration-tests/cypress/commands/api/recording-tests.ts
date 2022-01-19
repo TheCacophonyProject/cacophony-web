@@ -14,12 +14,12 @@ import { logTestDescription, prettyLog } from "../descriptions";
 import {
   ApiDeviceIdAndName,
   ApiRecordingColumns,
+  ApiRecordingForProcessing,
   ApiRecordingNeedsTagReturned,
   ApiRecordingSet,
   ApiRecordingStation,
   ApiTrackSet,
   TestThermalRecordingInfo,
-  ApiRecordingForProcessing,
 } from "../types";
 
 import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
@@ -473,10 +473,13 @@ export function TestCreateExpectedRecordingColumns(
   expected.Comment = inputRecording.comment || "";
   if (inputTrackData !== undefined && inputTrackData.tracks !== undefined) {
     expected["Track Count"] = inputTrackData.tracks.length.toString();
+    // make set of unique tags
     expected["Automatic Track Tags"] = inputTrackData.tracks
       .map((track) =>
         track.predictions.map((prediction) => prediction.confident_tag)
       )
+      .flat()
+      .filter((tag, index, self) => self.indexOf(tag) === index)
       .join(";");
   } else {
     expected["Track Count"] = "0";
@@ -486,16 +489,10 @@ export function TestCreateExpectedRecordingColumns(
   expected["Recording Tags"] = "";
   expected.URL =
     BASE_URL + "/recording/" + getCreds(recordingName).id.toString();
-  if (
-    inputRecording &&
-    inputRecording.additionalMetadata &&
-    inputRecording.additionalMetadata.analysis &&
-    inputRecording.additionalMetadata.analysis.cacophony_index
-  ) {
-    expected["Cacophony Index"] =
-      inputRecording.additionalMetadata.analysis.cacophony_index
-        .map((ci: any) => ci.index_percent)
-        .join(";");
+  if (inputRecording.cacophonyIndex) {
+    expected["Cacophony Index"] = inputRecording.cacophonyIndex
+      .map((ci: any) => ci.index_percent)
+      .join(";");
   } else {
     expected["Cacophony Index"] = "";
   }
@@ -591,6 +588,9 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
     expected.additionalMetadata = JSON.parse(
       JSON.stringify(inputRecording.additionalMetadata)
     );
+  }
+  if (inputRecording.cacophonyIndex !== undefined) {
+    expected.cacophonyIndex = inputRecording.cacophonyIndex;
   }
   if (inputRecording.location !== undefined) {
     //expected.location = { type: "Point", coordinates: inputRecording.location };

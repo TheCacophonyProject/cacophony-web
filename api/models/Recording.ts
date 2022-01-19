@@ -125,12 +125,10 @@ export interface AudioRecordingMetadata {
   ["Android API Level"]: number;
   ["Phone manufacturer"]: string;
   ["App has root access"]: boolean;
+  cacophony_index_version: string;
+  processing_time_seconds: number;
+  species_identify_version: string;
   analysis: {
-    cacophony_index: CacophonyIndex[];
-    species_identify: SpeciesClassification[];
-    cacophony_index_version: string;
-    processing_time_seconds: number;
-    species_identify_version: string;
     speech_detection: boolean;
     speech_detection_version: string;
   };

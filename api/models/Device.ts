@@ -25,7 +25,7 @@ import { Event } from "./Event";
 import { AccessLevel } from "./GroupUsers";
 import logger from "../logging";
 import { DeviceType } from "@typedefs/api/consts";
-import { DeviceId, GroupId, UserId, ScheduleId } from "@typedefs/api/common";
+import { DeviceId, GroupId, ScheduleId, UserId } from "@typedefs/api/common";
 
 const Op = Sequelize.Op;
 
@@ -410,17 +410,18 @@ export default function (
     //  lead to spurious values.  Need to standardize input time.
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [result, _] =
-      await sequelize.query(`select round((avg(cacophony_index.scores))::numeric, 2) as cacophony_index from
+    const [result, _] = await sequelize.query(
+      `select round((avg(cacophonyIndex.scores))::numeric, 2) as cacophonyIndex from
 (select
-	(jsonb_array_elements("additionalMetadata"->'analysis'->'cacophony_index')->>'index_percent')::float as scores
+	(jsonb_array_elements("additionalMetadata"->'analysis'->'cacophonyIndex')->>'index_percent')::float as scores
 from
 	"Recordings"
 where
 	"DeviceId" = ${device.id}
 	and "type" = 'audio'
-	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophony_index;`);
-    const index = result[0].cacophony_index;
+	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex;`
+    );
+    const index = result[0].cacophonyIndex;
     if (index !== null) {
       return Number(index);
     }
@@ -447,14 +448,14 @@ where
 from
 (select
 	date_part('hour', "recordingDateTime") as hour,
-	(jsonb_array_elements("additionalMetadata"->'analysis'->'cacophony_index')->>'index_percent')::float as scores
+	(jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
 from
 	"Recordings"
 where
 	"DeviceId" = ${deviceId}
 	and "type" = 'audio'
 	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
-) as cacophony_index
+) as cacophonyIndex
 group by hour
 order by hour;
 `);

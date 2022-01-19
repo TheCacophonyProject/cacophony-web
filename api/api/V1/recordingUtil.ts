@@ -440,12 +440,15 @@ export const uploadRawRecording = util.multipartUpload(
           totalFrames: metadata.totalFrames,
         };
       }
-      if (data.hasOwnProperty("additionalMetadata")) {
-        recording.additionalMetadata = {
-          ...data.additionalMetadata,
-          ...recording.additionalMetadata,
-        };
-      }
+    }
+    if (data.hasOwnProperty("additionalMetadata")) {
+      recording.additionalMetadata = {
+        ...data.additionalMetadata,
+        ...recording.additionalMetadata,
+      };
+    }
+    if (data.hasOwnProperty("cacophonyIndex")) {
+      recording.cacophonyIndex = data.cacophonyIndex;
     }
 
     recording.rawFileKey = key;
@@ -661,7 +664,6 @@ export async function reportRecordings(
     const recording_tags = r.Tags.map((t) => t.what || t.detail);
 
     const cacophonyIndex = getCacophonyIndex(r);
-    const speciesClassifications = await getSpeciesIdentification(r);
 
     const thisRow = [
       r.id,
@@ -707,11 +709,7 @@ export async function reportRecordings(
       );
     }
 
-    thisRow.push(
-      urljoin(recording_url_base, r.id.toString()),
-      cacophonyIndex,
-      speciesClassifications
-    );
+    thisRow.push(urljoin(recording_url_base, r.id.toString()), cacophonyIndex);
     out.push(thisRow);
   }
   return out;
@@ -719,18 +717,6 @@ export async function reportRecordings(
 
 function getCacophonyIndex(recording: Recording): string | null {
   return recording.cacophonyIndex?.map((val) => val.index_percent).join(";");
-}
-
-async function getSpeciesIdentification(recording: Recording): Promise<string> {
-  const tracks = await recording.getTracks({});
-  const trackTags = await Promise.all(
-    tracks.map((track) => {
-      return track.TrackTags.map((tag) => {
-        return tag.what;
-      });
-    })
-  );
-  return trackTags.join(";");
 }
 
 function findLatestEvent(events: Event[]): Event | null {
@@ -750,7 +736,7 @@ function findLatestEvent(events: Event[]): Event | null {
 function formatTags(tags) {
   const out = Array.from(tags);
   out.sort();
-  return out.join("+");
+  return out.join(";");
 }
 
 export function signedToken(key, file, mimeType) {

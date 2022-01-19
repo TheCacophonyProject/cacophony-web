@@ -118,16 +118,15 @@ describe("Recordings - reprocessing tests", () => {
     batteryLevel: 87,
     batteryCharging: "DISCHARGING",
     airplaneModeOn: false,
+    cacophonyIndex: [
+      { end_s: 20, begin_s: 0, index_percent: 80.8 },
+      { end_s: 40, begin_s: 20, index_percent: 77.1 },
+      { end_s: 60, begin_s: 40, index_percent: 71.6 },
+    ],
     additionalMetadata: {
       normal: "0",
       "SIM IMEI": "990006964660319",
       analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [],
         cacophony_index_version: "2020-01-20_A",
         processing_time_seconds: 50.7,
         species_identify_version: "2021-02-01",
@@ -184,16 +183,15 @@ describe("Recordings - reprocessing tests", () => {
     batteryCharging: "DISCHARGING",
     batteryLevel: 87,
     airplaneModeOn: false,
+    cacophonyIndex: [
+      { end_s: 20, begin_s: 0, index_percent: 80.8 },
+      { end_s: 40, begin_s: 20, index_percent: 77.1 },
+      { end_s: 60, begin_s: 40, index_percent: 71.6 },
+    ],
     additionalMetadata: {
       normal: "0",
       "SIM IMEI": "990006964660319",
       analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [],
         cacophony_index_version: "2020-01-20_A",
         processing_time_seconds: 50.7,
         species_identify_version: "2021-02-01",

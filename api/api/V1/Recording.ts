@@ -216,7 +216,6 @@ const mapRecordingResponse = (
         recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
     };
   } else if (recording.type === RecordingType.Audio) {
-    log.debug(recording);
     return {
       ...commonRecording,
       fileMimeType: ifNotNull(recording.fileMimeType),
@@ -566,11 +565,6 @@ export default (app: Application, baseUrl: string) => {
         request.query.offset && parseInt(request.query.offset as string),
         response.locals.order,
         request.query.type as RecordingType
-      );
-      log.debug(
-        `Query recordings: ${JSON.stringify(request.query)} - ${JSON.stringify(
-          result.rows.map(mapRecordingResponse)
-        )}`
       );
       responseUtil.send(response, {
         statusCode: 200,

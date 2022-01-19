@@ -1,14 +1,16 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { CacophonyIndex } from "@typedefs/api/recording";
+import { ApiTrackResponse } from "@typedefs/api/track";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {
   devices: string;
 }
 
-/*******************************************************************
+/** *****************************************************************
  * ALERT definitions
- ********************************************************************/
+ * ****************************************************************** */
 // from api/v1/alerts (get)
 
 export interface ApiAlert {
@@ -36,9 +38,9 @@ export interface ApiAlertConditions {
   automatic: boolean;
 }
 
-/*******************************************************************
+/** *****************************************************************
  * DEVICE definitions
- ********************************************************************/
+ * ****************************************************************** */
 // from api/v1/groups (get), api/v1/events (get), api/recordings (get)
 export interface ApiDeviceIdAndName {
   id: number;
@@ -66,9 +68,9 @@ export interface ApiDeviceInGroupDevice {
   admin: boolean;
 }
 
-/*******************************************************************
+/** *****************************************************************
  * USER definitions
- ********************************************************************/
+ * ****************************************************************** */
 // from api/v1/alerts (get)
 export interface ApiAlertUser {
   id: number;
@@ -170,9 +172,9 @@ export interface ApiDeviceUserRelationship {
   UserId: number;
 }
 
-/*******************************************************************
+/** *****************************************************************
  * EVENT definitions
- ********************************************************************/
+ * ****************************************************************** */
 
 // from /api/v1/events (get) and api/v1/events (post)
 export interface ApiEventDetail {
@@ -245,9 +247,9 @@ export interface ApiEventErrorCategory {
   errors: ApiEventError[];
 }
 
-/*******************************************************************
+/** *****************************************************************
  * GROUP definitions
- ********************************************************************/
+ * ****************************************************************** */
 
 // from api/v1/groups (get)
 export interface ApiGroupReturned {
@@ -271,9 +273,9 @@ export interface ApiGroupUserRelation {
   };
 }
 
-/*******************************************************************
+/** *****************************************************************
  * RECORDING definitions
- ********************************************************************/
+ * ****************************************************************** */
 
 //from /api/fileProcessing (get)
 export interface ApiRecordingForProcessing {
@@ -313,6 +315,7 @@ export interface ApiRecordingSet {
   batteryLevel?: number;
   airplaneModeOn?: boolean;
   metadata?: ApiRecordingDataMetadata;
+  cacophonyIndex?: CacophonyIndex[];
   additionalMetadata?: ApiThermalAdditionalMetadata | any;
   comment?: string;
   processingState?: RecordingProcessingState;
@@ -500,9 +503,9 @@ export interface TestThermalRecordingInfo {
   lng?: number; // Longitude position for the recording
 }
 
-/*******************************************************************
+/** *****************************************************************
  * Stations
- ********************************************************************/
+ * ****************************************************************** */
 
 // from api/v1/recording (get)
 export interface ApiRecordingStation {
@@ -535,9 +538,9 @@ export interface ApiStationDataReturned {
   groupId: number;
 }
 
-/*******************************************************************
+/** *****************************************************************
  * Custom structures used internally in test code
- ********************************************************************/
+ * ****************************************************************** */
 
 export interface TestComparableEvent {
   id: number;

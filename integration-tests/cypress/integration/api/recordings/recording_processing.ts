@@ -54,6 +54,7 @@ describe("Recordings - processing tests", () => {
 
   const templateExpectedAudioRecording: ApiAudioRecordingResponse = {
     additionalMetadata: {} as any,
+    cacophonyIndex: [],
     airplaneModeOn: false,
     batteryCharging: "CHARGING",
     batteryLevel: 99,
@@ -149,16 +150,15 @@ describe("Recordings - processing tests", () => {
     batteryCharging: "DISCHARGING",
     batteryLevel: 87,
     airplaneModeOn: false,
+    cacophonyIndex: [
+      { end_s: 20, begin_s: 0, index_percent: 80.8 },
+      { end_s: 40, begin_s: 20, index_percent: 77.1 },
+      { end_s: 60, begin_s: 40, index_percent: 71.6 },
+    ],
     additionalMetadata: {
       normal: "0",
       "SIM IMEI": "990006964660319",
       analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [],
         cacophony_index_version: "2020-01-20_A",
         processing_time_seconds: 50.7,
         species_identify_version: "2021-02-01",
@@ -1071,25 +1071,21 @@ describe("Recordings - processing tests", () => {
               { name: "master" }
             ).then(() => {
               cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut(
-                "rpRecording20",
-                true,
-                {},
-
-                undefined
-              ).then(() => {
-                cy.log("Check an event was generated");
-                cy.apiAlertCheck(
-                  "rpGroupAdmin",
-                  "rpCamera1b",
-                  "expectedAlert20"
-                );
-                cy.testEventsCheckAgainstExpected(
-                  "rpGroupAdmin",
-                  "rpCamera1b",
-                  "expectedEvent20"
-                );
-              });
+              cy.processingApiPut("rpRecording20", true, {}, undefined).then(
+                () => {
+                  cy.log("Check an event was generated");
+                  cy.apiAlertCheck(
+                    "rpGroupAdmin",
+                    "rpCamera1b",
+                    "expectedAlert20"
+                  );
+                  cy.testEventsCheckAgainstExpected(
+                    "rpGroupAdmin",
+                    "rpCamera1b",
+                    "expectedEvent20"
+                  );
+                }
+              );
             });
           }
         );
@@ -1118,6 +1114,7 @@ describe("Recordings - processing tests", () => {
           algorithm: 99999,
           previewSecs: null,
         },
+        cacophonyIndex: [],
         location: [-46.29115, 170.30845],
       };
       //top level recording data
@@ -1157,6 +1154,7 @@ describe("Recordings - processing tests", () => {
         expectedRecording17.batteryCharging = "CHARGING";
         expectedRecording17.airplaneModeOn = true;
         expectedRecording17.type = RecordingType.Audio;
+        expectedRecording17.cacophonyIndex = [];
         expectedRecording17.comment = "This is a new comment";
         expectedRecording17.location = {
           lat: -46.29115,

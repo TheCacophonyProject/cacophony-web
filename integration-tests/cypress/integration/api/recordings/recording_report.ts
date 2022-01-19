@@ -88,29 +88,55 @@ describe("Recordings report using where", () => {
     batteryCharging: "DISCHARGING",
     batteryLevel: 87,
     airplaneModeOn: false,
+    metadata: {
+      algorithm: { model_name: "master" },
+      tracks: [
+        {
+          start_s: 1,
+          end_s: 19,
+          predictions: [
+            {
+              confident_tag: "morepork",
+              confidence: 0.9,
+              model_id: 1,
+            },
+          ],
+        },
+        {
+          start_s: 20,
+          end_s: 40,
+          predictions: [
+            {
+              confident_tag: "morepork",
+              confidence: 1,
+              model_id: 1,
+            },
+          ],
+        },
+        {
+          start_s: 41,
+          end_s: 60,
+          predictions: [
+            {
+              confident_tag: "morepork",
+              confidence: 0.9,
+              model_id: 1,
+            },
+          ],
+        },
+      ],
+    },
+    cacophonyIndex: [
+      { end_s: 20, begin_s: 0, index_percent: 80.8 },
+      { end_s: 40, begin_s: 20, index_percent: 77.1 },
+      { end_s: 60, begin_s: 40, index_percent: 71.6 },
+    ],
     additionalMetadata: {
       normal: "0",
       "SIM IMEI": "990006964660319",
-      analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [
-          { end_s: 6, begin_s: 3, species: "morepork", liklihood: 1 },
-          { end_s: 14, begin_s: 11, species: "morepork", liklihood: 0.38 },
-          { end_s: 23, begin_s: 21, species: "morepork", liklihood: 1 },
-          { end_s: 29, begin_s: 27, species: "morepork", liklihood: 1 },
-          { end_s: 38, begin_s: 30, species: "morepork", liklihood: 1 },
-          { end_s: 46, begin_s: 42, species: "morepork", liklihood: 1 },
-          { end_s: 54, begin_s: 45, species: "morepork", liklihood: 1 },
-          { end_s: 59.8, begin_s: 56.8, species: "morepork", liklihood: 1 },
-        ],
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
-      },
+      cacophony_index_version: "2020-01-20_A",
+      processing_time_seconds: 50.7,
+      species_identify_version: "2021-02-01",
       "SIM state": "SIM_STATE_READY",
       "Auto Update": false,
       "Flight Mode": false,
