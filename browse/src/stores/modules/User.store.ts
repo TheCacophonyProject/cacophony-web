@@ -9,6 +9,7 @@ function getUserFromLocalStorage() {
     globalPermission: getGlobalPermission(),
     isSuperUser: isSuperUser(),
     acceptedEUA: localStorage.getItem("acceptedEUA"),
+    showFiltered: localStorage.getItem("showFiltered"),
   };
 }
 

@@ -46,6 +46,12 @@
             @change-tag="changedTrackTag"
           />
         </div>
+        <div v-if="filteredTracks && filteredTracks.length > 0">
+          <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
+          <label for="cbFiltered">
+            Show Filtered ({{ filteredTracks.length }})</label
+          >
+        </div>
         <div v-if="processingQueued" class="processing">
           <b-spinner small />
           <span>Queued for processing</span>
@@ -126,6 +132,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
+import DefaultLabels from "../../const";
 
 export default {
   name: "VideoRecording",
@@ -169,6 +176,15 @@ export default {
     };
   },
   computed: {
+    showFiltered: {
+      set: function (val) {
+        localStorage.setItem("showFiltered", val);
+        this.$store.state.User.userData.showFiltered = val;
+      },
+      get: function () {
+        return this.$store.state.User.userData.showFiltered;
+      },
+    },
     tagItems() {
       // TODO - Move to RecordingControls
       const tags: ApiRecordingTagResponse[] = this.localTags;
@@ -209,10 +225,23 @@ export default {
       }
       return 0;
     },
+    filteredTracks() {
+      if (!this.recording) {
+        return null;
+      }
+      const tracks = (this.recording as ApiThermalRecordingResponse).tracks;
+      return tracks.filter((track) => DefaultLabels.isFiltered(track.tags));
+    },
     tracks() {
-      return (
-        this.recording && (this.recording as ApiThermalRecordingResponse).tracks
-      );
+      if (!this.recording) {
+        return null;
+      }
+      const tracks = (this.recording as ApiThermalRecordingResponse).tracks;
+      if (this.showFiltered) {
+        return tracks;
+      } else {
+        return tracks.filter((track) => !DefaultLabels.isFiltered(track.tags));
+      }
     },
     processingCompleted() {
       return (

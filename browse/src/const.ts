@@ -103,6 +103,7 @@ const other = new TrackLabel(things, "other");
 
 const part = new TrackLabel(descriptors, "part", "part of animal (eg tail)");
 const poorTracking = new TrackLabel(descriptors, "poor tracking");
+
 const interesting = new TrackLabel(descriptors, "interesting");
 
 const falsePositive = new TrackLabel(
@@ -241,6 +242,53 @@ const DefaultLabels = {
   },
   detailedAiEvaluationMatrix: function () {
     return [bird, ...pest.includes, wallaby, nothing, notKnown];
+  },
+  filteredLabels: function () {
+    return [falsePositive];
+  },
+  descriptorTags: function () {
+    return descriptors.includes;
+  },
+
+  isFiltered: function (tags) {
+    const userTags = tags.filter((tag) => !tag.automatic);
+    if (userTags.length > 0) {
+      // any animal nomn filtered user tag, means not filtered
+      if (
+        userTags.some(
+          (tag) =>
+            !descriptors.allIncludedTags.includes(tag.what) &&
+            !this.filteredLabels().some(
+              (filteredTag) => filteredTag.value == tag.what
+            )
+        )
+      ) {
+        return false;
+      }
+
+      //any user filtered tag means filter
+      if (
+        userTags.some((tag) =>
+          this.filteredLabels().some(
+            (filteredTag) => filteredTag.value == tag.what
+          )
+        )
+      ) {
+        return true;
+      }
+    }
+    const masterTag = tags.find(
+      (tag) => tag.automatic && tag.data.name == "Master"
+    );
+    if (
+      masterTag &&
+      this.filteredLabels().some(
+        (filteredTag) => filteredTag.value == masterTag.what
+      )
+    ) {
+      return true;
+    }
+    return false;
   },
   falsePositiveLabel: falsePositive,
   birdLabel: bird,
