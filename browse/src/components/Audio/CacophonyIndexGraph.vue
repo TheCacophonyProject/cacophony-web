@@ -23,7 +23,9 @@ function createGradient(context: any, min: number, max: number) {
   const {
     chart: { ctx, chartArea },
   } = context;
-  if (!chartArea) return;
+  if (!chartArea) {
+    return;
+  }
   const top = max / 100;
   const bottom = min / 100;
   const middle = (max + min) / 200;

@@ -32,7 +32,7 @@ export class TrackLabel {
     parent: TrackLabel,
     dbLabel: string,
     description: string = null,
-    trapNzName = null,
+    trapNzName = null
   ) {
     this.value = dbLabel;
     this.text = description ? description : this.value;
@@ -72,7 +72,7 @@ const notKnown = new TrackLabel(
   nomenclatureBase,
   "not known",
   "not known",
-  "unspecified",
+  "unspecified"
 );
 const nothing = new TrackLabel(nomenclatureBase, "nothing", "nothing", "none");
 const descriptors = new TrackLabel(nomenclatureBase, "descriptors");
@@ -108,7 +108,7 @@ const interesting = new TrackLabel(descriptors, "interesting");
 const falsePositive = new TrackLabel(
   nothing,
   "false-positive",
-  "false positive",
+  "false positive"
 );
 
 new TrackLabel(nothing, "none");

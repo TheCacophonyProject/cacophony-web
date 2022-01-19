@@ -11,13 +11,7 @@
           class="audio"
         />
       </b-col>
-      <b-col
-        cols="12"
-        lg="6"
-        v-if="
-          recording.cacophonyIndex
-        "
-      >
+      <b-col cols="12" lg="6" v-if="recording.cacophonyIndex">
         <CacophonyIndexGraph
           :id="recording.id"
           :cacophonyIndex="recording.cacophonyIndex"
