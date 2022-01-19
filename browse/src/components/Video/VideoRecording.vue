@@ -46,7 +46,10 @@
             @change-tag="changedTrackTag"
           />
         </div>
-        <div v-if="filteredTracks && filteredTracks.length > 0">
+        <div
+          class="filtered-tracks"
+          v-if="filteredTracks && filteredTracks.length > 0"
+        >
           <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
           <label for="cbFiltered">
             Show Filtered ({{ filteredTracks.length }})</label
@@ -655,5 +658,9 @@ export default {
 .loading-next {
   pointer-events: none;
   opacity: 0.1;
+}
+
+.filtered-tracks {
+  margin-left: 20px;
 }
 </style>
