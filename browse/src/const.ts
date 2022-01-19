@@ -253,7 +253,7 @@ const DefaultLabels = {
   isFiltered: function (tags) {
     const userTags = tags.filter((tag) => !tag.automatic);
     if (userTags.length > 0) {
-      // any animal nomn filtered user tag, means not filtered
+      // any animal non filtered user tag, means not filtered
       if (
         userTags.some(
           (tag) =>
@@ -266,7 +266,7 @@ const DefaultLabels = {
         return false;
       }
 
-      //any user filtered tag means filter
+      //any user filtered tag means filtered
       if (
         userTags.some((tag) =>
           this.filteredLabels().some(
@@ -277,6 +277,8 @@ const DefaultLabels = {
         return true;
       }
     }
+
+    // if ai master tag is filtered this track is filtered
     const masterTag = tags.find(
       (tag) => tag.automatic && tag.data.name == "Master"
     );
