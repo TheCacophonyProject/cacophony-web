@@ -11,7 +11,7 @@
     ></MapWithPoints>
     <b-jumbotron class="jumbotron" fluid>
       <div>
-        <h1>
+        <h1 class="d-inline-block">
           <GroupLink
             :group-name="groupName"
             :context="userIsMemberOfGroup ? 'devices' : 'limited-devices'"
@@ -29,7 +29,7 @@
         </h1>
       </div>
       <div>
-        <p class="lead">Manage this device.</p>
+        <p class="lead d-sm-none d-md-inline-block">Manage this device.</p>
       </div>
     </b-jumbotron>
 
@@ -176,13 +176,12 @@ div .dev-details {
     p.lead {
       padding: 3px;
       background: white;
-      display: inline-block;
     }
   }
   .tabs-container {
     position: relative;
     z-index: 1001;
-    margin-top: -53px;
+    //margin-top: -53px;
     .device-tabs .card-header {
       background: unset;
     }

@@ -30,7 +30,11 @@
     </b-modal>
     <b-button class="export-visits" @click="exportVisits">
       <font-awesome-icon icon="download" class="fa-1x" />
-      <span>Export Visits for TrapNZ</span>
+      <span
+        >Export<span class="d-none d-md-inline-block">
+          Visits for TrapNZ</span
+        ></span
+      >
     </b-button>
   </div>
 </template>
@@ -202,10 +206,3 @@ export default {
   },
 };
 </script>
-
-<style scoped lang="scss">
-.export-visits {
-  display: inline;
-  float: right;
-}
-</style>

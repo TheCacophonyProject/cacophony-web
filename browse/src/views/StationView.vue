@@ -11,7 +11,7 @@
     ></MapWithPoints>
     <b-jumbotron class="jumbotron" fluid>
       <div>
-        <h1>
+        <h1 class="d-inline-block">
           <GroupLink
             :group-name="groupName"
             context="stations"
@@ -27,7 +27,7 @@
         </h1>
       </div>
       <div>
-        <p class="lead">Manage this station.</p>
+        <p class="lead d-sm-none d-md-inline-block">Manage this station.</p>
       </div>
     </b-jumbotron>
     <div v-if="!loadedStation" class="container no-tabs">
@@ -35,13 +35,8 @@
       <spinner />
     </div>
     <div v-else-if="station" class="tabs-container">
-      <b-tabs
-        card
-        class="group-tabs"
-        nav-class="container"
-        v-model="currentTabIndex"
-      >
-        <b-tab lazy>
+      <tab-list v-model="currentTabIndex">
+        <tab-list-item lazy>
           <template #title>
             <TabTemplate
               title="Recordings"
@@ -55,7 +50,7 @@
             :station-name="stationName"
             :recordings-query="recordingsQueryFinal"
           />
-        </b-tab>
+        </tab-list-item>
         <!--        <b-tab lazy>-->
         <!--          <template #title>-->
         <!--            <TabTemplate-->
@@ -70,7 +65,7 @@
         <!--            :visits-query="visitsQuery()"-->
         <!--          />-->
         <!--        </b-tab>-->
-      </b-tabs>
+      </tab-list>
     </div>
     <div v-else class="container no-tabs">
       Sorry but group <i> &nbsp; {{ groupName }} &nbsp; </i> does not have a
@@ -93,6 +88,8 @@ import { shouldViewAsSuperUser } from "@/utils";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import GroupLink from "@/components/GroupLink.vue";
 import StationLink from "@/components/StationLink.vue";
+import TabList from "@/components/TabList.vue";
+import TabListItem from "@/components/TabListItem.vue";
 
 // TODO(jon): Implement visits/monitoring page for stations - this will require API changes.
 
@@ -105,6 +102,8 @@ export default {
     Spinner,
     TabTemplate,
     RecordingsTab,
+    TabList,
+    TabListItem,
     // MonitoringTab,
   },
   computed: {
@@ -282,13 +281,11 @@ export default {
     p.lead {
       padding: 3px;
       background: white;
-      display: inline-block;
     }
   }
   .tabs-container {
     position: relative;
     z-index: 1001;
-    margin-top: -53px;
     .group-tabs .card-header {
       background: unset;
     }
@@ -296,6 +293,11 @@ export default {
       border-top-left-radius: 3px;
       border-top-right-radius: 3px;
       background: transparentize(whitesmoke, 0.15);
+    }
+    .tabs {
+      position: absolute;
+      top: -53px;
+      width: 100%;
     }
   }
 }

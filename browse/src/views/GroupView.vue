@@ -15,13 +15,8 @@
         associated with it.
       </p>
     </b-jumbotron>
-    <b-tabs
-      card
-      class="group-tabs"
-      nav-class="container"
-      v-model="currentTabIndex"
-    >
-      <b-tab lazy v-if="!limitedView">
+    <tab-list v-model="currentTabIndex">
+      <tab-list-item lazy v-if="!limitedView">
         <template #title>
           <TabTemplate
             title="Users"
@@ -37,8 +32,8 @@
           @user-added="() => fetchUsers()"
           @user-removed="(userName) => removedUser(userName)"
         />
-      </b-tab>
-      <b-tab lazy v-if="!limitedView">
+      </tab-list-item>
+      <tab-list-item lazy v-if="!limitedView">
         <template #title>
           <TabTemplate
             title="Visits"
@@ -51,8 +46,8 @@
           :group-name="groupName"
           :visits-query="visitsQueryFinal"
         />
-      </b-tab>
-      <b-tab title="Devices" lazy>
+      </tab-list-item>
+      <tab-list-item title="Devices" lazy>
         <template #title>
           <TabTemplate
             title="Devices"
@@ -66,8 +61,8 @@
           :loading="devicesLoading"
           :group-name="groupName"
         />
-      </b-tab>
-      <b-tab lazy v-if="!limitedView">
+      </tab-list-item>
+      <tab-list-item lazy v-if="!limitedView">
         <template #title>
           <TabTemplate
             title="Stations"
@@ -82,8 +77,8 @@
           :is-group-admin="isGroupAdmin"
           @change="() => fetchStations()"
         />
-      </b-tab>
-      <b-tab lazy>
+      </tab-list-item>
+      <tab-list-item lazy>
         <template #title>
           <TabTemplate
             title="Recordings"
@@ -96,7 +91,7 @@
           :group-name="groupName"
           :recordings-query="recordingQueryFinal"
         />
-      </b-tab>
+      </tab-list-item>
       <!--      <b-tab lazy v-if="!limitedView">-->
       <!--        <template #title>-->
       <!--          <TabTemplate-->
@@ -111,7 +106,7 @@
       <!--          :recordings-query="deletedRecordingQueryFinal"-->
       <!--        />-->
       <!--      </b-tab>-->
-    </b-tabs>
+    </tab-list>
   </b-container>
 </template>
 
@@ -128,6 +123,8 @@ import { GroupId } from "@typedefs/api/common";
 import { DeviceType } from "@typedefs/api/consts";
 import MonitoringTab from "@/components/MonitoringTab.vue";
 import GroupLink from "@/components/GroupLink.vue";
+import TabListItem from "@/components/TabListItem.vue";
+import TabList from "@/components/TabList.vue";
 
 interface GroupViewData {
   group: ApiGroupResponse | null;
@@ -137,6 +134,7 @@ interface GroupViewData {
 export default {
   name: "GroupView",
   components: {
+    TabListItem,
     GroupLink,
     RecordingsTab,
     UsersTab,
@@ -144,6 +142,7 @@ export default {
     DevicesTab,
     TabTemplate,
     MonitoringTab,
+    TabList,
   },
   data(): Record<string, any> & GroupViewData {
     return {

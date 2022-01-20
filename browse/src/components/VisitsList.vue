@@ -212,6 +212,8 @@ export default {
         this.$refs["list-container"].style.height = `${maxY[0][0]}px`;
         //console.log("Observing", observerTrigger);
         this.observer && this.observer.observe(observerTrigger);
+      } else {
+        this.$refs["list-container"].style.height = "auto";
       }
     }
   },
