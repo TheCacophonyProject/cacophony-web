@@ -18,7 +18,7 @@ module.exports = {
       let algorithmId = await queryInterface.sequelize.query(`
         SELECT "id" from "DetailSnapshots" 
         WHERE "type"='algorithm' AND "details"->>'algorithm'='sliding_window';`);
-      if (!algorithmId) {
+      if (!algorithmId[0].length !== 0) {
         console.log("inserting new algorithm");
         algorithmId = await queryInterface.sequelize.query(
           `
@@ -28,6 +28,7 @@ module.exports = {
           { transaction }
         );
       }
+      console.log("algorithmId", algorithmId);
       algorithmId = algorithmId[0][0].id;
 
       const analysedRecordings = await queryInterface.sequelize.query(
