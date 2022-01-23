@@ -31,9 +31,8 @@
     <b-button class="export-visits" @click="exportVisits">
       <font-awesome-icon icon="download" class="fa-1x" />
       <span
-        >Export<span class="d-none d-md-inline-block">
-          Visits for TrapNZ</span
-        ></span
+        >Export
+        <span class="d-none d-md-inline-block"> Visits for TrapNZ</span></span
       >
     </b-button>
   </div>
