@@ -52,7 +52,8 @@ const LAST_TIMES_TABLE = `with lasttimes as
    LAG("recordingDateTime", 1) OVER (PARTITION BY "DeviceId" ORDER BY "recordingDateTime") lasttime,
    LAG("duration", 1) OVER (PARTITION BY "DeviceId" ORDER BY "recordingDateTime") lastduration
      from "Recordings" 
-     where "recordingDateTime" is not NULL 
+     where "recordingDateTime" is not NULL
+       and "deletedAt" is null 
        and type = 'thermalRaw' 
        and duration > 0
        {${GROUPS_AND_DEVICES}}
