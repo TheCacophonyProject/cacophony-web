@@ -5,6 +5,7 @@
     <b-row class="no-gutters">
       <b-col cols="12" lg="8">
         <CptvPlayer
+          ref = "player"
           :cptv-url="videoRawUrl"
           :cptv-size="videoRawSize"
           :tracks="tracks"
@@ -183,6 +184,7 @@ export default {
       set: function (val) {
         localStorage.setItem("showFiltered", val);
         this.$store.state.User.userData.showFiltered = val;
+        this.$refs["player"].renderCurrentFrame(true)
       },
       get: function () {
         return this.$store.state.User.userData.showFiltered;
