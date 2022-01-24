@@ -51,7 +51,7 @@ export default {
           this.$route.params.stationName &&
           this.$route.params.stationName === this.stationName) ||
         (this.$route.params.stationId &&
-          this.$route.params.stationId === this.stationId)
+          Number(this.$route.params.stationId) === this.stationId)
       ) {
         return false;
       }
