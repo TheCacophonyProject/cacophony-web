@@ -134,6 +134,9 @@ export default {
     currentTabName() {
       return this.$route.params.tabName;
     },
+    stationId() {
+      return this.$route.params.stationId;
+    },
     location() {
       if (this.station) {
         return latLng(this.station.location.lat, this.station.location.lng);
@@ -147,13 +150,19 @@ export default {
       set(tabIndex) {
         const nextTabName = this.tabNames[tabIndex];
         if (nextTabName !== this.currentTabName) {
+          let name = "station";
+          const params: any = {
+            groupName: this.groupName,
+            stationName: this.stationName,
+            tabName: nextTabName,
+          };
+          if (this.stationId) {
+            params.stationId = this.stationId;
+            name = "station-id";
+          }
           this.$router.push({
-            name: "station",
-            params: {
-              groupName: this.groupName,
-              stationName: this.stationName,
-              tabName: nextTabName,
-            },
+            name,
+            params,
           });
         }
       },
@@ -174,51 +183,72 @@ export default {
       tabNames: ["recordings", "visits"],
     };
   },
-  mounted() {
+  async mounted() {
     const nextTabName = this.tabNames[this.currentTabIndex];
     if (nextTabName !== this.currentTabName) {
-      this.$router.replace({
-        name: "station",
-        params: {
-          groupName: this.groupName,
-          stationName: this.stationName,
-          tabName: nextTabName,
-        },
+      let name = "station";
+      const params: any = {
+        groupName: this.groupName,
+        stationName: this.stationName,
+        tabName: nextTabName,
+      };
+      if (this.stationId) {
+        params.stationId = this.stationId;
+        name = "station-id";
+      }
+      await this.$router.replace({
+        name,
+        params,
       });
     }
+
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
-    this.fetchStation();
+    await this.fetchStation();
   },
   methods: {
     async fetchStation() {
       try {
-        // eslint-disable-next-line no-unused-vars
-        const [groupResponse, stationsResponse] = await Promise.all([
-          api.groups.getGroup(this.groupName),
-          api.groups.getStationsForGroup(this.groupName, true),
-        ]);
-        if (groupResponse.success) {
-          this.group = groupResponse.result.group;
-        }
-        if (stationsResponse.success) {
-          const station = stationsResponse.result.stations.filter(
-            (station) => station.name === this.stationName
-          );
-          if (station.length > 1) {
-            const nonRetired = station.find((item) => item.retiredAt === null);
-            if (nonRetired) {
-              this.station = nonRetired;
-            } else {
-              const sortedByLatestRetired = station.sort(
-                (a, b) =>
-                  new Date(a.retiredAt).getTime() -
-                  new Date(b.retiredAt).getTime()
+        if (!this.stationId) {
+          // eslint-disable-next-line no-unused-vars
+          const [groupResponse, stationsResponse] = await Promise.all([
+            api.groups.getGroup(this.groupName),
+            api.groups.getStationsForGroup(this.groupName, true),
+          ]);
+          if (groupResponse.success) {
+            this.group = groupResponse.result.group;
+          }
+          if (stationsResponse.success) {
+            const station = stationsResponse.result.stations.filter(
+              (station) => station.name === this.stationName
+            );
+            if (station.length > 1) {
+              const nonRetired = station.find(
+                (item) => !item.hasOwnProperty("retiredAt")
               );
-              this.station = sortedByLatestRetired.pop();
+              if (nonRetired) {
+                this.station = nonRetired;
+              } else {
+                const sortedByLatestRetired = station.sort(
+                  (a, b) =>
+                    new Date(a.retiredAt).getTime() -
+                    new Date(b.retiredAt).getTime()
+                );
+                this.station = sortedByLatestRetired.pop();
+                this.stationIsRetired = true;
+              }
+            } else if (station.length === 1) {
+              this.station = station[0];
+            }
+          }
+        } else {
+          const stationResponse = await api.groups.getStationById(
+            this.stationId
+          );
+          if (stationResponse.success) {
+            this.station = stationResponse.result.station;
+            if (this.station.hasOwnProperty("retiredAt")) {
               this.stationIsRetired = true;
             }
-          } else if (station.length === 1) {
-            this.station = station[0];
           }
         }
         this.recordingsQueryFinal = {

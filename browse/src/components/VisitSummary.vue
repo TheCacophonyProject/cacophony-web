@@ -107,6 +107,7 @@
           v-if="isAtGroupLevel && item.item.station"
           :group-name="item.groupName"
           :station-name="item.item.station"
+          :station-id="item.item.stationId"
           context="visits"
         />
         <a

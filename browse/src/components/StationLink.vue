@@ -4,8 +4,9 @@
     <span class="label">
       <b-link
         :disabled="!shouldLink"
+        exact
         :to="{
-          name: 'station',
+          name,
           params,
         }"
       >
@@ -27,6 +28,9 @@ export default {
       type: String,
       required: true,
     },
+    stationId: {
+      type: Number,
+    },
     context: {
       type: String,
     },
@@ -41,21 +45,45 @@ export default {
         return this.useLink;
       }
       if (
-        this.$route.name === "station" &&
-        this.$route.params.groupName &&
-        this.$route.params.groupName === this.groupName &&
-        this.$route.params.stationName &&
-        this.$route.params.stationName === this.stationName
+        (this.$route.name === "station" &&
+          this.$route.params.groupName &&
+          this.$route.params.groupName === this.groupName &&
+          this.$route.params.stationName &&
+          this.$route.params.stationName === this.stationName) ||
+        (this.$route.params.stationId &&
+          this.$route.params.stationId === this.stationId)
       ) {
         return false;
       }
       return this.useLink;
     },
+    name() {
+      if (this.stationId) {
+        return "station-id";
+      }
+      return "station";
+    },
     params() {
       if (typeof this.context !== "undefined" && this.context !== "") {
+        if (this.stationId) {
+          return {
+            groupName: this.groupName,
+            stationName: this.stationName,
+            stationId: this.stationId,
+            tabName: this.context,
+          };
+        }
         return {
           groupName: this.groupName,
           stationName: this.stationName,
+          tabName: this.context,
+        };
+      }
+      if (this.stationId) {
+        return {
+          groupName: this.groupName,
+          stationName: this.stationName,
+          stationId: this.stationId,
           tabName: this.context,
         };
       }

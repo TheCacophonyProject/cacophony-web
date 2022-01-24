@@ -194,7 +194,8 @@ export default {
     nonRetiredStationsCount(): number {
       return (
         this.stations &&
-        this.stations.filter((station) => station.retiredAt === null).length
+        this.stations.filter((station) => !station.hasOwnProperty("retiredAt"))
+          .length
       );
     },
     currentTabName() {

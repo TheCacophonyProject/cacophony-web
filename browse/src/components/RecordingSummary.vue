@@ -27,6 +27,7 @@
         <StationLink
           v-if="item.stationName"
           :station-name="item.stationName"
+          :station-id="item.stationId"
           :group-name="item.groupName"
           context="recordings"
         />
@@ -114,61 +115,27 @@
     <a :href="getRecordingPath(item.id)" target="_blank">
       {{ item.id }}
     </a>
-    <span v-if="item.type === 'audio'">
-      <font-awesome-icon :icon="['far', 'file-audio']" size="2x" />
-    </span>
-    <span v-else-if="item.type === 'thermalRaw'">
-      <font-awesome-icon :icon="['far', 'file-video']" size="2x" />
-    </span>
-
-    <span>
-      <b-link
-        :to="{
-          name: 'device',
-          params: {
-            groupName: item.groupName,
-            deviceName: item.deviceName,
-            tabName: 'recordings',
-          },
-        }"
-      >
-        {{ item.deviceName }}
-      </b-link>
-    </span>
+    <DeviceLink
+      :device-name="item.deviceName"
+      :type="item.type"
+      :group-name="item.groupName"
+      context="recordings"
+    />
     <span>{{ item.date }}</span>
     <span class="recording-time">{{ item.time }}</span>
     <span>{{ Math.round(item.duration) }}s</span>
     <span>
       <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag-obj="tag" />
     </span>
-    <span>
-      <b-link
-        :to="{
-          name: 'group',
-          params: {
-            groupName: item.groupName,
-            tabName: 'recordings',
-          },
-        }"
-      >
-        {{ item.groupName }}
-      </b-link>
-    </span>
-    <span>
-      <b-link
-        v-if="item.stationName"
-        :to="{
-          name: 'station',
-          params: {
-            groupName: item.groupName,
-            stationName: item.stationName,
-            tabName: 'recordings',
-          },
-        }"
-      >
-        {{ item.stationName }}
-      </b-link>
-    </span>
+    <GroupLink :group-name="item.groupName" context="recordings" />
+    <StationLink
+      v-if="item.stationName"
+      :station-name="item.stationName"
+      :station-id="item.stationId"
+      :group-name="item.groupName"
+      context="recordings"
+    />
+    <span v-else></span>
     <b-modal
       v-model="showingLocation"
       hide-footer
