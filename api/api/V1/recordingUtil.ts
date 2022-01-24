@@ -798,7 +798,7 @@ const addTag = async (
   return tagInstance;
 };
 
-async function tracksFromMeta(recording: Recording, metadata: any) {  
+async function tracksFromMeta(recording: Recording, metadata: any) {
   try {
     if (!("tracks" in metadata)) {
       return false;
