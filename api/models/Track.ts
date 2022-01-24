@@ -29,6 +29,7 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
   id: TrackId;
   AlgorithmId: number | null;
   data: any;
+  automatic: boolean;
   addTag: (
     what: string,
     confidence: number,

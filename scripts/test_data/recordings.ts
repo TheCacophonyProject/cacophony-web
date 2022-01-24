@@ -5,18 +5,9 @@ import {
   recordingsUrl,
 } from "./utils.ts";
 
-export interface RecordingMetaData {
-  type: "thermal" | "audio";
-  fileHash?: string;
-  fileName?: string;
-  duration?: number;
-  recordingDateTime?: string;
-  metadata: { tracks: [number, number, number, number][] };
-}
-
 async function createDeviceRecording(
   device: number,
-  data: RecordingMetaData,
+  data: object,
   file: File,
 ) {
   try {

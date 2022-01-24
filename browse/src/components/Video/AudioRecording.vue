@@ -1,34 +1,23 @@
 <template>
   <b-container>
-    <b-row>
-      <b-col cols="12" lg="8" class="mb-2">
-        <audio
-          ref="player"
-          :src="audioUrl"
-          volume="0.75"
-          controls
-          autoplay
-          class="audio"
-        />
-      </b-col>
-      <b-col cols="12" lg="6" v-if="recording.cacophonyIndex">
-        <CacophonyIndexGraph
-          :id="recording.id"
-          :cacophonyIndex="recording.cacophonyIndex"
-        />
+    <b-row class="mb-4">
+      <b-col cols="12" lg="8">
+        <div id="spectrogram"></div>
+        <div class="player-bar">
+          <font-awesome-icon
+            class="mx-2"
+            :icon="['fa', playing ? 'pause' : 'play']"
+            size="2x"
+            style="cursor: pointer"
+            @click="togglePlay"
+          />
+          <div id="waveform"></div>
+        </div>
       </b-col>
     </b-row>
     <b-row>
-      <b-col cols="2" class="db">
-        <b-button-group class="pl-4" vertical>
-          <b-button class="mt-1" @click="volumeLoudest">Loudest</b-button>
-          <b-button class="mt-1" @click="volumeLouder">Louder</b-button>
-          <b-button class="mt-1">Default</b-button>
-          <b-button class="mt-1" @click="volumeQuieter">Quieter</b-button>
-          <b-button class="mt-1" @click="volumeQuietest">Quietest</b-button>
-        </b-button-group>
-      </b-col>
-      <b-row class="db m-0 no-gutters">
+      <b-col cols="6" lg="4"> </b-col>
+      <b-col colclass="db m-0 no-gutters">
         <b-col offset="1" class="mt-0 ml-0 db" cols="12">
           <BasicTags @addAudioTag="addAudioTag($event)" />
           <CustomTags @addAudioTag="addAudioTag($event)" />
@@ -51,23 +40,19 @@
             Delete
           </b-button>
         </b-col>
-      </b-row>
-    </b-row>
-    <b-row>
-      <TagList
-        :items="tagItems"
-        @deleteTag="deleteTag($event)"
-        @replay="replay($event)"
-      />
+      </b-col>
     </b-row>
   </b-container>
 </template>
 
 <script lang="ts">
+import Vue from "vue";
+import WaveSurfer from "wavesurfer.js";
+import SpectrogramPlugin from "wavesurfer.js/src/plugin/spectrogram/index.js";
 import api from "@api";
 import BasicTags from "../Audio/BasicTags.vue";
 import CustomTags from "../Audio/CustomTags.vue";
-import TagList from "../Audio/TagList.vue";
+import TrackList from "../Audio/TrackList.vue";
 import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import {
@@ -77,15 +62,19 @@ import {
 import { RecordingType } from "@typedefs/api/consts";
 import { TagId } from "@typedefs/api/common";
 
-export default {
+export default Vue.extend({
   name: "AudioRecording",
   data() {
-    return { deleteDisabled: false };
+    return {
+      deleteDisabled: false,
+      playing: false,
+      waveSurfer: null as WaveSurfer | null,
+    };
   },
   components: {
     CustomTags,
     BasicTags,
-    TagList,
+    TrackList,
     CacophonyIndexGraph,
   },
   props: {
@@ -140,7 +129,44 @@ export default {
       return this.recording;
     },
   },
+  mounted() {
+    // initialize wavesurfer as spectrogram
+    this.$nextTick(() => {
+      this.waveSurfer = WaveSurfer.create({
+        container: "#waveform",
+        barWidth: 3,
+        barHeight: 1,
+        barGap: 1,
+        height: 50,
+        backgroundColor: "#2B333F",
+        progressColor: "#FFF",
+        cursorColor: "#FFF",
+        waveColor: "#FFF",
+        pixelRatio: 1,
+        hideScrollbar: true,
+        responsive: true,
+        normalize: true,
+        cursorWidth: 1,
+        plugins: [
+          SpectrogramPlugin.create({
+            container: "#spectrogram",
+            fftSamples: 512,
+            labels: true,
+          }),
+        ],
+      });
+      this.waveSurfer.load(this.audioRawUrl);
+    });
+  },
   methods: {
+    togglePlay() {
+      this.playing = !this.playing;
+      if (this.playing) {
+        this.waveSurfer.play();
+      } else {
+        this.waveSurfer.pause();
+      }
+    },
     async getNextRecording(
       direction: "next" | "previous" | "either"
     ): Promise<boolean> {
@@ -225,37 +251,32 @@ export default {
     },
     replay(time: string) {
       this.$refs.player.currentTime = time;
-      this.$refs.player.play();
-    },
-    volumeLoudest() {
-      this.$refs.player.volume = 1.0;
-    },
-    volumeLouder() {
-      if (this.$refs.player.volume + 0.1 <= 1.0) {
-        this.$refs.player.volume += 0.1;
-      }
-    },
-    volumeDefault() {
-      this.$refs.player.volume = 0.75;
-    },
-    volumeQuieter() {
-      if (this.$refs.player.volume - 0.1 >= 0) {
-        this.$refs.player.volume -= 0.1;
-      }
-    },
-    volumeQuietest() {
-      this.$refs.player.volume = 0.25;
+      this.waveform.play();
     },
   },
-};
+});
 </script>
-
-<style scoped>
-.tag-buttons,
-.img-buttons {
-  padding: 0 5px;
+<style lang="scss">
+.player-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  border-radius: 0 0 0.25rem 0.25rem;
+  background-color: #2b333f;
+  color: #fff;
+  width: 100%;
 }
-.db {
-  border: 0px;
+#waveform {
+  width: 100%;
+  height: 50px;
+}
+#spectrogram {
+  width: 100%;
+}
+.spec-labels {
+  position: relative !important;
+  background-color: #152338;
 }
 </style>
