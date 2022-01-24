@@ -4,10 +4,7 @@
     ref="list-container"
   >
     <div v-if="showCards">
-      <div
-        v-for="(itemsByDay, index_a) in recordingsChunkedByDayAndHour"
-        :key="index_a"
-      >
+      <div v-for="(itemsByDay, index_a) in recordingsChunked" :key="index_a">
         <h4 class="recordings-day">{{ relativeDay(itemsByDay) }}</h4>
         <div v-for="(itemsByHour, index_b) in itemsByDay" :key="index_b">
           <h5 class="recordings-hour">{{ hour(itemsByHour) }}</h5>
@@ -50,7 +47,7 @@
       </div>
       <div class="results-rows">
         <RecordingSummary
-          v-for="(item, index) in tableItems"
+          v-for="(item, index) in filteredItems"
           :item="item"
           :ref="item.id"
           :index="index"
@@ -108,6 +105,7 @@ import {
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { ApiTrackResponse } from "@typedefs/api/track";
+import DefaultLabels from "../const";
 
 const parseLocation = (location: LatLng): string => {
   if (location && typeof location === "object") {
@@ -160,10 +158,7 @@ const addToListOfTags = (
   allTags[tagName] = tag;
 };
 
-const collateTags = (
-  tags: ApiRecordingTagResponse[],
-  tracks: ApiTrackResponse[]
-): DisplayTag[] => {
+const collateTags = (tags: ApiRecordingTagResponse[]): DisplayTag[] => {
   // Build a collection of tagItems - one per animal
   const tagItems: Record<string, DisplayTag> = {};
   for (let i = 0; i < tags.length; i++) {
@@ -174,37 +169,6 @@ const collateTags = (
     addToListOfTags(tagItems, tagName, tag.automatic, taggerId);
   }
 
-  if (tracks) {
-    for (let j = 0; j < tracks.length; j++) {
-      const track = tracks[j];
-      // For track tags, pick the best one, which is the "master AI" tag.
-      const aiTag = track.tags.find(
-        (tag) =>
-          tag.data &&
-          (tag.data === "Master" ||
-            (typeof tag.data === "object" && tag.data.name === "Master"))
-      ) as ApiAutomaticTrackTagResponse;
-      const humanTags = track.tags.filter(
-        (tag) => !tag.automatic
-      ) as ApiHumanTrackTagResponse[];
-      // If the same track has one or more human tags, and none of them agree with the AI just show that:
-      let humansDisagree = false;
-      if (aiTag && humanTags.length !== 0) {
-        humansDisagree =
-          humanTags.find((tag) => tag.what === aiTag.what) === undefined;
-      }
-
-      if (aiTag && !humansDisagree) {
-        addToListOfTags(tagItems, aiTag.what, aiTag.automatic, null);
-      }
-
-      // Also add human tags:
-      for (const tag of humanTags) {
-        addToListOfTags(tagItems, tag.what, tag.automatic, tag.userId);
-      }
-    }
-  }
-
   // Use automatic and human status to create an ordered array of objects
   // suitable for parsing into coloured spans
   const result = [];
@@ -212,7 +176,6 @@ const collateTags = (
     const tagItem = tagItems[animal];
     let subOrder = 0;
     if (animal === "false positive") {
-      animal = "false positive";
       subOrder = 3;
     } else if (animal === "multiple animals") {
       animal = "multiple";
@@ -244,11 +207,18 @@ const collateTags = (
       });
     }
   }
-  // Sort the result array
-  result.sort((a, b) => {
-    return a.order - b.order;
-  });
   return result;
+};
+
+const mapTracks = (tracks: ApiTrackResponse[]) => {
+  const t = tracks.map(mapTrack);
+  return t;
+};
+
+const mapTrack = (track: ApiTrackResponse) => {
+  const t = track as any;
+  t.filtered = DefaultLabels.isFiltered(t.tags);
+  return t;
 };
 
 interface ItemData {
@@ -263,17 +233,23 @@ interface ItemData {
   date: string;
   time: string;
   duration: number;
-  tags: DisplayTag[];
+  recTags: DisplayTag[];
   batteryLevel: number | null;
   trackCount: number;
   processingState: string;
   processing: boolean;
+  tracks: any[];
+  filtered: boolean;
 }
 
 export default {
   name: "RecordingsList",
   components: { RecordingSummary },
   props: {
+    showFiltered: {
+      type: Boolean,
+      required: true,
+    },
     recordings: {
       type: Array,
       required: true,
@@ -347,14 +323,16 @@ export default {
           date: toNZDateString(thisDate),
           time: thisDate.toLocaleTimeString(),
           duration: recording.duration,
-          tags: collateTags(recording.tags, recording.tracks),
+          tracks: mapTracks(recording.tracks),
+          recTags: collateTags(recording.tags, []),
           batteryLevel: (recording as ApiAudioRecordingResponse).batteryLevel,
           trackCount: recording.tracks.length,
           processingState: parseProcessingState(recording.processingState),
           processing: recording.processing === true,
           stationName: recording.stationName,
         };
-
+        // console.log("tracks are", itemData.tracks)
+        itemData.filtered = itemData.tracks.every((track) => track.filtered);
         items.push(itemData);
       }
       this.tableItems.push(...items);
@@ -411,6 +389,7 @@ export default {
           this.recordingsChunkedByDayAndHour.push(...chunks);
         }
       }
+      this.$emit("filtered-count", this.filteredCount);
     },
   },
   beforeDestroy() {
@@ -475,6 +454,38 @@ export default {
       atEnd: false,
       loadedRecordingsCount: 0,
     };
+  },
+  computed: {
+    filteredCount() {
+      return this.tableItems.filter((item) => item.filtered).length;
+    },
+    filteredItems() {
+      if (this.showFiltered) {
+        return this.tableItems;
+      } else {
+        return this.tableItems.filter((item) => !item.filtered);
+      }
+    },
+    recordingsChunked() {
+      if (this.showFiltered) {
+        return this.recordingsChunkedByDayAndHour;
+      } else {
+        const filteredChunks = [];
+        for (const chunk of this.recordingsChunkedByDayAndHour) {
+          const hourChunks = [];
+          for (const hourChunk of chunk) {
+            const filteredHours = hourChunk.filter((item) => !item.filtered);
+            if (filteredHours.length > 0) {
+              hourChunks.push(filteredHours);
+            }
+          }
+          if (hourChunks.length > 0) {
+            filteredChunks.push(hourChunks);
+          }
+        }
+        return filteredChunks;
+      }
+    },
   },
 };
 </script>

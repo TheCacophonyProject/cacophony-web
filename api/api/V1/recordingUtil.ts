@@ -798,11 +798,11 @@ const addTag = async (
   return tagInstance;
 };
 
-async function tracksFromMeta(recording: Recording, metadata: any) {
-  if (!("tracks" in metadata)) {
-    return false;
-  }
+async function tracksFromMeta(recording: Recording, metadata: any) {  
   try {
+    if (!("tracks" in metadata)) {
+      return false;
+    }
     const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
       "algorithm",
       metadata["algorithm"]

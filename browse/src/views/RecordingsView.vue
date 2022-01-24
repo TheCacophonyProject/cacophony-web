@@ -42,13 +42,20 @@
             <h5 v-else>Loading...</h5>
             <p class="search-description" v-html="currentQueryDescription" />
           </div>
+          <div class="filtered-tracks">
+            <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
+            <label for="cbFiltered">Show Filtered {{ filteredMessage }}</label>
+          </div>
           <RecordingsList
+            ref="recList"
+            :showFiltered="showFiltered"
             :recordings="recordings"
             :query-pending="queryPending"
             :show-cards="showCards"
             :view-recording-query="viewRecordingQuery"
             :all-loaded="atEndOfSearch"
             @load-more="queueMoreRecordings"
+            @filtered-count="updateFilteredCount"
           />
           <div v-if="countMessage === 'No matches'" class="no-results">
             <h6 class="text-muted">No recordings found</h6>
@@ -81,6 +88,7 @@ export default {
       searchPanelIsCollapsed: true,
       recordings: [],
       count: null,
+      filteredMessage: null,
       countMessage: null,
       showCardsInternal: this.getPreferredResultsDisplayStyle(),
       currentPage: 1,
@@ -112,6 +120,15 @@ export default {
     }
   },
   computed: {
+    showFiltered: {
+      set: function (val) {
+        localStorage.setItem("showFiltered", val);
+        this.$store.state.User.userData.showFiltered = val;
+      },
+      get: function () {
+        return this.$store.state.User.userData.showFiltered;
+      },
+    },
     showCards: {
       get() {
         if (this.screenWidth < 500) {
@@ -152,6 +169,13 @@ export default {
     },
   },
   methods: {
+    updateFilteredCount(count) {
+      let pre = "Recording";
+      if (count > 1) {
+        pre = pre + "s";
+      }
+      this.filteredMessage = `( ${count} ${pre} )`;
+    },
     onResize() {
       this.screenWidth = window.innerWidth;
     },

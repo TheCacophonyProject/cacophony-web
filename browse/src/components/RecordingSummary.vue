@@ -94,14 +94,19 @@
           >
             {{ item.trackCount }} track<span v-if="item.trackCount > 1">s</span>
           </span>
+
           <span class="label" v-else-if="item.type === 'thermalRaw'"
             >No tracks</span
           >
+          <span class="label sub-label" v-if="filteredCount > 0">
+            ( {{ filteredCount
+            }}<span v-if="filteredCount > 1">s</span> filtered )
+          </span>
         </span>
       </div>
-      <div v-if="item.tags.length !== 0" class="recording-tags">
+      <div v-if="filteredTags.length !== 0" class="recording-tags">
         <TagBadge
-          v-for="(tag, index) in item.tags"
+          v-for="(tag, index) in filteredTags"
           :key="index"
           :tag-obj="tag"
         />
@@ -182,7 +187,11 @@
     <span class="recording-time">{{ item.time }}</span>
     <span>{{ Math.round(item.duration) }}s</span>
     <span>
-      <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag-obj="tag" />
+      <TagBadge
+        v-for="(tag, index) in filteredTags"
+        :key="index"
+        :tag-obj="tag"
+      />
     </span>
     <span>
       <b-link
@@ -232,6 +241,109 @@ import TagBadge from "./TagBadge.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import api from "@/api";
+import DefaultLabels from "../const";
+
+const addToListOfTags = (
+  allTags: Record<string, IntermediateDisplayTag>,
+  tagName: string,
+  isAutomatic: boolean,
+  taggerId: number | null
+) => {
+  const tag = allTags[tagName] || {
+    taggerIds: [],
+    automatic: false,
+    human: false,
+  };
+  if (taggerId && !tag.taggerIds.includes(taggerId)) {
+    tag.taggerIds.push(taggerId);
+  }
+  if (isAutomatic) {
+    tag.automatic = true;
+  } else {
+    tag.human = true;
+  }
+  allTags[tagName] = tag;
+};
+
+const collateTags = (recTags: any[], tracks: any[]): DisplayTag[] => {
+  // Build a collection of tagItems - one per animal
+  const tagItems: Record<string, DisplayTag> = {};
+
+  if (tracks) {
+    for (let j = 0; j < tracks.length; j++) {
+      const track = tracks[j];
+      // For track tags, pick the best one, which is the "master AI" tag.
+      const aiTag = track.tags.find(
+        (tag) =>
+          tag.data &&
+          (tag.data === "Master" ||
+            (typeof tag.data === "object" && tag.data.name === "Master"))
+      ) as ApiAutomaticTrackTagResponse;
+      const humanTags = track.tags.filter(
+        (tag) => !tag.automatic
+      ) as ApiHumanTrackTagResponse[];
+      // If the same track has one or more human tags, and none of them agree with the AI just show that:
+      let humanAgree = false;
+      if (aiTag && humanTags.length !== 0) {
+        humanAgree = humanTags.some((tag) => tag.what === aiTag.what);
+      }
+
+      if (aiTag && humanAgree) {
+        addToListOfTags(tagItems, aiTag.what, aiTag.automatic, null);
+      }
+
+      // Also add human tags:
+      for (const tag of humanTags) {
+        addToListOfTags(tagItems, tag.what, tag.automatic, tag.userId);
+      }
+    }
+  }
+
+  // Use automatic and human status to create an ordered array of objects
+  // suitable for parsing into coloured spans
+  const result = [];
+  result.push(...recTags);
+  for (let animal of Object.keys(tagItems).sort()) {
+    const tagItem = tagItems[animal];
+    let subOrder = 0;
+    if (animal === "false positive") {
+      subOrder = 3;
+    } else if (animal === "multiple animals") {
+      animal = "multiple";
+      subOrder = 2;
+    } else if (animal === "unidentified") {
+      animal = "?";
+      subOrder = 1;
+    }
+
+    if (tagItem.automatic && tagItem.human) {
+      result.push({
+        text: animal,
+        class: "automatic human",
+        taggerIds: tagItem.taggerIds,
+        order: subOrder,
+      });
+    } else if (tagItem.human) {
+      result.push({
+        text: animal,
+        class: "human",
+        taggerIds: tagItem.taggerIds,
+        order: 10 + subOrder,
+      });
+    } else if (tagItem.automatic) {
+      result.push({
+        text: animal,
+        class: "automatic",
+        order: 20 + subOrder,
+      });
+    }
+  }
+  // Sort the result array
+  result.sort((a, b) => {
+    return a.order - b.order;
+  });
+  return result;
+};
 
 export default {
   name: "RecordingSummary",
@@ -256,6 +368,17 @@ export default {
     };
   },
   computed: {
+    filteredCount() {
+      return this.item.tracks.filter((track) => track.filtered).length;
+    },
+    filteredTags() {
+      if (this.$store.state.User.userData.showFiltered) {
+        return collateTags(this.item.recTags, this.item.tracks);
+      } else {
+        const goodTracks = this.item.tracks.filter((track) => !track.filtered);
+        return collateTags(this.item.recTags, goodTracks);
+      }
+    },
     thumbnailSrc(): string {
       return api.recording.thumbnail(this.item.id);
     },
@@ -449,6 +572,9 @@ $recording-side-padding-small: 0.5rem;
     vertical-align: middle;
   }
 
+  .sub-label {
+    font-size: 0.8em;
+  }
   .recording-tags {
     padding: 0 $recording-side-padding 0.9rem;
     @include media-breakpoint-down(xs) {
