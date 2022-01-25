@@ -12,19 +12,6 @@ module.exports = {
         Sequelize.JSONB,
         { transaction }
       );
-      console.log("Adding column automatic to track");
-      await queryInterface.addColumn(
-        "Tracks",
-        "automatic",
-        {
-          type: Sequelize.BOOLEAN,
-          defaultValue: true,
-          allowNull: false,
-        },
-        {
-          transaction,
-        }
-      );
 
       // sql get or create new algorithm into DetailSnapshot if does not exist
       let algorithmId = await queryInterface.sequelize.query(`
@@ -91,7 +78,7 @@ module.exports = {
                   {
                     transaction,
                     replacements: {
-                      species: JSON.stringify(species),
+                      species: species,
                       trackId,
                       liklihood,
                     },
@@ -223,10 +210,13 @@ module.exports = {
               }
             });
 
-            const newAdditionalMetadata = {
+            const newAdditionalMetadata = JSON.stringify({
               ...additionalMetadata,
               analysis,
-            };
+            }).replace(/"(\w+):(\w+)"/g, "\"$1\": '$2'");
+            // replace json string double quotes of the objects value with single quotes
+            console.log("Updating additionalMetadata", newAdditionalMetadata);
+
             await queryInterface.sequelize.query(
               `
             UPDATE "Recordings"
@@ -237,7 +227,7 @@ module.exports = {
                 transaction,
                 replacements: {
                   id: recordingId,
-                  additionalMetadata: JSON.stringify(newAdditionalMetadata),
+                  additionalMetadata: newAdditionalMetadata,
                 },
               }
             );
@@ -249,8 +239,6 @@ module.exports = {
       await queryInterface.removeColumn("Recordings", "cacophonyIndex", {
         transaction,
       });
-      console.log("Removing automatic from Track");
-      await queryInterface.removeColumn("Tracks", "automatic", { transaction });
 
       await transaction.commit();
     } catch (error) {

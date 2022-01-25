@@ -72,6 +72,12 @@ for await (const dirEntry of Deno.readDir("./audio_files")) {
     ],
     metadata: {
       algorithm: { model_name: "master" },
+      models: [
+        {
+          id: 1,
+          name: "Master"
+        }
+      ],
       tracks: [
         {
           start_s: 1,
@@ -89,6 +95,7 @@ for await (const dirEntry of Deno.readDir("./audio_files")) {
           end_s: 40,
           predictions: [
             {
+              name: "Master",
               confident_tag: "morepork",
               confidence: 1,
               model_id: 1,
@@ -100,6 +107,7 @@ for await (const dirEntry of Deno.readDir("./audio_files")) {
           end_s: 60,
           predictions: [
             {
+              name: "Master",
               confident_tag: "morepork",
               confidence: 0.9,
               model_id: 1,
