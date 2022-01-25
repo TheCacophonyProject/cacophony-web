@@ -279,7 +279,10 @@ const DefaultLabels = {
     }
     // if ai master tag is filtered this track is filtered
     const masterTag = tags.find(
-      (tag) => tag.automatic && ((tag.data?.name && tag.data.name == "Master") || (tag.data && tag.data == "Master"))
+      (tag) =>
+        tag.automatic &&
+        ((tag.data?.name && tag.data.name == "Master") ||
+          (tag.data && tag.data == "Master"))
     );
     if (
       masterTag &&

@@ -157,7 +157,10 @@
       </a>
     </div>
   </a>
-  <div v-else-if="item && item.id" :class="['recording-summary-row', headerClass]">
+  <div
+    v-else-if="item && item.id"
+    :class="['recording-summary-row', headerClass]"
+  >
     <a :href="getRecordingPath(item.id)" target="_blank">
       {{ item.id }}
     </a>
