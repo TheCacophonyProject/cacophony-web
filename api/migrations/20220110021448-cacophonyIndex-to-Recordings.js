@@ -72,7 +72,7 @@ module.exports = {
                     }
                   )
                 )[0][0].id;
-                console.log("Creating TrackTag for track", trackId, species);
+                console.log("Creating TrackTag for track", trackId, species, liklihood);
                 return await queryInterface.sequelize.query(
                   `
                   INSERT INTO "TrackTags" ("what", "confidence", "automatic", "data", "createdAt", "updatedAt", "TrackId")
@@ -83,7 +83,7 @@ module.exports = {
                     replacements: {
                       species: species,
                       trackId,
-                      liklihood,
+                      likihood: liklihood ?? 0,
                     },
                     type: Sequelize.QueryTypes.INSERT,
                   }
