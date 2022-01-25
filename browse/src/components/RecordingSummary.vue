@@ -2,7 +2,7 @@
   <a
     v-if="displayStyle === 'card'"
     :href="getRecordingPath(item.id)"
-    class="recording-summary"
+    :class="['recording-summary', headerClass]"
     @click="(event) => navigateToRecording(event, item.id)"
   >
     <div class="recording-type">
@@ -99,8 +99,7 @@
             >No tracks</span
           >
           <span class="label sub-label" v-if="filteredCount > 0">
-            ( {{ filteredCount
-            }}<span v-if="filteredCount > 1">s</span> filtered )
+            ( {{ filteredCount }} filtered )
           </span>
         </span>
       </div>
@@ -158,7 +157,7 @@
       </a>
     </div>
   </a>
-  <div v-else-if="item && item.id" class="recording-summary-row">
+  <div v-else-if="item && item.id" :class="['recording-summary-row', headerClass]">
     <a :href="getRecordingPath(item.id)" target="_blank">
       {{ item.id }}
     </a>
@@ -368,6 +367,12 @@ export default {
     };
   },
   computed: {
+    headerClass() {
+      if (this.item.filtered) {
+        return "filtered-recording";
+      }
+      return "";
+    },
     filteredCount() {
       return this.item.tracks.filter((track) => track.filtered).length;
     },
@@ -625,5 +630,9 @@ $recording-side-padding-small: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.filtered-recording {
+  background: #b1bdc9e0;
 }
 </style>

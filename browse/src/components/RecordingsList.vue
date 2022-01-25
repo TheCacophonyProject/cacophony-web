@@ -336,7 +336,6 @@ export default {
         items.push(itemData);
       }
       this.tableItems.push(...items);
-
       // Now calculate chunks of days and hour groupings
       {
         const chunks = [];
