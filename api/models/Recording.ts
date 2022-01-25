@@ -1105,7 +1105,7 @@ from (
         where: {
           archivedAt: null,
         },
-        seperate: true,
+        separate: true,
         attributes: [
           "id",
           [
