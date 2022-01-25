@@ -282,13 +282,13 @@ const collateTags = (recTags: any[], tracks: any[]): DisplayTag[] => {
       const humanTags = track.tags.filter(
         (tag) => !tag.automatic
       ) as ApiHumanTrackTagResponse[];
-      // If the same track has one or more human tags, and none of them agree with the AI just show that:
-      let humanAgree = false;
+
+      let humansDisagree = false;
       if (aiTag && humanTags.length !== 0) {
-        humanAgree = humanTags.some((tag) => tag.what === aiTag.what);
+        humansDisagree = humanTags.some((tag) => tag.what !== aiTag.what);
       }
 
-      if (aiTag && humanAgree) {
+      if (aiTag && !humansDisagree) {
         addToListOfTags(tagItems, aiTag.what, aiTag.automatic, null);
       }
 

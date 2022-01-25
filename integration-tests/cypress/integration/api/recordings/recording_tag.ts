@@ -261,7 +261,7 @@ describe("Recordings: tag", () => {
     );
   });
 
-  it.only("Can set all valid tag fields", () => {
+  it("Can set all valid tag fields", () => {
     const fullTag: ApiRecordingTagRequest = {
       detail: "blah blah blah",
       confidence: 0.9,
@@ -301,11 +301,11 @@ describe("Recordings: tag", () => {
       [expectedTag],
       EXCLUDE_IDS
     );
-    // cy.log("Delete tag");
-    // cy.apiRecordingTagDelete("tagGroupAdmin", "tagRecording9", "tagTag9");
-    //
-    // cy.log("Check tag no longer exists");
-    // cy.testRecordingTagCheck("tagGroupAdmin", "tagRecording9", []);
+    cy.log("Delete tag");
+    cy.apiRecordingTagDelete("tagGroupAdmin", "tagRecording9", "tagTag9");
+
+    cy.log("Check tag no longer exists");
+    cy.testRecordingTagCheck("tagGroupAdmin", "tagRecording9", []);
   });
 
   it("Correct handling of invalid tag data", () => {
