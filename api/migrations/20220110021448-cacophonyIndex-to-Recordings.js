@@ -72,7 +72,12 @@ module.exports = {
                     }
                   )
                 )[0][0].id;
-                console.log("Creating TrackTag for track", trackId, species, liklihood);
+                console.log(
+                  "Creating TrackTag for track",
+                  trackId,
+                  species,
+                  liklihood
+                );
                 return await queryInterface.sequelize.query(
                   `
                   INSERT INTO "TrackTags" ("what", "confidence", "automatic", "data", "createdAt", "updatedAt", "TrackId")
@@ -83,7 +88,7 @@ module.exports = {
                     replacements: {
                       species: species,
                       trackId,
-                      likihood: liklihood ?? 0,
+                      liklihood: liklihood ?? 0,
                     },
                     type: Sequelize.QueryTypes.INSERT,
                   }
@@ -125,12 +130,19 @@ module.exports = {
     const Op = Sequelize.Op;
     try {
       const recordings = await queryInterface.describeTable("Recordings");
-      if (recordings.cacophonyIndex) {
+      if (!recordings.cacophonyIndex) {
         return;
       }
-      console.log(analysedRecordings);
 
-      const recordingNewAdditionalMetadata = await Promise.all(
+      const analysedRecordings = await queryInterface.sequelize.query(
+        `
+        SELECT "id", "cacophonyIndex", "additionalMetadata" FROM "Recordings"
+        WHERE "cacophonyIndex" IS NOT NULL
+        `,
+        { transaction }
+      );
+
+      await Promise.all(
         analysedRecordings[0].map(
           async ({ id: recordingId, cacophonyIndex, additionalMetadata }) => {
             console.log("Querying for tracks", recordingId);
