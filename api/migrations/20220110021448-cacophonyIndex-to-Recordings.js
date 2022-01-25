@@ -5,13 +5,16 @@ module.exports = {
     const transaction = await queryInterface.sequelize.transaction();
     try {
       // check recordings has column cacophonyIndex
-      console.log("Adding column cacophonyIndex to recordings");
-      await queryInterface.addColumn(
-        "Recordings",
-        "cacophonyIndex",
-        Sequelize.JSONB,
-        { transaction }
-      );
+      const recordings = await queryInterface.describeTable("Recordings");
+      if (!recordings.cacophonyIndex) {
+        console.log("Adding column cacophonyIndex to recordings");
+        await queryInterface.addColumn(
+          "Recordings",
+          "cacophonyIndex",
+          Sequelize.JSONB,
+          { transaction }
+        );
+      }
 
       // sql get or create new algorithm into DetailSnapshot if does not exist
       let algorithmId = await queryInterface.sequelize.query(`
@@ -121,13 +124,10 @@ module.exports = {
     const transaction = await queryInterface.sequelize.transaction();
     const Op = Sequelize.Op;
     try {
-      const analysedRecordings = await queryInterface.sequelize.query(
-        `
-        SELECT "id", "cacophonyIndex", "additionalMetadata" FROM "Recordings"
-        WHERE "cacophonyIndex" IS NOT NULL
-        `,
-        { transaction }
-      );
+      const recordings = await queryInterface.describeTable("Recordings");
+      if (recordings.cacophonyIndex) {
+        return;
+      }
       console.log(analysedRecordings);
 
       const recordingNewAdditionalMetadata = await Promise.all(
