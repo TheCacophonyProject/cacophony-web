@@ -1105,15 +1105,16 @@ from (
         where: {
           archivedAt: null,
         },
+        seperate: true,
         attributes: [
           "id",
           [
             Sequelize.fn(
               "json_build_object",
               "start_s",
-              Sequelize.literal(`"Tracks"."data"#>'{start_s}'`),
+              Sequelize.literal(`"Track"."data"#>'{start_s}'`),
               "end_s",
-              Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
+              Sequelize.literal(`"Track"."data"#>'{end_s}'`)
             ),
             "data",
           ],
