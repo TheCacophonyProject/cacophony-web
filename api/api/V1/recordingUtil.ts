@@ -29,7 +29,7 @@ import util from "./util";
 import { AudioRecordingMetadata, Recording } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
-import { Order } from "sequelize";
+import { Op, Order } from "sequelize";
 import {
   DeviceSummary,
   DeviceVisitMap,
@@ -126,7 +126,9 @@ export async function tryToMatchRecordingToStation(
   // Match the recording to any stations that the group might have:
   if (!stations) {
     const group = await models.Group.getFromId(recording.GroupId);
-    stations = await group.getStations();
+    stations = await group.getStations({
+      where: { retiredAt: { [Op.eq]: null } },
+    });
   }
   const stationDistances = [];
   for (const station of stations) {
