@@ -39,7 +39,7 @@
             <font-awesome-icon icon="users" class="icon" />
             Groups
           </b-nav-item>
-          <b-nav-item-dropdown class="profile" right>
+          <b-nav-item-dropdown class="profile" menu-class="profile-dropdown" right>
             <template slot="button-content">
               <font-awesome-icon
                 v-if="hasGlobalReadPermissions"
@@ -370,3 +370,8 @@ export default {
 }
 </style>
 <style src="vue-multiselect/dist/vue-multiselect.min.css"></style>
+<style>
+.profile-dropdown {
+  z-index: 10000;
+}
+</style>
