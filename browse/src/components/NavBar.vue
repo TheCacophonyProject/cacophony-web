@@ -39,7 +39,11 @@
             <font-awesome-icon icon="users" class="icon" />
             Groups
           </b-nav-item>
-          <b-nav-item-dropdown class="profile" menu-class="profile-dropdown" right>
+          <b-nav-item-dropdown
+            class="profile"
+            menu-class="profile-dropdown"
+            right
+          >
             <template slot="button-content">
               <font-awesome-icon
                 v-if="hasGlobalReadPermissions"
