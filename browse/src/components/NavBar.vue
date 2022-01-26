@@ -290,8 +290,10 @@ export default {
 <style lang="scss">
 .nav-bar.top-level-nav {
   border-bottom: solid rgb(222, 226, 230) 1px;
-  padding-top: 0;
-  padding-bottom: 0;
+  .navbar {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
 
   .navbar-brand {
     width: 70%;
