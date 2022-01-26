@@ -1,5 +1,5 @@
 <template>
-  <div class="nav-bar">
+  <div class="nav-bar top-level-nav">
     <div v-if="isViewingAsOtherUser()" class="super-user-bar">
       <font-awesome-icon icon="glasses" class="icon" />
       <span
@@ -287,95 +287,101 @@ export default {
 };
 </script>
 
-<style scoped lang="scss">
-.navbar {
+<style lang="scss">
+.nav-bar.top-level-nav {
   border-bottom: solid rgb(222, 226, 230) 1px;
   padding-top: 0;
   padding-bottom: 0;
-}
 
-.navbar-brand {
-  width: 70%;
-}
-
-.navbar-brand img {
-  width: 100%;
-}
-.active {
-  background-color: #eeeeee;
-  color: #555;
-  border-radius: 2px;
-}
-
-.icon {
-  width: 1.6em;
-  text-align: center;
-}
-
-.super-user-bar,
-.git-revision-bar {
-  background: purple;
-  color: white;
-  padding: 5px 10px;
-  height: 34px;
-  cursor: default;
-  user-select: none;
-  a,
-  a:hover {
-    cursor: pointer;
-    color: inherit;
-    text-decoration: underline;
-  }
-}
-.super-user-bar {
-  a,
-  a:hover {
-    float: right;
-  }
-}
-.git-revision-bar {
-  background: #2b333f;
-  font-size: 13px;
-  a {
-    text-decoration: none;
-  }
-  .close-button {
-    float: right;
-    background: darken(#2b333f, 10%);
-    min-height: 22px;
-    line-height: 20px;
-    text-align: center;
-    vertical-align: middle;
-    text-decoration: none;
-    border-radius: 3px;
-    cursor: pointer;
-    padding: 0 5px;
-    font-size: 10px;
-    user-select: none;
-    &:hover {
-      text-decoration: none;
-      background: lighten(#2b333f, 10%);
-    }
-  }
-}
-
-@media only screen and (min-width: 576px) {
   .navbar-brand {
-    width: auto;
+    width: 70%;
   }
 
   .navbar-brand img {
-    width: auto;
+    width: 100%;
   }
 
-  .profile {
-    border-left: solid rgb(222, 226, 230) 1px;
+  .active {
+    background-color: #eeeeee;
+    color: #555;
+    border-radius: 2px;
+  }
+
+  .icon {
+    width: 1.6em;
+    text-align: center;
+  }
+
+  .super-user-bar,
+  .git-revision-bar {
+    background: purple;
+    color: white;
+    padding: 5px 10px;
+    height: 34px;
+    cursor: default;
+    user-select: none;
+
+    a,
+    a:hover {
+      cursor: pointer;
+      color: inherit;
+      text-decoration: underline;
+    }
+  }
+
+  .super-user-bar {
+    a,
+    a:hover {
+      float: right;
+    }
+  }
+
+  .git-revision-bar {
+    background: #2b333f;
+    font-size: 13px;
+
+    a {
+      text-decoration: none;
+    }
+
+    .close-button {
+      float: right;
+      background: darken(#2b333f, 10%);
+      min-height: 22px;
+      line-height: 20px;
+      text-align: center;
+      vertical-align: middle;
+      text-decoration: none;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 0 5px;
+      font-size: 10px;
+      user-select: none;
+
+      &:hover {
+        text-decoration: none;
+        background: lighten(#2b333f, 10%);
+      }
+    }
+  }
+
+  .profile-dropdown {
+    z-index: 10001;
+  }
+
+  @media only screen and (min-width: 576px) {
+    .navbar-brand {
+      width: auto;
+    }
+
+    .navbar-brand img {
+      width: auto;
+    }
+
+    .profile {
+      border-left: solid rgb(222, 226, 230) 1px;
+    }
   }
 }
 </style>
 <style src="vue-multiselect/dist/vue-multiselect.min.css"></style>
-<style>
-.profile-dropdown {
-  z-index: 10000;
-}
-</style>

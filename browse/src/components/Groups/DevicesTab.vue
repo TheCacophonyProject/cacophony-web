@@ -91,7 +91,6 @@ import Help from "@/components/Help.vue";
 import DeviceLink from "@/components/DeviceLink.vue";
 import GroupLink from "@/components/GroupLink.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import { latLng } from "leaflet";
 
 export default {
   name: "DevicesTab",
