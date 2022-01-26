@@ -3,6 +3,16 @@
     :class="['results', { 'display-rows': !showCards }]"
     ref="list-container"
   >
+    <div class="filtered-tracks">
+      <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
+      <label for="cbFiltered"
+        >Show Filtered ( {{ filteredCount }} Recording<span
+          v-if="filteredCount != 1"
+          >s</span
+        >
+        )</label
+      >
+    </div>
     <div v-if="showCards">
       <div v-for="(itemsByDay, index_a) in recordingsChunked" :key="index_a">
         <h4 class="recordings-day">{{ relativeDay(itemsByDay) }}</h4>
@@ -79,8 +89,22 @@
         </div>
       </div>
     </div>
+
     <div v-if="recordings.length && (allLoaded || atEnd)" class="all-loaded">
       <span>That's all! No more recordings to load for the current query.</span>
+    </div>
+    <div v-else-if="loadButton" class="all-loaded">
+      <div>
+        All {{ this.recordings.length }} recording<span
+          v-if="this.recordings.length > 1"
+          >s</span
+        >
+        are filtered
+      </div>
+
+      <b-button class="load-more" @click="$emit('load-more')"
+        >Load More</b-button
+      >
     </div>
   </div>
 </template>
@@ -221,6 +245,7 @@ const mapTrack = (track: ApiTrackResponse) => {
   return t;
 };
 
+const FILTERED_MAX = 100;
 interface ItemData {
   kind: "dataRow" | "dataSeparator";
   id: number;
@@ -246,10 +271,6 @@ export default {
   name: "RecordingsList",
   components: { RecordingSummary },
   props: {
-    showFiltered: {
-      type: Boolean,
-      required: true,
-    },
     recordings: {
       type: Array,
       required: true,
@@ -272,6 +293,24 @@ export default {
     },
   },
   watch: {
+    showFiltered() {
+      if (this.filteredCount == this.recordings.length) {
+        if (this.recordings.length < FILTERED_MAX) {
+          this.$emit("load-more");
+        } else if (!this.showFiltered) {
+          // not showing any recordings but tried the first 100
+          // give the user a button to load more
+          this.loadButton = true;
+        }
+      } else {
+        this.loadButton = false;
+      }
+      if (this.filteredCount > 0) {
+        const scroller =
+          this.$refs["list-container"].parentElement.parentElement;
+        scroller.scrollTop = 0;
+      }
+    },
     showCards() {
       this.$refs["list-container"].style.height = "auto";
     },
@@ -331,7 +370,6 @@ export default {
           processing: recording.processing === true,
           stationName: recording.stationName,
         };
-        // console.log("tracks are", itemData.tracks)
         itemData.filtered = itemData.tracks.every((track) => track.filtered);
         items.push(itemData);
       }
@@ -389,6 +427,18 @@ export default {
         }
       }
       this.$emit("filtered-count", this.filteredCount);
+
+      if (this.filteredCount == this.recordings.length) {
+        if (this.recordings.length < FILTERED_MAX) {
+          this.$emit("load-more");
+        } else if (!this.showFiltered) {
+          // not showing any recordings but tried the first 100
+          // give the user a button to load more
+          this.loadButton = true;
+        }
+      } else {
+        this.loadButton = false;
+      }
     },
   },
   beforeDestroy() {
@@ -405,7 +455,7 @@ export default {
     // Just observe the nth to last item, and when it comes into view, we load more, and disconnect the observer.
     const n = 3;
     for (const ref of Object.values(this.$refs)) {
-      if ((ref as any[]).length !== 0) {
+      if ((ref as any[]).length !== 0 && ref != this.$refs["list-container"]) {
         if (ref[0] && ref[0].$el) {
           const bounds = ref[0].$el.getBoundingClientRect();
           maxY.push([bounds.y, ref[0].$el]);
@@ -419,9 +469,20 @@ export default {
     if (maxY.length) {
       const observerTrigger = maxY[maxY.length - 1][1];
       if (this.showCards) {
-        this.$refs["list-container"].style.height = `${maxY[0][0]}px`;
+        let yHeight = maxY[0][0];
+        if (yHeight < 0) {
+          let currentHeight = this.$refs["list-container"].style.height;
+          const index = currentHeight.search("px");
+          if (index > 0) {
+            currentHeight = Number(currentHeight.substring(0, index));
+            yHeight = currentHeight + yHeight;
+          }
+        }
+        this.$refs["list-container"].style.height = `${yHeight}px`;
       }
       this.observer && this.observer.observe(observerTrigger);
+    } else {
+      this.$refs["list-container"].style.height = "";
     }
   },
   methods: {
@@ -452,9 +513,19 @@ export default {
       tableItems: [],
       atEnd: false,
       loadedRecordingsCount: 0,
+      loadButton: false,
     };
   },
   computed: {
+    showFiltered: {
+      set: function (val) {
+        localStorage.setItem("showFiltered", val);
+        this.$store.state.User.userData.showFiltered = val;
+      },
+      get: function () {
+        return this.$store.state.User.userData.showFiltered;
+      },
+    },
     filteredCount() {
       return this.tableItems.filter((item) => item.filtered).length;
     },
@@ -609,5 +680,12 @@ export default {
     background: $gray-100;
     font-weight: bold;
   }
+}
+
+.filtered-tracks {
+  position: sticky;
+  top: 0;
+  text-align: right;
+  z-index: 100;
 }
 </style>
