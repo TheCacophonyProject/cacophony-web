@@ -10,18 +10,18 @@ describe("User: password reset", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  before(() => {
-    //  cy.exec(`cd ../api && docker-compose exec -T server bash -lic "rm mailServerStub.log || true;"`);
-    cy.exec(
-      `cd ../api && docker-compose exec -d -T server bash -lic "node api/scripts/mailServerStub.js"`
-    );
-    cy.exec(
-      `cd ../api && docker-compose exec -T server bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`
-    );
-  });
-
   //Do not run against a live server as we don't have a stubbed email server
   if (Cypress.env("running_in_a_dev_environment") == true) {
+    before(() => {
+      //  cy.exec(`cd ../api && docker-compose exec -T server bash -lic "rm mailServerStub.log || true;"`);
+      cy.exec(
+        `cd ../api && docker-compose exec -d -T server bash -lic "node api/scripts/mailServerStub.js"`
+      );
+      cy.exec(
+        `cd ../api && docker-compose exec -T server bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`
+      );
+    });
+
     it("Can reset a password", () => {
       //clear mailserver log
       cy.exec(
@@ -60,6 +60,6 @@ describe("User: password reset", () => {
       });
     });
   } else {
-    it("DISABLED (dev test only): Can reset a password");
+    it.skip("DISABLED (dev test only): Can reset a password");
   }
 });
