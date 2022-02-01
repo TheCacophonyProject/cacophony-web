@@ -317,7 +317,8 @@ export default {
   padding-right: 1em;
 }
 .filtered-track {
-  background: #b1bdc9e0;
+  opacity: 0.7;
+  background: #ddd;
 }
 .card-header {
   display: flex;

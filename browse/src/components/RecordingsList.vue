@@ -3,17 +3,19 @@
     :class="['results', { 'display-rows': !showCards }]"
     ref="list-container"
   >
-    <div class="filtered-tracks">
-      <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
-      <label for="cbFiltered"
-        >Show Filtered ( {{ filteredCount }} Recording<span
-          v-if="filteredCount != 1"
-          >s</span
-        >
-        )</label
-      >
-    </div>
     <div v-if="showCards">
+      <div class="filtered-recordings">
+        <span v-b-tooltip.hover :title="filteredToolTip">
+          <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
+          <label for="cbFiltered"
+            >Show Filtered ( {{ filteredCount }} Recording<span
+              v-if="filteredCount != 1"
+              >s</span
+            >
+            )</label
+          >
+        </span>
+      </div>
       <div v-for="(itemsByDay, index_a) in recordingsChunked" :key="index_a">
         <h4 class="recordings-day">{{ relativeDay(itemsByDay) }}</h4>
         <div v-for="(itemsByHour, index_b) in itemsByDay" :key="index_b">
@@ -39,57 +41,70 @@
         />
       </div>
     </div>
-    <div v-else-if="tableItems && tableItems.length !== 0" class="all-rows">
-      <div class="results-header">
-        <div>
-          <span>ID</span>
-          <span>Type</span>
-          <span>Device</span>
-          <span>Date</span>
-          <span>Time</span>
-          <span>Duration</span>
-          <span>Tags</span>
-          <span>Group</span>
-          <span>Station</span>
-          <span>Location</span>
-          <span>Battery</span>
-        </div>
+    <div v-else-if="tableItems">
+      <div class="filtered-recordings rows">
+        <span v-b-tooltip.hover :title="filteredToolTip">
+          <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
+          <label for="cbFiltered"
+            >Show Filtered ( {{ filteredCount }} Recording<span
+              v-if="filteredCount != 1"
+              >s</span
+            >
+            )</label
+          >
+        </span>
       </div>
-      <div class="results-rows">
-        <RecordingSummary
-          v-for="(item, index) in filteredItems"
-          :item="item"
-          :ref="item.id"
-          :index="index"
-          :is-even-row="index % 2 === 1"
-          :key="`${index}_row`"
-          display-style="row"
-          :futureSearchQuery="viewRecordingQuery"
-        />
+      <div class="all-rows" v-if="tableItems.length !== 0">
+        <div class="results-header">
+          <div>
+            <span> ID</span>
+            <span>Type</span>
+            <span>Device</span>
+            <span>Date</span>
+            <span>Time</span>
+            <span>Duration</span>
+            <span>Tags</span>
+            <span>Group</span>
+            <span>Station</span>
+            <span>Location</span>
+            <span>Battery</span>
+          </div>
+        </div>
+        <div class="results-rows">
+          <RecordingSummary
+            v-for="(item, index) in filteredItems"
+            :item="item"
+            :ref="item.id"
+            :index="index"
+            :is-even-row="index % 2 === 1"
+            :key="`${index}_row`"
+            display-style="row"
+            :futureSearchQuery="viewRecordingQuery"
+          />
 
-        <div
-          v-for="i in queryPending ? 10 : 0"
-          :key="i"
-          class="recording-summary-row"
-          :style="{
-            background: `rgba(240, 240, 240, ${1 / i}`,
-          }"
-        >
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
+          <div
+            v-for="i in queryPending ? 10 : 0"
+            :key="i"
+            class="recording-summary-row"
+            :style="{
+              background: `rgba(240, 240, 240, ${1 / i}`,
+            }"
+          >
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+          </div>
         </div>
       </div>
     </div>
-
     <div v-if="recordings.length && (allLoaded || atEnd)" class="all-loaded">
       <span>That's all! No more recordings to load for the current query.</span>
     </div>
@@ -129,7 +144,7 @@ import {
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { ApiTrackResponse } from "@typedefs/api/track";
-import DefaultLabels from "../const";
+import DefaultLabels, { FILTERED_TOOLTIP } from "../const";
 
 const parseLocation = (location: LatLng): string => {
   if (location && typeof location === "object") {
@@ -370,7 +385,10 @@ export default {
           processing: recording.processing === true,
           stationName: recording.stationName,
         };
-        itemData.filtered = itemData.tracks.every((track) => track.filtered);
+
+        if (itemData.type == "thermalRaw") {
+          itemData.filtered = itemData.tracks.every((track) => track.filtered);
+        }
         items.push(itemData);
       }
       this.tableItems.push(...items);
@@ -514,6 +532,7 @@ export default {
       atEnd: false,
       loadedRecordingsCount: 0,
       loadButton: false,
+      filteredToolTip: FILTERED_TOOLTIP,
     };
   },
   computed: {
@@ -617,7 +636,7 @@ export default {
 }
 
 .results.display-rows {
-  overflow-x: auto;
+  // overflow-x: auto;
   //overflow-y: unset;
   max-width: unset;
 
@@ -636,11 +655,12 @@ export default {
     display: table-header-group;
     > div {
       display: table-row;
-
       > span {
+        z-index: 1;
         position: sticky;
-        top: 0;
-        background: transparentize($white, 0.15);
+        top: 30px;
+        background: white;
+        // background: transparentize($white, 0.15);
         padding: 5px;
         font-weight: 700;
         vertical-align: middle;
@@ -651,24 +671,7 @@ export default {
     }
   }
 }
-// Row view variant
-.recording-summary-row {
-  width: 100%;
-  &:nth-child(odd) {
-    background-color: #eee;
-  }
-  border-top: 1px solid $border-color;
-  display: table-row;
-  > * {
-    display: table-cell;
-    vertical-align: middle;
-    padding: 5px;
-    border-right: 1px solid $border-color;
-    &:last-child {
-      padding-right: 5px;
-    }
-  }
-}
+
 .all-loaded {
   text-align: center;
   padding-top: 20px;
@@ -682,10 +685,15 @@ export default {
   }
 }
 
-.filtered-tracks {
+.filtered-recordings {
   position: sticky;
   top: 0;
   text-align: right;
   z-index: 100;
+  padding: 8px;
+  &.rows {
+    background: white;
+    height: 30px;
+  }
 }
 </style>

@@ -540,10 +540,12 @@ export default (app: Application, baseUrl: string) => {
         .custom((value) => {
           return models.Recording.isValidTagMode(value);
         }),
+      query("hideFiltered").default(false).isBoolean().toBoolean(),
     ]),
     parseJSONField(query("order")),
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
+
     async (request: Request, response: Response) => {
       // FIXME Stop allowing arbitrary where queries
       const where = response.locals.where || {};
@@ -554,6 +556,7 @@ export default (app: Application, baseUrl: string) => {
           where.deletedAt = { [Op.eq]: null };
         }
       }
+
       const result = await recordingUtil.query(
         response.locals.requestUser.id,
         response.locals.viewAsSuperUser,
@@ -563,7 +566,8 @@ export default (app: Application, baseUrl: string) => {
         request.query.limit && parseInt(request.query.limit as string),
         request.query.offset && parseInt(request.query.offset as string),
         response.locals.order,
-        request.query.type as RecordingType
+        request.query.type as RecordingType,
+        request.query.hideFiltered ? true : false
       );
       responseUtil.send(response, {
         statusCode: 200,

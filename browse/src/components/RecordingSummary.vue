@@ -135,7 +135,10 @@
     <!--        :alt="`thumbnail for #${item.id}`"-->
     <!--      />-->
     <!--    </div>-->
-    <div v-if="item.location !== '(unknown)'" class="recording-location">
+    <div
+      v-if="item.location !== '(unknown)'"
+      :class="['recording-location', headerClass]"
+    >
       <b-modal
         v-model="showingLocation"
         hide-footer
@@ -499,13 +502,22 @@ $recording-side-padding-small: 0.5rem;
       color: #b314b3;
     }
   }
+  &.filtered-recording {
+    opacity: 0.7;
+    background: #ddd;
+  }
 }
 
 // Row view variant
 .recording-summary-row {
   width: 100%;
+
   &:nth-child(odd) {
     background-color: #eee;
+  }
+  &.filtered-recording {
+    opacity: 0.7;
+    background: #ddd;
   }
   border-top: 1px solid $border-color;
   display: table-row;
@@ -623,6 +635,10 @@ $recording-side-padding-small: 0.5rem;
   @include media-breakpoint-between(xs, sm) {
     display: none;
   }
+  &.filtered-recording {
+    opacity: 0.7;
+    background: #ddd;
+  }
 }
 .recording-tracks {
   display: inline-block;
@@ -633,9 +649,5 @@ $recording-side-padding-small: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.filtered-recording {
-  background: #b1bdc9e0;
 }
 </style>

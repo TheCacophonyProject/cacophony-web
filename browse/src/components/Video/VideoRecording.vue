@@ -47,10 +47,7 @@
             @change-tag="changedTrackTag"
           />
         </div>
-        <div
-          class="filtered-tracks"
-          v-if="filteredTracks && filteredTracks.length > 0"
-        >
+        <div class="filtered-tracks" v-b-tooltip.hover :title="filteredToolTip">
           <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
           <label for="cbFiltered">
             Show Filtered ({{ filteredTracks.length }})</label
@@ -136,7 +133,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
-import DefaultLabels from "../../const";
+import DefaultLabels, { FILTERED_TOOLTIP } from "../../const";
 
 export default {
   name: "VideoRecording",
@@ -177,9 +174,13 @@ export default {
       requestedExport: false,
       localTags: [],
       loadingNext: false,
+      filteredToolTip: FILTERED_TOOLTIP,
     };
   },
   computed: {
+    tooltipTitle: function () {
+      return FILTERED_TOOLTIP;
+    },
     showFiltered: {
       set: function (val) {
         localStorage.setItem("showFiltered", val);
@@ -456,6 +457,7 @@ export default {
       params.order = JSON.stringify([["recordingDateTime", order]]);
       params.limit = 1;
       params.type = RecordingType.ThermalRaw;
+      params.hideFiltered = !this.$store.state.User.userData.showFiltered;
       delete params.offset;
       try {
         if (!noNavigate) {

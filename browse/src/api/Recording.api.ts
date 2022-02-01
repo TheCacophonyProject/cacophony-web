@@ -183,6 +183,7 @@ export interface RecordingQuery {
   device?: number[];
   station?: number[];
   type?: string;
+  hideFiltered?: boolean;
   order?: any; // TODO - It's not clear what order accepts (it's a sequelize thing), but nobody seems to use it right now.
 }
 
@@ -272,6 +273,9 @@ function makeApiQuery(query: RecordingQuery): any {
   }
   if (query.deleted) {
     apiParams["deleted"] = query.deleted;
+  }
+  if (query.hideFiltered) {
+    apiParams["hideFiltered"] = query.hideFiltered;
   }
   if (query.tag && query.tag.length > 0) {
     if (typeof query.tag === "string") {

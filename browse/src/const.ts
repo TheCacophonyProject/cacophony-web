@@ -251,6 +251,12 @@ const DefaultLabels = {
   },
 
   isFiltered: function (tags) {
+    // any human tag that isn't filted
+    //  or any ai mastre tag that isn't filtered
+
+    // filtered if
+    // any huyman tag that is filtered
+    // no animal human tags
     const userTags = tags.filter((tag) => !tag.automatic);
     if (userTags.length > 0) {
       // any animal non filtered user tag, means not filtered
@@ -330,3 +336,7 @@ export { getTrapNzSpecies, imgSrc };
 export default DefaultLabels;
 
 export const WALLABY_GROUP = 160;
+
+export const FILTERED_TOOLTIP = `Show videos and tracks tagged as ${DefaultLabels.filteredLabels()
+  .map((label) => label.value)
+  .join("")}`;
