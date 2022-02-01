@@ -4,6 +4,7 @@ import {
   HTTP_Unprocessable,
   HTTP_BadRequest,
   NOT_NULL_STRING,
+  NOT_NULL,
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
@@ -108,8 +109,8 @@ describe("Track Tags: replaceTag, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "possum",
-    userId: 99,
     userName: "xxx",
+    userId: NOT_NULL,
   };
 
   const expectedTag2: ApiHumanTrackTagResponse = {
@@ -123,8 +124,8 @@ describe("Track Tags: replaceTag, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "cat",
-    userId: 99,
     userName: "xxx",
+    userId: NOT_NULL,
   };
 
   const partTag = {
@@ -142,7 +143,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     userName: "xxx",
-    userId: 99,
+    userId: NOT_NULL,
   };
 
   const poorTrackingTag = {
@@ -160,7 +161,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     userName: "xxx",
-    userId: 99,
+    userId: NOT_NULL,
   };
   const algorithm1 = {
     model_name: "inc3",
