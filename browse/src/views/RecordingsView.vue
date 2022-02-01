@@ -12,7 +12,7 @@
           :disabled="queryPending"
           :is-collapsed="searchPanelIsCollapsed"
           :simple-only="false"
-          @mounted="querySubmitted"
+          @mounted="(query) => querySubmitted(query, true)"
           @submit="querySubmitted"
           @description="saveNextQueryDescription"
           @toggled-search-panel="
@@ -171,7 +171,7 @@ export default {
 
       // Make sure the request wouldn't go past the count?
       if (currentPage < this.totalPages) {
-        this.updateRoute(nextQuery);
+        this.updateRoute(nextQuery, true);
         this.queryPending = true;
         const queryResponse = await api.recording.query(nextQuery);
         const { result } = queryResponse;
@@ -199,16 +199,25 @@ export default {
       query.offset = Math.max(0, (page - 1) * perPage);
       return query;
     },
-    updateRoute(query) {
+    updateRoute(query, replace = false) {
       // Catch errors to avoid redundant navigation error
-      this.$router
-        .push({
-          path: "recordings",
-          query,
-        })
-        .catch(() => {});
+      if (!replace) {
+        this.$router
+          .push({
+            path: "recordings",
+            query,
+          })
+          .catch(() => {});
+      } else {
+        this.$router
+          .replace({
+            path: "recordings",
+            query,
+          })
+          .catch(() => {});
+      }
     },
-    querySubmitted(query) {
+    querySubmitted(query, first = false) {
       const queryParamsHaveChanged =
         JSON.stringify(query) !== JSON.stringify(this.serialisedQuery);
       if (queryParamsHaveChanged) {
@@ -223,7 +232,7 @@ export default {
         this.perPage
       );
       fullQuery.offset = 0;
-      this.updateRoute(fullQuery);
+      this.updateRoute(fullQuery, first);
       this.getRecordings(fullQuery);
     },
     saveNextQueryDescription(description) {

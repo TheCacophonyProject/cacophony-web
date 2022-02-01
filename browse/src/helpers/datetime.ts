@@ -72,7 +72,7 @@ function startOfDay(date) {
 
 function startOfEvening(date, eveningHours = 16) {
   // Set the time to the earliest midday from the given date.
-  if (date.getHours() < 12) {
+  if (date.getHours() < eveningHours) {
     date = new Date(date.getTime());
     date.setDate(date.getDate() - 1);
   }

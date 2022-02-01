@@ -29,7 +29,7 @@ import {
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
 import log from "../logging";
-import customErrors, { ClientError } from "./customErrors";
+import customErrors, { ClientError, ValidationError } from "./customErrors";
 import { NextFunction, Request, RequestHandler, Response } from "express";
 import { IsIntOptions } from "express-validator/src/options";
 import logger from "../logging";
@@ -633,9 +633,8 @@ export const validateFields = (
         response.locals.viewAsSuperUser ? "::SUPER_USER" : ""
       );
       const validationErrors = validationResult(request);
-      // log.info("Validation errors %s", validationErrors);
       if (!validationErrors.isEmpty()) {
-        return next(new customErrors.ValidationError(validationErrors));
+        return next(new ValidationError(validationErrors));
       } else {
         return next();
       }

@@ -146,6 +146,7 @@ export default {
   getUsersForGroup,
   getDevicesForGroup,
   getStationsForGroup,
+  getStationByNameInGroup,
   addStationsToGroup,
   addGroupUser,
   removeGroupUser,

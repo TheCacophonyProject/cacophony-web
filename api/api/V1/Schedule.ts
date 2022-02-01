@@ -24,7 +24,6 @@ import { Application, NextFunction, Response, Request } from "express";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
-  extractJwtAuthorizedUserOrDevice,
   fetchAuthorizedRequiredDeviceById,
   fetchUnauthorizedRequiredScheduleById,
   parseJSONField,

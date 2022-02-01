@@ -11,44 +11,23 @@
     ></MapWithPoints>
     <b-jumbotron class="jumbotron" fluid>
       <div>
-        <h1>
-          <router-link
-            v-if="userIsMemberOfGroup"
-            :to="{
-              name: 'group',
-              params: {
-                groupName,
-                tabName: 'stations',
-              },
-            }"
-          >
-            <font-awesome-icon
-              icon="users"
-              size="xs"
-              style="color: #666; font-size: 16px"
-            />
-            <span>{{ groupName }}</span>
-          </router-link>
-          <span v-else>
-            <font-awesome-icon
-              icon="users"
-              size="xs"
-              style="color: #666; font-size: 16px"
-            />
-            <span>{{ groupName }}</span>
-          </span>
+        <h1 class="d-inline-block">
+          <GroupLink
+            :group-name="groupName"
+            context="stations"
+            :use-link="userIsMemberOfGroup"
+          />
           <font-awesome-icon
             icon="chevron-right"
             size="xs"
             style="color: #666; font-size: 16px"
           />
-          <font-awesome-icon icon="map-marker-alt" size="xs" />
-          <span>{{ stationName }}</span>
+          <StationLink :group-name="groupName" :station-name="stationName" />
           <span v-if="stationIsRetired">(retired)</span>
         </h1>
       </div>
       <div>
-        <p class="lead">Manage this station.</p>
+        <p class="lead d-sm-none d-md-inline-block">Manage this station.</p>
       </div>
     </b-jumbotron>
     <div v-if="!loadedStation" class="container no-tabs">
@@ -56,13 +35,8 @@
       <spinner />
     </div>
     <div v-else-if="station" class="tabs-container">
-      <b-tabs
-        card
-        class="group-tabs"
-        nav-class="container"
-        v-model="currentTabIndex"
-      >
-        <b-tab lazy>
+      <tab-list v-model="currentTabIndex">
+        <tab-list-item lazy>
           <template #title>
             <TabTemplate
               title="Recordings"
@@ -76,7 +50,7 @@
             :station-name="stationName"
             :recordings-query="recordingsQueryFinal"
           />
-        </b-tab>
+        </tab-list-item>
         <!--        <b-tab lazy>-->
         <!--          <template #title>-->
         <!--            <TabTemplate-->
@@ -91,7 +65,7 @@
         <!--            :visits-query="visitsQuery()"-->
         <!--          />-->
         <!--        </b-tab>-->
-      </b-tabs>
+      </tab-list>
     </div>
     <div v-else class="container no-tabs">
       Sorry but group <i> &nbsp; {{ groupName }} &nbsp; </i> does not have a
@@ -112,16 +86,24 @@ import { latLng } from "leaflet";
 import { isViewingAsOtherUser } from "@/components/NavBar.vue";
 import { shouldViewAsSuperUser } from "@/utils";
 import MapWithPoints from "@/components/MapWithPoints.vue";
+import GroupLink from "@/components/GroupLink.vue";
+import StationLink from "@/components/StationLink.vue";
+import TabList from "@/components/TabList.vue";
+import TabListItem from "@/components/TabListItem.vue";
 
 // TODO(jon): Implement visits/monitoring page for stations - this will require API changes.
 
 export default {
   name: "StationView",
   components: {
+    StationLink,
+    GroupLink,
     MapWithPoints,
     Spinner,
     TabTemplate,
     RecordingsTab,
+    TabList,
+    TabListItem,
     // MonitoringTab,
   },
   computed: {
@@ -152,6 +134,9 @@ export default {
     currentTabName() {
       return this.$route.params.tabName;
     },
+    stationId() {
+      return this.$route.params.stationId;
+    },
     location() {
       if (this.station) {
         return latLng(this.station.location.lat, this.station.location.lng);
@@ -165,13 +150,19 @@ export default {
       set(tabIndex) {
         const nextTabName = this.tabNames[tabIndex];
         if (nextTabName !== this.currentTabName) {
+          let name = "station";
+          const params: any = {
+            groupName: this.groupName,
+            stationName: this.stationName,
+            tabName: nextTabName,
+          };
+          if (this.stationId) {
+            params.stationId = this.stationId;
+            name = "station-id";
+          }
           this.$router.push({
-            name: "station",
-            params: {
-              groupName: this.groupName,
-              stationName: this.stationName,
-              tabName: nextTabName,
-            },
+            name,
+            params,
           });
         }
       },
@@ -192,51 +183,72 @@ export default {
       tabNames: ["recordings", "visits"],
     };
   },
-  mounted() {
+  async mounted() {
     const nextTabName = this.tabNames[this.currentTabIndex];
     if (nextTabName !== this.currentTabName) {
-      this.$router.replace({
-        name: "station",
-        params: {
-          groupName: this.groupName,
-          stationName: this.stationName,
-          tabName: nextTabName,
-        },
+      let name = "station";
+      const params: any = {
+        groupName: this.groupName,
+        stationName: this.stationName,
+        tabName: nextTabName,
+      };
+      if (this.stationId) {
+        params.stationId = this.stationId;
+        name = "station-id";
+      }
+      await this.$router.replace({
+        name,
+        params,
       });
     }
+
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
-    this.fetchStation();
+    await this.fetchStation();
   },
   methods: {
     async fetchStation() {
       try {
-        // eslint-disable-next-line no-unused-vars
-        const [groupResponse, stationsResponse] = await Promise.all([
-          api.groups.getGroup(this.groupName),
-          api.groups.getStationsForGroup(this.groupName),
-        ]);
-        if (groupResponse.success) {
-          this.group = groupResponse.result.group;
-        }
-        if (stationsResponse.success) {
-          const station = stationsResponse.result.stations.filter(
-            (station) => station.name === this.stationName
-          );
-          if (station.length > 1) {
-            const nonRetired = station.find((item) => item.retiredAt === null);
-            if (nonRetired) {
-              this.station = nonRetired;
-            } else {
-              const sortedByLatestRetired = station.sort(
-                (a, b) =>
-                  new Date(a.retiredAt).getTime() -
-                  new Date(b.retiredAt).getTime()
+        if (!this.stationId) {
+          // eslint-disable-next-line no-unused-vars
+          const [groupResponse, stationsResponse] = await Promise.all([
+            api.groups.getGroup(this.groupName),
+            api.groups.getStationsForGroup(this.groupName, true),
+          ]);
+          if (groupResponse.success) {
+            this.group = groupResponse.result.group;
+          }
+          if (stationsResponse.success) {
+            const station = stationsResponse.result.stations.filter(
+              (station) => station.name === this.stationName
+            );
+            if (station.length > 1) {
+              const nonRetired = station.find(
+                (item) => !item.hasOwnProperty("retiredAt")
               );
-              this.station = sortedByLatestRetired.pop();
+              if (nonRetired) {
+                this.station = nonRetired;
+              } else {
+                const sortedByLatestRetired = station.sort(
+                  (a, b) =>
+                    new Date(a.retiredAt).getTime() -
+                    new Date(b.retiredAt).getTime()
+                );
+                this.station = sortedByLatestRetired.pop();
+                this.stationIsRetired = true;
+              }
+            } else if (station.length === 1) {
+              this.station = station[0];
+            }
+          }
+        } else {
+          const stationResponse = await api.groups.getStationById(
+            this.stationId
+          );
+          if (stationResponse.success) {
+            this.station = stationResponse.result.station;
+            if (this.station.hasOwnProperty("retiredAt")) {
               this.stationIsRetired = true;
             }
-          } else if (station.length === 1) {
-            this.station = station[0];
           }
         }
         this.recordingsQueryFinal = {
@@ -299,13 +311,11 @@ export default {
     p.lead {
       padding: 3px;
       background: white;
-      display: inline-block;
     }
   }
   .tabs-container {
     position: relative;
     z-index: 1001;
-    margin-top: -53px;
     .group-tabs .card-header {
       background: unset;
     }
@@ -313,6 +323,11 @@ export default {
       border-top-left-radius: 3px;
       border-top-right-radius: 3px;
       background: transparentize(whitesmoke, 0.15);
+    }
+    .tabs {
+      position: absolute;
+      top: -53px;
+      width: 100%;
     }
   }
 }

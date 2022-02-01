@@ -322,13 +322,12 @@ export default Vue.extend({
       }, 300);
     },
     async getRecording(biasToDeviceId?: DeviceId): Promise<boolean> {
-      try {
-        const recordingResponse = await api.recording.needsTag(biasToDeviceId);
+      const recordingResponse = await api.recording.needsTag(biasToDeviceId);
+      if (recordingResponse.success) {
         const {
           result: { rows },
-          success,
         } = recordingResponse;
-        if (success && rows.length) {
+        if (rows.length) {
           const recording = rows[0];
           this.fileSize = recording.fileSize;
           // Make sure it's not a recording we've seen before and skipped tracks from.
@@ -340,13 +339,8 @@ export default Vue.extend({
             return await this.getRecording();
           }
 
-          // FIXME: Dedupe these tracks, we seem to not be getting DISTINCT tracks on the DB side.
           if (recording.tracks.length) {
-            const tracks = recording.tracks.reduce((acc, track) => {
-              acc[track.id] = track;
-              return acc;
-            }, {});
-            this.tracks = Object.values(tracks)
+            this.tracks = recording.tracks
               .map((track) => ({
                 ...(track as object),
                 tags: [],
@@ -365,10 +359,8 @@ export default Vue.extend({
           }
           this.currentTrackIndex = nextIndex;
         }
-        return success;
-      } catch (e) {
-        return false;
       }
+      return recordingResponse.success;
     },
   },
   computed: {

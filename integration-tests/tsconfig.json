@@ -9,6 +9,7 @@
         "paths": {
             "@typedefs/*":  ["../types/*"],
             "@commands/*": ["./cypress/commands/*"],
+            "@api/*": ["../api/*"],
             "@/*": ["./cypress/*"],
         }
     },

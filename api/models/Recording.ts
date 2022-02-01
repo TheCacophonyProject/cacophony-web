@@ -703,21 +703,23 @@ from (
     // NOTE: We bundle everything we need into this one specialised request.
     const flattenedResult = result.reduce(
       (acc, item) => {
-        acc.RecordingId = item.RecordingId;
-        acc.DeviceId = item.DeviceId;
-        acc.fileKey = item.rawFileKey;
-        acc.fileMimeType = item.rawMimeType;
-        acc.recordingDateTime = item.recordingDateTime;
-        acc.duration = item.duration;
-        acc.tracks.push({
-          trackId: item.TrackId,
-          id: item.TrackId,
-          start: item.TrackData.start_s,
-          end: item.TrackData.end_s,
-          positions: mapPositions(item.TrackData.positions),
-          numFrames: item.TrackData?.num_frames,
-          needsTagging: item.TaggedBy !== false,
-        });
+        if (!acc.tracks.find(({ id }) => id === item.TrackId)) {
+          acc.RecordingId = item.RecordingId;
+          acc.DeviceId = item.DeviceId;
+          acc.fileKey = item.rawFileKey;
+          acc.fileMimeType = item.rawMimeType;
+          acc.recordingDateTime = item.recordingDateTime;
+          acc.duration = item.duration;
+          acc.tracks.push({
+            trackId: item.TrackId,
+            id: item.TrackId,
+            start: item.TrackData.start_s,
+            end: item.TrackData.end_s,
+            positions: mapPositions(item.TrackData.positions),
+            numFrames: item.TrackData?.num_frames,
+            needsTagging: item.TaggedBy !== false,
+          });
+        }
         return acc;
       },
       {
@@ -1103,15 +1105,16 @@ from (
         where: {
           archivedAt: null,
         },
+        separate: true,
         attributes: [
           "id",
           [
             Sequelize.fn(
               "json_build_object",
               "start_s",
-              Sequelize.literal(`"Tracks"."data"#>'{start_s}'`),
+              Sequelize.literal(`"Track"."data"#>'{start_s}'`),
               "end_s",
-              Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
+              Sequelize.literal(`"Track"."data"#>'{end_s}'`)
             ),
             "data",
           ],

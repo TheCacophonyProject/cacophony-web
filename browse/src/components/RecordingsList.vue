@@ -36,7 +36,6 @@
       <div class="results-header">
         <div>
           <span>ID</span>
-          <span>Type</span>
           <span>Device</span>
           <span>Date</span>
           <span>Time</span>
@@ -68,7 +67,6 @@
             background: `rgba(240, 240, 240, ${1 / i}`,
           }"
         >
-          <span>&nbsp;</span>
           <span>&nbsp;</span>
           <span>&nbsp;</span>
           <span>&nbsp;</span>
@@ -258,6 +256,7 @@ interface ItemData {
   deviceName: string;
   groupName: string;
   stationName?: string;
+  stationId?: number;
   location: string;
   dateObj: Date;
   date: string;
@@ -353,6 +352,7 @@ export default {
           processingState: parseProcessingState(recording.processingState),
           processing: recording.processing === true,
           stationName: recording.stationName,
+          stationId: recording.stationId,
         };
 
         items.push(itemData);
@@ -444,6 +444,10 @@ export default {
         this.$refs["list-container"].style.height = `${maxY[0][0]}px`;
       }
       this.observer && this.observer.observe(observerTrigger);
+    } else {
+      if (this.showCards) {
+        this.$refs["list-container"].style.height = "auto";
+      }
     }
   },
   methods: {

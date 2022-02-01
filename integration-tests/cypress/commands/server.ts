@@ -88,6 +88,13 @@ export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
 
+export function renameCreds(oldName: string, newName: string) {
+  const creds = getCreds(oldName);
+
+  creds["name"] = newName;
+  Cypress.env("testCreds")[newName] = creds;
+}
+
 export function saveCreds(
   response: Cypress.Response<any>,
   name: string,

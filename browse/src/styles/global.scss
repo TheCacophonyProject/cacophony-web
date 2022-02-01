@@ -7,10 +7,10 @@ h1 {
 
 .logo,
 .navbar-light .navbar-brand a {
-  width: 220px;
-  height: 46px;
-  background-image: url("../assets/titlebar.png");
-  background-image: url("../assets/titlebar.svg");
+  width: 220px !important;
+  height: 46px !important;
+  background-image: url("../assets/titlebar.png") !important;
+  background-image: url("../assets/titlebar.svg") !important;
   background-repeat: no-repeat;
   background-position: 0 2px;
 }

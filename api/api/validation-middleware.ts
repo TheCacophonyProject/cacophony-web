@@ -5,7 +5,6 @@ import { oneOf, Result, ValidationChain } from "express-validator";
 import { expectedTypeOf } from "./middleware";
 import { Middleware } from "express-validator/src/base";
 import { extractValFromRequest } from "./extract-middleware";
-import logging from "@log";
 
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>

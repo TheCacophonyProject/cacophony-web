@@ -29,8 +29,8 @@ const mapStation = (station: Station): ApiStationResponse => {
     groupName: (station as any).Group.groupname,
     createdAt: station.createdAt.toISOString(),
     location: {
-      lat: station.location.coordinates[0],
-      lng: station.location.coordinates[1],
+      lat: station.location.coordinates[1],
+      lng: station.location.coordinates[0],
     },
     updatedAt: station.updatedAt.toISOString(),
     lastUpdatedById: station.lastUpdatedById,

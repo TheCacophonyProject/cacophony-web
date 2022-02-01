@@ -2,7 +2,9 @@ import CacophonyApi from "./CacophonyApi";
 import * as querystring from "querystring";
 import { calculateFromTime, FetchResult } from "./Recording.api";
 import { shouldViewAsSuperUser } from "@/utils";
+import { MonitoringRequest } from "@typedefs/api/monitoring";
 
+// TODO - Move these API types to @typedefs
 export class VisitSearchParams {
   all: boolean;
   devices: number[];
@@ -46,17 +48,6 @@ export interface NewVisitsQueryResult {
   params: VisitSearchParams;
 }
 
-export interface NewVisitQuery {
-  perPage?: number;
-  page?: number;
-  days?: number | "all";
-  from?: string;
-  to?: string;
-  group?: number[];
-  device?: number[];
-  aiModel?: string;
-}
-
 export interface AllVisitsResults {
   totalVisits: number;
   filteredVisits: NewVisit[];
@@ -71,7 +62,7 @@ export type ProgressUpdater = (progress: number) => void;
 const apiPath = "/api/v1/monitoring";
 
 function queryVisitPage(
-  visitQuery: NewVisitQuery
+  visitQuery: MonitoringRequest
 ): Promise<FetchResult<NewVisitsQueryResult>> {
   return CacophonyApi.get(
     `${apiPath}/page?${querystring.stringify(makeApiQuery(visitQuery))}${
@@ -81,7 +72,7 @@ function queryVisitPage(
 }
 
 async function getAllVisits(
-  visitQuery: NewVisitQuery,
+  visitQuery: MonitoringRequest,
   visitsFilter?: VisitFilter, // only visits that pass this filter will be returned
   progress?: ProgressUpdater // progress updates caller with how far through the request it is[0, 1]
 ): Promise<AllVisitsResults> {
@@ -128,7 +119,7 @@ async function getAllVisits(
   };
 }
 
-function makeApiQuery(query: NewVisitQuery) {
+function makeApiQuery(query: MonitoringRequest) {
   const apiParams: any = {};
 
   addValueIfSet(apiParams, calculateFromTime(query), "from");

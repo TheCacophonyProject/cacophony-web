@@ -40,7 +40,7 @@ export default function (app: Application, baseUrl: string) {
      * @apiDescription Get a page of monitoring visits.   Visits are returned with the most recent ones listed first.
      *
      * As part of this process recordings are sorted into visits and then the best-classification for each visit is calculated.
-     * Optionally you can also a specify an ai so you can compare the best classification with that given by the ai.
+     * Optionally you can also specify an ai so you can compare the best classification with that given by the ai.
      *
      * How many visits are returned is governed by the page-size parameter which is used to calculate page start and page end timestamps.
      * In some circumstances the number of visits returned may be slightly bigger or smaller than the page-size.
@@ -179,10 +179,18 @@ export default function (app: Application, baseUrl: string) {
       const requestUser: User = await models.User.findByPk(
         response.locals.requestUser.id
       );
+
+      const deviceIds: number[] =
+        (request.query.devices as unknown[] as number[]) || [];
+      const groupIds: number[] =
+        (request.query.groups as unknown[] as number[]) || [];
+
+      // TODO: Check permissions, reject if we don't have permissions to view any of these devices/groups.
+      //  Easier to do this cleanly once we get rid of the concept of users belonging to devices.
+
       const params: MonitoringParams = {
-        user: requestUser,
-        devices: request.query.devices as unknown[] as number[],
-        groups: request.query.groups as unknown[] as number[],
+        devices: deviceIds,
+        groups: groupIds,
         page: request.query.page as unknown as number,
         pageSize: request.query["page-size"] as unknown as number,
       };
@@ -196,6 +204,7 @@ export default function (app: Application, baseUrl: string) {
 
       const viewAsSuperAdmin = response.locals.viewAsSuperUser;
       const searchDetails = await calculateMonitoringPageCriteria(
+        requestUser,
         params,
         viewAsSuperAdmin
       );

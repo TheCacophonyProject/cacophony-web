@@ -51,49 +51,36 @@ const retireMissingStations = (
 
 const EPSILON = 0.000000000001;
 
-interface NamedLocation {
-  name: string;
-  location: [number, number];
-}
-
 const stationLocationHasChanged = (
   oldStation: Station,
   newStation: CreateStationData
 ) =>
   // NOTE: We need to compare these numbers with an epsilon value, otherwise we get floating-point precision issues.
-  Math.abs(oldStation.location.coordinates[0] - newStation.lat) < EPSILON ||
-  Math.abs(oldStation.location.coordinates[1] - newStation.lat) < EPSILON;
+  Math.abs(oldStation.location.coordinates[1] - newStation.lat) < EPSILON ||
+  Math.abs(oldStation.location.coordinates[0] - newStation.lng) < EPSILON;
 
 const checkThatStationsAreNotTooCloseTogether = (
   stations: Array<Station | CreateStationData>
 ): string | null => {
   const allStations = stations.map((s) => {
     if (s.hasOwnProperty("lat")) {
-      return {
-        name: (s as CreateStationData).name,
-        location: [
-          (s as CreateStationData).lat,
-          (s as CreateStationData).lng,
-        ] as [number, number],
-      };
+      return s as CreateStationData;
     } else {
       return {
         name: (s as Station).name,
-        location: (s as Station).location.coordinates,
+        lat: (s as Station).location.coordinates[1],
+        lng: (s as Station).location.coordinates[0],
       };
     }
   });
   const tooClosePairs: Record<
     string,
-    { station: NamedLocation; others: NamedLocation[] }
+    { station: CreateStationData; others: CreateStationData[] }
   > = {};
   for (const a of allStations) {
     for (const b of allStations) {
       if (a !== b && a.name !== b.name) {
-        if (
-          latLngApproxDistance(a.location, b.location) <
-          MIN_STATION_SEPARATION_METERS
-        ) {
+        if (latLngApproxDistance(a, b) < MIN_STATION_SEPARATION_METERS) {
           if (!tooClosePairs.hasOwnProperty(a.name)) {
             tooClosePairs[a.name] = { station: a, others: [] };
           }
@@ -119,8 +106,8 @@ const checkThatStationsAreNotTooCloseTogether = (
           warnings += `\n'${station.name}', '${
             other.name
           }': ${latLngApproxDistance(
-            station.location,
-            other.location
+            station,
+            other
           )}m apart, must be at least ${MIN_STATION_SEPARATION_METERS}m apart.`;
           pairs[key] = true;
         }
