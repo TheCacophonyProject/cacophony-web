@@ -1,7 +1,7 @@
 // Call with node mailServerStub.js
 const port = 7777;
 import { init } from "smtp-tester";
-import { writeFile, appendFile } from "fs";
+import { writeFile } from "fs";
 const mailServer = init(port);
 writeFile("mailServerStub.log", "SERVER: started", (err) => {
   if (err) {

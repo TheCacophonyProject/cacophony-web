@@ -13,7 +13,9 @@ describe("User: password reset", () => {
   //Do not run against a live server as we don't have a stubbed email server
   if (Cypress.env("running_in_a_dev_environment") == true) {
     before(() => {
-      cy.exec(`cd ../api && docker-compose exec -T server bash -lic "rm mailServerStub.log || true;"`);
+      cy.exec(
+        `cd ../api && docker-compose exec -T server bash -lic "rm mailServerStub.log || true;"`
+      );
       cy.exec(
         `cd ../api && docker-compose exec -d -T server bash -lic "node api/scripts/mailServerStub.js"`
       );
@@ -33,7 +35,6 @@ describe("User: password reset", () => {
 
       cy.log("Request a password reset");
       cy.apiResetPassword("uprUser2");
-
 
       cy.log("wait for a password reset email");
       cy.exec(

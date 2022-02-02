@@ -1,78 +1,76 @@
 /// <reference path="../../../support/index.d.ts" />
-  import {
-    TestCreateExpectedRecordingData,
-    TestCreateRecordingData,
-  } from "@commands/api/recording-tests";
-  import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-  import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-  import { getCreds } from "@commands/server";
+import {
+  TestCreateExpectedRecordingData,
+  TestCreateRecordingData,
+} from "@commands/api/recording-tests";
+import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { getCreds } from "@commands/server";
 
-  const EXCLUDE_IDS = [
-    ".tracks[].tags[].trackId",
-    ".tracks[].tags[].id",
-    ".tracks[].id",
-  ];
+const EXCLUDE_IDS = [
+  ".tracks[].tags[].trackId",
+  ".tracks[].tags[].id",
+  ".tracks[].id",
+];
 
-  const templateRecording: ApiRecordingSet = {
-      type: RecordingType.ThermalRaw,
-      fileHash: null,
-      duration: 15.6666666666667,
-      recordingDateTime: "2021-07-17T20:13:17.248Z",
-      location: [-45.29115, 169.30845],
-      additionalMetadata: {
-        algorithm: 31143,
-        previewSecs: 5,
-        totalFrames: 141,
+const templateRecording: ApiRecordingSet = {
+  type: RecordingType.ThermalRaw,
+  fileHash: null,
+  duration: 15.6666666666667,
+  recordingDateTime: "2021-07-17T20:13:17.248Z",
+  location: [-45.29115, 169.30845],
+  additionalMetadata: {
+    algorithm: 31143,
+    previewSecs: 5,
+    totalFrames: 141,
+  },
+  metadata: {
+    tracks: [
+      {
+        start_s: 2,
+        end_s: 5,
+        predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
       },
-      metadata: {
-        tracks: [
-          {
-            start_s: 2,
-            end_s: 5,
-            predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
-          },
-        ],
-      },
-      comment: "This is a comment",
-      processingState: RecordingProcessingState.Finished,
-    };
+    ],
+  },
+  comment: "This is a comment",
+  processingState: RecordingProcessingState.Finished,
+};
 
-
-    const templateExpectedRecording: ApiThermalRecordingResponse = {
-      deviceId: 0,
-      deviceName: "",
-      groupName: "",
-      id: 892972,
-      rawMimeType: "application/x-cptv",
-      processingState: RecordingProcessingState.Finished,
-      duration: 15.6666666666667,
-      recordingDateTime: "2021-07-17T20:13:17.248Z",
-      location: { lat: -43.2, lng: 169 },
-      type: RecordingType.ThermalRaw,
-      additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-      groupId: 246,
-      comment: "This is a comment",
-      processing: false,
-      tags: [],
-      tracks: [
+const templateExpectedRecording: ApiThermalRecordingResponse = {
+  deviceId: 0,
+  deviceName: "",
+  groupName: "",
+  id: 892972,
+  rawMimeType: "application/x-cptv",
+  processingState: RecordingProcessingState.Finished,
+  duration: 15.6666666666667,
+  recordingDateTime: "2021-07-17T20:13:17.248Z",
+  location: { lat: -43.2, lng: 169 },
+  type: RecordingType.ThermalRaw,
+  additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
+  groupId: 246,
+  comment: "This is a comment",
+  processing: false,
+  tags: [],
+  tracks: [
+    {
+      start: 2,
+      end: 5,
+      id: -99,
+      tags: [
         {
-          start: 2,
-          end: 5,
+          what: "cat",
+          data: { name: "unknown" },
+          automatic: true,
+          confidence: 0.9,
+          trackId: -99,
           id: -99,
-          tags: [
-            {
-              what: "cat",
-              data: { name: "unknown" },
-              automatic: true,
-              confidence: 0.9,
-              trackId: -99,
-              id: -99,
-            },
-          ],
         },
       ],
-    };
-
+    },
+  ],
+};
 
 describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";
@@ -184,34 +182,31 @@ describe("Stations: add and remove", () => {
     cy.checkRecordingsStationIs(Josie4, "");
   });
 
-  it("Recording is not assigned to a retired station",() => {
-    cy.testCreateUserGroupAndDevice("sta_user1","sta_group1","sta_camera1");
+  it("Recording is not assigned to a retired station", () => {
+    cy.testCreateUserGroupAndDevice("sta_user1", "sta_group1", "sta_camera1");
     const stations = [
-       { name: "test1", lat: -43.1, lng: 172 },
-       { name: "test2", lat: -43.2, lng: 172 },
-    ];
-    cy.apiGroupStationsUpdate("sta_user1", "sta_group1", stations); 
-
-    const stations2 = [
       { name: "test1", lat: -43.1, lng: 172 },
+      { name: "test2", lat: -43.2, lng: 172 },
     ];
+    cy.apiGroupStationsUpdate("sta_user1", "sta_group1", stations);
+
+    const stations2 = [{ name: "test1", lat: -43.1, lng: 172 }];
     cy.apiGroupStationsUpdate("sta_user1", "sta_group1", stations2).then(() => {
       cy.testUploadRecording("sta_camera1", {
         time: new Date(Date.now()),
         lat: -43.2,
         lng: 172,
       });
-  
+
       cy.checkRecordingsStationIs("sta_user1", "");
     });
-
   });
 
-  it("Recording is assigned to a correct station after rename",() => {
-    cy.testCreateUserGroupAndDevice("staUser2","staGroup2","staCamera2");
+  it("Recording is assigned to a correct station after rename", () => {
+    cy.testCreateUserGroupAndDevice("staUser2", "staGroup2", "staCamera2");
     const stations = [
-       { name: "test1", lat: -43.1, lng: 172 },
-       { name: "test2", lat: -43.2, lng: 172 },
+      { name: "test1", lat: -43.1, lng: 172 },
+      { name: "test2", lat: -43.2, lng: 172 },
     ];
     cy.apiGroupStationsUpdate("staUser2", "staGroup2", stations);
 
@@ -228,19 +223,18 @@ describe("Stations: add and remove", () => {
 
       cy.checkRecordingsStationIs("staUser2", "test3");
     });
-
   });
 
-  it("Recording is assigned to correct station after rename with duplicate name",() => {
+  it("Recording is assigned to correct station after rename with duplicate name", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
     let expectedRecording1: ApiThermalRecordingResponse;
 
-    cy.testCreateUserGroupAndDevice("staUser3","staGroup3","staCamera3");
+    cy.testCreateUserGroupAndDevice("staUser3", "staGroup3", "staCamera3");
     cy.log("Add stations test1 and test2");
     const stations = [
-       { name: "test1", lat: -43.1, lng: 172 },
-       { name: "test2", lat: -43.2, lng: 172 },
+      { name: "test1", lat: -43.1, lng: 172 },
+      { name: "test2", lat: -43.2, lng: 172 },
     ];
     cy.apiGroupStationsUpdate("staUser3", "staGroup3", stations);
 
@@ -250,93 +244,105 @@ describe("Stations: add and remove", () => {
       { name: "test3", lat: -43.2, lng: 172 },
     ];
     cy.apiGroupStationsUpdate("staUser3", "staGroup3", stations2);
-    
+
     cy.log("Rename test3 to test2 (retire test3, create new test2)");
     cy.apiGroupStationsUpdate("staUser3", "staGroup3", stations);
 
     cy.log("Add a recording at location of station test2");
-    recording1.recordingDateTime=(new Date(Date.now())).toISOString();
-    recording1.location=[-43.2, 172];
+    recording1.recordingDateTime = new Date(Date.now()).toISOString();
+    recording1.location = [-43.2, 172];
 
-    cy.apiRecordingAdd("staCamera3", recording1, undefined, "staRecording3").then(
-      () => {
-        expectedRecording1 = TestCreateExpectedRecordingData(
-          templateExpectedRecording,
-          "staRecording3",
-          "staCamera3",
-          "staGroup3",
-          null,
-          recording1
-        );
+    cy.apiRecordingAdd(
+      "staCamera3",
+      recording1,
+      undefined,
+      "staRecording3"
+    ).then(() => {
+      expectedRecording1 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "staRecording3",
+        "staCamera3",
+        "staGroup3",
+        null,
+        recording1
+      );
 
-        expectedRecording1.stationName="test2";
-        expectedRecording1.stationId=getCreds("test2").id;
+      expectedRecording1.stationName = "test2";
+      expectedRecording1.stationId = getCreds("test2").id;
 
-        cy.log("Check recording assigned to correct station (and the latest, non-retired version of it)")
-        //check stationId
-        cy.apiRecordingCheck(
-          "staUser3",
-          "staRecording3",
-          expectedRecording1,
-          EXCLUDE_IDS
-        );
+      cy.log(
+        "Check recording assigned to correct station (and the latest, non-retired version of it)"
+      );
+      //check stationId
+      cy.apiRecordingCheck(
+        "staUser3",
+        "staRecording3",
+        expectedRecording1,
+        EXCLUDE_IDS
+      );
     });
-
   });
 
-  it.skip("Recording assigned based on their recordingDateTime after stations renamed",() => {
+  it.skip("Recording assigned based on their recordingDateTime after stations renamed", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
     let expectedRecording1: ApiThermalRecordingResponse;
 
-    cy.testCreateUserGroupAndDevice("staUser4","staGroup4","staCamera4");
+    cy.testCreateUserGroupAndDevice("staUser4", "staGroup4", "staCamera4");
     cy.log("Add stations test1 and test2");
     const stations = [
-       { name: "test4-1", lat: -43.1, lng: 172 },
-       { name: "test4-2", lat: -43.2, lng: 172 },
+      { name: "test4-1", lat: -43.1, lng: 172 },
+      { name: "test4-2", lat: -43.2, lng: 172 },
     ];
     cy.apiGroupStationsUpdate("staUser4", "staGroup4", stations).then(() => {
-      let recordingDate=(new Date(Date.now())).toISOString();
-      let station2Id=getCreds("test4-2").id;
-  
+      const recordingDate = new Date(Date.now()).toISOString();
+      const station2Id = getCreds("test4-2").id;
+
       cy.log("Rename test4-2 to test4-3 (retire test4-2, create test4-3)");
       const stations2 = [
         { name: "test4-1", lat: -43.1, lng: 172 },
-          { name: "test4-3", lat: -43.2, lng: 172 },
+        { name: "test4-3", lat: -43.2, lng: 172 },
       ];
       cy.apiGroupStationsUpdate("staUser4", "staGroup4", stations2);
-      
+
       cy.log("Rename test4-3 to test4-2 (retire test4-3, create new test4-2)");
       cy.apiGroupStationsUpdate("staUser4", "staGroup4", stations);
-    
-      cy.log("Add a recording at location of station test4-2 timed before the 1st update");
-      recording1.recordingDateTime=recordingDate;
-      recording1.location=[-43.2, 172];
-  
-      cy.apiRecordingAdd("staCamera4", recording1, undefined, "staRecording4").then(
-          () => {
-            expectedRecording1 = TestCreateExpectedRecordingData(
-            templateExpectedRecording,
-            "staRecording4",
-            "staCamera4",
-            "staGroup4",
-            null,
-            recording1
-          );
-  
-          expectedRecording1.stationName="test4-2";
-          expectedRecording1.stationId=station2Id;
-  
-          cy.log("Check recording assigned to station that was active at time it was recorded (not the latest version)")
-          //check stationId
-          cy.apiRecordingCheck(
-            "staUser4",
-            "staRecording4",
-            expectedRecording1,
-            EXCLUDE_IDS
-          );
+
+      cy.log(
+        "Add a recording at location of station test4-2 timed before the 1st update"
+      );
+      recording1.recordingDateTime = recordingDate;
+      recording1.location = [-43.2, 172];
+
+      cy.apiRecordingAdd(
+        "staCamera4",
+        recording1,
+        undefined,
+        "staRecording4"
+      ).then(() => {
+        expectedRecording1 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "staRecording4",
+          "staCamera4",
+          "staGroup4",
+          null,
+          recording1
+        );
+
+        expectedRecording1.stationName = "test4-2";
+        expectedRecording1.stationId = station2Id;
+
+        cy.log(
+          "Check recording assigned to station that was active at time it was recorded (not the latest version)"
+        );
+        //check stationId
+        cy.apiRecordingCheck(
+          "staUser4",
+          "staRecording4",
+          expectedRecording1,
+          EXCLUDE_IDS
+        );
       });
     });
   });
-
 });
