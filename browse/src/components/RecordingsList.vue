@@ -157,6 +157,9 @@ const parseLocation = (location: LatLng): string => {
 };
 
 const parseProcessingState = (result: string): string => {
+  if (!result) {
+    return "";
+  }
   const string = result.toLowerCase();
   return string.charAt(0).toUpperCase() + string.slice(1);
 };
@@ -247,17 +250,6 @@ const collateTags = (tags: ApiRecordingTagResponse[]): DisplayTag[] => {
     }
   }
   return result;
-};
-
-const mapTracks = (tracks: ApiTrackResponse[]) => {
-  const t = tracks.map(mapTrack);
-  return t;
-};
-
-const mapTrack = (track: ApiTrackResponse) => {
-  const t = track as any;
-  t.filtered = DefaultLabels.isFiltered(t.tags);
-  return t;
 };
 
 const FILTERED_MAX = 100;
@@ -377,7 +369,7 @@ export default {
           date: toNZDateString(thisDate),
           time: thisDate.toLocaleTimeString(),
           duration: recording.duration,
-          tracks: mapTracks(recording.tracks),
+          tracks: recording.tracks,
           recTags: collateTags(recording.tags, []),
           batteryLevel: (recording as ApiAudioRecordingResponse).batteryLevel,
           trackCount: recording.tracks.length,

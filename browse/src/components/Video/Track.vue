@@ -191,13 +191,10 @@ export default {
       );
     },
     headerClass() {
-      if (this.isFiltered) {
+      if (this.track.filtered) {
         return "filtered-track";
       }
       return "";
-    },
-    isFiltered() {
-      return DefaultLabels.isFiltered(this.localTags);
     },
   },
   created() {

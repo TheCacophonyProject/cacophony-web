@@ -1610,6 +1610,10 @@ export const finishedProcessingRecording = async (
     tracks
   );
 
+  for (const track of tracks) {
+    await track.calculateFiltered();
+  }
+
   // Add additionalMetadata to recording:
   // model name + classify time (total?)
   // algorithm - tracking_algorithm

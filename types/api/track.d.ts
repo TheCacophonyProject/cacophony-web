@@ -19,6 +19,7 @@ export interface ApiTrackResponse {
   end: Seconds;
   positions?: ApiTrackPosition[];
   tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[];
+  filtered: boolean;
 }
 
 export interface ApiTrackDataRequest {

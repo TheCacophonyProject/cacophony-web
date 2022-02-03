@@ -83,7 +83,6 @@ interface RecordingQueryBuilder {
     viewAsSuperAdmin?: boolean,
     filtered?: boolean
   ) => Promise<RecordingQueryBuilderInstance>;
-  hideFilteredSQL: () => string;
   handleTagMode: (tagMode: TagMode, tagWhatsIn: string[]) => SqlString;
   recordingTaggedWith: (tagModes: string[], any) => SqlString;
   trackTaggedWith: (tags: string[], sql: SqlString) => SqlString;
@@ -1067,17 +1066,12 @@ from (
       recordingPermissions,
       Sequelize.literal(Recording.queryBuilder.handleTagMode(tagMode, tags)),
     ];
-    if (hideFiltered) {
-      constraints.push(
-        Sequelize.literal(Recording.queryBuilder.hideFilteredSQL())
-      );
-    }
     this.query = {
       where: {
         [Op.and]: constraints,
       },
       order,
-      include: getRecordingInclude(),
+      include: getRecordingInclude(hideFiltered),
       limit,
       offset,
       attributes: Recording.queryGetAttributes,
@@ -1085,7 +1079,14 @@ from (
     return this;
   };
 
-  function getRecordingInclude() {
+  function getRecordingInclude(hideFiltered?: Boolean) {
+    const trackWhere = { archivedAt: null };
+    let trackRequired = true;
+    if (hideFiltered) {
+      trackWhere["filtered"] = false;
+      trackRequired = true;
+    }
+
     return [
       {
         model: models.Group,
@@ -1107,11 +1108,10 @@ from (
       },
       {
         model: models.Track,
-        where: {
-          archivedAt: null,
-        },
+        where: trackWhere,
         attributes: [
           "id",
+          "filtered",
           [
             Sequelize.fn(
               "json_build_object",
@@ -1124,7 +1124,7 @@ from (
           ],
         ],
 
-        required: false,
+        required: trackRequired,
         include: [
           {
             model: models.TrackTag,
@@ -1157,37 +1157,6 @@ from (
       },
     ];
   }
-
-  Recording.queryBuilder.hideFilteredSQL = (): string => {
-    const query = `(exists(
-		select
-				"Recording".id
-		from
-				"Tracks"
-		where
-			"Tracks"."RecordingId" = "Recording".id
-			and exists(
-			select
-						1
-			from
-						(
-				select
-							SUM(case when not tt.automatic and "tt"."what" in ('false-positive') then 1 else 0 end) "filtered",
-							SUM(case when not tt.automatic and "tt"."what" not in ('false-positive') then 1 else 0 end) "animal",
-							SUM(case when "tt"."data"#>>'{name}' = 'Master' and tt.automatic and "tt"."what" not in ('false-positive') then 1 else 0 end) "aianimal"
-				from
-							"TrackTags" tt
-				where
-							tt."TrackId" = "Tracks".id
-						) as "cQ"
-			where
-				"filtered" = 0
-				and ("animal" > 0
-					or "aianimal">0)
-				)
-			))`;
-    return query;
-  };
 
   Recording.queryBuilder.handleTagMode = (
     tagMode: AllTagModes,

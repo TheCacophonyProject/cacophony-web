@@ -281,8 +281,11 @@ export default {
           result: { tracks },
         } = tracksResponse;
         const track = tracks.find((track) => track.id === trackId);
-        this.recording.tracks.find((track) => track.id === trackId).tags =
-          track.tags;
+        const localTrack = this.recording.tracks.find(
+          (track) => track.id === trackId
+        );
+        localTrack.tags = track.tags;
+        localTrack.filtered = track.filtered;
       }
     },
     async refreshRecordingTagData(tagId: TagId): Promise<void> {

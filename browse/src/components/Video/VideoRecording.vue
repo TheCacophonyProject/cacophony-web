@@ -236,7 +236,7 @@ export default {
         return null;
       }
       const tracks = (this.recording as ApiThermalRecordingResponse).tracks;
-      return tracks.filter((track) => DefaultLabels.isFiltered(track.tags));
+      return tracks.filter((track) => track.filtered);
     },
     tracks() {
       if (!this.recording) {
@@ -246,7 +246,7 @@ export default {
       if (this.showFiltered) {
         return tracks;
       } else {
-        return tracks.filter((track) => !DefaultLabels.isFiltered(track.tags));
+        return tracks.filter((track) => !track.filtered);
       }
     },
     processingCompleted() {

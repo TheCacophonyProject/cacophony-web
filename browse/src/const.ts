@@ -249,56 +249,8 @@ const DefaultLabels = {
   descriptorTags: function () {
     return descriptors.includes;
   },
-
-  isFiltered: function (tags) {
-    // any human tag that isn't filted
-    //  or any ai mastre tag that isn't filtered
-
-    // filtered if
-    // any huyman tag that is filtered
-    // no animal human tags
-    const userTags = tags.filter((tag) => !tag.automatic);
-    if (userTags.length > 0) {
-      // any animal non filtered user tag, means not filtered
-      if (
-        userTags.some(
-          (tag) =>
-            !descriptors.allIncludedTags.includes(tag.what) &&
-            !this.filteredLabels().some(
-              (filteredTag) => filteredTag.value == tag.what
-            )
-        )
-      ) {
-        return false;
-      }
-
-      //any user filtered tag means filtered
-      if (
-        userTags.some((tag) =>
-          this.filteredLabels().some(
-            (filteredTag) => filteredTag.value == tag.what
-          )
-        )
-      ) {
-        return true;
-      }
-    }
-    // if ai master tag is filtered this track is filtered
-    const masterTag = tags.find(
-      (tag) =>
-        tag.automatic &&
-        ((tag.data?.name && tag.data.name == "Master") ||
-          (tag.data && tag.data == "Master"))
-    );
-    if (
-      masterTag &&
-      this.filteredLabels().some(
-        (filteredTag) => filteredTag.value == masterTag.what
-      )
-    ) {
-      return true;
-    }
-    return false;
+  allDescriptorTags: function () {
+    return descriptors.allIncludedTags;
   },
   falsePositiveLabel: falsePositive,
   birdLabel: bird,

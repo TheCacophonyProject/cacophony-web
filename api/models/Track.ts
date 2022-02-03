@@ -16,14 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize from "sequelize";
+import Sequelize, { FindOptions } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { TrackTag, TrackTagId } from "./TrackTag";
+import { TrackTag, TrackTagId, additionalTags, filteredTags } from "./TrackTag";
 import { Recording } from "./Recording";
 import { RecordingId, TrackId } from "@typedefs/api/common";
 import logger from "@log";
 
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
+  filtered: boolean;
   RecordingId: RecordingId;
   getTrackTag: (trackTagId: TrackTagId) => Promise<TrackTag>;
   id: TrackId;
@@ -38,7 +39,8 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
   ) => Promise<TrackTag>;
   // NOTE: Implicitly created by sequelize associations.
   getRecording: () => Promise<Recording>;
-
+  getTrackTags: (options: FindOptions) => Promise<TrackTag[]>;
+  calculateFiltered: () => Promise<Track>;
   TrackTags?: TrackTag[];
   replaceTag: (tag: TrackTag) => Promise<any>;
 }
@@ -53,6 +55,7 @@ export default function (
   const Track = sequelize.define("Track", {
     data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
+    filtered: DataTypes.BOOLEAN,
   }) as unknown as TrackStatic;
 
   //---------------
@@ -81,7 +84,7 @@ export default function (
     tag: TrackTag
   ): Promise<TrackTag | void> {
     const trackId = this.id;
-    return sequelize.transaction(async function (t) {
+    const trackTag = await sequelize.transaction(async function (t) {
       const trackTags = await models.TrackTag.findAll({
         where: {
           UserId: tag.UserId,
@@ -106,6 +109,8 @@ export default function (
       await tag.save({ transaction: t });
       return tag;
     });
+    await this.calculateFiltered();
+    return trackTag;
   };
 
   // Adds a tag to a track and checks if any alerts need to be sent. All trackTags
@@ -124,6 +129,7 @@ export default function (
       data,
       UserId: userId,
     });
+    await this.calculateFiltered();
     return tag;
   };
   // Return a specific track tag for the track.
@@ -139,6 +145,59 @@ export default function (
     }
 
     return trackTag;
+  };
+
+  Track.prototype.calculateFiltered = async function () {
+    this.filtered = await this.isFiltered();
+    return this.save();
+  };
+
+  Track.prototype.isFiltered = async function () {
+    const tags = await this.getTrackTags();
+
+    // any human tag that isn't filted
+    //  or any ai mastre tag that isn't filtered
+
+    // filtered if
+    // any huyman tag that is filtered
+    // no animal human tags
+    const userTags = tags.filter((tag) => !tag.automatic);
+
+    if (userTags.length > 0) {
+      // any animal non filtered user tag, means not filtered
+      if (
+        userTags.some(
+          (tag) =>
+            !additionalTags.includes(tag.what) &&
+            !filteredTags.some((filteredTag) => filteredTag == tag.what)
+        )
+      ) {
+        return false;
+      }
+
+      //any user filtered tag means filtered
+      if (
+        userTags.some((tag) =>
+          filteredTags.some((filteredTag) => filteredTag == tag.what)
+        )
+      ) {
+        return true;
+      }
+    }
+    // if ai master tag is filtered this track is filtered
+    const masterTag = tags.find(
+      (tag) =>
+        tag.automatic &&
+        ((tag.data?.name && tag.data.name == "Master") ||
+          (tag.data && tag.data == "Master"))
+    );
+    if (
+      masterTag &&
+      filteredTags.some((filteredTag) => filteredTag == masterTag.what)
+    ) {
+      return true;
+    }
+    return false;
   };
 
   // Archives tags for reprocessing

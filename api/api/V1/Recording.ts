@@ -134,6 +134,7 @@ const mapTrack = (track: Track): ApiTrackResponse => ({
   end: track.data.end_s,
   tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
   positions: mapPositions(track.data.positions),
+  filtered: track.filtered,
 });
 
 const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
@@ -1402,7 +1403,7 @@ export default (app: Application, baseUrl: string) => {
       }
 
       await tag.destroy();
-
+      await track.calculateFiltered();
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag deleted."],
