@@ -59,6 +59,7 @@ describe("Tracks: add, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
+    filtered: false,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -276,12 +277,13 @@ describe("Tracks: add, check, delete", () => {
   it("Can set all valid parameters", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const minTrack = { start_s: 4, end_s: 7 };
-    const expectedMinTrack = {
+    const expectedMinTrack: ApiTrackResponse = {
       id: -99,
       start: 4,
       end: 7,
       positions: [],
       tags: [],
+      filtered: false,
     };
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
 

@@ -435,6 +435,7 @@ export function TestCreateExpectedNeedsTagData(
       end: track.end_s,
       needsTagging: true,
       positions: [],
+      filtered: false,
     });
   });
 
@@ -610,6 +611,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
         start: track.start_s,
         end: track.end_s,
         positions: [],
+        filtered: false,
       };
       if (
         track.predictions.length &&

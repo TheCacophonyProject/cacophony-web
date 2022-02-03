@@ -69,6 +69,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
+    filtered: false,
   };
 
   const track1: ApiTrackDataRequest = {

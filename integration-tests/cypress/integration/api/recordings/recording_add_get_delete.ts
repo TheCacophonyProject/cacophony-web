@@ -39,6 +39,7 @@ describe("Recordings (thermal): add, get, delete", () => {
         start: 2,
         end: 5,
         id: -99,
+        filtered: false,
         tags: [
           {
             what: "cat",
