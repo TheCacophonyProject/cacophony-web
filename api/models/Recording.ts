@@ -1081,12 +1081,11 @@ from (
 
   function getRecordingInclude(hideFiltered?: Boolean) {
     const trackWhere = { archivedAt: null };
-    let trackRequired = true;
+    let trackRequired = false;
     if (hideFiltered) {
       trackWhere["filtered"] = false;
       trackRequired = true;
     }
-
     return [
       {
         model: models.Group,
