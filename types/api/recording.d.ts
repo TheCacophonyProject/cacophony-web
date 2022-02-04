@@ -108,6 +108,5 @@ export interface ApiRecordingUpdateRequest {
   location?: [number, number];
 }
 
-export type ApiGenericRecordingResponse =
-  & ApiThermalRecordingResponse
-  & ApiAudioRecordingResponse;
+export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
+  ApiAudioRecordingResponse;
