@@ -805,6 +805,7 @@ describe("Recordings - processing tests", () => {
                 end: 4,
                 id: 1,
                 positions: [],
+                filtered: false,
               },
             ];
             cy.apiRecordingCheck(
@@ -848,6 +849,7 @@ describe("Recordings - processing tests", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  filtered: false,
                 },
               ];
 
@@ -882,7 +884,7 @@ describe("Recordings - processing tests", () => {
       });
     });
 
-    it("Tracking stage can delete tracks and tags from the recording", () => {
+    it.only("Tracking stage can delete tracks and tags from the recording", () => {
       const recording19 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(
         "rpCamera1",
@@ -936,6 +938,7 @@ describe("Recordings - processing tests", () => {
                 end: 4,
                 id: 1,
                 positions: [],
+                filtered: false,
               },
             ];
             cy.apiRecordingCheck(
@@ -961,6 +964,7 @@ describe("Recordings - processing tests", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  filtered: false,
                 },
               ];
               cy.processingApiTracksTagsPost(

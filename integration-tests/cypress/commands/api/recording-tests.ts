@@ -435,7 +435,7 @@ export function TestCreateExpectedNeedsTagData(
       end: track.end_s,
       needsTagging: true,
       positions: [],
-      filtered: false,
+      // filtered: false,
     });
   });
 

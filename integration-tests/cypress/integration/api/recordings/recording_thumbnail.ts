@@ -194,6 +194,7 @@ describe("Recording thumbnails", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  filtered: false,
                 },
               ];
 
@@ -360,6 +361,7 @@ describe("Recording thumbnails", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  filtered: false,
                 },
               ];
 
