@@ -17,7 +17,7 @@ import {
   ApiTrackTagRequest,
 } from "@typedefs/api/trackTag";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
-import { ApiTrackResponse } from "@typedefs/api/track";
+import { ApiTrackRequest, ApiTrackResponse } from "@typedefs/api/track";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
 export type JwtToken<T> = string;
@@ -334,10 +334,37 @@ function undelete(id: RecordingId): Promise<FetchResult<any>> {
   return CacophonyApi.patch(`${apiPath}/${id}/undelete`, {});
 }
 
+function getTrack(
+  trackId: TrackId,
+  recordingId: RecordingId
+): Promise<
+  FetchResult<{
+    trackId: TrackId;
+    track: ApiTrackResponse;
+    algorithmId: number;
+  }>
+> {
+  return CacophonyApi.get(`${apiPath}/${recordingId}/tracks/${trackId}`);
+}
+
 function tracks(
   recordingId: RecordingId
 ): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
   return CacophonyApi.get(`${apiPath}/${recordingId}/tracks`);
+}
+
+function addTrack(
+  body: ApiTrackRequest,
+  recordingId: RecordingId
+): Promise<FetchResult<{ track: ApiTrackResponse }>> {
+  return CacophonyApi.post(`${apiPath}/${recordingId}/tracks`, body);
+}
+
+function removeTrack(
+  trackId: TrackId,
+  recordingId: RecordingId
+): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
+  return CacophonyApi.delete(`${apiPath}/${recordingId}/tracks/${trackId}`);
 }
 
 function replaceTrackTag(
@@ -474,7 +501,10 @@ export default {
   comment,
   del,
   undelete,
+  getTrack,
   tracks,
+  addTrack,
+  removeTrack,
   reprocess,
   addTrackTag,
   deleteTrackTag,

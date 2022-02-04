@@ -1646,7 +1646,7 @@ const mapPosition = (position: any): ApiTrackPosition => {
       y: position.y,
       width: position.width,
       height: position.height,
-      frameNumber: position.frame_number,
+      order: position.frame_number ?? position.order,
     };
   }
 };

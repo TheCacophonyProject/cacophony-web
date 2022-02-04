@@ -9,7 +9,7 @@ export interface ApiTrackPosition {
   y: number;
   width: number;
   height: number;
-  frameNumber?: number;
+  order?: number;
   frameTime?: number;
 }
 
@@ -17,8 +17,23 @@ export interface ApiTrackResponse {
   id: TrackId;
   start: Seconds;
   end: Seconds;
+  automatic: boolean;
   positions?: ApiTrackPosition[];
   tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[];
+}
+
+export interface ApiTrackRequest {
+  data: {
+    start_s: Seconds;
+    end_s: Seconds;
+    label?: string;
+    clarity?: number;
+    automatic?: boolean;
+    userId?: number;
+    positions?: ApiTrackPosition[];
+    message?: string;
+  };
+  algorithm?: Object | Array<number>;
 }
 
 export interface ApiTrackDataRequest {

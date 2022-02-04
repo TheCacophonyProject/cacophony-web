@@ -134,6 +134,7 @@ const mapTrack = (track: Track): ApiTrackResponse => ({
   end: track.data.end_s,
   tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
   positions: mapPositions(track.data.positions),
+  automatic: track.data.automatic ?? true,
 });
 
 const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
@@ -236,6 +237,10 @@ const mapRecordingResponse = (
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiTracksResponseSuccess {
   tracks: ApiTrackResponse[];
+}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiTracksResponseSuccess {
+  track: ApiTrackResponse;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1072,8 +1077,9 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer} id Id of the recording to add the track to.
-   * @apiParam {JSON} data Data which defines the track (type specific).
-   * @apiParam {JSON} [algorithm] Description of algorithm that generated track
+   *
+   * @apiBody {JSON} data Data which defines the track (type specific).
+   * @apiBody {JSON} [algorithm] Description of algorithm that generated track
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Integer} trackId Unique id of the newly created track.
@@ -1103,9 +1109,13 @@ export default (app: Application, baseUrl: string) => {
         "algorithm",
         algorithm
       );
+      const data = {
+        userId: response.locals.requestUser.id,
+        ...response.locals.data,
+      };
 
       const track = await response.locals.recording.createTrack({
-        data: response.locals.data,
+        data,
         AlgorithmId: algorithmDetail.id,
       });
 
@@ -1145,6 +1155,40 @@ export default (app: Application, baseUrl: string) => {
         statusCode: 200,
         messages: ["OK."],
         tracks: mapTracks(tracks),
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/recordings/:id/track Get track for recording
+   * @apiName GetTrack
+   * @apiGroup Track
+   * @apiDescription Get track for a given recording and track id.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId Id of the recording
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiTrackResponseSuccess} tracks
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/tracks/:trackId`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id")), idOf(param("trackId"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request: Request, response: Response) => {
+      const track = await response.locals.recording.getTrack(
+        request.params.trackId
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["OK."],
+        track: mapTrack(track),
       });
     }
   );

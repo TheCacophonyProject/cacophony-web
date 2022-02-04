@@ -116,6 +116,10 @@
         v-b-tooltip.hover
         title="Cacophony Index: Measures Richness of Audio"
         class="cacophony-container"
+        :style="{
+          marginRight:
+            item.location !== '(unknown)' ? '0.5em' : 'calc(109px + 0.5em)',
+        }"
         v-if="item.type === 'audio' && item.cacophonyIndex !== undefined"
       >
         <CacophonyIndexGraph
@@ -538,5 +542,8 @@ $recording-side-padding-small: 0.5rem;
   border-radius: 0.5em;
   padding: 0.4em;
   border: 2px solid $gray-300;
+  @include media-breakpoint-between(xs, sm) {
+    margin-right: 0.5em !important;
+  }
 }
 </style>

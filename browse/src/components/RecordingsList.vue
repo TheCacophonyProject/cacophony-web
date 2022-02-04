@@ -574,7 +574,7 @@ export default {
     }
   }
 }
-// Row view variant
+
 .recording-summary-row {
   width: 100%;
   &:nth-child(odd) {

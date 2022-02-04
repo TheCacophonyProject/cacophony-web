@@ -5,6 +5,7 @@ export interface ApiTrackTagRequest {
   confidence: number;
   automatic?: boolean;
   tagJWT?: string; // Allows tagging by someone without recording permissions.
+  data?: any; // FIXME - validation?
 }
 
 interface ApiTrackTagResponse {

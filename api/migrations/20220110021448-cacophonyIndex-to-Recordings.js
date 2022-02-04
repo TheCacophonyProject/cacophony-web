@@ -20,7 +20,7 @@ module.exports = {
       let algorithmId = await queryInterface.sequelize.query(`
         SELECT "id" from "DetailSnapshots" 
         WHERE "type"='algorithm' AND "details"->>'algorithm'='sliding_window';`);
-      if (!algorithmId[0].length !== 0) {
+      if (algorithmId[0].length === 0) {
         console.log("inserting new algorithm");
         algorithmId = await queryInterface.sequelize.query(
           `
@@ -35,7 +35,7 @@ module.exports = {
 
       const analysedRecordings = await queryInterface.sequelize.query(
         `
-        SELECT "id", "additionalMetadata"->'analysis'->'species_identify' as speciesindentify FROM "Recordings"
+        SELECT "id", "duration", "additionalMetadata"->'analysis'->'species_identify' as speciesindentify FROM "Recordings"
         WHERE jsonb_array_length("additionalMetadata"->'analysis'->'species_identify') != 0;
         `,
         { transaction }
@@ -44,59 +44,76 @@ module.exports = {
       console.log(analysedRecordings);
 
       await Promise.all(
-        analysedRecordings[0].map(async ({ id, speciesindentify }) => {
-          if (!speciesindentify) {
-            return;
-          }
-          return await Promise.all(
-            speciesindentify.map(
-              async ({ end_s, begin_s, species, liklihood }) => {
-                // Create a new track in Track table
-                console.log("Creating Track for", id, begin_s, end_s);
-                const trackId = (
-                  await queryInterface.sequelize.query(
-                    `
+        analysedRecordings[0].map(
+          async ({ id, speciesindentify, duration }) => {
+            if (!speciesindentify) {
+              return;
+            }
+            return await Promise.all(
+              speciesindentify.map(
+                async ({ end_s, begin_s, species, liklihood: likelihood }) => {
+                  // Create a new track in Track table
+                  console.log("Creating Track for", id, begin_s, end_s);
+                  // round to 2 decimals using round
+                  let x = begin_s / duration;
+                  let width = end_s / duration - x;
+                  x = Math.round(x * 100) / 100;
+                  width = Math.round(width * 100) / 100;
+                  const y = 0;
+                  const height = 1;
+                  const trackPosition = {
+                    x,
+                    y,
+                    width,
+                    height,
+                    order: 0,
+                  };
+                  const trackId = (
+                    await queryInterface.sequelize.query(
+                      `
                     INSERT INTO "Tracks" ("RecordingId", "AlgorithmId", "data", "createdAt", "updatedAt")
                     VALUES (:id, :algorithmId, :data, NOW(), NOW())
                     RETURNING "id";`,
+                      {
+                        transaction,
+                        replacements: {
+                          id,
+                          algorithmId,
+                          data: JSON.stringify({
+                            start_s: begin_s,
+                            end_s: end_s,
+                            positions: [trackPosition],
+                          }),
+                        },
+                      }
+                    )
+                  )[0][0].id;
+                  console.log(
+                    "Creating TrackTag for track",
+                    trackId,
+                    species,
+                    likelihood
+                  );
+                  return await queryInterface.sequelize.query(
+                    `
+                  INSERT INTO "TrackTags" ("what", "confidence", "automatic", "data", "createdAt", "updatedAt", "TrackId")
+                  VALUES (:species, :likelihood, true, '{"name": "Master"}', NOW(), NOW(), :trackId)
+                  `,
                     {
                       transaction,
                       replacements: {
-                        id,
-                        algorithmId,
-                        data: JSON.stringify({
-                          start_s: begin_s,
-                          end_s: end_s,
-                        }),
+                        species: species,
+                        trackId,
+                        likelihood: likelihood ?? 0,
                       },
+                      type: Sequelize.QueryTypes.INSERT,
                     }
-                  )
-                )[0][0].id;
-                console.log(
-                  "Creating TrackTag for track",
-                  trackId,
-                  species,
-                  liklihood
-                );
-                return await queryInterface.sequelize.query(
-                  `
-                  INSERT INTO "TrackTags" ("what", "confidence", "automatic", "data", "createdAt", "updatedAt", "TrackId")
-                  VALUES (:species, :liklihood, true, '{"name": "Master"}', NOW(), NOW(), :trackId)
-                  `,
-                  {
-                    transaction,
-                    replacements: {
-                      species: species,
-                      trackId,
-                      liklihood: liklihood ?? 0,
-                    },
-                    type: Sequelize.QueryTypes.INSERT,
-                  }
-                );
-              }
-            )
-          );
-        })
+                  );
+                }
+              )
+            );
+          }
+        )
       );
 
       console.log("Moving cacophonyIndex");
