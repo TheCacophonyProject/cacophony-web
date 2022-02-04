@@ -174,6 +174,7 @@ import GroupLink from "@/components/GroupLink.vue";
 export default {
   name: "RecordingSummary",
   components: {
+    CacophonyIndexGraph,
     GroupLink,
     StationLink,
     DeviceLink,
