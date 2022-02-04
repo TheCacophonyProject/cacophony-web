@@ -12,7 +12,8 @@ import {
   removeUndefinedParams,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { getTestName, getUniq } from "../names";
+import { getTestName } from "../names";
+import { NOT_NULL, NOT_NULL_STRING } from "../constants";
 import {
   TestComparableEvent,
   TestComparablePowerEvent,
@@ -357,23 +358,20 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    eventName: string,
+    expectedEvent: any,
     eventNumber: number = 1,
     statusCode: number = 200
   ) => {
-    logTestDescription(
-      `Check for expected event ${getUniq(eventName)} for ${deviceName} `,
-      {
-        userName,
-        deviceName,
-        eventNumber,
-      }
-    );
+    logTestDescription(`Check for expected event for ${deviceName} `, {
+      userName,
+      deviceName,
+      eventNumber,
+    });
 
     checkEvents(
       userName,
       deviceName,
-      getUniq(eventName),
+      expectedEvent,
       eventNumber,
       ["success", "trackId", "dateTime"],
       statusCode
@@ -381,42 +379,29 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add(
-  "createExpectedEvent",
-  (
-    name: string,
-    userName: string,
-    deviceName: string,
-    recording: string,
-    alertName: string
-  ) => {
-    logTestDescription(
-      `Create expected event ${getUniq(name)} for ${getUniq(alertName)} `,
-      {
-        userName,
-        name,
-        id: getUniq(alertName),
-      }
-    );
-    const expectedEvent = {
-      id: 1,
-      dateTime: "2021-05-19T01:39:41.376Z",
-      createdAt: "2021-05-19T01:39:41.771Z",
-      DeviceId: getCreds(deviceName).id,
-      EventDetail: {
-        type: "alert",
-        details: {
-          recId: getCreds(recording).id,
-          alertId: getCreds(getUniq(alertName)).id,
-          success: true,
-          trackId: 1,
-        },
+export function createExpectedEvent(
+  deviceName: string,
+  recording: string,
+  alertName: string
+): any {
+  const expectedEvent = {
+    id: 1,
+    dateTime: "2021-05-19T01:39:41.376Z",
+    createdAt: "2021-05-19T01:39:41.771Z",
+    DeviceId: getCreds(deviceName).id,
+    EventDetail: {
+      type: "alert",
+      details: {
+        recId: getCreds(recording).id,
+        alertId: getCreds(alertName).id,
+        success: true,
+        trackId: 1,
       },
-      Device: { devicename: getTestName(getCreds(deviceName).name) },
-    };
-    Cypress.env("testCreds")[getUniq(name)] = expectedEvent;
-  }
-);
+    },
+    Device: { devicename: getTestName(getCreds(deviceName).name) },
+  };
+  return expectedEvent;
+}
 
 function checkPowerEvents(
   userName: string,
@@ -438,7 +423,7 @@ function checkPowerEvents(
 function checkEvents(
   userName: string,
   deviceName: string,
-  eventName: string,
+  expectedEvent: any,
   eventNumber: number,
   ignoreParams: string[],
   statusCode: number
@@ -452,7 +437,6 @@ function checkEvents(
     userName,
     statusCode
   ).then((response) => {
-    const expectedEvent = getExpectedEvent(eventName);
     if (statusCode === 200) {
       expect(response.body.rows.length).to.equal(eventNumber);
       if (eventNumber > 0) {
@@ -522,6 +506,18 @@ function checkPowerEventMatches(
       expectedEvent.hasAlerted ? "alerted" : "not alerted"
     }`
   ).to.eq(expectedEvent.hasAlerted);
+}
+
+export function testCreateExpectedEvent(deviceName: string, eventDetail: any) {
+  const expectedEvent = {
+    id: NOT_NULL,
+    dateTime: NOT_NULL_STRING,
+    createdAt: NOT_NULL_STRING,
+    DeviceId: getCreds(deviceName).id,
+    EventDetail: eventDetail,
+    Device: { devicename: getTestName(deviceName) },
+  };
+  return expectedEvent;
 }
 
 export function getExpectedEvent(name: string): TestComparableEvent {

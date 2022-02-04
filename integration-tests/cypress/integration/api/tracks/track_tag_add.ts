@@ -2,6 +2,7 @@
 import {
   HTTP_Forbidden,
   HTTP_OK200,
+  NOT_NULL,
   NOT_NULL_STRING,
 } from "@commands/constants";
 
@@ -14,18 +15,18 @@ import { ApiRecordingNeedsTagReturned } from "@commands/types";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
 import {
-  TestCreateRecordingData,
   TestCreateExpectedNeedsTagData,
+  TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 
 import {
   ApiTrackDataRequest,
-  ApiTrackResponse,
   ApiTrackPosition,
+  ApiTrackResponse,
 } from "@typedefs/api/track";
 import {
-  ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
+  ApiTrackTagRequest,
 } from "@typedefs/api/trackTag";
 
 const EXCLUDE_IDS = [
@@ -78,6 +79,7 @@ describe("Track Tags: add, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
+    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -117,8 +119,8 @@ describe("Track Tags: add, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "possum",
-    userId: 99,
     userName: "xxx",
+    userId: NOT_NULL,
   };
 
   const expectedTag2: ApiHumanTrackTagResponse = {
@@ -132,8 +134,8 @@ describe("Track Tags: add, check, delete", () => {
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "cat",
-    userId: 99,
     userName: "xxx",
+    userId: NOT_NULL,
   };
 
   const templateExpectedNeedsTagRecording: ApiRecordingNeedsTagReturned = {

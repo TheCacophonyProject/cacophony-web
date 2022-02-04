@@ -104,26 +104,13 @@ declare namespace Cypress {
     /**
      * Legacy test function to check the this device has a matching event.
      * if supplied then Nth event will be checked where N is taken from eventNumber
-     * eventName will be rendered unique _per test_
      */
     testEventsCheckAgainstExpected(
       userName: string,
       deviceName: string,
-      eventName: string,
+      expectedEvent: any,
       eventNumber?: number,
       statusCode?: number
     ): Chainable<Element>;
-
-    /**
-     * Create a template event to compare received events against
-     * eventName will be rendered unique _per test_
-     */
-    createExpectedEvent(
-      name: string,
-      userName: string,
-      deviceName: string,
-      recording: string,
-      alertName: string
-    ): any;
   }
 }

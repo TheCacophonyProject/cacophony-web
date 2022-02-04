@@ -87,7 +87,6 @@ import {
 } from "@typedefs/api/trackTag";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
-import logger from "@log";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -190,9 +189,9 @@ const mapRecordingResponse = (
     duration: recording.duration,
     location: recording.location && {
       lat: (recording.location as { coordinates: [number, number] })
-        .coordinates[0],
-      lng: (recording.location as { coordinates: [number, number] })
         .coordinates[1],
+      lng: (recording.location as { coordinates: [number, number] })
+        .coordinates[0],
     },
     rawMimeType: recording.rawMimeType,
     comment: ifNotNull(recording.comment),

@@ -48,7 +48,7 @@ export interface ApiThermalRecordingMetadataResponse {
 }
 
 export interface ApiAudioRecordingMetadataResponse {
-  analysis: {
+  analysis?: {
     speech_detection?: boolean;
     speech_detection_version?: string;
   };
@@ -108,5 +108,6 @@ export interface ApiRecordingUpdateRequest {
   location?: [number, number];
 }
 
-export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
-  ApiAudioRecordingResponse;
+export type ApiGenericRecordingResponse =
+  & ApiThermalRecordingResponse
+  & ApiAudioRecordingResponse;

@@ -407,7 +407,12 @@ export function TestCreateExpectedProcessingData(
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
   expected.duration = recording.duration;
-  expected.location = { coordinates: recording.location, type: "Point" };
+
+  // NOTE: Locations are currently provided as Y,X (lat, long), but stored raw as X,Y (long, lat)
+  expected.location = {
+    coordinates: [recording.location[1], recording.location[0]],
+    type: "Point",
+  };
   expected.recordingDateTime = recording.recordingDateTime;
   return expected;
 }
@@ -610,6 +615,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
         start: track.start_s,
         end: track.end_s,
         positions: [],
+        automatic: true,
       };
       if (
         track.predictions.length &&

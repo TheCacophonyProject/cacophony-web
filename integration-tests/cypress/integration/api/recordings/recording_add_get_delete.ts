@@ -49,6 +49,7 @@ describe("Recordings (thermal): add, get, delete", () => {
             id: -99,
           },
         ],
+        automatic: true,
       },
     ],
   };

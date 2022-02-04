@@ -1,8 +1,8 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
+  HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  HTTP_BadRequest,
   NOT_NULL_STRING,
 } from "@commands/constants";
 
@@ -14,12 +14,12 @@ import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
-  ApiTrackResponse,
   ApiTrackPosition,
+  ApiTrackResponse,
 } from "@typedefs/api/track";
 import {
-  ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
+  ApiTrackTagRequest,
 } from "@typedefs/api/trackTag";
 
 const EXCLUDE_IDS = [
@@ -69,6 +69,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
+    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {

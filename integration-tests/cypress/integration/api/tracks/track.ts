@@ -11,8 +11,8 @@ import { ApiRecordingSet } from "@commands/types";
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
-  ApiTrackResponse,
   ApiTrackPosition,
+  ApiTrackResponse,
 } from "@typedefs/api/track";
 
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
@@ -59,6 +59,7 @@ describe("Tracks: add, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
+    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -282,6 +283,7 @@ describe("Tracks: add, check, delete", () => {
       end: 7,
       positions: [],
       tags: [],
+      automatic: true,
     };
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
 

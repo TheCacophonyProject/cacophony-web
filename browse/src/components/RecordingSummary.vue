@@ -5,6 +5,14 @@
     class="recording-summary"
     @click="(event) => navigateToRecording(event, item.id)"
   >
+    <b-modal
+      v-model="showingLocation"
+      hide-footer
+      :title="`${item.deviceName}: #${item.id}`"
+      lazy
+    >
+      <MapWithPoints :points="itemLocation" />
+    </b-modal>
     <div class="recording-type">
       <span v-if="item.type === 'audio'">
         <font-awesome-icon :icon="['far', 'file-audio']" size="2x" />
@@ -14,102 +22,51 @@
       </span>
     </div>
     <div class="recording-main">
-      <div>
-        <div class="recording-details">
-          <div>
-            <span class="recording-group">
-              <font-awesome-icon icon="users" size="xs" />
-              <span class="label">
-                <b-link
-                  :to="{
-                    name: 'group',
-                    params: {
-                      groupName: item.groupName,
-                      tabName: 'recordings',
-                    },
-                  }"
-                >
-                  {{ item.groupName }}
-                </b-link>
-              </span>
-            </span>
-            <span class="recording-station" v-if="item.stationName">
-              <font-awesome-icon icon="map-marker-alt" size="xs" />
-              <span class="label">
-                <b-link
-                  :to="{
-                    name: 'station',
-                    params: {
-                      groupName: item.groupName,
-                      stationName: item.stationName,
-                      tabName: 'recordings',
-                    },
-                  }"
-                >
-                  {{ item.stationName }}
-                </b-link>
-              </span>
-            </span>
-            <span class="recording-device">
-              <font-awesome-icon
-                v-if="item.type === 'thermalRaw'"
-                icon="video"
-                class="icon"
-                size="xs"
-              />
-              <font-awesome-icon
-                v-else-if="item.type === 'audio'"
-                icon="music"
-                class="icon"
-                size="xs"
-              />
-              <span class="label">
-                <b-link
-                  :to="{
-                    name: 'device',
-                    params: {
-                      groupName: item.groupName,
-                      deviceName: item.deviceName,
-                      tabName: 'recordings',
-                    },
-                  }"
-                >
-                  {{ item.deviceName }}
-                </b-link>
-              </span>
-            </span>
-            <span class="recording-tracks">
-              <b-spinner small v-if="queuedForProcessing || processing" />
-              <font-awesome-icon
-                icon="stream"
-                size="xs"
-                v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
-              />
-              <span class="label" v-if="queuedForProcessing">Queued</span>
-              <span class="label" v-else-if="processing">Processing</span>
-              <span class="label" v-else-if="corruptedOrFailed">
-                Processing failed
-              </span>
-              <span
-                class="label"
-                v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
-              >
-                {{ item.trackCount }} track<span v-if="item.trackCount > 1"
-                  >s</span
-                >
-              </span>
-              <span class="label" v-else-if="item.type === 'thermalRaw'"
-                >No tracks</span
-              >
-            </span>
-          </div>
-        </div>
-        <div class="recording-tags">
-          <TagBadge
-            v-for="(tag, index) in item.tags"
-            :key="index"
-            :tag-obj="tag"
+      <div class="recording-details">
+        <GroupLink :group-name="item.groupName" context="recordings" />
+        <StationLink
+          v-if="item.stationName"
+          :station-name="item.stationName"
+          :station-id="item.stationId"
+          :group-name="item.groupName"
+          context="recordings"
+        />
+        <DeviceLink
+          :group-name="item.groupName"
+          :device-name="item.deviceName"
+          context="recordings"
+          :type="item.type"
+        />
+        <span class="recording-tracks">
+          <b-spinner small v-if="queuedForProcessing || processing" />
+          <font-awesome-icon
+            icon="stream"
+            size="xs"
+            v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
           />
+          <span class="label" v-if="queuedForProcessing">Queued</span>
+          <span class="label" v-else-if="processing">Processing</span>
+          <span class="label" v-else-if="corruptedOrFailed">
+            Processing failed
+          </span>
+          <span
+            class="label"
+            v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
+          >
+            {{ item.trackCount }} track<span v-if="item.trackCount > 1">s</span>
+          </span>
+          <span class="label" v-else-if="item.type === 'thermalRaw'"
+            >No tracks</span
+          >
+        </span>
+        <div v-if="item.location !== '(unknown)'" class="recording-location">
+          <a
+            @click.stop.prevent="showLocation"
+            title="View location"
+            class="location-link"
+          >
+            <font-awesome-icon icon="map-marker-alt" />
+          </a>
         </div>
       </div>
       <b-container
@@ -154,24 +111,12 @@
     <!--      />-->
     <!--    </div>-->
     <div v-if="item.location !== '(unknown)'" class="recording-location">
-      <b-modal
-        v-model="showingLocation"
-        hide-footer
-        :title="`${item.deviceName}: #${item.id}`"
-        lazy
-      >
-        <MapWithPoints :points="itemLocation" />
-      </b-modal>
       <a
         @click.stop.prevent="showLocation"
         title="View location"
         class="location-link"
       >
-        <font-awesome-icon
-          icon="map-marker-alt"
-          size="3x"
-          style="color: #bbb"
-        />
+        <font-awesome-icon icon="map-marker-alt" size="3x" />
       </a>
     </div>
   </a>
@@ -179,61 +124,27 @@
     <a :href="getRecordingPath(item.id)" target="_blank">
       {{ item.id }}
     </a>
-    <span v-if="item.type === 'audio'">
-      <font-awesome-icon :icon="['far', 'file-audio']" size="2x" />
-    </span>
-    <span v-else-if="item.type === 'thermalRaw'">
-      <font-awesome-icon :icon="['far', 'file-video']" size="2x" />
-    </span>
-
-    <span>
-      <b-link
-        :to="{
-          name: 'device',
-          params: {
-            groupName: item.groupName,
-            deviceName: item.deviceName,
-            tabName: 'recordings',
-          },
-        }"
-      >
-        {{ item.deviceName }}
-      </b-link>
-    </span>
+    <DeviceLink
+      :device-name="item.deviceName"
+      :type="item.type"
+      :group-name="item.groupName"
+      context="recordings"
+    />
     <span>{{ item.date }}</span>
     <span class="recording-time">{{ item.time }}</span>
     <span>{{ Math.round(item.duration) }}s</span>
     <span>
       <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag-obj="tag" />
     </span>
-    <span>
-      <b-link
-        :to="{
-          name: 'group',
-          params: {
-            groupName: item.groupName,
-            tabName: 'recordings',
-          },
-        }"
-      >
-        {{ item.groupName }}
-      </b-link>
-    </span>
-    <span>
-      <b-link
-        v-if="item.stationName"
-        :to="{
-          name: 'station',
-          params: {
-            groupName: item.groupName,
-            stationName: item.stationName,
-            tabName: 'recordings',
-          },
-        }"
-      >
-        {{ item.stationName }}
-      </b-link>
-    </span>
+    <GroupLink :group-name="item.groupName" context="recordings" />
+    <StationLink
+      v-if="item.stationName"
+      :station-name="item.stationName"
+      :station-id="item.stationId"
+      :group-name="item.groupName"
+      context="recordings"
+    />
+    <span v-else></span>
     <b-modal
       v-model="showingLocation"
       hide-footer
@@ -256,10 +167,20 @@ import CacophonyIndexGraph from "@/components/Audio/CacophonyIndexGraph.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import { CacophonyIndex } from "@typedefs/api/recording";
 import api from "@/api";
+import DeviceLink from "@/components/DeviceLink.vue";
+import StationLink from "@/components/StationLink.vue";
+import GroupLink from "@/components/GroupLink.vue";
 
 export default {
   name: "RecordingSummary",
-  components: { MapWithPoints, TagBadge, BatteryLevel, CacophonyIndexGraph },
+  components: {
+    GroupLink,
+    StationLink,
+    DeviceLink,
+    MapWithPoints,
+    TagBadge,
+    BatteryLevel,
+  },
   props: {
     item: {
       type: Object,
@@ -467,13 +388,25 @@ $recording-side-padding-small: 0.5rem;
     }
     .recording-station,
     .recording-group,
-    .recording-device {
+    .recording-device,
+    .recording-location {
       // all elements that are the direct descendants of this div
       display: inline-block;
       word-break: break-word;
       margin-right: 0.5rem;
       @include media-breakpoint-down(xs) {
         //display: block;
+      }
+    }
+
+    .recording-location {
+      color: $gray-600;
+      .svg-inline--fa {
+        //color: inherit;
+        vertical-align: baseline;
+      }
+      @include media-breakpoint-up(md) {
+        display: none;
       }
     }
   }
@@ -511,7 +444,7 @@ $recording-side-padding-small: 0.5rem;
 }
 
 // map
-.recording-location {
+.recording-summary > .recording-location {
   display: flex;
   flex: 0 1 110px;
   min-width: 109px;
@@ -519,12 +452,19 @@ $recording-side-padding-small: 0.5rem;
   align-items: center;
   justify-content: center;
   background: $gray-100;
+  .svg-inline--fa {
+    color: #bbb;
+  }
   @include media-breakpoint-between(xs, sm) {
     display: none;
   }
 }
 .recording-tracks {
   display: inline-block;
+  .label,
+  .svg-inline--fa {
+    vertical-align: baseline;
+  }
 }
 .location-link {
   width: 100%;

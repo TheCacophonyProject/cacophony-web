@@ -8,7 +8,7 @@ import {
 
 import { getCreds } from "@commands/server";
 
-import { ApiRecordingSet, ApiRecordingForProcessing } from "@commands/types";
+import { ApiRecordingForProcessing, ApiRecordingSet } from "@commands/types";
 
 import {
   TestCreateExpectedProcessingData,
@@ -126,11 +126,9 @@ describe("Recordings - reprocessing tests", () => {
     additionalMetadata: {
       normal: "0",
       "SIM IMEI": "990006964660319",
-      analysis: {
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
-      },
+      cacophony_index_version: "2020-01-20_A",
+      processing_time_seconds: 50.7,
+      species_identify_version: "2021-02-01",
       "SIM state": "SIM_STATE_READY",
       "Auto Update": false,
       "Flight Mode": false,
@@ -820,6 +818,7 @@ describe("Recordings - reprocessing tests", () => {
                 end: 4,
                 id: 1,
                 positions: [],
+                automatic: true,
               },
             ];
             cy.apiRecordingCheck(
@@ -845,6 +844,7 @@ describe("Recordings - reprocessing tests", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  automatic: true,
                 },
               ];
 

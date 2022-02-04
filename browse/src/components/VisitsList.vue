@@ -48,6 +48,10 @@ export default {
       type: Array,
       required: true,
     },
+    groupName: {
+      type: String,
+      required: false,
+    },
     queryPending: {
       type: Boolean,
       required: true,
@@ -132,6 +136,7 @@ export default {
             ? "duskDawn"
             : "dataRow",
           name: visit.classification,
+          groupName: this.groupName,
           fromDate,
           toDate,
           time: fromDate.toLocaleTimeString(),
@@ -207,6 +212,8 @@ export default {
         this.$refs["list-container"].style.height = `${maxY[0][0]}px`;
         //console.log("Observing", observerTrigger);
         this.observer && this.observer.observe(observerTrigger);
+      } else {
+        this.$refs["list-container"].style.height = "auto";
       }
     }
   },

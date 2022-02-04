@@ -35,42 +35,9 @@ the container with `npm run dev:bash` or `docker-compose exec server bash`.
 
 To start psql to query the database in base use the alias `psqltest`
 
-
-### Running the tests
-
-The Cacophony API server has two functional test suites.   
-
-The current tests are currently being rewritten using Cypress (typescript).
-There is also a legacy set of test in python.   
-
-Currently both sets of tests need to be run. 
-
 #### Running the cypress tests
 
 See [Cypress Tests](integration-tests/README.md) for details on running the cypress tests.
-
-#### Running the python tests
-
-The Cacophony API server has a comprehensive function test suite. This
-requires Python 3.
-
-To set-up for the tests:
-
-* Create a virtualenv using your preferred method. Ensure that the
-  virtualenv using Python 3. One approach way to create a virtualenv
-  is: `python3 -m venv /path/to/venvs/cacophony-api-tests`. You may
-  also want to consider [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/).
-* Activate the virtualenv. For example:
-  `source /path/to/venvs/cacophony-api-tests/bin/activate`
-* `cd test`
-* Install dependencies: `pip install -r requirements.txt`
-
-To run the tests:
-
-* Start the API server as described above.
-* Activate your virtualenv.
-* `cd test`
-* Run the tests with: `pytest -s`
 
 ### API Documentation
 

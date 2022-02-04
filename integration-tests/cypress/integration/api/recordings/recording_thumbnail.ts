@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { ApiRecordingSet, ApiRecordingForProcessing } from "@commands/types";
+import { ApiRecordingForProcessing, ApiRecordingSet } from "@commands/types";
 
 import {
   TestCreateExpectedProcessingData,
@@ -194,6 +194,7 @@ describe("Recording thumbnails", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  automatic: true,
                 },
               ];
 
@@ -360,6 +361,7 @@ describe("Recording thumbnails", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  automatic: true,
                 },
               ];
 

@@ -87,8 +87,6 @@ import Vue from "vue";
 import WaveSurfer from "wavesurfer.js";
 import SpectrogramPlugin from "wavesurfer.js/src/plugin/spectrogram/index.js";
 import api from "@api";
-import BasicTags from "../Audio/BasicTags.vue";
-import CustomTags from "../Audio/CustomTags.vue";
 import TrackList from "../Audio/TrackList.vue";
 import SelectedTrack from "../Audio/SelectedTrack.vue";
 import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
@@ -129,8 +127,6 @@ export default Vue.extend({
     };
   },
   components: {
-    CustomTags,
-    BasicTags,
     TrackList,
     SelectedTrack,
   },
@@ -320,8 +316,8 @@ export default Vue.extend({
           const time = Date.now();
           if (time - this.trackPointer.time > 300) {
             console.log(this.trackPointer);
-            let start = this.round(normalizedX * this.player.getDuration());
-            let end = this.round(
+            const start = this.round(normalizedX * this.player.getDuration());
+            const end = this.round(
               (normalizedX + normalizedWidth) * this.player.getDuration()
             );
             const emptyTag = {

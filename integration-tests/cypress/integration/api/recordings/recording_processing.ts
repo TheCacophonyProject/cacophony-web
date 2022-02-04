@@ -17,6 +17,8 @@ import {
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { createExpectedAlert } from "@commands/api/alerts";
+import { createExpectedEvent } from "@commands/api/events";
 
 describe("Recordings - processing tests", () => {
   const superuser = getCreds("superuser")["name"];
@@ -805,6 +807,7 @@ describe("Recordings - processing tests", () => {
                 end: 4,
                 id: 1,
                 positions: [],
+                automatic: true,
               },
             ];
             cy.apiRecordingCheck(
@@ -848,6 +851,7 @@ describe("Recordings - processing tests", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  automatic: true,
                 },
               ];
 
@@ -936,6 +940,7 @@ describe("Recordings - processing tests", () => {
                 end: 4,
                 id: 1,
                 positions: [],
+                automatic: true,
               },
             ];
             cy.apiRecordingCheck(
@@ -961,6 +966,7 @@ describe("Recordings - processing tests", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  automatic: true,
                 },
               ];
               cy.processingApiTracksTagsPost(
@@ -1016,23 +1022,19 @@ describe("Recordings - processing tests", () => {
         "oneframe.cptv",
         "rpRecording20"
       ).then(() => {
-        cy.createExpectedAlert(
-          "expectedAlert20",
+        const expectedAlert20 = createExpectedAlert(
           "rpAlert1b",
           0,
           POSSUM_ALERT,
           true,
           "rpGroupAdmin",
           "rpCamera1b"
-        ).then(() => {
-          cy.createExpectedEvent(
-            "expectedEvent20",
-            "rpGroupAdmin",
-            "rpCamera1b",
-            "rpRecording20",
-            "rpAlert1b"
-          );
-        });
+        );
+        const expectedEvent20 = createExpectedEvent(
+          "rpCamera1b",
+          "rpRecording20",
+          "rpAlert1b"
+        );
 
         const expectedProcessing20 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
@@ -1071,21 +1073,21 @@ describe("Recordings - processing tests", () => {
               { name: "master" }
             ).then(() => {
               cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut("rpRecording20", true, {}, undefined).then(
-                () => {
-                  cy.log("Check an event was generated");
-                  cy.apiAlertCheck(
-                    "rpGroupAdmin",
-                    "rpCamera1b",
-                    "expectedAlert20"
-                  );
-                  cy.testEventsCheckAgainstExpected(
-                    "rpGroupAdmin",
-                    "rpCamera1b",
-                    "expectedEvent20"
-                  );
-                }
-              );
+              cy.processingApiPut(
+                "rpRecording20",
+                true,
+                {},
+
+                undefined
+              ).then(() => {
+                cy.log("Check an event was generated");
+                cy.apiAlertCheck("rpGroupAdmin", "rpCamera1b", expectedAlert20);
+                cy.testEventsCheckAgainstExpected(
+                  "rpGroupAdmin",
+                  "rpCamera1b",
+                  expectedEvent20
+                );
+              });
             });
           }
         );
