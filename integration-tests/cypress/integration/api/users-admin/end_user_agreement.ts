@@ -1,6 +1,8 @@
 /// <reference path="../../../support/index.d.ts" />
 import { LATEST_END_USER_AGREEMENT } from "@commands/constants";
 
+import { ApiUserResponse } from "@typedefs/api/user";
+
 describe("User: end user agreement", () => {
   before(() => {
     cy.apiUserAdd("euaUser1");

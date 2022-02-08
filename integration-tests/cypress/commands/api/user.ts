@@ -287,6 +287,55 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiResetPassword",
+  (userName: string, statusCode: number = 200, additionalChecks: any = {}) => {
+    const fullUrl = apiPath() + "/resetpassword";
+    let fullName: string;
+
+    if (additionalChecks["useRawUserName"] === true) {
+      fullName = userName;
+    } else {
+      fullName = getTestName(userName);
+    }
+
+    const data = {
+      userName: fullName,
+    };
+
+    cy.request({
+      method: "POST",
+      url: fullUrl,
+      body: data,
+      failOnStatusCode: true,
+    }).then((response) => {});
+  }
+);
+
+Cypress.Commands.add(
+  "apiUserChangePassword",
+  (
+    token: string,
+    password: string,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    const fullUrl = v1ApiPath(`users/changePassword`);
+
+    const data = {
+      token: token,
+      password: password,
+    };
+
+    cy.request({
+      method: "PATCH",
+      url: fullUrl,
+      body: data,
+      failOnStatusCode: true,
+    }).then((response) => {});
+  }
+);
+
+Cypress.Commands.add(
   "testCreateUserGroupAndDevice",
   (userName, group, camera) => {
     logTestDescription(

@@ -1,6 +1,8 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+import { ApiStationResponse } from "../../../../types/api/station";
+
 declare namespace Cypress {
   type ApiGroupsUserReturned = import("../types").ApiGroupsUserReturned;
   type ApiGroupReturned = import("../types").ApiGroupReturned;
@@ -12,7 +14,6 @@ declare namespace Cypress {
     import("@typedefs/api/device").ApiDeviceResponse;
   type ApiGroupUserRelationshipResponse =
     import("@typedefs/api/group").ApiGroupUserRelationshipResponse;
-  type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
 
   interface Chainable {
     /**

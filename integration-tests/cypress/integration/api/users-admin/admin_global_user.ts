@@ -2,6 +2,8 @@
 import {
   HTTP_Forbidden,
   HTTP_OK200,
+  HTTP_BadRequest,
+  LATEST_END_USER_AGREEMENT,
   HTTP_Unprocessable,
 } from "@commands/constants";
 
