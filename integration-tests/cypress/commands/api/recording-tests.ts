@@ -407,7 +407,6 @@ export function TestCreateExpectedProcessingData(
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
   expected.duration = recording.duration;
-
   // NOTE: Locations are currently provided as Y,X (lat, long), but stored raw as X,Y (long, lat)
   expected.location = {
     coordinates: [recording.location[1], recording.location[0]],
