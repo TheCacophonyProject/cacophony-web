@@ -55,6 +55,7 @@
           :playTrack="playTrack"
           :tracks="tracks"
           :deleteTrack="deleteTrack"
+          :addTagToTrack="addTagToTrack"
         />
       </b-col>
       <b-col>
@@ -239,7 +240,9 @@ export default Vue.extend({
         // Adding Track Functionality
         this.overlay.addEventListener("mousedown", (e: DragEvent) => {
           e.preventDefault();
-          const colour = TagColours[this.tracks.length];
+          const index = this.tracks.findIndex((t: AudioTrack) => t.id === -1);
+          const colour =
+            TagColours[index === -1 ? this.tracks.length - 1 : index];
           const x = e.offsetX;
           const y = e.offsetY;
 
@@ -304,14 +307,10 @@ export default Vue.extend({
           const startY = this.trackPointer.pos.start.y;
           const x = e.offsetX;
           const y = e.offsetY;
-          const normalizedX = this.round(startX / this.spectrogram.width);
-          const normalizedY = this.round(startY / this.spectrogram.height);
-          const normalizedWidth = this.round(
-            (x - startX) / this.spectrogram.width
-          );
-          const normalizedHeight = this.round(
-            (y - startY) / this.spectrogram.height
-          );
+          const normalizedX = startX / this.spectrogram.width;
+          const normalizedY = startY / this.spectrogram.height;
+          const normalizedWidth = (x - startX) / this.spectrogram.width;
+          const normalizedHeight = (y - startY) / this.spectrogram.height;
           const time = Date.now();
           if (time - this.trackPointer.time > 300) {
             const start = this.round(normalizedX * this.player.getDuration());
@@ -328,13 +327,16 @@ export default Vue.extend({
               userId: this.userId,
               userName: this.userName,
             };
+            const index = this.tracks.findIndex((t: AudioTrack) => t.id === -1);
+            const colour =
+              TagColours[index === -1 ? this.tracks.length : index];
             const track: AudioTrack = {
               id: -1,
               start,
               end,
               tags: [emptyTag],
               automatic: false,
-              colour: TagColours[this.tracks.length],
+              colour,
               positions: [
                 {
                   x: normalizedX,
@@ -345,7 +347,12 @@ export default Vue.extend({
                 },
               ],
             };
-            this.tracks.push(track);
+            if (index === -1) {
+              this.tracks.push(track);
+            } else {
+              this.$set(this.tracks, index, track);
+              this.overlay.removeChild(document.getElementById("track_-1"));
+            }
             this.selectedTrack = track;
             this.playTrack(track);
             this.addTrackToOverlay(track);
@@ -451,9 +458,11 @@ export default Vue.extend({
         );
         if (trackRes.success) {
           const index = this.tracks.findIndex((t: AudioTrack) => t.id === -1);
+          console.log(index);
+          const colour = TagColours[index === -1 ? this.tracks.length : index];
           const track: AudioTrack = {
             ...trackRes.result.track,
-            colour: TagColours[index],
+            colour,
           };
           this.selectedTrack = Object.assign(this.selectedTrack, {}, track);
           this.tracks.splice(index, 1, track);

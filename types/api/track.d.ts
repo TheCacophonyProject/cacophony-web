@@ -23,16 +23,7 @@ export interface ApiTrackResponse {
 }
 
 export interface ApiTrackRequest {
-  data: {
-    start_s: Seconds;
-    end_s: Seconds;
-    label?: string;
-    clarity?: number;
-    automatic?: boolean;
-    userId?: number;
-    positions?: ApiTrackPosition[];
-    message?: string;
-  };
+  data: ApiTrackDataRequest;
   algorithm?: Object | Array<number>;
 }
 
@@ -41,6 +32,8 @@ export interface ApiTrackDataRequest {
   end_s: Seconds;
 
   // FIXME - Make more of these fields mandatory once we know who calls this with what.
+  automatic?: boolean;
+  userId?: number;
   label?: string;
   clarity?: number;
   positions?: any;

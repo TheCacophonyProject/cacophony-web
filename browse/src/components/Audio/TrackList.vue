@@ -22,6 +22,16 @@
                   }}s)
                 </h4>
                 <div>
+                  <b-button
+                    v-if="!track.confirmed"
+                    variant="outline-success"
+                    size="sm"
+                    @click="confirmTrack(track)"
+                  >
+                    <font-awesome-icon icon="thumbs-up" />
+                    <span>Confirm</span>
+                  </b-button>
+
                   <b-dropdown
                     class="track-settings-button"
                     toggle-class="text-decoration-none"
@@ -188,12 +198,28 @@ export default Vue.extend({
       type: Function as PropType<(track: AudioTrack) => void>,
       required: true,
     },
+    addTagToTrack: {
+      type: Function as PropType<(track: AudioTrack, what: string) => void>,
+      required: true,
+    },
   },
   computed: {
     automaticTracks() {
-      return this.tracks.filter(
-        (track: { automatic: boolean }) => track.automatic
-      );
+      return this.tracks
+        .filter((track: AudioTrack) => track.automatic)
+        .map((track: AudioTrack) => {
+          const automaticTag = track.tags.find((tag: any) => tag.automatic);
+          return {
+            ...track,
+            automaticTag,
+            confirmed:
+              automaticTag &&
+              track.tags.some(
+                (tag) =>
+                  tag.automatic === false && automaticTag.what === tag.what
+              ),
+          };
+        });
     },
     manualTracks() {
       return this.tracks.filter(
@@ -201,7 +227,15 @@ export default Vue.extend({
       );
     },
   },
-  methods: {},
+  methods: {
+    confirmTrack(track: AudioTrack) {
+      const tag = track.tags.find((t: AudioTrack) => t.automatic);
+      if (!tag) {
+        return;
+      }
+      this.addTagToTrack(track, tag.what);
+    },
+  },
 });
 </script>
 
