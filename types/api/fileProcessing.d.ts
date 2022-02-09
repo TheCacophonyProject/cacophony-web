@@ -39,10 +39,10 @@ export interface TrackFramePosition {
   y: integer;
   width: integer;
   height: integer;
-  mass: integer;
-  frame_number: integer;
-  pixel_variance: float;
-  blank: boolean;
+  mass?: integer;
+  frame_number?: integer;
+  pixel_variance?: float;
+  blank?: boolean;
 }
 
 interface TrackClassification {

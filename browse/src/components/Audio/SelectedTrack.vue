@@ -9,7 +9,8 @@
           ></span>
           <div>
             <h4 class="track-time">
-              Time: {{ track.start }} - {{ track.end }} (Δ{{
+              Time: {{ track.start.toFixed(1) }} -
+              {{ track.end.toFixed(1) }} (Δ{{
                 (track.end - track.start).toFixed(1)
               }}s)
             </h4>
@@ -43,9 +44,14 @@ import { AudioTrack } from "../Video/AudioRecording.vue";
 export default Vue.extend({
   name: "SelectedTrack",
   props: {
-    track: {
+    selectedTrack: {
       type: Object as PropType<AudioTrack>,
       required: true,
+    },
+  },
+  computed: {
+    track: function () {
+      return this.selectedTrack;
     },
   },
   methods: {

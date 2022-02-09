@@ -22,51 +22,53 @@
       </span>
     </div>
     <div class="recording-main">
-      <div class="recording-details">
-        <GroupLink :group-name="item.groupName" context="recordings" />
-        <StationLink
-          v-if="item.stationName"
-          :station-name="item.stationName"
-          :station-id="item.stationId"
-          :group-name="item.groupName"
-          context="recordings"
-        />
-        <DeviceLink
-          :group-name="item.groupName"
-          :device-name="item.deviceName"
-          context="recordings"
-          :type="item.type"
-        />
-        <span class="recording-tracks">
-          <b-spinner small v-if="queuedForProcessing || processing" />
-          <font-awesome-icon
-            icon="stream"
-            size="xs"
-            v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
+      <div>
+        <div class="recording-details">
+          <GroupLink :group-name="item.groupName" context="recordings" />
+          <StationLink
+            v-if="item.stationName"
+            :station-name="item.stationName"
+            :station-id="item.stationId"
+            :group-name="item.groupName"
+            context="recordings"
           />
-          <span class="label" v-if="queuedForProcessing">Queued</span>
-          <span class="label" v-else-if="processing">Processing</span>
-          <span class="label" v-else-if="corruptedOrFailed">
-            Processing failed
+          <DeviceLink
+            :group-name="item.groupName"
+            :device-name="item.deviceName"
+            context="recordings"
+            :type="item.type"
+          />
+          <span class="recording-tracks">
+            <b-spinner small v-if="queuedForProcessing || processing" />
+            <font-awesome-icon
+              icon="stream"
+              size="xs"
+              v-else-if="item.trackCount !== 0"
+            />
+            <span class="label" v-if="queuedForProcessing">Queued</span>
+            <span class="label" v-else-if="processing">Processing</span>
+            <span class="label" v-else-if="corruptedOrFailed">
+              Processing failed
+            </span>
+            <span class="label" v-else-if="item.trackCount !== 0">
+              {{ item.trackCount }} track<span v-if="item.trackCount > 1"
+                >s</span
+              >
+            </span>
+            <span class="label" v-else>No tracks</span>
           </span>
-          <span
-            class="label"
-            v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
-          >
-            {{ item.trackCount }} track<span v-if="item.trackCount > 1">s</span>
-          </span>
-          <span class="label" v-else-if="item.type === 'thermalRaw'"
-            >No tracks</span
-          >
-        </span>
-        <div v-if="item.location !== '(unknown)'" class="recording-location">
-          <a
-            @click.stop.prevent="showLocation"
-            title="View location"
-            class="location-link"
-          >
-            <font-awesome-icon icon="map-marker-alt" />
-          </a>
+          <div v-if="item.location !== '(unknown)'" class="recording-location">
+            <a
+              @click.stop.prevent="showLocation"
+              title="View location"
+              class="location-link"
+            >
+              <font-awesome-icon icon="map-marker-alt" />
+            </a>
+          </div>
+        </div>
+        <div v-if="item.tags.length !== 0" class="recording-tags">
+          <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag="tag" />
         </div>
       </div>
       <b-container
@@ -134,7 +136,8 @@
     <span class="recording-time">{{ item.time }}</span>
     <span>{{ Math.round(item.duration) }}s</span>
     <span>
-      <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag-obj="tag" />
+      test
+      <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag="tag" />
     </span>
     <GroupLink :group-name="item.groupName" context="recordings" />
     <StationLink
@@ -241,9 +244,6 @@ export default {
         },
       ];
     },
-    dataset(): number[] {
-      return [35.4, 54.9, 48.2];
-    },
   },
   methods: {
     showLocation() {
@@ -286,7 +286,6 @@ $recording-side-padding-small: 0.5rem;
   color: $gray-600;
 }
 
-// the wrapper of the recording
 .recording-summary {
   display: flex;
   flex-flow: row nowrap;
@@ -319,7 +318,6 @@ $recording-side-padding-small: 0.5rem;
   }
 }
 
-// Row view variant
 .recording-summary-row {
   width: 100%;
   &:nth-child(odd) {
@@ -347,7 +345,6 @@ $recording-side-padding-small: 0.5rem;
   }
 }
 
-// wrapper of the icon on the left
 .recording-type {
   padding: 0.8rem $recording-side-padding;
   background: $gray-100;
@@ -363,7 +360,6 @@ $recording-side-padding-small: 0.5rem;
   }
 }
 
-// main content in the middle
 .recording-main {
   flex: 1 1 auto;
   display: flex;
@@ -374,7 +370,6 @@ $recording-side-padding-small: 0.5rem;
     min-height: unset;
   }
   .svg-inline--fa {
-    // set a fixed width on fontawesome icons so they align neatly when stacked
     width: 16px;
   }
   .recording-details {
@@ -382,7 +377,6 @@ $recording-side-padding-small: 0.5rem;
     align-items: center;
     justify-content: space-between;
     padding: 0.7rem $recording-side-padding;
-    //Put last flex element on the right
 
     @include media-breakpoint-down(xs) {
       padding: 0.25rem $recording-side-padding-small;
@@ -391,13 +385,9 @@ $recording-side-padding-small: 0.5rem;
     .recording-group,
     .recording-device,
     .recording-location {
-      // all elements that are the direct descendants of this div
       display: inline-block;
       word-break: break-word;
       margin-right: 0.5rem;
-      @include media-breakpoint-down(xs) {
-        //display: block;
-      }
     }
 
     .recording-location {

@@ -74,7 +74,7 @@
                 :fields="['what', 'who', 'confidence']"
               >
                 <template #cell(who)="data">{{
-                  data.item.data.name ? data.item.data.name : "Master"
+                  data.item.data.name ? data.item.data.name : data.item.userName
                 }}</template>
               </b-table>
             </b-collapse>

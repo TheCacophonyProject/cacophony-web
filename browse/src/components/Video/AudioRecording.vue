@@ -19,7 +19,7 @@
             />
           </div>
           <div class="selected-track-container" v-if="selectedTrack">
-            <SelectedTrack :track="selectedTrack" />
+            <SelectedTrack :selectedTrack="selectedTrack" />
             <font-awesome-icon
               class="ml-2"
               :icon="['fa', 'times']"
@@ -66,7 +66,7 @@
         <b-button @click="addTagToSelectedTrack('false-positive')">
           False Positive
         </b-button>
-        <b-form @submit="addTagToSelectedTrack">
+        <b-form @submit="handleCustomTagSubmit">
           <b-row>
             <b-form-input
               required
@@ -101,7 +101,6 @@ import {
 
 interface AudioTrack extends ApiTrackResponse {
   colour: string;
-  selected: boolean;
 }
 
 export default Vue.extend({
@@ -124,6 +123,7 @@ export default Vue.extend({
       loop: false,
       volume: 1,
       muted: false,
+      selectedTrack: null,
     };
   },
   components: {
@@ -150,7 +150,6 @@ export default Vue.extend({
         return {
           ...track,
           colour: TagColours[index],
-          selected: false,
         };
       }
     );
@@ -315,7 +314,6 @@ export default Vue.extend({
           );
           const time = Date.now();
           if (time - this.trackPointer.time > 300) {
-            console.log(this.trackPointer);
             const start = this.round(normalizedX * this.player.getDuration());
             const end = this.round(
               (normalizedX + normalizedWidth) * this.player.getDuration()
@@ -347,8 +345,9 @@ export default Vue.extend({
                 },
               ],
             };
-            this.playTrack(track);
             this.tracks.push(track);
+            this.selectedTrack = track;
+            this.playTrack(track);
             this.addTrackToOverlay(track);
           } else {
             this.player.seekTo(normalizedX);
@@ -361,9 +360,6 @@ export default Vue.extend({
     });
   },
   computed: {
-    selectedTrack: function () {
-      return this.tracks.find((track: AudioTrack) => track.selected);
-    },
     finished: function () {
       if (this.isPlaying || !this.player) {
         return false;
@@ -385,6 +381,8 @@ export default Vue.extend({
       if (this.selectedTrack) {
         if (this.isPlaying) {
           this.player.pause();
+        } else if (this.finished) {
+          this.replay();
         } else {
           this.player.play(
             this.player.getCurrentTime(),
@@ -427,6 +425,9 @@ export default Vue.extend({
       if (response.status !== 200) {
         console.log(response, track);
       }
+      if (this.selectedTrack && this.selectedTrack.id === track.id) {
+        this.selectedTrack = null;
+      }
       return response;
     },
     async confirmNewTrack() {
@@ -449,30 +450,22 @@ export default Vue.extend({
           this.recording.id
         );
         if (trackRes.success) {
-          this.tracks = this.tracks.map((track: AudioTrack) => {
-            track.selected = false;
-            return track;
-          });
+          const index = this.tracks.findIndex((t: AudioTrack) => t.id === -1);
           const track: AudioTrack = {
             ...trackRes.result.track,
-            colour: TagColours[this.tracks.length],
-            selected: true,
+            colour: TagColours[index],
           };
-          this.tracks.push(track);
-          this.tracks = this.tracks.filter(
-            (t: AudioTrack) => t.id !== this.selectedTrack.id
-          );
+          this.selectedTrack = Object.assign(this.selectedTrack, {}, track);
+          this.tracks.splice(index, 1, track);
         }
       }
     },
     async addTagToSelectedTrack(tag: string) {
-      console.log(tag);
       if (this.selectedTrack) {
         if (this.selectedTrack.id === -1) {
           await this.confirmNewTrack();
         }
-        const response = await this.addTagToTrack(this.selectedTrack, tag);
-        return response;
+        await this.addTagToTrack(this.selectedTrack, tag);
       }
     },
     async addTagToTrack(track: AudioTrack, what: string) {
@@ -481,7 +474,6 @@ export default Vue.extend({
         confidence: 1,
         automatic: false,
       };
-      console.log(track, what, this.recording);
       const response = await api.recording.replaceTrackTag(
         tag,
         this.recording.id,
@@ -499,24 +491,25 @@ export default Vue.extend({
         };
         this.tracks = this.tracks.map((t: AudioTrack) => {
           if (t.id === track.id) {
-            return {
-              ...t,
-              tags: t.tags.map((t: ApiHumanTrackTagResponse) => {
-                if (t.userName === this.userName) {
-                  return newTag;
-                } else {
-                  return t;
-                }
-              }),
-            };
+            // replace current tag in track if it exists otherwise add new tag
+            const index = t.tags.findIndex(
+              (t: ApiHumanTrackTagResponse) => t.userName === newTag.userName
+            );
+            if (index !== -1) {
+              this.$set(t.tags, index, newTag);
+            } else {
+              t.tags.push(newTag);
+            }
+            return track;
           }
           return t;
         });
+
+        return track;
       }
-      return response;
     },
     addTrackToOverlay(track: AudioTrack) {
-      const position = track.positions.find(({ order }) => order === 0);
+      const position = track.positions[0];
       if (!position) {
         return;
       }
@@ -543,15 +536,19 @@ export default Vue.extend({
       );
       this.overlay.appendChild(rect);
     },
-    playTrack(track: AudioTrack) {
-      if (!this.selectedTrack || this.selectedTrack.id !== track.id) {
-        this.tracks = this.tracks.map((track: AudioTrack) => {
-          track.selected = false;
-          return track;
-        });
-        track.selected = true;
+    handleCustomTagSubmit(e: SubmitEvent) {
+      e.preventDefault();
+      if (this.customTagValue) {
+        const tag = this.customTagValue
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .replace(/\s/g, "_");
+        this.addTagToSelectedTrack(tag);
       }
-      this.playAt(Number(track.start), Number(track.end));
+    },
+    playTrack(track: AudioTrack) {
+      this.selectedTrack = track;
+      this.playAt(track.start, track.end);
     },
     deselectTrack() {
       if (
@@ -563,13 +560,10 @@ export default Vue.extend({
         );
         document.getElementById("track_" + this.selectedTrack.id).remove();
       }
-      this.tracks = this.tracks.map((track: AudioTrack) => {
-        track.selected = false;
-        return track;
-      });
       if (this.isPlaying) {
         this.player.play();
       }
+      this.selectedTrack = null;
     },
     replay() {
       if (this.selectedTrack) {

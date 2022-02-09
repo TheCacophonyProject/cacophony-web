@@ -32,15 +32,15 @@ interface Tag {
 export default {
   name: "TagBadge",
   props: {
-    tagObj: {
+    tag: {
       type: Object,
       required: true,
     },
   },
+  mounted() {
+    debugger;
+  },
   computed: {
-    tag(): Tag {
-      return this.tagObj;
-    },
     tagLabel(): string {
       if (this.tag.text === "unknown" && this.tag.class.includes("human")) {
         return "not identifiable";

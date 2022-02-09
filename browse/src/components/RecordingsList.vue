@@ -170,7 +170,6 @@ const collateTags = (
     const taggerId = tag.taggerId;
     addToListOfTags(tagItems, tagName, tag.automatic, taggerId);
   });
-  tracks.forEach((track) => {});
 
   if (tracks) {
     for (let j = 0; j < tracks.length; j++) {

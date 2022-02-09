@@ -413,7 +413,7 @@ export default function (
     const [result, _] = await sequelize.query(
       `select round((avg(cacophonyIndex.scores))::numeric, 2) as cacophonyIndex from
 (select
-	(jsonb_array_elements("additionalMetadata"->'analysis'->'cacophonyIndex')->>'index_percent')::float as scores
+	(jsonb_array_elements('cacophonyIndex')->>'index_percent')::float as scores
 from
 	"Recordings"
 where

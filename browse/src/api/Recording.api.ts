@@ -356,7 +356,7 @@ function tracks(
 function addTrack(
   body: ApiTrackRequest,
   recordingId: RecordingId
-): Promise<FetchResult<{ track: ApiTrackResponse }>> {
+): Promise<FetchResult<{ trackId: number }>> {
   return CacophonyApi.post(`${apiPath}/${recordingId}/tracks`, body);
 }
 
