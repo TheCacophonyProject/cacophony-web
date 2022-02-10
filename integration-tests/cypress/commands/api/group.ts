@@ -39,6 +39,13 @@ Cypress.Commands.add(
     } else {
       fullGroupName = getTestName(groupName);
     }
+    let fullName: string;
+    if (additionalChecks["useRawUserName"] === true) {
+      fullName = userName;
+    } else {
+      fullName = getTestName(userName);
+    }
+
     const adminStr = admin ? " as admin " : "";
     logTestDescription(
       `${groupAdminUser} Adding user '${userName}' to group '${groupName}' ${adminStr}`,
@@ -53,7 +60,7 @@ Cypress.Commands.add(
         body: {
           group: fullGroupName,
           admin: admin.toString(),
-          username: getTestName(userName),
+          username: fullName
         },
       },
       groupAdminUser,
@@ -78,6 +85,13 @@ Cypress.Commands.add(
       fullGroupName = getTestName(groupName);
     }
 
+    let fullName: string;
+    if (additionalChecks["useRawUserName"] === true) {
+      fullName = userName;
+    } else {
+      fullName = getTestName(userName);
+    }
+
     logTestDescription(
       `${groupAdminUser} Removing user '${userName}' from group '${groupName}' `,
       { user: userName, groupName },
@@ -90,7 +104,7 @@ Cypress.Commands.add(
         url: v1ApiPath("groups/users"),
         body: {
           group: fullGroupName,
-          username: getTestName(userName),
+          username: fullName
         },
       },
       groupAdminUser,

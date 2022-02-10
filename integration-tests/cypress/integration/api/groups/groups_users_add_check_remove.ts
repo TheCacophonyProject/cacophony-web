@@ -34,8 +34,6 @@ describe("Groups - add, check and remove users", () => {
         admin: ADMIN,
       };
     });
-    cy.apiUserAdd("guDeviceAdmin");
-    //!! cy.apiDeviceUserAdd("guGroupAdmin", "guDeviceAdmin", "guCamera", ADMIN);
 
     cy.apiUserAdd("guTestUser");
     cy.apiUserAdd("guTestUser2");
@@ -129,29 +127,6 @@ describe("Groups - add, check and remove users", () => {
       "guGroupAdmin",
       "guGroup2Admin",
       "guGroup2",
-      HTTP_Forbidden
-    );
-  });
-
-  it("Device admin cannot add, view or remove group users", () => {
-    cy.log("check device admin cannot add a user to device's group");
-    cy.apiGroupUserAdd(
-      "guDeviceAdmin",
-      "guTestUser",
-      "guGroup",
-      NOT_ADMIN,
-      true,
-      HTTP_Forbidden
-    );
-
-    cy.log("check that device admin cannot view device's groups user list");
-    cy.apiGroupUsersCheck("guDeviceAdmin", "guGroup", [], [], HTTP_Forbidden);
-
-    cy.log("check that device admin cannot remove user from device's group");
-    cy.apiGroupUserRemove(
-      "guDeviceAdmin",
-      "guGroupAdmin",
-      "guGroup",
       HTTP_Forbidden
     );
   });

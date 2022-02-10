@@ -95,12 +95,7 @@ describe("Recordings: soft delete, undelete", () => {
     cy.apiDeviceAdd("rsdCamera1b", "rsdGroup");
     cy.apiUserAdd("rsdGroupMember");
 
-    //Add admin & member to Camera1
-    cy.apiUserAdd("rsdDeviceAdmin");
-    cy.apiUserAdd("rsdDeviceMember");
     cy.apiGroupUserAdd("rsdGroupAdmin", "rsdGroupMember", "rsdGroup", true);
-    //!! cy.apiDeviceUserAdd("rsdGroupAdmin", "rsdDeviceAdmin", "rsdCamera1", true);
-    //!! cy.apiDeviceUserAdd("rsdGroupAdmin", "rsdDeviceMember", "rsdCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(
@@ -232,128 +227,6 @@ describe("Recordings: soft delete, undelete", () => {
     });
   });
 
-  it("Device admin can soft delete a recording and undelete it", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecordingFromQuery1: ApiThermalRecordingResponse;
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAdd(
-      "rsdCamera1",
-      recording1,
-      undefined,
-      "rsdRecording3"
-    ).then(() => {
-      expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rsdRecording3",
-        "rsdCamera1",
-        "rsdGroup",
-        null,
-        recording1
-      );
-
-      cy.log("Soft delete recording");
-      cy.apiRecordingDelete("rsdDeviceAdmin", "rsdRecording3", HTTP_OK200, {
-        additionalParams: "{soft-delete: true}",
-      }).then(() => {
-        cy.log("Check recording no longer shown by default");
-        cy.apiRecordingsQueryCheck(
-          "rsdDeviceAdmin",
-          { where: { id: getCreds("rsdRecording3").id } },
-          [],
-          []
-        );
-
-        cy.log("Check recording listed as deleted");
-        cy.apiRecordingsQueryCheck(
-          "rsdDeviceAdmin",
-          { deleted: true, where: { id: getCreds("rsdRecording3").id } },
-          [expectedRecordingFromQuery1],
-          EXCLUDE_IDS_RECORDINGS
-        );
-
-        cy.log("Undelete");
-        cy.apiRecordingUndelete("rsdDeviceAdmin", "rsdRecording3").then(() => {
-          cy.log("Check recording listed");
-          cy.apiRecordingsQueryCheck(
-            "rsdDeviceAdmin",
-            { where: { id: getCreds("rsdRecording3").id } },
-            [expectedRecordingFromQuery1],
-            EXCLUDE_IDS_RECORDINGS
-          );
-          cy.log("Check recording not listed as deleted");
-          cy.apiRecordingsQueryCheck(
-            "rsdDeviceAdmin",
-            { deleted: true, where: { id: getCreds("rsdRecording3").id } },
-            [],
-            []
-          );
-        });
-      });
-    });
-  });
-
-  it("Device member can soft delete a recording and undelete it", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    let expectedRecordingFromQuery1: ApiThermalRecordingResponse;
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAdd(
-      "rsdCamera1",
-      recording1,
-      undefined,
-      "rsdRecording4"
-    ).then(() => {
-      expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rsdRecording4",
-        "rsdCamera1",
-        "rsdGroup",
-        null,
-        recording1
-      );
-
-      cy.log("Soft delete recording");
-      cy.apiRecordingDelete("rsdDeviceMember", "rsdRecording4", HTTP_OK200, {
-        additionalParams: "{soft-delete: true}",
-      }).then(() => {
-        cy.log("Check recording no longer shown by default");
-        cy.apiRecordingsQueryCheck(
-          "rsdDeviceMember",
-          { where: { id: getCreds("rsdRecording4").id } },
-          [],
-          []
-        );
-
-        cy.log("Check recording listed as deleted");
-        cy.apiRecordingsQueryCheck(
-          "rsdDeviceMember",
-          { deleted: true, where: { id: getCreds("rsdRecording4").id } },
-          [expectedRecordingFromQuery1],
-          EXCLUDE_IDS_RECORDINGS
-        );
-
-        cy.log("Undelete");
-        cy.apiRecordingUndelete("rsdDeviceMember", "rsdRecording4").then(() => {
-          cy.log("Check recording listed");
-          cy.apiRecordingsQueryCheck(
-            "rsdDeviceMember",
-            { where: { id: getCreds("rsdRecording4").id } },
-            [expectedRecordingFromQuery1],
-            EXCLUDE_IDS_RECORDINGS
-          );
-          cy.log("Check recording not listed as deleted");
-          cy.apiRecordingsQueryCheck(
-            "rsdDeviceMember",
-            { deleted: true, where: { id: getCreds("rsdRecording4").id } },
-            [],
-            []
-          );
-        });
-      });
-    });
-  });
-
   it("Can hard-delete a recording", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     cy.log("Add recording as device");
@@ -364,13 +237,13 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdRecording5"
     ).then(() => {
       cy.log("Hard delete recording");
-      cy.apiRecordingDelete("rsdDeviceMember", "rsdRecording5", HTTP_OK200, {
+      cy.apiRecordingDelete("rsdGroupMember", "rsdRecording5", HTTP_OK200, {
         additionalParams: { "soft-delete": false },
       });
 
       cy.log("Check recording no longer shown by default");
       cy.apiRecordingsQueryCheck(
-        "rsdDeviceMember",
+        "rsdGroupMember",
         { where: { id: getCreds("rsdRecording5").id } },
         [],
         []
@@ -378,7 +251,7 @@ describe("Recordings: soft delete, undelete", () => {
 
       cy.log("Check recording not listed as deleted");
       cy.apiRecordingsQueryCheck(
-        "rsdDeviceMember",
+        "rsdGroupMember",
         { deleted: true, where: { id: getCreds("rsdRecording5").id } },
         [],
         EXCLUDE_IDS_RECORDINGS
@@ -386,7 +259,7 @@ describe("Recordings: soft delete, undelete", () => {
 
       cy.log("Check cannot undelete");
       cy.apiRecordingUndelete(
-        "rsdDeviceMember",
+        "rsdGroupMember",
         "rsdRecording5",
         HTTP_Forbidden
       );

@@ -2,10 +2,9 @@
 
 import { logTestDescription, NO_LOG_MESSAGE } from "@commands/descriptions";
 
-describe("Recording authorizations", () => {
+describe.skip("Recording authorizations", () => {
   const admin = "Betty-groupAdmin";
   const member = "Bob-groupMember";
-  const deviceMember = "Beatrice-deviceMember";
   const hacker = "Hacker-recordings";
   const group = "recording_auth";
   const camera = "camera1";
@@ -14,10 +13,8 @@ describe("Recording authorizations", () => {
 
   before(() => {
     cy.apiUserAdd(member);
-    cy.apiUserAdd(deviceMember);
     cy.apiUserAdd(hacker);
     cy.testCreateUserGroupAndDevice(admin, group, camera);
-    //!! cy.apiDeviceUserAdd(admin, deviceMember, camera);
     cy.apiGroupUserAdd(admin, member, group, NOT_ADMIN);
   });
 
@@ -34,10 +31,6 @@ describe("Recording authorizations", () => {
 
   it("Group member should be able to read most things", () => {
     checkMonitoringRequestSucceeds(member, camera);
-  });
-
-  it("Device member should be able to read most things", () => {
-    checkMonitoringRequestSucceeds(deviceMember, camera);
   });
 
   it("Hacker should not have any access", () => {

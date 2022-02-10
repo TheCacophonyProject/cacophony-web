@@ -205,7 +205,7 @@ describe("User: update", () => {
       }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
 
       cy.log("Can add user with -, _ or space as subsequent letter");
-      cy.apiUserUpdate("uupUser7", { userName: "A-B_ C" });
+      cy.apiUserUpdate("uupUser7", { userName: getTestName("A-B_ C") });
     });
   });
 
