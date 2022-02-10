@@ -70,8 +70,8 @@ describe("Recordings: tag", () => {
     cy.apiUserAdd("tagDeviceAdmin");
     cy.apiUserAdd("tagDeviceMember");
     cy.apiGroupUserAdd("tagGroupAdmin", "tagGroupMember", "tagGroup", true);
-    cy.apiDeviceUserAdd("tagGroupAdmin", "tagDeviceAdmin", "tagCamera1", true);
-    cy.apiDeviceUserAdd("tagGroupAdmin", "tagDeviceMember", "tagCamera1", true);
+    //!! cy.apiDeviceUserAdd("tagGroupAdmin", "tagDeviceAdmin", "tagCamera1", true);
+    //!! cy.apiDeviceUserAdd("tagGroupAdmin", "tagDeviceMember", "tagCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(

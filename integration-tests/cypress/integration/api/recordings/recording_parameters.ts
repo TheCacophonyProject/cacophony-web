@@ -81,8 +81,8 @@ describe("Recordings - parameter tests", () => {
     //Add device admin & member to device1
     cy.apiUserAdd("rpaDeviceAdmin");
     cy.apiUserAdd("rpaDeviceMember");
-    cy.apiDeviceUserAdd("rpaGroupAdmin", "rpaDeviceAdmin", "rpaCamera1", true);
-    cy.apiDeviceUserAdd("rpaGroupAdmin", "rpaDeviceMember", "rpaCamera1", true);
+    //!! cy.apiDeviceUserAdd("rpaGroupAdmin", "rpaDeviceAdmin", "rpaCamera1", true);
+    //!! cy.apiDeviceUserAdd("rpaGroupAdmin", "rpaDeviceMember", "rpaCamera1", true);
 
     //create a 2nd group with admin and device
     cy.testCreateUserGroupAndDevice(

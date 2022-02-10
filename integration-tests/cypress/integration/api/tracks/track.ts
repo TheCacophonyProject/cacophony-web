@@ -87,8 +87,8 @@ describe("Tracks: add, check, delete", () => {
     cy.apiUserAdd("trkDeviceAdmin");
     cy.apiUserAdd("trkDeviceMember");
     cy.apiGroupUserAdd("trkGroupAdmin", "trkGroupMember", "trkGroup", true);
-    cy.apiDeviceUserAdd("trkGroupAdmin", "trkDeviceAdmin", "trkCamera1", true);
-    cy.apiDeviceUserAdd("trkGroupAdmin", "trkDeviceMember", "trkCamera1", true);
+    //!! cy.apiDeviceUserAdd("trkGroupAdmin", "trkDeviceAdmin", "trkCamera1", true);
+    //!! cy.apiDeviceUserAdd("trkGroupAdmin", "trkDeviceMember", "trkCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(

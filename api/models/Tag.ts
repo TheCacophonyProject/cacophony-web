@@ -26,7 +26,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
-import { RecordingPermission, AcceptableTag } from "@typedefs/api/consts";
+import { AcceptableTag } from "@typedefs/api/consts";
 
 export interface Tag
   extends ApiRecordingTagResponse,
@@ -35,10 +35,8 @@ export interface Tag
 
 export interface TagStatic extends ModelStaticCommon<Tag> {
   buildSafely: (fields: ApiRecordingTagRequest) => Tag;
-  getFromId: (id: TagId, user: User, attributes: any) => Promise<Tag>;
   userGetAttributes: readonly string[];
   acceptableTags: Set<AcceptableTag>;
-  deleteFromId: (id: TagId, user: User) => Promise<boolean>;
 }
 
 export const AcceptableTags = new Set(Object.values(AcceptableTag));
@@ -82,7 +80,6 @@ export default function (sequelize, DataTypes): TagStatic {
   //---------------
   // CLASS METHODS
   //---------------
-  const Recording = sequelize.models.Recording;
 
   Tag.buildSafely = function (fields: ApiRecordingTagRequest) {
     return Tag.build(_.pick(fields, Tag.apiSettableFields));
@@ -91,34 +88,6 @@ export default function (sequelize, DataTypes): TagStatic {
   Tag.addAssociations = function (models) {
     models.Tag.belongsTo(models.User, { as: "tagger" });
     models.Tag.belongsTo(models.Recording);
-  };
-
-  Tag.getFromId = function (id, user, attributes) {
-    return util.getFromId(id, user, attributes);
-  };
-
-  Tag.deleteModelInstance = function (id: TagId, user: User) {
-    return util.deleteModelInstance(id, user);
-  };
-
-  Tag.deleteFromId = async function (id: TagId, user: User) {
-    const tag = await this.findByPk(id);
-    if (tag == null) {
-      return true;
-    }
-    // FIXME - How about we validate *before* we get the resource?
-    const recording = await Recording.get(
-      user,
-      tag.RecordingId,
-      RecordingPermission.TAG
-    );
-
-    if (recording == null) {
-      return false;
-    }
-
-    await tag.destroy();
-    return true;
   };
 
   Tag.acceptableTags = AcceptableTags;

@@ -67,8 +67,6 @@ const validTagModes = new Set([
   ...Object.values(AcceptableTag),
 ]);
 
-export const RecordingPermissions = new Set(Object.values(RecordingPermission));
-
 interface RecordingQueryBuilder {
   new (): RecordingQueryBuilder;
   findInclude: (modelType: ModelStaticCommon<any>) => Includeable[];
@@ -218,7 +216,6 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getDevice: () => Promise<Device>;
 
   getActiveTracksTagsAndTagger: () => Promise<any>;
-  getUserPermissions: (user: User) => Promise<RecordingPermission[]>;
 
   reprocess: () => Promise<Recording>;
   mergeUpdate: (updates: any) => Promise<void>;
@@ -288,28 +285,9 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
   queryBuilder: RecordingQueryBuilder;
   updateOne: (user: User, id: RecordingId, updates: any) => Promise<boolean>;
   makeFilterOptions: (user: User, options?: { latLongPrec?: number }) => any;
-  deleteOne: (user: User, id: RecordingId) => Promise<Recording | null>;
   getRecordingWithUntaggedTracks: (
     biasDeviceId?: DeviceId
   ) => Promise<TagLimitedRecording>;
-  get: (
-    user: User | Device,
-    id: RecordingId,
-    permission: RecordingPermission,
-    options?: getOptions
-  ) => Promise<Recording>;
-  getForUser: (
-    user: User,
-    id: RecordingId,
-    permission: RecordingPermission,
-    options?: getOptions
-  ) => Promise<Recording>;
-  getForDevice: (
-    device: Device,
-    id: RecordingId,
-    options?: getOptions
-  ) => Promise<Recording>;
-  //findAll: (query: FindOptions) => Promise<Recording[]>;
 }
 
 const Op = Sequelize.Op;
@@ -461,153 +439,6 @@ export default function (
       .catch(() => {
         return null;
       });
-  };
-
-  function isUser(modelObj: any): modelObj is User {
-    return (modelObj as User).username !== undefined;
-  }
-  function isDevice(modelObj: any): modelObj is Device {
-    return (modelObj as Device).devicename !== undefined;
-  }
-  /**
-   * Return a single recording for a user/device.
-   */
-  Recording.get = async function (
-    modelObj: User | Device,
-    id,
-    permission,
-    options: getOptions = {}
-  ) {
-    // FIXME - permissions should be handled at the API layer.
-    if (isUser(modelObj)) {
-      return Recording.getForUser(modelObj as User, id, permission, options);
-    } else if (isDevice(modelObj)) {
-      return Recording.getForDevice(modelObj as Device, id, options);
-    }
-    return null;
-  };
-
-  /**
-   * Return a single recording for a user.
-   */
-  Recording.getForUser = async function (
-    user: User,
-    id,
-    permission,
-    options: getOptions = {}
-  ) {
-    if (!RecordingPermissions.has(permission)) {
-      throw "valid permission must be specified (e.g. RecordingPermission.VIEW)";
-    }
-
-    const query = {
-      where: {
-        [Op.and]: [
-          {
-            id: id,
-          },
-        ],
-      },
-      include: getRecordingInclude(),
-      attributes: this.userGetAttributes.concat(["rawFileKey"]),
-    };
-
-    if (options.type) {
-      (query.where[Op.and] as any[]).push({
-        type: options.type,
-      });
-    }
-
-    const recording = await this.findOne(query);
-    if (!recording) {
-      return null;
-    }
-
-    // FIXME - This should happen waaaay earlier, at the API layer.
-    const userPermissions = await recording.getUserPermissions(user);
-    if (!userPermissions.includes(permission)) {
-      throw new AuthorizationError(
-        "The user does not have permission to view this file"
-      );
-    }
-    // recording.filterData(
-    //   Recording.makeFilterOptions(user, options.filterOptions)
-    // );
-    return recording;
-  };
-
-  /**
-   * Return a single recording for a device.
-   */
-  Recording.getForDevice = async function (
-    device: Device,
-    id,
-    options: getOptions = {}
-  ) {
-    const query = {
-      where: {
-        [Op.and]: [
-          {
-            id: id,
-            DeviceId: device.id,
-          },
-        ],
-      },
-      include: getRecordingInclude(),
-      attributes: this.userGetAttributes.concat(["rawFileKey"]),
-    };
-
-    if (options.type) {
-      (query.where[Op.and] as any[]).push({
-        type: options.type,
-      });
-    }
-
-    const recording = await this.findOne(query);
-    if (!recording) {
-      return null;
-    }
-
-    // recording.filterData(
-    //   Recording.makeFilterOptions(null, options.filterOptions)
-    // );
-    return recording;
-  };
-
-  /**
-   * Deletes a single recording if the user has permission to do so.
-   * @returns {Promise<Recording|null>} Returns the recording object if deleted, otherwise null.
-   */
-  Recording.deleteOne = async function (user: User, id: RecordingId) {
-    const recording = await Recording.get(user, id, RecordingPermission.DELETE);
-    if (!recording) {
-      return null;
-    }
-    await recording.destroy();
-    return recording;
-  };
-
-  /**
-   * Updates a single recording if the user has permission to do so.
-   */
-  Recording.updateOne = async function (
-    user: User,
-    id: RecordingId,
-    updates: any
-  ): Promise<boolean> {
-    // FIXME - Move this permissions stuff to API layer
-    for (const key in updates) {
-      if (!apiUpdatableFields.includes(key)) {
-        return false;
-      }
-    }
-
-    const recording = await Recording.get(user, id, RecordingPermission.UPDATE);
-    if (!recording) {
-      return false;
-    }
-    await recording.update(updates);
-    return true;
   };
 
   Recording.makeFilterOptions = function (user: User, options: any) {
@@ -870,26 +701,6 @@ from (
       });
     };
   /* eslint-enable indent */
-
-  /**
-   * TODO This will be edited in the future when recordings can be public.
-   */
-  Recording.prototype.getUserPermissions = async function (
-    user: User,
-    viewAsSuperAdmin = true
-  ): Promise<RecordingPermission[]> {
-    if (
-      (user.hasGlobalWrite() && viewAsSuperAdmin) ||
-      (await user.canDirectlyAccessGroup(this.GroupId)) ||
-      (await user.canDirectlyAccessDevice(this.Device.id))
-    ) {
-      return [...RecordingPermissions.values()];
-    }
-    if (user.hasGlobalRead()) {
-      return [RecordingPermission.VIEW];
-    }
-    return [];
-  };
 
   // Bulk update recording values. Any new additionalMetadata fields
   // will be merged.

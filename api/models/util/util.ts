@@ -24,7 +24,6 @@ import config from "@config";
 import Sequelize from "sequelize";
 import { User } from "@models/User";
 import { ModelStaticCommon } from "@models";
-import { ClientError } from "@api/customErrors";
 
 const Op = Sequelize.Op;
 interface QueryResult<T> {
@@ -33,7 +32,7 @@ interface QueryResult<T> {
   offset: number;
 }
 
-export function findAllWithUser<T extends ModelStaticCommon<T>>(
+function findAllWithUser<T extends ModelStaticCommon<T>>(
   model: T,
   user,
   queryParams
@@ -49,7 +48,7 @@ export function findAllWithUser<T extends ModelStaticCommon<T>>(
     queryParams.order = [["recordingDateTime", "DESC"]];
     // Find what devices the user can see.
     if (!user) {
-      // Not logged in, can onnly see public recordings.
+      // Not logged in, can only see public recordings.
       model
         .findAndCountAll({
           where: { [Op.and]: [queryParams.where, { public: true }] },
@@ -145,61 +144,6 @@ export function geometrySetter(val) {
   this.setDataValue("location", {
     type: "Point",
     coordinates: [val[1], val[0]],
-  });
-}
-
-export function getFromId(id: number, user: User, attributes) {
-  const modelClass = this;
-  return new Promise((resolve) => {
-    // Get just public models if no user was given
-    if (!user) {
-      return modelClass
-        .findOne({ where: { id: id, public: true } })
-        .then(resolve);
-    }
-
-    user
-      .getGroupsIds()
-      .then((ids) => {
-        // Condition where you get a public recordin or a recording that you
-        // have permission to view (in same group).
-        const condition = {
-          where: {
-            id: id,
-            [Op.or]: [{ GroupId: { [Op.in]: ids } }, { public: true }],
-          },
-          attributes,
-        };
-        return modelClass.findOne(condition);
-      })
-      .then(resolve);
-  });
-}
-
-/**
- * Deletes the deleteModelInstance and the file attached to the model with the
- * given id.
- * A promise is returned that will resolve if successful and reject if failed
- * to delete the file and modelInstance.
- */
-// FIXME - this is dead code?
-export function deleteModelInstance(id, user) {
-  const modelClass = this;
-  let modelInstance = null;
-  return new Promise((resolve, reject) => {
-    modelClass
-      .getFromId(id, user, ["fileKey", "id"])
-      .then((mi) => {
-        modelInstance = mi;
-        if (modelInstance === null) {
-          throw new ClientError("No file found");
-        }
-        return modelInstance.fileKey;
-      })
-      .then((fileKey) => deleteFile(fileKey))
-      .then(() => modelInstance.destroy())
-      .then(resolve)
-      .catch(reject);
   });
 }
 
@@ -365,10 +309,7 @@ export function deleteFile(fileKey) {
 
 export default {
   geometrySetter,
-  findAllWithUser,
   getFileData,
-  getFromId,
-  deleteModelInstance,
   userCanEdit,
   openS3,
   saveFile,

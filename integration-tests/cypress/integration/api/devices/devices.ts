@@ -58,8 +58,8 @@ describe("Devices list", () => {
       };
     });
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
-    cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
-    cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
+    //!! cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
+    //!! cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
 
     //second group
     cy.testCreateUserGroupAndDevice(user2, group2, camera2).then(() => {
@@ -77,7 +77,7 @@ describe("Devices list", () => {
 
     //reregistered device
     cy.testCreateUserGroupAndDevice(user3, group3, camera3);
-    cy.apiDeviceUserAdd(user3, user3, camera3);
+    //!! cy.apiDeviceUserAdd(user3, user3, camera3);
     cy.apiDeviceReregister(camera3, camera4, group3).then(() => {
       expectedDevice3AdminView = {
         id: getCreds(camera3).id,

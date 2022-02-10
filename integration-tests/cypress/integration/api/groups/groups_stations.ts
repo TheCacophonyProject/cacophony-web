@@ -94,7 +94,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
 
     //device admin for 1st device
     cy.apiUserAdd("gsDeviceAdmin");
-    cy.apiDeviceUserAdd("gsGroupAdmin", "gsDeviceAdmin", "gsCamera", ADMIN);
+    //!! cy.apiDeviceUserAdd("gsGroupAdmin", "gsDeviceAdmin", "gsCamera", ADMIN);
 
     // test users
     cy.apiUserAdd("gsTestUser");

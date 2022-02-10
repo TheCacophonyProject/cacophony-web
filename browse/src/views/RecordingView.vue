@@ -3,10 +3,7 @@
     <b-row>
       <b-col cols="12" lg="8" class="recording-details">
         <h4 class="recording-title">
-          <GroupLink
-            :group-name="groupName"
-            :context="userIsMemberOfGroup ? 'devices' : 'limited-devices'"
-          />
+          <GroupLink :group-name="groupName" context="devices" />
           <span>
             <font-awesome-icon
               icon="chevron-right"
@@ -115,9 +112,6 @@ export default {
           `${config.api}/api/v1/signedUrl?jwt=${this.downloadFileJWT}`) ||
         ""
       );
-    },
-    userIsMemberOfGroup() {
-      return this.group !== null;
     },
     rawSource(): string {
       return `${config.api}/api/v1/signedUrl?jwt=${this.downloadRawJWT}`;

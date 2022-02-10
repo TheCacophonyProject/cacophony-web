@@ -43,7 +43,7 @@ describe.skip("Groups - query groups", () => {
         };
         expectedDevice = {
           id: getCreds("gqCamera").id,
-          devicename: getTestName("gqCamera"),
+          deviceName: getTestName("gqCamera"),
         };
         expectedGroupAdminUser = {
           id: getCreds("gqGroupAdmin").id,
@@ -95,7 +95,7 @@ describe.skip("Groups - query groups", () => {
     cy.apiDeviceAdd("gqCamera1b", "gqGroup").then(() => {
       expectedDevice1b = {
         id: getCreds("gqCamera1b").id,
-        devicename: getTestName("gqCamera1b"),
+        deviceName: getTestName("gqCamera1b"),
       };
     });
 
@@ -127,7 +127,7 @@ describe.skip("Groups - query groups", () => {
 
     //device admin for 1st device
     cy.apiUserAdd("gqDeviceAdmin");
-    cy.apiDeviceUserAdd("gqGroupAdmin", "gqDeviceAdmin", "gqCamera", ADMIN);
+    //!! cy.apiDeviceUserAdd("gqGroupAdmin", "gqDeviceAdmin", "gqCamera", ADMIN);
 
     // test users
     cy.apiUserAdd("gqTestUser");
@@ -205,7 +205,7 @@ describe.skip("Groups - query groups", () => {
         Devices: [
           {
             id: getCreds("gqCamera3").id,
-            devicename: getTestName("gqCamera3"),
+            deviceName: getTestName("gqCamera3"),
           },
         ],
         GroupUsers: [

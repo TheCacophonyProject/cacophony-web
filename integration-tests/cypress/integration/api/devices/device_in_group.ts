@@ -47,8 +47,8 @@ describe("Device in group", () => {
         active: true,
       };
     });
-    cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
-    cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
+    //!! cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
+    //!! cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
   });
 

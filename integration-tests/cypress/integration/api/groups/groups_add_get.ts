@@ -43,7 +43,7 @@ describe("Groups - add, get group", () => {
         };
         expectedDevice = {
           id: getCreds("gaCamera").id,
-          devicename: getTestName("gaCamera"),
+          deviceName: getTestName("gaCamera"),
         };
         expectedGroupAdminUser = {
           id: getCreds("gaGroupAdmin").id,
@@ -68,7 +68,7 @@ describe("Groups - add, get group", () => {
     cy.apiDeviceAdd("gaCamera1b", "gaGroup").then(() => {
       expectedDevice1b = {
         id: getCreds("gaCamera1b").id,
-        devicename: getTestName("gaCamera1b"),
+        deviceName: getTestName("gaCamera1b"),
       };
     });
 
@@ -100,7 +100,7 @@ describe("Groups - add, get group", () => {
 
     //device admin for 1st device
     cy.apiUserAdd("gaDeviceAdmin");
-    cy.apiDeviceUserAdd("gaGroupAdmin", "gaDeviceAdmin", "gaCamera", ADMIN);
+    //!! cy.apiDeviceUserAdd("gaGroupAdmin", "gaDeviceAdmin", "gaCamera", ADMIN);
 
     // test users
     cy.apiUserAdd("gaTestUser");

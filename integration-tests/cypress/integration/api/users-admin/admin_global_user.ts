@@ -80,13 +80,13 @@ describe("User: manage global access permissions", () => {
         cy.apiAdminUpdate("gapUser1", "gapUser1", "write", HTTP_Forbidden);
 
         cy.log("Check cannot write globally");
-        cy.apiDeviceUserAdd(
-          "gapUser1",
-          "gapUser3",
-          "gapCamera2",
-          false,
-          HTTP_Forbidden
-        );
+        //!! cy.apiDeviceUserAdd(
+        //   "gapUser1",
+        //   "gapUser3",
+        //   "gapCamera2",
+        //   false,
+        //   HTTP_Forbidden
+        // );
 
         cy.log("Set back to default (off)");
         cy.apiAdminUpdate(superuser, "gapUser1", "off").then(() => {
@@ -128,8 +128,8 @@ describe("User: manage global access permissions", () => {
         );
 
         cy.log("Check can write globally");
-        cy.apiDeviceUserAdd("gapUser1", "gapUser3", "gapCamera2", false);
-        cy.apiDeviceUserRemove("gapUser1", "gapUser3", "gapCamera2");
+        //!! cy.apiDeviceUserAdd("gapUser1", "gapUser3", "gapCamera2", false);
+        //!! cy.apiDeviceUserRemove("gapUser1", "gapUser3", "gapCamera2");
 
         cy.log("Set back to default (off)");
         cy.apiAdminUpdate(superuser, "gapUser1", "off").then(() => {
@@ -161,8 +161,8 @@ describe("User: manage global access permissions", () => {
         { useRawUserName: true }
       ).then(() => {
         cy.log("Check can write globally");
-        cy.apiDeviceUserAdd("gapUser1", "gapUser3", "gapCamera2", false);
-        cy.apiDeviceUserRemove("gapUser1", "gapUser3", "gapCamera2");
+        //!! cy.apiDeviceUserAdd("gapUser1", "gapUser3", "gapCamera2", false);
+        //!! cy.apiDeviceUserRemove("gapUser1", "gapUser3", "gapCamera2");
 
         cy.log("Set back to default (off)");
         cy.apiAdminUpdate(

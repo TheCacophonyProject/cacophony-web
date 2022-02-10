@@ -178,18 +178,14 @@ export default {
       return this.group && (this.group as ApiGroupResponse).admin;
     },
     tabNames() {
-      if (!this.limitedView) {
-        return [
-          "users",
-          "visits",
-          "devices",
-          "stations",
-          "recordings",
-          "deleted-recordings",
-        ];
-      } else {
-        return ["limited-devices", "limited-recordings"];
-      }
+      return [
+        "users",
+        "visits",
+        "devices",
+        "stations",
+        "recordings",
+        "deleted-recordings",
+      ];
     },
     nonRetiredStationsCount(): number {
       return (
@@ -226,12 +222,6 @@ export default {
     },
   },
   async created() {
-    if (
-      this.$route.params.tabName === "limited-devices" ||
-      this.$route.params.tabName === "limited-recordings"
-    ) {
-      this.limitedView = true;
-    }
     const nextTabName = this.tabNames[this.currentTabIndex];
     if (nextTabName !== this.currentTabName) {
       await this.$router.replace({

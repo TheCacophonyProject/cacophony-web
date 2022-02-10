@@ -163,8 +163,8 @@ describe("Track Tags: add, check, delete", () => {
     cy.apiUserAdd("ttaDeviceAdmin");
     cy.apiUserAdd("ttaDeviceMember");
     cy.apiGroupUserAdd("ttaGroupAdmin", "ttaGroupMember", "ttaGroup", true);
-    cy.apiDeviceUserAdd("ttaGroupAdmin", "ttaDeviceAdmin", "ttaCamera1", true);
-    cy.apiDeviceUserAdd("ttaGroupAdmin", "ttaDeviceMember", "ttaCamera1", true);
+    //!! cy.apiDeviceUserAdd("ttaGroupAdmin", "ttaDeviceAdmin", "ttaCamera1", true);
+    //!! cy.apiDeviceUserAdd("ttaGroupAdmin", "ttaDeviceMember", "ttaCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(

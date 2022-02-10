@@ -101,8 +101,8 @@ describe("Update recordings", () => {
     //Device1 admin and member
     cy.apiUserAdd("ruDeviceAdmin");
     cy.apiUserAdd("ruDeviceMember");
-    cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceAdmin", "ruCamera1", true);
-    cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceMember", "ruCamera1", true);
+    //!! cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceAdmin", "ruCamera1", true);
+    //!! cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceMember", "ruCamera1", true);
 
     //Second group with admin and device
     cy.testCreateUserGroupAndDevice("ruGroup2Admin", "ruGroup2", "ruCamera2");

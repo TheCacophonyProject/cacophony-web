@@ -238,18 +238,18 @@ describe("Recordings - reprocessing tests", () => {
       //Device1 admin and member
       cy.apiUserAdd("rrpDeviceAdmin");
       cy.apiUserAdd("rrpDeviceMember");
-      cy.apiDeviceUserAdd(
-        "rrpGroupAdmin",
-        "rrpDeviceAdmin",
-        "rrpCamera1",
-        true
-      );
-      cy.apiDeviceUserAdd(
-        "rrpGroupAdmin",
-        "rrpDeviceMember",
-        "rrpCamera1",
-        true
-      );
+      //!! cy.apiDeviceUserAdd(
+      //   "rrpGroupAdmin",
+      //   "rrpDeviceAdmin",
+      //   "rrpCamera1",
+      //   true
+      // );
+      //!! cy.apiDeviceUserAdd(
+      //   "rrpGroupAdmin",
+      //   "rrpDeviceMember",
+      //   "rrpCamera1",
+      //   true
+      // );
 
       //Group2 with device and admin
       cy.testCreateUserGroupAndDevice(

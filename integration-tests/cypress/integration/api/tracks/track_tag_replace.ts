@@ -176,8 +176,8 @@ describe("Track Tags: replaceTag, check, delete", () => {
     cy.apiUserAdd("ttgDeviceAdmin");
     cy.apiUserAdd("ttgDeviceMember");
     cy.apiGroupUserAdd("ttgGroupAdmin", "ttgGroupMember", "ttgGroup", true);
-    cy.apiDeviceUserAdd("ttgGroupAdmin", "ttgDeviceAdmin", "ttgCamera1", true);
-    cy.apiDeviceUserAdd("ttgGroupAdmin", "ttgDeviceMember", "ttgCamera1", true);
+    //!! cy.apiDeviceUserAdd("ttgGroupAdmin", "ttgDeviceAdmin", "ttgCamera1", true);
+    //!! cy.apiDeviceUserAdd("ttgGroupAdmin", "ttgDeviceMember", "ttgCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(

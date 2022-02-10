@@ -12,7 +12,7 @@ import {
 import { logTestDescription } from "../descriptions";
 import { ApiDevicesDevice } from "../types";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import ApiDeviceUserRelationshipResponse = Cypress.ApiDeviceUserRelationshipResponse;
+import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -338,7 +338,7 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    expectedUsers: ApiDeviceUserRelationshipResponse[],
+    expectedUsers: ApiGroupUserRelationshipResponse[],
     statusCode: number = 200
   ) => {
     logTestDescription(
@@ -370,83 +370,10 @@ Cypress.Commands.add(
         for (let index = 0; index < expectedUsers.length; index++) {
           expect(users[index].id).to.equal(expectedUsers[index].id);
           expect(users[index].userName).to.equal(expectedUsers[index].userName);
-          expect(users[index].relation).to.equal(expectedUsers[index].relation);
           expect(users[index].admin).to.equal(expectedUsers[index].admin);
         }
       }
     });
-  }
-);
-
-Cypress.Commands.add(
-  "apiDeviceUserAdd",
-  (
-    deviceAdminUser: string,
-    userName: string,
-    device: string,
-    admin: boolean = false,
-    statusCode: number = 200,
-    additionalChecks: any = {}
-  ) => {
-    let fullName: string;
-    logTestDescription(
-      `${deviceAdminUser} Adding user '${userName}' to device '${device}'`,
-      { user: userName, device }
-    );
-    if (additionalChecks["useRawUserName"] === true) {
-      fullName = userName;
-    } else {
-      fullName = getTestName(userName);
-    }
-    makeAuthorizedRequestWithStatus(
-      {
-        method: "POST",
-        url: v1ApiPath("devices/users"),
-        body: {
-          deviceId: getCreds(device).id,
-          admin: admin,
-          username: fullName,
-        },
-      },
-      deviceAdminUser,
-      statusCode
-    );
-  }
-);
-
-Cypress.Commands.add(
-  "apiDeviceUserRemove",
-  (
-    deviceAdminUser: string,
-    userName: string,
-    device: string,
-    statusCode: number = 200,
-    additionalChecks: any = {}
-  ) => {
-    let fullName: string;
-    if (additionalChecks["useRawUserName"] === true) {
-      fullName = userName;
-    } else {
-      fullName = getTestName(userName);
-    }
-
-    logTestDescription(
-      `${deviceAdminUser} Removing user '${userName}' to device '${device}'`,
-      { user: userName, device }
-    );
-
-    makeAuthorizedRequestWithStatus(
-      {
-        method: "DELETE",
-        url: v1ApiPath("devices/users"),
-        body: {
-          deviceId: getCreds(device).id,
-          userName: fullName,
-        },
-      },
-      deviceAdminUser,
-      statusCode
-    );
   }
 );
 

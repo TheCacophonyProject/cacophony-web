@@ -87,8 +87,8 @@ describe("Recordings (thermal): add, get, delete", () => {
     cy.apiUserAdd("raDeviceAdmin");
     cy.apiUserAdd("raDeviceMember");
     cy.apiGroupUserAdd("raGroupAdmin", "raGroupMember", "raGroup", true);
-    cy.apiDeviceUserAdd("raGroupAdmin", "raDeviceAdmin", "raCamera1", true);
-    cy.apiDeviceUserAdd("raGroupAdmin", "raDeviceMember", "raCamera1", true);
+    //!! cy.apiDeviceUserAdd("raGroupAdmin", "raDeviceAdmin", "raCamera1", true);
+    //!! cy.apiDeviceUserAdd("raGroupAdmin", "raDeviceMember", "raCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice("raGroup2Admin", "raGroup2", "raCamera2");

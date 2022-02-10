@@ -99,8 +99,8 @@ describe("Recordings: soft delete, undelete", () => {
     cy.apiUserAdd("rsdDeviceAdmin");
     cy.apiUserAdd("rsdDeviceMember");
     cy.apiGroupUserAdd("rsdGroupAdmin", "rsdGroupMember", "rsdGroup", true);
-    cy.apiDeviceUserAdd("rsdGroupAdmin", "rsdDeviceAdmin", "rsdCamera1", true);
-    cy.apiDeviceUserAdd("rsdGroupAdmin", "rsdDeviceMember", "rsdCamera1", true);
+    //!! cy.apiDeviceUserAdd("rsdGroupAdmin", "rsdDeviceAdmin", "rsdCamera1", true);
+    //!! cy.apiDeviceUserAdd("rsdGroupAdmin", "rsdDeviceMember", "rsdCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(

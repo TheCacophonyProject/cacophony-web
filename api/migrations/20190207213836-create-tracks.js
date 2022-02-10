@@ -29,7 +29,7 @@ module.exports = {
       "Recordings",
       "strict"
     );
-    util.migrationAddBelongsTo(queryInterface, "Tracks", "DetailSnapshots", {
+    await util.migrationAddBelongsTo(queryInterface, "Tracks", "DetailSnapshots", {
       name: "Algorithm",
       notNull: true,
     });

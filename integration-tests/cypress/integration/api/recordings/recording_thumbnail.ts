@@ -108,8 +108,8 @@ describe("Recording thumbnails", () => {
       //Device1 admin and member
       cy.apiUserAdd("rtDeviceAdmin");
       cy.apiUserAdd("rtDeviceMember");
-      cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceAdmin", "rtCamera1", true);
-      cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceMember", "rtCamera1", true);
+      //!! cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceAdmin", "rtCamera1", true);
+      //!! cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceMember", "rtCamera1", true);
 
       //Second group with admin and member
       cy.testCreateUserGroupAndDevice("rtGroup2Admin", "rtGroup2", "rtCamera2");

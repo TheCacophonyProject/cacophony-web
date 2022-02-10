@@ -79,20 +79,6 @@ let CptvDecoder;
   CptvDecoder = (await dynamicImportESM("cptv-decoder")).CptvDecoder;
 })();
 
-// @ts-ignore
-export interface RecordingQuery {
-  where: null | any;
-  tagMode: null | TagMode;
-  tags: null | string[];
-  offset: null | number;
-  limit: null | number;
-  order: null | Order;
-  distinct: boolean;
-  type: string;
-  audiobait: null | boolean;
-  //filterOptions: null | any;
-}
-
 // How close is a station allowed to be to another station?
 export const MIN_STATION_SEPARATION_METERS = 60;
 // The radius of the station is half the max distance between stations: any recording inside the radius can

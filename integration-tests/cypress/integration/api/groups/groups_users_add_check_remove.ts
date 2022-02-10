@@ -4,13 +4,13 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
-import { ApiGroupUserRelationshipResponse } from "@typedefs/api/group";
+import { ApiGroupUserResponse } from "@typedefs/api/group";
 
 describe("Groups - add, check and remove users", () => {
   const ADMIN = true;
   const NOT_ADMIN = false;
-  let expectedGuAdminUser: ApiGroupUserRelationshipResponse;
-  let expectedGuAdminUser2: ApiGroupUserRelationshipResponse;
+  let expectedGuAdminUser: ApiGroupUserResponse;
+  let expectedGuAdminUser2: ApiGroupUserResponse;
 
   before(() => {
     cy.testCreateUserGroupAndDevice("guGroupAdmin", "guGroup", "guCamera").then(
@@ -35,14 +35,14 @@ describe("Groups - add, check and remove users", () => {
       };
     });
     cy.apiUserAdd("guDeviceAdmin");
-    cy.apiDeviceUserAdd("guGroupAdmin", "guDeviceAdmin", "guCamera", ADMIN);
+    //!! cy.apiDeviceUserAdd("guGroupAdmin", "guDeviceAdmin", "guCamera", ADMIN);
 
     cy.apiUserAdd("guTestUser");
     cy.apiUserAdd("guTestUser2");
   });
 
   it("Group admin can add, view and remove a new user", () => {
-    const expectedTestUser: ApiGroupUserRelationshipResponse = {
+    const expectedTestUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: ADMIN,
@@ -65,7 +65,7 @@ describe("Groups - add, check and remove users", () => {
   });
 
   it("Group member cannot add, or remove a user but can view", () => {
-    const expectedTestUser: ApiGroupUserRelationshipResponse = {
+    const expectedTestUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: NOT_ADMIN,
@@ -226,12 +226,12 @@ describe("Groups - add, check and remove users", () => {
   });
 
   it("Can update admin/member status of existing user", () => {
-    const expectedTestNonAdminUser: ApiGroupUserRelationshipResponse = {
+    const expectedTestNonAdminUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: NOT_ADMIN,
     };
-    const expectedTestAdminUser: ApiGroupUserRelationshipResponse = {
+    const expectedTestAdminUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: ADMIN,

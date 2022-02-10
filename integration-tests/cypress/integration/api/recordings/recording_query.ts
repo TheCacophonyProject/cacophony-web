@@ -234,8 +234,8 @@ describe("Recordings query using where", () => {
     //Add device admin and member to device 1
     cy.apiUserAdd("rqDeviceAdmin");
     cy.apiUserAdd("rqDeviceMember");
-    cy.apiDeviceUserAdd("rqGroupAdmin", "rqDeviceAdmin", "rqCamera1", true);
-    cy.apiDeviceUserAdd("rqGroupAdmin", "rqDeviceMember", "rqCamera1", true);
+    //!! cy.apiDeviceUserAdd("rqGroupAdmin", "rqDeviceAdmin", "rqCamera1", true);
+    //!! cy.apiDeviceUserAdd("rqGroupAdmin", "rqDeviceMember", "rqCamera1", true);
 
     //Create a 2nd group, admin & device
     cy.testCreateUserGroupAndDevice("rqGroup2Admin", "rqGroup2", "rqCamera2");
@@ -871,14 +871,14 @@ describe("Recordings query using where", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
-      cy.apiDeviceUserAdd(
-        "rqGroupAdmin",
-        superuser,
-        "rqCamera1b",
-        true,
-        HTTP_OK200,
-        { useRawUserName: true }
-      );
+      //!! cy.apiDeviceUserAdd(
+      //   "rqGroupAdmin",
+      //   superuser,
+      //   "rqCamera1b",
+      //   true,
+      //   HTTP_OK200,
+      //   { useRawUserName: true }
+      // );
 
       cy.apiRecordingsQueryCheck(
         superuser,
@@ -887,13 +887,13 @@ describe("Recordings query using where", () => {
         EXCLUDE_IDS
       );
       //cy.apiRecordingsCountCheck( superuser, {where: {}, "view-mode":'user'}, 2);
-      cy.apiDeviceUserRemove(
-        "rqGroupAdmin",
-        superuser,
-        "rqCamera1b",
-        HTTP_OK200,
-        { useRawUserName: true }
-      );
+      //!! cy.apiDeviceUserRemove(
+      //   "rqGroupAdmin",
+      //   superuser,
+      //   "rqCamera1b",
+      //   HTTP_OK200,
+      //   { useRawUserName: true }
+      // );
     });
   } else {
     it.skip("Super-user as user should see only their recordings", () => {});

@@ -53,7 +53,7 @@ describe("Groups - get devices for group", () => {
 
     //device admin for 1st device
     cy.apiUserAdd("gdDeviceAdmin");
-    cy.apiDeviceUserAdd("gdGroupAdmin", "gdDeviceAdmin", "gdCamera", ADMIN);
+    //!! cy.apiDeviceUserAdd("gdGroupAdmin", "gdDeviceAdmin", "gdCamera", ADMIN);
 
     // test users
     cy.apiUserAdd("gdTestUser");
