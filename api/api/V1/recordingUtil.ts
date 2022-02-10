@@ -17,8 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import sharp from "sharp";
 import zlib from "zlib";
-import {AlertStatic} from "@models/Alert";
-import {AI_MASTER} from "@models/TrackTag";
+import { AlertStatic } from "@models/Alert";
+import { AI_MASTER } from "@models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
@@ -26,14 +26,20 @@ import urljoin from "url-join";
 import config from "@config";
 import models from "@models";
 import util from "./util";
-import {AudioRecordingMetadata, Recording} from "@models/Recording";
-import {Event, QueryOptions} from "@models/Event";
-import {User} from "@models/User";
-import Sequelize, {Op} from "sequelize";
-import {DeviceSummary, DeviceVisitMap, Visit, VisitEvent, VisitSummary,} from "./Visits";
-import {Station} from "@models/Station";
+import { AudioRecordingMetadata, Recording } from "@models/Recording";
+import { Event, QueryOptions } from "@models/Event";
+import { User } from "@models/User";
+import Sequelize, { Op } from "sequelize";
+import {
+  DeviceSummary,
+  DeviceVisitMap,
+  Visit,
+  VisitEvent,
+  VisitSummary,
+} from "./Visits";
+import { Station } from "@models/Station";
 import modelsUtil from "@models/util/util";
-import {dynamicImportESM} from "@/dynamic-import-esm";
+import { dynamicImportESM } from "@/dynamic-import-esm";
 import log from "@log";
 import {
   ClassifierModelDescription,
@@ -42,18 +48,28 @@ import {
   TrackClassification,
   TrackFramePosition,
 } from "@typedefs/api/fileProcessing";
-import {CptvFrame} from "cptv-decoder";
-import {GetObjectOutput} from "aws-sdk/clients/s3";
-import {AWSError} from "aws-sdk";
-import {ManagedUpload} from "aws-sdk/lib/s3/managed_upload";
-import {Track} from "@models/Track";
-import {DetailSnapshotId} from "@models/DetailSnapshot";
-import {Tag} from "@models/Tag";
-import {FileId, LatLng, RecordingId, TrackTagId, UserId,} from "@typedefs/api/common";
-import {AcceptableTag, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
-import {Device} from "@models/Device";
-import {ApiRecordingTagRequest} from "@typedefs/api/tag";
-import {ApiTrackPosition} from "@typedefs/api/track";
+import { CptvFrame } from "cptv-decoder";
+import { GetObjectOutput } from "aws-sdk/clients/s3";
+import { AWSError } from "aws-sdk";
+import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
+import { Track } from "@models/Track";
+import { DetailSnapshotId } from "@models/DetailSnapshot";
+import { Tag } from "@models/Tag";
+import {
+  FileId,
+  LatLng,
+  RecordingId,
+  TrackTagId,
+  UserId,
+} from "@typedefs/api/common";
+import {
+  AcceptableTag,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
+import { Device } from "@models/Device";
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { ApiTrackPosition } from "@typedefs/api/track";
 import SendData = ManagedUpload.SendData;
 
 let CptvDecoder;

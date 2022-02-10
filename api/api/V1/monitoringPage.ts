@@ -86,7 +86,7 @@ async function getDatesForSearch(
   viewAsSuperAdmin: boolean
 ): Promise<MonitoringPageCriteria> {
   const replacements = {
-    GROUPS_AND_DEVICES: makeGroupsAndDevicesCriteria(params.groups),
+    GROUPS: makeGroupsAndDevicesCriteria(params.groups),
     USER_PERMISSIONS: await makeGroupsAndDevicesPermissions(
       user,
       viewAsSuperAdmin

@@ -791,7 +791,6 @@ from (
 
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
 
-
   // TODO(jon): Change recordings queries to be cursor based rather than limit/offset based:
   //  this will scale better.
   Recording.queryBuilder.prototype.init = function (
@@ -841,16 +840,20 @@ from (
       where = JSON.parse(where);
     }
 
-    const requireGroupMembership = viewAsSuperAdmin ? [] : [{
-      model: models.User,
-      attributes: [],
-      required: true,
-      where: { id: userId }
-      // If not viewing as super user, make sure the user is a member of the recording group.
-      // This may need to change if we start caring about showing everyone all public recordings.
-      // However, since we're still going to be showing things as "Group centric"  We'd probably just
-      // make the group public - or use a totally different query.
-    }];
+    const requireGroupMembership = viewAsSuperAdmin
+      ? []
+      : [
+          {
+            model: models.User,
+            attributes: [],
+            required: true,
+            where: { id: userId },
+            // If not viewing as super user, make sure the user is a member of the recording group.
+            // This may need to change if we start caring about showing everyone all public recordings.
+            // However, since we're still going to be showing things as "Group centric"  We'd probably just
+            // make the group public - or use a totally different query.
+          },
+        ];
 
     this.query = {
       where: {
@@ -867,7 +870,7 @@ from (
           model: models.Group,
           attributes: ["groupname"],
           required: !viewAsSuperAdmin,
-          include: requireGroupMembership
+          include: requireGroupMembership,
         },
         {
           model: models.Station,
@@ -893,11 +896,11 @@ from (
             "id",
             [
               Sequelize.fn(
-                  "json_build_object",
-                  "start_s",
-                  Sequelize.literal(`"Track"."data"#>'{start_s}'`),
-                  "end_s",
-                  Sequelize.literal(`"Track"."data"#>'{end_s}'`)
+                "json_build_object",
+                "start_s",
+                Sequelize.literal(`"Track"."data"#>'{start_s}'`),
+                "end_s",
+                Sequelize.literal(`"Track"."data"#>'{end_s}'`)
               ),
               "data",
             ],

@@ -203,17 +203,20 @@ export default function (app: Application, baseUrl: string) {
       }
 
       const viewAsSuperAdmin = response.locals.viewAsSuperUser;
+      console.log("HRERE");
       const searchDetails = await calculateMonitoringPageCriteria(
         requestUser,
         params,
         viewAsSuperAdmin
       );
+      console.log("sdfjsdofjdsklf");
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
       const visits = await generateVisits(
         requestUser.id,
         searchDetails,
         viewAsSuperAdmin
       );
+      console.log("adfdsfsdfdsnbn ghnfg");
       if (visits instanceof ClientError) {
         return next(visits);
       }
