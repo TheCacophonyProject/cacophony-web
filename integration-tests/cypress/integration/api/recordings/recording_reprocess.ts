@@ -235,22 +235,6 @@ describe("Recordings - reprocessing tests", () => {
         "rrpCamera1b"
       );
 
-      //Device1 admin and member
-      cy.apiUserAdd("rrpDeviceAdmin");
-      cy.apiUserAdd("rrpDeviceMember");
-      //!! cy.apiDeviceUserAdd(
-      //   "rrpGroupAdmin",
-      //   "rrpDeviceAdmin",
-      //   "rrpCamera1",
-      //   true
-      // );
-      //!! cy.apiDeviceUserAdd(
-      //   "rrpGroupAdmin",
-      //   "rrpDeviceMember",
-      //   "rrpCamera1",
-      //   true
-      // );
-
       //Group2 with device and admin
       cy.testCreateUserGroupAndDevice(
         "rrpGroup2Admin",
@@ -479,80 +463,6 @@ describe("Recordings - reprocessing tests", () => {
       });
     });
 
-    it("Device admin can request reprocess", () => {
-      const recording7 = TestCreateRecordingData(templateRecording);
-      recording7.processingState = RecordingProcessingState.Finished;
-      let expectedRecording7: ApiThermalRecordingResponse;
-
-      cy.log("Add recording as device");
-      cy.apiRecordingAdd(
-        "rrpCamera1",
-        recording7,
-        "oneframe.cptv",
-        "rrpRecording7"
-      ).then(() => {
-        expectedRecording7 = TestCreateExpectedRecordingData(
-          templateExpectedRecording,
-          "rrpRecording7",
-          "rrpCamera1",
-          "rrpGroup",
-          null,
-          recording7
-        );
-
-        cy.log("Check admin can mark for reprocessing");
-        cy.apiReprocess("rrpDeviceAdmin", [getCreds("rrpRecording7").id]);
-
-        cy.log("Check recording is in reprocess, with existing tracks cleared");
-        expectedRecording7.processingState = RecordingProcessingState.Reprocess;
-        expectedRecording7.processing = false;
-        expectedRecording7.tracks = [];
-        cy.apiRecordingCheck(
-          "rrpDeviceAdmin",
-          "rrpRecording7",
-          expectedRecording7,
-          EXCLUDE_IDS
-        );
-      });
-    });
-
-    it("Device member can request reprocess", () => {
-      const recording8 = TestCreateRecordingData(templateRecording);
-      recording8.processingState = RecordingProcessingState.Finished;
-      let expectedRecording8: ApiThermalRecordingResponse;
-
-      cy.log("Add recording as device");
-      cy.apiRecordingAdd(
-        "rrpCamera1",
-        recording8,
-        "oneframe.cptv",
-        "rrpRecording8"
-      ).then(() => {
-        expectedRecording8 = TestCreateExpectedRecordingData(
-          templateExpectedRecording,
-          "rrpRecording8",
-          "rrpCamera1",
-          "rrpGroup",
-          null,
-          recording8
-        );
-
-        cy.log("Check group member can mark for reprocessing");
-        cy.apiReprocess("rrpDeviceMember", [getCreds("rrpRecording8").id]);
-
-        cy.log("Check recording is in reprocess, with existing tracks cleared");
-        expectedRecording8.processingState = RecordingProcessingState.Reprocess;
-        expectedRecording8.processing = false;
-        expectedRecording8.tracks = [];
-        cy.apiRecordingCheck(
-          "rrpDeviceMember",
-          "rrpRecording8",
-          expectedRecording8,
-          EXCLUDE_IDS
-        );
-      });
-    });
-
     it("Non members cannot request reprocess", () => {
       const recording9 = TestCreateRecordingData(templateRecording);
       recording9.processingState = RecordingProcessingState.Finished;
@@ -584,7 +494,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("Check recording is in FINISHED, with existing tracks intact");
         expectedRecording9.processingState = RecordingProcessingState.Finished;
         cy.apiRecordingCheck(
-          "rrpDeviceMember",
+          "rrpGroupMember",
           "rrpRecording9",
           expectedRecording9,
           EXCLUDE_IDS
@@ -640,7 +550,7 @@ describe("Recordings - reprocessing tests", () => {
         expectedRecording10.processing = false;
         expectedRecording10.tracks = [];
         cy.apiRecordingCheck(
-          "rrpDeviceMember",
+          "rrpGroupMember",
           "rrpRecording10",
           expectedRecording10,
           EXCLUDE_IDS

@@ -173,12 +173,6 @@ describe("Recordings report using where", () => {
     cy.apiUserAdd("rreGroupMember");
     cy.apiGroupUserAdd("rreGroupAdmin", "rreGroupMember", "rreGroup", true);
 
-    //Device admin and member fore device1
-    cy.apiUserAdd("rreDeviceAdmin");
-    cy.apiUserAdd("rreDeviceMember");
-    //!! cy.apiDeviceUserAdd("rreGroupAdmin", "rreDeviceAdmin", "rreCamera1", true);
-    //!! cy.apiDeviceUserAdd("rreGroupAdmin", "rreDeviceMember", "rreCamera1", true);
-
     //Group2 with admin and device
     cy.testCreateUserGroupAndDevice(
       "rreGroup2Admin",
@@ -300,26 +294,6 @@ describe("Recordings report using where", () => {
     cy.log("Check recording can be viewed correctly");
     cy.apiRecordingsReportCheck(
       "rreGroupMember",
-      { where: { id: getCreds("rreRecording1").id } },
-      [expectedRecording1],
-      EXCLUDE_COLUMNS
-    );
-  });
-
-  it("Device admin can view report on their device's recordings", () => {
-    cy.log("Check recording can be viewed correctly");
-    cy.apiRecordingsReportCheck(
-      "rreDeviceAdmin",
-      { where: { id: getCreds("rreRecording1").id } },
-      [expectedRecording1],
-      EXCLUDE_COLUMNS
-    );
-  });
-
-  it("Device member can view report on their device's recordings", () => {
-    cy.log("Check recording can be viewed correctly");
-    cy.apiRecordingsReportCheck(
-      "rreDeviceMember",
       { where: { id: getCreds("rreRecording1").id } },
       [expectedRecording1],
       EXCLUDE_COLUMNS
@@ -624,14 +598,15 @@ describe("Recordings report using where", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it.skip("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
-      //!! cy.apiDeviceUserAdd(
-      //   "rreGroupAdmin",
-      //   superuser,
-      //   "rreCamera1b",
-      //   true,
-      //   HTTP_OK200,
-      //   { useRawUserName: true }
-      // );
+      cy.apiGroupUserAdd(
+        "rreGroupAdmin",
+        superuser,
+        "rreGroup",
+        true,
+        true,
+        HTTP_OK200,
+        { useRawUserName: true }
+      );
 
       cy.apiRecordingsReportCheck(
         superuser,
@@ -639,13 +614,13 @@ describe("Recordings report using where", () => {
         [expectedRecording3, expectedRecording4],
         EXCLUDE_COLUMNS
       );
-      //!! cy.apiDeviceUserRemove(
-      //   "rreGroupAdmin",
-      //   superuser,
-      //   "rreCamera1b",
-      //   HTTP_OK200,
-      //   { useRawUserName: true }
-      // );
+      cy.apiGroupUserRemove(
+        "rreGroupAdmin",
+        superuser,
+        "rreGroup",
+        HTTP_OK200,
+        { useRawUserName: true }
+      );
     });
   } else {
     it.skip("Super-user as user should see only their recordings", () => {});

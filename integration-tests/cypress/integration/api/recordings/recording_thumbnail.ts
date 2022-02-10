@@ -105,12 +105,6 @@ describe("Recording thumbnails", () => {
       cy.apiUserAdd("rtGroupMember");
       cy.apiGroupUserAdd("rtGroupAdmin", "rtGroupMember", "rtGroup", true);
 
-      //Device1 admin and member
-      cy.apiUserAdd("rtDeviceAdmin");
-      cy.apiUserAdd("rtDeviceMember");
-      //!! cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceAdmin", "rtCamera1", true);
-      //!! cy.apiDeviceUserAdd("rtGroupAdmin", "rtDeviceMember", "rtCamera1", true);
-
       //Second group with admin and member
       cy.testCreateUserGroupAndDevice("rtGroup2Admin", "rtGroup2", "rtCamera2");
 
@@ -255,24 +249,6 @@ describe("Recording thumbnails", () => {
     it("Group member can query device's thumbnail", () => {
       cy.apiRecordingThumbnailCheck(
         "rtGroupMember",
-        "rtRecording01",
-        HTTP_OK200,
-        { type: "PNG" }
-      );
-    });
-
-    it("Device admin can query device's thumbnail", () => {
-      cy.apiRecordingThumbnailCheck(
-        "rtDeviceAdmin",
-        "rtRecording01",
-        HTTP_OK200,
-        { type: "PNG" }
-      );
-    });
-
-    it("Device member can query device's thumbnail", () => {
-      cy.apiRecordingThumbnailCheck(
-        "rtDeviceMember",
         "rtRecording01",
         HTTP_OK200,
         { type: "PNG" }

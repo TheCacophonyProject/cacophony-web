@@ -66,12 +66,7 @@ describe("Recordings: tag", () => {
     cy.apiDeviceAdd("tagCamera1b", "tagGroup");
     cy.apiUserAdd("tagGroupMember");
 
-    //Add admin & member to Camera1
-    cy.apiUserAdd("tagDeviceAdmin");
-    cy.apiUserAdd("tagDeviceMember");
     cy.apiGroupUserAdd("tagGroupAdmin", "tagGroupMember", "tagGroup", true);
-    //!! cy.apiDeviceUserAdd("tagGroupAdmin", "tagDeviceAdmin", "tagCamera1", true);
-    //!! cy.apiDeviceUserAdd("tagGroupAdmin", "tagDeviceMember", "tagCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(
@@ -133,58 +128,6 @@ describe("Recordings: tag", () => {
     cy.testRecordingTagCheck("tagGroupMember", "tagRecording2", []);
   });
 
-  it("Device admin can add and delete device's tags", () => {
-    const recording3 = TestCreateRecordingData(templateRecording);
-    const expectedTag = JSON.parse(JSON.stringify(expectedTag1));
-    expectedTag.taggerId = getCreds("tagDeviceAdmin").id;
-    expectedTag.taggerName = getTestName("tagDeviceAdmin");
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAdd("tagCamera1", recording3, undefined, "tagRecording3");
-
-    cy.log("Tag recording");
-    cy.apiRecordingTagAdd("tagDeviceAdmin", "tagRecording3", "tagTag3", tag1);
-
-    cy.log("Check recording tag can be viewed correctly");
-    cy.testRecordingTagCheck(
-      "tagDeviceAdmin",
-      "tagRecording3",
-      [expectedTag],
-      EXCLUDE_IDS
-    );
-    cy.log("Delete tag");
-    cy.apiRecordingTagDelete("tagDeviceAdmin", "tagRecording3", "tagTag3");
-
-    cy.log("Check tag no longer exists");
-    cy.testRecordingTagCheck("tagDeviceAdmin", "tagRecording3", []);
-  });
-
-  it("Device member can add and delete device's tags", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    const expectedTag = JSON.parse(JSON.stringify(expectedTag1));
-    expectedTag.taggerId = getCreds("tagDeviceMember").id;
-    expectedTag.taggerName = getTestName("tagDeviceMember");
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAdd("tagCamera1", recording1, undefined, "tagRecording4");
-
-    cy.log("Tag recording");
-    cy.apiRecordingTagAdd("tagDeviceMember", "tagRecording4", "tagTag4", tag1);
-
-    cy.log("Check recording tag can be viewed correctly");
-    cy.testRecordingTagCheck(
-      "tagDeviceMember",
-      "tagRecording4",
-      [expectedTag],
-      EXCLUDE_IDS
-    );
-    cy.log("Delete tag");
-    cy.apiRecordingTagDelete("tagDeviceMember", "tagRecording4", "tagTag4");
-
-    cy.log("Check tag no longer exists");
-    cy.testRecordingTagCheck("tagDeviceMember", "tagRecording4", []);
-  });
-
   it("Cannot add tag for a device you don't have permissions for", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
@@ -242,11 +185,11 @@ describe("Recordings: tag", () => {
     cy.log("groupAdmin Tags recording");
     cy.apiRecordingTagAdd("tagGroupAdmin", "tagRecording7", "tagTag7", tag1);
 
-    cy.log("deviceMember can delete tag");
-    cy.apiRecordingTagDelete("tagDeviceMember", "tagRecording7", "tagTag7");
+    cy.log("groupMember can delete tag");
+    cy.apiRecordingTagDelete("tagGroupMember", "tagRecording7", "tagTag7");
 
     cy.log("Check tag no longer exists");
-    cy.testRecordingTagCheck("tagDeviceMember", "tagRecording7", []);
+    cy.testRecordingTagCheck("tagGroupMember", "tagRecording7", []);
   });
 
   it("Correct handling of invalid recording id", () => {
