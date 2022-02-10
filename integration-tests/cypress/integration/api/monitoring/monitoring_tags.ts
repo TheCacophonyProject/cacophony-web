@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-describe("Monitoring : tracks and tags", () => {
+describe.skip("Monitoring : tracks and tags", () => {
   const Damian = "Damian";
   const Gerry = "Gerry";
 

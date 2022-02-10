@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-describe("Monitoring : pagings", () => {
+describe.skip("Monitoring : pagings", () => {
   const Veronica = "Veronica_visits";
 
   const group = "visits-paging";
