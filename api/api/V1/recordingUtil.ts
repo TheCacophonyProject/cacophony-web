@@ -17,8 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import sharp from "sharp";
 import zlib from "zlib";
-import { AlertStatic } from "@models/Alert";
-import { AI_MASTER } from "@models/TrackTag";
+import {AlertStatic} from "@models/Alert";
+import {AI_MASTER} from "@models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
@@ -26,21 +26,14 @@ import urljoin from "url-join";
 import config from "@config";
 import models from "@models";
 import util from "./util";
-import { AudioRecordingMetadata, Recording } from "@models/Recording";
-import { Event, QueryOptions } from "@models/Event";
-import { User } from "@models/User";
-import { Op, Order } from "sequelize";
-import {
-  DeviceSummary,
-  DeviceVisitMap,
-  Visit,
-  VisitEvent,
-  VisitSummary,
-} from "./Visits";
-import { Station } from "@models/Station";
+import {AudioRecordingMetadata, Recording} from "@models/Recording";
+import {Event, QueryOptions} from "@models/Event";
+import {User} from "@models/User";
+import Sequelize, {Op} from "sequelize";
+import {DeviceSummary, DeviceVisitMap, Visit, VisitEvent, VisitSummary,} from "./Visits";
+import {Station} from "@models/Station";
 import modelsUtil from "@models/util/util";
-import { dynamicImportESM } from "@/dynamic-import-esm";
-import Sequelize from "sequelize";
+import {dynamicImportESM} from "@/dynamic-import-esm";
 import log from "@log";
 import {
   ClassifierModelDescription,
@@ -49,30 +42,19 @@ import {
   TrackClassification,
   TrackFramePosition,
 } from "@typedefs/api/fileProcessing";
-import { CptvFrame } from "cptv-decoder";
-import { GetObjectOutput } from "aws-sdk/clients/s3";
-import { AWSError } from "aws-sdk";
-import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
+import {CptvFrame} from "cptv-decoder";
+import {GetObjectOutput} from "aws-sdk/clients/s3";
+import {AWSError} from "aws-sdk";
+import {ManagedUpload} from "aws-sdk/lib/s3/managed_upload";
+import {Track} from "@models/Track";
+import {DetailSnapshotId} from "@models/DetailSnapshot";
+import {Tag} from "@models/Tag";
+import {FileId, LatLng, RecordingId, TrackTagId, UserId,} from "@typedefs/api/common";
+import {AcceptableTag, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
+import {Device} from "@models/Device";
+import {ApiRecordingTagRequest} from "@typedefs/api/tag";
+import {ApiTrackPosition} from "@typedefs/api/track";
 import SendData = ManagedUpload.SendData;
-import { Track } from "@models/Track";
-import { DetailSnapshotId } from "@models/DetailSnapshot";
-import { Tag } from "@models/Tag";
-import {
-  FileId,
-  LatLng,
-  RecordingId,
-  TrackTagId,
-  UserId,
-} from "@typedefs/api/common";
-import { AcceptableTag } from "@typedefs/api/consts";
-import { Device } from "@models/Device";
-import {
-  RecordingProcessingState,
-  RecordingType,
-  TagMode,
-} from "@typedefs/api/consts";
-import { ApiRecordingTagRequest } from "@typedefs/api/tag";
-import { ApiTrackPosition } from "@typedefs/api/track";
 
 let CptvDecoder;
 (async () => {
@@ -510,8 +492,7 @@ async function query(
   }
 
   // FIXME - Do this in extract-middleware as bulk recording extractor
-
-  const builder = await new models.Recording.queryBuilder().init(
+  const builder = new models.Recording.queryBuilder().init(
     requestUserId,
     where,
     tagMode,
@@ -522,15 +503,15 @@ async function query(
     viewAsSuperUser
   );
   builder.query.distinct = true;
-  const result = await models.Recording.findAndCountAll(builder.get());
-  // FIXME: Removed less location precision.  Look at addressing this
-  //  if and when we use the public recording feature.
-  // This gives less location precision if the user isn't admin.
-  // const filterOptions = models.Recording.makeFilterOptions(
-  //   request.user,
-  //   request.filterOptions
-  // );
-  return result;
+
+  // FIXME - If getting count as super-user, we don't care about joining on all of the other tables.
+  //  Even if getting count as regular user, we only care about joining through GroupUsers.
+
+  // FIXME - Duration >= 0 constraint is pretty slow.
+
+  // FIXME: In the UI, when we query recordings, we don't need to get the count every time, just the first time
+  //  would be fine!
+  return models.Recording.findAndCountAll(builder.get());
 }
 
 // Returns a promise for report rows for a set of recordings. Takes

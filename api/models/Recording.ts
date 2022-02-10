@@ -79,7 +79,7 @@ interface RecordingQueryBuilder {
     limit?: number,
     order?: any,
     viewAsSuperAdmin?: boolean
-  ) => Promise<RecordingQueryBuilderInstance>;
+  ) => RecordingQueryBuilderInstance;
   handleTagMode: (tagMode: TagMode, tagWhatsIn: string[]) => SqlString;
   recordingTaggedWith: (tagModes: string[], any) => SqlString;
   trackTaggedWith: (tags: string[], sql: SqlString) => SqlString;
@@ -454,40 +454,6 @@ export default function (
     return options;
   };
 
-  // local
-  const recordingsFor = async function (
-    userId: UserId,
-    viewAsSuperAdmin = true
-  ) {
-    const user = await models.User.findByPk(userId);
-    if (viewAsSuperAdmin && user.hasGlobalRead()) {
-      return null;
-    }
-
-    // FIXME(jon): Should really combine these into a single query?
-    const [deviceIds, groupIds] = await Promise.all([
-      user.getDeviceIds(),
-      user.getGroupsIds(),
-    ]);
-    return {
-      [Op.or]: [
-        {
-          public: true,
-        },
-        {
-          GroupId: {
-            [Op.in]: groupIds,
-          },
-        },
-        {
-          DeviceId: {
-            [Op.in]: deviceIds,
-          },
-        },
-      ],
-    };
-  };
-
   Recording.getRecordingWithUntaggedTracks = async (
     biasDeviceId: DeviceId
   ): Promise<TagLimitedRecording> => {
@@ -825,15 +791,18 @@ from (
 
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
 
-  Recording.queryBuilder.prototype.init = async function (
+
+  // TODO(jon): Change recordings queries to be cursor based rather than limit/offset based:
+  //  this will scale better.
+  Recording.queryBuilder.prototype.init = function (
     userId: UserId,
     where: any,
     tagMode?: TagMode,
-    tags?: string[], // AcceptableTag[]
+    tags?: string[],
     offset?: number,
     limit?: number,
     order?: any,
-    viewAsSuperUser?: boolean
+    viewAsSuperAdmin?: boolean
   ) {
     if (!where) {
       where = {};
@@ -871,99 +840,106 @@ from (
     if (typeof where === "string") {
       where = JSON.parse(where);
     }
-    const recordingPermissions = await recordingsFor(userId, viewAsSuperUser);
+
+    const requireGroupMembership = viewAsSuperAdmin ? [] : [{
+      model: models.User,
+      attributes: [],
+      required: true,
+      where: { id: userId }
+      // If not viewing as super user, make sure the user is a member of the recording group.
+      // This may need to change if we start caring about showing everyone all public recordings.
+      // However, since we're still going to be showing things as "Group centric"  We'd probably just
+      // make the group public - or use a totally different query.
+    }];
+
     this.query = {
       where: {
         [Op.and]: [
           where, // User query
-          recordingPermissions,
           Sequelize.literal(
             Recording.queryBuilder.handleTagMode(tagMode, tags)
           ),
         ],
       },
       order,
-      include: getRecordingInclude(),
+      include: [
+        {
+          model: models.Group,
+          attributes: ["groupname"],
+          required: !viewAsSuperAdmin,
+          include: requireGroupMembership
+        },
+        {
+          model: models.Station,
+          attributes: ["name", "location"],
+        },
+        {
+          model: models.Tag,
+          attributes: (models.Tag as TagStatic).userGetAttributes,
+          include: [
+            {
+              association: "tagger",
+              attributes: ["username", "id"],
+            },
+          ],
+        },
+        {
+          model: models.Track,
+          where: {
+            archivedAt: null,
+          },
+          separate: true,
+          attributes: [
+            "id",
+            [
+              Sequelize.fn(
+                  "json_build_object",
+                  "start_s",
+                  Sequelize.literal(`"Track"."data"#>'{start_s}'`),
+                  "end_s",
+                  Sequelize.literal(`"Track"."data"#>'{end_s}'`)
+              ),
+              "data",
+            ],
+          ],
+          required: false,
+          include: [
+            {
+              model: models.TrackTag,
+              where: {
+                archivedAt: null,
+              },
+              attributes: [
+                "id",
+                "what",
+                "automatic",
+                "TrackId",
+                "confidence",
+                "UserId",
+                [Sequelize.json("data.name"), "data"],
+              ],
+              include: [
+                {
+                  model: models.User,
+                  attributes: ["username", "id"],
+                },
+              ],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: models.Device,
+          where: {},
+          attributes: ["devicename", "id"],
+        },
+      ],
       limit,
       offset,
       attributes: Recording.queryGetAttributes,
     };
     return this;
   };
-
-  function getRecordingInclude() {
-    return [
-      {
-        model: models.Group,
-        attributes: ["groupname"],
-      },
-      {
-        model: models.Station,
-        attributes: ["name", "location"],
-      },
-      {
-        model: models.Tag,
-        attributes: (models.Tag as TagStatic).userGetAttributes,
-        include: [
-          {
-            association: "tagger",
-            attributes: ["username", "id"],
-          },
-        ],
-      },
-      {
-        model: models.Track,
-        where: {
-          archivedAt: null,
-        },
-        separate: true,
-        attributes: [
-          "id",
-          [
-            Sequelize.fn(
-              "json_build_object",
-              "start_s",
-              Sequelize.literal(`"Track"."data"#>'{start_s}'`),
-              "end_s",
-              Sequelize.literal(`"Track"."data"#>'{end_s}'`)
-            ),
-            "data",
-          ],
-        ],
-
-        required: false,
-        include: [
-          {
-            model: models.TrackTag,
-            where: {
-              archivedAt: null,
-            },
-            attributes: [
-              "id",
-              "what",
-              "automatic",
-              "TrackId",
-              "confidence",
-              "UserId",
-              [Sequelize.json("data.name"), "data"],
-            ],
-            include: [
-              {
-                model: models.User,
-                attributes: ["username", "id"],
-              },
-            ],
-            required: false,
-          },
-        ],
-      },
-      {
-        model: models.Device,
-        where: {},
-        attributes: ["devicename", "id"],
-      },
-    ];
-  }
 
   Recording.queryBuilder.handleTagMode = (
     tagMode: AllTagModes,
@@ -1272,9 +1248,6 @@ from (
     "comment",
     "StationId",
   ];
-
-  // local
-  const apiUpdatableFields = ["location", "comment", "additionalMetadata"];
 
   Recording.processingStates = {
     thermalRaw: [

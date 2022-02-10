@@ -18,14 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import _ from "lodash";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { User } from "./User";
 import Sequelize from "sequelize";
-import util from "./util/util";
 import {
   ApiRecordingTagRequest,
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
-import { TagId } from "@typedefs/api/common";
 import { AcceptableTag } from "@typedefs/api/consts";
 
 export interface Tag

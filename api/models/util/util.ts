@@ -21,99 +21,6 @@ import log from "@log";
 import fs from "fs";
 import mime from "mime";
 import config from "@config";
-import Sequelize from "sequelize";
-import { User } from "@models/User";
-import { ModelStaticCommon } from "@models";
-
-const Op = Sequelize.Op;
-interface QueryResult<T> {
-  rows: null | T[];
-  limit: number;
-  offset: number;
-}
-
-function findAllWithUser<T extends ModelStaticCommon<T>>(
-  model: T,
-  user,
-  queryParams
-): Promise<QueryResult<T>> {
-  return new Promise(function (resolve) {
-    const models = require("../index");
-    if (typeof queryParams.limit == "undefined") {
-      queryParams.limit = 20;
-    }
-    if (typeof queryParams.offset == "undefined") {
-      queryParams.offset = 0;
-    }
-    queryParams.order = [["recordingDateTime", "DESC"]];
-    // Find what devices the user can see.
-    if (!user) {
-      // Not logged in, can only see public recordings.
-      model
-        .findAndCountAll({
-          where: { [Op.and]: [queryParams.where, { public: true }] },
-          include: [models.Group],
-          limit: queryParams.limit,
-          offset: queryParams.offset,
-        })
-        .then(function (result: QueryResult<T>) {
-          result.limit = queryParams.limit;
-          result.offset = queryParams.offset;
-          resolve(result);
-        });
-    } else {
-      user
-        .getGroupsIds()
-        .then(function (ids) {
-          // Adding filter so they only see recordings that they are allowed to.
-          queryParams.where = {
-            [Op.and]: [
-              queryParams.where,
-              { [Op.or]: [{ public: true }, { GroupId: { [Op.in]: ids } }] },
-            ],
-          };
-          queryParams.include = [
-            { model: models.Group },
-            { model: models.Tag },
-          ];
-          return model.findAndCountAll(queryParams);
-        })
-        .then(function (result: QueryResult<T>) {
-          result.limit = queryParams.limit;
-          result.offset = queryParams.offset;
-          resolve(result);
-        });
-    }
-  });
-}
-
-//NOTE: Currently unused by anyone
-export function getFileData<T extends ModelStaticCommon<T>>(
-  model: T,
-  id: number,
-  user: User
-) {
-  return new Promise(function (resolve, reject) {
-    findAllWithUser(model, user, { where: { id } })
-      .then(function (result: { rows: null | T[] }) {
-        if (result.rows !== null && result.rows.length >= 1) {
-          const model = result.rows[0];
-          const fileData = {
-            key: model.getDataValue("fileKey"),
-            name: getFileName(model),
-            mimeType: model.getDataValue("mimeType"),
-          };
-          return resolve(fileData);
-        } else {
-          return resolve(null);
-        }
-      })
-      .catch(function (err) {
-        log.error("Error at models/util.js getFileKey:");
-        reject(err);
-      });
-  });
-}
 
 export function getFileName(model) {
   let fileName;
@@ -309,7 +216,6 @@ export function deleteFile(fileKey) {
 
 export default {
   geometrySetter,
-  getFileData,
   userCanEdit,
   openS3,
   saveFile,
