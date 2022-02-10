@@ -2,24 +2,21 @@
   <b-container class="audio-recording-container">
     <b-row class="mb-4">
       <b-col class="p-0">
-        <div id="spectrogram">
-          <div v-if="finished" class="pause-screen-overlay" @click="replay">
-            <font-awesome-icon :icon="['fa', 'redo-alt']" size="2x" />
-          </div>
-        </div>
+        <div id="spectrogram"></div>
         <div id="waveform"></div>
         <div class="player-bar">
-          <div>
+          <div class="play-button">
             <font-awesome-icon
-              class="play-button"
-              :icon="['fa', isPlaying ? 'pause' : 'play']"
+              :icon="[
+                'fa',
+                isFinished ? 'redo-alt' : isPlaying ? 'pause' : 'play',
+              ]"
               size="2x"
-              style="cursor: pointer"
               @click="togglePlay"
             />
           </div>
           <div class="selected-track-container" v-if="selectedTrack">
-            <SelectedTrack :selectedTrack="selectedTrack" />
+            <SelectedTrack :selected-track="selectedTrack" />
             <font-awesome-icon
               class="ml-2"
               :icon="['fa', 'times']"
@@ -52,10 +49,10 @@
     <b-row>
       <b-col lg="4">
         <TrackList
-          :playTrack="playTrack"
+          :play-track="playTrack"
           :tracks="tracks"
-          :deleteTrack="deleteTrack"
-          :addTagToTrack="addTagToTrack"
+          :delete-track="deleteTrack"
+          :add-tag-to-track="addTagToTrack"
         />
       </b-col>
       <b-col>
@@ -108,10 +105,10 @@ export default Vue.extend({
   name: "AudioRecording",
   data: function () {
     return {
-      tracks: [],
       player: null as WaveSurfer | null,
       spectrogram: null as HTMLCanvasElement | null,
       overlay: null as SVGElement | null,
+      tracks: [],
       deleteDisabled: false,
       trackPointer: {
         scale: 1,
@@ -121,7 +118,6 @@ export default Vue.extend({
       },
       customTagValue: "",
       isPlaying: false,
-      loop: false,
       volume: 1,
       muted: false,
       selectedTrack: null,
@@ -177,7 +173,7 @@ export default Vue.extend({
             container: "#spectrogram",
             fftSamples: 512,
             colorMap: ColorMap({
-              colormap: "electric",
+              colormap: "magma",
               nshades: 256,
               format: "float",
             }),
@@ -303,16 +299,17 @@ export default Vue.extend({
         this.overlay.addEventListener("pointerup", (e: DragEvent) => {
           e.preventDefault();
           //draw circle on drag
-          const startX = this.trackPointer.pos.start.x;
-          const startY = this.trackPointer.pos.start.y;
-          const x = e.offsetX;
-          const y = e.offsetY;
+          const startX = Math.min(this.trackPointer.pos.start.x, e.offsetX);
+          const startY = Math.min(this.trackPointer.pos.start.y, e.offsetY);
+          const x = Math.max(this.trackPointer.pos.start.x, e.offsetX);
+          const y = Math.max(this.trackPointer.pos.start.y, e.offsetY);
           const normalizedX = startX / this.spectrogram.width;
           const normalizedY = startY / this.spectrogram.height;
-          const normalizedWidth = (x - startX) / this.spectrogram.width;
-          const normalizedHeight = (y - startY) / this.spectrogram.height;
+          const normalizedWidth = Math.abs(x - startX) / this.spectrogram.width;
+          const normalizedHeight =
+            Math.abs(y - startY) / this.spectrogram.height;
           const time = Date.now();
-          if (time - this.trackPointer.time > 300) {
+          if (time - this.trackPointer.time > 100) {
             const start = this.round(normalizedX * this.player.getDuration());
             const end = this.round(
               (normalizedX + normalizedWidth) * this.player.getDuration()
@@ -367,7 +364,7 @@ export default Vue.extend({
     });
   },
   computed: {
-    finished: function () {
+    isFinished() {
       if (this.isPlaying || !this.player) {
         return false;
       }
@@ -388,7 +385,7 @@ export default Vue.extend({
       if (this.selectedTrack) {
         if (this.isPlaying) {
           this.player.pause();
-        } else if (this.finished) {
+        } else if (this.isFinished) {
           this.replay();
         } else {
           this.player.play(
@@ -423,6 +420,7 @@ export default Vue.extend({
       }
     },
     async deleteTrack(track: AudioTrack) {
+      debugger;
       this.tracks = this.tracks.filter((t) => t.id !== track.id);
       this.overlay.removeChild(document.getElementById(`track_${track.id}`));
       const response = await api.recording.removeTrack(
@@ -466,6 +464,10 @@ export default Vue.extend({
           };
           this.selectedTrack = Object.assign(this.selectedTrack, {}, track);
           this.tracks.splice(index, 1, track);
+          const overlayTrack = document.getElementById(`track_-1`);
+          //change the track id
+          overlayTrack.setAttribute("id", `track_${track.id}`);
+          overlayTrack.style.stroke = track.colour;
         }
       }
     },
@@ -556,8 +558,12 @@ export default Vue.extend({
       }
     },
     playTrack(track: AudioTrack) {
-      this.selectedTrack = track;
-      this.playAt(track.start, track.end);
+      if (
+        this.tracks.filter((t: AudioTrack) => t.id === track.id).length !== 0
+      ) {
+        this.selectedTrack = track;
+        this.playAt(track.start, track.end);
+      }
     },
     deselectTrack() {
       if (
@@ -640,6 +646,7 @@ spectrogram {
 }
 .play-button {
   margin: 0 0.35em 0 0.35em;
+  cursor: pointer;
 }
 .pause-screen-overlay {
   display: flex;

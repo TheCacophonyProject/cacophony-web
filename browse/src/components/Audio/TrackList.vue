@@ -55,14 +55,14 @@
                 class="d-flex justify-content-between align-items-center"
               >
                 <h3>
-                  {{ track.tags[0] ? track.tags[0].what : "..." }}
+                  {{ track.automaticTag ? track.automaticTag.what : "..." }}
                 </h3>
                 <h4>
                   By:
                   {{
-                    track.tags[0].data.name
-                      ? track.tags[0].data.name
-                      : track.tags[0].userName
+                    track.automaticTag.data.name
+                      ? track.automaticTag.data.name
+                      : track.automaticTag.userName
                   }}
                 </h4>
               </b-row>

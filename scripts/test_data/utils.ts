@@ -1,5 +1,5 @@
 import { authenticateUser } from "./user.ts";
-const baseUrl = "http://127.0.0.1:1080";
+const baseUrl = "https://api-test.cacophony.org.nz";
 const apiUrl = `${baseUrl}/api/v1`;
 const groupsUrl = `${apiUrl}/groups`;
 const devicesUrl = `${apiUrl}/devices`;
@@ -9,14 +9,14 @@ const recordingDeviceUrl = (device: number) =>
   `${recordingsUrl}/device/${device}`;
 
 async function getAdminToken(): Promise<string> {
-  const userName = "admin_test";
-  const password = "admin_test";
+  const userName = "zainrax";
+  const password = "dQZug%g^zH7rNP";
   return authenticateUser(userName, password);
 }
 
 async function postBody<T extends Object>(
   body: T = {} as T,
-  contentType: string = "application/json",
+  contentType: string = "application/json"
 ): Promise<RequestInit> {
   const adminToken = await getAdminToken();
   return {
