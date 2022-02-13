@@ -115,7 +115,7 @@ describe("Recording needs-tag (power-tagger)", () => {
     }
   });
 
-  it.skip("Non-member can view a recording", () => {
+  it("Non-member can view a recording", () => {
     cy.log("Add a recording in group1");
     cy.apiRecordingAdd(
       "rntCamera1",
