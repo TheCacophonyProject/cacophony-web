@@ -249,7 +249,6 @@ describe("Recordings query using where", () => {
           null,
           recording1
         );
-
         cy.apiRecordingAdd(
           "rqCamera1",
           recording2,
@@ -280,6 +279,13 @@ describe("Recordings query using where", () => {
               null,
               recording3
             );
+
+            cy.log(
+              "!!",
+              JSON.stringify(expectedRecording3),
+              JSON.stringify(recording3)
+            );
+
             expectedRecording3.processingState =
               RecordingProcessingState.AnalyseThermal;
 
@@ -844,18 +850,19 @@ describe("Recordings query using where", () => {
 
       cy.apiRecordingsQueryCheck(
         superuser,
-        { where: {}, "view-mode": "user" },
-        [expectedRecording1, expectedRecording2, expectedRecording3, expectedRecording4],
+        { where: {}, "view-mode": "user", order: '[["id", "ASC"]]' },
+        [
+          expectedRecording1,
+          expectedRecording2,
+          expectedRecording3,
+          expectedRecording4,
+        ],
         EXCLUDE_IDS
       );
       //cy.apiRecordingsCountCheck( superuser, {where: {}, "view-mode":'user'}, 2);
-      cy.apiGroupUserRemove(
-        "rqGroupAdmin",
-        superuser,
-        "rqCamera1b",
-        HTTP_OK200,
-        { useRawUserName: true }
-      );
+      cy.apiGroupUserRemove("rqGroupAdmin", superuser, "rqGroup", HTTP_OK200, {
+        useRawUserName: true,
+      });
     });
   } else {
     it.skip("Super-user as user should see only their recordings", () => {});

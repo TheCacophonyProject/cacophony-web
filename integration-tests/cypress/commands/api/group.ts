@@ -60,7 +60,7 @@ Cypress.Commands.add(
         body: {
           group: fullGroupName,
           admin: admin.toString(),
-          username: fullName
+          username: fullName,
         },
       },
       groupAdminUser,
@@ -104,7 +104,7 @@ Cypress.Commands.add(
         url: v1ApiPath("groups/users"),
         body: {
           group: fullGroupName,
-          username: fullName
+          username: fullName,
         },
       },
       groupAdminUser,

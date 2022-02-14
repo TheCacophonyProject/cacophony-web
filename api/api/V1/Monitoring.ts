@@ -201,15 +201,12 @@ export default function (app: Application, baseUrl: string) {
       if (request.query.until) {
         params.until = request.query.until as unknown as Date;
       }
-      console.log("FROM", params.from);
       const viewAsSuperAdmin = response.locals.viewAsSuperUser;
-      console.log("SUPER ADMIN?", viewAsSuperAdmin);
       const searchDetails = await calculateMonitoringPageCriteria(
         requestUser,
         params,
         viewAsSuperAdmin
       );
-      console.log("Search details", searchDetails);
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
       const visits = await generateVisits(
         requestUser.id,

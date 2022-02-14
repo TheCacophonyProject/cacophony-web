@@ -78,7 +78,6 @@ describe("Recordings - parameter tests", () => {
     cy.apiUserAdd("rpaGroupMember");
     cy.apiGroupUserAdd("rpaGroupAdmin", "rpaGroupMember", "rpaGroup", true);
 
-
     //create a 2nd group with admin and device
     cy.testCreateUserGroupAndDevice(
       "rpaGroup2Admin",

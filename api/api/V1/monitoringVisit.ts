@@ -6,7 +6,7 @@ import { ClientError } from "../customErrors";
 import { UserId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@api/V1/monitoringPage";
 import { Op } from "sequelize";
-import {RecordingType} from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;

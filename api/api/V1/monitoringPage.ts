@@ -41,7 +41,7 @@ export interface MonitoringPageCriteria {
   searchUntil?: Date;
 }
 
-const GROUPS = "GROUPS";
+const GROUPS_AND_DEVICES = "GROUPS_AND_DEVICES";
 const USER_PERMISSIONS = "USER_PERMISSIONS";
 const DATE_SELECTION = "DATE_SELECTION";
 const PAGING = "PAGING";
@@ -56,7 +56,7 @@ const LAST_TIMES_TABLE = `with lasttimes as
        and "deletedAt" is null 
        and type = 'thermalRaw' 
        and duration > 0
-       {${GROUPS}}
+       {${GROUPS_AND_DEVICES}}
        {${USER_PERMISSIONS}}
        {${DATE_SELECTION}}
 )`;
@@ -86,7 +86,10 @@ async function getDatesForSearch(
   viewAsSuperAdmin: boolean
 ): Promise<MonitoringPageCriteria> {
   const replacements = {
-    GROUPS: makeGroupsAndDevicesCriteria(params.groups),
+    GROUPS_AND_DEVICES: makeGroupsAndDevicesCriteria(
+      params.devices,
+      params.groups
+    ),
     USER_PERMISSIONS: await makeGroupsAndDevicesPermissions(
       user,
       viewAsSuperAdmin
@@ -160,10 +163,20 @@ function replaceInSQL(
   return sql;
 }
 
-function makeGroupsAndDevicesCriteria(groupIds: number[]): string {
+function makeGroupsAndDevicesCriteria(
+  deviceIds: number[],
+  groupIds: number[]
+): string {
+  const devString =
+    deviceIds.length > 0 ? `"DeviceId" IN (${deviceIds.join(",")})` : null;
   const grpString =
     groupIds.length > 0 ? `"GroupId" IN (${groupIds.join(",")})` : null;
-  if (grpString) {
+
+  if (devString && grpString) {
+    return ` and (${devString} or ${grpString})`;
+  } else if (devString) {
+    return ` and ${devString}`;
+  } else if (grpString) {
     return ` and ${grpString}`;
   }
 
@@ -192,6 +205,9 @@ async function makeGroupsAndDevicesPermissions(
     return "";
   }
 
-  const groupIds = await user.getGroupsIds();
-  return makeGroupsAndDevicesCriteria(groupIds);
+  const [deviceIds, groupIds] = await Promise.all([
+    user.getDeviceIds(),
+    user.getGroupsIds(),
+  ]);
+  return makeGroupsAndDevicesCriteria(deviceIds, groupIds);
 }

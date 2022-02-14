@@ -27,17 +27,17 @@ import { Group } from "./Group";
 import { EndUserAgreementVersion, UserId } from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { sendResetEmail } from "@/scripts/emailUtil";
+import { Device } from "@models/Device";
 
 const Op = Sequelize.Op;
 
 export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
-  getDataValues: () => Promise<UserData>;
   comparePassword: (password: string) => Promise<boolean>;
   updatePassword: (password: string) => Promise<boolean>;
   getDeviceIds: () => Promise<number[]>;
   getGroupsIds: () => Promise<number[]>;
-  getGroups: (options: {
+  getGroups: (options?: {
     where: any;
     attributes: string[];
   }) => Promise<Group[]>;
@@ -206,23 +206,6 @@ export default function (
     };
   };
 
-  User.prototype.getDataValues = function () {
-    const user = this;
-    return new Promise(function (resolve) {
-      user.getGroups().then(function (groups) {
-        resolve({
-          id: user.getDataValue("id"),
-          username: user.getDataValue("username"),
-          firstName: user.getDataValue("firstName"),
-          lastName: user.getDataValue("lastName"),
-          email: user.getDataValue("email"),
-          groups,
-          globalPermission: user.getDataValue("globalPermission"),
-          endUserAgreement: user.getDataValue("endUserAgreement"),
-        });
-      });
-    });
-  };
   // Returns the groups that are associated with this user (via
   // GroupUsers).
   User.prototype.getGroupsIds = async function () {
@@ -231,6 +214,8 @@ export default function (
   };
 
   User.prototype.getDeviceIds = async function () {
+    // FIXME(DeviceUsers) Could this just be this.getDevices()?
+
     const devices = await models.Device.findAll({
       where: {},
       include: [
