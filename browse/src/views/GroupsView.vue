@@ -80,7 +80,7 @@
             :navigate-to-point="
               (point) => ({
                 name: 'group',
-                params: { groupName: point.name, tabName: 'devices' },
+                params: { groupName: point.group, tabName: 'devices' },
               })
             "
           />
