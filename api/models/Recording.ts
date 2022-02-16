@@ -1208,6 +1208,7 @@ from (
     "rawFileKey",
     "processing",
     "comment",
+    "additionalMetadata",
   ];
 
   // Attributes returned when looking up a single recording.
