@@ -902,6 +902,7 @@ from (
           separate: true,
           attributes: [
             "id",
+            "filtered",
             [
               Sequelize.fn(
                 "json_build_object",
