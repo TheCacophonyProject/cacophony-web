@@ -1,7 +1,7 @@
 import { GroupId, IsoFormattedDateString } from "./common";
 import { ApiUserResponse } from "./user";
 
-export interface ApiGroupUserRelationshipResponse extends ApiUserResponse {
+export interface ApiGroupUserResponse extends ApiUserResponse {
   admin: boolean; // Is the user an admin of this group?
 }
 

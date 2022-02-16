@@ -14,7 +14,6 @@ import { HTTP_Unprocessable } from "@commands/constants";
 import { HTTP_Forbidden } from "@commands/constants";
 
 describe("Groups - add, get group", () => {
-  const ADMIN = true;
   const NOT_ADMIN = false;
   let expectedGroup: ApiGroupReturned;
   let expectedGroupAdminUser: ApiGroupUserRelation;
@@ -43,7 +42,7 @@ describe("Groups - add, get group", () => {
         };
         expectedDevice = {
           id: getCreds("gaCamera").id,
-          devicename: getTestName("gaCamera"),
+          deviceName: getTestName("gaCamera"),
         };
         expectedGroupAdminUser = {
           id: getCreds("gaGroupAdmin").id,
@@ -68,7 +67,7 @@ describe("Groups - add, get group", () => {
     cy.apiDeviceAdd("gaCamera1b", "gaGroup").then(() => {
       expectedDevice1b = {
         id: getCreds("gaCamera1b").id,
-        devicename: getTestName("gaCamera1b"),
+        deviceName: getTestName("gaCamera1b"),
       };
     });
 
@@ -97,10 +96,6 @@ describe("Groups - add, get group", () => {
         admin: false,
       };
     });
-
-    //device admin for 1st device
-    cy.apiUserAdd("gaDeviceAdmin");
-    cy.apiDeviceUserAdd("gaGroupAdmin", "gaDeviceAdmin", "gaCamera", ADMIN);
 
     // test users
     cy.apiUserAdd("gaTestUser");
@@ -194,9 +189,6 @@ describe("Groups - add, get group", () => {
   it("Non member cannot query", () => {
     cy.log("Valid user with no access to this group");
     cy.apiGroupCheck("gaTestUser", "gaGroup", [], [], HTTP_Forbidden);
-
-    cy.log("Device admin with no group-level permissions");
-    cy.apiGroupCheck("gaDeviceAdmin", "gaGroup", [], [], HTTP_Forbidden);
 
     cy.log("Valid user with no access to this group using groupId");
     cy.apiGroupCheck(

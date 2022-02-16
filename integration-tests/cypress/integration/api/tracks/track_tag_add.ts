@@ -161,11 +161,7 @@ describe("Track Tags: add, check, delete", () => {
     cy.apiUserAdd("ttaGroupMember");
 
     //Add admin & member to Camera1
-    cy.apiUserAdd("ttaDeviceAdmin");
-    cy.apiUserAdd("ttaDeviceMember");
     cy.apiGroupUserAdd("ttaGroupAdmin", "ttaGroupMember", "ttaGroup", true);
-    cy.apiDeviceUserAdd("ttaGroupAdmin", "ttaDeviceAdmin", "ttaCamera1", true);
-    cy.apiDeviceUserAdd("ttaGroupAdmin", "ttaDeviceMember", "ttaCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(
@@ -316,112 +312,6 @@ describe("Track Tags: add, check, delete", () => {
     );
   });
 
-  it.skip("Device admin can add, view and delete device's tracks", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-    const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.tags = [expectedTag1];
-    expectedTrackWithTag.tags[0].userName = getTestName("ttaDeviceAdmin");
-    //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupMember").id;
-
-    cy.log("Add recording and track");
-    cy.apiRecordingAdd("ttaCamera1", recording1, undefined, "ttaRecording3");
-    cy.apiTrackAdd(
-      "ttaDeviceAdmin",
-      "ttaRecording3",
-      "ttaTrack3",
-      "ttaAlgorithm3",
-      track1,
-      algorithm1
-    );
-
-    cy.log("Can tag the track");
-    cy.apiTrackTagAdd(
-      "ttaDeviceAdmin",
-      "ttaRecording3",
-      "ttaTrack3",
-      "ttaTag3",
-      tag1
-    );
-
-    cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTrackCheck(
-      "ttaDeviceAdmin",
-      "ttaRecording3",
-      [expectedTrackWithTag],
-      EXCLUDE_IDS
-    );
-
-    cy.log("Delete tag");
-    cy.apiTrackTagDelete(
-      "ttaDeviceAdmin",
-      "ttaRecording3",
-      "ttaTrack3",
-      "ttaTag3"
-    );
-
-    cy.log("Check tag no longer exists");
-    cy.apiTrackCheck(
-      "ttaDeviceAdmin",
-      "ttaRecording3",
-      [expectedTrack],
-      EXCLUDE_IDS
-    );
-  });
-
-  it.skip("Device member can add, view and delete device's tracks", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-    const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.tags = [expectedTag1];
-    expectedTrackWithTag.tags[0].userName = getTestName("ttaDeviceMember");
-    //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupMember").id;
-
-    cy.log("Add recording and track");
-    cy.apiRecordingAdd("ttaCamera1", recording1, undefined, "ttaRecording4");
-    cy.apiTrackAdd(
-      "ttaDeviceMember",
-      "ttaRecording4",
-      "ttaTrack4",
-      "ttaAlgorithm4",
-      track1,
-      algorithm1
-    );
-
-    cy.log("Can tag the track");
-    cy.apiTrackTagAdd(
-      "ttaDeviceMember",
-      "ttaRecording4",
-      "ttaTrack4",
-      "ttaTag4",
-      tag1
-    );
-
-    cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTrackCheck(
-      "ttaDeviceMember",
-      "ttaRecording4",
-      [expectedTrackWithTag],
-      EXCLUDE_IDS
-    );
-
-    cy.log("Delete tag");
-    cy.apiTrackTagDelete(
-      "ttaDeviceMember",
-      "ttaRecording4",
-      "ttaTrack4",
-      "ttaTag4"
-    );
-
-    cy.log("Check tag no longer exists");
-    cy.apiTrackCheck(
-      "ttaDeviceMember",
-      "ttaRecording4",
-      [expectedTrack],
-      EXCLUDE_IDS
-    );
-  });
-
   it.skip("User cannot tag recording they don't own without additional JWT", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
@@ -429,7 +319,7 @@ describe("Track Tags: add, check, delete", () => {
     cy.log("Add recording and track");
     cy.apiRecordingAdd("ttaCamera1", recording1, undefined, "ttaRecording5");
     cy.apiTrackAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording5",
       "ttaTrack5",
       "ttaAlgorithm5",
@@ -449,7 +339,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Check tag does not exist");
     cy.apiTrackCheck(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording5",
       [expectedTrack],
       EXCLUDE_IDS
@@ -460,13 +350,13 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTag.tags = [expectedTag1];
-    expectedTrackWithTag.tags[0].userName = getTestName("ttaDeviceMember");
+    expectedTrackWithTag.tags[0].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttaCamera1", recording1, undefined, "ttaRecording6");
     cy.apiTrackAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording6",
       "ttaTrack6",
       "ttaAlgorithm6",
@@ -474,7 +364,7 @@ describe("Track Tags: add, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording6",
       "ttaTrack6",
       "ttaTag6",
@@ -492,7 +382,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Check tag still exists");
     cy.apiTrackCheck(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording6",
       [expectedTrackWithTag],
       EXCLUDE_IDS
@@ -506,7 +396,7 @@ describe("Track Tags: add, check, delete", () => {
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttaCamera1", recording1, undefined, "ttaRecording7");
     cy.apiTrackAdd(
-      "ttaDeviceMember",
+      "ttaGroupAdmin",
       "ttaRecording7",
       "ttaTrack7",
       "ttaAlgorithm7",
@@ -514,7 +404,7 @@ describe("Track Tags: add, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagAdd(
-      "ttaDeviceMember",
+      "ttaGroupAdmin",
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
@@ -531,7 +421,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Check tag no longer exists");
     cy.apiTrackCheck(
-      "ttaDeviceMember",
+      "ttaGroupAdmin",
       "ttaRecording7",
       [expectedTrack],
       EXCLUDE_IDS
@@ -542,19 +432,16 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTag1.tags = [expectedTag1];
-    expectedTrackWithTag1.tags[0].userName = getTestName("ttaDeviceMember");
-    //expectedTrackWithTag1.tags[0].userId=getCreds("ttaGroupMember").id;
+    expectedTrackWithTag1.tags[0].userName = getTestName("ttaGroupMember");
     const expectedTrackWithTags2 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTags2.tags = [expectedTag2, expectedTag1];
-    expectedTrackWithTags2.tags[0].userName = getTestName("ttaDeviceMember");
-    expectedTrackWithTags2.tags[1].userName = getTestName("ttaDeviceMember");
-    //expectedTrackWithTags2.tags[0].userId=getCreds("ttaGroupMember").id;
-    //expectedTrackWithTags2.tags[1].userId=getCreds("ttaGroupMember").id;
+    expectedTrackWithTags2.tags[0].userName = getTestName("ttaGroupMember");
+    expectedTrackWithTags2.tags[1].userName = getTestName("ttaGroupMember");
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttaCamera1", recording1, undefined, "ttaRecording7");
     cy.apiTrackAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
       "ttaAlgorithm7",
@@ -562,7 +449,7 @@ describe("Track Tags: add, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
@@ -571,7 +458,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Check recording track & tag can be viewed correctly");
     cy.apiTrackCheck(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTag1],
       EXCLUDE_IDS
@@ -579,7 +466,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Member can add second tag");
     cy.apiTrackTagAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
@@ -588,7 +475,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Check both tags shown");
     cy.apiTrackCheck(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTags2],
       EXCLUDE_IDS
@@ -599,19 +486,19 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTag1.tags = [expectedTag1];
-    expectedTrackWithTag1.tags[0].userName = getTestName("ttaDeviceMember");
+    expectedTrackWithTag1.tags[0].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag1.tags[0].userId=getCreds("ttaGroupMember").id;
     const expectedTrackWithTags2 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTags2.tags = [expectedTag1, expectedTag1];
-    expectedTrackWithTags2.tags[0].userName = getTestName("ttaDeviceMember");
-    expectedTrackWithTags2.tags[1].userName = getTestName("ttaDeviceMember");
+    expectedTrackWithTags2.tags[0].userName = getTestName("ttaGroupMember");
+    expectedTrackWithTags2.tags[1].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag2.tags[0].userId=getCreds("ttaGroupMember").id;
     //expectedTrackWithTag2.tags[1].userId=getCreds("ttaGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttaCamera1", recording1, undefined, "ttaRecording7");
     cy.apiTrackAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
       "ttaAlgorithm7",
@@ -619,7 +506,7 @@ describe("Track Tags: add, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
@@ -628,7 +515,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Check recording track & tag can be viewed correctly");
     cy.apiTrackCheck(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTag1],
       EXCLUDE_IDS
@@ -636,7 +523,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Member can add second tag");
     cy.apiTrackTagAdd(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
@@ -645,7 +532,7 @@ describe("Track Tags: add, check, delete", () => {
 
     cy.log("Check both tags shown");
     cy.apiTrackCheck(
-      "ttaDeviceMember",
+      "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTags2],
       EXCLUDE_IDS

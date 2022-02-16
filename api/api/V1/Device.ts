@@ -34,6 +34,8 @@ import {
   fetchUnauthorizedOptionalUserByNameOrId,
   fetchAuthorizedRequiredDevices,
   fetchUnauthorizedRequiredScheduleById,
+  fetchAuthorizedRequiredGroupById,
+  fetchAdminAuthorizedRequiredGroupById,
 } from "../extract-middleware";
 import {
   booleanOf,
@@ -48,11 +50,9 @@ import {
   integerOfWithDefault,
 } from "../validation-middleware";
 import { Device } from "models/Device";
-import {
-  ApiDeviceResponse,
-  ApiDeviceUserRelationshipResponse,
-} from "@typedefs/api/device";
+import { ApiDeviceResponse } from "@typedefs/api/device";
 import logging from "@log";
+import { ApiGroupUserResponse } from "@typedefs/api/group";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -69,10 +69,7 @@ export const mapDeviceResponse = (
       saltId: device.saltId,
       admin:
         viewAsSuperUser ||
-        (
-          (device as any).Group?.Users[0]?.GroupUsers ||
-          (device as any).Users[0]?.DeviceUsers
-        )?.admin ||
+        (device as any).Group?.Users[0]?.GroupUsers?.admin ||
         false,
     };
     if (device.lastConnectionTime) {
@@ -136,8 +133,8 @@ interface ApiDeviceResponseSuccess {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceUsersRelationshipResponseSuccess {
-  users: ApiDeviceUserRelationshipResponse[];
+interface ApiDeviceUsersResponseSuccess {
+  users: ApiGroupUserResponse[];
 }
 
 export default function (app: Application, baseUrl: string) {
@@ -298,7 +295,6 @@ export default function (app: Application, baseUrl: string) {
    *    "userName": "bob",
    *    "userId": 10,
    *    "admin": false,
-   *    "relation": "group"
    *  }]
    * }
    * @apiUse V1ResponseError
@@ -365,7 +361,6 @@ export default function (app: Application, baseUrl: string) {
    *    "userName": "bob",
    *    "userId": 10,
    *    "admin": false,
-   *    "relation": "group"
    *  }]
    * }
    * @apiUse V1ResponseError
@@ -400,7 +395,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetDeviceUsers
    * @apiGroup Device
    * @apiDescription Returns all users that have access to the device
-   * through both group membership and direct assignment.
+   * through group membership.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -408,13 +403,12 @@ export default function (app: Application, baseUrl: string) {
    * @apiQuery {Boolean} [only-active=true] Only return active devices
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiDeviceUsersRelationshipResponseSuccess} users Array of users who have access to the
-   * device.  `relation` indicates whether the user is a `group` or `device` member.
+   * @apiInterface {apiSuccess::ApiDeviceUsersResponseSuccess} users Array of users who have access to the
+   * device via the devices group.
    * @apiSuccessExample {JSON} users:
    * [{
    *  "id": 1564,
    *  "userName": "user name",
-   *  "relation": "device",
    *  "admin": true
    * }]
    *
@@ -430,17 +424,20 @@ export default function (app: Application, baseUrl: string) {
     ]),
     // Should this require admin access to the device?
     fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
+    async (request, response, next) => {
+      await fetchAuthorizedRequiredGroupById(response.locals.device.GroupId)(
+        request,
+        response,
+        next
+      );
+    },
     async (request: Request, response: Response) => {
       const users = (
-        await response.locals.device.users(response.locals.requestUser, [
-          "id",
-          "username",
-        ])
+        await response.locals.group.getUsers({ attributes: ["id", "username"] })
       ).map((user) => ({
         userName: user.username,
         id: user.id,
-        admin: ((user as any).DeviceUsers || (user as any).GroupUsers).admin,
-        relation: (user as any).DeviceUsers ? "device" : "group",
+        admin: (user as any).GroupUsers.admin,
       }));
 
       return responseUtil.send(response, {
@@ -546,124 +543,6 @@ export default function (app: Application, baseUrl: string) {
         statusCode: 200,
         messages: ["schedule removed"],
       });
-    }
-  );
-
-  /**
-   * @api {post} /api/v1/devices/users Add a user to a device.
-   * @apiName AddUserToDevice
-   * @apiGroup Device
-   * @apiDescription This call adds a user to a device. This allows individual
-   * user accounts to monitor a device without being part of the group that the
-   * device belongs to.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiBody {Number} deviceId ID of the device.
-   * @apiBody {String} userName Name of the user to add to the device.
-   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.post(
-    `${apiUrl}/users`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      anyOf(
-        nameOf(body("username")),
-        nameOf(body("userName")),
-        idOf(body("userId"))
-      ),
-      idOf(body("deviceId")),
-      booleanOf(body("admin")),
-      // Allow adding a user to an inactive device by default
-      query("only-active").default(false).isBoolean().toBoolean(),
-      query("view-mode").optional().equals("user"),
-    ]),
-    fetchUnauthorizedOptionalUserById(body("userId")),
-    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
-    (request: Request, response: Response, next: NextFunction) => {
-      // Check that we found the user through one of the methods.
-      if (!response.locals.user) {
-        return next(new ClientError(`User not found`));
-      }
-      next();
-    },
-    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
-    async (request, response) => {
-      const added = await models.Device.addUserToDevice(
-        response.locals.device,
-        response.locals.user,
-        request.body.admin
-      );
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [added],
-      });
-    }
-  );
-
-  /**
-   * @api {delete} /api/v1/devices/users Removes a user with a direct relationship with a device from a device.
-   * @apiName RemoveUserFromDevice
-   * @apiGroup Device
-   * @apiDescription This call can remove a user from a device. Has to be
-   * authenticated by an admin user from the group that the device belongs to or an
-   * admin user of the device.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiBody {String} [userName] name of the user to delete from the device.
-   * @apiBody {Integer} [userId] id of the user to delete from the device.
-   * @apiBody {Integer} deviceId ID of the device.
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   *
-   * @apiUse V1ResponseSuccess
-
-   * @apiUse V1ResponseError
-   */
-  app.delete(
-    `${apiUrl}/users`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(body("deviceId")),
-      anyOf(
-        nameOf(body("username")),
-        nameOf(body("userName")),
-        idOf(body("userId"))
-      ),
-      query("only-active").optional().isBoolean().toBoolean(),
-      query("view-mode").optional().equals("user"),
-    ]),
-    fetchUnauthorizedOptionalUserById(body("userId")),
-    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
-    (request: Request, response: Response, next: NextFunction) => {
-      // Check that we found the user through one of the methods.
-      if (!response.locals.user) {
-        return next(new ClientError(`User not found`));
-      }
-      next();
-    },
-    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
-    async function (request: Request, response: Response) {
-      const removed = await models.Device.removeUserFromDevice(
-        response.locals.device,
-        response.locals.user
-      );
-      if (removed) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Removed user from the device."],
-        });
-      } else {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to remove user from the device."],
-        });
-      }
     }
   );
 

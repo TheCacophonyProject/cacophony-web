@@ -4,21 +4,6 @@
       <tab-list-item title="About" lazy>
         <DeviceSoftware :software="software" />
       </tab-list-item>
-      <tab-list-item title="Users" lazy v-if="device.admin">
-        <template #title>
-          <TabTemplate
-            title="Users"
-            :isLoading="usersCountLoading"
-            :value="deviceUsers.length"
-          />
-        </template>
-        <DeviceUsers
-          :device-users="deviceUsers"
-          :device="device"
-          :user="user"
-          @reload-device="fetchDeviceUsers"
-        />
-      </tab-list-item>
       <tab-list-item title="All Events" lazy>
         <DeviceEvents :device="device" />
       </tab-list-item>
@@ -59,7 +44,6 @@
 </template>
 
 <script lang="ts">
-import DeviceUsers from "./DeviceUsers.vue";
 import DeviceSoftware from "./DeviceSoftware.vue";
 import DeviceEvents from "./DeviceEvents.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
@@ -75,7 +59,6 @@ export default {
     TabList,
     TabListItem,
     RecordingsTab,
-    DeviceUsers,
     DeviceSoftware,
     DeviceEvents,
     TabTemplate,
@@ -103,7 +86,6 @@ export default {
       visitsCount: 0,
       visitsCountLoading: false,
       deviceType: null,
-      deviceUsers: [],
     };
   },
   async created() {
@@ -122,11 +104,7 @@ export default {
       });
     }
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
-    await Promise.all([
-      this.fetchRecordingCount(),
-      this.fetchVisitsCount(),
-      this.fetchDeviceUsers(),
-    ]);
+    await Promise.all([this.fetchRecordingCount(), this.fetchVisitsCount()]);
   },
   computed: {
     staticVisitsQuery() {
@@ -141,15 +119,8 @@ export default {
     currentTabName() {
       return this.$route.params.tabName;
     },
-    isDeviceAdmin() {
-      return this.device && this.device.admin;
-    },
     tabNames() {
-      if (this.isDeviceAdmin) {
-        return ["about", "users", "events", "recordings", "visits", "schedule"];
-      } else {
-        return ["about", "events", "recordings", "visits", "schedule"];
-      }
+      return ["about", "events", "recordings", "visits", "schedule"];
     },
     currentTabIndex: {
       get() {
@@ -189,22 +160,6 @@ export default {
 
         device: [this.device.id],
       };
-    },
-    async fetchDeviceUsers() {
-      this.usersCountLoading = true;
-      if (this.device.admin) {
-        // Fetch device users:
-        const usersResponse = await api.device.getUsers(this.device.id, true);
-        if (usersResponse.success) {
-          const {
-            result: { users },
-          } = usersResponse;
-          this.deviceUsers = users.filter((user) => user.relation === "device");
-        } else {
-          // The user may not be an admin, so is not allowed to see user info
-        }
-      }
-      this.usersCountLoading = false;
     },
     async fetchRecordingCount() {
       this.recordingsCountLoading = true;

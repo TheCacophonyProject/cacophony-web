@@ -43,12 +43,6 @@ describe("Events - query events", () => {
     cy.apiGroupUserAdd("eqGroupAdmin", "eqGroupMember", "eqGroup", false);
     cy.apiDeviceAdd("eqOtherCamera", "eqGroup");
 
-    //admin and member for single device
-    cy.apiUserAdd("eqDeviceAdmin");
-    cy.apiUserAdd("eqDeviceMember");
-    cy.apiDeviceUserAdd("eqGroupAdmin", "eqDeviceAdmin", "eqCamera", true);
-    cy.apiDeviceUserAdd("eqGroupAdmin", "eqDeviceMember", "eqCamera", true);
-
     //another group and device
     cy.testCreateUserGroupAndDevice(
       "eqOtherGroupAdmin",
@@ -132,26 +126,6 @@ describe("Events - query events", () => {
     );
   });
 
-  it("Device admin can view events only on their devices", () => {
-    cy.apiEventsCheck(
-      "eqDeviceAdmin",
-      undefined,
-      {},
-      [expectedEvent1, expectedEvent2],
-      EXCL_TIME_ID
-    );
-  });
-
-  it("Device member can view events only on their devices", () => {
-    cy.apiEventsCheck(
-      "eqDeviceMember",
-      undefined,
-      {},
-      [expectedEvent1, expectedEvent2],
-      EXCL_TIME_ID
-    );
-  });
-
   it("Group admin can only request events from within their group", () => {
     cy.apiEventsCheck(
       "eqGroupAdmin",
@@ -173,32 +147,6 @@ describe("Events - query events", () => {
       {},
       [],
       EXCL_TIME_ID,
-      HTTP_Forbidden
-    );
-  });
-
-  it("Device admin can only request events from within their device", () => {
-    cy.apiEventsCheck(
-      "eqDeviceAdmin",
-      "eqCamera",
-      {},
-      [expectedEvent1, expectedEvent2],
-      EXCL_TIME_ID
-    );
-    cy.apiEventsCheck(
-      "eqDeviceAdmin",
-      "eqOtherCamera",
-      {},
-      [],
-      [],
-      HTTP_Forbidden
-    );
-    cy.apiEventsCheck(
-      "eqDeviceAdmin",
-      "eqOtherGroupCamera",
-      {},
-      [],
-      [],
       HTTP_Forbidden
     );
   });

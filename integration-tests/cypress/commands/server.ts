@@ -306,11 +306,20 @@ export function checkTreeStructuresAreEqualExcept(
         `Expect result includes parameter ${prettyTreeSoFar} :::`
       ).equal(typeof containedStruct);
 
+      const keyDiff = (a, b) => {
+        return {
+          missingKeys: Object.keys(a).filter((key) => !b.hasOwnProperty(key)),
+          unknownKeys: Object.keys(b).filter((key) => !a.hasOwnProperty(key)),
+        };
+      };
+
       expect(
         Object.keys(containingStruct).length,
         `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
           containingStruct
-        ).toString()}]`
+        ).toString()}] - Diff: ${JSON.stringify(
+          keyDiff(containedStruct, containingStruct)
+        )}`
       ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order

@@ -16,21 +16,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { GroupId, UserId } from "@typedefs/api/common";
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 
-export enum AccessLevel {
-  None = 0,
-  Read = 1,
-  Admin = 2,
-}
-
 export interface GroupUsers extends Sequelize.Model, ModelCommon<GroupUsers> {}
-export interface GroupUsersStatic extends ModelStaticCommon<GroupUsers> {
-  isAdmin: (groupId: GroupId, userId: UserId) => Promise<boolean>;
-  getAccessLevel: (groupId: GroupId, userId: UserId) => Promise<AccessLevel>;
-}
+export interface GroupUsersStatic extends ModelStaticCommon<GroupUsers> {}
 
 export default function (sequelize, DataTypes): GroupUsersStatic {
   const name = "GroupUsers";
@@ -52,30 +42,6 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
   //---------------
   // CLASS METHODS
   //---------------
-
-  /**
-   * Checks if a user is a admin of a group.
-   */
-  GroupUsers.isAdmin = async function (groupId, userId) {
-    return (await this.getAccessLevel(groupId, userId)) == AccessLevel.Admin;
-  };
-
-  /**
-   * Checks if a user is a admin of a group.
-   */
-  GroupUsers.getAccessLevel = async function (groupId, userId) {
-    const groupUsers = await this.findOne({
-      where: {
-        GroupId: groupId,
-        UserId: userId,
-      },
-    });
-
-    if (groupUsers == null) {
-      return AccessLevel.None;
-    }
-    return groupUsers.admin ? AccessLevel.Admin : AccessLevel.Read;
-  };
 
   return GroupUsers;
 }

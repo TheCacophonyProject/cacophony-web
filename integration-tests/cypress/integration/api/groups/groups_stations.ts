@@ -12,7 +12,6 @@ import { ApiStationResponse } from "@typedefs/api/station";
 import { getTestName } from "@commands/names";
 
 describe("Groups - add/update/query/remove stations from group", () => {
-  const ADMIN = true;
   const NOT_ADMIN = false;
 
   //do not validate updatedAt or createdAt values
@@ -91,10 +90,6 @@ describe("Groups - add/update/query/remove stations from group", () => {
     //group member for this group
     cy.apiUserAdd("gsGroupMember");
     cy.apiGroupUserAdd("gsGroupAdmin", "gsGroupMember", "gsGroup", NOT_ADMIN);
-
-    //device admin for 1st device
-    cy.apiUserAdd("gsDeviceAdmin");
-    cy.apiDeviceUserAdd("gsGroupAdmin", "gsDeviceAdmin", "gsCamera", ADMIN);
 
     // test users
     cy.apiUserAdd("gsTestUser");

@@ -84,12 +84,7 @@ describe("Tracks: add, check, delete", () => {
     cy.apiDeviceAdd("trkCamera1b", "trkGroup");
     cy.apiUserAdd("trkGroupMember");
 
-    //Add admin & member to Camera1
-    cy.apiUserAdd("trkDeviceAdmin");
-    cy.apiUserAdd("trkDeviceMember");
     cy.apiGroupUserAdd("trkGroupAdmin", "trkGroupMember", "trkGroup", true);
-    cy.apiDeviceUserAdd("trkGroupAdmin", "trkDeviceAdmin", "trkCamera1", true);
-    cy.apiDeviceUserAdd("trkGroupAdmin", "trkDeviceMember", "trkCamera1", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(
@@ -161,69 +156,6 @@ describe("Tracks: add, check, delete", () => {
 
     cy.log("Check track no longer exists");
     cy.apiTrackCheck("trkGroupMember", "trkRecording2", []);
-  });
-
-  it("Device admin can add, view and delete device's tracks", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAdd("trkCamera1", recording1, undefined, "trkRecording3");
-
-    cy.log("Add track to recording");
-    cy.apiTrackAdd(
-      "trkDeviceAdmin",
-      "trkRecording3",
-      "trkTrack3",
-      "trkAlgorithm3",
-      track1,
-      algorithm1
-    );
-
-    cy.log("Check recording tag can be viewed correctly");
-    cy.apiTrackCheck(
-      "trkDeviceAdmin",
-      "trkRecording3",
-      [expectedTrack],
-      EXCLUDE_IDS
-    );
-
-    cy.log("Delete tag");
-    cy.apiTrackDelete("trkGroupAdmin", "trkRecording3", "trkTrack3");
-
-    cy.log("Check track no longer exists");
-    cy.apiTrackCheck("trkDeviceAdmin", "trkRecording3", []);
-  });
-
-  it("Device member can add, view and delete device's tracks", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAdd("trkCamera1", recording1, undefined, "trkRecording4");
-
-    cy.log("Add track to recording");
-    cy.apiTrackAdd(
-      "trkDeviceMember",
-      "trkRecording4",
-      "trkTrack4",
-      "trkAlgorithm4",
-      track1,
-      algorithm1
-    );
-
-    cy.log("Check recording tag can be viewed correctly");
-    cy.apiTrackCheck(
-      "trkDeviceMember",
-      "trkRecording4",
-      [expectedTrack],
-      EXCLUDE_IDS
-    );
-    cy.log("Delete tag");
-    cy.apiTrackDelete("trkDeviceMember", "trkRecording4", "trkTrack4");
-
-    cy.log("Check track no longer exists");
-    cy.apiTrackCheck("trkGroupAdmin", "trkRecording4", []);
   });
 
   it("Cannot add, view or delete tracks from someone else's device", () => {

@@ -98,12 +98,6 @@ describe("Update recordings", () => {
     cy.apiUserAdd("ruGroupMember");
     cy.apiGroupUserAdd("ruGroupAdmin", "ruGroupMember", "ruGroup", true);
 
-    //Device1 admin and member
-    cy.apiUserAdd("ruDeviceAdmin");
-    cy.apiUserAdd("ruDeviceMember");
-    cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceAdmin", "ruCamera1", true);
-    cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceMember", "ruCamera1", true);
-
     //Second group with admin and device
     cy.testCreateUserGroupAndDevice("ruGroup2Admin", "ruGroup2", "ruCamera2");
   });
@@ -184,82 +178,6 @@ describe("Update recordings", () => {
     });
   });
 
-  it("Device admin can update recording", () => {
-    const recording03 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd(
-      "ruCamera1",
-      recording03,
-      "oneframe.cptv",
-      "ruRecording03"
-    ).then(() => {
-      let expectedRecording03 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "ruRecording03",
-        "ruCamera1",
-        "ruGroup",
-        null,
-        recording03
-      );
-      cy.log("Check recording prior to update");
-      cy.apiRecordingCheck(
-        "ruDeviceAdmin",
-        "ruRecording03",
-        expectedRecording03,
-        EXCLUDE_IDS
-      ).then(() => {
-        cy.log("Update recording");
-        cy.apiRecordingUpdate("ruDeviceAdmin", "ruRecording03", fieldUpdates);
-        expectedRecording03 = updateExpected(expectedRecording03);
-
-        cy.log("Check recording after update");
-        cy.apiRecordingCheck(
-          "ruDeviceAdmin",
-          "ruRecording03",
-          expectedRecording03,
-          EXCLUDE_IDS
-        );
-      });
-    });
-  });
-
-  it("Device member can update recording", () => {
-    const recording04 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd(
-      "ruCamera1",
-      recording04,
-      "oneframe.cptv",
-      "ruRecording04"
-    ).then(() => {
-      let expectedRecording04 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "ruRecording04",
-        "ruCamera1",
-        "ruGroup",
-        null,
-        recording04
-      );
-      cy.log("Check recording prior to update");
-      cy.apiRecordingCheck(
-        "ruDeviceMember",
-        "ruRecording04",
-        expectedRecording04,
-        EXCLUDE_IDS
-      ).then(() => {
-        cy.log("Update recording");
-        cy.apiRecordingUpdate("ruDeviceMember", "ruRecording04", fieldUpdates);
-        expectedRecording04 = updateExpected(expectedRecording04);
-
-        cy.log("Check recording after update");
-        cy.apiRecordingCheck(
-          "ruDeviceMember",
-          "ruRecording04",
-          expectedRecording04,
-          EXCLUDE_IDS
-        );
-      });
-    });
-  });
-
   it("Non member cannot update recording", () => {
     const recording05 = TestCreateRecordingData(templateRecording);
     cy.apiRecordingAdd(
@@ -286,7 +204,7 @@ describe("Update recordings", () => {
 
       cy.log("Check recording not updated");
       cy.apiRecordingCheck(
-        "ruDeviceMember",
+        "ruGroupMember",
         "ruRecording05",
         expectedRecording05,
         EXCLUDE_IDS
@@ -337,7 +255,7 @@ describe("Update recordings", () => {
 
       cy.log("Check recording not updated");
       cy.apiRecordingCheck(
-        "ruDeviceMember",
+        "ruGroupMember",
         "ruRecording06",
         expectedRecording06,
         EXCLUDE_IDS

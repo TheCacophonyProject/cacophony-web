@@ -118,11 +118,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiUserAdd("rarGroupMember");
 
     //Add device admin and member to Device1
-    cy.apiUserAdd("rarDeviceAdmin");
-    cy.apiUserAdd("rarDeviceMember");
     cy.apiGroupUserAdd("rarGroupAdmin", "rarGroupMember", "rarGroup", true);
-    cy.apiDeviceUserAdd("rarGroupAdmin", "rarDeviceAdmin", "rarDevice1", true);
-    cy.apiDeviceUserAdd("rarGroupAdmin", "rarDeviceMember", "rarDevice1", true);
 
     //Create Group2 with admin & device
     cy.testCreateUserGroupAndDevice(

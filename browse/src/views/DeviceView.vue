@@ -12,10 +12,7 @@
     <b-jumbotron class="jumbotron" fluid>
       <div>
         <h1 class="d-inline-block">
-          <GroupLink
-            :group-name="groupName"
-            :context="userIsMemberOfGroup ? 'devices' : 'limited-devices'"
-          />
+          <GroupLink :group-name="groupName" context="devices" />
           <font-awesome-icon
             icon="chevron-right"
             size="xs"
@@ -57,8 +54,6 @@ import { mapState } from "vuex";
 import DeviceDetail from "../components/Devices/DeviceDetail.vue";
 import Spinner from "../components/Spinner.vue";
 import api from "../api";
-import { isViewingAsOtherUser } from "@/components/NavBar.vue";
-import { shouldViewAsSuperUser } from "@/utils";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import { ApiGroupResponse } from "@typedefs/api/group";
 import GroupLink from "@/components/GroupLink.vue";
@@ -77,15 +72,6 @@ export default {
     ...mapState({
       currentUser: (state) => (state as any).User.userData,
     }),
-    userIsSuperUserAndViewingAsSuperUser() {
-      return (
-        this.currentUser.globalPermission === "write" &&
-        (isViewingAsOtherUser() || shouldViewAsSuperUser())
-      );
-    },
-    userIsMemberOfGroup() {
-      return this.group !== null;
-    },
     deviceName() {
       return this.$route.params.deviceName;
     },

@@ -231,12 +231,6 @@ describe("Recordings query using where", () => {
     cy.apiGroupUserAdd("rqGroupAdmin", "rqGroupMember", "rqGroup", true);
     cy.apiDeviceAdd("rqCamera1b", "rqGroup");
 
-    //Add device admin and member to device 1
-    cy.apiUserAdd("rqDeviceAdmin");
-    cy.apiUserAdd("rqDeviceMember");
-    cy.apiDeviceUserAdd("rqGroupAdmin", "rqDeviceAdmin", "rqCamera1", true);
-    cy.apiDeviceUserAdd("rqGroupAdmin", "rqDeviceMember", "rqCamera1", true);
-
     //Create a 2nd group, admin & device
     cy.testCreateUserGroupAndDevice("rqGroup2Admin", "rqGroup2", "rqCamera2");
 
@@ -255,7 +249,6 @@ describe("Recordings query using where", () => {
           null,
           recording1
         );
-
         cy.apiRecordingAdd(
           "rqCamera1",
           recording2,
@@ -286,6 +279,13 @@ describe("Recordings query using where", () => {
               null,
               recording3
             );
+
+            cy.log(
+              "!!",
+              JSON.stringify(expectedRecording3),
+              JSON.stringify(recording3)
+            );
+
             expectedRecording3.processingState =
               RecordingProcessingState.AnalyseThermal;
 
@@ -404,39 +404,6 @@ describe("Recordings query using where", () => {
     cy.log("Check recording count can be viewed correctly");
     cy.apiRecordingsCountCheck(
       "rqGroupMember",
-      { where: { id: getCreds("rqRecording1").id } },
-      1
-    );
-  });
-
-  //RecordingsCount does not return data for device admin/member
-  it.skip("Device admin can query device's recordings", () => {
-    cy.log("Check recording can be viewed correctly");
-    cy.apiRecordingsQueryCheck(
-      "rqDeviceAdmin",
-      { where: { id: getCreds("rqRecording1").id } },
-      [expectedRecording1],
-      EXCLUDE_IDS
-    );
-    cy.log("Check recording count can be viewed correctly");
-    cy.apiRecordingsCountCheck(
-      "rqDeviceAdmin",
-      { where: { id: getCreds("rqRecording1").id } },
-      1
-    );
-  });
-
-  it.skip("Device member can query device's recordings", () => {
-    cy.log("Check recording can be viewed correctly");
-    cy.apiRecordingsQueryCheck(
-      "rqDeviceMember",
-      { where: { id: getCreds("rqRecording1").id } },
-      [expectedRecording1],
-      EXCLUDE_IDS
-    );
-    cy.log("Check recording count can be viewed correctly");
-    cy.apiRecordingsCountCheck(
-      "rqDeviceMember",
       { where: { id: getCreds("rqRecording1").id } },
       1
     );
@@ -871,10 +838,11 @@ describe("Recordings query using where", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
-      cy.apiDeviceUserAdd(
+      cy.apiGroupUserAdd(
         "rqGroupAdmin",
         superuser,
-        "rqCamera1b",
+        "rqGroup",
+        true,
         true,
         HTTP_OK200,
         { useRawUserName: true }
@@ -882,18 +850,19 @@ describe("Recordings query using where", () => {
 
       cy.apiRecordingsQueryCheck(
         superuser,
-        { where: {}, "view-mode": "user" },
-        [expectedRecording3, expectedRecording4],
+        { where: {}, "view-mode": "user", order: '[["id", "ASC"]]' },
+        [
+          expectedRecording1,
+          expectedRecording2,
+          expectedRecording3,
+          expectedRecording4,
+        ],
         EXCLUDE_IDS
       );
       //cy.apiRecordingsCountCheck( superuser, {where: {}, "view-mode":'user'}, 2);
-      cy.apiDeviceUserRemove(
-        "rqGroupAdmin",
-        superuser,
-        "rqCamera1b",
-        HTTP_OK200,
-        { useRawUserName: true }
-      );
+      cy.apiGroupUserRemove("rqGroupAdmin", superuser, "rqGroup", HTTP_OK200, {
+        useRawUserName: true,
+      });
     });
   } else {
     it.skip("Super-user as user should see only their recordings", () => {});
