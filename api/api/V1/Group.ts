@@ -56,8 +56,7 @@ import {
 } from "@typedefs/api/station";
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
-import { mapStations } from "./Station";
-import logger from "@log";
+import {mapStation, mapStations } from "./Station";
 
 const mapGroup = (
   group: Group,
@@ -470,7 +469,7 @@ export default function (app: Application, baseUrl: string) {
   /**
    * @api {post} /api/v1/groups/:groupIdOrName/stations Add, Update and retire current stations belonging to group
    * @apiName PostStationsForGroup
-   * @apiGroup Group
+   * @apiGroup Station
    * @apiDescription A group admin or an admin with globalWrite permissions can update stations for a group.
    *
    * @apiUse V1UserAuthorizationHeader
@@ -522,11 +521,81 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
+   * @api {get} /api/v1/groups/:groupIdOrName/station Add a single station.
+   * @apiName CreateStation
+   * @apiGroup Station
+   * @apiDescription Create a single station
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Integer} stationId StationId id of new station.
+   * @apiUse V1ResponseError
+   */
+  app.post(
+      `${apiUrl}/:groupIdOrName/station`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        body("station")
+            .exists()
+            .custom(jsonSchemaOf(ApiCreateStationDataSchema)),
+      ]),
+      fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+      async (request: Request, response: Response) => {
+        // TODO(StationEdits): Check for other non-retired stations too close to this new station,
+        //  warn if there are any.
+
+        // NOTE: If we create a new station, do we want to also have an optional date range that
+        //  we pass to make it re-match recordings for that new station?
+        //  In that case response could also say how many recordings were matched?
+        const station = await response.locals.group.addStation(response.locals.station);
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got station"],
+          stationId: station.id,
+        });
+      }
+  );
+
+  /**
+   * @api {get} /api/v1/groups/:groupIdOrName/station/:stationName Get station by name in group
+   * @apiName GetStationInGroup
+   * @apiGroup Station
+   * @apiDescription Get an *active* station by name in a group.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiStationResponseSuccess} station Station.
+   * @apiUse V1ResponseError
+   */
+  app.get(
+      `${apiUrl}/:groupIdOrName/station/:stationName`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        nameOrIdOf(param("groupIdOrName")),
+        nameOrIdOf(param("stationName")),
+        query("view-mode").optional().equals("user"),
+        query("only-active").default(false).isBoolean().toBoolean(),
+      ]),
+      fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+      // fetchUnauthorizedRequiredStationByNameInGroup(param("groupIdOrName"), param("stationName")),
+      async (request: Request, response: Response) => {
+        // TODO(StationEdits): get station in group.
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got station"],
+          station: mapStation(response.locals.station),
+        });
+      }
+  );
+
+  /**
    * @api {get} /api/v1/groups/:groupIdOrName/stations Retrieves all stations from a group, including retired ones.
    * @apiName GetStationsForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view stations that belong
-   * to a group.
+   * to a group.q
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -560,6 +629,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
+    // FIXME - only-active doesn't look like it does anything at the moment.
     async (request: Request, response: Response) => {
       const stations = await response.locals.stations;
       return responseUtil.send(response, {

@@ -6,10 +6,12 @@ import {
 } from "@api/extract-middleware";
 import responseUtil from "@api/V1/responseUtil";
 import { validateFields } from "@api/middleware";
-import { param, query } from "express-validator";
+import {body, param, query} from "express-validator";
 import { Station } from "@models/Station";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { idOf } from "../validation-middleware";
+import {jsonSchemaOf} from "@api/schema-validation";
+import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -21,7 +23,7 @@ interface ApiStationResponseSuccess {
   stations: ApiStationResponse;
 }
 
-const mapStation = (station: Station): ApiStationResponse => {
+export const mapStation = (station: Station): ApiStationResponse => {
   const stationResponse: ApiStationResponse = {
     name: station.name,
     id: station.id,
@@ -108,5 +110,37 @@ export default function (app: Application, baseUrl: string) {
         station: mapStation(response.locals.station),
       });
     }
+  );
+
+  /**
+   * @api {patch} /api/v1/stations/:id
+   * @apiName UpdateStationById
+   * @apiGroup Station
+   * @apiDescription Update a single station by id
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+      `${apiUrl}/:id`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(param("id")),
+        body("station")
+            .exists()
+            .custom(jsonSchemaOf(ApiCreateStationDataSchema)),
+      ]),
+
+      // TODO(StationEdits): fetchAdminAuthorizedStationById
+      fetchAuthorizedRequiredStationById(param("id")),
+      async (request: Request, response: Response) => {
+        await response.locals.station.update(response.locals.station);
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Updated station"],
+        });
+      }
   );
 }
