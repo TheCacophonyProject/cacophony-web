@@ -105,7 +105,10 @@
     <!--        :alt="`thumbnail for #${item.id}`"-->
     <!--      />-->
     <!--    </div>-->
-    <div v-if="item.location !== '(unknown)'"     :class="['recording-location', headerClass]">
+    <div
+      v-if="item.location !== '(unknown)'"
+      :class="['recording-location', headerClass]"
+    >
       <a
         @click.stop.prevent="showLocation"
         title="View location"
@@ -273,7 +276,6 @@ const collateTags = (recTags: any[], tracks: any[]): DisplayTag[] => {
   });
   return result;
 };
-
 
 export default {
   name: "RecordingSummary",

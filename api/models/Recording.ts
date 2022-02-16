@@ -1110,7 +1110,7 @@ from (
       {
         model: models.Track,
 
-        where:trackWhere,
+        where: trackWhere,
         separate: true,
         attributes: [
           "id",

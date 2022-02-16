@@ -82,24 +82,25 @@
             :futureSearchQuery="viewRecordingQuery"
           />
 
-        <div
-          v-for="i in queryPending ? 10 : 0"
-          :key="i"
-          class="recording-summary-row"
-          :style="{
-            background: `rgba(240, 240, 240, ${1 / i}`,
-          }"
-        >
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
+          <div
+            v-for="i in queryPending ? 10 : 0"
+            :key="i"
+            class="recording-summary-row"
+            :style="{
+              background: `rgba(240, 240, 240, ${1 / i}`,
+            }"
+          >
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+          </div>
         </div>
       </div>
     </div>
