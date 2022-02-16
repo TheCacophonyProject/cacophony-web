@@ -78,6 +78,8 @@ interface RecordingQueryBuilder {
     offset?: number,
     limit?: number,
     order?: any,
+    viewAsSuperAdmin?: boolean,
+    filtered?: boolean
   ) => RecordingQueryBuilderInstance;
   handleTagMode: (tagMode: TagMode, tagWhatsIn: string[]) => SqlString;
   recordingTaggedWith: (tagModes: string[], any) => SqlString;
@@ -800,7 +802,7 @@ from (
     offset?: number,
     limit?: number,
     order?: any,
-    viewAsSuperUser?: boolean,
+    viewAsSuperAdmin?: boolean,
     hideFiltered?: boolean
   ) {
     if (!where) {
@@ -896,7 +898,7 @@ from (
         {
           model: models.Track,
           where: trackWhere,
-        required: trackRequired,
+          required: trackRequired,
           separate: true,
           attributes: [
             "id",

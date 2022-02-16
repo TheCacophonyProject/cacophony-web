@@ -13,12 +13,15 @@ module.exports = {
     );
     const transaction = await sequelize.transaction();
     try {
-      for (const {UserId, GroupId} of devicesWithDeviceUsers[0]) {
+      for (const { UserId, GroupId } of devicesWithDeviceUsers[0]) {
         // Add each user as a group member of the devices' group.
-        await sequelize.query(`insert into "GroupUsers" ("GroupId", "UserId", "createdAt", "updatedAt")
-                               values (${GroupId}, ${UserId}, NOW(), NOW())`, {transaction});
+        await sequelize.query(
+          `insert into "GroupUsers" ("GroupId", "UserId", "createdAt", "updatedAt")
+                               values (${GroupId}, ${UserId}, NOW(), NOW())`,
+          { transaction }
+        );
       }
-      await queryInterface.dropTable("DeviceUsers", {transaction});
+      await queryInterface.dropTable("DeviceUsers", { transaction });
       await transaction.commit();
     } catch (error) {
       await transaction.rollback();
@@ -33,11 +36,6 @@ module.exports = {
       updatedAt: { type: Sequelize.DATE, allowNull: false },
     });
     await util.addSerial(queryInterface, "DeviceUsers");
-    await util.belongsToMany(
-      queryInterface,
-      "DeviceUsers",
-      "Devices",
-      "Users"
-    );
+    await util.belongsToMany(queryInterface, "DeviceUsers", "Devices", "Users");
   },
 };
