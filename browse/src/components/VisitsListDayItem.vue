@@ -58,6 +58,7 @@ export interface ItemData {
   toDate: Date;
   time: string;
   item: NewVisit;
+  groupName?: string;
 }
 
 // NOTE: Sorting precedence for visit tags displayed as small summary icons

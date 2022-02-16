@@ -48,11 +48,13 @@ export default {
         days: 1,
         group: [this.group.id],
       };
-      try {
+      const countResponse = await recordingsApi.queryCount(params);
+      if (countResponse.success) {
         const {
           result: { count },
-        } = await recordingsApi.queryCount(params);
+        } = countResponse;
         this.count = count;
+        // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
         const hoursAgo =
           (new Date(group.lastRecordingTime).getTime() - oneDayAgo.getTime()) /
           1000 /
@@ -63,9 +65,7 @@ export default {
         // FIXME - count shouldn't be zero.
         // FIXME - 1 day ago doesn't seem to get recordings that are 23.7xx hours old
         //  Could it be because those recordings are corrupt under testing?
-
-        // eslint-disable-next-line no-empty
-      } catch (e) {}
+      }
     } else if (group.lastRecordingTime) {
       //console.log(group.lastRecordingTime);
     }

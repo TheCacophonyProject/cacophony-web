@@ -1,5 +1,4 @@
 import { IsoFormattedDateString, RecordingId, TagId, UserId } from "./common";
-import { AcceptableTag } from "./consts";
 
 export interface ApiRecordingTagRequest {
   detail?: string;

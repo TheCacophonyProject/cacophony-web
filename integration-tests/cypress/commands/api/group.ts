@@ -19,7 +19,6 @@ import {
   ApiGroupReturned,
   ApiGroupsDevice,
   ApiStationData,
-  ApiStationDataReturned,
 } from "../types";
 import { ApiStationResponse } from "@typedefs/api/station";
 
@@ -451,6 +450,14 @@ Cypress.Commands.add(
         expectedWarnings.forEach(function (warning: string) {
           expect(warnings, "Expect warning to be present").to.contain(warning);
         });
+      }
+      if (statusCode == 200) {
+        //store station Ids against names
+        for (let count = 0; count < stations.length; count++) {
+          const stationName = stations[count].name;
+          const stationId = response.body.stationIdsAddedOrUpdated[count];
+          saveIdOnly(stationName, stationId);
+        }
       }
     });
   }

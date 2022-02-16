@@ -31,7 +31,6 @@
 <script lang="ts">
 import { minLength, required } from "vuelidate/lib/validators";
 import api from "@api";
-import { ErrorResult } from "@api/Recording.api";
 
 const groupNameMinLength = 3;
 

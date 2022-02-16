@@ -82,26 +82,24 @@
             :futureSearchQuery="viewRecordingQuery"
           />
 
-          <div
-            v-for="i in queryPending ? 10 : 0"
-            :key="i"
-            class="recording-summary-row"
-            :style="{
-              background: `rgba(240, 240, 240, ${1 / i}`,
-            }"
-          >
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-            <span>&nbsp;</span>
-          </div>
+        <div
+          v-for="i in queryPending ? 10 : 0"
+          :key="i"
+          class="recording-summary-row"
+          :style="{
+            background: `rgba(240, 240, 240, ${1 / i}`,
+          }"
+        >
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
+          <span>&nbsp;</span>
         </div>
       </div>
     </div>
@@ -260,6 +258,7 @@ interface ItemData {
   deviceName: string;
   groupName: string;
   stationName?: string;
+  stationId?: number;
   location: string;
   dateObj: Date;
   date: string;
@@ -376,6 +375,7 @@ export default {
           processingState: parseProcessingState(recording.processingState),
           processing: recording.processing === true,
           stationName: recording.stationName,
+          stationId: recording.stationId,
         };
 
         if (itemData.type == "thermalRaw") {
@@ -492,7 +492,9 @@ export default {
       }
       this.observer && this.observer.observe(observerTrigger);
     } else {
-      this.$refs["list-container"].style.height = "";
+      if (this.showCards) {
+        this.$refs["list-container"].style.height = "auto";
+      }
     }
   },
   methods: {

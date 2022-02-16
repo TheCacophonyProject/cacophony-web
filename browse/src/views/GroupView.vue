@@ -8,21 +8,15 @@
         </b-link>
       </div>
       <h1>
-        <font-awesome-icon icon="users" size="xs" />
-        <span>{{ groupName }}</span>
+        <GroupLink :group-name="groupName" />
       </h1>
       <p class="lead">
         Manage the users associated with this group and view the devices
         associated with it.
       </p>
     </b-jumbotron>
-    <b-tabs
-      card
-      class="group-tabs"
-      nav-class="container"
-      v-model="currentTabIndex"
-    >
-      <b-tab lazy v-if="!limitedView">
+    <tab-list v-model="currentTabIndex">
+      <tab-list-item lazy v-if="!limitedView">
         <template #title>
           <TabTemplate
             title="Users"
@@ -38,22 +32,22 @@
           @user-added="() => fetchUsers()"
           @user-removed="(userName) => removedUser(userName)"
         />
-      </b-tab>
-      <!--      <b-tab>-->
-      <!--        <template #title>-->
-      <!--          <TabTemplate-->
-      <!--            title="Visits"-->
-      <!--            :isLoading="visitsCountLoading"-->
-      <!--            :value="visitsCount"-->
-      <!--          />-->
-      <!--        </template>-->
-      <!--        <MonitoringTab-->
-      <!--          :loading="visitsCountLoading"-->
-      <!--          :group-name="groupName"-->
-      <!--          :visits-query="visitsQueryFinal"-->
-      <!--        />-->
-      <!--      </b-tab>-->
-      <b-tab title="Devices" lazy>
+      </tab-list-item>
+      <tab-list-item lazy v-if="!limitedView">
+        <template #title>
+          <TabTemplate
+            title="Visits"
+            :isLoading="visitsCountLoading"
+            :value="visitsCount"
+          />
+        </template>
+        <MonitoringTab
+          :loading="visitsCountLoading"
+          :group-name="groupName"
+          :visits-query="visitsQueryFinal"
+        />
+      </tab-list-item>
+      <tab-list-item title="Devices" lazy>
         <template #title>
           <TabTemplate
             title="Devices"
@@ -67,8 +61,8 @@
           :loading="devicesLoading"
           :group-name="groupName"
         />
-      </b-tab>
-      <b-tab lazy v-if="!limitedView">
+      </tab-list-item>
+      <tab-list-item lazy v-if="!limitedView">
         <template #title>
           <TabTemplate
             title="Stations"
@@ -83,8 +77,8 @@
           :is-group-admin="isGroupAdmin"
           @change="() => fetchStations()"
         />
-      </b-tab>
-      <b-tab lazy>
+      </tab-list-item>
+      <tab-list-item lazy>
         <template #title>
           <TabTemplate
             title="Recordings"
@@ -97,7 +91,7 @@
           :group-name="groupName"
           :recordings-query="recordingQueryFinal"
         />
-      </b-tab>
+      </tab-list-item>
       <!--      <b-tab lazy v-if="!limitedView">-->
       <!--        <template #title>-->
       <!--          <TabTemplate-->
@@ -112,7 +106,7 @@
       <!--          :recordings-query="deletedRecordingQueryFinal"-->
       <!--        />-->
       <!--      </b-tab>-->
-    </b-tabs>
+    </tab-list>
   </b-container>
 </template>
 
@@ -127,7 +121,10 @@ import RecordingsTab from "@/components/RecordingsTab.vue";
 import { ApiGroupResponse } from "@typedefs/api/group";
 import { GroupId } from "@typedefs/api/common";
 import { DeviceType } from "@typedefs/api/consts";
-//import MonitoringTab from "@/components/MonitoringTab.vue";
+import MonitoringTab from "@/components/MonitoringTab.vue";
+import GroupLink from "@/components/GroupLink.vue";
+import TabListItem from "@/components/TabListItem.vue";
+import TabList from "@/components/TabList.vue";
 
 interface GroupViewData {
   group: ApiGroupResponse | null;
@@ -137,12 +134,15 @@ interface GroupViewData {
 export default {
   name: "GroupView",
   components: {
+    TabListItem,
+    GroupLink,
     RecordingsTab,
     UsersTab,
     StationsTab,
     DevicesTab,
     TabTemplate,
-    //MonitoringTab,
+    MonitoringTab,
+    TabList,
   },
   data(): Record<string, any> & GroupViewData {
     return {
@@ -181,6 +181,7 @@ export default {
       if (!this.limitedView) {
         return [
           "users",
+          "visits",
           "devices",
           "stations",
           "recordings",
@@ -193,7 +194,8 @@ export default {
     nonRetiredStationsCount(): number {
       return (
         this.stations &&
-        this.stations.filter((station) => station.retiredAt === null).length
+        this.stations.filter((station) => !station.hasOwnProperty("retiredAt"))
+          .length
       );
     },
     currentTabName() {
@@ -284,7 +286,7 @@ export default {
         type: "video",
         device: [],
         group: [this.groupId],
-        perPage: 10,
+        perPage: 100,
         page: 1,
       };
     },

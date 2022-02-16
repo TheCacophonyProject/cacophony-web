@@ -20,7 +20,7 @@ import { validateFields } from "../middleware";
 import auth from "../auth";
 import models from "@models";
 import responseUtil from "./responseUtil";
-import { body, param, matchedData } from "express-validator";
+import { body, param, matchedData, query } from "express-validator";
 import { ClientError } from "../customErrors";
 import { Application, NextFunction, Request, Response } from "express";
 import config from "@config";
@@ -35,17 +35,19 @@ import {
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
-  fetchAuthorizedRequiredSchedulesForGroup,
   fetchUnauthorizedOptionalUserByNameOrId,
   fetchUnauthorizedRequiredUserByNameOrId,
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import { mapSchedule } from "@api/V1/Schedule";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
   usersList: ApiLoggedInUserResponse[];
+}
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiLoggedInUserResponseSuccess {
+  userData: ApiLoggedInUserResponse;
 }
 export const mapUser = (user: User): ApiLoggedInUserResponse => ({
   id: user.id,
@@ -133,6 +135,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {String} [userName] New username to set.
    * @apiParam {String} [password] New password to set.
    * @apiParam {String} [email] New email to set.
+   * @apiParam {Number} [endUserAgreement] New version of the end user agreement accepted to set.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -141,6 +144,7 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
+      // FIXME - When passing unknown parameters here, the error returned isn't very useful.
       anyOf(
         validNameOf(body("username")),
         validNameOf(body("userName")),
@@ -196,7 +200,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -204,9 +208,27 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/:userNameOrId`,
     extractJwtAuthorizedUser,
-    validateFields([validNameOf(param("userNameOrId"))]),
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      anyOf(validNameOf(param("userNameOrId")), idOf(param("userNameOrId"))),
+    ]),
     fetchUnauthorizedRequiredUserByNameOrId(param("userNameOrId")),
-    // FIXME - should a regular user be able to get user information for any other user?
+    (request: Request, response: Response, next: NextFunction) => {
+      if (
+        (response.locals.requestUser.hasGlobalRead() &&
+          response.locals.viewAsSuperUser) ||
+        response.locals.requestUser.id === response.locals.user.id
+      ) {
+        return next();
+      } else {
+        return next(
+          new ClientError(
+            "User doesn't have permissions to view other user details",
+            403
+          )
+        );
+      }
+    },
     async (request, response) => {
       return responseUtil.send(response, {
         statusCode: 200,
@@ -267,7 +289,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ChangePassword
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess} userData
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -279,7 +301,7 @@ export default function (app: Application, baseUrl: string) {
       if (response.locals.user.password != response.locals.resetInfo.password) {
         return responseUtil.send(response, {
           statusCode: 403,
-          messages: ["Your password has alread been changed"],
+          messages: ["Your password has already been changed"],
         });
       }
       const result = await response.locals.user.updatePassword(

@@ -455,7 +455,7 @@ export const fetchModel =
           // TODO - provide better error messages in the case the group (id2) doesn't exist?
           return next(
             new ClientError(
-              `Could not find a ${modelName} with an name or id of '${id}'${
+              `Could not find a ${modelName} with a name or id of '${id}'${
                 id2 ? ` in ${id2}` : ""
               }${forUser ? " for user" : ""}`,
               403

@@ -5,7 +5,6 @@ testconfig.json
 ../.idea
 api/**/*.js
 scripts/**/*.js
-!api/**/apidoc.js
 models/**/*.js
 /*.js
 dockerstart.log

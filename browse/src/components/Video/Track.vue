@@ -231,19 +231,23 @@ export default {
           createdAt: new Date().toISOString(),
         },
       ];
-      const {
-        result: { trackTagId },
-      } = await api.recording.replaceTrackTag(tag, recordingId, trackId);
-      if (!trackTagId) {
-        return;
+      const replaceTrackTagResponse = await api.recording.replaceTrackTag(
+        tag,
+        recordingId,
+        trackId
+      );
+      if (replaceTrackTagResponse.success) {
+        const trackTagId = replaceTrackTagResponse.result.trackTagId;
+        const newTag: ApiTrackTagResponse = {
+          ...tag,
+          id: trackTagId,
+          trackId,
+          automatic: false,
+          createdAt: new Date().toDateString(),
+          data: "",
+        };
+        this.$emit("change-tag", newTag);
       }
-      // FIXME - This doesn't actually update the UI more quickly.
-      // Add an initial tag to update the UI more quickly.
-      const newTag: ApiTrackTagResponse = { ...tag };
-      newTag.id = trackTagId;
-      newTag.trackId = trackId;
-      newTag.createdAt = new Date().toISOString();
-      this.$emit("change-tag", newTag);
     },
     promptUserToAddTag() {
       this.showUserTaggingHintCountDown = true;

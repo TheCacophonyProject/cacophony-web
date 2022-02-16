@@ -73,7 +73,12 @@ export default {
       this.successMessage = null;
       evt.preventDefault();
       const response = await User.reset(this.usernameOrEmail);
-      this.successMessage = "An email has been sent to reset your password";
+      if (response.success) {
+        this.successMessage = "An email has been sent to reset your password";
+      } else {
+        this.successMessage =
+          "Password reset request failed, please try again later";
+      }
     },
   },
 };

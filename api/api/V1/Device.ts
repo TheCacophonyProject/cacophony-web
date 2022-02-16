@@ -87,8 +87,8 @@ export const mapDeviceResponse = (
     if (device.location) {
       const { coordinates } = device.location;
       mapped.location = {
-        lat: coordinates[0],
-        lng: coordinates[1],
+        lat: coordinates[1],
+        lng: coordinates[0],
       };
     }
     if (device.public) {
@@ -166,7 +166,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response) => {
       const device = await models.Device.create({
         devicename: request.body.devicename || request.body.deviceName,
         password: request.body.password,
@@ -821,7 +821,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/heartbeat`,
     extractJwtAuthorisedDevice,
     validateFields([body("nextHeartbeat").isISO8601().toDate()]),
-    async function (request: Request, response: Response, next: NextFunction) {
+    async function (request: Request, response: Response) {
       const requestDevice = (await models.Device.findByPk(
         response.locals.requestDevice.id
       )) as Device;

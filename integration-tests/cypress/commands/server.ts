@@ -88,6 +88,13 @@ export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
 
+export function renameCreds(oldName: string, newName: string) {
+  const creds = getCreds(oldName);
+
+  creds["name"] = newName;
+  Cypress.env("testCreds")[newName] = creds;
+}
+
 export function saveCreds(
   response: Cypress.Response<any>,
   name: string,
@@ -410,5 +417,19 @@ export function removeUndefinedParams(jsStruct: any): any {
     return resultStruct;
   } else {
     return jsStruct;
+  }
+}
+
+export function testRunOnApi(command: string) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    cy.exec(`cd ../api && docker-compose exec -T server bash -lic ${command}`);
+  } else {
+    if (Cypress.env("API-ssh-server") != null) {
+      cy.exec(`ssh ${Cypress.env("API-ssh-server")} ${command}`);
+    } else {
+      alert(
+        "Asked to run command on API server but have no credentials to do so"
+      );
+    }
   }
 }

@@ -21,7 +21,6 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { TrackTag, TrackTagId, additionalTags, filteredTags } from "./TrackTag";
 import { Recording } from "./Recording";
 import { RecordingId, TrackId } from "@typedefs/api/common";
-import logger from "@log";
 
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
   filtered: boolean;
