@@ -186,6 +186,7 @@ export default {
         localStorage.setItem("showFiltered", val);
         this.$store.state.User.userData.showFiltered = val;
         this.$refs["player"].renderCurrentFrame(true);
+        this.checkPreviousAndNextRecordings();
       },
       get: function () {
         return this.$store.state.User.userData.showFiltered;

@@ -841,12 +841,25 @@ from (
     if (typeof where === "string") {
       where = JSON.parse(where);
     }
-
+    const constraints = [];
+    constraints.push(where);
+    constraints.push(
+      Sequelize.literal(Recording.queryBuilder.handleTagMode(tagMode, tags))
+    );
     const trackWhere = { archivedAt: null };
-    let trackRequired = false;
+    const trackRequired = false;
     if (hideFiltered) {
-      trackWhere["filtered"] = false;
-      trackRequired = true;
+      const filteredSQL = `(
+		select
+			"RecordingId"
+		from
+			"Tracks" as "Tracks"
+		where
+			(("Tracks"."archivedAt" is null
+				and "Tracks"."filtered" = false)
+			and "Tracks"."RecordingId" = "Recording"."id")
+		limit 1 ) is not null`;
+      constraints.push(Sequelize.literal(filteredSQL));
     }
 
     const requireGroupMembership = viewAsSuperAdmin
@@ -866,12 +879,7 @@ from (
 
     this.query = {
       where: {
-        [Op.and]: [
-          where, // User query
-          Sequelize.literal(
-            Recording.queryBuilder.handleTagMode(tagMode, tags)
-          ),
-        ],
+        [Op.and]: constraints,
       },
       order,
       include: [
