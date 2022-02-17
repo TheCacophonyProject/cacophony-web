@@ -153,7 +153,6 @@ export default function (
 
   Track.prototype.isFiltered = async function () {
     const tags = await this.getTrackTags();
-
     // any human tag that isn't filted
     //  or any ai mastre tag that isn't filtered
 
@@ -190,13 +189,14 @@ export default function (
         ((tag.data?.name && tag.data.name == "Master") ||
           (tag.data && tag.data == "Master"))
     );
-    if (
-      masterTag &&
-      filteredTags.some((filteredTag) => filteredTag == masterTag.what)
-    ) {
-      return true;
+    if (masterTag) {
+      if (filteredTags.some((filteredTag) => filteredTag == masterTag.what)) {
+        return true;
+      } else {
+        return false;
+      }
     }
-    return false;
+    return true;
   };
 
   // Archives tags for reprocessing
