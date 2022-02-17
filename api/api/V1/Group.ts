@@ -31,7 +31,7 @@ import {
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
-  fetchAuthorizedRequiredStationsForGroup,
+  fetchAuthorizedRequiredStationsForGroup, fetchAdminAuthorizedRequiredStationByNameInGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -476,7 +476,8 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiParam {Integer|String} groupNameOrId group name or group id
    * @apiInterface {apiBody::ApiCreateStationDataBody} stations Json array of ApiStation[]
-   * @apiParam {Date} [fromDate] Start date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParam {Date} [from-date] Start date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParam {Date} [until-date] End date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
    * @apiParamExample {json} ApiStation:
    * {
    *   name: "Station Name",
@@ -497,7 +498,8 @@ export default function (app: Application, baseUrl: string) {
       body("stations")
         .exists()
         .custom(jsonSchemaOf(arrayOf(ApiCreateStationDataSchema))),
-      body("fromDate").isISO8601().toDate().optional(),
+      body("from-date").isISO8601().toDate().optional(),
+      body("until-date").isISO8601().toDate().optional(),
       nameOrIdOf(param("groupIdOrName")),
     ]),
     // Extract required resources
@@ -507,9 +509,12 @@ export default function (app: Application, baseUrl: string) {
     async (request, response) => {
       const stationsUpdated = await models.Group.addStationsToGroup(
         response.locals.requestUser.id,
-        response.locals.group,
         response.locals.stations,
-        request.body.fromDate
+        true,
+          response.locals.group,
+        undefined,
+        request.body.fromDate,
+        request.body.untilDate
       );
       // FIXME - validate/formalize return type.
       return responseUtil.send(response, {
@@ -578,10 +583,10 @@ export default function (app: Application, baseUrl: string) {
         query("view-mode").optional().equals("user"),
         query("only-active").default(false).isBoolean().toBoolean(),
       ]),
-      fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-      // fetchUnauthorizedRequiredStationByNameInGroup(param("groupIdOrName"), param("stationName")),
+      // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
+      fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+      fetchAdminAuthorizedRequiredStationByNameInGroup(param("groupIdOrName"), param("stationName")),
       async (request: Request, response: Response) => {
-        // TODO(StationEdits): get station in group.
         return responseUtil.send(response, {
           statusCode: 200,
           messages: ["Got station"],
@@ -627,9 +632,9 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("only-active").default(false).isBoolean().toBoolean(),
     ]),
+    // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
-    // FIXME - only-active doesn't look like it does anything at the moment.
     async (request: Request, response: Response) => {
       const stations = await response.locals.stations;
       return responseUtil.send(response, {

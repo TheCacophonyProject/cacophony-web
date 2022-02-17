@@ -51,7 +51,7 @@ const retireMissingStations = (
 
 const EPSILON = 0.000000000001;
 
-const stationLocationHasChanged = (
+export const stationLocationHasChanged = (
   oldStation: Station,
   newStation: CreateStationData
 ) =>
@@ -59,7 +59,7 @@ const stationLocationHasChanged = (
   Math.abs(oldStation.location.coordinates[1] - newStation.lat) < EPSILON ||
   Math.abs(oldStation.location.coordinates[0] - newStation.lng) < EPSILON;
 
-const checkThatStationsAreNotTooCloseTogether = (
+export const checkThatStationsAreNotTooCloseTogether = (
   stations: Array<Station | CreateStationData>
 ): string | null => {
   const allStations = stations.map((s) => {
@@ -122,19 +122,32 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   authUserId: UserId,
   group: Group,
   fromDate: Date,
-  stations: Station[]
+  stations: Station[],
+  untilDate?: Date,
 ): Promise<Promise<{ station: Station; recording: Recording }>[]> => {
   // Now addedStations are properly resolved with ids:
   // Now we can look for all recordings in the group back to startDate, and check if any of them
   // should be assigned to any of our stations.
 
+  let dateRange: any = {
+    [Op.gte]: fromDate.toISOString(),
+  };
+  if (untilDate) {
+    dateRange = {
+      [Op.and]: [{
+        [Op.gte]: fromDate.toISOString(),
+      },
+        {
+        [Op.lt]: untilDate.toISOString(),
+        }]
+    };
+  }
+
   // Get recordings for group starting at date:
   const builder = new models.Recording.queryBuilder().init(authUserId, {
     // Group id, and after date
     GroupId: group.id,
-    recordingDateTime: {
-      [Op.gte]: fromDate.toISOString(),
-    },
+    recordingDateTime: dateRange,
   });
   builder.query.distinct = true;
   delete builder.query.limit;
@@ -199,12 +212,16 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
 
   addStationsToGroup: (
     authUserId: UserId,
-    group: Group,
     stationsToAdd: CreateStationData[],
-    applyToRecordingsFromDate: Date | undefined
+    shouldRetireMissingStations: boolean,
+    group?: Group,
+    existingStations?: Station[],
+    applyToRecordingsFromDate?: Date,
+    applyToRecordingsUntilDate?: Date,
   ) => Promise<{
     stationIdsAddedOrUpdated: StationId[];
     updatedRecordingsPerStation: Record<StationId, number>;
+    warnings?: string;
   }>;
 }
 
@@ -296,23 +313,29 @@ export default function (sequelize, DataTypes): GroupStatic {
    */
   Group.addStationsToGroup = async function (
     authUserId: UserId,
-    group,
     stationsToAdd,
-    applyToRecordingsFromDate
+    shouldRetireMissingStations = false,
+    group,
+    alreadyExistingStations,
+    applyToRecordingsFromDate,
+    applyToRecordingsUntilDate
   ): Promise<{
     stationIdsAddedOrUpdated: StationId[];
     updatedRecordingsPerStation: Record<StationId, number>;
     warnings?: string;
   }> {
-    // Enforce name uniqueness to group here:
-    const existingStations: Station[] = await group.getStations({
-      where: {
-        // Filter out retired stations.
-        retiredAt: {
-          [Op.eq]: null,
+    let existingStations: Station[] = alreadyExistingStations;
+    if (!existingStations && group) {
+      existingStations = await group.getStations({
+        where: {
+          // Filter out retired stations.
+          retiredAt: {
+            [Op.eq]: null,
+          },
         },
-      },
-    });
+      });
+    }
+    // Enforce name uniqueness to group here:
 
     const existingStationsByName: Record<string, Station> = {};
     const newStationsByName: Record<string, CreateStationData> = {};
@@ -323,11 +346,12 @@ export default function (sequelize, DataTypes): GroupStatic {
 
     // Make sure existing stations that are not in the current update are retired, and removed from
     // the list of existing stations that we are comparing with.
-    const retiredStations = retireMissingStations(
+    // NOTE: This mutates `existingStations` to remove retired stations
+    const retiredStations = shouldRetireMissingStations ? retireMissingStations(
       existingStations,
       newStationsByName,
       authUserId
-    );
+    ) : [];
 
     for (const station of existingStations) {
       existingStationsByName[station.name] = station;
@@ -385,7 +409,8 @@ export default function (sequelize, DataTypes): GroupStatic {
           authUserId,
           group,
           applyToRecordingsFromDate,
-          allStations
+          allStations,
+          applyToRecordingsUntilDate
         );
       updatedRecordings = await Promise.all(updatedRecordings);
     }

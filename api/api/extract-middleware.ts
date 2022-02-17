@@ -631,7 +631,7 @@ const getStations =
 const getStation =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
   (
-    stationId: string,
+    stationNameOrId: string,
     groupNameOrId?: string,
     context?: any
   ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
@@ -640,21 +640,35 @@ const getStation =
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
+    const stationIsId = !isNaN(parseInt(stationNameOrId)) &&
+        parseInt(stationNameOrId).toString() === String(stationNameOrId);
+
     let stationWhere;
     let groupWhere = {};
-    if (groupIsId) {
+
+    if (groupIsId && stationIsId) {
       stationWhere = {
-        id: parseInt(stationId),
+        id: parseInt(stationNameOrId),
         GroupId: parseInt(groupNameOrId),
       };
-    } else if (groupNameOrId) {
+    } else if (stationIsId && groupNameOrId) {
       stationWhere = {
-        id: parseInt(stationId),
+        id: parseInt(stationNameOrId),
         "$Group.groupname$": groupNameOrId,
       };
-    } else if (!groupNameOrId) {
+    } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
-        id: parseInt(stationId),
+        id: parseInt(stationNameOrId),
+      };
+    } else if (groupIsId) {
+      stationWhere = {
+        name: stationNameOrId,
+        GroupId: parseInt(groupNameOrId),
+      };
+    } else {
+      stationWhere = {
+        name: stationNameOrId,
+        "$Group.groupname$": groupNameOrId,
       };
     }
     if (groupIsId) {
@@ -706,7 +720,7 @@ const getStation =
       };
     }
 
-    if (context.onlyActive) {
+    if (context.onlyActive || !stationIsId) {
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
@@ -1532,6 +1546,27 @@ export const fetchAuthorizedRequiredStationById = (
     getStation(true, false),
     stationId
   );
+
+export const fetchAdminAuthorizedRequiredStationById = (
+    stationId: ValidationChain
+) =>
+    fetchRequiredModel(
+        models.Station,
+        false,
+        true,
+        getStation(true, true),
+        stationId
+    );
+
+export const fetchAdminAuthorizedRequiredStationByNameInGroup = (stationNameOrId: ValidationChain, groupNameOrId: ValidationChain) =>
+    fetchRequiredModel(
+        models.Station,
+        true,
+        true,
+        getStation(true, true),
+        stationNameOrId,
+        groupNameOrId
+    );
 
 export const fetchAuthorizedRequiredSchedulesForGroup = (
   groupNameOrId: ValidationChain
