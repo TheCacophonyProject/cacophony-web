@@ -31,7 +31,8 @@ import {
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
-  fetchAuthorizedRequiredStationsForGroup, fetchAdminAuthorizedRequiredStationByNameInGroup,
+  fetchAuthorizedRequiredStationsForGroup,
+  fetchAdminAuthorizedRequiredStationByNameInGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -56,7 +57,7 @@ import {
 } from "@typedefs/api/station";
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
-import {mapStation, mapStations } from "./Station";
+import { mapStation, mapStations } from "./Station";
 
 const mapGroup = (
   group: Group,
@@ -511,7 +512,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser.id,
         response.locals.stations,
         true,
-          response.locals.group,
+        response.locals.group,
         undefined,
         request.body.fromDate,
         request.body.untilDate
@@ -538,28 +539,28 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-      `${apiUrl}/:groupIdOrName/station`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        body("station")
-            .exists()
-            .custom(jsonSchemaOf(ApiCreateStationDataSchema)),
-      ]),
-      fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-      async (request: Request, response: Response) => {
-        // TODO(StationEdits): Check for other non-retired stations too close to this new station,
-        //  warn if there are any.
+    `${apiUrl}/:groupIdOrName/station`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("station").exists().custom(jsonSchemaOf(ApiCreateStationDataSchema)),
+    ]),
+    fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
+      // TODO(StationEdits): Check for other non-retired stations too close to this new station,
+      //  warn if there are any.
 
-        // NOTE: If we create a new station, do we want to also have an optional date range that
-        //  we pass to make it re-match recordings for that new station?
-        //  In that case response could also say how many recordings were matched?
-        const station = await response.locals.group.addStation(response.locals.station);
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got station"],
-          stationId: station.id,
-        });
-      }
+      // NOTE: If we create a new station, do we want to also have an optional date range that
+      //  we pass to make it re-match recordings for that new station?
+      //  In that case response could also say how many recordings were matched?
+      const station = await response.locals.group.addStation(
+        response.locals.station
+      );
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Got station"],
+        stationId: station.id,
+      });
+    }
   );
 
   /**
@@ -575,24 +576,27 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-      `${apiUrl}/:groupIdOrName/station/:stationName`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        nameOrIdOf(param("groupIdOrName")),
-        nameOrIdOf(param("stationName")),
-        query("view-mode").optional().equals("user"),
-        query("only-active").default(false).isBoolean().toBoolean(),
-      ]),
-      // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
-      fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-      fetchAdminAuthorizedRequiredStationByNameInGroup(param("groupIdOrName"), param("stationName")),
-      async (request: Request, response: Response) => {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got station"],
-          station: mapStation(response.locals.station),
-        });
-      }
+    `${apiUrl}/:groupIdOrName/station/:stationName`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      nameOrIdOf(param("stationName")),
+      query("view-mode").optional().equals("user"),
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
+    // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    fetchAdminAuthorizedRequiredStationByNameInGroup(
+      param("groupIdOrName"),
+      param("stationName")
+    ),
+    async (request: Request, response: Response) => {
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Got station"],
+        station: mapStation(response.locals.station),
+      });
+    }
   );
 
   /**

@@ -1,18 +1,24 @@
-import {Application, NextFunction, Request, Response} from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorizedUser, fetchAdminAuthorizedRequiredStationById, fetchAuthorizedRequiredGroupById,
+  extractJwtAuthorizedUser,
+  fetchAdminAuthorizedRequiredStationById,
+  fetchAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredStationById,
-  fetchAuthorizedRequiredStations, fetchAuthorizedRequiredStationsForGroup,
+  fetchAuthorizedRequiredStations,
+  fetchAuthorizedRequiredStationsForGroup,
 } from "@api/extract-middleware";
 import responseUtil from "@api/V1/responseUtil";
 import { validateFields } from "@api/middleware";
-import {body, param, query} from "express-validator";
+import { body, param, query } from "express-validator";
 import { Station } from "@models/Station";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { idOf } from "../validation-middleware";
-import {jsonSchemaOf} from "@api/schema-validation";
+import { jsonSchemaOf } from "@api/schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
-import {checkThatStationsAreNotTooCloseTogether, stationLocationHasChanged} from "@models/Group";
+import {
+  checkThatStationsAreNotTooCloseTogether,
+  stationLocationHasChanged,
+} from "@models/Group";
 import models from "@models";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -126,20 +132,20 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-      `${apiUrl}/:id`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("id")),
-        query("view-mode").optional().equals("user"),
-      ]),
-      fetchAdminAuthorizedRequiredStationById(param("id")),
-      async (request: Request, response: Response) => {
-        await response.locals.station.destroy();
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Deleted station"],
-        });
-      }
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response) => {
+      await response.locals.station.destroy();
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Deleted station"],
+      });
+    }
   );
 
   /**
@@ -154,62 +160,75 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.patch(
-      `${apiUrl}/:id`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("id")),
-        body("station-updates")
-            .exists()
-            .custom(jsonSchemaOf(ApiCreateStationDataSchema)),
-        body("from-date").isISO8601().toDate().optional(),
-        body("until-date").isISO8601().toDate().optional(),
-        body("retire").isBoolean().default(false),
-      ]),
-      fetchAdminAuthorizedRequiredStationById(param("id")),
-      async (request: Request, response: Response, next: NextFunction) => {
-        // We only care about non-retired stations for this query.
-        const updates = response.locals['station-updates'];
-        const existingStation = response.locals.station;
-        const positionUpdated = stationLocationHasChanged(existingStation, updates);
-        if (positionUpdated || request.body.fromDate) {
-          // Get other active stations so that we can warn if the newly updated station
-          // position is too close to another station.
-          response.locals.onlyActive = true;
-          await fetchAuthorizedRequiredStationsForGroup(response.locals.station.GroupId)(request, response, next);
-        }
-      },
-      async (request: Request, response: Response) => {
-        // Merge existing station with updates, filling in any missing fields.
-        const updates = { ...mapStation(response.locals.station), ...response.locals['station-updates'], lastUpdatedById: response.locals.requestUser.id };
-        if (request.body.retire) {
-          updates.retiredAt = new Date();
-        }
-        let proximityWarnings = null;
-        if (response.locals.stations) {
-          const {warnings} = await models.Group.addStationsToGroup(
-              response.locals.requestUser.id,
-              [updates],
-              false,
-              undefined,
-              // Filter out the station we're checking against!
-              response.locals.stations.filter(({id}) => id !== Number(request.params.id)),
-              request.body.fromDate,
-              request.body.untilDate
-          );
-          if (warnings) {
-            proximityWarnings = warnings;
-          }
-        } else {
-          await response.locals.station.update(response.locals['station-updates']);
-        }
-        const responseData: any = {
-          statusCode: 200,
-          messages: ["Updated station"],
-        };
-        if (proximityWarnings) {
-          responseData.warnings = proximityWarnings;
-        }
-        return responseUtil.send(response, responseData);
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      body("station-updates")
+        .exists()
+        .custom(jsonSchemaOf(ApiCreateStationDataSchema)),
+      body("from-date").isISO8601().toDate().optional(),
+      body("until-date").isISO8601().toDate().optional(),
+      body("retire").isBoolean().default(false),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // We only care about non-retired stations for this query.
+      const updates = response.locals["station-updates"];
+      const existingStation = response.locals.station;
+      const positionUpdated = stationLocationHasChanged(
+        existingStation,
+        updates
+      );
+      if (positionUpdated || request.body.fromDate) {
+        // Get other active stations so that we can warn if the newly updated station
+        // position is too close to another station.
+        response.locals.onlyActive = true;
+        await fetchAuthorizedRequiredStationsForGroup(
+          response.locals.station.GroupId
+        )(request, response, next);
       }
+    },
+    async (request: Request, response: Response) => {
+      // Merge existing station with updates, filling in any missing fields.
+      const updates = {
+        ...mapStation(response.locals.station),
+        ...response.locals["station-updates"],
+        lastUpdatedById: response.locals.requestUser.id,
+      };
+      if (request.body.retire) {
+        updates.retiredAt = new Date();
+      }
+      let proximityWarnings = null;
+      if (response.locals.stations) {
+        const { warnings } = await models.Group.addStationsToGroup(
+          response.locals.requestUser.id,
+          [updates],
+          false,
+          undefined,
+          // Filter out the station we're checking against!
+          response.locals.stations.filter(
+            ({ id }) => id !== Number(request.params.id)
+          ),
+          request.body.fromDate,
+          request.body.untilDate
+        );
+        if (warnings) {
+          proximityWarnings = warnings;
+        }
+      } else {
+        await response.locals.station.update(
+          response.locals["station-updates"]
+        );
+      }
+      const responseData: any = {
+        statusCode: 200,
+        messages: ["Updated station"],
+      };
+      if (proximityWarnings) {
+        responseData.warnings = proximityWarnings;
+      }
+      return responseUtil.send(response, responseData);
+    }
   );
 }

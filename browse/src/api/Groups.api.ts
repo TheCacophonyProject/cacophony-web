@@ -99,7 +99,6 @@ function getStationsForGroup(
   );
 }
 
-
 function createStationInGroup(
   groupNameOrId: string | GroupId,
   station: { name: string; lat: number; lng: number },

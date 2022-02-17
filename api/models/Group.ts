@@ -123,7 +123,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   group: Group,
   fromDate: Date,
   stations: Station[],
-  untilDate?: Date,
+  untilDate?: Date
 ): Promise<Promise<{ station: Station; recording: Recording }>[]> => {
   // Now addedStations are properly resolved with ids:
   // Now we can look for all recordings in the group back to startDate, and check if any of them
@@ -134,12 +134,14 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   };
   if (untilDate) {
     dateRange = {
-      [Op.and]: [{
-        [Op.gte]: fromDate.toISOString(),
-      },
+      [Op.and]: [
         {
-        [Op.lt]: untilDate.toISOString(),
-        }]
+          [Op.gte]: fromDate.toISOString(),
+        },
+        {
+          [Op.lt]: untilDate.toISOString(),
+        },
+      ],
     };
   }
 
@@ -217,7 +219,7 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
     group?: Group,
     existingStations?: Station[],
     applyToRecordingsFromDate?: Date,
-    applyToRecordingsUntilDate?: Date,
+    applyToRecordingsUntilDate?: Date
   ) => Promise<{
     stationIdsAddedOrUpdated: StationId[];
     updatedRecordingsPerStation: Record<StationId, number>;
@@ -347,11 +349,9 @@ export default function (sequelize, DataTypes): GroupStatic {
     // Make sure existing stations that are not in the current update are retired, and removed from
     // the list of existing stations that we are comparing with.
     // NOTE: This mutates `existingStations` to remove retired stations
-    const retiredStations = shouldRetireMissingStations ? retireMissingStations(
-      existingStations,
-      newStationsByName,
-      authUserId
-    ) : [];
+    const retiredStations = shouldRetireMissingStations
+      ? retireMissingStations(existingStations, newStationsByName, authUserId)
+      : [];
 
     for (const station of existingStations) {
       existingStationsByName[station.name] = station;

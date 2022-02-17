@@ -640,8 +640,9 @@ const getStation =
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
-    const stationIsId = !isNaN(parseInt(stationNameOrId)) &&
-        parseInt(stationNameOrId).toString() === String(stationNameOrId);
+    const stationIsId =
+      !isNaN(parseInt(stationNameOrId)) &&
+      parseInt(stationNameOrId).toString() === String(stationNameOrId);
 
     let stationWhere;
     let groupWhere = {};
@@ -1548,25 +1549,28 @@ export const fetchAuthorizedRequiredStationById = (
   );
 
 export const fetchAdminAuthorizedRequiredStationById = (
-    stationId: ValidationChain
+  stationId: ValidationChain
 ) =>
-    fetchRequiredModel(
-        models.Station,
-        false,
-        true,
-        getStation(true, true),
-        stationId
-    );
+  fetchRequiredModel(
+    models.Station,
+    false,
+    true,
+    getStation(true, true),
+    stationId
+  );
 
-export const fetchAdminAuthorizedRequiredStationByNameInGroup = (stationNameOrId: ValidationChain, groupNameOrId: ValidationChain) =>
-    fetchRequiredModel(
-        models.Station,
-        true,
-        true,
-        getStation(true, true),
-        stationNameOrId,
-        groupNameOrId
-    );
+export const fetchAdminAuthorizedRequiredStationByNameInGroup = (
+  stationNameOrId: ValidationChain,
+  groupNameOrId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Station,
+    true,
+    true,
+    getStation(true, true),
+    stationNameOrId,
+    groupNameOrId
+  );
 
 export const fetchAuthorizedRequiredSchedulesForGroup = (
   groupNameOrId: ValidationChain
