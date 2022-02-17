@@ -47,7 +47,7 @@ script:
   - cd integration-tests
   - cp cypress.json.TEMPLATE cypress.json
   - npm install
-  - npm run release
+  # - npm run release
   - cd ../api
   # Generate api docs
   - npm update apidoc-plugin-ts
