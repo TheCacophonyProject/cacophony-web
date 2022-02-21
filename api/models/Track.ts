@@ -216,6 +216,7 @@ export default function (
         },
       }
     );
+    this.update({filtered:true})
   };
   return Track;
 }
