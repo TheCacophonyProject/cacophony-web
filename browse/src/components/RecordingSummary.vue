@@ -168,7 +168,6 @@ import TagBadge from "./TagBadge.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import CacophonyIndexGraph from "@/components/Audio/CacophonyIndexGraph.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
-import { CacophonyIndex } from "@typedefs/api/recording";
 import api from "@/api";
 import DeviceLink from "@/components/DeviceLink.vue";
 import StationLink from "@/components/StationLink.vue";
@@ -468,11 +467,17 @@ $recording-side-padding-small: 0.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 90px;
-  margin: 0.5em;
+  width: 50px;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
   border-radius: 0.5em;
-  padding: 0.4em;
+  padding: 0.1em;
   border: 2px solid $gray-300;
+  @include media-breakpoint-up(sm) {
+    width: 90px;
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+  }
   @include media-breakpoint-between(xs, sm) {
     margin-right: 0.5em !important;
   }

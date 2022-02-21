@@ -249,16 +249,15 @@ const DefaultLabels = {
 };
 
 export const TagColours = [
-  "#F44336",
-  "#E91E63",
-  "#9C27B0",
-  "#673AB7",
-  "#3F51B5",
-  "#2196F3",
-  "#03A9F4",
-  "#00BCD4",
-  "#009688",
-  "#4CAF50",
+  // swedish flat ui pallete
+  "#575fcf",
+  "#4bcffa",
+  "#f7b731",
+  "#ffdd59",
+  "#0be881",
+  "#00d8d6",
+  "#a55eea",
+  "#0fb9b1",
 ];
 
 function imgSrc(what) {

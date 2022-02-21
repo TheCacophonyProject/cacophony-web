@@ -1,240 +1,238 @@
 <template>
-  <b-container>
-    <b-col>
-      <b-row>
-        <h2 class="classification-header">Classification List:</h2>
-      </b-row>
-      <b-row>
-        <h3 class="track-header">Automatic Tracks:</h3>
-      </b-row>
-      <b-row v-for="track in automaticTracks" :key="track.id">
-        <b-col>
-          <b-row v-on:click="playTrack(track)" class="track-container">
-            <span
-              class="track-colour"
-              :style="{ background: `${track.colour}` }"
-            ></span>
-            <b-col>
-              <b-row class="align-items-center justify-content-between">
-                <h4 class="track-time m-0">
-                  Time: {{ track.start }} - {{ track.end }} (Δ{{
-                    (track.end - track.start).toFixed(1)
-                  }}s)
-                </h4>
-                <div>
-                  <b-button
-                    v-if="!track.confirmed"
-                    variant="outline-success"
-                    size="sm"
-                    @click="confirmTrack(track)"
-                  >
-                    <font-awesome-icon icon="thumbs-up" />
-                    <span>Confirm</span>
-                  </b-button>
-
-                  <b-dropdown
-                    class="track-settings-button"
-                    toggle-class="text-decoration-none"
-                    no-caret
-                  >
-                    <template #button-content>
-                      <font-awesome-icon icon="cog" />
-                    </template>
-                    <b-dropdown-item
-                      class="track-delete-button"
-                      @click="deleteTrack(track)"
+  <b-col>
+    <b-row>
+      <h2 class="classification-header">Classification</h2>
+    </b-row>
+    <b-row v-for="track in tracks" :key="track.id">
+      <b-col>
+        <b-row>
+          <b-col
+            lg="10"
+            sm="4"
+            v-on:click="setSelectedTrack(track)"
+            class="track-container"
+          >
+            <b-row>
+              <span
+                :class="{
+                  highlight: selectedTrack && selectedTrack.id === track.id,
+                  'track-colour': true,
+                }"
+                :style="{ background: `${track.colour}` }"
+              ></span>
+              <b-col>
+                <b-row class="align-items-center justify-content-between">
+                  <h4 class="track-time m-0">
+                    Time: {{ track.start.toFixed(1) }} -
+                    {{ track.end.toFixed(1) }} (Δ{{
+                      (track.end - track.start).toFixed(1)
+                    }}s)
+                  </h4>
+                  <div class="d-flex align-items-center">
+                    <b-button
+                      v-if="
+                        track.displayTags.some(
+                          (tag) => tag.class === 'automatic'
+                        )
+                      "
+                      variant="outline-success"
+                      size="sm"
+                      @click="confirmTrack(track)"
                     >
-                      <font-awesome-icon icon="trash" />
-                      delete
-                    </b-dropdown-item>
-                  </b-dropdown>
-                </div>
-              </b-row>
-              <b-row
-                v-if="track.tags && track.tags[0]"
-                class="d-flex justify-content-between align-items-center"
-              >
-                <h3>
-                  {{ track.automaticTag ? track.automaticTag.what : "..." }}
-                </h3>
-                <h4>
-                  By:
-                  {{
-                    track.automaticTag.data.name
-                      ? track.automaticTag.data.name
-                      : track.automaticTag.userName
-                  }}
-                </h4>
-              </b-row>
-            </b-col>
-          </b-row>
-          <b-row>
-            <b-container
-              v-b-toggle="`tag-history-${track.id}`"
-              class="tag-history-toggle"
-            >
-              <h4>Tag History</h4>
-              <font-awesome-icon icon="angle-up" class="when-open" />
-              <font-awesome-icon icon="angle-down" class="when-closed" />
-            </b-container>
-            <b-collapse :id="`tag-history-${track.id}`">
-              <b-table
-                class="text-center"
-                :items="track.tags"
-                :fields="['what', 'who', 'confidence']"
-              >
-                <template #cell(who)="data">{{
-                  data.item.data.name ? data.item.data.name : data.item.userName
-                }}</template>
-              </b-table>
-            </b-collapse>
-          </b-row>
-        </b-col>
-      </b-row>
-      <b-row class="mt-2">
-        <h3 class="track-header">Manual Tracks:</h3>
-      </b-row>
-      <h4 class="select-track-message" v-if="manualTracks.length === 0">
-        Select section of Audio by pressing and dragging...
-      </h4>
-      <b-row v-for="track in manualTracks" :key="track.id">
-        <b-col>
-          <b-row v-on:click="playTrack(track)" class="track-container">
-            <span
-              class="track-colour"
-              :style="{ background: `${track.colour}` }"
-            ></span>
-            <b-col>
-              <b-row class="align-items-center justify-content-between">
-                <h4 class="track-time">
-                  Time: {{ track.start }} - {{ track.end }} (Δ{{
-                    (track.end - track.start).toFixed(1)
-                  }}s)
-                </h4>
-                <div>
-                  <b-dropdown
-                    class="track-settings-button"
-                    toggle-class="text-decoration-none"
-                    no-caret
+                      <b-spinner
+                        v-if="track.confirming"
+                        variant="success"
+                        small
+                      />
+                      <font-awesome-icon v-else icon="thumbs-up" />
+                      <span>Confirm</span>
+                    </b-button>
+                  </div>
+                </b-row>
+                <b-row class="mt-1 mb-1">
+                  <div
+                    v-for="tag in track.displayTags"
+                    :key="tag.id"
+                    class="
+                      capitalize
+                      text-white
+                      d-flex
+                      align-items-center
+                      p-0
+                      pl-2
+                      pr-2
+                      mr-1
+                      rounded
+                    "
+                    :class="{
+                      ['bg-warning']: tag.class === 'automatic',
+                      ['bg-danger']: tag.class === 'denied',
+                      ['bg-success']: tag.class === 'confirmed',
+                      ['bg-info']: tag.class === 'human',
+                    }"
+                    v-b-tooltip.hover
+                    :title="`${
+                      tag.class === 'human' ? 'Human' : 'AI'
+                    } classified`"
                   >
-                    <template #button-content>
-                      <font-awesome-icon icon="cog" />
-                    </template>
-                    <b-dropdown-item
-                      class="track-delete-button"
-                      @click="deleteTrack(track)"
-                    >
-                      <font-awesome-icon icon="trash" />
-                      delete
-                    </b-dropdown-item>
-                  </b-dropdown>
-                </div>
-              </b-row>
-              <b-row
-                v-if="track.tags && track.tags[0]"
-                class="d-flex justify-content-between align-items-center"
-              >
-                <h3>
-                  {{
-                    track.tags[0].what ? track.tags[0].what : "Select Tag..."
-                  }}
-                </h3>
-                <h4>
-                  By:
-                  {{
-                    track.tags[0].data.name
-                      ? track.tags[0].data.name
-                      : track.tags[0].userName
-                  }}
-                </h4>
-              </b-row>
-              <b-row v-else>
-                <h3>No Tag...</h3>
-              </b-row>
-            </b-col>
-          </b-row>
-          <b-row>
-            <b-container
-              v-b-toggle="`tag-history-${track.id}`"
-              class="tag-history-toggle"
+                    <font-awesome-icon
+                      v-if="['denied', 'automatic'].includes(tag.class)"
+                      icon="cog"
+                      size="xs"
+                    />
+                    <font-awesome-icon
+                      v-else-if="tag.class === 'human'"
+                      icon="user"
+                      size="xs"
+                    />
+                    <font-awesome-icon
+                      v-else-if="tag.class === 'confirmed'"
+                      icon="user-cog"
+                      size="xs"
+                    />
+                    <span class="pl-1">
+                      {{ tag.what }}
+                    </span>
+                  </div>
+                </b-row>
+              </b-col>
+            </b-row>
+          </b-col>
+          <b-col
+            cols="2"
+            class="track-container-side d-flex justify-content-end p-0"
+          >
+            <b-dropdown
+              class="track-settings-button"
+              toggle-class="text-decoration-none"
+              no-caret
             >
-              <h4>Tag History</h4>
-              <font-awesome-icon icon="angle-up" class="when-open" />
-              <font-awesome-icon icon="angle-down" class="when-closed" />
-            </b-container>
-            <b-collapse :id="`tag-history-${track.id}`">
-              <b-table
-                class="text-center"
-                :items="track.tags"
-                :fields="['what', 'who', 'confidence']"
+              <template #button-content>
+                <font-awesome-icon icon="cog" />
+              </template>
+              <b-dropdown-item
+                class="track-delete-button"
+                @click="deleteTrack(track.id)"
               >
-                <template #cell(who)="data">{{
-                  data.item.userName ? data.item.userName : "Unknown"
-                }}</template>
-              </b-table>
-            </b-collapse>
-          </b-row>
-        </b-col>
-      </b-row>
-    </b-col>
-  </b-container>
+                <font-awesome-icon icon="trash" />
+                delete
+              </b-dropdown-item>
+            </b-dropdown>
+          </b-col>
+        </b-row>
+        <b-row>
+          <b-container
+            v-b-toggle="`tag-history-${track.id}`"
+            class="tag-history-toggle"
+          >
+            <h4>Tag History</h4>
+            <font-awesome-icon icon="angle-up" class="when-open" />
+            <font-awesome-icon icon="angle-down" class="when-closed" />
+          </b-container>
+          <b-collapse :id="`tag-history-${track.id}`">
+            <b-table
+              class="text-center"
+              :items="track.tags"
+              :fields="['what', 'who', 'confidence']"
+            >
+              <template #cell(who)="data">{{
+                data.item.data.name ? data.item.data.name : data.item.userName
+              }}</template>
+            </b-table>
+          </b-collapse>
+        </b-row>
+      </b-col>
+    </b-row>
+    <h4 class="select-track-message" v-if="tracks.length === 0">
+      Select section of Audio by pressing and dragging...
+    </h4>
+  </b-col>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from "vue";
+import { PropType } from "vue";
+import { defineComponent, ref, watch } from "@vue/composition-api";
+import { Immutable } from "immer";
+
 import { AudioTrack } from "../Video/AudioRecording.vue";
-export default Vue.extend({
+
+import { TrackId } from "@typedefs/api/common";
+
+enum TrackListFilter {
+  All = "all",
+  Automatic = "automatic",
+  Manual = "manual",
+  Unconfirmed = "unconfirmed",
+}
+
+export default defineComponent({
   name: "TrackList",
   props: {
-    tracks: {
-      type: Array as PropType<AudioTrack[]>,
+    audioTracks: {
+      type: Map as PropType<Map<number, AudioTrack>>,
       required: true,
     },
-    playTrack: {
-      type: Function as PropType<(track: AudioTrack) => void>,
-      required: true,
+    selectedTrack: {
+      type: Object as PropType<Immutable<AudioTrack> | null>,
     },
     deleteTrack: {
-      type: Function as PropType<(track: AudioTrack) => void>,
+      type: Function as PropType<(track: TrackId) => void>,
       required: true,
     },
     addTagToTrack: {
-      type: Function as PropType<(track: AudioTrack, what: string) => void>,
+      type: Function as PropType<
+        (trackId: TrackId, what: string) => Promise<AudioTrack>
+      >,
+      required: true,
+    },
+    setSelectedTrack: {
+      type: Function as PropType<(track: Immutable<AudioTrack>) => void>,
       required: true,
     },
   },
-  computed: {
-    automaticTracks() {
-      return this.tracks
-        .filter((track: AudioTrack) => track.automatic)
-        .map((track: AudioTrack) => {
-          const automaticTag = track.tags.find((tag: any) => tag.automatic);
-          return {
-            ...track,
-            automaticTag,
-            confirmed:
-              automaticTag &&
-              track.tags.some(
-                (tag) =>
-                  tag.automatic === false && automaticTag.what === tag.what
-              ),
-          };
-        });
-    },
-    manualTracks() {
-      return this.tracks.filter(
-        (track: { automatic: boolean }) => !track.automatic
-      );
-    },
-  },
-  methods: {
-    confirmTrack(track: AudioTrack) {
-      const tag = track.tags.find((t: AudioTrack) => t.automatic);
+  setup(props) {
+    const confirmTrack = async (track: AudioTrack) => {
+      const tag = track.tags.find((t) => t.automatic);
       if (!tag) {
         return;
       }
-      this.addTagToTrack(track, tag.what);
-    },
+      await props.addTagToTrack(track.id, tag.what);
+    };
+    const filter = ref<TrackListFilter>(TrackListFilter.All);
+    const filterTracks = (track: AudioTrack) => {
+      switch (filter.value) {
+        case TrackListFilter.All:
+          return true;
+        case TrackListFilter.Automatic:
+          return track.displayTags.some((tag) => tag.class === "automatic");
+        case TrackListFilter.Manual:
+          return track.displayTags.some((tag) => tag.class === "human");
+        default:
+          return false;
+      }
+    };
+    const sortTracks = (trackA: AudioTrack, trackB: AudioTrack) => {
+      return trackA.start - trackB.start;
+    };
+    const tracks = ref<AudioTrack[]>(
+      [...props.audioTracks.values()].filter(filterTracks).sort(sortTracks)
+    );
+    watch(
+      () => props.audioTracks,
+      (newTracks) => {
+        tracks.value = [...newTracks.values()]
+          .filter(filterTracks)
+          .sort(sortTracks);
+      }
+    );
+
+    return {
+      tracks,
+      confirmTrack,
+      filter,
+      filterTracks,
+      sortTracks,
+    };
   },
 });
 </script>
@@ -273,7 +271,6 @@ export default Vue.extend({
 }
 
 .track-settings-button {
-  z-index: 10;
   button {
     background: none;
     border: none;
@@ -288,5 +285,14 @@ export default Vue.extend({
   ul {
     color: #e74c3c;
   }
+}
+.confirmed-text {
+  display: flex;
+  align-items: center;
+  color: #28a745;
+  font-size: 0.875rem;
+}
+.capitalize {
+  text-transform: capitalize;
 }
 </style>

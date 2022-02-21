@@ -211,7 +211,14 @@ export default {
     },
     tracks() {
       return (
-        this.recording && (this.recording as ApiThermalRecordingResponse).tracks
+        this.recording &&
+        (this.recording as ApiThermalRecordingResponse).tracks.map((track) => ({
+          ...track,
+          positions: track.positions.map((position) => ({
+            ...position,
+            frameNumber: position.order,
+          })),
+        }))
       );
     },
     processingCompleted() {

@@ -1,56 +1,19 @@
 <template>
   <b-container class="audio-recording-container">
     <b-row class="mb-4">
-      <b-col class="p-0">
-        <div id="spectrogram"></div>
-        <div id="waveform"></div>
-        <div class="player-bar">
-          <div class="play-button">
-            <font-awesome-icon
-              :icon="[
-                'fa',
-                isFinished ? 'redo-alt' : isPlaying ? 'pause' : 'play',
-              ]"
-              size="2x"
-              @click="togglePlay"
-            />
-          </div>
-          <div class="selected-track-container" v-if="selectedTrack">
-            <SelectedTrack :selected-track="selectedTrack" />
-            <font-awesome-icon
-              class="ml-2"
-              :icon="['fa', 'times']"
-              size="1x"
-              style="cursor: pointer"
-              @click="deselectTrack"
-            />
-          </div>
-          <div>
-            <font-awesome-icon
-              class="volume-button"
-              :icon="['fa', 'volume-up']"
-              size="2x"
-              style="cursor: pointer"
-              @click="toggleMute"
-            />
-            <input
-              class="volume-slider"
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              v-model="volume"
-              @change="setVolume"
-            />
-          </div>
-        </div>
-      </b-col>
+      <AudioPlayer
+        :tracks="tracks"
+        :url="url"
+        :selectedTrack="selectedTrack"
+        :setSelectedTrack="setSelectedTrack"
+      />
     </b-row>
     <b-row>
-      <b-col lg="4">
+      <b-col cols="4">
         <TrackList
-          :play-track="playTrack"
-          :tracks="tracks"
+          :audio-tracks="tracks"
+          :selected-track="selectedTrack"
+          :set-selected-track="setSelectedTrack"
           :delete-track="deleteTrack"
           :add-tag-to-track="addTagToTrack"
         />
@@ -81,55 +44,49 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import WaveSurfer from "wavesurfer.js";
-import SpectrogramPlugin from "wavesurfer.js/src/plugin/spectrogram/index.js";
+import { PropType } from "vue";
+import { produce } from "immer";
+import { defineComponent, ref } from "@vue/composition-api";
+
 import api from "@api";
-import TrackList from "../Audio/TrackList.vue";
-import SelectedTrack from "../Audio/SelectedTrack.vue";
-import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
 import { TagColours } from "@/const";
-import ColorMap from "colormap";
+
+import AudioPlayer from "../Audio/AudioPlayer.vue";
+import TrackList from "../Audio/TrackList.vue";
+
 import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
 import {
   ApiHumanTrackTagResponse,
   ApiTrackTagRequest,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
+import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
+import { TrackId } from "@typedefs/api/common";
+import store from "@/stores";
 
-interface AudioTrack extends ApiTrackResponse {
-  colour: string;
+export enum TagClass {
+  Automatic = "automatic",
+  Human = "human",
+  Confirmed = "confirmed",
+  Denied = "denied",
 }
 
-export default Vue.extend({
+interface DisplayTag extends ApiTrackTagResponse {
+  class: TagClass;
+}
+
+export interface AudioTrack extends ApiTrackResponse {
+  colour: string;
+  displayTags: DisplayTag[];
+  confirming: boolean;
+  deleted: boolean;
+}
+
+export default defineComponent({
   name: "AudioRecording",
-  data: function () {
-    return {
-      player: null as WaveSurfer | null,
-      spectrogram: null as HTMLCanvasElement | null,
-      overlay: null as SVGElement | null,
-      tracks: [],
-      deleteDisabled: false,
-      trackPointer: {
-        scale: 1,
-        pointerDown: false,
-        time: 0,
-        pos: { start: { x: 0, y: 0 }, current: { x: 0, y: 0 } },
-      },
-      customTagValue: "",
-      isPlaying: false,
-      volume: 1,
-      muted: false,
-      selectedTrack: null,
-    };
-  },
-  components: {
-    TrackList,
-    SelectedTrack,
-  },
   props: {
     recording: {
-      type: Object,
+      type: Object as PropType<ApiAudioRecordingResponse>,
       required: true,
     },
     audioUrl: {
@@ -141,345 +98,184 @@ export default Vue.extend({
       required: true,
     },
   },
-  mounted() {
-    this.tracks = this.recording.tracks.map(
-      (track: ApiTrackResponse, index: number) => {
-        return {
-          ...track,
-          colour: TagColours[index],
-        };
-      }
-    );
+  components: {
+    TrackList,
+    AudioPlayer,
+  },
+  setup(props) {
+    const recording = props.recording;
+    const userName = store.state.User.userData.userName;
+    const userId = store.state.User.userData.id;
 
-    // initialize wavesurfer as spectrogram
-    this.$nextTick(() => {
-      this.player = WaveSurfer.create({
-        container: "#waveform",
-        barWidth: 3,
-        barHeight: 1,
-        barGap: 1,
-        height: 50,
-        backgroundColor: "#2B333F",
-        progressColor: "#FFF",
-        cursorColor: "#FFF",
-        waveColor: "#FFF",
-        pixelRatio: 1,
-        hideScrollbar: true,
-        responsive: true,
-        normalize: true,
-        cursorWidth: 1,
-        plugins: [
-          SpectrogramPlugin.create({
-            container: "#spectrogram",
-            fftSamples: 512,
-            colorMap: ColorMap({
-              colormap: "magma",
-              nshades: 256,
-              format: "float",
-            }),
-          }),
-        ],
-      });
-
-      this.player.load(this.audioRawUrl);
-      this.player.on("finish", () => {
-        this.isPlaying = false;
-      });
-      this.player.on("pause", () => {
-        this.isPlaying = false;
-      });
-      this.player.on("play", () => {
-        this.isPlaying = true;
-      });
-      this.player.on("ready", () => {
-        this.spectrogram = document.querySelector(
-          "spectrogram canvas"
-        ) as HTMLCanvasElement;
-        this.spectrogram.style.zIndex = "0";
-        const overlay = {
-          style: {
-            position: "absolute",
-            zIndex: 1,
-            top: 0,
-            left: 0,
-            cursor: "pointer",
-            width: "100%",
-            height: "100%",
-          },
-          attributes: {
-            width: this.spectrogram.width.toString(),
-            height: this.spectrogram.height.toString(),
-            xmlns: "http://www.w3.org/2000/svg",
-          },
-        };
-        this.overlay = this.createSVGElement(overlay, "svg");
-        this.spectrogram.parentElement.appendChild(this.overlay);
-
-        const img = new Image();
-        img.src = this.spectrogram.toDataURL("image/png");
-        const svgImg = this.createSVGElement(
-          {
-            attributes: {
-              width: this.spectrogram.width.toString(),
-              height: this.spectrogram.height.toString(),
-              xmlns: "http://www.w3.org/2000/svg",
-            },
-          },
-          "image"
-        );
-        svgImg.setAttributeNS("http://www.w3.org/1999/xlink", "href", img.src);
-        this.overlay.appendChild(svgImg);
-
-        this.spectrogram.parentElement.removeChild(this.spectrogram);
-        this.tracks.forEach(this.addTrackToOverlay);
-
-        // Adding Track Functionality
-        this.overlay.addEventListener("mousedown", (e: DragEvent) => {
-          e.preventDefault();
-          const index = this.tracks.findIndex((t: AudioTrack) => t.id === -1);
-          const colour =
-            TagColours[index === -1 ? this.tracks.length - 1 : index];
-          const x = e.offsetX;
-          const y = e.offsetY;
-
-          this.trackPointer.pointerDown = true;
-          this.trackPointer.time = Date.now();
-          this.trackPointer.pos.start = { x, y };
-          // create or get svg rect in overlay with id new_track
-          const currRect = document.getElementById(
-            "new_track"
-          ) as unknown as SVGRectElement;
-          const rect = this.createSVGElement(
-            {
-              attributes: {
-                id: "new_track",
-                x: x.toString(),
-                y: y.toString(),
-                width: "0",
-                height: "0",
-                stroke: colour,
-                strokeWidth: "3",
-                fill: "none",
-              },
-            },
-            "rect"
-          );
-          if (currRect) {
-            this.overlay.removeChild(currRect);
-          }
-          this.overlay.appendChild(rect);
-        });
-        this.overlay.addEventListener("mousemove", (e: DragEvent) => {
-          e.preventDefault();
-          if (this.trackPointer.pointerDown) {
-            const startX = this.trackPointer.pos.start.x;
-            const startY = this.trackPointer.pos.start.y;
-            const x = e.offsetX;
-            const y = e.offsetY;
-            const width = Math.abs(x - startX);
-            const height = Math.abs(y - startY);
-            const rectX = Math.min(startX, x);
-            const rectY = Math.min(startY, y);
-
-            requestAnimationFrame(() => {
-              // Get the rect element from overlay
-              const rect = document.getElementById("new_track");
-              if (rect) {
-                rect.setAttribute("x", rectX.toString());
-                rect.setAttribute("y", rectY.toString());
-                rect.setAttribute("width", width.toString());
-                rect.setAttribute("height", height.toString());
+    const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
+      const automaticTag = track.tags.find((tag) => tag.automatic);
+      const humanTags = track.tags.filter((tag) => !tag.automatic);
+      const humanTag =
+        humanTags.length === 1
+          ? humanTags[0]
+          : humanTags.reduce((acc, curr) => {
+              if (acc.what === curr.what) {
+                return curr;
+              } else {
+                return { ...humanTags[0], what: "Multiple" };
               }
             });
-          }
-        });
-        this.overlay.addEventListener("mouseleave", (e) => {
-          e.preventDefault();
-        });
-        this.overlay.addEventListener("pointerup", (e: DragEvent) => {
-          e.preventDefault();
-          //draw circle on drag
-          const startX = Math.min(this.trackPointer.pos.start.x, e.offsetX);
-          const startY = Math.min(this.trackPointer.pos.start.y, e.offsetY);
-          const x = Math.max(this.trackPointer.pos.start.x, e.offsetX);
-          const y = Math.max(this.trackPointer.pos.start.y, e.offsetY);
-          const normalizedX = startX / this.spectrogram.width;
-          const normalizedY = startY / this.spectrogram.height;
-          const normalizedWidth = Math.abs(x - startX) / this.spectrogram.width;
-          const normalizedHeight =
-            Math.abs(y - startY) / this.spectrogram.height;
-          const time = Date.now();
-          if (time - this.trackPointer.time > 100) {
-            const start = this.round(normalizedX * this.player.getDuration());
-            const end = this.round(
-              (normalizedX + normalizedWidth) * this.player.getDuration()
-            );
-            const emptyTag = {
-              what: "",
-              id: -1,
-              trackId: -1,
-              confidence: 1,
-              automatic: false,
-              data: {},
-              userId: this.userId,
-              userName: this.userName,
-            };
-            const index = this.tracks.findIndex((t: AudioTrack) => t.id === -1);
-            const colour =
-              TagColours[index === -1 ? this.tracks.length : index];
-            const track: AudioTrack = {
-              id: -1,
-              start,
-              end,
-              tags: [emptyTag],
-              automatic: false,
-              colour,
-              positions: [
-                {
-                  x: normalizedX,
-                  y: normalizedY,
-                  width: normalizedWidth,
-                  height: normalizedHeight,
-                  order: 0,
-                },
-              ],
-            };
-            if (index === -1) {
-              this.tracks.push(track);
-            } else {
-              this.$set(this.tracks, index, track);
-              this.overlay.removeChild(document.getElementById("track_-1"));
-            }
-            this.selectedTrack = track;
-            this.playTrack(track);
-            this.addTrackToOverlay(track);
-          } else {
-            this.player.seekTo(normalizedX);
-            this.play();
-          }
-          this.overlay.removeChild(document.getElementById("new_track"));
-          this.trackPointer.pointerDown = false;
-        });
-      });
-    });
-  },
-  computed: {
-    isFinished() {
-      if (this.isPlaying || !this.player) {
-        return false;
-      }
-      const finishTime = this.selectedTrack
-        ? this.selectedTrack.end
-        : this.player.getDuration();
-      return this.player.getCurrentTime() >= finishTime;
-    },
-    userName() {
-      return this.$store.state.User.userData.userName;
-    },
-    userId() {
-      return this.$store.state.User.userData.id;
-    },
-  },
-  methods: {
-    togglePlay() {
-      if (this.selectedTrack) {
-        if (this.isPlaying) {
-          this.player.pause();
-        } else if (this.isFinished) {
-          this.replay();
-        } else {
-          this.player.play(
-            this.player.getCurrentTime(),
-            this.selectedTrack.end
+      if (automaticTag) {
+        if (humanTags.length > 0) {
+          const isConfirmed = humanTags.some(
+            (tag) => automaticTag.what === tag.what
           );
+          if (isConfirmed) {
+            return [
+              {
+                ...automaticTag,
+                class: TagClass.Confirmed,
+              },
+            ];
+          } else {
+            // check if all human tags are the same
+            return [
+              {
+                ...humanTag,
+                class: TagClass.Human,
+              },
+              {
+                ...automaticTag,
+                class: TagClass.Denied,
+              },
+            ];
+          }
+        } else {
+          return [
+            {
+              ...automaticTag,
+              class: TagClass.Automatic,
+            },
+          ];
         }
+      } else if (humanTags.length > 0) {
+        return [
+          {
+            ...humanTag,
+            class: TagClass.Human,
+          },
+        ];
       } else {
-        this.player.playPause();
+        return [];
       }
-    },
-    play() {
-      if (!this.isPlaying) {
-        this.togglePlay();
-      }
-    },
-    playAt(start: number, end: number = this.recording.duration) {
-      this.player.play(start, end);
-    },
-    normaliseTime(time: number): number {
-      return time / this.recording.duration;
-    },
-    setVolume() {
-      this.player.setVolume(this.volume);
-    },
-    toggleMute() {
-      this.muted = !this.muted;
-      if (this.muted) {
-        this.player.setVolume(0);
-      } else {
-        this.player.setVolume(this.volume);
-      }
-    },
-    async deleteTrack(track: AudioTrack) {
-      debugger;
-      this.tracks = this.tracks.filter((t) => t.id !== track.id);
-      this.overlay.removeChild(document.getElementById(`track_${track.id}`));
-      const response = await api.recording.removeTrack(
-        track.id,
-        this.recording.id
-      );
-      if (response.status !== 200) {
-        console.log(response, track);
-      }
-      if (this.selectedTrack && this.selectedTrack.id === track.id) {
-        this.selectedTrack = null;
-      }
-      return response;
-    },
-    async confirmNewTrack() {
-      const trackRequest: ApiTrackRequest = {
-        data: {
-          start_s: this.selectedTrack.start,
-          end_s: this.selectedTrack.end,
-          positions: this.selectedTrack.positions,
-          userId: this.userId,
-          automatic: false,
-        },
+    };
+
+    const createAudioTrack = (
+      track: ApiTrackResponse,
+      index: number
+    ): AudioTrack => {
+      const displayTags = getDisplayTags(track);
+      return {
+        ...track,
+        colour: TagColours[index % TagColours.length],
+        displayTags,
+        confirming: false,
+        deleted: false,
       };
-      const response = await api.recording.addTrack(
-        trackRequest,
-        this.recording.id
-      );
-      if (response.success) {
-        const trackRes = await api.recording.getTrack(
-          response.result.trackId,
-          this.recording.id
+    };
+
+    const mappedTracks = new Map(
+      recording.tracks.map((track, index) => {
+        const audioTrack = createAudioTrack(track, index);
+        return [track.id, audioTrack];
+      })
+    );
+    const tracks = ref<Map<number, AudioTrack>>(mappedTracks);
+    const selectedTrack = ref<AudioTrack | null>(null);
+    const setSelectedTrack = (track: AudioTrack | null) => {
+      console.log("setting");
+      selectedTrack.value = produce(selectedTrack.value, () => {
+        return track;
+      });
+    };
+
+    const addTrack = async (track: AudioTrack): Promise<AudioTrack> => {
+      try {
+        const trackRequest: ApiTrackRequest = {
+          data: {
+            start_s: track.start,
+            end_s: track.end,
+            positions: track.positions,
+            userId: userId,
+            automatic: false,
+          },
+        };
+        const response = await api.recording.addTrack(
+          trackRequest,
+          recording.id
         );
-        if (trackRes.success) {
-          const index = this.tracks.findIndex((t: AudioTrack) => t.id === -1);
-          console.log(index);
-          const colour = TagColours[index === -1 ? this.tracks.length : index];
-          const track: AudioTrack = {
-            ...trackRes.result.track,
-            colour,
-          };
-          this.selectedTrack = Object.assign(this.selectedTrack, {}, track);
-          this.tracks.splice(index, 1, track);
-          const overlayTrack = document.getElementById(`track_-1`);
-          //change the track id
-          overlayTrack.setAttribute("id", `track_${track.id}`);
-          overlayTrack.style.stroke = track.colour;
+
+        if (response.success) {
+          const id = response.result.trackId;
+          const colour = TagColours[tracks.value.size % TagColours.length];
+          const newTrack = produce(track, (track) => {
+            track.id = id;
+            track.colour = colour;
+          });
+          tracks.value = produce(tracks.value, (draft) => {
+            draft.set(id, newTrack);
+          });
+          return newTrack;
+        } else {
+          throw response.result;
         }
+      } catch (error) {
+        console.error(error);
       }
-    },
-    async addTagToSelectedTrack(tag: string) {
-      if (this.selectedTrack) {
-        if (this.selectedTrack.id === -1) {
-          await this.confirmNewTrack();
+    };
+
+    const deleteTrack = async (trackId: TrackId) => {
+      try {
+        const response = await api.recording.removeTrack(trackId, recording.id);
+        if (response.success) {
+          modifyTrack(trackId, {
+            deleted: true,
+          });
+          if (selectedTrack.value?.id === trackId) {
+            setSelectedTrack(null);
+          }
+        } else {
+          throw response.result;
         }
-        await this.addTagToTrack(this.selectedTrack, tag);
+      } catch (error) {
+        console.error(error);
       }
-    },
-    async addTagToTrack(track: AudioTrack, what: string) {
+    };
+
+    const modifyTrack = (
+      trackId: TrackId,
+      trackChanges: Partial<AudioTrack>
+    ) => {
+      const track = tracks.value.get(trackId);
+      if (track) {
+        tracks.value = produce(tracks.value, (draft) => {
+          draft.set(
+            trackId,
+            produce(track, (draftTrack) => {
+              return {
+                ...draftTrack,
+                ...trackChanges,
+              };
+            })
+          );
+        });
+        return tracks.value.get(trackId);
+      }
+    };
+
+    const addTagToTrack = async (
+      trackId: TrackId,
+      what: string
+    ): Promise<AudioTrack> => {
+      const track = tracks.value.get(trackId);
+      modifyTrack(trackId, {
+        confirming: true,
+      });
       const tag: ApiTrackTagRequest = {
         what,
         confidence: 1,
@@ -487,7 +283,7 @@ export default Vue.extend({
       };
       const response = await api.recording.replaceTrackTag(
         tag,
-        this.recording.id,
+        props.recording.id,
         Number(track.id)
       );
       if (response.success) {
@@ -496,123 +292,67 @@ export default Vue.extend({
           id: response.result.trackTagId ?? 0,
           trackId: track.id,
           data: {},
-          userId: this.userId,
+          userId: userId,
           automatic: false,
-          userName: this.userName,
+          userName: userName,
         };
-        this.tracks = this.tracks.map((t: AudioTrack) => {
-          if (t.id === track.id) {
-            // replace current tag in track if it exists otherwise add new tag
-            const index = t.tags.findIndex(
-              (t: ApiHumanTrackTagResponse) => t.userName === newTag.userName
-            );
-            if (index !== -1) {
-              this.$set(t.tags, index, newTag);
-            } else {
-              t.tags.push(newTag);
-            }
-            return track;
-          }
-          return t;
+        const currTags = track.tags.filter((tag) => tag.userId !== userId);
+        const newTags = [...currTags, newTag];
+
+        const taggedTrack = modifyTrack(trackId, {
+          confirming: false,
+          tags: newTags,
+        });
+        const displayTags = getDisplayTags(taggedTrack);
+        const currTrack = modifyTrack(trackId, {
+          displayTags,
         });
 
-        return track;
+        return currTrack;
+      } else {
+        return modifyTrack(trackId, {
+          confirming: false,
+        });
       }
-    },
-    addTrackToOverlay(track: AudioTrack) {
-      const position = track.positions[0];
-      if (!position) {
-        return;
-      }
-      let { x, y, width, height } = position;
-      x = x * this.spectrogram.width;
-      y = y * this.spectrogram.height;
-      width = width * this.spectrogram.width;
-      height = height * this.spectrogram.height;
+    };
 
-      const rect = this.createSVGElement(
-        {
-          attributes: {
-            id: "track_" + track.id,
-            x,
-            y,
-            width,
-            height,
-            fill: "none",
-            stroke: track.colour,
-            "stroke-width": 3,
-          },
-        },
-        "rect"
-      );
-      this.overlay.appendChild(rect);
-    },
-    handleCustomTagSubmit(e: SubmitEvent) {
+    const addTagToSelectedTrack = async (tag: string) => {
+      if (selectedTrack.value) {
+        if (selectedTrack.value.id === -1) {
+          const track = await addTrack(selectedTrack.value);
+          setSelectedTrack(track);
+        }
+        const newTrack = await addTagToTrack(selectedTrack.value.id, tag);
+        console.log("new track", newTrack);
+        setSelectedTrack(newTrack);
+      }
+    };
+
+    const customTagValue = ref<string>("");
+    const handleCustomTagSubmit = (e: SubmitEvent) => {
       e.preventDefault();
-      if (this.customTagValue) {
-        const tag = this.customTagValue
+      if (customTagValue) {
+        const tag = customTagValue.value
           .toLowerCase()
           .replace(/[^a-z0-9]/g, "")
           .replace(/\s/g, "_");
-        this.addTagToSelectedTrack(tag);
+        addTagToSelectedTrack(tag);
       }
-    },
-    playTrack(track: AudioTrack) {
-      if (
-        this.tracks.filter((t: AudioTrack) => t.id === track.id).length !== 0
-      ) {
-        this.selectedTrack = track;
-        this.playAt(track.start, track.end);
-      }
-    },
-    deselectTrack() {
-      if (
-        this.selectedTrack.id === -1 &&
-        !this.selectedTrack.tags.some((tag: ApiTrackTagResponse) => tag.what)
-      ) {
-        this.tracks = this.tracks.filter(
-          (track: AudioTrack) => track.id !== this.selectedTrack.id
-        );
-        document.getElementById("track_" + this.selectedTrack.id).remove();
-      }
-      if (this.isPlaying) {
-        this.player.play();
-      }
-      this.selectedTrack = null;
-    },
-    replay() {
-      if (this.selectedTrack) {
-        this.playTrack(this.selectedTrack);
-      } else {
-        this.playAt(0);
-      }
-    },
-    createSVGElement(
-      element: {
-        attributes?: Object;
-        style?: Object;
-      },
-      elementType: string
-    ): SVGElement {
-      const svgns = "http://www.w3.org/2000/svg";
-      const svgElement = document.createElementNS(svgns, elementType);
-      if (element.attributes) {
-        Object.keys(element.attributes).forEach((key) => {
-          svgElement.setAttribute(key, element.attributes[key]);
-        });
-      }
-      if (element.style) {
-        Object.keys(element.style).forEach((key) => {
-          svgElement.style.setProperty(key, element.style[key]);
-        });
-      }
-      return svgElement;
-    },
-    round(value: number, decimals = 2): number {
-      return Number(
-        Math.round(Number(`${value}e${decimals}`)) + "e-" + decimals
-      );
-    },
+    };
+
+    const url = props.audioUrl ? props.audioUrl : props.audioRawUrl;
+    return {
+      url,
+      tracks,
+      selectedTrack,
+      setSelectedTrack,
+      handleCustomTagSubmit,
+      customTagValue,
+      addTagToSelectedTrack,
+      addTagToTrack,
+      addTrack,
+      deleteTrack,
+    };
   },
 });
 </script>
@@ -621,76 +361,9 @@ export default Vue.extend({
 @import "~bootstrap/scss/variables";
 @import "~bootstrap/scss/mixins";
 
-.player-bar {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem;
-  border-radius: 0 0 0.25rem 0.25rem;
-  background-color: #2b333f;
-  color: #fff;
-  width: 100%;
-  min-height: 67px;
-}
 #waveform {
   width: 100%;
   height: 50px;
-}
-spectrogram {
-  width: 100%;
-  border-radius: 0.25rem 0.25rem 0 0;
-}
-.spec-labels {
-  background-color: #152338;
-}
-.play-button {
-  margin: 0 0.35em 0 0.35em;
-  cursor: pointer;
-}
-.pause-screen-overlay {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 70%;
-  z-index: 100;
-  background-color: rgba(0, 0, 0, 0.2);
-  color: white;
-  cursor: pointer;
-}
-.volume-slider {
-  display: none;
-  position: absolute;
-  transform: rotate(-90deg);
-  bottom: 100px;
-  right: -25px;
-  z-index: 2;
-}
-.volume-button {
-  padding-top: 0.1em;
-}
-.volume-button:hover + .volume-slider {
-  display: block;
-}
-.volume-slider:hover {
-  display: block;
-}
-.selected-track-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-@include media-breakpoint-down(lg) {
-  .select-track-container {
-    width: 100%;
-    order: -1;
-  }
 }
 .audio-recording-container {
   h2 {
@@ -717,6 +390,12 @@ spectrogram {
     width: 20px;
     height: 20px;
     margin-right: 10px;
+    border-radius: 4px;
+    transition: border 0.1s cubic-bezier(1, 0, 0, 1);
+  }
+  .highlight {
+    border: 2px solid #9acd32;
+    border-radius: 4px;
   }
 }
 </style>

@@ -8,7 +8,7 @@ export interface ApiTrackTagRequest {
   data?: any; // FIXME - validation?
 }
 
-interface ApiTrackTagResponse {
+export interface ApiTrackTagResponse {
   what: string;
   id: TrackTagId;
   trackId: TrackId;
@@ -17,13 +17,13 @@ interface ApiTrackTagResponse {
   data: any; // FIXME - validation?
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;
+  userId?: UserId;
+  userName?: string;
   archivedAt?: IsoFormattedDateString; // FIXME - is this used?
 }
 
 export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
   automatic: false;
-  userId: UserId;
-  userName: string;
 }
 
 export interface ApiAutomaticTrackTagResponse extends ApiTrackTagResponse {

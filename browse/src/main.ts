@@ -12,10 +12,13 @@ import config from "./config";
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue/dist/bootstrap-vue.css";
 import VueCompositionAPI from "@vue/composition-api";
+import { enableMapSet } from "immer";
 
 // Leaflet CSS
 import "leaflet/dist/leaflet.css";
 import Router from "vue-router";
+
+enableMapSet();
 
 // Allows us to abort all pending fetch requests when switching between major views.
 export const CurrentViewAbortController = {

@@ -10,11 +10,17 @@
         "baseUrl": ".",
         "allowJs": true,
         "paths": {
-            "@/*": ["src/*"],
-            "@api/*": ["src/api/*"],
-            "@api": ["src/api/index.ts"],
+            "@/*": ["./src/*"],
+            "@api/*": ["./src/api/*"],
+            "@api": ["./src/api/index.ts"],
             "@typedefs/*":  ["../types/*"],
         },
+    },
+    "vueCompilerOptions": {
+        "experimentalCompatMode": 2,
+        "experimentalTemplateCompilerOptions": {
+          "compatConfig": { "MODE": 2 }
+        }
     },
     "include": [
         "./src/**/*",

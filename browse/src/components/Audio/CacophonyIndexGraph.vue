@@ -1,9 +1,10 @@
 <template>
-  <canvas :ref="this.id" />
+  <canvas :ref="id.toString()" />
 </template>
 
 <script lang="ts">
 import Vue, { PropType } from "vue";
+import { defineComponent } from "@vue/composition-api";
 import {
   Chart,
   LineController,
@@ -47,7 +48,7 @@ function createGradient(context: any, min: number, max: number) {
   return gradient;
 }
 
-export default Vue.extend({
+export default defineComponent({
   props: {
     cacophonyIndex: {
       type: Array as PropType<CacophonyIndex[]>,

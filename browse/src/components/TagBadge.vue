@@ -22,6 +22,7 @@
 </template>
 
 <script lang="ts">
+import { PropType } from "vue";
 type TagClass = "automatic" | "human" | "automatic human";
 interface Tag {
   text: string;
@@ -33,12 +34,9 @@ export default {
   name: "TagBadge",
   props: {
     tag: {
-      type: Object,
+      type: Object as PropType<Tag>,
       required: true,
     },
-  },
-  mounted() {
-    debugger;
   },
   computed: {
     tagLabel(): string {

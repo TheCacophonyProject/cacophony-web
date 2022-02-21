@@ -64,6 +64,7 @@ import {
   faUserSecret,
   faPlus,
   faVolumeUp,
+  faVolumeMute,
   faUserPlus,
   faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
@@ -158,6 +159,7 @@ library.add(
   faUserSecret,
   faChevronRight,
   faVolumeUp,
+  faVolumeMute,
   faMapMarkerAlt
 );
 

@@ -7,7 +7,7 @@ import Video from "./modules/Video.store";
 import Messaging from "./modules/Messaging.store";
 
 Vue.use(Vuex);
-const store = new Vuex.Store({
+const store = new Vuex.Store<{ User; Groups; Messaging; Video; Devices }>({
   modules: {
     User,
     Groups,
