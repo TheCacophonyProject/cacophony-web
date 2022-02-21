@@ -205,7 +205,7 @@ export default function (
 
   // Archives tags for reprocessing
   Track.prototype.archiveTags = async function () {
-    models.TrackTag.update(
+    await models.TrackTag.update(
       {
         archivedAt: Date.now(),
       },
@@ -216,7 +216,7 @@ export default function (
         },
       }
     );
-    this.update({filtered:true})
+    this.calculateFiltered();
   };
   return Track;
 }
