@@ -152,8 +152,12 @@ export default function (
   };
 
   Track.prototype.isFiltered = async function () {
-    const tags = await this.getTrackTags();
-    // any human tag that isn't filted
+    const tags = await this.getTrackTags({
+      where: {
+        archivedAt: null,
+      },
+    });
+    // any human tag that isn't filted 2
     //  or any ai mastre tag that isn't filtered
 
     // filtered if

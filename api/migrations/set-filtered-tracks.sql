@@ -11,13 +11,10 @@ update "Tracks" set filtered=true
 			from
 							"TrackTags" tt
 			where
-							tt."TrackId" = "Tracks".id
+							tt."TrackId" = "Tracks".id and tt."archivedAt" is null
 						) as "cQ"
 		where
 				"filtered" = 0
 			and ("animal" > 0
 				or "aianimal">0)
 				)
-				
-				
-				

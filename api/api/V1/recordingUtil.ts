@@ -809,7 +809,11 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         data: trackMeta,
         AlgorithmId: algorithmDetail.id,
       });
-      if (!("predictions" in trackMeta)) {
+      if (
+        !("predictions" in trackMeta) ||
+        trackMeta["predictions"].length == 0
+      ) {
+        track.calculateFiltered();
         continue;
       }
       for (const prediction of trackMeta["predictions"]) {
