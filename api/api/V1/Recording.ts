@@ -259,29 +259,51 @@ export default (app: Application, baseUrl: string) => {
    * <li>(REQUIRED) tracks - array of track JSON, each track should have
    *   <ul>
    *    <li> positions - array of track positions
-   *    a position is (time in seconds, [left, top, bottom, right])
-   *    e.g. "positions":[[0.78,[6,3,16,13]],[0.89,[6,3,16,13]]
+   *    a position is
+   *          <ul>
+   *            <li> x -  left coordinate
+   *            <li> y - top coordinate
+   *            <li> width - region width
+   *            <li> height - region height
+   *            <li> mass - mass (count of non zero pixels in the filtered image of this track)
+   *            <li> frame_number
+   *            <li> blank - if this is a blank match i.e. from  kalman filter
+   *          </ul>
    *    <li> start_s - start time of track in seconds
    *    <li> end_s - end time of track in seconds
-   *    <li>(OPTIONAL) confident_tag - if present create a track tag from this
-   *    <li>(OPTIONAL) confidence - confidence of the tag
-   *    <li>(OPTIONAL) all_class_confidences - dictionary of confidence per class
+   *    <li> predictions - array of prediction info for each model
+   *    a prediction object:
+   *    <ul>
+   *      <li> model_id - reference to a model defined in the models section
+   *      <li>(OPTIONAL) confident_tag - if present create a track tag from this
+   *      <li>(OPTIONAL) confidence - confidence between 0 - 1 of the prediction
+   *      <li>(OPTIONAL) clarity - confidence between 0 - 1 of the prediction
+   *      <li>(OPTIONAL) classify_time - time in seconds taken to classify
+   *      <li>(OPTIONAL) prediction_frames - frames used in the predictions
+   *      <li>(OPTIONAL) predictions - array of prediction confidences for each prediction e.g. [[0,1,99,0,0,0]]
+   *      <li>(OPTIONAL) label - the classified label (this may be different to the confident_tag)
+   *      <li>(OPTIONAL) all_class_confidences - dictionary of confidence per class
    *  </ul>
+   *  <li> models - array of models used
+   *    a model object:
+   *    <ul>
+   *      <li> id - id of model used for tracks to reference
+   *      <li> name - friendly name given to the model
+   *    </ul>
    *  <li>  algorithm(OPTIONAL) - dictionary describing algorithm, model_name should be present
    *</ul>
    * @apiParamExample {JSON} Example recording track metadata:
    * {
-   *  "algorithm"{
+   *  "algorithm": {
    *     "model_name": "resnet-wallaby"
    *    },
-   *   "tracks"{
+   *   "tracks": [{
+   *     "positions":[{"x":1, "y":10, "frame_number":20, "mass": 25, "blank": false}],
    *     "start_s": 10,
    *     "end_s": 22.2,
-   *     "confident_tag": "rodent",
-   *     "all_class_confidences": {"rodent": 0.9, "else": 0.1},
-   *     "confidence": 0.9,
-   *
-   *   }
+   *     "predictions":[{"model_id":1, "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3, "classify_time": 0.6, "prediction_frames": [[0,2,3,4,5,10,12]], "predictions": [[0.6,0.3,0.1]], "label":"cat", "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
+   *    }],
+   *    "models": [{ "id": 1, "name": "inc3" }]
    * }
    */
 

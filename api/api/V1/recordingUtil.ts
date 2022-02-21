@@ -845,10 +845,6 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
           tag_data["all_class_confidences"] =
             prediction["all_class_confidences"];
         }
-        if (prediction.all_class_confidences) {
-          tag_data["all_class_confidences"] =
-            prediction["all_class_confidences"];
-        }
         let tag = "unidentified";
         if (prediction.confident_tag) {
           tag = prediction["confident_tag"];
