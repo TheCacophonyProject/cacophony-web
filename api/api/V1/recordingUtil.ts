@@ -813,7 +813,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         !("predictions" in trackMeta) ||
         trackMeta["predictions"].length == 0
       ) {
-        track.calculateFiltered();
+        track.updateIsFiltered();
         continue;
       }
       for (const prediction of trackMeta["predictions"]) {
@@ -1606,7 +1606,7 @@ export const finishedProcessingRecording = async (
   );
 
   for (const track of tracks) {
-    await track.calculateFiltered();
+    await track.updateIsFiltered();
   }
 
   // Add additionalMetadata to recording:

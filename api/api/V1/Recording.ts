@@ -1425,7 +1425,7 @@ export default (app: Application, baseUrl: string) => {
       }
 
       await tag.destroy();
-      await track.calculateFiltered();
+      await track.updateIsFiltered();
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track tag deleted."],
