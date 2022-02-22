@@ -1,3 +1,65 @@
+import { Draft, produce, Immutable, castImmutable } from "immer";
+import { Ref, shallowRef, DeepReadonly } from "@vue/composition-api";
+
 export function shouldViewAsSuperUser(): boolean {
   return localStorage.getItem("view-as") !== "regular";
+}
+
+export function changedContext<T>(
+  old: Set<T>,
+  curr: Set<T>
+): { added: Set<T>; deleted: Set<T> } {
+  return {
+    added: new Set([...curr].filter((x) => !old.has(x))),
+    deleted: new Set([...old].filter((x) => !curr.has(x))),
+  };
+}
+
+export function debounce(func: (...args: any[]) => void, timeout = 100) {
+  let timer: number;
+  return (...args: any[]) => {
+    clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      func(...args);
+    }, timeout);
+  };
+}
+
+export type Updater<T> = (draft: Draft<T>) => void;
+
+export type SetState<T> = (updater: Updater<T> | T) => void;
+
+export type ReadonlyState<T> = { readonly value: DeepReadonly<T> };
+
+export function useState<T>(base: T): [Ref<T>, SetState<T>] {
+  const state = shallowRef<T>(base);
+  const setState = (updater: Updater<T> | Immutable<T> | T) => {
+    const recipe = (
+      typeof updater === "function" ? updater : () => updater
+    ) as Updater<T>;
+    state.value = produce(state.value, recipe);
+  };
+  return [state, setState];
+}
+
+export function createSVGElement(
+  element: {
+    attributes?: Object;
+    style?: Object;
+  },
+  elementType: string
+): SVGElement {
+  const svgns = "http://www.w3.org/2000/svg";
+  const svgElement = document.createElementNS(svgns, elementType);
+  if (element.attributes) {
+    Object.keys(element.attributes).forEach((key) => {
+      svgElement.setAttribute(key, element.attributes[key]);
+    });
+  }
+  if (element.style) {
+    Object.keys(element.style).forEach((key) => {
+      svgElement.style.setProperty(key, element.style[key]);
+    });
+  }
+  return svgElement;
 }

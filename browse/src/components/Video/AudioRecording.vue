@@ -32,7 +32,7 @@
             <b-form-input
               required
               class="w-50"
-              v-model="customTagValue"
+              @change="setCustomTag"
               placeholder="Morepork, Kia, Bellbird..."
             />
             <b-button type="submit" variant="primary">Submit</b-button>
@@ -46,9 +46,10 @@
 <script lang="ts">
 import { PropType } from "vue";
 import { produce } from "immer";
-import { defineComponent, ref } from "@vue/composition-api";
+import { defineComponent } from "@vue/composition-api";
 
 import api from "@api";
+import { useState } from "@/utils";
 import { TagColours } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
@@ -81,6 +82,7 @@ export interface AudioTrack extends ApiTrackResponse {
   confirming: boolean;
   deleted: boolean;
 }
+export type AudioTracks = Map<TrackId, AudioTrack>;
 
 export default defineComponent({
   name: "AudioRecording",
@@ -113,6 +115,8 @@ export default defineComponent({
       const humanTag =
         humanTags.length === 1
           ? humanTags[0]
+          : humanTags.length === 0
+          ? null
           : humanTags.reduce((acc, curr) => {
               if (acc.what === curr.what) {
                 return curr;
@@ -185,14 +189,8 @@ export default defineComponent({
         return [track.id, audioTrack];
       })
     );
-    const tracks = ref<Map<number, AudioTrack>>(mappedTracks);
-    const selectedTrack = ref<AudioTrack | null>(null);
-    const setSelectedTrack = (track: AudioTrack | null) => {
-      console.log("setting");
-      selectedTrack.value = produce(selectedTrack.value, () => {
-        return track;
-      });
-    };
+    const [tracks, setTracks] = useState<AudioTracks>(mappedTracks);
+    const [selectedTrack, setSelectedTrack] = useState<AudioTrack>(null);
 
     const addTrack = async (track: AudioTrack): Promise<AudioTrack> => {
       try {
@@ -213,12 +211,17 @@ export default defineComponent({
         if (response.success) {
           const id = response.result.trackId;
           const colour = TagColours[tracks.value.size % TagColours.length];
-          const newTrack = produce(track, (track) => {
-            track.id = id;
-            track.colour = colour;
-          });
-          tracks.value = produce(tracks.value, (draft) => {
-            draft.set(id, newTrack);
+          const newTrack = {
+            ...track,
+            id,
+            colour,
+          };
+          setTracks((tracks) => {
+            const track = tracks.get(id);
+            tracks.set(
+              id,
+              produce(track, () => newTrack)
+            );
           });
           return newTrack;
         } else {
@@ -250,22 +253,18 @@ export default defineComponent({
     const modifyTrack = (
       trackId: TrackId,
       trackChanges: Partial<AudioTrack>
-    ) => {
-      const track = tracks.value.get(trackId);
-      if (track) {
-        tracks.value = produce(tracks.value, (draft) => {
-          draft.set(
-            trackId,
-            produce(track, (draftTrack) => {
-              return {
-                ...draftTrack,
-                ...trackChanges,
-              };
-            })
-          );
-        });
-        return tracks.value.get(trackId);
-      }
+    ): AudioTrack => {
+      setTracks((draftTracks) => {
+        const track = draftTracks.get(trackId);
+        draftTracks.set(
+          trackId,
+          produce(track, () => ({
+            ...track,
+            ...trackChanges,
+          }))
+        );
+      });
+      return tracks.value.get(trackId) as AudioTrack;
     };
 
     const addTagToTrack = async (
@@ -323,16 +322,15 @@ export default defineComponent({
           setSelectedTrack(track);
         }
         const newTrack = await addTagToTrack(selectedTrack.value.id, tag);
-        console.log("new track", newTrack);
         setSelectedTrack(newTrack);
       }
     };
 
-    const customTagValue = ref<string>("");
+    const [customTag, setCustomTag] = useState<String>("");
     const handleCustomTagSubmit = (e: SubmitEvent) => {
       e.preventDefault();
-      if (customTagValue) {
-        const tag = customTagValue.value
+      if (customTag) {
+        const tag = customTag.value
           .toLowerCase()
           .replace(/[^a-z0-9]/g, "")
           .replace(/\s/g, "_");
@@ -347,7 +345,7 @@ export default defineComponent({
       selectedTrack,
       setSelectedTrack,
       handleCustomTagSubmit,
-      customTagValue,
+      setCustomTag,
       addTagToSelectedTrack,
       addTagToTrack,
       addTrack,

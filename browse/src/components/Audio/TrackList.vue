@@ -4,12 +4,12 @@
       <h2 class="classification-header">Classification</h2>
     </b-row>
     <b-row v-for="track in tracks" :key="track.id">
-      <b-col>
+      <b-col v-if="!track.deleted">
         <b-row>
           <b-col
             lg="10"
             sm="4"
-            v-on:click="setSelectedTrack(track)"
+            v-on:click="setSelectedTrack(() => track)"
             class="track-container"
           >
             <b-row>
@@ -100,7 +100,7 @@
           </b-col>
           <b-col
             cols="2"
-            class="track-container-side d-flex justify-content-end p-0"
+            class="track-container-side d-flex justify-content-end"
           >
             <b-dropdown
               class="track-settings-button"
@@ -121,25 +121,27 @@
           </b-col>
         </b-row>
         <b-row>
-          <b-container
-            v-b-toggle="`tag-history-${track.id}`"
-            class="tag-history-toggle"
-          >
-            <h4>Tag History</h4>
-            <font-awesome-icon icon="angle-up" class="when-open" />
-            <font-awesome-icon icon="angle-down" class="when-closed" />
-          </b-container>
-          <b-collapse :id="`tag-history-${track.id}`">
-            <b-table
-              class="text-center"
-              :items="track.tags"
-              :fields="['what', 'who', 'confidence']"
+          <b-col>
+            <b-container
+              v-b-toggle="`tag-history-${track.id}`"
+              class="tag-history-toggle"
             >
-              <template #cell(who)="data">{{
-                data.item.data.name ? data.item.data.name : data.item.userName
-              }}</template>
-            </b-table>
-          </b-collapse>
+              <h4>Tag History</h4>
+              <font-awesome-icon icon="angle-up" class="when-open" />
+              <font-awesome-icon icon="angle-down" class="when-closed" />
+            </b-container>
+            <b-collapse :id="`tag-history-${track.id}`">
+              <b-table
+                class="text-center"
+                :items="track.tags"
+                :fields="['what', 'who', 'confidence']"
+              >
+                <template #cell(who)="data">{{
+                  data.item.data.name ? data.item.data.name : data.item.userName
+                }}</template>
+              </b-table>
+            </b-collapse>
+          </b-col>
         </b-row>
       </b-col>
     </b-row>
@@ -151,12 +153,14 @@
 
 <script lang="ts">
 import { PropType } from "vue";
-import { defineComponent, ref, watch } from "@vue/composition-api";
-import { Immutable } from "immer";
+import { defineComponent, watch } from "@vue/composition-api";
 
-import { AudioTrack } from "../Video/AudioRecording.vue";
+import { SetState, useState } from "@/utils";
+
+import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 
 import { TrackId } from "@typedefs/api/common";
+import { Immutable } from "immer";
 
 enum TrackListFilter {
   All = "all",
@@ -169,11 +173,11 @@ export default defineComponent({
   name: "TrackList",
   props: {
     audioTracks: {
-      type: Map as PropType<Map<number, AudioTrack>>,
+      type: Map as PropType<AudioTracks>,
       required: true,
     },
     selectedTrack: {
-      type: Object as PropType<Immutable<AudioTrack> | null>,
+      type: Object as PropType<AudioTrack | null>,
     },
     deleteTrack: {
       type: Function as PropType<(track: TrackId) => void>,
@@ -186,7 +190,7 @@ export default defineComponent({
       required: true,
     },
     setSelectedTrack: {
-      type: Function as PropType<(track: Immutable<AudioTrack>) => void>,
+      type: Function as PropType<SetState<AudioTrack>>,
       required: true,
     },
   },
@@ -198,7 +202,7 @@ export default defineComponent({
       }
       await props.addTagToTrack(track.id, tag.what);
     };
-    const filter = ref<TrackListFilter>(TrackListFilter.All);
+    const [filter, setFilter] = useState<TrackListFilter>(TrackListFilter.All);
     const filterTracks = (track: AudioTrack) => {
       switch (filter.value) {
         case TrackListFilter.All:
@@ -214,15 +218,15 @@ export default defineComponent({
     const sortTracks = (trackA: AudioTrack, trackB: AudioTrack) => {
       return trackA.start - trackB.start;
     };
-    const tracks = ref<AudioTrack[]>(
+    const [tracks, setTracks] = useState<AudioTrack[]>(
       [...props.audioTracks.values()].filter(filterTracks).sort(sortTracks)
     );
     watch(
       () => props.audioTracks,
       (newTracks) => {
-        tracks.value = [...newTracks.values()]
-          .filter(filterTracks)
-          .sort(sortTracks);
+        setTracks(
+          [...newTracks.values()].filter(filterTracks).sort(sortTracks)
+        );
       }
     );
 

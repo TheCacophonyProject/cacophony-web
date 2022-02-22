@@ -25,7 +25,7 @@
             min="0"
             max="1"
             step="0.01"
-            @input="setVolume"
+            @input="changeVolume"
           />
         </div>
       </div>
@@ -74,63 +74,28 @@
 </template>
 <script lang="ts">
 import { PropType } from "vue";
-import { defineComponent, ref, watch, onMounted } from "@vue/composition-api";
+import { defineComponent, watch, onMounted } from "@vue/composition-api";
 import { produce } from "immer";
 import WaveSurfer from "wavesurfer.js";
 import SpectrogramPlugin from "wavesurfer.js/src/plugin/spectrogram/index.js";
 import ColorMap from "colormap";
 
-import { AudioTrack } from "../Video/AudioRecording.vue";
+import {
+  debounce,
+  changedContext,
+  createSVGElement,
+  useState,
+  SetState,
+} from "@/utils";
 
-import { TrackId } from "@typedefs/api/common";
+import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
+
 import { ApiTrackPosition } from "@typedefs/api/track";
-
-const createSVGElement = (
-  element: {
-    attributes?: Object;
-    style?: Object;
-  },
-  elementType: string
-): SVGElement => {
-  const svgns = "http://www.w3.org/2000/svg";
-  const svgElement = document.createElementNS(svgns, elementType);
-  if (element.attributes) {
-    Object.keys(element.attributes).forEach((key) => {
-      svgElement.setAttribute(key, element.attributes[key]);
-    });
-  }
-  if (element.style) {
-    Object.keys(element.style).forEach((key) => {
-      svgElement.style.setProperty(key, element.style[key]);
-    });
-  }
-  return svgElement;
-};
-
-function changedContext<T>(
-  old: Set<T>,
-  curr: Set<T>
-): { added: Set<T>; deleted: Set<T> } {
-  return {
-    added: new Set([...curr].filter((x) => !old.has(x))),
-    deleted: new Set([...old].filter((x) => !curr.has(x))),
-  };
-}
-
-const debounce = (func: (...args: any[]) => void, timeout = 100) => {
-  let timer: number;
-  return (...args: any[]) => {
-    clearTimeout(timer);
-    timer = window.setTimeout(() => {
-      func(...args);
-    }, timeout);
-  };
-};
 
 export default defineComponent({
   props: {
     tracks: {
-      type: Map as PropType<Map<TrackId, AudioTrack>>,
+      type: Map as PropType<AudioTracks>,
       required: true,
     },
     url: {
@@ -142,15 +107,15 @@ export default defineComponent({
       default: null,
     },
     setSelectedTrack: {
-      type: Function as PropType<(track: AudioTrack) => void>,
+      type: Function as PropType<SetState<AudioTrack>>,
       required: true,
     },
   },
   setup(props) {
     // Player
-    const spectrogram = ref<HTMLCanvasElement>(null);
-    const overlay = ref<SVGElement>(null);
-    const tempTrack = ref<{
+    const [spectrogram, setSpectrogram] = useState(null);
+    const [overlay, setOverlay] = useState<SVGElement>(null);
+    const [tempTrack, setTempTrack] = useState<{
       pos: ApiTrackPosition & { startX: number; startY: number };
       rect: SVGElement;
       active: boolean;
@@ -185,7 +150,7 @@ export default defineComponent({
     });
 
     const moveTempTrack = (x: number, y: number) => {
-      tempTrack.value = produce(tempTrack.value, (draft) => {
+      setTempTrack((draft) => {
         const currX = Math.min(draft.pos.startX, x);
         const currY = Math.min(draft.pos.startY, y);
         const width = Math.abs(draft.pos.startX - x);
@@ -229,7 +194,7 @@ export default defineComponent({
         rect.setAttribute("stroke-width", "2");
       });
       rect.addEventListener("click", () => {
-        props.setSelectedTrack(props.tracks.get(track.id));
+        props.setSelectedTrack(() => props.tracks.get(track.id));
       });
       return rect;
     };
@@ -285,19 +250,19 @@ export default defineComponent({
         });
       }
     );
-    const player = ref<WaveSurfer>(null);
-    const isFinished = ref(false);
+    const [player, setPlayer] = useState<WaveSurfer>(null);
+    const [isFinished, setIsFinished] = useState(false);
 
-    const isPlaying = ref(false);
+    const [isPlaying, setIsPlaying] = useState(false);
     watch([isPlaying, () => props.selectedTrack], () => {
       if (isPlaying.value) {
-        isFinished.value = false;
+        setIsFinished(false);
         return;
       }
       const finishTime = props.selectedTrack
         ? props.selectedTrack.end
         : player.value.getDuration();
-      isFinished.value = player.value.getCurrentTime() >= finishTime;
+      setIsFinished(player.value.getCurrentTime() >= finishTime);
     });
 
     watch(
@@ -351,7 +316,7 @@ export default defineComponent({
 
     const playTrack = (track: AudioTrack) => {
       if (props.selectedTrack.id !== track.id) {
-        props.setSelectedTrack(track);
+        props.setSelectedTrack(() => track);
       }
       playAt(track.start, track.end);
     };
@@ -384,24 +349,24 @@ export default defineComponent({
       player.value.play(start, end);
     };
     type Volume = { volume: number; muted: boolean };
-    const volume = ref<Volume>({
+    const [volume, setVolume] = useState<Volume>({
       volume: 0.5,
       muted: false,
     });
-    const volumeSilder = ref<HTMLInputElement>(null);
+    const [volumeSlider, setVolumeSlider] = useState<HTMLInputElement>(null);
     watch(volume, (v) => {
       if (v.muted) {
         player.value.setVolume(0);
-        volumeSilder.value.value = "0";
+        volumeSlider.value.value = "0";
       } else {
         player.value.setVolume(v.volume);
-        volumeSilder.value.value = v.volume.toString();
+        volumeSlider.value.value = v.volume.toString();
       }
       storeVolume(volume.value);
     });
 
     const toggleMute = () => {
-      volume.value = produce(volume.value, (draft) => {
+      setVolume((draft) => {
         draft.muted = !draft.muted;
       });
     };
@@ -410,68 +375,67 @@ export default defineComponent({
       localStorage.setItem("volume", JSON.stringify(volume));
     });
 
-    const setVolume = (e: Event) => {
+    const changeVolume = (e: Event) => {
       const slider = e.target as HTMLInputElement;
-      volume.value = produce(volume.value, (draft) => {
-        draft.volume = parseFloat(slider.value);
+      setVolume((volume) => {
+        volume.volume = parseFloat(slider.value);
       });
     };
 
     onMounted(() => {
-      volumeSilder.value = document.querySelector(
-        "#volume-slider"
-      ) as HTMLInputElement;
+      setVolumeSlider(
+        document.querySelector("#volume-slider") as HTMLInputElement
+      );
       const storedVolume = localStorage.getItem("volume");
       if (storedVolume) {
         // check if storeVolume is an object
         try {
           const parsed = JSON.parse(storedVolume);
-          debugger;
           if (parsed.volume) {
-            volume.value = produce(volume.value, (draft) => {
-              return parsed;
-            });
+            setVolume(parsed);
           }
         } catch (e) {
           // do nothing
         }
       }
 
-      player.value = WaveSurfer.create({
-        container: "#waveform",
-        barWidth: 3,
-        barHeight: 1,
-        barGap: 1,
-        height: 50,
-        backgroundColor: "#2B333F",
-        progressColor: "#FFF",
-        cursorColor: "#dc3545",
-        waveColor: "#FFF",
-        pixelRatio: 1,
-        hideScrollbar: true,
-        responsive: true,
-        normalize: true,
-        cursorWidth: 1,
-        plugins: [
-          SpectrogramPlugin.create({
-            container: "#spectrogram",
-            fftSamples: 512,
-            colorMap: ColorMap({
-              colormap: "magma",
-              nshades: 256,
-              format: "float",
+      setPlayer(
+        WaveSurfer.create({
+          container: "#waveform",
+          barWidth: 3,
+          barHeight: 1,
+          barGap: 1,
+          height: 50,
+          backgroundColor: "#2B333F",
+          progressColor: "#FFF",
+          cursorColor: "#dc3545",
+          waveColor: "#FFF",
+          pixelRatio: 1,
+          hideScrollbar: true,
+          responsive: true,
+          normalize: true,
+          cursorWidth: 1,
+          plugins: [
+            SpectrogramPlugin.create({
+              container: "#spectrogram",
+              fftSamples: 512,
+              colorMap: ColorMap({
+                colormap: "magma",
+                nshades: 256,
+                format: "float",
+              }),
             }),
-          }),
-        ],
-      });
+          ],
+        })
+      );
       player.value.on("finish", () => {
-        isPlaying.value = false;
+        setIsPlaying(false);
       });
       player.value.on("pause", () => {
-        isPlaying.value = false;
+        setIsPlaying(false);
       });
       player.value.on("play", () => {
-        isPlaying.value = true;
+        setIsPlaying(true);
       });
       player.value.on("seek", (time) => {
         if (props.selectedTrack) {
@@ -487,10 +451,12 @@ export default defineComponent({
       });
       player.value.load(props.url);
       player.value.on("ready", () => {
-        spectrogram.value = document.querySelector(
+        const canvas = document.querySelector(
           "spectrogram canvas"
         ) as HTMLCanvasElement;
-        console.log(player.value.spectrogram.fftSamples);
+        if (canvas) {
+          setSpectrogram(() => canvas);
+        }
         spectrogram.value.style.zIndex = "0";
         const spectrogramWidth = spectrogram.value.width;
         const spectrogramHeight = spectrogram.value.height;
@@ -503,6 +469,8 @@ export default defineComponent({
             cursor: "crosshair",
             width: "100%",
             height: "100%",
+            opacity: "0",
+            transition: "opacity 0.2s",
           },
           attributes: {
             width: spectrogramWidth,
@@ -510,7 +478,7 @@ export default defineComponent({
             xmlns: "http://www.w3.org/2000/svg",
           },
         };
-        overlay.value = createSVGElement(overlayAttr, "svg");
+        setOverlay(createSVGElement(overlayAttr, "svg"));
         spectrogram.value.parentElement.appendChild(overlay.value);
 
         // Move canvas image to SVG & clean up
@@ -557,8 +525,8 @@ export default defineComponent({
           e.preventDefault();
           // don't start dragging if it's a click less that 100ms ago
           const { x, y } = getDragCoords(e);
-          tempTrack.value = produce(tempTrack.value, (draft) => {
-            draft.pos = {
+          setTempTrack((track) => {
+            track.pos = {
               startX: x,
               startY: y,
               x: x,
@@ -566,12 +534,12 @@ export default defineComponent({
               height: 0,
               width: 0,
             };
-            draft.rect.setAttribute("x", x.toString());
-            draft.rect.setAttribute("y", y.toString());
-            draft.rect.setAttribute("width", "0");
-            draft.rect.setAttribute("height", "0");
-            draft.active = true;
-            draft.startDragTime = Date.now();
+            track.rect.setAttribute("x", x.toString());
+            track.rect.setAttribute("y", y.toString());
+            track.rect.setAttribute("width", "0");
+            track.rect.setAttribute("height", "0");
+            track.active = true;
+            track.startDragTime = Date.now();
           });
         };
 
@@ -602,9 +570,11 @@ export default defineComponent({
             deleted: false,
           };
           props.setSelectedTrack(track);
-          tempTrack.value = produce(tempTrack.value, (draft) => {
-            draft.active = false;
-          });
+          setTempTrack(
+            produce(tempTrack.value, (draft) => {
+              draft.active = false;
+            })
+          );
         });
         const endEvent = (e: TouchEvent | MouseEvent) => {
           e.preventDefault();
@@ -617,9 +587,11 @@ export default defineComponent({
             moveTempTrack(x, y);
             confirmTrack();
           } else {
-            tempTrack.value = produce(tempTrack.value, (draft) => {
-              draft.active = false;
-            });
+            setTempTrack(
+              produce(tempTrack.value, (draft) => {
+                draft.active = false;
+              })
+            );
           }
         };
 
@@ -630,6 +602,10 @@ export default defineComponent({
         overlay.value.addEventListener("touchmove", moveEvent);
         overlay.value.addEventListener("mouseup", endEvent);
         overlay.value.addEventListener("touchend", endEvent);
+
+        setTimeout(() => {
+          overlay.value.style.opacity = "1";
+        }, 100);
       });
     });
     return {
@@ -638,7 +614,7 @@ export default defineComponent({
       isFinished,
       volume,
       play,
-      setVolume,
+      changeVolume,
       toggleMute,
       togglePlay,
       playAt,
@@ -651,6 +627,11 @@ export default defineComponent({
 spectrogram {
   width: 100%;
   border-radius: 0.25rem 0.25rem 0 0;
+  transition: all 0.2s ease-in;
+}
+#spectrogram {
+  background-color: #2b333f;
+  min-height: 256px;
 }
 .player-bar {
   display: grid;
