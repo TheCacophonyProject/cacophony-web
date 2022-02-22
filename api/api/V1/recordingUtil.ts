@@ -71,6 +71,7 @@ import { Device } from "@models/Device";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
 import SendData = ManagedUpload.SendData;
+import { canonicalLatLng, locationsAreEqual } from "@models/Group";
 
 let CptvDecoder;
 (async () => {
@@ -111,28 +112,17 @@ export async function tryToMatchRecordingToStation(
   if (!stations) {
     const group = await models.Group.getFromId(recording.GroupId);
     stations = await group.getStations({
-      where: { retiredAt: { [Op.eq]: null } },
+      where: {
+        retiredAt: { [Op.eq]: null },
+      },
     });
   }
   const stationDistances = [];
   for (const station of stations) {
     // See if any stations match: Looking at the location distance between this recording and the stations.
-    let recordingCoords = recording.location;
-    if (
-      !Array.isArray(recordingCoords) &&
-      recordingCoords.hasOwnProperty("coordinates")
-    ) {
-      recordingCoords = recordingCoords.coordinates;
-    }
     const distanceToStation = latLngApproxDistance(
-      {
-        lat: station.location.coordinates[1],
-        lng: station.location.coordinates[0],
-      },
-      {
-        lat: (recordingCoords as [number, number])[1],
-        lng: (recordingCoords as [number, number])[0],
-      }
+      station.location,
+      recording.location
     );
     stationDistances.push({ distanceToStation, station });
   }
@@ -413,6 +403,8 @@ export const uploadRawRecording = util.multipartUpload(
       ) {
         // @ts-ignore
         recording.location = [metadata.latitude, metadata.longitude];
+      } else if (data.hasOwnProperty("location")) {
+        recording.location = data.location;
       }
       if (
         (!data.hasOwnProperty("duration") && metadata.duration) ||
@@ -447,9 +439,69 @@ export const uploadRawRecording = util.multipartUpload(
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
     recording.DeviceId = uploadingDevice.id;
     recording.GroupId = uploadingDevice.GroupId;
+
+    // FIXME(ManageStations): Need to check the activeAt and retiredAt columns when assigning.
+    // If a new recording comes in out of order - i.e. before the station was created, we want
+    // to move the activeAt date back if it doesn't conflict with another station at that location.
     const matchingStation = await tryToMatchRecordingToStation(recording);
     if (matchingStation) {
       recording.StationId = matchingStation.id;
+    } else if (recording.location) {
+      // TODO - We should have a warning if a recording is uploaded without any location.
+
+      // TODO - add "automatically created" boolean column to stations.
+      // If a recording comes in that exactly matches a station before that station was created, move the creation date back
+
+      // TODO(ManageStations)
+      // Create a new station, and assign this recording to it.
+      const device = await models.Device.findByPk(uploadingDevice.id);
+
+      // const device = await models.Device.findByPk(uploadingDevice.id, {
+      //   include: [
+      //     {
+      //       model: models.DeviceLocations,
+      //       order: ["fromDateTime", "desc"]
+      //     },
+      //   ],
+      // });
+
+      const recordingCoords = canonicalLatLng(recording.location);
+      //
+      // // Look at the recordingDateTime
+      // // Check if this device has moved since the last time we saw it, and if so, update the
+      // // DeviceLocations log.
+      // let matchedLocation;
+      // for (const location of device.DeviceLocations) {
+      //   // If there was a "fixup" we'd expect a new location to be set by a user after the location was
+      //   // logged by a recording upload.
+      //
+      //   // If a recording comes in after the fixup time, but has the same location as before the fixup, we'd apply
+      //   // the fixup location to the recording.
+      //
+      //   // If a recording comes through with a location that exactly matches an existing location in the device location log,
+      //   // only earlier, we'd move the earliest known time at that location back.
+      //
+      //   // If we have stations with that location, we'd also need to adjust the station start time?
+      //
+      //   // If a station is deleted, the corresponding entry in the device location log should also be deleted.
+      //   if (locationsAreEqual(location, recordingCoords)) {
+      //     matchedLocation = location;
+      //   }
+      // }
+
+      // TODO(ManageStations): device.lastKnownLocation() method   device.locationAtTime(?dateTime)
+
+      const group = await models.Group.findByPk(uploadingDevice.GroupId);
+      const now = new Date().toISOString();
+      // @ts-ignore
+      const newStation = new models.Station({
+        name: `New station for ${device.devicename}_${now}`,
+        location: recordingCoords,
+        activeAt: new Date(recording.recordingDateTime),
+      });
+      await newStation.save();
+      recording.StationId = newStation.id;
+      await group.addStation(newStation);
     }
 
     if (typeof uploadingDevice.public === "boolean") {

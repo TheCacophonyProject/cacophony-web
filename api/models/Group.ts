@@ -27,7 +27,9 @@ import {
   tryToMatchRecordingToStation,
 } from "@api/V1/recordingUtil";
 import { Device } from "./Device";
-import { GroupId, UserId, StationId } from "@typedefs/api/common";
+import { GroupId, UserId, StationId, LatLng } from "@typedefs/api/common";
+import { ApiGroupSettings } from "@typedefs/api/group";
+import { ApiCreateStationData } from "@typedefs/api/station";
 
 const retireMissingStations = (
   existingStations: Station[],
@@ -51,16 +53,40 @@ const retireMissingStations = (
 
 const EPSILON = 0.000000000001;
 
+export const canonicalLatLng = (
+  location: LatLng | { coordinates: [number, number] } | [number, number]
+): LatLng => {
+  if (Array.isArray(location)) {
+    return { lat: location[1], lng: location[0] };
+  } else if (location.hasOwnProperty("coordinates")) {
+    return {
+      lat: (location as { coordinates: [number, number] }).coordinates[1],
+      lng: (location as { coordinates: [number, number] }).coordinates[0],
+    };
+  }
+  return location as LatLng;
+};
+
+export const locationsAreEqual = (
+  a: LatLng | { coordinates: [number, number] },
+  b: LatLng | { coordinates: [number, number] }
+): boolean => {
+  const canonicalA = canonicalLatLng(a);
+  const canonicalB = canonicalLatLng(b);
+  // NOTE: We need to compare these numbers with an epsilon value, otherwise we get floating-point precision issues.
+  return (
+    Math.abs(canonicalA.lat - canonicalB.lat) < EPSILON &&
+    Math.abs(canonicalA.lng - canonicalB.lng) < EPSILON
+  );
+};
+
 export const stationLocationHasChanged = (
   oldStation: Station,
   newStation: CreateStationData
-) =>
-  // NOTE: We need to compare these numbers with an epsilon value, otherwise we get floating-point precision issues.
-  Math.abs(oldStation.location.coordinates[1] - newStation.lat) < EPSILON ||
-  Math.abs(oldStation.location.coordinates[0] - newStation.lng) < EPSILON;
+) => !locationsAreEqual(oldStation.location, newStation);
 
 export const checkThatStationsAreNotTooCloseTogether = (
-  stations: Array<Station | CreateStationData>
+  stations: Array<CreateStationData | Station>
 ): string | null => {
   const allStations = stations.map((s) => {
     if (s.hasOwnProperty("lat")) {
@@ -68,8 +94,7 @@ export const checkThatStationsAreNotTooCloseTogether = (
     } else {
       return {
         name: (s as Station).name,
-        lat: (s as Station).location.coordinates[1],
-        lng: (s as Station).location.coordinates[0],
+        ...(s as Station).location
       };
     }
   });
@@ -184,8 +209,9 @@ export interface Group extends Sequelize.Model, ModelCommon<Group> {
   id: GroupId;
   groupname: string;
   lastRecordingTime?: Date;
+  settings?: ApiGroupSettings;
   addUser: (userToAdd: User, through: any) => Promise<void>;
-  addStation: (stationToAdd: CreateStationData) => Promise<void>;
+  addStation: (stationToAdd: Station) => Promise<Station>;
   getUsers: (options?: {
     through?: any;
     where?: any;
@@ -237,6 +263,10 @@ export default function (sequelize, DataTypes): GroupStatic {
     },
     lastRecordingTime: {
       type: DataTypes.DATE,
+    },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
     },
   };
 

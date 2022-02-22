@@ -22,8 +22,9 @@ export interface ApiStationResponse {
   id: StationId;
   name: string;
   location: LatLng;
-  lastUpdatedById: UserId;
+  lastUpdatedById?: UserId; // Not set if station was automatically created.
   createdAt: IsoFormattedDateString;
+  activeAt: IsoFormattedDateString;
   retiredAt?: IsoFormattedDateString;
   updatedAt: IsoFormattedDateString;
   groupId: GroupId;

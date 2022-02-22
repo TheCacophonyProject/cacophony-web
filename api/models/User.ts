@@ -28,6 +28,7 @@ import { EndUserAgreementVersion, UserId } from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { sendResetEmail } from "@/scripts/emailUtil";
 import { Device } from "@models/Device";
+import { ApiUserSettings } from "@typedefs/api/user";
 
 const Op = Sequelize.Op;
 
@@ -54,6 +55,7 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   groups: Group[];
   globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
+  settings?: ApiUserSettings;
 }
 
 export interface UserStatic extends ModelStaticCommon<User> {
@@ -64,16 +66,6 @@ export interface UserStatic extends ModelStaticCommon<User> {
   getFromEmail: (email: string) => Promise<User | null>;
   freeEmail: (email: string) => Promise<boolean>;
   getFromId: (id: number) => Promise<User | null>;
-}
-
-interface UserData {
-  id: UserId;
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  groups: Group[];
-  globalPermission: UserGlobalPermission;
 }
 
 export default function (

@@ -36,6 +36,9 @@ import {
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
+import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json";
+import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json";
+
 import {
   booleanOf,
   anyOf,
@@ -58,6 +61,8 @@ import {
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
 import { mapStation, mapStations } from "./Station";
+import { Op } from "sequelize";
+import log from "@log";
 
 const mapGroup = (
   group: Group,
@@ -68,6 +73,15 @@ const mapGroup = (
     groupName: group.groupname,
     admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
   };
+  if (group.settings) {
+    groupData.settings = group.settings;
+  }
+  if (
+    (group as any).Users.length &&
+    (group as any).Users[0].GroupUsers.settings
+  ) {
+    groupData.userSettings = (group as any).Users[0].GroupUsers.settings;
+  }
   if (group.lastRecordingTime) {
     groupData.lastRecordingTime = group.lastRecordingTime.toISOString();
   }
@@ -552,13 +566,19 @@ export default function (app: Application, baseUrl: string) {
       // NOTE: If we create a new station, do we want to also have an optional date range that
       //  we pass to make it re-match recordings for that new station?
       //  In that case response could also say how many recordings were matched?
-      const station = await response.locals.group.addStation(
-        response.locals.station
-      );
+
+      const station = response.locals.station;
+      // @ts-ignore
+      const newStation = new models.Station({
+        ...station,
+        location: [station.lng, station.lat],
+      });
+      const newStationCreated = await newStation.save();
+      await response.locals.group.addStation(newStation);
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got station"],
-        stationId: station.id,
+        stationId: newStationCreated.id,
       });
     }
   );
@@ -645,6 +665,53 @@ export default function (app: Application, baseUrl: string) {
         statusCode: 200,
         messages: ["Got stations for group"],
         stations: mapStations(stations),
+      });
+    }
+  );
+
+  app.post(
+    `${apiUrl}/:groupIdOrName/my-settings`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("settings")
+        .exists()
+        .custom(jsonSchemaOf(ApiGroupUserSettingsSchema)),
+    ]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    parseJSONField(body("settings")),
+    async (request: Request, response: Response) => {
+      await response.locals.group.GroupUsers.update(
+        {
+          settings: response.locals.settings,
+        },
+        {
+          where: {
+            UserId: response.locals.requestUser.id,
+          },
+        }
+      );
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Updated group settings for user"],
+      });
+    }
+  );
+
+  app.post(
+    `${apiUrl}/:groupIdOrName/group-settings`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("settings").exists().custom(jsonSchemaOf(ApiGroupSettingsSchema)),
+    ]),
+    fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    parseJSONField(body("settings")),
+    async (request: Request, response: Response) => {
+      await response.locals.group.update({
+        settings: response.locals.settings,
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Updated group settings"],
       });
     }
   );

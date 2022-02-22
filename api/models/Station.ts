@@ -19,8 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import Sequelize, { BuildOptions, ModelAttributes } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import util from "./util/util";
-import validation from "./util/validation";
-import { GroupId, StationId, UserId } from "@typedefs/api/common";
+import {GroupId, LatLng, StationId, UserId} from "@typedefs/api/common";
 
 // Station data as supplied to API on creation.
 export interface CreateStationData {
@@ -32,12 +31,11 @@ export interface CreateStationData {
 export interface Station extends Sequelize.Model, ModelCommon<Station> {
   id: StationId;
   name: string;
-  location: {
-    coordinates: [number, number];
-  };
-  lastUpdatedById: UserId;
+  location: LatLng;
+  lastUpdatedById: UserId | null;
   createdAt: Date;
   updatedAt: Date;
+  activeAt: Date;
   retiredAt: Date | null;
   GroupId: GroupId;
 }
@@ -56,15 +54,10 @@ export default function (
     name: {
       type: DataTypes.STRING,
     },
-    location: {
-      type: DataTypes.GEOMETRY,
-      set: util.geometrySetter,
-      validate: {
-        isLatLon: validation.isLatLon,
-      },
-    },
+    location: util.locationField(),
     lastUpdatedById: {
       type: DataTypes.INTEGER,
+      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -75,6 +68,10 @@ export default function (
     retiredAt: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    activeAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
     },
   };
 

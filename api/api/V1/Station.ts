@@ -12,7 +12,7 @@ import { validateFields } from "@api/middleware";
 import { body, param, query } from "express-validator";
 import { Station } from "@models/Station";
 import { ApiStationResponse } from "@typedefs/api/station";
-import { idOf } from "../validation-middleware";
+import { booleanOf, idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
 import {
@@ -20,6 +20,8 @@ import {
   stationLocationHasChanged,
 } from "@models/Group";
 import models from "@models";
+import { Op } from "sequelize";
+import { StationId } from "@typedefs/api/common";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -38,13 +40,13 @@ export const mapStation = (station: Station): ApiStationResponse => {
     groupId: station.GroupId,
     groupName: (station as any).Group.groupname,
     createdAt: station.createdAt.toISOString(),
-    location: {
-      lat: station.location.coordinates[1],
-      lng: station.location.coordinates[0],
-    },
+    activeAt: station.activeAt.toISOString(),
+    location: station.location,
     updatedAt: station.updatedAt.toISOString(),
-    lastUpdatedById: station.lastUpdatedById,
   };
+  if (station.lastUpdatedById) {
+    stationResponse.lastUpdatedById = station.lastUpdatedById;
+  }
   if (station.retiredAt) {
     stationResponse.retiredAt = station.retiredAt.toISOString();
   }
@@ -121,34 +123,6 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {delete} /api/v1/stations/:id
-   * @apiName DeleteStationById
-   * @apiGroup Station
-   * @apiDescription Delete a single station by id
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:id`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("id")),
-      query("view-mode").optional().equals("user"),
-    ]),
-    fetchAdminAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
-      await response.locals.station.destroy();
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Deleted station"],
-      });
-    }
-  );
-
-  /**
    * @api {patch} /api/v1/stations/:id
    * @apiName UpdateStationById
    * @apiGroup Station
@@ -173,6 +147,11 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
+      // If a from date is set, that is the date from which the station became active.
+      // If an until date is set, that is the date that the station was retired at, and retired will be set to true.
+      // Any recordings that previously had this station assigned to them outside of this time window
+      // will be unassigned.  TODO: Can we now use postgres queries to get the recordings that fall inside the station?
+
       // We only care about non-retired stations for this query.
       const updates = response.locals["station-updates"];
       const existingStation = response.locals.station;
@@ -229,6 +208,64 @@ export default function (app: Application, baseUrl: string) {
         responseData.warnings = proximityWarnings;
       }
       return responseUtil.send(response, responseData);
+    }
+  );
+
+  /**
+   * @api {patch} /api/v1/stations/:id
+   * @apiName DeleteStationById
+   * @apiGroup Station
+   * @apiDescription Delete a single station by id.  Must be an admin of the group that owns this station.
+   * Optionally, delete all recordings that were associated with this station.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      booleanOf(body("delete-recordings")).optional().toBoolean(),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response) => {
+      if (request.body["delete-recordings"]) {
+        // Delete this station, and mark delete recordings associated with it as deleted by this user.
+        const recordings = await models.Recording.findAll({
+          where: {
+            StationId: Number(request.params.id),
+          },
+          attributes: ["id"],
+        });
+        const deleteRecordingPromises = [];
+        const deletionTime = new Date();
+        for (const recording of recordings) {
+          deleteRecordingPromises.push(
+            recording.update({
+              deletedAt: deletionTime,
+              deletedBy: response.locals.requestUser.id,
+            })
+          );
+        }
+        await Promise.all(deleteRecordingPromises);
+        await response.locals.station.destroy();
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: [
+            `Deleted station and ${recordings.length} associated recordings`,
+          ],
+        });
+      } else {
+        await response.locals.station.destroy();
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Deleted station"],
+        });
+      }
     }
   );
 }

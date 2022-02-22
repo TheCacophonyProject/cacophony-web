@@ -23,8 +23,6 @@ import assert from "assert";
 import { v4 as uuidv4 } from "uuid";
 import config from "../config";
 import util from "./util/util";
-import validation from "./util/validation";
-import { AuthorizationError } from "@api/customErrors";
 import _ from "lodash";
 import { User } from "./User";
 import { ModelCommon, ModelStaticCommon } from "./index";
@@ -47,7 +45,7 @@ import {
   UserId,
   TrackId,
   DeviceId,
-  StationId,
+  StationId, LatLng,
 } from "@typedefs/api/common";
 import {
   RecordingPermission,
@@ -175,7 +173,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   type: RecordingType;
   duration: number;
   recordingDateTime: string;
-  location?: { coordinates: [number, number] } | [number, number]; // [number, number] is the format coordinates are set in, but they are returned as { coordinates: [number, number] }
+  location?: LatLng;
   relativeToDawn: number;
   relativeToDusk: number;
   version: string;
@@ -302,13 +300,7 @@ export default function (
     type: DataTypes.STRING,
     duration: DataTypes.FLOAT,
     recordingDateTime: DataTypes.DATE,
-    location: {
-      type: DataTypes.GEOMETRY,
-      set: util.geometrySetter,
-      validate: {
-        isLatLon: validation.isLatLon,
-      },
-    },
+    location: util.locationField(),
     relativeToDawn: DataTypes.INTEGER,
     relativeToDusk: DataTypes.INTEGER,
     version: DataTypes.STRING,

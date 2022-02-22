@@ -187,12 +187,7 @@ const mapRecordingResponse = (
     id: recording.id,
     deviceId: recording.DeviceId,
     duration: recording.duration,
-    location: recording.location && {
-      lat: (recording.location as { coordinates: [number, number] })
-        .coordinates[1],
-      lng: (recording.location as { coordinates: [number, number] })
-        .coordinates[0],
-    },
+    location: recording.location,
     rawMimeType: recording.rawMimeType,
     comment: ifNotNull(recording.comment),
     deviceName: recording.Device?.devicename,

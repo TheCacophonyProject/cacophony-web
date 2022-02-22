@@ -23,6 +23,7 @@ import { Event } from "./Event";
 import logger from "../logging";
 import { DeviceType } from "@typedefs/api/consts";
 import { DeviceId, GroupId, UserId, ScheduleId } from "@typedefs/api/common";
+import util from "./util/util";
 
 const Op = Sequelize.Op;
 
@@ -101,9 +102,7 @@ export default function (
       type: DataTypes.STRING,
       allowNull: false,
     },
-    location: {
-      type: DataTypes.GEOMETRY,
-    },
+    location: util.locationField(),
     lastConnectionTime: {
       type: DataTypes.DATE,
     },
@@ -158,6 +157,7 @@ export default function (
     models.Device.belongsTo(models.Group);
     models.Device.belongsTo(models.Schedule);
     models.Device.hasMany(models.Alert);
+    models.Device.hasMany(models.DeviceLocations);
   };
 
   Device.freeDevicename = async function (devicename, groupId) {

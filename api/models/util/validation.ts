@@ -17,21 +17,64 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 // Validate that input is a valid [longitude, latitude]
-function isLatLon(point: { coordinates: [number, number] }) {
-  const val = point.coordinates;
-  if (
-    val === null ||
-    typeof val !== "object" ||
-    !Array.isArray(val) ||
-    val.length !== 2 ||
-    typeof val[0] !== "number" ||
-    typeof val[1] !== "number" ||
-    val[1] < -90 ||
-    90 < val[1] ||
-    val[0] < -180 ||
-    180 <= val[0]
+import { canonicalLatLng } from "@models/Group";
+import { LatLng } from "@typedefs/api/common";
+
+function isLatLon(
+  point: { coordinates: [number, number] } | [number, number] | LatLng
+) {
+  let valid = true;
+  if (point === null) {
+    valid = false;
+    throw new Error("Location is not valid A.");
+  } else if (
+    Array.isArray(point) &&
+    (point.length !== 2 ||
+      typeof point[0] !== "number" ||
+      typeof point[1] !== "number")
   ) {
-    throw new Error("Location is not valid.");
+    valid = false;
+    throw new Error("Location is not valid B.");
+  } else if (typeof point === "object") {
+    if (point.hasOwnProperty("coordinates")) {
+      const coordinates = (point as any).coordinates;
+      if (!Array.isArray(coordinates)) {
+        valid = false;
+        throw new Error("Location is not valid C.");
+      }
+      if (
+        Array.isArray(coordinates) &&
+        (coordinates.length !== 2 ||
+          typeof coordinates[0] !== "number" ||
+          typeof coordinates[1] !== "number")
+      ) {
+        valid = false;
+        throw new Error("Location is not valid D.");
+      }
+    } else if (
+      !point.hasOwnProperty("lat") ||
+      !point.hasOwnProperty("lng") ||
+      typeof (point as any).lat !== "number" ||
+      typeof (point as any).lng !== "number"
+    ) {
+      valid = false;
+      throw new Error("Location is not valid E.");
+    } else {
+      // Okay
+    }
+  }
+  const location = canonicalLatLng(point);
+  if (
+    location.lng < -90 ||
+    90 < location.lng ||
+    location.lat < -180 ||
+    180 <= location.lat
+  ) {
+    valid = false;
+    throw new Error(`Location is not valid F. ${JSON.stringify(location)}`);
+  }
+  if (!valid) {
+    throw new Error("Location is not valid G.");
   }
 }
 

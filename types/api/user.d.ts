@@ -12,4 +12,13 @@ export interface ApiLoggedInUserResponse extends ApiUserResponse {
   lastName?: string;
   globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
+  settings?: ApiUserSettings;
+}
+
+export interface ApiUserSettings {
+  // Define user-specific preferences.
+  // Maybe define what mode the user wants to see their dashboard in, whether they prefer seeing
+  // recordings or visits for that group?
+  savedSearchQueries: string[];
+  displayMode: "audio" | "thermal";
 }

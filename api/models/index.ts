@@ -35,6 +35,7 @@ import { GroupUsersStatic } from "./GroupUsers";
 import { ScheduleStatic } from "./Schedule";
 import { StationStatic } from "./Station";
 import { asyncLocalStorage } from "@/Globals";
+import { DeviceLocationsStatic } from "@models/DeviceLocations";
 
 const basename = path.basename(module.filename);
 const dbConfig = config.database;
@@ -159,7 +160,6 @@ export interface ModelStaticCommon<T> extends Sequelize.ModelCtor<any> {
   addAssociations: (models: Record<string, ModelStaticCommon<any>>) => void;
   userGetAttributes: readonly string[];
   getDataValue: (fieldName: string) => any;
-  findByPk: (id: number | string) => Promise<T | null>;
 }
 
 const AllModels = {
@@ -173,6 +173,7 @@ const AllModels = {
   File: db.File as FileStatic,
   Event: db.Event as EventStatic,
   Device: db.Device as DeviceStatic,
+  DeviceLocations: db.DeviceLocations as DeviceLocationsStatic,
   Group: db.Group as GroupStatic,
   Station: db.Station as StationStatic,
   GroupUsers: db.GroupUsers as GroupUsersStatic,

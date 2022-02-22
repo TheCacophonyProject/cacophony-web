@@ -21,6 +21,10 @@ import log from "@log";
 import fs from "fs";
 import mime from "mime";
 import config from "@config";
+import { canonicalLatLng } from "@models/Group";
+import { LatLng } from "@typedefs/api/common";
+import validation from "@models/util/validation";
+import { DataTypes } from "sequelize";
 
 export function getFileName(model) {
   let fileName;
@@ -39,19 +43,6 @@ export function getFileName(model) {
     fileName = fileName + "." + ext;
   }
   return fileName;
-}
-
-export function geometrySetter(val) {
-  // Put here so old apps that send location in a string still work.
-  // TODO remove this when nobody is using the old app that sends a string.
-  if (typeof val === "string") {
-    return;
-  }
-  // Flip coordinates to X,Y, expected by PostGIS (Longitude, Latitude)
-  this.setDataValue("location", {
-    type: "Point",
-    coordinates: [val[1], val[0]],
-  });
 }
 
 export function userCanEdit(id, user) {
@@ -214,8 +205,47 @@ export function deleteFile(fileKey) {
   });
 }
 
+const geometrySetter = (
+  val: { coordinates: [number, number] } | [number, number] | LatLng | string
+): { type: "Point"; coordinates: [number, number] } => {
+  // Put here so old apps that send location in a string still work.
+  // TODO remove this when nobody is using the old app that sends a string.
+  if (typeof val === "string") {
+    return;
+  }
+  const location = canonicalLatLng(val);
+  // Flip coordinates to X,Y, expected by PostGIS (Longitude, Latitude)
+  return {
+    type: "Point",
+    coordinates: [location.lng, location.lat],
+  };
+};
+
+export function locationField(fieldName: string = "location") {
+  return {
+    type: DataTypes.GEOMETRY,
+    set(value) {
+      const location = geometrySetter(value);
+      if (location) {
+        this.setDataValue(fieldName, location);
+      }
+    },
+    get() {
+      const location = this.getDataValue(fieldName);
+      if (location) {
+        log.warning("Gettings location for this %s, %s", this.id, this.getDataValue(fieldName));
+        return canonicalLatLng(this.getDataValue(fieldName));
+      }
+      return null;
+    },
+    validate: {
+      isLatLon: validation.isLatLon,
+    },
+  };
+}
+
 export default {
-  geometrySetter,
+  locationField,
   userCanEdit,
   openS3,
   saveFile,
