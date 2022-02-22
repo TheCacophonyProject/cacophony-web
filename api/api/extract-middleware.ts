@@ -993,6 +993,7 @@ const getRecordings =
   ): Promise<ModelStaticCommon<Recording>[] | ClientError> => {
     const recordingWhere = {
       id: { [Op.in]: recordingIds },
+      recordingDateTime: { [Op.ne]: null },
     };
     if ("deleted" in context) {
       if (context.deleted === true) {
@@ -1004,7 +1005,11 @@ const getRecordings =
     let getRecordingOptions;
     const groupWhere = {};
     const deviceWhere = {};
-    if (forRequestUser) {
+
+    const requestingWithSuperAdminPermissions =
+      context.viewAsSuperUser && context.requestUser.hasGlobalWrite();
+
+    if (forRequestUser && !requestingWithSuperAdminPermissions) {
       if (context && context.requestUser) {
         // Insert request user constraints
         getRecordingOptions = getIncludeForUser(
