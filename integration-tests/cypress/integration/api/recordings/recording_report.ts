@@ -76,7 +76,9 @@ describe("Recordings report using where", () => {
     processingState: RecordingProcessingState.Corrupt,
   };
 
-  const templateRecording3: ApiRecordingSet = TEMPLATE_AUDIO_RECORDING;
+  const templateRecording3: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
+  );
   templateRecording3.additionalMetadata.analysis.species_identify = [
     { end_s: 6, begin_s: 3, species: "morepork", liklihood: 1 },
     { end_s: 14, begin_s: 11, species: "morepork", liklihood: 0.38 },

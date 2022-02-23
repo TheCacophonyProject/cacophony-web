@@ -21,9 +21,12 @@ describe("Recording needs-tag (power-tagger)", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  const templateExpectedRecording: ApiRecordingNeedsTagReturned =
-    TEMPLATE_THERMAL_RECORDING_NEEDS_TAG;
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateExpectedRecording: ApiRecordingNeedsTagReturned = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_NEEDS_TAG)
+  );
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   let dev_env = false;
   let doNotValidate = true;

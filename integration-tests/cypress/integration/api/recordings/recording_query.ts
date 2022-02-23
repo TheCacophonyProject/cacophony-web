@@ -35,10 +35,12 @@ describe("Recordings query using where", () => {
     "[].additionalMetadata",
   ]);
 
-  const templateExpectedRecording: ApiThermalRecordingResponse =
-    TEMPLATE_THERMAL_RECORDING_RESPONSE;
-  const templateExpectedAudioRecording: ApiAudioRecordingResponse =
-    TEMPLATE_AUDIO_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
+  );
 
   const track1 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track1.start_s = 2;

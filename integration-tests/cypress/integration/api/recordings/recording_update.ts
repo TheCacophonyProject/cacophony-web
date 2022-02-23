@@ -19,10 +19,13 @@ import {
 } from "@commands/dataTemplate";
 
 describe("Update recordings", () => {
-  const templateExpectedRecording: ApiThermalRecordingResponse =
-    TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
 
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   //TODO: Issue 98 - only comments and additional metadata succeed at update
   //location causes server error

@@ -24,9 +24,12 @@ import {
 } from "@commands/dataTemplate";
 
 describe("Recordings - parameter tests", () => {
-  const templateExpectedRecording: ApiThermalRecordingResponse =
-    TEMPLATE_THERMAL_RECORDING_RESPONSE;
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   before(() => {
     //Create group 1 with 2 devices, admin and member

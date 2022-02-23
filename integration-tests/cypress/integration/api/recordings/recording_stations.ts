@@ -12,10 +12,13 @@ import {
 } from "@commands/dataTemplate";
 import { ApiRecordingSet } from "@commands/types";
 
-const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+const templateRecording: ApiRecordingSet = JSON.parse(
+  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+);
 
-const templateExpectedRecording: ApiThermalRecordingResponse =
-  TEMPLATE_THERMAL_RECORDING_RESPONSE;
+const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+);
 
 describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";

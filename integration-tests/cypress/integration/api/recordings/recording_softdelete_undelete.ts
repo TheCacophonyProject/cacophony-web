@@ -30,9 +30,12 @@ const EXCLUDE_IDS_RECORDINGS = EXCLUDE_IDS_ARRAY.concat([
 const EXCLUDE_COLUMNS = ["Date", "Time"];
 
 describe("Recordings: soft delete, undelete", () => {
-  const templateExpectedRecording: ApiThermalRecordingResponse =
-    TEMPLATE_THERMAL_RECORDING_RESPONSE;
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   before(() => {
     //Create group1 with 2 devices, admin and member

@@ -45,11 +45,13 @@ describe("Track Tags: add, check, delete", () => {
   const suPassword = getCreds("superuser")["password"];
 
   //Recording with no track - added as part of test
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
   templateRecording.metadata.tracks = [];
 
   const templateExpectedNeedsTagRecording: ApiRecordingNeedsTagReturned =
-    TEMPLATE_THERMAL_RECORDING_NEEDS_TAG;
+    JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_NEEDS_TAG));
 
   const positions1: ApiTrackPosition[] = [
     {

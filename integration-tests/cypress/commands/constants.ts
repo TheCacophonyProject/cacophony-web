@@ -12,8 +12,7 @@ export const EXCLUDE_IDS = [
   ".tracks[].TrackTags[].TrackId",
   ".tracks[].tags[].id",
   ".tracks[].id",
-  ".rawMimeType",
-  //  ".tracks[].filtered",
+  ".rawMimeType", //FIXME this should be verifyable
 ];
 
 //parameter checks - fields we do not check value of by default in 'recordings'
@@ -21,8 +20,7 @@ export const EXCLUDE_IDS_ARRAY = [
   "[].tracks[].TrackTags[].TrackId",
   "[].tracks[].tags[].id",
   "[].tracks[].id",
-  "[].rawMimeType",
-  //  "[].tracks[].filtered",
+  "[].rawMimeType", //FIXME this should be verifyable
 ];
 
 //Column names in the recording export csv
