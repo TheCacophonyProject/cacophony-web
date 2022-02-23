@@ -582,7 +582,8 @@ export default {
 .recordings-day {
   position: sticky;
   top: 0;
-  z-index: 101;
+  z-index: 100;
+  background: transparentize($white, 0.15);
   padding: 0.5rem 0;
   font-size: 1em;
   font-weight: 600;
@@ -683,8 +684,7 @@ export default {
   position: sticky;
   top: 0;
   text-align: right;
-  z-index: 100;
-  background: transparentize($white, 0.15);
+  z-index: 101;
   padding: 8px;
   &.rows {
     background: white;
