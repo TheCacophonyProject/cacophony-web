@@ -764,7 +764,7 @@ describe("Recordings - processing tests", () => {
       });
     });
 
-    it.only("Tracking stage can delete tracks and tags from the recording", () => {
+    it("Tracking stage can delete tracks and tags from the recording", () => {
       const recording19 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(
         "rpCamera1",
