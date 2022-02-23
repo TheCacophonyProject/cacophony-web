@@ -7,7 +7,10 @@ import {
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
-import { TestCreateRecordingData, predictionResponseFromSet } from "@commands/api/recording-tests";
+import {
+  TestCreateRecordingData,
+  predictionResponseFromSet,
+} from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
   ApiTrackResponse,
@@ -15,14 +18,17 @@ import {
 } from "@typedefs/api/track";
 
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import {TEMPLATE_THERMAL_RECORDING, TEMPLATE_TRACK, TEMPLATE_EXPECTED_TRACK} from "@commands/dataTemplate";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_TRACK,
+  TEMPLATE_EXPECTED_TRACK,
+} from "@commands/dataTemplate";
 
 const EXCLUDE_TRACK_IDS = ["[].id"];
 
 describe("Tracks: add, check, delete", () => {
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
-  templateRecording.metadata.tracks=[];
-
+  templateRecording.metadata.tracks = [];
 
   const positions1: ApiTrackPosition[] = [
     {
@@ -318,13 +324,15 @@ describe("Tracks: add, check, delete", () => {
 
   it("Can retrieve track and tag data uploaded by device", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
-    recording1.metadata.tracks = [ TEMPLATE_TRACK ];
+    recording1.metadata.tracks = [TEMPLATE_TRACK];
 
-    const expectedTrack = JSON.parse(JSON.stringify( TEMPLATE_EXPECTED_TRACK));
+    const expectedTrack = JSON.parse(JSON.stringify(TEMPLATE_EXPECTED_TRACK));
     expectedTrack.tags[0]["createdAt"] = NOT_NULL_STRING;
     expectedTrack.tags[0]["updatedAt"] = NOT_NULL_STRING;
-    expectedTrack.tags[0]["data"] = predictionResponseFromSet(recording1.metadata.tracks[0].predictions, recording1.metadata.models)[0];
-
+    expectedTrack.tags[0]["data"] = predictionResponseFromSet(
+      recording1.metadata.tracks[0].predictions,
+      recording1.metadata.models
+    )[0];
 
     cy.log("Add recording as device");
     cy.apiRecordingAdd("trkCamera1", recording1, undefined, "trkRecording9");

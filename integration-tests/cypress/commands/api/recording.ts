@@ -880,4 +880,3 @@ Cypress.Commands.add(
     });
   }
 );
-

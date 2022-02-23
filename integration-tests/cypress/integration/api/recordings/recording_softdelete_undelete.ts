@@ -3,7 +3,7 @@ import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
   HTTP_OK200,
-  EXCLUDE_IDS_ARRAY
+  EXCLUDE_IDS_ARRAY,
 } from "@commands/constants";
 
 import { ApiRecordingSet, ApiRecordingColumns } from "@commands/types";
@@ -16,7 +16,10 @@ import {
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_RESPONSE} from "@commands/dataTemplate";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 //FIXME: Disabled checking DATA as that would require creating a model and associating
 //model name and id
@@ -28,7 +31,8 @@ const EXCLUDE_IDS_RECORDINGS = EXCLUDE_IDS_ARRAY.concat([
 const EXCLUDE_COLUMNS = ["Date", "Time"];
 
 describe("Recordings: soft delete, undelete", () => {
-  const templateExpectedRecording: ApiThermalRecordingResponse = TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse =
+    TEMPLATE_THERMAL_RECORDING_RESPONSE;
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
 
   before(() => {
@@ -67,8 +71,7 @@ describe("Recordings: soft delete, undelete", () => {
         recording1
       );
       // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions=[];
-
+      expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Soft delete recording");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording1", HTTP_OK200, {
@@ -131,7 +134,7 @@ describe("Recordings: soft delete, undelete", () => {
         recording1
       );
       // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions=[];
+      expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Soft delete recording");
       cy.apiRecordingDelete("rsdGroupMember", "rsdRecording2", HTTP_OK200, {
@@ -233,7 +236,7 @@ describe("Recordings: soft delete, undelete", () => {
         recording1
       );
       // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions=[];
+      expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Member of a different group cannot soft delete recording");
       cy.apiRecordingDelete("rsdGroup2Admin", "rsdRecording6", HTTP_Forbidden);
@@ -338,7 +341,7 @@ describe("Recordings: soft delete, undelete", () => {
         recording1
       );
       // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions=[];
+      expectedRecordingFromQuery1.tracks[0].positions = [];
 
       expectedReportFromQuery1 = TestCreateExpectedRecordingColumns(
         "rsdRecording8",
@@ -400,7 +403,7 @@ describe("Recordings: soft delete, undelete", () => {
         recording1
       );
       // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions=[];
+      expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Delete recording without specifying soft/hard delete");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording9").then(() => {

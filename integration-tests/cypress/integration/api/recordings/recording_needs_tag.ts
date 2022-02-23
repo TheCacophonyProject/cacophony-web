@@ -14,7 +14,10 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import {TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_NEEDS_TAG} from "@commands/dataTemplate";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_NEEDS_TAG,
+} from "@commands/dataTemplate";
 
 const NO_SAVE_ID = null;
 
@@ -22,7 +25,8 @@ describe("Recording needs-tag (power-tagger)", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  const templateExpectedRecording: ApiRecordingNeedsTagReturned = TEMPLATE_THERMAL_RECORDING_NEEDS_TAG;
+  const templateExpectedRecording: ApiRecordingNeedsTagReturned =
+    TEMPLATE_THERMAL_RECORDING_NEEDS_TAG;
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
 
   let dev_env = false;

@@ -15,7 +15,7 @@ import {
   ApiRecordingTagRequest,
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
-import {TEMPLATE_THERMAL_RECORDING} from "@commands/dataTemplate";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 
 const EXCLUDE_TAG_IDS = ["[].id"];
 

@@ -28,7 +28,10 @@ import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
-import {TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_NEEDS_TAG} from "@commands/dataTemplate";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_NEEDS_TAG,
+} from "@commands/dataTemplate";
 
 const EXCLUDE_TRACK_IDS = [
   "[].id",
@@ -43,9 +46,10 @@ describe("Track Tags: add, check, delete", () => {
 
   //Recording with no track - added as part of test
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
-  templateRecording.metadata.tracks=[];
+  templateRecording.metadata.tracks = [];
 
-  const templateExpectedNeedsTagRecording: ApiRecordingNeedsTagReturned = TEMPLATE_THERMAL_RECORDING_NEEDS_TAG;
+  const templateExpectedNeedsTagRecording: ApiRecordingNeedsTagReturned =
+    TEMPLATE_THERMAL_RECORDING_NEEDS_TAG;
 
   const positions1: ApiTrackPosition[] = [
     {
@@ -123,7 +127,6 @@ describe("Track Tags: add, check, delete", () => {
     userId: NOT_NULL,
   };
 
-
   const algorithm1 = {
     model_name: "inc3",
   };
@@ -184,7 +187,7 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.filtered=false;
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttaGroupAdmin");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupAdmin").id;
@@ -240,7 +243,7 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.filtered=false;
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupMember").id;
@@ -327,7 +330,7 @@ describe("Track Tags: add, check, delete", () => {
   it.skip("Cannot delete tag for device that user does not own", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.filtered=false;
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupMember").id;
@@ -410,11 +413,11 @@ describe("Track Tags: add, check, delete", () => {
   it.skip("User can add second tag", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag1.filtered=false;
+    expectedTrackWithTag1.filtered = false;
     expectedTrackWithTag1.tags = [expectedTag1];
     expectedTrackWithTag1.tags[0].userName = getTestName("ttaGroupMember");
     const expectedTrackWithTags2 = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTags2.filtered=false;
+    expectedTrackWithTags2.filtered = false;
     expectedTrackWithTags2.tags = [expectedTag2, expectedTag1];
     expectedTrackWithTags2.tags[0].userName = getTestName("ttaGroupMember");
     expectedTrackWithTags2.tags[1].userName = getTestName("ttaGroupMember");
@@ -467,12 +470,12 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTag1.tags = [expectedTag1];
-    expectedTrackWithTag1.filtered=false;
+    expectedTrackWithTag1.filtered = false;
     expectedTrackWithTag1.tags[0].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag1.tags[0].userId=getCreds("ttaGroupMember").id;
     const expectedTrackWithTags2 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTags2.tags = [expectedTag1, expectedTag1];
-    expectedTrackWithTags2.filtered=false;
+    expectedTrackWithTags2.filtered = false;
     expectedTrackWithTags2.tags[0].userName = getTestName("ttaGroupMember");
     expectedTrackWithTags2.tags[1].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag2.tags[0].userId=getCreds("ttaGroupMember").id;
@@ -527,9 +530,9 @@ describe("Track Tags: add, check, delete", () => {
     it("Can power-tag as non-owner by providing a valid tag JWT", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-      expectedTrack.filtered=true;
+      expectedTrack.filtered = true;
       const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-      expectedTrackWithTag.filtered=false;
+      expectedTrackWithTag.filtered = false;
       expectedTrackWithTag.tags = [expectedTag1];
       expectedTrackWithTag.tags[0].userName = getTestName("ttaNonMember");
       //expectedTrackWithTag.tags[0].userId=getCreds("ttaNonMember").id;

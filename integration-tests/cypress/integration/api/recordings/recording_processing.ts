@@ -1,6 +1,13 @@
 /// <reference path="../../../support/index.d.ts" />
 import { NOT_NULL, NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
-import { TEMPLATE_AUDIO_RECORDING_RESPONSE, TEMPLATE_AUDIO_RECORDING, TEMPLATE_AUDIO_RECORDING_PROCESSING, TEMPLATE_THERMAL_RECORDING_RESPONSE, TEMPLATE_THERMAL_RECORDING_PROCESSING, TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
+import {
+  TEMPLATE_AUDIO_RECORDING_RESPONSE,
+  TEMPLATE_AUDIO_RECORDING,
+  TEMPLATE_AUDIO_RECORDING_PROCESSING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+  TEMPLATE_THERMAL_RECORDING_PROCESSING,
+  TEMPLATE_THERMAL_RECORDING,
+} from "@commands/dataTemplate";
 
 import {
   ApiAlertConditions,
@@ -32,10 +39,14 @@ describe("Recordings - processing tests", () => {
   //Do not validate keys
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".updatedAt", ".id"];
 
-  const templateExpectedThermalRecording: ApiThermalRecordingResponse = TEMPLATE_THERMAL_RECORDING_RESPONSE;
-  const templateExpectedAudioRecording: ApiAudioRecordingResponse = TEMPLATE_AUDIO_RECORDING_RESPONSE;
-  const templateExpectedProcessing: ApiRecordingForProcessing = TEMPLATE_THERMAL_RECORDING_PROCESSING;
-  const templateExpectedAudioProcessing: ApiRecordingForProcessing = TEMPLATE_AUDIO_RECORDING_PROCESSING;
+  const templateExpectedThermalRecording: ApiThermalRecordingResponse =
+    TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse =
+    TEMPLATE_AUDIO_RECORDING_RESPONSE;
+  const templateExpectedProcessing: ApiRecordingForProcessing =
+    TEMPLATE_THERMAL_RECORDING_PROCESSING;
+  const templateExpectedAudioProcessing: ApiRecordingForProcessing =
+    TEMPLATE_AUDIO_RECORDING_PROCESSING;
   //Template thermal recording with no tracks (we will add them as part of the test)
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
   delete templateRecording.processingState;
@@ -653,22 +664,68 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42, "model_name": "Master" }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rpTrack18",
+        cy.processingApiAlgorithmPost({
+          "tracking-format": 42,
+          model_name: "Master",
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            "rpTrack18",
+            "rpRecording18",
+            { start_s: 1, end_s: 4 },
+            algorithmId
+          );
+
+          cy.log("Check tracks added to recording");
+          expectedRecording18.processing = true;
+          expectedRecording18.processingState =
+            RecordingProcessingState.Tracking;
+          expectedRecording18.tracks = [
+            {
+              tags: [],
+              start: 1,
+              end: 4,
+              id: 1,
+              positions: [],
+              filtered: false,
+            },
+          ];
+          cy.apiRecordingCheck(
+            "rpGroupAdmin",
+            "rpRecording18",
+            expectedRecording18,
+            EXCLUDE_ALL_IDS
+          ).then(() => {
+            expectedProcessing18.processingState =
+              RecordingProcessingState.AnalyseThermal;
+            cy.log("Complete tracking");
+            cy.processingApiPut("rpRecording18", true, {}, undefined);
+
+            cy.log("Start analyse");
+            cy.processingApiCheck(
+              RecordingType.ThermalRaw,
+              RecordingProcessingState.Analyse,
               "rpRecording18",
-              { start_s: 1, end_s: 4 },
-              algorithmId
+              expectedProcessing18,
+              EXCLUDE_KEYS
             );
 
-            cy.log("Check tracks added to recording");
             expectedRecording18.processing = true;
             expectedRecording18.processingState =
-              RecordingProcessingState.Tracking;
+              RecordingProcessingState.AnalyseThermal;
+
+            cy.log("Check tags added to recording/track");
             expectedRecording18.tracks = [
               {
-                tags: [],
+                tags: [
+                  {
+                    what: "possum",
+                    automatic: true,
+                    trackId: getCreds("rpTrack18").id,
+                    confidence: 0.9,
+                    data: { name: "Master" },
+                    id: -1,
+                  },
+                ],
                 start: 1,
                 end: 4,
                 id: 1,
@@ -676,79 +733,34 @@ describe("Recordings - processing tests", () => {
                 filtered: false,
               },
             ];
+
+            cy.processingApiTracksTagsPost(
+              "rpTrack18",
+              "rpRecording18",
+              "possum",
+              0.9,
+              { name: "Master" }
+            );
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording18",
               expectedRecording18,
               EXCLUDE_ALL_IDS
             ).then(() => {
-              expectedProcessing18.processingState =
-                RecordingProcessingState.AnalyseThermal;
-              cy.log("Complete tracking");
+              cy.log("set processing to done and recheck tracks");
               cy.processingApiPut("rpRecording18", true, {}, undefined);
-
-              cy.log("Start analyse");
-              cy.processingApiCheck(
-                RecordingType.ThermalRaw,
-                RecordingProcessingState.Analyse,
-                "rpRecording18",
-                expectedProcessing18,
-                EXCLUDE_KEYS
-              );
-
-              expectedRecording18.processing = true;
+              expectedRecording18.processing = false;
               expectedRecording18.processingState =
-                RecordingProcessingState.AnalyseThermal;
-
-              cy.log("Check tags added to recording/track");
-              expectedRecording18.tracks = [
-                {
-                  tags: [
-                    {
-                      what: "possum",
-                      automatic: true,
-                      trackId: getCreds("rpTrack18").id,
-                      confidence: 0.9,
-                      data: { name: "Master" },
-                      id: -1,
-                    },
-                  ],
-                  start: 1,
-                  end: 4,
-                  id: 1,
-                  positions: [],
-                  filtered: false,
-                },
-              ];
-
-              cy.processingApiTracksTagsPost(
-                "rpTrack18",
-                "rpRecording18",
-                "possum",
-                0.9,
-                { name: "Master" }
-              );
+                RecordingProcessingState.Finished;
               cy.apiRecordingCheck(
                 "rpGroupAdmin",
                 "rpRecording18",
                 expectedRecording18,
                 EXCLUDE_ALL_IDS
-              ).then(() => {
-                cy.log("set processing to done and recheck tracks");
-                cy.processingApiPut("rpRecording18", true, {}, undefined);
-                expectedRecording18.processing = false;
-                expectedRecording18.processingState =
-                  RecordingProcessingState.Finished;
-                cy.apiRecordingCheck(
-                  "rpGroupAdmin",
-                  "rpRecording18",
-                  expectedRecording18,
-                  EXCLUDE_ALL_IDS
-                );
-              });
+              );
             });
-          }
-        );
+          });
+        });
       });
     });
 
@@ -786,22 +798,50 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42, "model_name": "Master" }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rpTrack19",
-              "rpRecording19",
-              { start_s: 1, end_s: 4 },
-              algorithmId
-            );
+        cy.processingApiAlgorithmPost({
+          "tracking-format": 42,
+          model_name: "Master",
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            "rpTrack19",
+            "rpRecording19",
+            { start_s: 1, end_s: 4 },
+            algorithmId
+          );
 
-            cy.log("Check tracks added to recording");
-            expectedRecording19.processing = true;
-            expectedRecording19.processingState =
-              RecordingProcessingState.Tracking;
+          cy.log("Check tracks added to recording");
+          expectedRecording19.processing = true;
+          expectedRecording19.processingState =
+            RecordingProcessingState.Tracking;
+          expectedRecording19.tracks = [
+            {
+              tags: [],
+              start: 1,
+              end: 4,
+              id: 1,
+              positions: [],
+              filtered: false,
+            },
+          ];
+          cy.apiRecordingCheck(
+            "rpGroupAdmin",
+            "rpRecording19",
+            expectedRecording19,
+            EXCLUDE_ALL_IDS
+          ).then(() => {
+            cy.log("Check tags added to recording/track");
             expectedRecording19.tracks = [
               {
-                tags: [],
+                tags: [
+                  {
+                    what: "possum",
+                    automatic: true,
+                    trackId: getCreds("rpTrack19").id,
+                    confidence: 0.9,
+                    data: { name: "Master" },
+                    id: -1,
+                  },
+                ],
                 start: 1,
                 end: 4,
                 id: 1,
@@ -809,70 +849,43 @@ describe("Recordings - processing tests", () => {
                 filtered: false,
               },
             ];
+            cy.processingApiTracksTagsPost(
+              "rpTrack19",
+              "rpRecording19",
+              "possum",
+              0.9,
+              { name: "Master" }
+            );
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording19",
               expectedRecording19,
               EXCLUDE_ALL_IDS
             ).then(() => {
-              cy.log("Check tags added to recording/track");
-              expectedRecording19.tracks = [
-                {
-                  tags: [
-                    {
-                      what: "possum",
-                      automatic: true,
-                      trackId: getCreds("rpTrack19").id,
-                      confidence: 0.9,
-                      data: { name: "Master" },
-                      id: -1,
-                    },
-                  ],
-                  start: 1,
-                  end: 4,
-                  id: 1,
-                  positions: [],
-                  filtered: false,
-                },
-              ];
-              cy.processingApiTracksTagsPost(
-                "rpTrack19",
-                "rpRecording19",
-                "possum",
-                0.9,
-                { name: "Master" }
-              );
+              cy.log("Delete the track and check tracks deleted");
+              cy.processingApiTracksDelete("rpRecording19");
+              expectedRecording19.tracks = [];
               cy.apiRecordingCheck(
                 "rpGroupAdmin",
                 "rpRecording19",
                 expectedRecording19,
                 EXCLUDE_ALL_IDS
               ).then(() => {
-                cy.log("Delete the track and check tracks deleted");
-                cy.processingApiTracksDelete("rpRecording19");
-                expectedRecording19.tracks = [];
+                cy.log("set processing to done and recheck tracks");
+                cy.processingApiPut("rpRecording19", true, {}, undefined);
+                expectedRecording19.processing = false;
+                expectedRecording19.processingState =
+                  RecordingProcessingState.AnalyseThermal;
                 cy.apiRecordingCheck(
                   "rpGroupAdmin",
                   "rpRecording19",
                   expectedRecording19,
                   EXCLUDE_ALL_IDS
-                ).then(() => {
-                  cy.log("set processing to done and recheck tracks");
-                  cy.processingApiPut("rpRecording19", true, {}, undefined);
-                  expectedRecording19.processing = false;
-                  expectedRecording19.processingState =
-                    RecordingProcessingState.AnalyseThermal;
-                  cy.apiRecordingCheck(
-                    "rpGroupAdmin",
-                    "rpRecording19",
-                    expectedRecording19,
-                    EXCLUDE_ALL_IDS
-                  );
-                });
+                );
               });
             });
-          }
-        );
+          });
+        });
       });
     });
 

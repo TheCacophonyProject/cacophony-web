@@ -1,6 +1,17 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_OK200, HTTP_Unprocessable, NOT_NULL, EXCLUDE_IDS_ARRAY } from "@commands/constants";
-import { TEMPLATE_AUDIO_RECORDING_RESPONSE, TEMPLATE_AUDIO_RECORDING, TEMPLATE_THERMAL_RECORDING_RESPONSE, TEMPLATE_TRACK, TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
+import {
+  HTTP_OK200,
+  HTTP_Unprocessable,
+  NOT_NULL,
+  EXCLUDE_IDS_ARRAY,
+} from "@commands/constants";
+import {
+  TEMPLATE_AUDIO_RECORDING_RESPONSE,
+  TEMPLATE_AUDIO_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+  TEMPLATE_TRACK,
+  TEMPLATE_THERMAL_RECORDING,
+} from "@commands/dataTemplate";
 
 import { ApiRecordingSet } from "@commands/types";
 
@@ -22,43 +33,46 @@ describe("Recordings query using where", () => {
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate IDs
-  const EXCLUDE_PARAMS = EXCLUDE_IDS_ARRAY.concat(["[].tracks[].tags[].data","[].additionalMetadata"]);
+  const EXCLUDE_PARAMS = EXCLUDE_IDS_ARRAY.concat([
+    "[].tracks[].tags[].data",
+    "[].additionalMetadata",
+  ]);
 
-  const templateExpectedRecording: ApiThermalRecordingResponse = TEMPLATE_THERMAL_RECORDING_RESPONSE;
-  const templateExpectedAudioRecording: ApiAudioRecordingResponse = TEMPLATE_AUDIO_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse =
+    TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse =
+    TEMPLATE_AUDIO_RECORDING_RESPONSE;
 
-  let track1=JSON.parse(JSON.stringify(TEMPLATE_TRACK));
-    track1.start_s = 2;
-    track1.end_s = 5;
-    track1.predictions[0].label = "cat";
-    track1.predictions[0].confident_tag = "cat";
-    track1.predictions[0].confidence = 0.9;
-  let track2=JSON.parse(JSON.stringify(TEMPLATE_TRACK));
-    track2.start_s = 1;
-    track2.end_s = 3;
-    track2.predictions[0].label = "possum";
-    track2.predictions[0].confident_tag = "possum";
-    track2.predictions[0].confidence = 0.8;
-  let track4=JSON.parse(JSON.stringify(TEMPLATE_TRACK));
-    track4.start_s = 2;
-    track4.end_s = 5;
-    track4.predictions = [];
-
-
+  const track1 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
+  track1.start_s = 2;
+  track1.end_s = 5;
+  track1.predictions[0].label = "cat";
+  track1.predictions[0].confident_tag = "cat";
+  track1.predictions[0].confidence = 0.9;
+  const track2 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
+  track2.start_s = 1;
+  track2.end_s = 3;
+  track2.predictions[0].label = "possum";
+  track2.predictions[0].confident_tag = "possum";
+  track2.predictions[0].confidence = 0.8;
+  const track4 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
+  track4.start_s = 2;
+  track4.end_s = 5;
+  track4.predictions = [];
 
   //Four recording templates for setting and their expected return values
   const recording1 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-  recording1.duration= 15.6666666666667;
+  recording1.duration = 15.6666666666667;
   recording1.recordingDateTime = "2021-07-17T20:13:17.248Z";
   recording1.location = [-45.29115, 169.30845];
-  recording1.metadata.tracks[0]=track1;
+  recording1.metadata.tracks[0] = track1;
   let expectedRecording1: ApiThermalRecordingResponse;
 
   const recording2 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
   recording2.duration = 40;
   recording2.recordingDateTime = "2021-01-01T00:00:00.000Z";
   recording2.location = [-45, 169];
-  recording2.metadata.tracks[0]=track2;
+  recording2.metadata.tracks[0] = track2;
   recording2.processingState = RecordingProcessingState.Corrupt;
   let expectedRecording2: ApiThermalRecordingResponse;
 
@@ -67,10 +81,10 @@ describe("Recordings query using where", () => {
 
   let expectedRecording3: ApiAudioRecordingResponse;
   const recording4 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-  recording4.duration=40;
+  recording4.duration = 40;
   recording4.recordingDateTime = "2021-01-01T00:00:00.000Z";
   recording4.location = [-45, 169];
-  recording4.metadata.tracks[0]=track4;
+  recording4.metadata.tracks[0] = track4;
   let expectedRecording4: ApiThermalRecordingResponse;
 
   //Array of recordings for paging tests
@@ -139,8 +153,7 @@ describe("Recordings query using where", () => {
             delete expectedRecording3.relativeToDawn;
             delete expectedRecording3.relativeToDusk;
 
-            expectedRecording3.processingState =
-              RecordingProcessingState.ToMp3;
+            expectedRecording3.processingState = RecordingProcessingState.ToMp3;
 
             cy.apiRecordingAdd(
               "rqCamera1b",
@@ -178,13 +191,12 @@ describe("Recordings query using where", () => {
                   userId: getCreds("rqGroupAdmin").id,
                 },
               ];
-              expectedRecording4.tracks[0].filtered=false;
+              expectedRecording4.tracks[0].filtered = false;
 
               // FIXME TODO: should positons really be blank in query but not in get recording?
-              expectedRecording1.tracks[0].positions=[];
-              expectedRecording2.tracks[0].positions=[];
-              expectedRecording4.tracks[0].positions=[];
-
+              expectedRecording1.tracks[0].positions = [];
+              expectedRecording2.tracks[0].positions = [];
+              expectedRecording4.tracks[0].positions = [];
 
               cy.apiRecordingsQueryCheck(
                 "rqGroupAdmin",
@@ -235,8 +247,7 @@ describe("Recordings query using where", () => {
           tempRecording
         );
         // FIXME TODO: should positions really be blank in query but not in get recording?
-        expectedRecording[count].tracks[0].positions=[];
-
+        expectedRecording[count].tracks[0].positions = [];
       });
     }
   });

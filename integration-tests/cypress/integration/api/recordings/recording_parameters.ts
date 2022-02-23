@@ -19,11 +19,14 @@ import {
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import {TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_RESPONSE} from "@commands/dataTemplate";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 describe("Recordings - parameter tests", () => {
-
-  const templateExpectedRecording: ApiThermalRecordingResponse = TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse =
+    TEMPLATE_THERMAL_RECORDING_RESPONSE;
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
 
   before(() => {

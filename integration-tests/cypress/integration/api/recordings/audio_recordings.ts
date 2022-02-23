@@ -14,12 +14,15 @@ import {
 } from "@commands/api/recording-tests";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { TEMPLATE_AUDIO_RECORDING_RESPONSE, TEMPLATE_AUDIO_RECORDING } from "@commands/dataTemplate";
+import {
+  TEMPLATE_AUDIO_RECORDING_RESPONSE,
+  TEMPLATE_AUDIO_RECORDING,
+} from "@commands/dataTemplate";
 describe("Recordings - audio recording parameter tests", () => {
+  const templateExpectedRecording: ApiAudioRecordingResponse =
+    TEMPLATE_AUDIO_RECORDING_RESPONSE;
 
-const templateExpectedRecording: ApiAudioRecordingResponse = TEMPLATE_AUDIO_RECORDING_RESPONSE;
-
-const templateRecording: ApiRecordingSet = TEMPLATE_AUDIO_RECORDING;
+  const templateRecording: ApiRecordingSet = TEMPLATE_AUDIO_RECORDING;
 
   before(() => {
     //Create group1 with Admin, Member and 2 devices

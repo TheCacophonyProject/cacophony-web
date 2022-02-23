@@ -8,12 +8,19 @@ import {
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { HTTP_Forbidden, HTTP_Unprocessable, EXCLUDE_IDS } from "@commands/constants";
-import {TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_RESPONSE} from "@commands/dataTemplate";
+import {
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+  EXCLUDE_IDS,
+} from "@commands/constants";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 describe("Update recordings", () => {
-
-  const templateExpectedRecording: ApiThermalRecordingResponse = TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse =
+    TEMPLATE_THERMAL_RECORDING_RESPONSE;
 
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
 

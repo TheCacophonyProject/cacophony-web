@@ -7,12 +7,16 @@ import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { getCreds } from "@commands/server";
 import { EXCLUDE_IDS } from "@commands/constants";
-import { TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_RESPONSE } from "@commands/dataTemplate";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 import { ApiRecordingSet } from "@commands/types";
 
 const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
 
-const templateExpectedRecording: ApiThermalRecordingResponse = TEMPLATE_THERMAL_RECORDING_RESPONSE;
+const templateExpectedRecording: ApiThermalRecordingResponse =
+  TEMPLATE_THERMAL_RECORDING_RESPONSE;
 
 describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";

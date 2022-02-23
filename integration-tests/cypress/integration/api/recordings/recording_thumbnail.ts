@@ -18,7 +18,11 @@ import {
 } from "@commands/constants";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import {TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_PROCESSING, TEMPLATE_THERMAL_RECORDING_RESPONSE} from "@commands/dataTemplate";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_PROCESSING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 describe("Recording thumbnails", () => {
   const superuser = getCreds("superuser")["name"];
@@ -27,17 +31,18 @@ describe("Recording thumbnails", () => {
   //Do not validate keys
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
 
-  const templateExpectedRecording: ApiThermalRecordingResponse = TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse =
+    TEMPLATE_THERMAL_RECORDING_RESPONSE;
 
   // tempate thermal recoridng with no tracks - force into Analyse state to do thumbnail generation
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
-  templateRecording.processingState=RecordingProcessingState.Analyse;
-  templateRecording.metadata.tracks=[];
+  templateRecording.processingState = RecordingProcessingState.Analyse;
+  templateRecording.metadata.tracks = [];
 
-  const templateExpectedProcessing: ApiRecordingForProcessing = TEMPLATE_THERMAL_RECORDING_PROCESSING;
-  templateExpectedProcessing.processingState=RecordingProcessingState.Analyse;
-  templateExpectedProcessing.updatedAt=NOT_NULL_STRING;
-
+  const templateExpectedProcessing: ApiRecordingForProcessing =
+    TEMPLATE_THERMAL_RECORDING_PROCESSING;
+  templateExpectedProcessing.processingState = RecordingProcessingState.Analyse;
+  templateExpectedProcessing.updatedAt = NOT_NULL_STRING;
 
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
   //recordings that are in analyse state that do not belong to us.  This can be removed once

@@ -606,14 +606,17 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
     };
   }
   //expected.Station = station;
- 
-  //filtered unless we get a valid tag 
+
+  //filtered unless we get a valid tag
 
   expected.tags = [] as ApiRecordingTagResponse[];
   expected.tracks = [] as ApiTrackResponse[];
   if (inputTrackData) {
-    expected.tracks=trackResponseFromSet(inputTrackData.tracks, inputTrackData.models)
-  };
+    expected.tracks = trackResponseFromSet(
+      inputTrackData.tracks,
+      inputTrackData.models
+    );
+  }
 
   //TODO: add handling of stations
   //TODO: add handling of per-recording tags
@@ -622,82 +625,88 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
 }
 
 function positionResponseFromSet(positions) {
-  let tps=[];
+  const tps = [];
   positions.forEach((tp) => {
-    let newTp={};
-    newTp["x"]=tp.x;
-    newTp["y"]=tp.y;
-    newTp["width"]=tp.width;
-    newTp["height"]=tp.height;
-    newTp["frameNumber"]=tp.frame_number;
+    const newTp = {};
+    newTp["x"] = tp.x;
+    newTp["y"] = tp.y;
+    newTp["width"] = tp.width;
+    newTp["height"] = tp.height;
+    newTp["frameNumber"] = tp.frame_number;
     tps.push(newTp);
   });
 
   return tps;
-};
+}
 
-export function predictionResponseFromSet(predictions, models:ApiRecordingModel[]) {
-  let tps=[];
+export function predictionResponseFromSet(
+  predictions,
+  models: ApiRecordingModel[]
+) {
+  const tps = [];
   if (predictions) {
     predictions.forEach((tp) => {
-      let newTp={};
-      let model_id=tp.model_id;
+      const newTp = {};
+      const model_id = tp.model_id;
       let model_name = null;
       models.forEach((model) => {
-        if(model.id==model_id) {
-          model_name=model.name;
-        } 
+        if (model.id == model_id) {
+          model_name = model.name;
+        }
       });
-      newTp["name"]=model_name;
-      newTp["clarity"]=tp.clarity;
-        newTp["raw_tag"]=tp.label;
-      newTp["predictions"]=tp.predictions;
-      newTp["prediction_frames"]=tp.prediction_frames;
-      newTp["all_class_confidences"]=tp.all_class_confidences;
+      newTp["name"] = model_name;
+      newTp["clarity"] = tp.clarity;
+      newTp["raw_tag"] = tp.label;
+      newTp["predictions"] = tp.predictions;
+      newTp["prediction_frames"] = tp.prediction_frames;
+      newTp["all_class_confidences"] = tp.all_class_confidences;
       tps.push(newTp);
     });
   }
   return tps;
-};
+}
 
-export function trackResponseFromSet(tracks:ApiTrackSet[],models:ApiRecordingModel[]) {
-  let expected:ApiTrackResponse[]=[];
+export function trackResponseFromSet(
+  tracks: ApiTrackSet[],
+  models: ApiRecordingModel[]
+) {
+  const expected: ApiTrackResponse[] = [];
   if (tracks) {
-      tracks.forEach((track: any) => {
-        let filtered=true;
-        let tpos=positionResponseFromSet(track.positions);
-        let tpreddata=predictionResponseFromSet(track.predictions, models);
-  
-        const newTrack: ApiTrackResponse = {
-          id: -99,
-          tags: [],
-          start: track.start_s,
-          end: track.end_s,
-          positions: tpos,
-          filtered: false,
-        };
-        if (
-          track.predictions &&
-          track.predictions.length &&
-          track.predictions[0].confident_tag !== undefined
-        ) {
-          if(track.predictions[0].confident_tag!='false-positive') {
-            filtered=false;
-          }
-          newTrack.tags = [
-            {
-              what: track.predictions[0].confident_tag,
-              automatic: true,
-              trackId: -99,
-              data:  tpreddata[0],
-              confidence: track.predictions[0].confidence,
-              id: 0,
-            },
-          ];
+    tracks.forEach((track: any) => {
+      let filtered = true;
+      const tpos = positionResponseFromSet(track.positions);
+      const tpreddata = predictionResponseFromSet(track.predictions, models);
+
+      const newTrack: ApiTrackResponse = {
+        id: -99,
+        tags: [],
+        start: track.start_s,
+        end: track.end_s,
+        positions: tpos,
+        filtered: false,
+      };
+      if (
+        track.predictions &&
+        track.predictions.length &&
+        track.predictions[0].confident_tag !== undefined
+      ) {
+        if (track.predictions[0].confident_tag != "false-positive") {
+          filtered = false;
         }
-        newTrack.filtered=filtered;
-        expected.push(newTrack);
-      });
-    }
+        newTrack.tags = [
+          {
+            what: track.predictions[0].confident_tag,
+            automatic: true,
+            trackId: -99,
+            data: tpreddata[0],
+            confidence: track.predictions[0].confidence,
+            id: 0,
+          },
+        ];
+      }
+      newTrack.filtered = filtered;
+      expected.push(newTrack);
+    });
+  }
   return expected;
 }

@@ -13,7 +13,7 @@ export const EXCLUDE_IDS = [
   ".tracks[].tags[].id",
   ".tracks[].id",
   ".rawMimeType",
-//  ".tracks[].filtered",
+  //  ".tracks[].filtered",
 ];
 
 //parameter checks - fields we do not check value of by default in 'recordings'
@@ -22,7 +22,7 @@ export const EXCLUDE_IDS_ARRAY = [
   "[].tracks[].tags[].id",
   "[].tracks[].id",
   "[].rawMimeType",
-//  "[].tracks[].filtered",
+  //  "[].tracks[].filtered",
 ];
 
 export const ApiRecordingColumnNames = [

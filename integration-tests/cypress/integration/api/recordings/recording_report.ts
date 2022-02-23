@@ -11,7 +11,7 @@ import {
   TestCreateExpectedRecordingColumns,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
-import {TEMPLATE_AUDIO_RECORDING} from "@commands/dataTemplate";
+import { TEMPLATE_AUDIO_RECORDING } from "@commands/dataTemplate";
 
 describe("Recordings report using where", () => {
   const superuser = getCreds("superuser")["name"];
@@ -78,15 +78,15 @@ describe("Recordings report using where", () => {
 
   const templateRecording3: ApiRecordingSet = TEMPLATE_AUDIO_RECORDING;
   templateRecording3.additionalMetadata.analysis.species_identify = [
-          { end_s: 6, begin_s: 3, species: "morepork", liklihood: 1 },
-          { end_s: 14, begin_s: 11, species: "morepork", liklihood: 0.38 },
-          { end_s: 23, begin_s: 21, species: "morepork", liklihood: 1 },
-          { end_s: 29, begin_s: 27, species: "morepork", liklihood: 1 },
-          { end_s: 38, begin_s: 30, species: "morepork", liklihood: 1 },
-          { end_s: 46, begin_s: 42, species: "morepork", liklihood: 1 },
-          { end_s: 54, begin_s: 45, species: "morepork", liklihood: 1 },
-          { end_s: 59.8, begin_s: 56.8, species: "morepork", liklihood: 1 },
-        ];
+    { end_s: 6, begin_s: 3, species: "morepork", liklihood: 1 },
+    { end_s: 14, begin_s: 11, species: "morepork", liklihood: 0.38 },
+    { end_s: 23, begin_s: 21, species: "morepork", liklihood: 1 },
+    { end_s: 29, begin_s: 27, species: "morepork", liklihood: 1 },
+    { end_s: 38, begin_s: 30, species: "morepork", liklihood: 1 },
+    { end_s: 46, begin_s: 42, species: "morepork", liklihood: 1 },
+    { end_s: 54, begin_s: 45, species: "morepork", liklihood: 1 },
+    { end_s: 59.8, begin_s: 56.8, species: "morepork", liklihood: 1 },
+  ];
 
   const templateRecording4: ApiRecordingSet = {
     type: RecordingType.ThermalRaw,

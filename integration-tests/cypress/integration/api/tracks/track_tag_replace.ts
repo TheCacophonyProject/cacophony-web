@@ -22,7 +22,7 @@ import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
-import {TEMPLATE_THERMAL_RECORDING} from "@commands/dataTemplate";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 
 const EXCLUDE_TRACK_IDS = [
   "[].id",
@@ -34,7 +34,7 @@ const EXCLUDE_TRACK_IDS = [
 describe("Track Tags: replaceTag, check, delete", () => {
   //template recording with no tracks - add tracks during test
   const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
-  templateRecording.metadata.tracks=[];
+  templateRecording.metadata.tracks = [];
 
   const positions1: ApiTrackPosition[] = [
     {
@@ -183,7 +183,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.filtered=false;
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttgGroupAdmin");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttgGroupAdmin").id;
@@ -237,7 +237,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.filtered=false;
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttgGroupMember");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttgGroupMember").id;
@@ -324,7 +324,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("Cannot delete tag for device that user does not own", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.filtered=false;
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttgGroupAdmin");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttgGroupMember").id;
@@ -407,12 +407,12 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("User can replace their own track tag with a new one", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag1.filtered=false;
+    expectedTrackWithTag1.filtered = false;
     expectedTrackWithTag1.tags = [expectedTag1];
     expectedTrackWithTag1.tags[0].userName = getTestName("ttgGroupAdmin");
     //expectedTrackWithTag1.tags[0].userId=getCreds("ttgGroupMember").id;
     const expectedTrackWithTag2 = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag2.filtered=false;
+    expectedTrackWithTag2.filtered = false;
     expectedTrackWithTag2.tags = [expectedTag2];
     expectedTrackWithTag2.tags[0].userName = getTestName("ttgGroupAdmin");
     //expectedTrackWithTag2.tags[0].userId=getCreds("ttgGroupMember").id;
@@ -464,7 +464,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("User cannot add duplicate to their own track tag with a new one", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag1.filtered=false;
+    expectedTrackWithTag1.filtered = false;
     expectedTrackWithTag1.tags = [expectedTag1];
     expectedTrackWithTag1.tags[0].userName = getTestName("ttgGroup1Member2");
     //expectedTrackWithTag1.tags[0].userId=getCreds("ttgGroupMember").id;
@@ -525,7 +525,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       JSON.parse(JSON.stringify(expectedTag1)),
       JSON.parse(JSON.stringify(expectedTag1)),
     ];
-    expectedTrackWithTags.filtered=false;
+    expectedTrackWithTags.filtered = false;
     expectedTrackWithTags.tags[0].userName = getTestName("ttgGroupMember");
     expectedTrackWithTags.tags[0].confidence = 0.9;
     //expectedTrackWithTags.tags[0].userId=getCreds("ttgGroup1Member2").id;
@@ -576,7 +576,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       JSON.parse(JSON.stringify(expectedTag2)),
       JSON.parse(JSON.stringify(expectedTag1)),
     ];
-    expectedTrackWithTags.filtered=false;
+    expectedTrackWithTags.filtered = false;
     expectedTrackWithTags.tags[0].userName = getTestName("ttgGroup1Member2");
     //expectedTrackWithTags.tags[0].userId=getCreds("ttgGroup1Member2").id;
     expectedTrackWithTags.tags[1].userName = getTestName("ttgGroupMember");
@@ -622,7 +622,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("Supplementary tags are added in addition to primary tags", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTags.filtered=false;
+    expectedTrackWithTags.filtered = false;
 
     expectedTrackWithTags.tags = [
       expectedPoorTrackingTag,
@@ -682,7 +682,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("Duplicate supplementary tags from same user are not added", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTags.filtered=false;
+    expectedTrackWithTags.filtered = false;
 
     expectedTrackWithTags.tags = [expectedPartTag, expectedTag1];
     expectedTrackWithTags.tags[0].userName = getTestName("ttgGroup1Member2");
@@ -738,7 +738,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("Duplicate suplementary tags from different users are allowed", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTags.filtered=false;
+    expectedTrackWithTags.filtered = false;
 
     expectedTrackWithTags.tags = [
       JSON.parse(JSON.stringify(expectedPartTag)),
