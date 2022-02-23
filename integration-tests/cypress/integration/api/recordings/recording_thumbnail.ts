@@ -12,7 +12,6 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_OK200,
-  NOT_NULL,
   NOT_NULL_STRING,
   EXCLUDE_IDS,
 } from "@commands/constants";
@@ -31,16 +30,20 @@ describe("Recording thumbnails", () => {
   //Do not validate keys
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
 
-  const templateExpectedRecording: ApiThermalRecordingResponse =
-    TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
 
   // tempate thermal recoridng with no tracks - force into Analyse state to do thumbnail generation
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
   templateRecording.processingState = RecordingProcessingState.Analyse;
   templateRecording.metadata.tracks = [];
 
-  const templateExpectedProcessing: ApiRecordingForProcessing =
-    TEMPLATE_THERMAL_RECORDING_PROCESSING;
+  const templateExpectedProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_PROCESSING)
+  );
   templateExpectedProcessing.processingState = RecordingProcessingState.Analyse;
   templateExpectedProcessing.updatedAt = NOT_NULL_STRING;
 

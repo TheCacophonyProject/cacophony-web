@@ -1,9 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_BadRequest,
-  HTTP_OK200,
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { HTTP_BadRequest, HTTP_OK200 } from "@commands/constants";
 
 import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
@@ -13,7 +9,7 @@ import {
   TestCreateExpectedNeedsTagData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_NEEDS_TAG,
@@ -25,9 +21,12 @@ describe("Recording needs-tag (power-tagger)", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  const templateExpectedRecording: ApiRecordingNeedsTagReturned =
-    TEMPLATE_THERMAL_RECORDING_NEEDS_TAG;
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateExpectedRecording: ApiRecordingNeedsTagReturned = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_NEEDS_TAG)
+  );
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   let dev_env = false;
   let doNotValidate = true;

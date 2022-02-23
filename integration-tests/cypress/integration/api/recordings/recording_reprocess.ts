@@ -39,23 +39,31 @@ describe("Recordings - reprocessing tests", () => {
   //Do not validate keys
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
 
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
-  const templateExpectedRecording: ApiThermalRecordingResponse =
-    TEMPLATE_THERMAL_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
 
-  const templateExpectedProcessing: ApiRecordingForProcessing =
-    TEMPLATE_THERMAL_RECORDING_PROCESSING;
+  const templateExpectedProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_PROCESSING)
+  );
   templateExpectedProcessing.processingState =
     RecordingProcessingState.Reprocess;
 
-  const templateExpectedAudioRecording: ApiAudioRecordingResponse =
-    TEMPLATE_AUDIO_RECORDING_RESPONSE;
-  const templateExpectedAudioProcessing: ApiRecordingForProcessing =
-    TEMPLATE_AUDIO_RECORDING_PROCESSING;
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
+  );
+  const templateExpectedAudioProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_PROCESSING)
+  );
   templateExpectedAudioProcessing.processingState =
     RecordingProcessingState.Reprocess;
-  const templateAudioRecording: ApiRecordingSet = TEMPLATE_AUDIO_RECORDING;
+  const templateAudioRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
+  );
 
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
   //recordings that are in analyse state that do not belong to us.  This can be removed once

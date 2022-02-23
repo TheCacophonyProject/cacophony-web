@@ -3,7 +3,6 @@
 import {
   ApiRecordingSet,
   ApiTrackSet,
-  ApiRecordingForProcessing,
   ApiRecordingModel,
 } from "@commands/types";
 import {
@@ -12,26 +11,20 @@ import {
   ApiAutomaticTrackTagResponse,
 } from "@typedefs/api/trackTag";
 
-import {
-  TestCreateExpectedProcessingData,
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "@commands/api/recording-tests";
+import { TestCreateExpectedRecordingData } from "@commands/api/recording-tests";
 import { getCreds } from "@commands/server";
 import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_OK200,
   NOT_NULL,
   NOT_NULL_STRING,
   EXCLUDE_IDS,
+  filtered_tags,
+  unfiltered_tags,
 } from "@commands/constants";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingProcessingState } from "@typedefs/api/consts";
 import {
   TEMPLATE_TRACK,
   TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_PROCESSING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
 import { trackResponseFromSet } from "@commands/api/recording-tests";
@@ -45,8 +38,6 @@ delete trackApiTrackTemplate.frame_end;
 delete trackApiTrackTemplate.predictions;
 
 describe("Recording fitering", () => {
-  //Do not validate keys
-  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
   const algorithm1 = {
     model_name: "Master",
   };
@@ -231,6 +222,53 @@ describe("Recording fitering", () => {
     });
   });
 
+  it("Recording processing add track with no tag filtered", () => {
+    //Recording with no tracks
+    const recording5b: ApiRecordingSet = JSON.parse(
+      JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    );
+    recording5b.metadata.tracks = [];
+
+    //Track with no predictions
+    const track5b: ApiTrackSet = JSON.parse(
+      JSON.stringify(trackApiTrackTemplate)
+    );
+
+    let expectedRecording5b: ApiThermalRecordingResponse;
+    cy.apiRecordingAdd("rfCamera1", recording5b, undefined, "rfRecording5b");
+
+    cy.processingApiAlgorithmPost({
+      "tracking-format": 42,
+      model_name: "Master",
+    }).then((algorithmId) => {
+      cy.processingApiTracksPost(
+        "rfTrack5b.1",
+        "rfRecording5b",
+        track5b,
+        algorithmId
+      ).then(() => {
+        expectedRecording5b = TestCreateExpectedRecordingData(
+          TEMPLATE_THERMAL_RECORDING_RESPONSE,
+          "rfRecording5b",
+          "rfCamera1",
+          "rfGroup",
+          null,
+          recording5b
+        );
+        expectedRecording5b.tracks = trackResponseFromSet([track5b], [model1]);
+        expectedRecording5b.tracks[0].filtered = true;
+
+        cy.log("Check recording filtered");
+        cy.apiRecordingCheck(
+          "rfGroupAdmin",
+          "rfRecording5b",
+          expectedRecording5b,
+          EXCLUDE_IDS
+        );
+      });
+    });
+  });
+
   //******************************************************************************************
   //Add tag
   it("Recording add tag false-positive filtered", () => {
@@ -345,6 +383,7 @@ describe("Recording fitering", () => {
     });
   });
 
+  //******************************************************************************************
   //Processing adds tag
   it("Recording processing add tag false-positive filtered", () => {
     //Recording with no tracks
@@ -458,19 +497,165 @@ describe("Recording fitering", () => {
     });
   });
 
+  //******************************************************************************************
   //Reprocess
-  it.skip("Recording reprocessing add tag false-positive filtered", () => {});
+  it("Recording reprocessing add tag false-positive filtered", () => {
+    //Recording with no tracks
+    const recording10: ApiRecordingSet = JSON.parse(
+      JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    );
+    recording10.metadata.tracks = [];
+    const track10: ApiTrackSet = JSON.parse(
+      JSON.stringify(trackApiTrackTemplate)
+    );
+    const expectedTag10 = JSON.parse(
+      JSON.stringify(automaticTagResponseTemplate)
+    );
+    expectedTag10.what = "possum";
 
-  it.skip("Recording reprocessing add tag animal not filtered", () => {});
+    let expectedRecording10: ApiThermalRecordingResponse;
+    cy.apiRecordingAdd("rfCamera1", recording10, undefined, "rfRecording10");
+    cy.apiTrackAdd(
+      "rfGroupAdmin",
+      "rfRecording10",
+      "rfTrack10.1",
+      "Master",
+      track10,
+      algorithm1
+    );
+    cy.processingApiTracksTagsPost(
+      "rfTrack10.1",
+      "rfRecording10",
+      "possum",
+      0.95,
+      { name: "Master" }
+    ).then(() => {
+      expectedRecording10 = TestCreateExpectedRecordingData(
+        TEMPLATE_THERMAL_RECORDING_RESPONSE,
+        "rfRecording10",
+        "rfCamera1",
+        "rfGroup",
+        null,
+        recording10
+      );
+      expectedRecording10.tracks = trackResponseFromSet([track10], [model1]);
+      expectedRecording10.tracks[0].tags = [expectedTag10];
+      expectedRecording10.processing = false;
+      expectedRecording10.tracks[0].filtered = false;
 
-  it.skip("Recording reprocessing add tag overrides existing automatic master tag (filtered)", () => {});
+      cy.log("Check recording NOT filtered");
+      cy.apiRecordingCheck(
+        "rfGroupAdmin",
+        "rfRecording10",
+        expectedRecording10,
+        EXCLUDE_IDS
+      );
 
-  it.skip("Recording reprocessing add tag overrides existing automatic master tag (not filtered)", () => {});
+      cy.log("Send for reprocessing");
+      cy.apiReprocess("rfGroupAdmin", [getCreds("rfRecording10").id]);
 
-  it.skip("Recording reprocessing add tag does not override manual tag (filtered)", () => {});
+      cy.log("Reprocess adds new master tag of false-positive");
+      cy.processingApiTracksTagsPost(
+        "rfTrack10.1",
+        "rfRecording10",
+        "false-positive",
+        0.95,
+        { name: "Master" }
+      ).then(() => {
+        cy.log("Check recording filtered");
+        expectedRecording10.processingState =
+          RecordingProcessingState.Reprocess;
+        expectedRecording10.tracks[0].tags[0].what = "false-positive";
+        expectedRecording10.tracks[0].filtered = true;
+        cy.apiRecordingCheck(
+          "rfGroupAdmin",
+          "rfRecording10",
+          expectedRecording10,
+          EXCLUDE_IDS
+        );
+      });
+    });
+  });
 
-  it.skip("Recording reprocessing add tag does not override manual tag (not filtered)", () => {});
+  it("Recording reprocessing add tag animal not filtered", () => {
+    //Recording with no tracks
+    const recording11: ApiRecordingSet = JSON.parse(
+      JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    );
+    recording11.metadata.tracks = [];
+    const track11: ApiTrackSet = JSON.parse(
+      JSON.stringify(trackApiTrackTemplate)
+    );
+    const expectedTag11 = JSON.parse(
+      JSON.stringify(automaticTagResponseTemplate)
+    );
+    expectedTag11.what = "false-positive";
 
+    let expectedRecording11: ApiThermalRecordingResponse;
+    cy.apiRecordingAdd("rfCamera1", recording11, undefined, "rfRecording11");
+    cy.apiTrackAdd(
+      "rfGroupAdmin",
+      "rfRecording11",
+      "rfTrack11.1",
+      "Master",
+      track11,
+      algorithm1
+    );
+    cy.processingApiTracksTagsPost(
+      "rfTrack11.1",
+      "rfRecording11",
+      "false-positive",
+      0.95,
+      { name: "Master" }
+    ).then(() => {
+      expectedRecording11 = TestCreateExpectedRecordingData(
+        TEMPLATE_THERMAL_RECORDING_RESPONSE,
+        "rfRecording11",
+        "rfCamera1",
+        "rfGroup",
+        null,
+        recording11
+      );
+      expectedRecording11.tracks = trackResponseFromSet([track11], [model1]);
+      expectedRecording11.tracks[0].tags = [expectedTag11];
+      expectedRecording11.processing = false;
+      expectedRecording11.tracks[0].filtered = true;
+
+      cy.log("Check recording IS filtered");
+      cy.apiRecordingCheck(
+        "rfGroupAdmin",
+        "rfRecording11",
+        expectedRecording11,
+        EXCLUDE_IDS
+      );
+
+      cy.log("Send for reprocessing");
+      cy.apiReprocess("rfGroupAdmin", [getCreds("rfRecording11").id]);
+
+      cy.log("Reprocess adds new master tag of possum");
+      cy.processingApiTracksTagsPost(
+        "rfTrack11.1",
+        "rfRecording11",
+        "possum",
+        0.95,
+        { name: "Master" }
+      ).then(() => {
+        cy.log("Check recording now NOT filtered");
+        expectedRecording11.processingState =
+          RecordingProcessingState.Reprocess;
+        expectedRecording11.tracks[0].tags[0].what = "possum";
+        expectedRecording11.tracks[0].filtered = false;
+        cy.apiRecordingCheck(
+          "rfGroupAdmin",
+          "rfRecording11",
+          expectedRecording11,
+          EXCLUDE_IDS
+        );
+      });
+    });
+  });
+
+  //******************************************************************************************
   //Recording delete tag
   it("Recording delete last animal tag (filtered)", () => {
     //Recording with no tracks
@@ -545,15 +730,15 @@ describe("Recording fitering", () => {
     });
   });
 
+  //******************************************************************************************
   //Recording processing delete track
   it.skip("Recording processing deletes last tagged track (filtered)", () => {
     //Filtering handled by Browse, not by API
   });
 
+  //******************************************************************************************
   //Filter rules
   it("Verify all filtered tags are filtered", () => {
-    const filtered_tags = ["false-positive"]; //and "false-positives"?
-
     filtered_tags.forEach((thistag) => {
       cy.log("Checking " + thistag + " filtered");
       //Recording with animal tag
@@ -591,31 +776,7 @@ describe("Recording fitering", () => {
   });
 
   it("Verify all un-filtered tags are not filtered", () => {
-    const filtered_tags = [
-      "part",
-      "human",
-      "leporidae",
-      "cat",
-      "insect",
-      "poor tracking",
-      "unknown",
-      "bird",
-      "rabbit",
-      "unidentified",
-      "rodent",
-      "deer",
-      "dog",
-      "rat",
-      "pig",
-      "possum",
-      "vehicle",
-      "hedgehog",
-      "other",
-      "wallaby",
-      "mustelid",
-    ];
-
-    filtered_tags.forEach((thistag) => {
+    unfiltered_tags.forEach((thistag) => {
       //Recording with animal tag
       cy.log("Checking " + thistag + " NOT filtered");
       const recording19: ApiRecordingSet = JSON.parse(

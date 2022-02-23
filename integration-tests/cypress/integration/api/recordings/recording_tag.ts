@@ -5,7 +5,6 @@ import {
   NOT_NULL_STRING,
 } from "@commands/constants";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
@@ -20,7 +19,9 @@ import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 const EXCLUDE_TAG_IDS = ["[].id"];
 
 describe("Recordings: tag", () => {
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   const tag1: ApiRecordingTagRequest = {
     detail: "animal in trap",

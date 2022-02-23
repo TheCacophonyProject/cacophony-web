@@ -10,8 +10,6 @@ import {
 import { ApiRecordingSet } from "@commands/types";
 import { getTestName } from "@commands/names";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
@@ -33,7 +31,9 @@ const EXCLUDE_TRACK_IDS = [
 
 describe("Track Tags: replaceTag, check, delete", () => {
   //template recording with no tracks - add tracks during test
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
   templateRecording.metadata.tracks = [];
 
   const positions1: ApiTrackPosition[] = [

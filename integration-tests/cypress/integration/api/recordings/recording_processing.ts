@@ -1,5 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import { NOT_NULL, NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
+import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
 import {
   TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_AUDIO_RECORDING,
@@ -40,20 +40,27 @@ describe("Recordings - processing tests", () => {
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".updatedAt", ".id"];
 
   const templateExpectedThermalRecording: ApiThermalRecordingResponse =
-    TEMPLATE_THERMAL_RECORDING_RESPONSE;
-  const templateExpectedAudioRecording: ApiAudioRecordingResponse =
-    TEMPLATE_AUDIO_RECORDING_RESPONSE;
-  const templateExpectedProcessing: ApiRecordingForProcessing =
-    TEMPLATE_THERMAL_RECORDING_PROCESSING;
-  const templateExpectedAudioProcessing: ApiRecordingForProcessing =
-    TEMPLATE_AUDIO_RECORDING_PROCESSING;
+    JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
+  );
+  const templateExpectedProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_PROCESSING)
+  );
+  const templateExpectedAudioProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_PROCESSING)
+  );
   //Template thermal recording with no tracks (we will add them as part of the test)
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
   delete templateRecording.processingState;
   delete templateRecording.metadata.tracks;
 
   //use standard audio recortding template - inject it at ToMp3 state
-  const templateAudioRecording: ApiRecordingSet = TEMPLATE_AUDIO_RECORDING;
+  const templateAudioRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
+  );
   templateAudioRecording.processingState = RecordingProcessingState.ToMp3;
 
   const POSSUM_ALERT: ApiAlertConditions[] = [

@@ -2,7 +2,6 @@
 import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL,
   NOT_NULL_STRING,
 } from "@commands/constants";
 
@@ -17,7 +16,6 @@ import {
   ApiTrackPosition,
 } from "@typedefs/api/track";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_TRACK,
@@ -27,7 +25,9 @@ import {
 const EXCLUDE_TRACK_IDS = ["[].id"];
 
 describe("Tracks: add, check, delete", () => {
-  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
   templateRecording.metadata.tracks = [];
 
   const positions1: ApiTrackPosition[] = [
@@ -324,7 +324,7 @@ describe("Tracks: add, check, delete", () => {
 
   it("Can retrieve track and tag data uploaded by device", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
-    recording1.metadata.tracks = [TEMPLATE_TRACK];
+    recording1.metadata.tracks = [JSON.parse(JSON.stringify(TEMPLATE_TRACK))];
 
     const expectedTrack = JSON.parse(JSON.stringify(TEMPLATE_EXPECTED_TRACK));
     expectedTrack.tags[0]["createdAt"] = NOT_NULL_STRING;

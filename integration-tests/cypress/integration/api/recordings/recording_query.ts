@@ -2,7 +2,6 @@
 import {
   HTTP_OK200,
   HTTP_Unprocessable,
-  NOT_NULL,
   EXCLUDE_IDS_ARRAY,
 } from "@commands/constants";
 import {
@@ -12,8 +11,6 @@ import {
   TEMPLATE_TRACK,
   TEMPLATE_THERMAL_RECORDING,
 } from "@commands/dataTemplate";
-
-import { ApiRecordingSet } from "@commands/types";
 
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
@@ -38,10 +35,12 @@ describe("Recordings query using where", () => {
     "[].additionalMetadata",
   ]);
 
-  const templateExpectedRecording: ApiThermalRecordingResponse =
-    TEMPLATE_THERMAL_RECORDING_RESPONSE;
-  const templateExpectedAudioRecording: ApiAudioRecordingResponse =
-    TEMPLATE_AUDIO_RECORDING_RESPONSE;
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
+  );
 
   const track1 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track1.start_s = 2;
