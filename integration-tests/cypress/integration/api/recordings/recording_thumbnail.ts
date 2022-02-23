@@ -12,7 +12,6 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_OK200,
-  NOT_NULL,
   NOT_NULL_STRING,
   EXCLUDE_IDS,
 } from "@commands/constants";

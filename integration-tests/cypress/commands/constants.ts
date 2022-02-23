@@ -25,6 +25,7 @@ export const EXCLUDE_IDS_ARRAY = [
   //  "[].tracks[].filtered",
 ];
 
+//Column names in the recording export csv
 export const ApiRecordingColumnNames = [
   "Id",
   "Type",
@@ -46,3 +47,33 @@ export const ApiRecordingColumnNames = [
   "Cacophony Index",
   "Species Classification",
 ];
+
+//Tags used on tracks that we do not expect to be filtered
+export const unfiltered_tags = [
+  "part",
+  "human",
+  "leporidae",
+  "cat",
+  "insect",
+  "poor tracking",
+  "unknown",
+  "bird",
+  "rabbit",
+  "unidentified",
+  "rodent",
+  "deer",
+  "dog",
+  "rat",
+  "pig",
+  "possum",
+  "vehicle",
+  "hedgehog",
+  "other",
+  "wallaby",
+  "mustelid",
+];
+
+// Tags used on tracks that we expect to be filtered.  This is used by the
+// createExpectedRecording and createExpectedTrack to set the expected value
+// of 'filtered' in API responses and by filter tests
+export const filtered_tags = ["false-positive"];

@@ -2,7 +2,6 @@
 import {
   HTTP_OK200,
   HTTP_Unprocessable,
-  NOT_NULL,
   EXCLUDE_IDS_ARRAY,
 } from "@commands/constants";
 import {
@@ -12,8 +11,6 @@ import {
   TEMPLATE_TRACK,
   TEMPLATE_THERMAL_RECORDING,
 } from "@commands/dataTemplate";
-
-import { ApiRecordingSet } from "@commands/types";
 
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";

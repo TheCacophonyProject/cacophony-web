@@ -12,7 +12,7 @@ import { getTestName } from "@commands/names";
 
 import { ApiRecordingNeedsTagReturned } from "@commands/types";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts";
 
 import {
   TestCreateRecordingData,

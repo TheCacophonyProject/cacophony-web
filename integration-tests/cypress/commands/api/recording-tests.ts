@@ -23,7 +23,12 @@ import {
   ApiRecordingModel,
 } from "../types";
 
-import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
+import {
+  HTTP_OK200,
+  NOT_NULL,
+  NOT_NULL_STRING,
+  filtered_tags,
+} from "../constants";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
@@ -690,7 +695,7 @@ export function trackResponseFromSet(
         track.predictions.length &&
         track.predictions[0].confident_tag !== undefined
       ) {
-        if (track.predictions[0].confident_tag != "false-positive") {
+        if (filtered_tags.indexOf(track.predictions[0].confident_tag) === -1) {
           filtered = false;
         }
         newTrack.tags = [

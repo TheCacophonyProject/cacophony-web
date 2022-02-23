@@ -5,7 +5,6 @@ import {
   NOT_NULL_STRING,
 } from "@commands/constants";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";

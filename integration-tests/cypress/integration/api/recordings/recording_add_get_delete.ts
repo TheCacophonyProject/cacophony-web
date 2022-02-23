@@ -13,7 +13,7 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
   TEMPLATE_THERMAL_RECORDING,

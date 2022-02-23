@@ -10,8 +10,6 @@ import {
 import { ApiRecordingSet } from "@commands/types";
 import { getTestName } from "@commands/names";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,

@@ -4,7 +4,6 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { getCreds } from "@commands/server";
 import { EXCLUDE_IDS } from "@commands/constants";
 import {
