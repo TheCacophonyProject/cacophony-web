@@ -686,7 +686,7 @@ describe("Recordings - processing tests", () => {
               end: 4,
               id: 1,
               positions: [],
-              filtered: false,
+              filtered: true,
             },
           ];
           cy.apiRecordingCheck(
