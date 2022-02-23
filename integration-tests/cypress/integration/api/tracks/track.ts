@@ -207,7 +207,7 @@ describe("Tracks: add, check, delete", () => {
       end: 7,
       positions: [],
       tags: [],
-      filtered: false,
+      filtered: true,
     };
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
 
