@@ -226,10 +226,14 @@ export default defineComponent({
     // Watch for changes to the tracks and update the spectrogram
     watch(
       () => props.tracks,
-      async (newTracks, oldTracks) => {
+      (newTracks, oldTracks) => {
         const newTrackIds = new Set(newTracks.keys());
         const oldTrackIds = new Set(oldTracks.keys());
         const { added, deleted } = changedContext(oldTrackIds, newTrackIds);
+        const markedForDeletion = [...newTracks.values()]
+          .filter((track) => track.deleted)
+          .map((track) => track.id);
+
         [...added].forEach((trackId) => {
           const track = newTracks.get(trackId);
           if (track) {
@@ -237,7 +241,7 @@ export default defineComponent({
             overlay.value.appendChild(rect);
           }
         });
-        [...deleted].forEach((trackId) => {
+        [...deleted, ...markedForDeletion].forEach((trackId) => {
           const track = oldTracks.get(trackId);
           if (track) {
             const rect = overlay.value.querySelector(
@@ -624,6 +628,10 @@ export default defineComponent({
 });
 </script>
 <style lang="scss" scoped>
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
 spectrogram {
   width: 100%;
   border-radius: 0.25rem 0.25rem 0 0;
@@ -640,7 +648,6 @@ spectrogram {
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem;
-  border-radius: 0 0 0.25rem 0.25rem;
   background-color: #2b333f;
   color: #fff;
   width: 100%;
@@ -666,10 +673,16 @@ spectrogram {
 .volume-selection {
   display: none;
 }
-@media (min-width: 768px) {
+@include media-breakpoint-up(sm) {
   .volume-selection {
     display: flex;
     justify-content: flex-start;
+  }
+  spectrogram {
+    border-radius: 0 0 0.25rem 0.25rem;
+  }
+  .player-bar {
+    border-radius: 0 0 0.25rem 0.25rem;
   }
 }
 .volume-selection:hover {

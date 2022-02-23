@@ -1,14 +1,17 @@
 <template>
-  <b-col>
+  <b-container fluid class="classification-container">
     <b-row>
       <h2 class="classification-header">Classification</h2>
     </b-row>
-    <b-row v-for="track in tracks" :key="track.id">
-      <b-col v-if="!track.deleted">
+    <b-row
+      class="classification-item p-0"
+      v-for="track in tracks"
+      :key="track.id"
+    >
+      <b-col class="p-0" v-if="!track.deleted">
         <b-row>
           <b-col
-            lg="10"
-            sm="4"
+            cols="10"
             v-on:click="setSelectedTrack(() => track)"
             class="track-container"
           >
@@ -104,18 +107,18 @@
           >
             <b-dropdown
               class="track-settings-button"
+              right
               toggle-class="text-decoration-none"
               no-caret
             >
               <template #button-content>
                 <font-awesome-icon icon="cog" />
               </template>
-              <b-dropdown-item
-                class="track-delete-button"
-                @click="deleteTrack(track.id)"
-              >
-                <font-awesome-icon icon="trash" />
-                delete
+              <b-dropdown-item @click="deleteTrack(track.id)">
+                <div class="text-danger">
+                  <font-awesome-icon icon="trash" />
+                  delete
+                </div>
               </b-dropdown-item>
             </b-dropdown>
           </b-col>
@@ -144,11 +147,20 @@
           </b-col>
         </b-row>
       </b-col>
+      <b-col class="d-flex align-items-center justify-content-center" v-else>
+        <b-row
+          @click="undoDeleteTrack(track.id)"
+          class="undo-button justify-content-center align-items-center"
+        >
+          <h2 class="pr-2">Undo Deletion</h2>
+          <font-awesome-icon class="mb-2" icon="undo" />
+        </b-row>
+      </b-col>
     </b-row>
     <h4 class="select-track-message" v-if="tracks.length === 0">
       Select section of Audio by pressing and dragging...
     </h4>
-  </b-col>
+  </b-container>
 </template>
 
 <script lang="ts">
@@ -160,7 +172,6 @@ import { SetState, useState } from "@/utils";
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 
 import { TrackId } from "@typedefs/api/common";
-import { Immutable } from "immer";
 
 enum TrackListFilter {
   All = "all",
@@ -180,6 +191,10 @@ export default defineComponent({
       type: Object as PropType<AudioTrack | null>,
     },
     deleteTrack: {
+      type: Function as PropType<(track: TrackId) => void>,
+      required: true,
+    },
+    undoDeleteTrack: {
       type: Function as PropType<(track: TrackId) => void>,
       required: true,
     },
@@ -247,6 +262,24 @@ export default defineComponent({
   display: none;
 }
 
+.classification-container {
+  padding-left: 1.2em;
+  padding-right: 0em;
+}
+
+.classification-item {
+  min-height: 90px;
+}
+
+.undo-button {
+  cursor: pointer;
+  color: #485460;
+  transition: color 0.1s ease-in-out;
+}
+.undo-button:hover {
+  color: #d2dae2;
+}
+
 .tag-history-toggle {
   display: flex;
   justify-content: space-between;
@@ -283,11 +316,6 @@ export default defineComponent({
       background: none;
       color: #95a5a6;
     }
-  }
-}
-.track-delete-button {
-  ul {
-    color: #e74c3c;
   }
 }
 .confirmed-text {

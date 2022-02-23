@@ -370,11 +370,12 @@ function removeTrack(
 function replaceTrackTag(
   tag: ApiTrackTagRequest,
   recordingId: RecordingId,
-  trackId: TrackId
+  trackId: TrackId,
+  automatic = false
 ): Promise<FetchResult<{ trackTagId?: number }>> {
   const body: ApiTrackTagRequest = {
     ...tag,
-    automatic: false,
+    automatic,
   };
   return CacophonyApi.post(
     `${apiPath}/${recordingId}/tracks/${trackId}/replaceTag`,

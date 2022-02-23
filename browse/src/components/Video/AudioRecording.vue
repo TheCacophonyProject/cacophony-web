@@ -1,5 +1,5 @@
 <template>
-  <b-container class="audio-recording-container">
+  <b-container class="p-0 audio-recording-container">
     <b-row class="mb-4">
       <AudioPlayer
         :tracks="tracks"
@@ -9,12 +9,13 @@
       />
     </b-row>
     <b-row>
-      <b-col cols="4">
+      <b-col lg="4">
         <TrackList
           :audio-tracks="tracks"
           :selected-track="selectedTrack"
           :set-selected-track="setSelectedTrack"
           :delete-track="deleteTrack"
+          :undo-delete-track="undoDeleteTrack"
           :add-tag-to-track="addTagToTrack"
         />
       </b-col>
@@ -215,6 +216,7 @@ export default defineComponent({
             ...track,
             id,
             colour,
+            deleted: false,
           };
           setTracks((tracks) => {
             const track = tracks.get(id);
@@ -224,24 +226,6 @@ export default defineComponent({
             );
           });
           return newTrack;
-        } else {
-          throw response.result;
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    const deleteTrack = async (trackId: TrackId) => {
-      try {
-        const response = await api.recording.removeTrack(trackId, recording.id);
-        if (response.success) {
-          modifyTrack(trackId, {
-            deleted: true,
-          });
-          if (selectedTrack.value?.id === trackId) {
-            setSelectedTrack(null);
-          }
         } else {
           throw response.result;
         }
@@ -269,35 +253,41 @@ export default defineComponent({
 
     const addTagToTrack = async (
       trackId: TrackId,
-      what: string
+      what: string,
+      automatic = false,
+      confidence = 1,
+      data: any = null
     ): Promise<AudioTrack> => {
       const track = tracks.value.get(trackId);
-      modifyTrack(trackId, {
-        confirming: true,
-      });
+      if (track) {
+        modifyTrack(trackId, {
+          confirming: true,
+        });
+      }
       const tag: ApiTrackTagRequest = {
         what,
-        confidence: 1,
-        automatic: false,
+        automatic,
+        confidence,
+        ...(data && { data: JSON.stringify(data) }),
       };
       const response = await api.recording.replaceTrackTag(
         tag,
         props.recording.id,
-        Number(track.id)
+        Number(trackId),
+        tag.automatic
       );
       if (response.success) {
-        const newTag: ApiHumanTrackTagResponse = {
+        const newTag: ApiTrackTagResponse = {
           ...tag,
           id: response.result.trackTagId ?? 0,
-          trackId: track.id,
-          data: {},
-          userId: userId,
-          automatic: false,
-          userName: userName,
+          trackId,
+          data,
+          userId,
+          automatic,
+          userName,
         };
         const currTags = track.tags.filter((tag) => tag.userId !== userId);
         const newTags = [...currTags, newTag];
-
         const taggedTrack = modifyTrack(trackId, {
           confirming: false,
           tags: newTags,
@@ -305,6 +295,7 @@ export default defineComponent({
         const displayTags = getDisplayTags(taggedTrack);
         const currTrack = modifyTrack(trackId, {
           displayTags,
+          confirming: false,
         });
 
         return currTrack;
@@ -323,6 +314,55 @@ export default defineComponent({
         }
         const newTrack = await addTagToTrack(selectedTrack.value.id, tag);
         setSelectedTrack(newTrack);
+      }
+    };
+
+    const deleteTrack = async (trackId: TrackId) => {
+      try {
+        const response = await api.recording.removeTrack(trackId, recording.id);
+        if (response.success) {
+          modifyTrack(trackId, {
+            deleted: true,
+          });
+          if (selectedTrack.value?.id === trackId) {
+            setSelectedTrack(null);
+          }
+        } else {
+          throw response.result;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const undoDeleteTrack = async (trackId: TrackId) => {
+      try {
+        const track = tracks.value.get(trackId);
+        debugger;
+        if (track) {
+          const renewTrack = await addTrack(track);
+          const newTrack = await track.tags.reduce(
+            async (promisedTrack, tag) => {
+              const resolvedTrack = await promisedTrack;
+              debugger;
+              const requestTrack = await addTagToTrack(
+                resolvedTrack.id,
+                tag.what,
+                tag.automatic,
+                tag.confidence,
+                tag.data
+              );
+              return requestTrack;
+            },
+            Promise.resolve(renewTrack)
+          );
+          setTracks((tracks) => {
+            tracks.delete(trackId);
+            tracks.set(newTrack.id, newTrack);
+          });
+        }
+      } catch (error) {
+        console.error(error);
       }
     };
 
@@ -350,6 +390,7 @@ export default defineComponent({
       addTagToTrack,
       addTrack,
       deleteTrack,
+      undoDeleteTrack,
     };
   },
 });

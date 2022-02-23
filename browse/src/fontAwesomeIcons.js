@@ -67,6 +67,7 @@ import {
   faVolumeMute,
   faUserPlus,
   faChevronRight,
+  faUndo,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   faCalendar,
@@ -160,7 +161,8 @@ library.add(
   faChevronRight,
   faVolumeUp,
   faVolumeMute,
-  faMapMarkerAlt
+  faMapMarkerAlt,
+  faUndo
 );
 
 export default FontAwesomeIcon;
