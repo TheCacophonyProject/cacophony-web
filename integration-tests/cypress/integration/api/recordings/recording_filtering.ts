@@ -230,7 +230,7 @@ describe("Recording fitering", () => {
       expectedRecording8.processingState = RecordingProcessingState.Analyse;
       expectedRecording8.tracks=trackResponseFromSet([track8], [model1]);
       expectedRecording8.tracks[0].tags=[expectedTag8];
-      expectedRecording8.processing = true;
+      expectedRecording8.processing = false;
       expectedRecording8.tracks[0].filtered=true;
       cy.apiRecordingCheck( "rfGroupAdmin", "rfRecording8", expectedRecording8, EXCLUDE_IDS);
     });
@@ -257,7 +257,7 @@ describe("Recording fitering", () => {
       expectedRecording9.processingState = RecordingProcessingState.Analyse;
       expectedRecording9.tracks=trackResponseFromSet([track9], [model1]);
       expectedRecording9.tracks[0].tags=[expectedTag9];
-      expectedRecording9.processing = true;
+      expectedRecording9.processing = false;
       expectedRecording9.tracks[0].filtered=false;
       cy.apiRecordingCheck( "rfGroupAdmin", "rfRecording9", expectedRecording9, EXCLUDE_IDS);
     });
@@ -376,7 +376,7 @@ describe("Recording fitering", () => {
     });
   }); 
 
-  it("Verify manual tag overrides automatic tag (filtered)", () => {
+  it("Verify manual tag overrides automatic tag (not filtered)", () => {
     //Recording with no tracks
     let recording20: ApiRecordingSet = JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING));
     recording20.metadata.tracks=[];
