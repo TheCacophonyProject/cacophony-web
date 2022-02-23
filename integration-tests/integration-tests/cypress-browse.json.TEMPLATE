@@ -1,0 +1,9 @@
+{
+  "projectId": "dyez6t",
+  "integrationFolder": "cypress/browse",
+  "baseUrl": "http://localhost:8080",
+  "env" : {
+    "cacophony-api-server": "http://localhost:1080", 
+    "testCreds" : {}
+  }
+}

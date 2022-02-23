@@ -3,6 +3,7 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_Unprocessable,
+  EXCLUDE_IDS,
 } from "@commands/constants";
 
 import { ApiLocation, ApiRecordingSet } from "@commands/types";
@@ -13,103 +14,12 @@ import {
 } from "@commands/api/recording-tests";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-
+import { TEMPLATE_AUDIO_RECORDING_RESPONSE, TEMPLATE_AUDIO_RECORDING } from "@commands/dataTemplate";
 describe("Recordings - audio recording parameter tests", () => {
-  //do not validate ID parameters
-  const EXCLUDE_IDS = [
-    ".Tracks[].TrackTags[].TrackId",
-    ".Tracks[].id",
-    ".rawMimeType",
-  ];
 
-  const templateExpectedRecording: ApiAudioRecordingResponse = {
-    airplaneModeOn: false,
-    batteryCharging: "DISCHARGING",
-    batteryLevel: 87,
-    deviceId: 2023,
-    deviceName: "mattb-s5",
-    duration: 60,
-    groupId: 389,
-    groupName: "mattb-audio",
-    id: 204771,
-    location: {
-      lat: -43.53345,
-      lng: 172.64745,
-    },
-    rawMimeType: "",
-    processing: false,
-    processingState: RecordingProcessingState.Finished,
-    recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDusk: -17219,
-    tags: [],
-    tracks: [],
-    type: RecordingType.Audio,
-    version: "1.8.1",
-    additionalMetadata: {
-      normal: "0",
-      "SIM IMEI": "990006964660319",
-      analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [],
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
-      },
-      "SIM state": "SIM_STATE_READY",
-      "Auto Update": false,
-      "Flight Mode": false,
-      "Phone model": "SM-G900V",
-      amplification: 1.0721460589601806,
-      SimOperatorName: "Verizon",
-      "Android API Level": 23,
-      "Phone manufacturer": "samsung",
-      "App has root access": false,
-    },
-  };
+const templateExpectedRecording: ApiAudioRecordingResponse = TEMPLATE_AUDIO_RECORDING_RESPONSE;
 
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.Audio,
-    fileHash: null,
-    duration: 60,
-    recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDawn: 1000,
-    relativeToDusk: -17219,
-    location: [-43.53345, 172.64745],
-    version: "1.8.1",
-    batteryCharging: "DISCHARGING",
-    batteryLevel: 87,
-    airplaneModeOn: false,
-    additionalMetadata: {
-      normal: "0",
-      "SIM IMEI": "990006964660319",
-      analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [],
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
-      },
-      "SIM state": "SIM_STATE_READY",
-      "Auto Update": false,
-      "Flight Mode": false,
-      "Phone model": "SM-G900V",
-      amplification: 1.0721460589601806,
-      SimOperatorName: "Verizon",
-      "Android API Level": 23,
-      "Phone manufacturer": "samsung",
-      "App has root access": false,
-    },
-    comment: "A comment",
-    processingState: RecordingProcessingState.Finished,
-  };
+const templateRecording: ApiRecordingSet = TEMPLATE_AUDIO_RECORDING;
 
   before(() => {
     //Create group1 with Admin, Member and 2 devices

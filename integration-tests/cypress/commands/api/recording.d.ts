@@ -276,7 +276,7 @@ declare namespace Cypress {
      */
     apiReprocess(
       userName: string,
-      recordingIds: number[],
+      recordingId: number,
       statusCode?: number,
       additionalChecks?: any
     ): any;

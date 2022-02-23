@@ -7,6 +7,24 @@ export const NOT_NULL = -99;
 export const NOT_NULL_STRING = NOT_NULL.toString();
 export const LATEST_END_USER_AGREEMENT = 3;
 
+//parameter checks - fields we do not check value of by default in 'recording'
+export const EXCLUDE_IDS = [
+  ".tracks[].TrackTags[].TrackId",
+  ".tracks[].tags[].id",
+  ".tracks[].id",
+  ".rawMimeType",
+//  ".tracks[].filtered",
+];
+
+//parameter checks - fields we do not check value of by default in 'recordings'
+export const EXCLUDE_IDS_ARRAY = [
+  "[].tracks[].TrackTags[].TrackId",
+  "[].tracks[].tags[].id",
+  "[].tracks[].id",
+  "[].rawMimeType",
+//  "[].tracks[].filtered",
+];
+
 export const ApiRecordingColumnNames = [
   "Id",
   "Type",

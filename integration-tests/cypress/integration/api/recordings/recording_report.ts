@@ -11,11 +11,13 @@ import {
   TestCreateExpectedRecordingColumns,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
+import {TEMPLATE_AUDIO_RECORDING} from "@commands/dataTemplate";
 
 describe("Recordings report using where", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
+  //define recordings here so we have a range of values to check, rather than using predefined templates
   const templateRecording1: ApiRecordingSet = {
     type: RecordingType.ThermalRaw,
     fileHash: null,
@@ -50,7 +52,6 @@ describe("Recordings report using where", () => {
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
-    //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
     location: [-45.00045, 169.00065],
     version: "346",
     batteryCharging: null,
@@ -75,29 +76,8 @@ describe("Recordings report using where", () => {
     processingState: RecordingProcessingState.Corrupt,
   };
 
-  const templateRecording3: ApiRecordingSet = {
-    type: RecordingType.Audio,
-    fileHash: null,
-    duration: 60,
-    recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDawn: null,
-    relativeToDusk: -17219,
-    //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
-    location: [-43.53345, 172.64745],
-    version: "1.8.1",
-    batteryCharging: "DISCHARGING",
-    batteryLevel: 87,
-    airplaneModeOn: false,
-    additionalMetadata: {
-      normal: "0",
-      "SIM IMEI": "990006964660319",
-      analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [
+  const templateRecording3: ApiRecordingSet = TEMPLATE_AUDIO_RECORDING;
+  templateRecording3.additionalMetadata.analysis.species_identify = [
           { end_s: 6, begin_s: 3, species: "morepork", liklihood: 1 },
           { end_s: 14, begin_s: 11, species: "morepork", liklihood: 0.38 },
           { end_s: 23, begin_s: 21, species: "morepork", liklihood: 1 },
@@ -106,24 +86,7 @@ describe("Recordings report using where", () => {
           { end_s: 46, begin_s: 42, species: "morepork", liklihood: 1 },
           { end_s: 54, begin_s: 45, species: "morepork", liklihood: 1 },
           { end_s: 59.8, begin_s: 56.8, species: "morepork", liklihood: 1 },
-        ],
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
-      },
-      "SIM state": "SIM_STATE_READY",
-      "Auto Update": false,
-      "Flight Mode": false,
-      "Phone model": "SM-G900V",
-      amplification: 1.0721460589601806,
-      SimOperatorName: "Verizon",
-      "Android API Level": 23,
-      "Phone manufacturer": "samsung",
-      "App has root access": false,
-    },
-    comment: null,
-    processingState: RecordingProcessingState.Analyse,
-  };
+        ];
 
   const templateRecording4: ApiRecordingSet = {
     type: RecordingType.ThermalRaw,

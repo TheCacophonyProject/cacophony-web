@@ -28,8 +28,9 @@ import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
+import {TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_NEEDS_TAG} from "@commands/dataTemplate";
 
-const EXCLUDE_IDS = [
+const EXCLUDE_TRACK_IDS = [
   "[].id",
   "[].tags[].id",
   "[].tags[].trackId",
@@ -40,23 +41,11 @@ describe("Track Tags: add, check, delete", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: [-45.29115, 169.30845],
-    additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
-    metadata: {
-      tracks: [],
-    },
-    comment: "This is a comment",
-    processingState: RecordingProcessingState.Finished,
-  };
+  //Recording with no track - added as part of test
+  const templateRecording: ApiRecordingSet = TEMPLATE_THERMAL_RECORDING;
+  templateRecording.metadata.tracks=[];
+
+  const templateExpectedNeedsTagRecording: ApiRecordingNeedsTagReturned = TEMPLATE_THERMAL_RECORDING_NEEDS_TAG;
 
   const positions1: ApiTrackPosition[] = [
     {
@@ -79,7 +68,7 @@ describe("Track Tags: add, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
-    filtered: false,
+    filtered: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -98,21 +87,18 @@ describe("Track Tags: add, check, delete", () => {
     what: "possum",
     confidence: 0.95,
     automatic: false,
-    //data: {fieldName: "fieldValue"}
   };
 
   const tag2: ApiTrackTagRequest = {
     what: "cat",
     confidence: 0.54,
     automatic: false,
-    //data: {fieldName: "fieldValue"}
   };
 
   const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
     createdAt: NOT_NULL_STRING,
     //TODO: cannot set data above, retuned as blank sting
-    //data: { "a parameter": "a value" },
     data: "",
     id: 99,
     automatic: false,
@@ -127,7 +113,6 @@ describe("Track Tags: add, check, delete", () => {
     confidence: 0.54,
     createdAt: NOT_NULL_STRING,
     //TODO: cannot set data above, retuned as blank sting
-    //data: { "a parameter": "a value" },
     data: "",
     id: 99,
     automatic: false,
@@ -138,15 +123,6 @@ describe("Track Tags: add, check, delete", () => {
     userId: NOT_NULL,
   };
 
-  const templateExpectedNeedsTagRecording: ApiRecordingNeedsTagReturned = {
-    DeviceId: 49,
-    RecordingId: 34,
-    duration: 40,
-    fileSize: 1,
-    recordingJWT: NOT_NULL_STRING,
-    tagJWT: NOT_NULL_STRING,
-    tracks: [],
-  };
 
   const algorithm1 = {
     model_name: "inc3",
@@ -208,6 +184,7 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag.filtered=false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttaGroupAdmin");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupAdmin").id;
@@ -238,7 +215,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaGroupAdmin",
         "ttaRecording1",
         [expectedTrackWithTag],
-        EXCLUDE_IDS
+        EXCLUDE_TRACK_IDS
       );
 
       cy.log("Delete tag");
@@ -254,7 +231,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaGroupAdmin",
         "ttaRecording1",
         [expectedTrack],
-        EXCLUDE_IDS
+        EXCLUDE_TRACK_IDS
       );
     });
   });
@@ -263,6 +240,7 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag.filtered=false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupMember").id;
@@ -292,7 +270,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording2",
       [expectedTrackWithTag],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Delete tag");
@@ -308,7 +286,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording2",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -342,13 +320,14 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording5",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
   it.skip("Cannot delete tag for device that user does not own", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag.filtered=false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttaGroupMember").id;
@@ -385,7 +364,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording6",
       [expectedTrackWithTag],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -424,16 +403,18 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupAdmin",
       "ttaRecording7",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
   it.skip("User can add second tag", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag1.filtered=false;
     expectedTrackWithTag1.tags = [expectedTag1];
     expectedTrackWithTag1.tags[0].userName = getTestName("ttaGroupMember");
     const expectedTrackWithTags2 = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTags2.filtered=false;
     expectedTrackWithTags2.tags = [expectedTag2, expectedTag1];
     expectedTrackWithTags2.tags[0].userName = getTestName("ttaGroupMember");
     expectedTrackWithTags2.tags[1].userName = getTestName("ttaGroupMember");
@@ -461,7 +442,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTag1],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Member can add second tag");
@@ -478,7 +459,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTags2],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -486,10 +467,12 @@ describe("Track Tags: add, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTag1.tags = [expectedTag1];
+    expectedTrackWithTag1.filtered=false;
     expectedTrackWithTag1.tags[0].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag1.tags[0].userId=getCreds("ttaGroupMember").id;
     const expectedTrackWithTags2 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTags2.tags = [expectedTag1, expectedTag1];
+    expectedTrackWithTags2.filtered=false;
     expectedTrackWithTags2.tags[0].userName = getTestName("ttaGroupMember");
     expectedTrackWithTags2.tags[1].userName = getTestName("ttaGroupMember");
     //expectedTrackWithTag2.tags[0].userId=getCreds("ttaGroupMember").id;
@@ -518,7 +501,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTag1],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Member can add second tag");
@@ -535,7 +518,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTags2],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -544,7 +527,9 @@ describe("Track Tags: add, check, delete", () => {
     it("Can power-tag as non-owner by providing a valid tag JWT", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
+      expectedTrack.filtered=true;
       const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
+      expectedTrackWithTag.filtered=false;
       expectedTrackWithTag.tags = [expectedTag1];
       expectedTrackWithTag.tags[0].userName = getTestName("ttaNonMember");
       //expectedTrackWithTag.tags[0].userId=getCreds("ttaNonMember").id;
@@ -597,7 +582,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaGroupAdmin",
             "ttaRecording8",
             [expectedTrackWithTag],
-            EXCLUDE_IDS
+            EXCLUDE_TRACK_IDS
           );
 
           cy.log("Delete tag");
@@ -613,7 +598,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaGroupAdmin",
             "ttaRecording8",
             [expectedTrack],
-            EXCLUDE_IDS
+            EXCLUDE_TRACK_IDS
           );
         });
       });
@@ -713,7 +698,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaGroupAdmin",
             "ttaRecording10",
             [expectedTrack],
-            EXCLUDE_IDS
+            EXCLUDE_TRACK_IDS
           );
         });
       });
