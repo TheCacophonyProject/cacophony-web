@@ -813,7 +813,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         !("predictions" in trackMeta) ||
         trackMeta["predictions"].length == 0
       ) {
-        track.updateIsFiltered();
+        await track.updateIsFiltered();
         continue;
       }
       for (const prediction of trackMeta["predictions"]) {

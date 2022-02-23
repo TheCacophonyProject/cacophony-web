@@ -1135,6 +1135,7 @@ export default (app: Application, baseUrl: string) => {
         data: response.locals.data,
         AlgorithmId: algorithmDetail.id,
       });
+      await track.updateIsFiltered();
 
       responseUtil.send(response, {
         statusCode: 200,
