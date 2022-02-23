@@ -603,7 +603,7 @@ describe("Recordings - reprocessing tests", () => {
                       automatic: true,
                       trackId: getCreds("rrpTrack18").id,
                       confidence: 0.9,
-                      data: { name: "master" },
+                      data: { name: "Master" },
                       id: -1,
                     },
                   ],
@@ -620,7 +620,7 @@ describe("Recordings - reprocessing tests", () => {
                 "rrpRecording18",
                 "possum",
                 0.9,
-                { name: "master" }
+                { name: "Master" }
               );
               cy.apiRecordingCheck(
                 "rrpGroupAdmin",

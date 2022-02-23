@@ -949,7 +949,7 @@ describe("Recordings - processing tests", () => {
               "rpRecording20",
               "possum",
               0.9,
-              { name: "master" }
+              { name: "Master" }
             ).then(() => {
               cy.log("set processing to done and recheck tracks");
               cy.processingApiPut(

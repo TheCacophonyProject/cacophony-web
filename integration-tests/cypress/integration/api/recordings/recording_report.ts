@@ -34,7 +34,7 @@ describe("Recordings report using where", () => {
       totalFrames: 141,
     },
     metadata: {
-      algorithm: { model_name: "master" },
+      algorithm: { model_name: "Master" },
       tracks: [
         {
           start_s: 2,
@@ -63,7 +63,7 @@ describe("Recordings report using where", () => {
       totalFrames: 142,
     },
     metadata: {
-      algorithm: { model_name: "master" },
+      algorithm: { model_name: "Master" },
       tracks: [
         {
           start_s: 1,
@@ -105,7 +105,7 @@ describe("Recordings report using where", () => {
       totalFrames: 142,
     },
     metadata: {
-      algorithm: { model_name: "master" },
+      algorithm: { model_name: "Master" },
       tracks: [{ start_s: 2, end_s: 5, predictions: [] }],
     },
     comment: "This is a comment2",
