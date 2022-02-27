@@ -29,11 +29,22 @@ describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  //Do not validate IDs
-  const EXCLUDE_PARAMS = EXCLUDE_IDS_ARRAY.concat([
-    "[].tracks[].tags[].data",
-    "[].additionalMetadata",
-  ]);
+  //Do not validate IDs or additoonaMetadata
+  //On test server, do not validate processingData, as recordings may be processed during test
+  let EXCLUDE_PARAMS=[];
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    EXCLUDE_PARAMS = EXCLUDE_IDS_ARRAY.concat([
+      "[].tracks[].tags[].data",
+      "[].additionalMetadata",
+    ]);
+  } else {
+    EXCLUDE_PARAMS = EXCLUDE_IDS_ARRAY.concat([
+      "[].tracks[].tags[].data",
+      "[].additionalMetadata",
+      "[].processingState",
+      "[].processing"
+    ]);
+  }
 
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
