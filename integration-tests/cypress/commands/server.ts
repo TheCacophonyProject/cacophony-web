@@ -429,12 +429,12 @@ export function removeUndefinedParams(jsStruct: any): any {
   }
 }
 
-export function testRunOnApi(command: string) {
+export function testRunOnApi(command: string, options = {}) {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     cy.exec(`cd ../api && docker-compose exec -T server bash -lic ${command}`);
   } else {
     if (Cypress.env("API-ssh-server") != null) {
-      cy.exec(`ssh ${Cypress.env("API-ssh-server")} ${command}`);
+      cy.exec(`ssh ${Cypress.env("API-ssh-server")} ${command}`, options);
     } else {
       alert(
         "Asked to run command on API server but have no credentials to do so"
