@@ -431,7 +431,10 @@ export function removeUndefinedParams(jsStruct: any): any {
 
 export function testRunOnApi(command: string, options = {}) {
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    cy.exec(`cd ../api && docker-compose exec -T server bash -lic ${command}`, options);
+    cy.exec(
+      `cd ../api && docker-compose exec -T server bash -lic ${command}`,
+      options
+    );
   } else {
     if (Cypress.env("API-ssh-server") != null) {
       cy.exec(`ssh ${Cypress.env("API-ssh-server")} ${command}`, options);
