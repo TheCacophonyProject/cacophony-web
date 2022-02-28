@@ -31,7 +31,7 @@ describe("Recordings query using where", () => {
 
   //Do not validate IDs or additoonaMetadata
   //On test server, do not validate processingData, as recordings may be processed during test
-  let EXCLUDE_PARAMS=[];
+  let EXCLUDE_PARAMS = [];
   if (Cypress.env("running_in_a_dev_environment") == true) {
     EXCLUDE_PARAMS = EXCLUDE_IDS_ARRAY.concat([
       "[].tracks[].tags[].data",
@@ -42,7 +42,7 @@ describe("Recordings query using where", () => {
       "[].tracks[].tags[].data",
       "[].additionalMetadata",
       "[].processingState",
-      "[].processing"
+      "[].processing",
     ]);
   }
 
