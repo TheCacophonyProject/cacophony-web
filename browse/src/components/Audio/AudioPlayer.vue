@@ -14,7 +14,7 @@
           <font-awesome-icon
             class="volume-button"
             :icon="['fa', volume.muted ? 'volume-mute' : 'volume-up']"
-            style="cursor: pointer"
+            role="button"
             size="lg"
             @click="toggleMute"
           />
@@ -65,7 +65,7 @@
           class="ml-2"
           :icon="['fa', 'times']"
           size="1x"
-          style="cursor: pointer"
+          role="button"
           @click="setSelectedTrack(null)"
         />
       </div>
@@ -74,7 +74,13 @@
 </template>
 <script lang="ts">
 import { PropType } from "vue";
-import { defineComponent, watch, onMounted } from "@vue/composition-api";
+import {
+  defineComponent,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+  ref,
+} from "@vue/composition-api";
 import { produce } from "immer";
 import WaveSurfer from "wavesurfer.js";
 import SpectrogramPlugin from "wavesurfer.js/src/plugin/spectrogram/index.js";
@@ -113,8 +119,8 @@ export default defineComponent({
   },
   setup(props) {
     // Player
-    const [spectrogram, setSpectrogram] = useState(null);
-    const [overlay, setOverlay] = useState<SVGElement>(null);
+    const spectrogram = ref<HTMLCanvasElement>(null);
+    const overlay = ref<SVGElement>(null);
     const [tempTrack, setTempTrack] = useState<{
       pos: ApiTrackPosition & { startX: number; startY: number };
       rect: SVGElement;
@@ -130,7 +136,7 @@ export default defineComponent({
             width: "0",
             height: "0",
             stroke: "#c8d6e5",
-            strokeWidth: "3",
+            "stroke-width": "3",
             fill: "none",
             cursor: "pointer",
           },
@@ -174,14 +180,13 @@ export default defineComponent({
             width: (pos.width * spectrogram.value.width).toString(),
             height: (pos.height * spectrogram.value.height).toString(),
             stroke: track.colour,
-            "stroke-width": "2",
+            "stroke-width": "3",
             cursor: "pointer",
             fill: "none",
           },
         },
         "rect"
       );
-      // add on hover to increase stroke width
       rect.addEventListener("mouseover", () => {
         if (
           props.selectedTrack === null ||
@@ -191,7 +196,7 @@ export default defineComponent({
         }
       });
       rect.addEventListener("mouseout", () => {
-        rect.setAttribute("stroke-width", "2");
+        rect.setAttribute("stroke-width", "3");
       });
       rect.addEventListener("click", () => {
         props.setSelectedTrack(() => props.tracks.get(track.id));
@@ -199,8 +204,13 @@ export default defineComponent({
       return rect;
     };
 
+    const addTracksToOverlay = () =>
+      [...props.tracks.values()]
+        .map(createRectFromTrack)
+        .map((trackRect) => overlay.value.appendChild(trackRect));
+
+    // Update the overlay track for the temp track
     watch(tempTrack, () => {
-      // change display of tempTrack rect
       const { x, y, height, width } = tempTrack.value.pos;
       tempTrack.value.rect.setAttribute(
         "visibility",
@@ -269,6 +279,7 @@ export default defineComponent({
       setIsFinished(player.value.getCurrentTime() >= finishTime);
     });
 
+    // Watch for changes to the selected track and update the spectrogram
     watch(
       () => props.selectedTrack,
       (curr, prev) => {
@@ -295,7 +306,7 @@ export default defineComponent({
                   width: (width * spectrogram.value.width).toString(),
                   height: (height * spectrogram.value.height).toString(),
                   stroke: "#c8d6e5",
-                  strokeWidth: "3",
+                  "stroke-width": "3",
                   fill: "none",
                 },
               },
@@ -387,6 +398,15 @@ export default defineComponent({
     };
 
     onMounted(() => {
+      const spectrogramSettings = {
+        container: "#spectrogram",
+        fftSamples: 512,
+        colorMap: ColorMap({
+          colormap: "jet",
+          nshades: 256,
+          format: "float",
+        }),
+      };
       setVolumeSlider(
         document.querySelector("#volume-slider") as HTMLInputElement
       );
@@ -419,17 +439,7 @@ export default defineComponent({
           responsive: true,
           normalize: true,
           cursorWidth: 1,
-          plugins: [
-            SpectrogramPlugin.create({
-              container: "#spectrogram",
-              fftSamples: 512,
-              colorMap: ColorMap({
-                colormap: "magma",
-                nshades: 256,
-                format: "float",
-              }),
-            }),
-          ],
+          plugins: [SpectrogramPlugin.create(spectrogramSettings)],
         })
       );
       player.value.on("finish", () => {
@@ -453,28 +463,24 @@ export default defineComponent({
         }
         playAt(time * player.value.getDuration());
       });
-      player.value.load(props.url);
-      player.value.on("ready", () => {
+      const attachSpectrogramOverlay = () => {
         const canvas = document.querySelector(
           "spectrogram canvas"
         ) as HTMLCanvasElement;
-        if (canvas) {
-          setSpectrogram(() => canvas);
-        }
-        spectrogram.value.style.zIndex = "0";
+        canvas.style.zIndex = "0";
+        spectrogram.value = canvas;
         const spectrogramWidth = spectrogram.value.width;
         const spectrogramHeight = spectrogram.value.height;
         const overlayAttr = {
           style: {
             position: "absolute",
-            ["z-index"]: 1,
+            ["z-index"]: 10,
             top: 0,
             left: 0,
+            ["margin-left"]: "1em", // bootstrap padding
             cursor: "crosshair",
-            width: "100%",
-            height: "100%",
-            opacity: "0",
-            transition: "opacity 0.2s",
+            width: spectrogramWidth,
+            height: spectrogramHeight,
           },
           attributes: {
             width: spectrogramWidth,
@@ -482,30 +488,15 @@ export default defineComponent({
             xmlns: "http://www.w3.org/2000/svg",
           },
         };
-        setOverlay(createSVGElement(overlayAttr, "svg"));
-        spectrogram.value.parentElement.appendChild(overlay.value);
+        const container = document.querySelector("#spectrogram") as HTMLElement;
+        const newOverlay = createSVGElement(overlayAttr, "svg");
+        if (overlay.value) {
+          container.removeChild(overlay.value);
+        }
+        overlay.value = newOverlay;
 
-        // Move canvas image to SVG & clean up
-        const img = new Image();
-        img.src = spectrogram.value.toDataURL("image/png");
-        const svgImg = createSVGElement(
-          {
-            attributes: {
-              width: spectrogramWidth,
-              height: spectrogramHeight,
-              xmlns: "http://www.w3.org/2000/svg",
-            },
-          },
-          "image"
-        );
-        svgImg.setAttributeNS("http://www.w3.org/1999/xlink", "href", img.src);
-        overlay.value.appendChild(svgImg);
-        overlay.value.appendChild(tempTrack.value.rect);
-        spectrogram.value.parentElement.removeChild(spectrogram.value);
-        // Add tracks to overlay
-        [...props.tracks.values()]
-          .map(createRectFromTrack)
-          .map((trackRect) => overlay.value.appendChild(trackRect));
+        container.appendChild(overlay.value);
+
         const getDragCoords = (e: TouchEvent | MouseEvent) => {
           const rect = overlay.value.getBoundingClientRect();
           if (e instanceof TouchEvent) {
@@ -527,7 +518,6 @@ export default defineComponent({
 
         const startEvent = (e: TouchEvent | MouseEvent) => {
           e.preventDefault();
-          // don't start dragging if it's a click less that 100ms ago
           const { x, y } = getDragCoords(e);
           setTempTrack((track) => {
             track.pos = {
@@ -587,8 +577,6 @@ export default defineComponent({
             Date.now() - tempTrack.value.startDragTime > 100 &&
             tempTrack.value.pos.width > 0.01
           ) {
-            const { x, y } = getDragCoords(e);
-            moveTempTrack(x, y);
             confirmTrack();
           } else {
             setTempTrack(
@@ -606,11 +594,34 @@ export default defineComponent({
         overlay.value.addEventListener("touchmove", moveEvent);
         overlay.value.addEventListener("mouseup", endEvent);
         overlay.value.addEventListener("touchend", endEvent);
-
-        setTimeout(() => {
-          overlay.value.style.opacity = "1";
-        }, 100);
-      });
+      };
+      const initPlayer = () => {
+        attachSpectrogramOverlay();
+        // Move canvas image to SVG & clean up
+        overlay.value.appendChild(tempTrack.value.rect);
+        addTracksToOverlay();
+        if (isPlaying.value) {
+          playAt(0);
+        }
+        // Due to spectrogram plugin, we need to wait for the canvas to be rendered
+        player.value.on("redraw", () => {
+          player.value.spectrogram.init();
+          attachSpectrogramOverlay();
+          addTracksToOverlay();
+        });
+      };
+      player.value.on("ready", initPlayer);
+      player.value.load(props.url);
+      watch(
+        () => props.url,
+        () => {
+          player.value.empty();
+          player.value.load(props.url);
+        }
+      );
+    });
+    onBeforeUnmount(() => {
+      player.value.empty();
     });
     return {
       player,
@@ -678,7 +689,7 @@ spectrogram {
     display: flex;
     justify-content: flex-start;
   }
-  spectrogram {
+  spectrogram > svg {
     border-radius: 0 0 0.25rem 0.25rem;
   }
   .player-bar {

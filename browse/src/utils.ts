@@ -1,5 +1,14 @@
-import { Draft, produce, Immutable, castImmutable } from "immer";
-import { Ref, shallowRef, DeepReadonly } from "@vue/composition-api";
+import { Draft, produce, Immutable } from "immer";
+import {
+  Ref,
+  reactive,
+  shallowRef,
+  DeepReadonly,
+  getCurrentInstance,
+  watchEffect,
+} from "@vue/composition-api";
+import type VueRouter from "vue-router";
+import type { Route } from "vue-router";
 
 export function shouldViewAsSuperUser(): boolean {
   return localStorage.getItem("view-as") !== "regular";
@@ -40,6 +49,26 @@ export function useState<T>(base: T): [Ref<T>, SetState<T>] {
     state.value = produce(state.value, recipe);
   };
   return [state, setState];
+}
+
+export function useRouter(): VueRouter {
+  const instance = getCurrentInstance();
+  if (instance) {
+    return instance.proxy.$router;
+  }
+  console.error("Outside Scope: cannot access Vue instance for router");
+  return undefined as any;
+}
+
+export function useRoute(): Ref<Route> {
+  const instance = getCurrentInstance();
+  if (instance) {
+    const [route, setRoute] = useState<Route>(instance.proxy.$route);
+    watchEffect(() => setRoute(instance.proxy.$route));
+    return route;
+  }
+  console.error("Outside Scope: cannot access Vue instance for route");
+  return undefined as any;
 }
 
 export function createSVGElement(

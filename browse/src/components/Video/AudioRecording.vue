@@ -1,70 +1,92 @@
 <template>
-  <b-container class="p-0 audio-recording-container">
-    <b-row class="mb-4">
-      <AudioPlayer
-        :tracks="tracks"
-        :url="url"
-        :selectedTrack="selectedTrack"
-        :setSelectedTrack="setSelectedTrack"
-      />
-    </b-row>
-    <b-row>
-      <b-col lg="4">
-        <TrackList
-          :audio-tracks="tracks"
-          :selected-track="selectedTrack"
-          :set-selected-track="setSelectedTrack"
-          :delete-track="deleteTrack"
-          :undo-delete-track="undoDeleteTrack"
-          :add-tag-to-track="addTagToTrack"
-        />
-      </b-col>
-      <b-col>
-        <b-button @click="addTagToSelectedTrack('bird')">Bird</b-button>
-        <b-button @click="addTagToSelectedTrack('human')">Human</b-button>
-        <b-button @click="addTagToSelectedTrack('unidentified')">
-          Unidentifiable
-        </b-button>
-        <b-button @click="addTagToSelectedTrack('false-positive')">
-          False Positive
-        </b-button>
-        <b-form @submit="handleCustomTagSubmit">
-          <b-row>
-            <b-form-input
-              required
-              class="w-50"
-              @change="setCustomTag"
-              placeholder="Morepork, Kia, Bellbird..."
-            />
-            <b-button type="submit" variant="primary">Submit</b-button>
+  <b-row fluid class="audio-recording-container">
+    <b-col lg="8">
+      <b-row class="mb-4">
+        <b-col>
+          <AudioPlayer
+            v-if="!deleted"
+            :tracks="tracks"
+            :url="url"
+            :selectedTrack="selectedTrack"
+            :setSelectedTrack="setSelectedTrack"
+          />
+          <b-row
+            v-else
+            class="undo-delete w-100 justify-content-center align-items-center"
+            @click="undoDeleteRecording"
+            role="button"
+          >
+            <h1 class="pr-2">Undo Delete Recording</h1>
+            <font-awesome-icon class="mb-2" icon="undo" size="2x" />
           </b-row>
-        </b-form>
-      </b-col>
-    </b-row>
-  </b-container>
+        </b-col>
+      </b-row>
+      <b-row v-show="!deleted">
+        <b-col lg="6">
+          <TrackList
+            :audio-tracks="tracks"
+            :selected-track="selectedTrack"
+            :set-selected-track="setSelectedTrack"
+            :delete-track="deleteTrack"
+            :undo-delete-track="undoDeleteTrack"
+            :add-tag-to-track="addTagToTrack"
+          />
+        </b-col>
+        <b-col>
+          <LabelButtonGroup
+            :labels="labels"
+            :add-tag-to-selected-track="addTagToSelectedTrack"
+            :disabled="!selectedTrack"
+            :selectedLabel="selectedLabel"
+          />
+          <div class="mt-2 mb-4">
+            <multiselect
+              v-model="customTag"
+              :options="BirdLabels"
+              :disabled="!selectedTrack"
+              :allow-empty="false"
+              :value="selectedLabel"
+            />
+          </div>
+        </b-col>
+      </b-row>
+    </b-col>
+    <b-col lg="3">
+      <Playlist
+        :recording-date-time="recording.recordingDateTime"
+        :url="url"
+        :delete-recording="deleteRecording"
+      />
+      <RecordingProperties :recording="recording" />
+    </b-col>
+  </b-row>
 </template>
 
 <script lang="ts">
 import { PropType } from "vue";
 import { produce } from "immer";
-import { defineComponent } from "@vue/composition-api";
+import { defineComponent, ref, watch, watchEffect } from "@vue/composition-api";
+import Multiselect from "vue-multiselect";
 
 import api from "@api";
+import store from "@/stores";
 import { useState } from "@/utils";
-import { TagColours } from "@/const";
+import { TagColours, BirdLabels } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
 import TrackList from "../Audio/TrackList.vue";
+import Playlist from "../Audio/Playlist.vue";
+import LabelButtonGroup from "../Audio/LabelButtonGroup.vue";
+import LabelSearchList from "../Audio/LabelSearchList.vue";
+import RecordingProperties from "../Video/RecordingProperties.vue";
 
 import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
 import {
-  ApiHumanTrackTagResponse,
   ApiTrackTagRequest,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { TrackId } from "@typedefs/api/common";
-import store from "@/stores";
 
 export enum TagClass {
   Automatic = "automatic",
@@ -73,7 +95,7 @@ export enum TagClass {
   Denied = "denied",
 }
 
-interface DisplayTag extends ApiTrackTagResponse {
+export interface DisplayTag extends ApiTrackTagResponse {
   class: TagClass;
 }
 
@@ -102,13 +124,43 @@ export default defineComponent({
     },
   },
   components: {
-    TrackList,
     AudioPlayer,
+    Playlist,
+    TrackList,
+    RecordingProperties,
+    LabelButtonGroup,
+    Multiselect,
   },
   setup(props) {
-    const recording = props.recording;
     const userName = store.state.User.userData.userName;
     const userId = store.state.User.userData.id;
+    const [url, setUrl] = useState(
+      props.audioUrl ? props.audioUrl : props.audioRawUrl
+    );
+    const [deleted, setDeleted] = useState(false);
+    watch(
+      () => [props.audioUrl, props.audioRawUrl],
+      () => {
+        setUrl(props.audioUrl ? props.audioUrl : props.audioRawUrl);
+        setDeleted(false);
+      }
+    );
+
+    const deleteRecording = async () => {
+      const response = await api.recording.del(props.recording.id);
+      console.log(response);
+      if (response.success) {
+        setDeleted(true);
+      }
+    };
+
+    const undoDeleteRecording = async () => {
+      const response = await api.recording.undelete(props.recording.id);
+      console.log(response);
+      if (response.success) {
+        setDeleted(false);
+      }
+    };
 
     const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
       const automaticTag = track.tags.find((tag) => tag.automatic);
@@ -127,13 +179,13 @@ export default defineComponent({
             });
       if (automaticTag) {
         if (humanTags.length > 0) {
-          const isConfirmed = humanTags.some(
+          const confirmedTag = humanTags.find(
             (tag) => automaticTag.what === tag.what
           );
-          if (isConfirmed) {
+          if (confirmedTag) {
             return [
               {
-                ...automaticTag,
+                ...confirmedTag,
                 class: TagClass.Confirmed,
               },
             ];
@@ -183,14 +235,17 @@ export default defineComponent({
         deleted: false,
       };
     };
+    const mappedTracks = (tracks: ApiTrackResponse[]) =>
+      new Map(
+        tracks.map((track, index) => {
+          const audioTrack = createAudioTrack(track, index);
+          return [track.id, audioTrack];
+        })
+      );
 
-    const mappedTracks = new Map(
-      recording.tracks.map((track, index) => {
-        const audioTrack = createAudioTrack(track, index);
-        return [track.id, audioTrack];
-      })
+    const [tracks, setTracks] = useState<AudioTracks>(
+      mappedTracks(props.recording.tracks)
     );
-    const [tracks, setTracks] = useState<AudioTracks>(mappedTracks);
     const [selectedTrack, setSelectedTrack] = useState<AudioTrack>(null);
 
     const addTrack = async (track: AudioTrack): Promise<AudioTrack> => {
@@ -206,12 +261,13 @@ export default defineComponent({
         };
         const response = await api.recording.addTrack(
           trackRequest,
-          recording.id
+          props.recording.id
         );
 
         if (response.success) {
           const id = response.result.trackId;
           const colour = TagColours[tracks.value.size % TagColours.length];
+          console.log(colour, tracks.value.size);
           const newTrack = {
             ...track,
             id,
@@ -265,7 +321,7 @@ export default defineComponent({
         });
       }
       const tag: ApiTrackTagRequest = {
-        what,
+        what: what.toLowerCase(),
         automatic,
         confidence,
         ...(data && { data: JSON.stringify(data) }),
@@ -319,7 +375,10 @@ export default defineComponent({
 
     const deleteTrack = async (trackId: TrackId) => {
       try {
-        const response = await api.recording.removeTrack(trackId, recording.id);
+        const response = await api.recording.removeTrack(
+          trackId,
+          props.recording.id
+        );
         if (response.success) {
           modifyTrack(trackId, {
             deleted: true,
@@ -338,13 +397,11 @@ export default defineComponent({
     const undoDeleteTrack = async (trackId: TrackId) => {
       try {
         const track = tracks.value.get(trackId);
-        debugger;
         if (track) {
           const renewTrack = await addTrack(track);
           const newTrack = await track.tags.reduce(
             async (promisedTrack, tag) => {
               const resolvedTrack = await promisedTrack;
-              debugger;
               const requestTrack = await addTagToTrack(
                 resolvedTrack.id,
                 tag.what,
@@ -358,34 +415,76 @@ export default defineComponent({
           );
           setTracks((tracks) => {
             tracks.delete(trackId);
-            tracks.set(newTrack.id, newTrack);
+            tracks.set(newTrack.id, { ...newTrack, colour: track.colour });
           });
         }
       } catch (error) {
         console.error(error);
       }
     };
+    const commonBirdLabels = [
+      "Kiwi",
+      "Kereru",
+      "Tui",
+      "Kea",
+      "Morepork",
+      "Bellbird",
+    ];
+    const otherLabels = ["Human", "Unidentified"];
 
-    const [customTag, setCustomTag] = useState<String>("");
-    const handleCustomTagSubmit = (e: SubmitEvent) => {
-      e.preventDefault();
-      if (customTag) {
-        const tag = customTag.value
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "")
-          .replace(/\s/g, "_");
-        addTagToSelectedTrack(tag);
+    const labels = [...commonBirdLabels, ...otherLabels];
+    const [selectedLabel, setSelectedLabel] = useState<string>("");
+    const customTag = ref<string>(selectedLabel.value);
+    watchEffect(() => {
+      if (selectedTrack.value) {
+        const tag = selectedTrack.value.displayTags.find((tag) => {
+          if (tag.userId === userId) {
+            return true;
+          }
+          return false;
+        });
+        if (tag) {
+          const capitalizedTag =
+            tag.what.charAt(0).toUpperCase() + tag.what.slice(1);
+          setSelectedLabel(capitalizedTag);
+          customTag.value = capitalizedTag;
+        } else {
+          setSelectedLabel("");
+        }
+      } else {
+        setSelectedLabel("");
+        customTag.value = "";
       }
-    };
+    });
+    const CapitalizedBirdLabels = BirdLabels.map(
+      (label: string) => label.charAt(0).toUpperCase() + label.slice(1)
+    );
 
-    const url = props.audioUrl ? props.audioUrl : props.audioRawUrl;
+    watch(customTag, (value) => {
+      if (value && value !== selectedLabel.value) {
+        addTagToSelectedTrack(value);
+      }
+    });
+    watch(
+      () => props.recording,
+      () => {
+        setTracks(mappedTracks(props.recording.tracks));
+        setSelectedTrack(null);
+      }
+    );
+
     return {
       url,
       tracks,
+      deleted,
+      deleteRecording,
+      undoDeleteRecording,
       selectedTrack,
+      selectedLabel,
       setSelectedTrack,
-      handleCustomTagSubmit,
-      setCustomTag,
+      customTag,
+      labels,
+      BirdLabels: CapitalizedBirdLabels,
       addTagToSelectedTrack,
       addTagToTrack,
       addTrack,
@@ -405,6 +504,19 @@ export default defineComponent({
   height: 50px;
 }
 .audio-recording-container {
+  .undo-button {
+    cursor: pointer;
+    color: #485460;
+    transition: color 0.1s ease-in-out;
+  }
+  .undo-button:hover {
+    color: #d2dae2;
+  }
+
+  .undo-delete {
+    height: 373px;
+  }
+
   h2 {
     font-size: 1.3em;
   }
@@ -433,8 +545,20 @@ export default defineComponent({
     transition: border 0.1s cubic-bezier(1, 0, 0, 1);
   }
   .highlight {
-    border: 2px solid #9acd32;
-    border-radius: 4px;
+    box-sizing: border-box;
+    box-shadow: inset 0px 0px 0px 2px #9acd32;
+  }
+  .multiselect--disabled {
+    background: none;
+  }
+  .multiselect__select {
+    height: 41px;
+  }
+  .multiselect__tags {
+    min-height: 43px;
+  }
+  .multiselect__single {
+    padding-top: 4px;
   }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <b-container fluid class="classification-container">
+  <b-container>
     <b-row>
       <h2 class="classification-header">Classification</h2>
     </b-row>
@@ -16,13 +16,15 @@
             class="track-container"
           >
             <b-row>
-              <span
-                :class="{
-                  highlight: selectedTrack && selectedTrack.id === track.id,
-                  'track-colour': true,
-                }"
-                :style="{ background: `${track.colour}` }"
-              ></span>
+              <b-col class="d-flex justify-content-center pr-0" cols="2">
+                <span
+                  :class="{
+                    highlight: selectedTrack && selectedTrack.id === track.id,
+                    'track-colour': true,
+                  }"
+                  :style="{ background: `${track.colour}` }"
+                ></span>
+              </b-col>
               <b-col>
                 <b-row class="align-items-center justify-content-between">
                   <h4 class="track-time m-0">
@@ -140,7 +142,9 @@
                 :fields="['what', 'who', 'confidence']"
               >
                 <template #cell(who)="data">{{
-                  data.item.data.name ? data.item.data.name : data.item.userName
+                  data.item.data && data.item.data.name
+                    ? data.item.data.name
+                    : data.item.userName
                 }}</template>
               </b-table>
             </b-collapse>
@@ -157,9 +161,11 @@
         </b-row>
       </b-col>
     </b-row>
-    <h4 class="select-track-message" v-if="tracks.length === 0">
-      Select section of Audio by pressing and dragging...
-    </h4>
+    <b-row class="w-100 d-flex justify-content-center m-0">
+      <h4 class="select-track-message" v-if="tracks.length === 0">
+        Select section of Audio by pressing and dragging...
+      </h4>
+    </b-row>
   </b-container>
 </template>
 
@@ -263,21 +269,12 @@ export default defineComponent({
 }
 
 .classification-container {
-  padding-left: 1.2em;
+  padding-left: 0px;
   padding-right: 0em;
 }
 
 .classification-item {
   min-height: 90px;
-}
-
-.undo-button {
-  cursor: pointer;
-  color: #485460;
-  transition: color 0.1s ease-in-out;
-}
-.undo-button:hover {
-  color: #d2dae2;
 }
 
 .tag-history-toggle {
@@ -305,6 +302,7 @@ export default defineComponent({
   text-align: center;
   max-width: 16em;
   margin-top: 0.8em;
+  margin-bottom: 1em;
 }
 
 .track-settings-button {
