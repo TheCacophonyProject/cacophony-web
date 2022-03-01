@@ -501,14 +501,14 @@ export default defineComponent({
 
         const getDragCoords = (e: TouchEvent | MouseEvent) => {
           const rect = overlay.value.getBoundingClientRect();
-          if (e instanceof TouchEvent && window.TouchEvent) {
+          if (window.TouchEvent && "targetTouches" in e) {
             const x = (e.targetTouches[0].clientX - rect.left) / rect.width;
             const y = (e.targetTouches[0].clientY - rect.top) / rect.height;
             return {
               x,
               y,
             };
-          } else if (e instanceof MouseEvent) {
+          } else if ("offsetX" in e) {
             const x = e.offsetX / rect.width;
             const y = e.offsetY / rect.height;
             return {
