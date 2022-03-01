@@ -501,14 +501,14 @@ export default defineComponent({
 
         const getDragCoords = (e: TouchEvent | MouseEvent) => {
           const rect = overlay.value.getBoundingClientRect();
-          if (e instanceof TouchEvent) {
+          if (e instanceof TouchEvent && window.TouchEvent) {
             const x = (e.targetTouches[0].clientX - rect.left) / rect.width;
             const y = (e.targetTouches[0].clientY - rect.top) / rect.height;
             return {
               x,
               y,
             };
-          } else {
+          } else if (e instanceof MouseEvent) {
             const x = e.offsetX / rect.width;
             const y = e.offsetY / rect.height;
             return {
@@ -519,6 +519,7 @@ export default defineComponent({
         };
 
         const startEvent = (e: TouchEvent | MouseEvent) => {
+          e.stopPropagation();
           e.preventDefault();
           const { x, y } = getDragCoords(e);
           setTempTrack((track) => {
@@ -540,6 +541,7 @@ export default defineComponent({
         };
 
         const moveEvent = (e: TouchEvent | MouseEvent) => {
+          e.stopPropagation();
           e.preventDefault();
           if (
             tempTrack.value.active &&
@@ -565,6 +567,7 @@ export default defineComponent({
             minFreq,
             colour: "#c8d6e5",
             automatic: false,
+            filtered: false,
             positions: [tempTrack.value.pos],
             tags: [],
             displayTags: [],
@@ -579,6 +582,7 @@ export default defineComponent({
           );
         });
         const endEvent = (e: TouchEvent | MouseEvent) => {
+          e.stopPropagation();
           e.preventDefault();
           if (
             tempTrack.value.active &&

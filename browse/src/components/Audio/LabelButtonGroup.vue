@@ -5,7 +5,11 @@
         <b-button
           class="label-button w-100 h-100"
           variant="outline"
-          @click="addTagToSelectedTrack(value)"
+          @click="
+            selectedLabel.toLowerCase() === value.toLowerCase()
+              ? deleteTagFromSelectedTrack()
+              : addTagToSelectedTrack(value)
+          "
           :disabled="disabled"
           :class="{
             highlight: selectedLabel.toLowerCase() === value.toLowerCase(),
@@ -34,6 +38,10 @@ export default defineComponent({
     },
     addTagToSelectedTrack: {
       type: Function as PropType<(what: string) => Promise<void>>,
+      required: true,
+    },
+    deleteTagFromSelectedTrack: {
+      type: Function as PropType<() => Promise<void>>,
       required: true,
     },
     disabled: {

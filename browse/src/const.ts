@@ -398,9 +398,8 @@ export const BirdLabels = [
   "myna",
   "sparrow",
   "parrot",
-  "Norfolk morepork",
-  "Norfolk parrot",
-
+  "norfolk morepork",
+  "norfolk parrot",
   "pipit",
   "dunnock",
   "chaffinch",

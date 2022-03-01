@@ -21,7 +21,7 @@
           </b-row>
         </b-col>
       </b-row>
-      <b-row v-show="!deleted">
+      <b-row class="bottom-container" v-show="!deleted">
         <b-col lg="6">
           <TrackList
             :audio-tracks="tracks"
@@ -36,6 +36,7 @@
           <LabelButtonGroup
             :labels="labels"
             :add-tag-to-selected-track="addTagToSelectedTrack"
+            :delete-tag-from-selected-track="deleteTagFromSelectedTrack"
             :disabled="!selectedTrack"
             :selectedLabel="selectedLabel"
           />
@@ -44,18 +45,22 @@
               v-model="customTag"
               :options="BirdLabels"
               :disabled="!selectedTrack"
-              :allow-empty="false"
               :value="selectedLabel"
             />
           </div>
         </b-col>
       </b-row>
     </b-col>
-    <b-col lg="3">
+    <b-col lg="4">
       <Playlist
         :recording-date-time="recording.recordingDateTime"
         :url="url"
         :delete-recording="deleteRecording"
+      />
+      <CacophonyIndexGraph
+        class="mt-2"
+        :cacophony-index="recording.cacophonyIndex"
+        :id="recording.id"
       />
       <RecordingProperties :recording="recording" />
     </b-col>
@@ -77,7 +82,7 @@ import AudioPlayer from "../Audio/AudioPlayer.vue";
 import TrackList from "../Audio/TrackList.vue";
 import Playlist from "../Audio/Playlist.vue";
 import LabelButtonGroup from "../Audio/LabelButtonGroup.vue";
-import LabelSearchList from "../Audio/LabelSearchList.vue";
+import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
 import RecordingProperties from "../Video/RecordingProperties.vue";
 
 import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
@@ -127,6 +132,7 @@ export default defineComponent({
     AudioPlayer,
     Playlist,
     TrackList,
+    CacophonyIndexGraph,
     RecordingProperties,
     LabelButtonGroup,
     Multiselect,
@@ -315,7 +321,8 @@ export default defineComponent({
       what: string,
       automatic = false,
       confidence = 1,
-      data: any = null
+      data: any = null,
+      username = userName
     ): Promise<AudioTrack> => {
       const track = tracks.value.get(trackId);
       if (track) {
@@ -343,13 +350,47 @@ export default defineComponent({
           data,
           userId,
           automatic,
-          userName,
+          userName: username,
         };
         const currTags = track.tags.filter((tag) => tag.userId !== userId);
         const newTags = [...currTags, newTag];
         const taggedTrack = modifyTrack(trackId, {
           confirming: false,
           tags: newTags,
+        });
+        const displayTags = getDisplayTags(taggedTrack);
+        const currTrack = modifyTrack(trackId, {
+          displayTags,
+          confirming: false,
+        });
+
+        return currTrack;
+      } else {
+        return modifyTrack(trackId, {
+          confirming: false,
+        });
+      }
+    };
+
+    const deleteTrackTag = async (
+      trackId: TrackId,
+      tagId: number
+    ): Promise<AudioTrack> => {
+      const track = tracks.value.get(trackId);
+      if (track) {
+        modifyTrack(trackId, {
+          confirming: true,
+        });
+      }
+      const response = await api.recording.deleteTrackTag(
+        props.recording.id,
+        trackId,
+        tagId
+      );
+      if (response.success) {
+        const currTags = track.tags.filter((tag) => tag.id !== tagId);
+        const taggedTrack = modifyTrack(trackId, {
+          tags: currTags,
         });
         const displayTags = getDisplayTags(taggedTrack);
         const currTrack = modifyTrack(trackId, {
@@ -376,16 +417,43 @@ export default defineComponent({
       }
     };
 
-    const deleteTrack = async (trackId: TrackId) => {
+    const deleteTagFromSelectedTrack = async () => {
+      if (selectedTrack.value) {
+        const userTag = selectedTrack.value.tags.find(
+          (tag) => tag.userId === userId
+        );
+        if (userTag) {
+          const newTrack = await deleteTrackTag(
+            selectedTrack.value.id,
+            userTag.id
+          );
+          setSelectedTrack(newTrack);
+          if (newTrack.tags.length === 0) {
+            deleteTrack(newTrack.id, true);
+          }
+        }
+      }
+    };
+
+    const deleteTrack = async (trackId: TrackId, permanent = false) => {
       try {
         const response = await api.recording.removeTrack(
           trackId,
           props.recording.id
         );
         if (response.success) {
-          modifyTrack(trackId, {
-            deleted: true,
-          });
+          if (permanent) {
+            setTracks((tracks) => {
+              const newTracks = produce(tracks, (draftTracks) => {
+                draftTracks.delete(trackId);
+              });
+              return newTracks;
+            });
+          } else {
+            modifyTrack(trackId, {
+              deleted: true,
+            });
+          }
           if (selectedTrack.value?.id === trackId) {
             setSelectedTrack(null);
           }
@@ -410,7 +478,8 @@ export default defineComponent({
                 tag.what,
                 tag.automatic,
                 tag.confidence,
-                tag.data
+                tag.data,
+                tag.userName
               );
               return requestTrack;
             },
@@ -425,6 +494,15 @@ export default defineComponent({
         console.error(error);
       }
     };
+
+    watch(
+      () => props.recording,
+      () => {
+        setTracks(mappedTracks(props.recording.tracks));
+        setSelectedTrack(null);
+      }
+    );
+
     const createButtonLabels = (): string[] => {
       const maxBirdButtons = 6;
       const storedCommonBirds = Object.values(
@@ -485,7 +563,6 @@ export default defineComponent({
       newBird.freq += 1;
       commonBirds[bird] = newBird;
       localStorage.setItem("commonBirds", JSON.stringify(commonBirds));
-      const Birds = JSON.parse(localStorage.getItem("commonBirds"));
     };
 
     watch(customTag, (value) => {
@@ -495,13 +572,6 @@ export default defineComponent({
         setButtonLabels(createButtonLabels());
       }
     });
-    watch(
-      () => props.recording,
-      () => {
-        setTracks(mappedTracks(props.recording.tracks));
-        setSelectedTrack(null);
-      }
-    );
 
     return {
       url,
@@ -514,11 +584,13 @@ export default defineComponent({
       setSelectedTrack,
       customTag,
       labels: buttonLabels,
-      BirdLabels,
+      BirdLabels: BirdLabels.sort(),
       addTagToSelectedTrack,
       addTagToTrack,
       addTrack,
       deleteTrack,
+      deleteTrackTag,
+      deleteTagFromSelectedTrack,
       undoDeleteTrack,
     };
   },
@@ -532,6 +604,11 @@ export default defineComponent({
 #waveform {
   width: 100%;
   height: 50px;
+}
+@include media-breakpoint-down(lg) {
+  .bottom-container {
+    flex-direction: column-reverse;
+  }
 }
 .audio-recording-container {
   .undo-button {
@@ -580,6 +657,9 @@ export default defineComponent({
   }
   .multiselect--disabled {
     background: none;
+  }
+  .multiselect__element {
+    text-transform: capitalized;
   }
   .multiselect__select {
     height: 41px;

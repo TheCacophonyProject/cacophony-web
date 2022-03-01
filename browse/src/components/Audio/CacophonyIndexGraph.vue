@@ -12,6 +12,7 @@ import {
   CategoryScale,
   LinearScale,
   PointElement,
+  Tooltip,
 } from "chart.js";
 import { CacophonyIndex } from "@typedefs/api/recording";
 
@@ -115,6 +116,7 @@ export default defineComponent({
       CategoryScale,
       LinearScale,
       PointElement,
+      Tooltip,
     ]);
     new Chart(this.$refs[this.id] as HTMLCanvasElement, {
       type: "line",
@@ -137,13 +139,27 @@ export default defineComponent({
       },
       options: {
         plugins: {
+          tooltip: {
+            mode: "index",
+            intersect: false,
+            displayColors: false,
+            callbacks: {
+              title: (tooltipItem) => {
+                return "";
+              },
+              label: (tooltipItem) => {
+                const value = tooltipItem.formattedValue;
+                return value;
+              },
+            },
+          },
           legend: {
             display: false,
           },
         },
         elements: {
           point: {
-            radius: this.simplify ? 0 : 2,
+            radius: 2,
           },
         },
         scales: {

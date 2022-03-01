@@ -349,7 +349,6 @@ export default {
       if (this.$store.state.User.userData.showFiltered) {
         return collateTags(this.item.recTags, this.item.tracks) ?? [];
       } else {
-        debugger;
         const goodTracks = this.item.tracks.filter((track) => !track.filtered);
         return collateTags(this.item.recTags, goodTracks) ?? [];
       }
