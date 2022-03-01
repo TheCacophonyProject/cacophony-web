@@ -148,7 +148,6 @@ export default defineComponent({
 
     const deleteRecording = async () => {
       const response = await api.recording.del(props.recording.id);
-      console.log(response);
       if (response.success) {
         setDeleted(true);
       }
@@ -156,7 +155,6 @@ export default defineComponent({
 
     const undoDeleteRecording = async () => {
       const response = await api.recording.undelete(props.recording.id);
-      console.log(response);
       if (response.success) {
         setDeleted(false);
       }
@@ -254,6 +252,8 @@ export default defineComponent({
           data: {
             start_s: track.start,
             end_s: track.end,
+            maxFreq: track.maxFreq,
+            minFreq: track.minFreq,
             positions: track.positions,
             userId: userId,
             automatic: false,
@@ -266,7 +266,9 @@ export default defineComponent({
 
         if (response.success) {
           const id = response.result.trackId;
-          const colour = TagColours[tracks.value.size % TagColours.length];
+          const colour = track.colour
+            ? track.colour
+            : TagColours[tracks.value.size % TagColours.length];
           console.log(colour, tracks.value.size);
           const newTrack = {
             ...track,
@@ -415,24 +417,41 @@ export default defineComponent({
           );
           setTracks((tracks) => {
             tracks.delete(trackId);
-            tracks.set(newTrack.id, { ...newTrack, colour: track.colour });
+            tracks.set(newTrack.id, newTrack);
           });
         }
       } catch (error) {
         console.error(error);
       }
     };
-    const commonBirdLabels = [
-      "Kiwi",
-      "Kereru",
-      "Tui",
-      "Kea",
-      "Morepork",
-      "Bellbird",
-    ];
-    const otherLabels = ["Human", "Unidentified"];
+    const createButtonLabels = (): string[] => {
+      const maxBirdButtons = 6;
+      const storedCommonBirds = Object.values(
+        JSON.parse(localStorage.getItem("commonBirds")) ?? {}
+      )
+        .sort((a: { freq: number }, b: { freq: number }) => b.freq - a.freq)
+        .map((bird: { what: string }) => bird.what.toLowerCase());
+      const commonBirdLabels = [
+        "Morepork",
+        "Kiwi",
+        "Kereru",
+        "Tui",
+        "Kea",
+        "Bellbird",
+      ].filter((val: string) => !storedCommonBirds.includes(val.toLowerCase()));
+      const amountToRemove = Math.min(maxBirdButtons, storedCommonBirds.length);
+      const diffToMax = maxBirdButtons - amountToRemove;
+      const commonBirds = [
+        ...storedCommonBirds.slice(0, amountToRemove),
+        ...commonBirdLabels.splice(0, diffToMax),
+      ];
 
-    const labels = [...commonBirdLabels, ...otherLabels];
+      const otherLabels = ["Bird", "Human", "Unidentified"];
+
+      const labels = [...commonBirds, ...otherLabels];
+      return labels;
+    };
+    const [buttonLabels, setButtonLabels] = useState(createButtonLabels());
     const [selectedLabel, setSelectedLabel] = useState<string>("");
     const customTag = ref<string>(selectedLabel.value);
     watchEffect(() => {
@@ -456,13 +475,23 @@ export default defineComponent({
         customTag.value = "";
       }
     });
-    const CapitalizedBirdLabels = BirdLabels.map(
-      (label: string) => label.charAt(0).toUpperCase() + label.slice(1)
-    );
+
+    const storeCommonBird = (bird: string) => {
+      const commonBirds = JSON.parse(localStorage.getItem("commonBirds")) ?? {};
+      const newBird = commonBirds[bird]
+        ? commonBirds[bird]
+        : { what: bird, freq: 0 };
+      newBird.freq += 1;
+      commonBirds[bird] = newBird;
+      localStorage.setItem("commonBirds", JSON.stringify(commonBirds));
+      const Birds = JSON.parse(localStorage.getItem("commonBirds"));
+    };
 
     watch(customTag, (value) => {
       if (value && value !== selectedLabel.value) {
         addTagToSelectedTrack(value);
+        storeCommonBird(value);
+        setButtonLabels(createButtonLabels());
       }
     });
     watch(
@@ -483,8 +512,8 @@ export default defineComponent({
       selectedLabel,
       setSelectedTrack,
       customTag,
-      labels,
-      BirdLabels: CapitalizedBirdLabels,
+      labels: buttonLabels,
+      BirdLabels,
       addTagToSelectedTrack,
       addTagToTrack,
       addTrack,

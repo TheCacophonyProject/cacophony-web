@@ -260,6 +260,7 @@ export const TagColours = [
 ];
 
 export const BirdLabels = [
+  "mammal",
   "kiwi",
   "quail",
   "guineafowl",
@@ -316,6 +317,10 @@ export const BirdLabels = [
   "dowitcher",
   "curlew",
   "whimbrel",
+  "golden whistler",
+  "rooster",
+  "purple swamphens",
+  "crimson rosella",
   "godwit",
   "tattler",
   "greenshank",
@@ -382,6 +387,10 @@ export const BirdLabels = [
   "starling",
   "myna",
   "sparrow",
+  "parrot",
+  "Norfolk morepork",
+  "Norfolk parrot",
+
   "pipit",
   "dunnock",
   "chaffinch",

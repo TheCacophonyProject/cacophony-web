@@ -134,6 +134,8 @@ const mapTrack = (track: Track): ApiTrackResponse => ({
   tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
   positions: mapPositions(track.data.positions),
   automatic: track.data.automatic ?? true,
+  ...(track.data.minFreq && { minFreq: track.data.minFreq }),
+  ...(track.data.maxFreq && { maxFreq: track.data.maxFreq }),
 });
 
 const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {

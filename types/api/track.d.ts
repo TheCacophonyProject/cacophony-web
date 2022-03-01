@@ -20,6 +20,8 @@ export interface ApiTrackResponse {
   automatic: boolean;
   positions: ApiTrackPosition[];
   tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[];
+  minFreq?: number;
+  maxFreq?: number;
 }
 
 export interface ApiTrackRequest {
@@ -32,6 +34,8 @@ export interface ApiTrackDataRequest {
   end_s: Seconds;
 
   // FIXME - Make more of these fields mandatory once we know who calls this with what.
+  minFreq?: number;
+  maxFreq?: number;
   automatic?: boolean;
   userId?: number;
   label?: string;

@@ -97,6 +97,7 @@ import {
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 
 import { ApiTrackPosition } from "@typedefs/api/track";
+import WebAudio from "wavesurfer.js/src/webaudio";
 
 export default defineComponent({
   props: {
@@ -206,6 +207,7 @@ export default defineComponent({
 
     const addTracksToOverlay = () =>
       [...props.tracks.values()]
+        .filter((track) => !track.deleted)
         .map(createRectFromTrack)
         .map((trackRect) => overlay.value.appendChild(trackRect));
 
@@ -549,12 +551,18 @@ export default defineComponent({
         };
 
         const confirmTrack = debounce(() => {
+          const maxSample = (player.value.backend as WebAudio).ac.sampleRate;
+          const maxFreq = Math.floor((maxSample / 2) * tempTrack.value.pos.y);
+          const minFreq = Math.floor((maxSample / 2) * tempTrack.value.pos.x);
+
           const track: AudioTrack = {
             id: -1,
             start: tempTrack.value.pos.x * player.value.getDuration(),
             end:
               (tempTrack.value.pos.x + tempTrack.value.pos.width) *
               player.value.getDuration(),
+            maxFreq,
+            minFreq,
             colour: "#c8d6e5",
             automatic: false,
             positions: [tempTrack.value.pos],

@@ -3,7 +3,7 @@
     <b-row class="py-1" v-for="(row, rowIndex) in gridValues" :key="rowIndex">
       <b-col class="px-1" v-for="(value, colIndex) in row" :key="colIndex">
         <b-button
-          class="label-button w-100"
+          class="label-button w-100 h-100"
           variant="outline"
           @click="addTagToSelectedTrack(value)"
           :disabled="disabled"
@@ -18,7 +18,8 @@
   </b-container>
 </template>
 <script lang="ts">
-import { defineComponent, PropType } from "@vue/composition-api";
+import { defineComponent, PropType, watch } from "@vue/composition-api";
+import { useState } from "@/utils";
 
 export default defineComponent({
   name: "LabelButtonGroup",
@@ -46,15 +47,27 @@ export default defineComponent({
   },
   setup(props) {
     // create 2d array of labels where each row has props.cols elements
-    const gridValues = props.labels.reduce((acc, label, index) => {
-      const rowIndex = Math.floor(index / props.cols);
-      const colIndex = index % props.cols;
-      if (!acc[rowIndex]) {
-        acc[rowIndex] = [];
+
+    const createGridValues = (labels: string[]) =>
+      labels.reduce((acc, label, index) => {
+        const rowIndex = Math.floor(index / props.cols);
+        const colIndex = index % props.cols;
+        if (!acc[rowIndex]) {
+          acc[rowIndex] = [];
+        }
+        acc[rowIndex][colIndex] = label;
+        return acc;
+      }, [] as string[][]);
+    const [gridValues, setGridValues] = useState(
+      createGridValues(props.labels)
+    );
+
+    watch(
+      () => props.labels,
+      (newLabels) => {
+        setGridValues(createGridValues(newLabels));
       }
-      acc[rowIndex][colIndex] = label;
-      return acc;
-    }, [] as string[][]);
+    );
     return {
       gridValues,
     };
@@ -68,5 +81,6 @@ export default defineComponent({
   border-radius: 0.5em;
   border: 1px #e8e8e8 solid;
   box-shadow: 0px 1px 2px 1px #ebebeb70;
+  text-transform: capitalize;
 }
 </style>
