@@ -21,6 +21,13 @@ export interface ApiTrackResponse {
   positions: ApiTrackPosition[];
   tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[];
   filtered: boolean;
+  minFreq?: number;
+  maxFreq?: number;
+}
+
+export interface ApiTrackRequest {
+  data: ApiTrackDataRequest;
+  algorithm?: Object | Array<number>;
 }
 
 export interface ApiTrackDataRequest {

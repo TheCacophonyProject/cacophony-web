@@ -266,9 +266,10 @@ export default defineComponent({
 
         if (response.success) {
           const id = response.result.trackId;
-          const colour = track.colour
-            ? track.colour
-            : TagColours[tracks.value.size % TagColours.length];
+          const colour =
+            track.colour && track.id !== -1
+              ? track.colour
+              : TagColours[tracks.value.size % TagColours.length];
           console.log(colour, tracks.value.size);
           const newTrack = {
             ...track,
