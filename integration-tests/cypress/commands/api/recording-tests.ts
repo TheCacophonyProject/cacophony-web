@@ -637,7 +637,8 @@ function positionResponseFromSet(positions) {
     newTp["y"] = tp.y;
     newTp["width"] = tp.width;
     newTp["height"] = tp.height;
-    newTp["frameNumber"] = tp.frame_number;
+    newTp["order"] = tp.frame_number;
+    console.log(tp);
     tps.push(newTp);
   });
 

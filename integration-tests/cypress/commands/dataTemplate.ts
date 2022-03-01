@@ -103,17 +103,9 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
   additionalMetadata: {
     normal: "0",
     "SIM IMEI": "990006964660319",
-    analysis: {
-      cacophony_index: [
-        { end_s: 20, begin_s: 0, index_percent: 80.8 },
-        { end_s: 40, begin_s: 20, index_percent: 77.1 },
-        { end_s: 60, begin_s: 40, index_percent: 71.6 },
-      ],
-      species_identify: [],
-      cacophony_index_version: "2020-01-20_A",
-      processing_time_seconds: 50.7,
-      species_identify_version: "2021-02-01",
-    },
+    cacophony_index_version: "2020-01-20_A",
+    processing_time_seconds: 50.7,
+    species_identify_version: "2021-02-01",
     "SIM state": "SIM_STATE_READY",
     "Auto Update": false,
     "Flight Mode": false,
@@ -124,11 +116,16 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
     "Phone manufacturer": "samsung",
     "App has root access": false,
   },
+  cacophonyIndex: [
+    { end_s: 20, begin_s: 0, index_percent: 80.8 },
+    { end_s: 40, begin_s: 20, index_percent: 77.1 },
+    { end_s: 60, begin_s: 40, index_percent: 71.6 },
+  ],
 };
 
 //THERMAL RECORDINGS
 
-export const TEMPLATE_TRACK: ApiTrackSet = {
+export const TEMPLATE_TRACK = {
   id: 2,
   tracker_version: 10,
   start_s: 4.89,
@@ -179,13 +176,14 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
   end: 8.67,
   id: NOT_NULL,
   filtered: false,
+  automatic: true,
   positions: [
     {
       x: 111,
       y: 17,
       width: 48,
       height: 75,
-      frameNumber: 44,
+      order: 44,
     },
   ],
   tags: [
