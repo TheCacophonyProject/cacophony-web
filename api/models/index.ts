@@ -32,7 +32,6 @@ import { EventStatic } from "./Event";
 import { DeviceStatic } from "./Device";
 import { GroupStatic } from "./Group";
 import { GroupUsersStatic } from "./GroupUsers";
-import { DeviceUsersStatic } from "./DeviceUsers";
 import { ScheduleStatic } from "./Schedule";
 import { StationStatic } from "./Station";
 import { asyncLocalStorage } from "../Globals";
@@ -177,7 +176,6 @@ const AllModels = {
   Group: db.Group as GroupStatic,
   Station: db.Station as StationStatic,
   GroupUsers: db.GroupUsers as GroupUsersStatic,
-  DeviceUsers: db.DeviceUsers as DeviceUsersStatic,
   Schedule: db.Schedule as ScheduleStatic,
   Alert: db.Alert as AlertStatic,
   sequelize,

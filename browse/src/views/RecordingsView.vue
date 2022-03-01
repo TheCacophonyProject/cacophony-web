@@ -43,6 +43,7 @@
             <p class="search-description" v-html="currentQueryDescription" />
           </div>
           <RecordingsList
+            ref="recList"
             :recordings="recordings"
             :query-pending="queryPending"
             :show-cards="showCards"

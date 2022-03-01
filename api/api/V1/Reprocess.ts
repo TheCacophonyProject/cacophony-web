@@ -37,7 +37,7 @@ export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
 
   /**
-   * @api {get} /api/v1/reprocess/:id
+   * @api {get} /api/v1/reprocess/:id Reprocess a single recording
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to reprocess

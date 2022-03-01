@@ -21,7 +21,7 @@ import { User } from "./User";
 import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
-import { alertBody, sendEmail } from "../scripts/emailUtil";
+import { alertBody, sendEmail } from "@/scripts/emailUtil";
 import { DeviceId, UserId } from "@typedefs/api/common";
 import logger from "../logging";
 

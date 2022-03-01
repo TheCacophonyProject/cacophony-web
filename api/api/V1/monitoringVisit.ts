@@ -6,6 +6,7 @@ import { ClientError } from "../customErrors";
 import { UserId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@api/V1/monitoringPage";
 import { Op } from "sequelize";
+import { RecordingType } from "@typedefs/api/consts";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -260,9 +261,9 @@ async function getRecordings(
 ) {
   const where: any = {
     duration: { [Op.gte]: "0" },
-    type: "thermalRaw",
+    type: RecordingType.ThermalRaw,
     deletedAt: { [Op.eq]: null },
-    recordingDateTime: { [Op.gte]: from, [Op.lt]: until },
+    recordingDateTime: { [Op.gt]: from, [Op.lt]: until }, // FIXME - Used to be gte: from
   };
   if (params.devices) {
     where.DeviceId = params.devices;
@@ -312,7 +313,7 @@ function groupRecordingsIntoVisits(
           recording.Station,
           rec
         );
-        // we want to keep adding recordings to this visit even if first recording is before
+        // we want to keep adding recordings to this visit even if first recording is
         // before the search period
         currentVisitForDevice[rec.DeviceId] = newVisit;
 
@@ -320,7 +321,7 @@ function groupRecordingsIntoVisits(
           visitsStartingInPeriod.push(newVisit);
         } else {
           // First recording for this visit is actually before the time period.
-          // Therefore this visit isn't really part of this time period but some of the its recordings are
+          // Therefore this visit isn't really part of this time period but some of its recordings are
 
           // But if totally missing from the list user may wonder where recordings are so return visit anyway
           // (only relevant to the last page which shows the earliest recordings)

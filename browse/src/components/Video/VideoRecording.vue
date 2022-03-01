@@ -5,6 +5,7 @@
     <b-row class="no-gutters">
       <b-col cols="12" lg="8">
         <CptvPlayer
+          ref="player"
           :cptv-url="videoRawUrl"
           :cptv-size="videoRawSize"
           :tracks="tracks"
@@ -45,6 +46,12 @@
             @track-selected="trackSelected"
             @change-tag="changedTrackTag"
           />
+        </div>
+        <div class="filtered-tracks" v-b-tooltip.hover :title="filteredToolTip">
+          <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
+          <label for="cbFiltered">
+            Show Filtered ({{ filteredTracks.length }})</label
+          >
         </div>
         <div v-if="processingQueued" class="processing">
           <b-spinner small />
@@ -126,6 +133,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
+import DefaultLabels, { FILTERED_TOOLTIP } from "../../const";
 
 export default {
   name: "VideoRecording",
@@ -166,9 +174,24 @@ export default {
       requestedExport: false,
       localTags: [],
       loadingNext: false,
+      filteredToolTip: FILTERED_TOOLTIP,
     };
   },
   computed: {
+    tooltipTitle: function () {
+      return FILTERED_TOOLTIP;
+    },
+    showFiltered: {
+      set: function (val) {
+        localStorage.setItem("showFiltered", val);
+        this.$store.state.User.userData.showFiltered = val;
+        this.$refs["player"].renderCurrentFrame(true);
+        this.checkPreviousAndNextRecordings();
+      },
+      get: function () {
+        return this.$store.state.User.userData.showFiltered;
+      },
+    },
     tagItems() {
       // TODO - Move to RecordingControls
       const tags: ApiRecordingTagResponse[] = this.localTags;
@@ -209,16 +232,25 @@ export default {
       }
       return 0;
     },
+    filteredTracks() {
+      if (!this.recording) {
+        return null;
+      }
+      const tracks = (this.recording as ApiThermalRecordingResponse).tracks;
+      return tracks.filter((track) => track.filtered);
+    },
     tracks() {
       return (
         this.recording &&
-        (this.recording as ApiThermalRecordingResponse).tracks.map((track) => ({
-          ...track,
-          positions: track.positions.map((position) => ({
-            ...position,
-            frameNumber: position.order,
-          })),
-        }))
+        (this.recording as ApiThermalRecordingResponse).tracks
+          .map((track) => ({
+            ...track,
+            positions: track.positions.map((position) => ({
+              ...position,
+              frameNumber: position.order,
+            })),
+          }))
+          .filter((track) => this.showFiltered || !track.filtered)
       );
     },
     processingCompleted() {
@@ -429,6 +461,7 @@ export default {
       params.order = JSON.stringify([["recordingDateTime", order]]);
       params.limit = 1;
       params.type = RecordingType.ThermalRaw;
+      params.hideFiltered = !this.$store.state.User.userData.showFiltered;
       delete params.offset;
       try {
         if (!noNavigate) {
@@ -633,5 +666,9 @@ export default {
 .loading-next {
   pointer-events: none;
   opacity: 0.1;
+}
+
+.filtered-tracks {
+  margin-left: 20px;
 }
 </style>

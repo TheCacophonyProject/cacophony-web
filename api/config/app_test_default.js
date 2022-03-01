@@ -42,13 +42,13 @@ exports.smtpDetails = {
   host: "localhost",
   port: 7777, //default for service is 25. 7777 used for smtp-tester
   tls: false, //default is true.  False used for smtp-tester
-  from_name: "Cacophony Reporting"
-  
-//   service: "gmail",
-//   auth: {
-//     user: "noinfo@cacophony.org.nz",
-//     pass: "thesecretpassword"
-//   }
+  from_name: "Cacophony Reporting",
+
+  //   service: "gmail",
+  //   auth: {
+  //     user: "noinfo@cacophony.org.nz",
+  //     pass: "thesecretpassword"
+  //   }
 };
 
 // This is needed because Sequelize looks for development by default

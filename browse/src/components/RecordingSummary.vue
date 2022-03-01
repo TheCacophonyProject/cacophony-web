@@ -2,7 +2,7 @@
   <a
     v-if="displayStyle === 'card'"
     :href="getRecordingPath(item.id)"
-    class="recording-summary"
+    :class="['recording-summary', headerClass]"
     @click="(event) => navigateToRecording(event, item.id)"
   >
     <b-modal
@@ -22,8 +22,8 @@
       </span>
     </div>
     <div class="recording-main">
-      <div>
-        <div class="recording-details">
+      <div class="recording-details">
+        <div>
           <GroupLink :group-name="item.groupName" context="recordings" />
           <StationLink
             v-if="item.stationName"
@@ -43,19 +43,28 @@
             <font-awesome-icon
               icon="stream"
               size="xs"
-              v-else-if="item.trackCount !== 0"
+              v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
             />
             <span class="label" v-if="queuedForProcessing">Queued</span>
             <span class="label" v-else-if="processing">Processing</span>
             <span class="label" v-else-if="corruptedOrFailed">
               Processing failed
             </span>
-            <span class="label" v-else-if="item.trackCount !== 0">
+            <span
+              class="label"
+              v-else-if="item.type === 'thermalRaw' && item.trackCount !== 0"
+            >
               {{ item.trackCount }} track<span v-if="item.trackCount > 1"
                 >s</span
               >
             </span>
-            <span class="label" v-else>No tracks</span>
+
+            <span class="label" v-else-if="item.type === 'thermalRaw'"
+              >No tracks</span
+            >
+            <span class="label sub-label" v-if="filteredCount > 0">
+              ( {{ filteredCount }} filtered )
+            </span>
           </span>
           <div v-if="item.location !== '(unknown)'" class="recording-location">
             <a
@@ -67,11 +76,15 @@
             </a>
           </div>
         </div>
-        <div v-if="item.tags.length !== 0" class="recording-tags">
-          <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag="tag" />
+        <div v-if="filteredTags.length !== 0" class="recording-tags">
+          <TagBadge
+            v-for="(tag, index) in filteredTags"
+            :key="index"
+            :tag="tag"
+          />
         </div>
       </div>
-      <b-container
+      <div
         v-b-tooltip.hover
         title="Cacophony Index: Measures Richness of Audio"
         class="cacophony-container"
@@ -86,7 +99,7 @@
           :cacophonyIndex="item.cacophonyIndex"
           :simplify="true"
         />
-      </b-container>
+      </div>
       <div class="recording-time-duration">
         <div class="recording-time">
           <font-awesome-icon :icon="['far', 'calendar']" size="xs" />
@@ -112,7 +125,11 @@
     <!--        :alt="`thumbnail for #${item.id}`"-->
     <!--      />-->
     <!--    </div>-->
-    <div v-if="item.location !== '(unknown)'" class="recording-location">
+
+    <div
+      v-if="item.location !== '(unknown)'"
+      :class="['recording-location', headerClass]"
+    >
       <a
         @click.stop.prevent="showLocation"
         title="View location"
@@ -122,7 +139,10 @@
       </a>
     </div>
   </a>
-  <div v-else-if="item && item.id" class="recording-summary-row">
+  <div
+    v-else-if="item && item.id"
+    :class="['recording-summary-row', headerClass]"
+  >
     <a :href="getRecordingPath(item.id)" target="_blank">
       {{ item.id }}
     </a>
@@ -136,8 +156,11 @@
     <span class="recording-time">{{ item.time }}</span>
     <span>{{ Math.round(item.duration) }}s</span>
     <span>
-      test
-      <TagBadge v-for="(tag, index) in item.tags" :key="index" :tag="tag" />
+      <TagBadge
+        v-for="(tag, index) in filteredTags"
+        :key="index"
+        :tag-obj="tag"
+      />
     </span>
     <GroupLink :group-name="item.groupName" context="recordings" />
     <StationLink
@@ -167,11 +190,120 @@ import BatteryLevel from "./BatteryLevel.vue";
 import TagBadge from "./TagBadge.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import CacophonyIndexGraph from "@/components/Audio/CacophonyIndexGraph.vue";
-import { RecordingProcessingState } from "@typedefs/api/consts";
 import api from "@/api";
 import DeviceLink from "@/components/DeviceLink.vue";
 import StationLink from "@/components/StationLink.vue";
 import GroupLink from "@/components/GroupLink.vue";
+import DefaultLabels from "../const";
+import { RecordingProcessingState } from "@typedefs/api/consts";
+import {
+  ApiAutomaticTrackTagResponse,
+  ApiHumanTrackTagResponse,
+} from "@typedefs/api/trackTag";
+
+const addToListOfTags = (
+  allTags: Record<string, IntermediateDisplayTag>,
+  tagName: string,
+  isAutomatic: boolean,
+  taggerId: number | null
+) => {
+  const tag = allTags[tagName] || {
+    taggerIds: [],
+    automatic: false,
+    human: false,
+  };
+  if (taggerId && !tag.taggerIds.includes(taggerId)) {
+    tag.taggerIds.push(taggerId);
+  }
+  if (isAutomatic) {
+    tag.automatic = true;
+  } else {
+    tag.human = true;
+  }
+  allTags[tagName] = tag;
+};
+
+const collateTags = (recTags: any[], tracks: any[]): DisplayTag[] => {
+  // Build a collection of tagItems - one per animal
+  const tagItems: Record<string, DisplayTag> = {};
+
+  if (tracks) {
+    for (let j = 0; j < tracks.length; j++) {
+      const track = tracks[j];
+      // For track tags, pick the best one, which is the "master AI" tag.
+      const aiTag = track.tags.find(
+        (tag: ApiAutomaticTrackTagResponse) =>
+          tag.data &&
+          (tag.data === "Master" ||
+            (typeof tag.data === "object" && tag.data.name === "Master"))
+      );
+      const humanTags = track.tags.filter(
+        (tag: ApiHumanTrackTagResponse) => !tag.automatic
+      );
+
+      let humansDisagree = false;
+      if (aiTag && humanTags.length !== 0) {
+        humansDisagree = humanTags.some(
+          (tag: ApiHumanTrackTagResponse) => tag.what !== aiTag.what
+        );
+      }
+
+      if (aiTag && !humansDisagree) {
+        addToListOfTags(tagItems, aiTag.what, aiTag.automatic, null);
+      }
+
+      // Also add human tags:
+      for (const tag of humanTags) {
+        addToListOfTags(tagItems, tag.what, tag.automatic, tag.userId);
+      }
+    }
+  }
+
+  // Use automatic and human status to create an ordered array of objects
+  // suitable for parsing into coloured spans
+  const result = [];
+  result.push(...recTags);
+  for (let animal of Object.keys(tagItems).sort()) {
+    const tagItem = tagItems[animal];
+    let subOrder = 0;
+    if (animal === "false positive") {
+      subOrder = 3;
+    } else if (animal === "multiple animals") {
+      animal = "multiple";
+      subOrder = 2;
+    } else if (animal === "unidentified") {
+      animal = "?";
+      subOrder = 1;
+    }
+
+    if (tagItem.automatic && tagItem.human) {
+      result.push({
+        text: animal,
+        class: "automatic human",
+        taggerIds: tagItem.taggerIds,
+        order: subOrder,
+      });
+    } else if (tagItem.human) {
+      result.push({
+        text: animal,
+        class: "human",
+        taggerIds: tagItem.taggerIds,
+        order: 10 + subOrder,
+      });
+    } else if (tagItem.automatic) {
+      result.push({
+        text: animal,
+        class: "automatic",
+        order: 20 + subOrder,
+      });
+    }
+  }
+  // Sort the result array
+  result.sort((a, b) => {
+    return a.order - b.order;
+  });
+  return result;
+};
 
 export default {
   name: "RecordingSummary",
@@ -204,6 +336,24 @@ export default {
     };
   },
   computed: {
+    headerClass() {
+      if (this.item.filtered) {
+        return "filtered-recording";
+      }
+      return "";
+    },
+    filteredCount() {
+      return this.item.tracks.filter((track) => track.filtered).length;
+    },
+    filteredTags() {
+      if (this.$store.state.User.userData.showFiltered) {
+        return collateTags(this.item.recTags, this.item.tracks) ?? [];
+      } else {
+        debugger;
+        const goodTracks = this.item.tracks.filter((track) => !track.filtered);
+        return collateTags(this.item.recTags, goodTracks) ?? [];
+      }
+    },
     thumbnailSrc(): string {
       return api.recording.thumbnail(this.item.id);
     },
@@ -315,12 +465,21 @@ $recording-side-padding-small: 0.5rem;
       color: #b314b3;
     }
   }
+  &.filtered-recording {
+    opacity: 0.7;
+    background: #ddd;
+  }
 }
 
 .recording-summary-row {
   width: 100%;
+
   &:nth-child(odd) {
     background-color: #eee;
+  }
+  &.filtered-recording {
+    opacity: 0.7;
+    background: #ddd;
   }
   border-top: 1px solid $border-color;
   display: table-row;
@@ -373,7 +532,7 @@ $recording-side-padding-small: 0.5rem;
   }
   .recording-details {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     justify-content: space-between;
     padding: 0.7rem $recording-side-padding;
 
@@ -404,12 +563,8 @@ $recording-side-padding-small: 0.5rem;
     vertical-align: middle;
   }
 
-  .recording-tags {
-    padding: 0 $recording-side-padding 0.9rem;
-    @include media-breakpoint-down(xs) {
-      padding: 0.25rem $recording-side-padding-small;
-    }
-    margin-top: -0.4rem;
+  .sub-label {
+    font-size: 0.8em;
   }
   .recording-time-duration {
     display: flex;
@@ -433,7 +588,10 @@ $recording-side-padding-small: 0.5rem;
   }
 }
 
-// map
+.recording-tags {
+  max-width: 23em;
+}
+
 .recording-summary > .recording-location {
   display: flex;
   flex: 0 1 110px;
@@ -447,6 +605,10 @@ $recording-side-padding-small: 0.5rem;
   }
   @include media-breakpoint-between(xs, sm) {
     display: none;
+  }
+  &.filtered-recording {
+    opacity: 0.7;
+    background: #ddd;
   }
 }
 .recording-tracks {

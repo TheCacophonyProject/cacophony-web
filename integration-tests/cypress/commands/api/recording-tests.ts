@@ -20,9 +20,15 @@ import {
   ApiRecordingStation,
   ApiTrackSet,
   TestThermalRecordingInfo,
+  ApiRecordingModel,
 } from "../types";
 
-import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
+import {
+  HTTP_OK200,
+  NOT_NULL,
+  NOT_NULL_STRING,
+  filtered_tags,
+} from "../constants";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
@@ -438,7 +444,8 @@ export function TestCreateExpectedNeedsTagData(
       start: track.start_s,
       end: track.end_s,
       needsTagging: true,
-      positions: [],
+      positions: positionResponseFromSet(track.positions),
+      numFrames: track.num_frames,
     });
   });
 
@@ -604,39 +611,109 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
     };
   }
   //expected.Station = station;
+
+  //filtered unless we get a valid tag
+
   expected.tags = [] as ApiRecordingTagResponse[];
   expected.tracks = [] as ApiTrackResponse[];
-  if (inputTrackData && inputTrackData.tracks) {
-    inputTrackData.tracks.forEach((track: any) => {
-      const newTrack: ApiTrackResponse = {
-        id: -99,
-        tags: [],
-        start: track.start_s,
-        end: track.end_s,
-        positions: [],
-        automatic: true,
-      };
-      if (
-        track.predictions.length &&
-        track.predictions[0].confident_tag !== undefined
-      ) {
-        newTrack.tags = [
-          {
-            what: track.predictions[0].confident_tag,
-            automatic: true,
-            trackId: -99,
-            data: { name: "unknown" }, // FIXME - get model name from track.predictions[0].model_id
-            confidence: track.predictions[0].confidence,
-            id: 0,
-          },
-        ];
-      }
-      expected.tracks.push(newTrack);
-    });
+  if (inputTrackData) {
+    expected.tracks = trackResponseFromSet(
+      inputTrackData.tracks,
+      inputTrackData.models
+    );
   }
 
   //TODO: add handling of stations
   //TODO: add handling of per-recording tags
   //TODO: add handling of manual tags
   return removeUndefinedParams(expected);
+}
+
+function positionResponseFromSet(positions) {
+  const tps = [];
+  positions.forEach((tp) => {
+    const newTp = {};
+    newTp["x"] = tp.x;
+    newTp["y"] = tp.y;
+    newTp["width"] = tp.width;
+    newTp["height"] = tp.height;
+    newTp["frameNumber"] = tp.frame_number;
+    tps.push(newTp);
+  });
+
+  return tps;
+}
+
+export function predictionResponseFromSet(
+  predictions,
+  models: ApiRecordingModel[]
+) {
+  const tps = [];
+  if (predictions) {
+    predictions.forEach((tp) => {
+      const newTp = {};
+      const model_id = tp.model_id;
+      let model_name = null;
+      models.forEach((model) => {
+        if (model.id == model_id) {
+          model_name = model.name;
+        }
+      });
+      newTp["name"] = model_name;
+      newTp["clarity"] = tp.clarity;
+      newTp["raw_tag"] = tp.label;
+      newTp["predictions"] = tp.predictions;
+      newTp["prediction_frames"] = tp.prediction_frames;
+      newTp["all_class_confidences"] = tp.all_class_confidences;
+      tps.push(newTp);
+    });
+  }
+  return tps;
+}
+
+export function trackResponseFromSet(
+  tracks: ApiTrackSet[],
+  models: ApiRecordingModel[]
+) {
+  const expected: ApiTrackResponse[] = [];
+  if (tracks) {
+    tracks.forEach((track: any) => {
+      let filtered = true;
+      const tpos = positionResponseFromSet(track.positions);
+      const tpreddata = predictionResponseFromSet(track.predictions, models);
+
+      const newTrack: ApiTrackResponse = {
+        id: -99,
+        tags: [],
+        start: track.start_s,
+        end: track.end_s,
+        positions: tpos,
+        filtered: false,
+
+        automatic: true,
+      };
+      if (
+        track.predictions &&
+        track.predictions.length &&
+        track.predictions[0].confident_tag !== undefined
+      ) {
+        if (filtered_tags.indexOf(track.predictions[0].confident_tag) === -1) {
+          filtered = false;
+        }
+        newTrack.tags = [
+          {
+            what: track.predictions[0].confident_tag,
+            automatic: true,
+            trackId: -99,
+            data: tpreddata[0],
+            confidence: track.predictions[0].confidence,
+            id: 0,
+          },
+        ];
+      }
+      newTrack.filtered = filtered;
+      expected.push(newTrack);
+    });
+  }
+  return expected;
 }

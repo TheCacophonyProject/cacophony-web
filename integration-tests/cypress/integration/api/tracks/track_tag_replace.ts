@@ -10,8 +10,6 @@ import {
 import { ApiRecordingSet } from "@commands/types";
 import { getTestName } from "@commands/names";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
@@ -22,8 +20,9 @@ import {
   ApiHumanTrackTagResponse,
   ApiTrackTagRequest,
 } from "@typedefs/api/trackTag";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 
-const EXCLUDE_IDS = [
+const EXCLUDE_TRACK_IDS = [
   "[].id",
   "[].tags[].id",
   "[].tags[].trackId",
@@ -31,23 +30,11 @@ const EXCLUDE_IDS = [
 ];
 
 describe("Track Tags: replaceTag, check, delete", () => {
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: [-45.29115, 169.30845],
-    additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
-    metadata: {
-      tracks: [],
-    },
-    comment: "This is a comment",
-    processingState: RecordingProcessingState.Finished,
-  };
+  //template recording with no tracks - add tracks during test
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
+  templateRecording.metadata.tracks = [];
 
   const positions1: ApiTrackPosition[] = [
     {
@@ -71,6 +58,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     positions: positions1,
     tags: [],
     automatic: true,
+    filtered: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -175,11 +163,11 @@ describe("Track Tags: replaceTag, check, delete", () => {
     cy.apiUserAdd("ttgGroupMember");
 
     //Add admin & member to Camera1
-    cy.apiUserAdd("ttgDeviceAdmin");
-    cy.apiUserAdd("ttgDeviceMember");
+    cy.apiUserAdd("ttgGroup1Member2");
+    cy.apiUserAdd("ttgGroup1Member3");
     cy.apiGroupUserAdd("ttgGroupAdmin", "ttgGroupMember", "ttgGroup", true);
-    cy.apiDeviceUserAdd("ttgGroupAdmin", "ttgDeviceAdmin", "ttgCamera1", true);
-    cy.apiDeviceUserAdd("ttgGroupAdmin", "ttgDeviceMember", "ttgCamera1", true);
+    cy.apiGroupUserAdd("ttgGroupAdmin", "ttgGroup1Member2", "ttgGroup", true);
+    cy.apiGroupUserAdd("ttgGroupAdmin", "ttgGroup1Member3", "ttgGroup", true);
 
     //Create group2 with admin and device
     cy.testCreateUserGroupAndDevice(
@@ -196,6 +184,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttgGroupAdmin");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttgGroupAdmin").id;
@@ -225,7 +214,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording1",
       [expectedTrackWithTag],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Delete tag");
@@ -241,7 +230,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording1",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -249,6 +238,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
     expectedTrackWithTag.tags[0].userName = getTestName("ttgGroupMember");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttgGroupMember").id;
@@ -278,7 +268,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupMember",
       "ttgRecording2",
       [expectedTrackWithTag],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Delete tag");
@@ -294,113 +284,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupMember",
       "ttgRecording2",
       [expectedTrack],
-      EXCLUDE_IDS
-    );
-  });
-
-  it("Device admin can add, view and delete device's tracks", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-    const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.tags = [expectedTag1];
-    expectedTrackWithTag.tags[0].userName = getTestName("ttgDeviceAdmin");
-    //expectedTrackWithTag.tags[0].userId=getCreds("ttgGroupMember").id;
-
-    cy.log("Add recording and track");
-    cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording3");
-    cy.apiTrackAdd(
-      "ttgDeviceAdmin",
-      "ttgRecording3",
-      "ttgTrack3",
-      "ttgAlgorithm3",
-      track1,
-      algorithm1
-    );
-
-    cy.log("Can tag the track");
-    cy.apiTrackTagReplaceTag(
-      "ttgDeviceAdmin",
-      "ttgRecording3",
-      "ttgTrack3",
-      "ttgTag3",
-      tag1
-    );
-
-    cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTrackCheck(
-      "ttgDeviceAdmin",
-      "ttgRecording3",
-      [expectedTrackWithTag],
-      EXCLUDE_IDS
-    );
-
-    cy.log("Delete tag");
-    cy.apiTrackTagDelete(
-      "ttgDeviceAdmin",
-      "ttgRecording3",
-      "ttgTrack3",
-      "ttgTag3"
-    );
-
-    cy.log("Check tag no longer exists");
-    cy.apiTrackCheck(
-      "ttgDeviceAdmin",
-      "ttgRecording3",
-      [expectedTrack],
-      EXCLUDE_IDS
-    );
-  });
-
-  it("Device member can add, view and delete device's tracks", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-    const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrackWithTag.tags = [expectedTag1];
-    expectedTrackWithTag.tags[0].userName = getTestName("ttgDeviceMember");
-    //expectedTrackWithTag.tags[0].userId=getCreds("ttgGroupMember").id;
-
-    cy.log("Add recording and track");
-    cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording4");
-    cy.apiTrackAdd(
-      "ttgDeviceMember",
-      "ttgRecording4",
-      "ttgTrack4",
-      "ttgAlgorithm4",
-      track1,
-      algorithm1
-    );
-
-    cy.log("Can tag the track");
-    cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
-      "ttgRecording4",
-      "ttgTrack4",
-      "ttgTag4",
-      tag1
-    );
-
-    cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTrackCheck(
-      "ttgDeviceMember",
-      "ttgRecording4",
-      [expectedTrackWithTag],
-      EXCLUDE_IDS
-    );
-
-    cy.log("Delete tag");
-    cy.apiTrackTagDelete(
-      "ttgDeviceMember",
-      "ttgRecording4",
-      "ttgTrack4",
-      "ttgTag4"
-    );
-
-    cy.log("Check tag no longer exists");
-    cy.apiTrackCheck(
-      "ttgDeviceMember",
-      "ttgRecording4",
-      [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -411,7 +295,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     cy.log("Add recording and track");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording5");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording5",
       "ttgTrack5",
       "ttgAlgorithm5",
@@ -431,24 +315,25 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check tag does not exist");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording5",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
   it("Cannot delete tag for device that user does not own", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag.filtered = false;
     expectedTrackWithTag.tags = [expectedTag1];
-    expectedTrackWithTag.tags[0].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTag.tags[0].userName = getTestName("ttgGroupAdmin");
     //expectedTrackWithTag.tags[0].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording6");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording6",
       "ttgTrack6",
       "ttgAlgorithm6",
@@ -456,7 +341,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording6",
       "ttgTrack6",
       "ttgTag6",
@@ -474,10 +359,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check tag still exists");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording6",
       [expectedTrackWithTag],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -488,7 +373,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording7");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording7",
       "ttgTrack7",
       "ttgAlgorithm7",
@@ -496,7 +381,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording7",
       "ttgTrack7",
       "ttgTag7",
@@ -513,28 +398,30 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check tag no longer exists");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
   it("User can replace their own track tag with a new one", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag1.filtered = false;
     expectedTrackWithTag1.tags = [expectedTag1];
-    expectedTrackWithTag1.tags[0].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTag1.tags[0].userName = getTestName("ttgGroupAdmin");
     //expectedTrackWithTag1.tags[0].userId=getCreds("ttgGroupMember").id;
     const expectedTrackWithTag2 = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag2.filtered = false;
     expectedTrackWithTag2.tags = [expectedTag2];
-    expectedTrackWithTag2.tags[0].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTag2.tags[0].userName = getTestName("ttgGroupAdmin");
     //expectedTrackWithTag2.tags[0].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording7");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording7",
       "ttgTrack7",
       "ttgAlgorithm7",
@@ -542,7 +429,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording7",
       "ttgTrack7",
       "ttgTag7",
@@ -551,15 +438,15 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check recording track & tag can be viewed correctly");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrackWithTag1],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Member can replace their tag with a new one");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording7",
       "ttgTrack7",
       "ttgTag7",
@@ -568,24 +455,25 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check new tag has replaced old one");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrackWithTag2],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
   it("User cannot add duplicate to their own track tag with a new one", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTag1.filtered = false;
     expectedTrackWithTag1.tags = [expectedTag1];
-    expectedTrackWithTag1.tags[0].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTag1.tags[0].userName = getTestName("ttgGroup1Member2");
     //expectedTrackWithTag1.tags[0].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording8");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording8",
       "ttgTrack8",
       "ttgAlgorithm8",
@@ -593,7 +481,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording8",
       "ttgTrack8",
       "ttgTag8",
@@ -602,15 +490,15 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check recording track & tag can be viewed correctly");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording8",
       [expectedTrackWithTag1],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Member cannot add duplicated tag");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording8",
       "ttgTrack8",
       "ttgTag8",
@@ -619,10 +507,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check just one tag shown");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording8",
       [expectedTrackWithTag1],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -638,17 +526,18 @@ describe("Track Tags: replaceTag, check, delete", () => {
       JSON.parse(JSON.stringify(expectedTag1)),
       JSON.parse(JSON.stringify(expectedTag1)),
     ];
+    expectedTrackWithTags.filtered = false;
     expectedTrackWithTags.tags[0].userName = getTestName("ttgGroupMember");
     expectedTrackWithTags.tags[0].confidence = 0.9;
-    //expectedTrackWithTags.tags[0].userId=getCreds("ttgDeviceMember").id;
-    expectedTrackWithTags.tags[1].userName = getTestName("ttgDeviceMember");
+    //expectedTrackWithTags.tags[0].userId=getCreds("ttgGroup1Member2").id;
+    expectedTrackWithTags.tags[1].userName = getTestName("ttgGroup1Member2");
     expectedTrackWithTags.tags[1].confidence = 0.901;
     //expectedTrackWithTags.tags[1].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording9");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording9",
       "ttgTrack9",
       "ttgAlgorithm9",
@@ -665,7 +554,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Another member can add duplicated tag");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording9",
       "ttgTrack9",
       "ttgTag9",
@@ -674,10 +563,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check both tags shown");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording9",
       [expectedTrackWithTags],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -688,15 +577,16 @@ describe("Track Tags: replaceTag, check, delete", () => {
       JSON.parse(JSON.stringify(expectedTag2)),
       JSON.parse(JSON.stringify(expectedTag1)),
     ];
-    expectedTrackWithTags.tags[0].userName = getTestName("ttgDeviceMember");
-    //expectedTrackWithTags.tags[0].userId=getCreds("ttgDeviceMember").id;
+    expectedTrackWithTags.filtered = false;
+    expectedTrackWithTags.tags[0].userName = getTestName("ttgGroup1Member2");
+    //expectedTrackWithTags.tags[0].userId=getCreds("ttgGroup1Member2").id;
     expectedTrackWithTags.tags[1].userName = getTestName("ttgGroupMember");
     //expectedTrackWithTags.tags[1].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording10");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording10",
       "ttgTrack10",
       "ttgAlgorithm10",
@@ -713,7 +603,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Another member can add different tag");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording10",
       "ttgTrack10",
       "ttgTag10",
@@ -722,10 +612,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check both tags shown");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording10",
       [expectedTrackWithTags],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -733,23 +623,24 @@ describe("Track Tags: replaceTag, check, delete", () => {
   it("Supplementary tags are added in addition to primary tags", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTags.filtered = false;
 
     expectedTrackWithTags.tags = [
       expectedPoorTrackingTag,
       expectedPartTag,
       expectedTag1,
     ];
-    expectedTrackWithTags.tags[0].userName = getTestName("ttgDeviceMember");
-    //expectedTrackWithTags.tags[0].userId=getCreds("ttgDeviceMember").id;
-    expectedTrackWithTags.tags[1].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTags.tags[0].userName = getTestName("ttgGroup1Member2");
+    //expectedTrackWithTags.tags[0].userId=getCreds("ttgGroup1Member2").id;
+    expectedTrackWithTags.tags[1].userName = getTestName("ttgGroup1Member2");
     //expectedTrackWithTags.tags[1].userId=getCreds("ttgGroupMember").id;
-    expectedTrackWithTags.tags[2].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTags.tags[2].userName = getTestName("ttgGroup1Member2");
     //expectedTrackWithTags.tags[2].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording11");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording11",
       "ttgTrack11",
       "ttgAlgorithm11",
@@ -757,7 +648,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording11",
       "ttgTrack11",
       "ttgTag11",
@@ -766,14 +657,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Same member can add supplementary tags");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording11",
       "ttgTrack11",
       "ttgTag11",
       partTag
     );
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording11",
       "ttgTrack11",
       "ttgTag11",
@@ -782,27 +673,28 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check all three tags shown");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording11",
       [expectedTrackWithTags],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
   it("Duplicate supplementary tags from same user are not added", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTags.filtered = false;
 
     expectedTrackWithTags.tags = [expectedPartTag, expectedTag1];
-    expectedTrackWithTags.tags[0].userName = getTestName("ttgDeviceMember");
-    //expectedTrackWithTags.tags[0].userId=getCreds("ttgDeviceMember").id;
-    expectedTrackWithTags.tags[1].userName = getTestName("ttgDeviceMember");
+    expectedTrackWithTags.tags[0].userName = getTestName("ttgGroup1Member2");
+    //expectedTrackWithTags.tags[0].userId=getCreds("ttgGroup1Member2").id;
+    expectedTrackWithTags.tags[1].userName = getTestName("ttgGroup1Member2");
     //expectedTrackWithTags.tags[1].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording12");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording12",
       "ttgTrack12",
       "ttgAlgorithm12",
@@ -810,7 +702,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording12",
       "ttgTrack12",
       "ttgTag12",
@@ -819,7 +711,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Same member can add supplementary tag");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording12",
       "ttgTrack12",
       "ttgTag12",
@@ -828,7 +720,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("But cannot add duplicate supplementary tag");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording12",
       "ttgTrack12",
       "ttgTag12",
@@ -837,33 +729,31 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check only two tags shown");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording12",
       [expectedTrackWithTags],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
   it("Duplicate suplementary tags from different users are allowed", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
+    expectedTrackWithTags.filtered = false;
 
     expectedTrackWithTags.tags = [
       JSON.parse(JSON.stringify(expectedPartTag)),
       JSON.parse(JSON.stringify(expectedPartTag)),
       expectedTag1,
     ];
-    expectedTrackWithTags.tags[0].userName = getTestName("ttgDeviceAdmin");
-    //expectedTrackWithTags.tags[0].userId=getCreds("ttgDeviceMember").id;
-    expectedTrackWithTags.tags[1].userName = getTestName("ttgDeviceMember");
-    //expectedTrackWithTags.tags[1].userId=getCreds("ttgGroupMember").id;
-    expectedTrackWithTags.tags[2].userName = getTestName("ttgDeviceMember");
-    //expectedTrackWithTags.tags[1].userId=getCreds("ttgGroupMember").id;
+    expectedTrackWithTags.tags[0].userName = getTestName("ttgGroup1Member2");
+    expectedTrackWithTags.tags[1].userName = getTestName("ttgGroup1Member3");
+    expectedTrackWithTags.tags[2].userName = getTestName("ttgGroup1Member2");
 
     cy.log("Add recording, track and tag");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording13");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgAlgorithm13",
@@ -871,7 +761,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
@@ -880,7 +770,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Same member can add supplementary tag");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
@@ -889,7 +779,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("And another member can add same suplementary tag");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceAdmin",
+      "ttgGroup1Member3",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
@@ -898,10 +788,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Check both duplicate supplementary tags shown (and primary tag)");
     cy.apiTrackCheck(
-      "ttgDeviceMember",
+      "ttgGroup1Member3",
       "ttgRecording13",
       [expectedTrackWithTags],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -911,7 +801,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     cy.log("Add recording and track");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording14");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording14",
       "ttgTrack14",
       "ttgAlgorithm14",
@@ -921,7 +811,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Correct handling on invalid recording id in replace");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "99999",
       "99999",
       "ttgTag14",
@@ -932,7 +822,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Correct handling on invalid track id in replace");
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording14",
       "99999",
       "ttgTag14",
@@ -943,7 +833,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Correct handling on invalid recording id in delete");
     cy.apiTrackTagDelete(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "99999",
       "99999",
       "99999",
@@ -953,9 +843,9 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Correct handling on invalid track id in delete");
     //FIXME: Expect forbidden but get badrequest
-    //cy.apiTrackTagDelete("ttgDeviceMember", "ttgRecording14", "99999", "99999", HTTP_Forbidden, {useRawTrackId: true, useRawTagId: true});
+    //cy.apiTrackTagDelete("ttgGroup1Member2", "ttgRecording14", "99999", "99999", HTTP_Forbidden, {useRawTrackId: true, useRawTagId: true});
     cy.apiTrackTagDelete(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording14",
       "99999",
       "99999",
@@ -965,9 +855,9 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     cy.log("Correct handling on invalid tag id in delete");
     //FIXME: Expect forbidden but get badrequest
-    //cy.apiTrackTagDelete("ttgDeviceMember", "ttgRecording14", "ttgTrack14", "99999", HTTP_Forbidden, {useRawTagId: true});
+    //cy.apiTrackTagDelete("ttgGroup1Member2", "ttgRecording14", "ttgTrack14", "99999", HTTP_Forbidden, {useRawTagId: true});
     cy.apiTrackTagDelete(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording14",
       "ttgTrack14",
       "99999",
@@ -992,7 +882,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     cy.log("Add recording, track");
     cy.apiRecordingAdd("ttgCamera1", recording1, undefined, "ttgRecording13");
     cy.apiTrackAdd(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgAlgorithm13",
@@ -1004,7 +894,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const tagA = JSON.parse(JSON.stringify(tag1));
     delete tagA.what;
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
@@ -1017,7 +907,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const tagB = JSON.parse(JSON.stringify(tag1));
     delete tagB.confidence;
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
@@ -1030,7 +920,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const tagC = JSON.parse(JSON.stringify(tag1));
     delete tagC.automatic;
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
@@ -1043,7 +933,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const tagD = JSON.parse(JSON.stringify(tag1));
     tagD.confidence = "Hello";
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
@@ -1056,7 +946,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const tagE = JSON.parse(JSON.stringify(tag1));
     tagE.automatic = "Hello";
     cy.apiTrackTagReplaceTag(
-      "ttgDeviceMember",
+      "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",

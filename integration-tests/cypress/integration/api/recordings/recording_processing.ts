@@ -1,5 +1,14 @@
 /// <reference path="../../../support/index.d.ts" />
-import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
+import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
+import {
+  TEMPLATE_AUDIO_RECORDING_RESPONSE,
+  TEMPLATE_AUDIO_RECORDING,
+  TEMPLATE_AUDIO_RECORDING_PROCESSING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+  TEMPLATE_THERMAL_RECORDING_PROCESSING,
+  TEMPLATE_THERMAL_RECORDING,
+} from "@commands/dataTemplate";
+
 import {
   ApiAlertConditions,
   ApiRecordingSet,
@@ -20,164 +29,39 @@ import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { createExpectedAlert } from "@commands/api/alerts";
 import { createExpectedEvent } from "@commands/api/events";
 
+//Also do not check recording ID in this test suite
+const EXCLUDE_ALL_IDS = EXCLUDE_IDS.concat([".id"]);
+
 describe("Recordings - processing tests", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  //Do not validate IDs
-  const EXCLUDE_IDS = [
-    ".tracks[].tags[].trackId",
-    ".tracks[].tags[].id",
-    ".tracks[].id",
-    ".id",
-  ];
-
   //Do not validate keys
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".updatedAt", ".id"];
 
-  const templateExpectedThermalRecording: ApiThermalRecordingResponse = {
-    deviceId: 0,
-    deviceName: "",
-    groupName: "",
-    tags: [],
-    tracks: [],
-    id: 892972,
-    rawMimeType: "application/x-cptv",
-    processingState: RecordingProcessingState.Finished,
-    duration: 16.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: { lat: -45.29115, lng: 169.30845 },
-    type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-    groupId: 246,
-    comment: "This is a comment",
-    processing: false,
-  };
+  const templateExpectedThermalRecording: ApiThermalRecordingResponse =
+    JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
+  );
+  const templateExpectedProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_PROCESSING)
+  );
+  const templateExpectedAudioProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_PROCESSING)
+  );
+  //Template thermal recording with no tracks (we will add them as part of the test)
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
+  delete templateRecording.processingState;
+  delete templateRecording.metadata.tracks;
 
-  const templateExpectedAudioRecording: ApiAudioRecordingResponse = {
-    additionalMetadata: {} as any,
-    cacophonyIndex: [],
-    airplaneModeOn: false,
-    batteryCharging: "CHARGING",
-    batteryLevel: 99,
-    comment: "This is a comment",
-    deviceId: 0,
-    deviceName: "",
-    duration: 16.6666666666667,
-    groupId: 246,
-    groupName: "",
-    id: 892972,
-    location: { lat: -43.53345, lng: 172.64745 },
-    processing: false,
-    processingState: RecordingProcessingState.Finished,
-    rawMimeType: "application/x-cptv",
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    relativeToDusk: 100,
-    tags: [],
-    tracks: [],
-    type: RecordingType.Audio,
-    version: "99",
-  };
-
-  const templateExpectedProcessing: ApiRecordingForProcessing = {
-    id: 475,
-    type: RecordingType.ThermalRaw,
-    jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawMimeType: "application/x-cptv",
-    fileKey: null,
-    fileMimeType: null,
-    processingState: "xxx",
-    processingMeta: null,
-    GroupId: NOT_NULL,
-    DeviceId: NOT_NULL,
-    StationId: null,
-    recordingDateTime: "2021-01-01T01:01:01.018Z",
-    duration: 16.6666666666667,
-    location: null,
-    hasAlert: false,
-    processingStartTime: NOT_NULL_STRING,
-    processingEndTime: null,
-    processing: true,
-    updatedAt: "xxx",
-  };
-
-  const templateExpectedAudioProcessing: ApiRecordingForProcessing = {
-    id: 475,
-    type: RecordingType.Audio,
-    jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawMimeType: "video/mp4",
-    fileKey: null,
-    fileMimeType: null,
-    processingState: "xxx",
-    processingMeta: null,
-    GroupId: NOT_NULL,
-    DeviceId: NOT_NULL,
-    StationId: null,
-    recordingDateTime: "2021-01-01T01:01:01.018Z",
-    duration: 60,
-    location: null,
-    hasAlert: false,
-    processingStartTime: NOT_NULL_STRING,
-    processingEndTime: null,
-    processing: true,
-    updatedAt: "",
-  };
-
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: [-45.29115, 169.30845],
-    additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
-    metadata: {},
-    comment: "This is a comment",
-    //    processingState: RecordingProcessingState.Analyse,
-  };
-
-  const templateAudioRecording: ApiRecordingSet = {
-    type: RecordingType.Audio,
-    fileHash: null,
-    duration: 60,
-    recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDusk: -17219,
-    location: [-43.53345, 172.64745],
-    version: "1.8.1",
-    batteryCharging: "DISCHARGING",
-    batteryLevel: 87,
-    airplaneModeOn: false,
-    cacophonyIndex: [
-      { end_s: 20, begin_s: 0, index_percent: 80.8 },
-      { end_s: 40, begin_s: 20, index_percent: 77.1 },
-      { end_s: 60, begin_s: 40, index_percent: 71.6 },
-    ],
-    additionalMetadata: {
-      normal: "0",
-      "SIM IMEI": "990006964660319",
-      analysis: {
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
-      },
-      "SIM state": "SIM_STATE_READY",
-      "Auto Update": false,
-      "Flight Mode": false,
-      "Phone model": "SM-G900V",
-      amplification: 1.0721460589601806,
-      SimOperatorName: "Verizon",
-      "Android API Level": 23,
-      "Phone manufacturer": "samsung",
-      "App has root access": false,
-    },
-    comment: "A comment",
-    //    processingState: RecordingProcessingState.Analyse,
-  };
+  //use standard audio recortding template - inject it at ToMp3 state
+  const templateAudioRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
+  );
+  templateAudioRecording.processingState = RecordingProcessingState.ToMp3;
 
   const POSSUM_ALERT: ApiAlertConditions[] = [
     { tag: "possum", automatic: true },
@@ -269,7 +153,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpRecording1",
           expectedRecording1,
-          EXCLUDE_IDS
+          EXCLUDE_ALL_IDS
         );
       });
     });
@@ -313,7 +197,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpRecording1",
           expectedRecording1,
-          EXCLUDE_IDS
+          EXCLUDE_ALL_IDS
         );
 
         cy.log("Send for processing (tracking)");
@@ -342,7 +226,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpRecording1",
           expectedRecording1b,
-          EXCLUDE_IDS
+          EXCLUDE_ALL_IDS
         );
 
         cy.log("Mark tracking as done");
@@ -364,7 +248,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpRecording1",
           expectedRecording1c,
-          EXCLUDE_IDS
+          EXCLUDE_ALL_IDS
         );
 
         cy.log("Send for processing (analyse)");
@@ -401,7 +285,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpRecording1",
           expectedRecording1d,
-          EXCLUDE_IDS
+          EXCLUDE_ALL_IDS
         );
 
         cy.log("Mark processing as done");
@@ -423,7 +307,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpRecording1",
           expectedRecording1e,
-          EXCLUDE_IDS
+          EXCLUDE_ALL_IDS
         );
 
         cy.log("Check status (FINISHED)");
@@ -787,102 +671,105 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rpTrack18",
+        cy.processingApiAlgorithmPost({
+          "tracking-format": 42,
+          model_name: "Master",
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            "rpTrack18",
+            "rpRecording18",
+            { start_s: 1, end_s: 4 },
+            algorithmId
+          );
+
+          cy.log("Check tracks added to recording");
+          expectedRecording18.processing = true;
+          expectedRecording18.processingState =
+            RecordingProcessingState.Tracking;
+          expectedRecording18.tracks = [
+            {
+              tags: [],
+              start: 1,
+              end: 4,
+              id: 1,
+              positions: [],
+              filtered: true,
+              automatic: true,
+            },
+          ];
+          cy.apiRecordingCheck(
+            "rpGroupAdmin",
+            "rpRecording18",
+            expectedRecording18,
+            EXCLUDE_ALL_IDS
+          ).then(() => {
+            expectedProcessing18.processingState =
+              RecordingProcessingState.AnalyseThermal;
+            cy.log("Complete tracking");
+            cy.processingApiPut("rpRecording18", true, {}, undefined);
+
+            cy.log("Start analyse");
+            cy.processingApiCheck(
+              RecordingType.ThermalRaw,
+              RecordingProcessingState.Analyse,
               "rpRecording18",
-              { start_s: 1, end_s: 4 },
-              algorithmId
+              expectedProcessing18,
+              EXCLUDE_KEYS
             );
 
-            cy.log("Check tracks added to recording");
             expectedRecording18.processing = true;
             expectedRecording18.processingState =
-              RecordingProcessingState.Tracking;
+              RecordingProcessingState.AnalyseThermal;
+
+            cy.log("Check tags added to recording/track");
             expectedRecording18.tracks = [
               {
-                tags: [],
+                tags: [
+                  {
+                    what: "possum",
+                    automatic: true,
+                    trackId: getCreds("rpTrack18").id,
+                    confidence: 0.9,
+                    data: { name: "Master" },
+                    id: -1,
+                  },
+                ],
                 start: 1,
                 end: 4,
                 id: 1,
                 positions: [],
+                filtered: false,
                 automatic: true,
               },
             ];
+
+            cy.processingApiTracksTagsPost(
+              "rpTrack18",
+              "rpRecording18",
+              "possum",
+              0.9,
+              { name: "Master" }
+            );
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording18",
               expectedRecording18,
-              EXCLUDE_IDS
+              EXCLUDE_ALL_IDS
             ).then(() => {
-              expectedProcessing18.processingState =
-                RecordingProcessingState.AnalyseThermal;
-              cy.log("Complete tracking");
+              cy.log("set processing to done and recheck tracks");
               cy.processingApiPut("rpRecording18", true, {}, undefined);
-
-              cy.log("Start analyse");
-              cy.processingApiCheck(
-                RecordingType.ThermalRaw,
-                RecordingProcessingState.Analyse,
-                "rpRecording18",
-                expectedProcessing18,
-                EXCLUDE_KEYS
-              );
-
-              expectedRecording18.processing = true;
+              expectedRecording18.processing = false;
               expectedRecording18.processingState =
-                RecordingProcessingState.AnalyseThermal;
-
-              cy.log("Check tags added to recording/track");
-              expectedRecording18.tracks = [
-                {
-                  tags: [
-                    {
-                      what: "possum",
-                      automatic: true,
-                      trackId: getCreds("rpTrack18").id,
-                      confidence: 0.9,
-                      data: { name: "master" },
-                      id: -1,
-                    },
-                  ],
-                  start: 1,
-                  end: 4,
-                  id: 1,
-                  positions: [],
-                  automatic: true,
-                },
-              ];
-
-              cy.processingApiTracksTagsPost(
-                "rpTrack18",
-                "rpRecording18",
-                "possum",
-                0.9,
-                { name: "master" }
-              );
+                RecordingProcessingState.Finished;
               cy.apiRecordingCheck(
                 "rpGroupAdmin",
                 "rpRecording18",
                 expectedRecording18,
-                EXCLUDE_IDS
-              ).then(() => {
-                cy.log("set processing to done and recheck tracks");
-                cy.processingApiPut("rpRecording18", true, {}, undefined);
-                expectedRecording18.processing = false;
-                expectedRecording18.processingState =
-                  RecordingProcessingState.Finished;
-                cy.apiRecordingCheck(
-                  "rpGroupAdmin",
-                  "rpRecording18",
-                  expectedRecording18,
-                  EXCLUDE_IDS
-                );
-              });
+                EXCLUDE_ALL_IDS
+              );
             });
-          }
-        );
+          });
+        });
       });
     });
 
@@ -920,93 +807,96 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rpTrack19",
-              "rpRecording19",
-              { start_s: 1, end_s: 4 },
-              algorithmId
-            );
+        cy.processingApiAlgorithmPost({
+          "tracking-format": 42,
+          model_name: "Master",
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            "rpTrack19",
+            "rpRecording19",
+            { start_s: 1, end_s: 4 },
+            algorithmId
+          );
 
-            cy.log("Check tracks added to recording");
-            expectedRecording19.processing = true;
-            expectedRecording19.processingState =
-              RecordingProcessingState.Tracking;
+          cy.log("Check tracks added to recording");
+          expectedRecording19.processing = true;
+          expectedRecording19.processingState =
+            RecordingProcessingState.Tracking;
+          expectedRecording19.tracks = [
+            {
+              tags: [],
+              start: 1,
+              end: 4,
+              id: 1,
+              positions: [],
+              filtered: true,
+              automatic: true,
+            },
+          ];
+          cy.apiRecordingCheck(
+            "rpGroupAdmin",
+            "rpRecording19",
+            expectedRecording19,
+            EXCLUDE_ALL_IDS
+          ).then(() => {
+            cy.log("Check tags added to recording/track");
             expectedRecording19.tracks = [
               {
-                tags: [],
+                tags: [
+                  {
+                    what: "possum",
+                    automatic: true,
+                    trackId: getCreds("rpTrack19").id,
+                    confidence: 0.9,
+                    data: { name: "Master" },
+                    id: -1,
+                  },
+                ],
                 start: 1,
                 end: 4,
                 id: 1,
                 positions: [],
                 automatic: true,
+                filtered: false,
               },
             ];
+            cy.processingApiTracksTagsPost(
+              "rpTrack19",
+              "rpRecording19",
+              "possum",
+              0.9,
+              { name: "Master" }
+            );
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording19",
               expectedRecording19,
-              EXCLUDE_IDS
+              EXCLUDE_ALL_IDS
             ).then(() => {
-              cy.log("Check tags added to recording/track");
-              expectedRecording19.tracks = [
-                {
-                  tags: [
-                    {
-                      what: "possum",
-                      automatic: true,
-                      trackId: getCreds("rpTrack19").id,
-                      confidence: 0.9,
-                      data: { name: "master" },
-                      id: -1,
-                    },
-                  ],
-                  start: 1,
-                  end: 4,
-                  id: 1,
-                  positions: [],
-                  automatic: true,
-                },
-              ];
-              cy.processingApiTracksTagsPost(
-                "rpTrack19",
-                "rpRecording19",
-                "possum",
-                0.9,
-                { name: "master" }
-              );
+              cy.log("Delete the track and check tracks deleted");
+              cy.processingApiTracksDelete("rpRecording19");
+              expectedRecording19.tracks = [];
               cy.apiRecordingCheck(
                 "rpGroupAdmin",
                 "rpRecording19",
                 expectedRecording19,
-                EXCLUDE_IDS
+                EXCLUDE_ALL_IDS
               ).then(() => {
-                cy.log("Delete the track and check tracks deleted");
-                cy.processingApiTracksDelete("rpRecording19");
-                expectedRecording19.tracks = [];
+                cy.log("set processing to done and recheck tracks");
+                cy.processingApiPut("rpRecording19", true, {}, undefined);
+                expectedRecording19.processing = false;
+                expectedRecording19.processingState =
+                  RecordingProcessingState.AnalyseThermal;
                 cy.apiRecordingCheck(
                   "rpGroupAdmin",
                   "rpRecording19",
                   expectedRecording19,
-                  EXCLUDE_IDS
-                ).then(() => {
-                  cy.log("set processing to done and recheck tracks");
-                  cy.processingApiPut("rpRecording19", true, {}, undefined);
-                  expectedRecording19.processing = false;
-                  expectedRecording19.processingState =
-                    RecordingProcessingState.AnalyseThermal;
-                  cy.apiRecordingCheck(
-                    "rpGroupAdmin",
-                    "rpRecording19",
-                    expectedRecording19,
-                    EXCLUDE_IDS
-                  );
-                });
+                  EXCLUDE_ALL_IDS
+                );
               });
             });
-          }
-        );
+          });
+        });
       });
     });
 
@@ -1070,7 +960,7 @@ describe("Recordings - processing tests", () => {
               "rpRecording20",
               "possum",
               0.9,
-              { name: "master" }
+              { name: "Master" }
             ).then(() => {
               cy.log("set processing to done and recheck tracks");
               cy.processingApiPut(
@@ -1188,7 +1078,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpRecording17",
           expectedRecording17,
-          EXCLUDE_IDS
+          EXCLUDE_ALL_IDS
         );
       });
     });
@@ -1246,7 +1136,7 @@ describe("Recordings - processing tests", () => {
           "rpGroupAdmin",
           "rpRecording21",
           expectedRecording21,
-          EXCLUDE_IDS
+          EXCLUDE_ALL_IDS
         );
 
         cy.log("Send for processing (toMp3)");
@@ -1276,7 +1166,7 @@ describe("Recordings - processing tests", () => {
             "rpGroupAdmin",
             "rpRecording21",
             expectedRecording21b,
-            EXCLUDE_IDS
+            EXCLUDE_ALL_IDS
           );
 
           cy.log("Mark processing as done");
@@ -1289,7 +1179,7 @@ describe("Recordings - processing tests", () => {
               "rpGroupAdmin",
               "rpRecording21",
               expectedRecording21,
-              EXCLUDE_IDS
+              EXCLUDE_ALL_IDS
             );
 
             cy.log("Send for processing (analyse)");
@@ -1321,7 +1211,7 @@ describe("Recordings - processing tests", () => {
                 "rpGroupAdmin",
                 "rpRecording21",
                 expectedRecording21b,
-                EXCLUDE_IDS
+                EXCLUDE_ALL_IDS
               );
 
               cy.log("Mark processing as done");
@@ -1345,7 +1235,7 @@ describe("Recordings - processing tests", () => {
                     "rpGroupAdmin",
                     "rpRecording21",
                     expectedRecording21c,
-                    EXCLUDE_IDS
+                    EXCLUDE_ALL_IDS
                   );
                 }
               );

@@ -80,8 +80,13 @@ function migrationRemoveBelongsTo(
   if (opts.name) {
     columnName = `${opts.name}Id`;
   }
+  const options = {};
+  if (opts.transaction) {
+    options.transaction = opts.transaction;
+  }
   return queryInterface.sequelize.query(
-    `ALTER TABLE "${childTable}" DROP COLUMN "${columnName}";`
+    `ALTER TABLE "${childTable}" DROP COLUMN "${columnName}";`,
+    options
   );
 }
 exports.migrationRemoveBelongsTo = migrationRemoveBelongsTo;
@@ -116,6 +121,49 @@ function belongsToMany(queryInterface, viaTable, table1, table2) {
   });
 }
 exports.belongsToMany = belongsToMany;
+
+function removeBelongsToMany(
+  queryInterface,
+  viaTable,
+  table1,
+  table2,
+  options
+) {
+  const columnName1 = `${table1.substring(0, table1.length - 1)}Id`;
+  const constraintName1 = `${viaTable}_${columnName1}_fkey`;
+  const columnName2 = `${table2.substring(0, table2.length - 1)}Id`;
+  const constraintName2 = `${viaTable}_${columnName2}_fkey`;
+  console.log("Removing belongs to many columns.");
+  return new Promise((resolve, reject) => {
+    Promise.all([
+      queryInterface.sequelize.query(
+        `ALTER TABLE "${viaTable}" DROP COLUMN "${columnName1}";`,
+        options
+      ),
+      queryInterface.sequelize.query(
+        `ALTER TABLE "${viaTable}" DROP COLUMN "${columnName2}";`,
+        options
+      ),
+    ])
+      .then(() => {
+        console.log("Removing belongs to many constraint.");
+        return Promise.all([
+          queryInterface.sequelize.query(
+            `ALTER TABLE "${viaTable}" DROP CONSTRAINT "${constraintName1}";`,
+            options
+          ),
+          queryInterface.sequelize.query(
+            `ALTER TABLE "${viaTable}" DROP CONSTRAINT "${constraintName2}";`,
+            options
+          ),
+        ]);
+      })
+      .then(() => resolve())
+      .catch((err) => reject(err));
+  });
+}
+exports.removeBelongsToMany = removeBelongsToMany;
+
 function addSerial(queryInterface, tableName) {
   return queryInterface.sequelize.query(
     `ALTER TABLE "${tableName}" ADD COLUMN id SERIAL PRIMARY KEY;`
@@ -126,6 +174,7 @@ exports.default = {
   migrationAddBelongsTo,
   migrationRemoveBelongsTo,
   belongsToMany,
+  removeBelongsToMany,
   addSerial,
   renameTableAndIdSeq,
 };

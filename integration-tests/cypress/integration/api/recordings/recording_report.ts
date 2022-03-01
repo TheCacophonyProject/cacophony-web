@@ -11,11 +11,13 @@ import {
   TestCreateExpectedRecordingColumns,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
+import { TEMPLATE_AUDIO_RECORDING } from "@commands/dataTemplate";
 
 describe("Recordings report using where", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
+  //define recordings here so we have a range of values to check, rather than using predefined templates
   const templateRecording1: ApiRecordingSet = {
     type: RecordingType.ThermalRaw,
     fileHash: null,
@@ -32,7 +34,7 @@ describe("Recordings report using where", () => {
       totalFrames: 141,
     },
     metadata: {
-      algorithm: { model_name: "master" },
+      algorithm: { model_name: "Master" },
       tracks: [
         {
           start_s: 2,
@@ -50,7 +52,6 @@ describe("Recordings report using where", () => {
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
-    //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
     location: [-45.00045, 169.00065],
     version: "346",
     batteryCharging: null,
@@ -62,7 +63,7 @@ describe("Recordings report using where", () => {
       totalFrames: 142,
     },
     metadata: {
-      algorithm: { model_name: "master" },
+      algorithm: { model_name: "Master" },
       tracks: [
         {
           start_s: 1,
@@ -75,80 +76,46 @@ describe("Recordings report using where", () => {
     processingState: RecordingProcessingState.Corrupt,
   };
 
-  const templateRecording3: ApiRecordingSet = {
-    type: RecordingType.Audio,
-    fileHash: null,
-    duration: 60,
-    recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDawn: null,
-    relativeToDusk: -17219,
-    //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
-    location: [-43.53345, 172.64745],
-    version: "1.8.1",
-    batteryCharging: "DISCHARGING",
-    batteryLevel: 87,
-    airplaneModeOn: false,
-    metadata: {
-      algorithm: { model_name: "master" },
-      tracks: [
-        {
-          start_s: 1,
-          end_s: 19,
-          predictions: [
-            {
-              confident_tag: "morepork",
-              confidence: 0.9,
-              model_id: 1,
-            },
-          ],
-        },
-        {
-          start_s: 20,
-          end_s: 40,
-          predictions: [
-            {
-              confident_tag: "morepork",
-              confidence: 1,
-              model_id: 1,
-            },
-          ],
-        },
-        {
-          start_s: 41,
-          end_s: 60,
-          predictions: [
-            {
-              confident_tag: "morepork",
-              confidence: 0.9,
-              model_id: 1,
-            },
-          ],
-        },
-      ],
-    },
-    cacophonyIndex: [
-      { end_s: 20, begin_s: 0, index_percent: 80.8 },
-      { end_s: 40, begin_s: 20, index_percent: 77.1 },
-      { end_s: 60, begin_s: 40, index_percent: 71.6 },
+  const templateRecording3: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
+  );
+  templateRecording3.metadata = {
+    algorithm: { model_name: "master" },
+    tracks: [
+      {
+        start_s: 1,
+        end_s: 19,
+        predictions: [
+          {
+            confident_tag: "morepork",
+            confidence: 0.9,
+            model_id: 1,
+          },
+        ],
+      },
+      {
+        start_s: 20,
+        end_s: 40,
+        predictions: [
+          {
+            confident_tag: "morepork",
+            confidence: 1,
+            model_id: 1,
+          },
+        ],
+      },
+      {
+        start_s: 41,
+        end_s: 60,
+        predictions: [
+          {
+            confident_tag: "morepork",
+            confidence: 0.9,
+            model_id: 1,
+          },
+        ],
+      },
     ],
-    additionalMetadata: {
-      normal: "0",
-      "SIM IMEI": "990006964660319",
-      cacophony_index_version: "2020-01-20_A",
-      processing_time_seconds: 50.7,
-      species_identify_version: "2021-02-01",
-      "SIM state": "SIM_STATE_READY",
-      "Auto Update": false,
-      "Flight Mode": false,
-      "Phone model": "SM-G900V",
-      amplification: 1.0721460589601806,
-      SimOperatorName: "Verizon",
-      "Android API Level": 23,
-      "Phone manufacturer": "samsung",
-      "App has root access": false,
-    },
-    comment: null,
-    processingState: RecordingProcessingState.Analyse,
   };
 
   const templateRecording4: ApiRecordingSet = {
@@ -168,7 +135,7 @@ describe("Recordings report using where", () => {
       totalFrames: 142,
     },
     metadata: {
-      algorithm: { model_name: "master" },
+      algorithm: { model_name: "Master" },
       tracks: [{ start_s: 2, end_s: 5, predictions: [] }],
     },
     comment: "This is a comment2",
@@ -198,12 +165,6 @@ describe("Recordings report using where", () => {
     cy.apiDeviceAdd("rreCamera1b", "rreGroup");
     cy.apiUserAdd("rreGroupMember");
     cy.apiGroupUserAdd("rreGroupAdmin", "rreGroupMember", "rreGroup", true);
-
-    //Device admin and member fore device1
-    cy.apiUserAdd("rreDeviceAdmin");
-    cy.apiUserAdd("rreDeviceMember");
-    cy.apiDeviceUserAdd("rreGroupAdmin", "rreDeviceAdmin", "rreCamera1", true);
-    cy.apiDeviceUserAdd("rreGroupAdmin", "rreDeviceMember", "rreCamera1", true);
 
     //Group2 with admin and device
     cy.testCreateUserGroupAndDevice(
@@ -326,26 +287,6 @@ describe("Recordings report using where", () => {
     cy.log("Check recording can be viewed correctly");
     cy.apiRecordingsReportCheck(
       "rreGroupMember",
-      { where: { id: getCreds("rreRecording1").id } },
-      [expectedRecording1],
-      EXCLUDE_COLUMNS
-    );
-  });
-
-  it("Device admin can view report on their device's recordings", () => {
-    cy.log("Check recording can be viewed correctly");
-    cy.apiRecordingsReportCheck(
-      "rreDeviceAdmin",
-      { where: { id: getCreds("rreRecording1").id } },
-      [expectedRecording1],
-      EXCLUDE_COLUMNS
-    );
-  });
-
-  it("Device member can view report on their device's recordings", () => {
-    cy.log("Check recording can be viewed correctly");
-    cy.apiRecordingsReportCheck(
-      "rreDeviceMember",
       { where: { id: getCreds("rreRecording1").id } },
       [expectedRecording1],
       EXCLUDE_COLUMNS
@@ -650,10 +591,11 @@ describe("Recordings report using where", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it.skip("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
-      cy.apiDeviceUserAdd(
+      cy.apiGroupUserAdd(
         "rreGroupAdmin",
         superuser,
-        "rreCamera1b",
+        "rreGroup",
+        true,
         true,
         HTTP_OK200,
         { useRawUserName: true }
@@ -665,10 +607,10 @@ describe("Recordings report using where", () => {
         [expectedRecording3, expectedRecording4],
         EXCLUDE_COLUMNS
       );
-      cy.apiDeviceUserRemove(
+      cy.apiGroupUserRemove(
         "rreGroupAdmin",
         superuser,
-        "rreCamera1b",
+        "rreGroup",
         HTTP_OK200,
         { useRawUserName: true }
       );

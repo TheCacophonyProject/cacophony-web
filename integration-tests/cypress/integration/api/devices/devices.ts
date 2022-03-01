@@ -10,15 +10,12 @@ describe("Devices list", () => {
 
   const groupAdmin = "Edith-groupAdmin";
   const groupMember = "Edwin-groupMember";
-  const deviceMember = "Egbert-deviceMember";
-  const deviceAdmin = "Emett-deviceAdmin";
   const hacker = "E-Hacker";
   const group = "Edith-Team";
   const group2 = "Second-E-Team";
   const group3 = "Charlie-Team";
   const camera = "E-camera1";
   const NOT_ADMIN = false;
-  const ADMIN = true;
   const user2 = "Bridget";
   const user3 = "Charlie";
   const camera2 = "second_E_camera";
@@ -32,8 +29,6 @@ describe("Devices list", () => {
 
   before(() => {
     cy.apiUserAdd(groupMember);
-    cy.apiUserAdd(deviceAdmin);
-    cy.apiUserAdd(deviceMember);
     cy.apiUserAdd(hacker);
     cy.testCreateUserGroupAndDevice(groupAdmin, group, camera).then(() => {
       expectedDeviceAdminView = {
@@ -58,8 +53,6 @@ describe("Devices list", () => {
       };
     });
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
-    cy.apiDeviceUserAdd(groupAdmin, deviceMember, camera);
-    cy.apiDeviceUserAdd(groupAdmin, deviceAdmin, camera, ADMIN);
 
     //second group
     cy.testCreateUserGroupAndDevice(user2, group2, camera2).then(() => {
@@ -77,7 +70,6 @@ describe("Devices list", () => {
 
     //reregistered device
     cy.testCreateUserGroupAndDevice(user3, group3, camera3);
-    cy.apiDeviceUserAdd(user3, user3, camera3);
     cy.apiDeviceReregister(camera3, camera4, group3).then(() => {
       expectedDevice3AdminView = {
         id: getCreds(camera3).id,
@@ -173,14 +165,6 @@ describe("Devices list", () => {
 
   it("Group member should be able to see everything, but should be not listed as admin", () => {
     cy.apiDevicesCheck(groupMember, [expectedDeviceMemberView]);
-  });
-
-  it("Device admin should see everything, and be listed as admin", () => {
-    cy.apiDevicesCheck(deviceAdmin, [expectedDeviceAdminView]);
-  });
-
-  it("Device member should be see everything, but should be not listed as admin", () => {
-    cy.apiDevicesCheck(deviceMember, [expectedDeviceMemberView]);
   });
 
   it("Non member should not have any access to any devices", () => {

@@ -84,7 +84,6 @@ export interface ApiDeviceUsersUser {
   id: number;
   username: string;
   email: string;
-  relation: string;
   admin: boolean;
 }
 
@@ -127,7 +126,6 @@ export interface ApiDeviceUsersUser {
   id: number;
   username: string;
   email: string;
-  relation: string;
   admin: boolean;
 }
 

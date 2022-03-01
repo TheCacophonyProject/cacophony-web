@@ -20,13 +20,7 @@ export interface ApiTrackResponse {
   automatic: boolean;
   positions: ApiTrackPosition[];
   tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[];
-  minFreq?: number;
-  maxFreq?: number;
-}
-
-export interface ApiTrackRequest {
-  data: ApiTrackDataRequest;
-  algorithm?: Object | Array<number>;
+  filtered: boolean;
 }
 
 export interface ApiTrackDataRequest {

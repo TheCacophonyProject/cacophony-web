@@ -8,7 +8,6 @@ import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import { DeviceType } from "@typedefs/api/consts";
 
 describe("Groups - get devices for group", () => {
-  const ADMIN = true;
   const NOT_ADMIN = false;
   let expectedDevice: ApiDeviceResponse;
   let expectedDevice1b: ApiDeviceResponse;
@@ -51,10 +50,6 @@ describe("Groups - get devices for group", () => {
     cy.apiUserAdd("gdGroupMember");
     cy.apiGroupUserAdd("gdGroupAdmin", "gdGroupMember", "gdGroup", NOT_ADMIN);
 
-    //device admin for 1st device
-    cy.apiUserAdd("gdDeviceAdmin");
-    cy.apiDeviceUserAdd("gdGroupAdmin", "gdDeviceAdmin", "gdCamera", ADMIN);
-
     // test users
     cy.apiUserAdd("gdTestUser");
   });
@@ -74,11 +69,6 @@ describe("Groups - get devices for group", () => {
   });
 
   it("Non group members cannot view devices", () => {
-    cy.log(
-      "Check device-only user cannot view groups devices, but can see their own devices in group"
-    );
-    cy.apiGroupDevicesCheck("gdDeviceAdmin", "gdGroup", [], [], HTTP_Forbidden);
-
     cy.log("Check unrelated user cannot view group's devices");
     cy.apiGroupDevicesCheck("gdTestUser", "gdGroup", [], [], HTTP_Forbidden);
   });

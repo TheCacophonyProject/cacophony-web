@@ -1,15 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
 import { HTTP_AuthorizationError } from "@commands/constants";
 
-import { TestCreateExpectedUser } from "@commands/api/user";
-
 import { getTestName } from "@commands/names";
-import { getCreds, testRunOnApi } from "@commands/server";
 
 describe("User: password reset", () => {
-  const superuser = getCreds("superuser")["name"];
-  const suPassword = getCreds("superuser")["password"];
-
   //Do not run against a live server as we don't have a stubbed email server
   if (Cypress.env("running_in_a_dev_environment") == true) {
     before(() => {

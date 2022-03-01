@@ -103,6 +103,7 @@ const other = new TrackLabel(things, "other");
 
 const part = new TrackLabel(descriptors, "part", "part of animal (eg tail)");
 const poorTracking = new TrackLabel(descriptors, "poor tracking");
+
 const interesting = new TrackLabel(descriptors, "interesting");
 
 const falsePositive = new TrackLabel(
@@ -241,6 +242,15 @@ const DefaultLabels = {
   },
   detailedAiEvaluationMatrix: function () {
     return [bird, ...pest.includes, wallaby, nothing, notKnown];
+  },
+  filteredLabels: function () {
+    return [falsePositive];
+  },
+  descriptorTags: function () {
+    return descriptors.includes;
+  },
+  allDescriptorTags: function () {
+    return descriptors.allIncludedTags;
   },
   falsePositiveLabel: falsePositive,
   birdLabel: bird,
@@ -420,3 +430,7 @@ export { getTrapNzSpecies, imgSrc };
 export default DefaultLabels;
 
 export const WALLABY_GROUP = 160;
+
+export const FILTERED_TOOLTIP = `Show videos and tracks tagged as ${DefaultLabels.filteredLabels()
+  .map((label) => label.value)
+  .join("")}`;
