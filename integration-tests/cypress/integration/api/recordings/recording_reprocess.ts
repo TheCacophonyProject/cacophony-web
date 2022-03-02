@@ -594,6 +594,7 @@ describe("Recordings - reprocessing tests", () => {
                 id: 1,
                 positions: [],
                 filtered: true,
+                automatic: true,
               },
             ];
             cy.apiRecordingCheck(
@@ -620,6 +621,7 @@ describe("Recordings - reprocessing tests", () => {
                   id: 1,
                   positions: [],
                   filtered: false,
+                  automatic: true,
                 },
               ];
 

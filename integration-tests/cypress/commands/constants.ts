@@ -13,7 +13,6 @@ export const EXCLUDE_IDS = [
   ".tracks[].tags[].id",
   ".tracks[].id",
   ".rawMimeType", //FIXME this should be verifyable
-  ".tracks[].filtered", //FIXME PATRICK - remove this once GPs branch merged in
 ];
 
 //parameter checks - fields we do not check value of by default in 'recordings'
@@ -22,7 +21,6 @@ export const EXCLUDE_IDS_ARRAY = [
   "[].tracks[].tags[].id",
   "[].tracks[].id",
   "[].rawMimeType", //FIXME this should be verifyable
-  "[].tracks[].filtered", //FIXME PATRICK - remove this once GPs branch merged in
 ];
 
 //Column names in the recording export csv

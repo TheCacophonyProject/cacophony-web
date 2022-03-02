@@ -497,19 +497,14 @@ export function TestCreateExpectedRecordingColumns(
   expected["Recording Tags"] = "";
   expected.URL =
     BASE_URL + "/recording/" + getCreds(recordingName).id.toString();
-  if (
-    inputRecording &&
-    inputRecording.cacophonyIndex
-  ) {
-    expected["Cacophony Index"] =
-      inputRecording.cacophonyIndex
-        .map((ci: any) => ci.index_percent)
-        .join(";");
+  if (inputRecording && inputRecording.cacophonyIndex) {
+    expected["Cacophony Index"] = inputRecording.cacophonyIndex
+      .map((ci: any) => ci.index_percent)
+      .join(";");
   } else {
     expected["Cacophony Index"] = "";
   }
   expected["Species Classification"] = ""; //FIXME PATRICK - remove once this depracted column gone
- 
 
   return expected;
 }
