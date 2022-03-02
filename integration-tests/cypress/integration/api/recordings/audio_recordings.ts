@@ -877,15 +877,16 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording34
       );
-      expectedRecording34.cacophonyIndex = [
-        { end_s: 20, begin_s: 0, index_percent: 80.8 },
-        { end_s: 40, begin_s: 20, index_percent: 77.1 },
-        { end_s: 60, begin_s: 40, index_percent: 71.6 },
-      ];
       expectedRecording34.additionalMetadata = {
         normal: "0",
         "SIM IMEI": "990006964660319",
         analysis: {
+          cacophony_index: [
+            { end_s: 20, begin_s: 0, index_percent: 80.8 },
+            { end_s: 40, begin_s: 20, index_percent: 77.1 },
+            { end_s: 60, begin_s: 40, index_percent: 71.6 },
+          ],
+          species_identify: [],
           cacophony_index_version: "2020-01-20_A",
           processing_time_seconds: 50.7,
           species_identify_version: "2021-02-01",

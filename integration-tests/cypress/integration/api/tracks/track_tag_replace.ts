@@ -1,8 +1,8 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_Unprocessable,
+  HTTP_BadRequest,
   NOT_NULL_STRING,
   NOT_NULL,
 } from "@commands/constants";
@@ -13,12 +13,12 @@ import { getTestName } from "@commands/names";
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
-  ApiTrackPosition,
   ApiTrackResponse,
+  ApiTrackPosition,
 } from "@typedefs/api/track";
 import {
-  ApiHumanTrackTagResponse,
   ApiTrackTagRequest,
+  ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 
@@ -57,8 +57,8 @@ describe("Track Tags: replaceTag, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
-    automatic: true,
     filtered: true,
+    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {

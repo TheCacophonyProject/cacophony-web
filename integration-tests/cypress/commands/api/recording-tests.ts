@@ -14,12 +14,12 @@ import { logTestDescription, prettyLog } from "../descriptions";
 import {
   ApiDeviceIdAndName,
   ApiRecordingColumns,
-  ApiRecordingForProcessing,
   ApiRecordingNeedsTagReturned,
   ApiRecordingSet,
   ApiRecordingStation,
   ApiTrackSet,
   TestThermalRecordingInfo,
+  ApiRecordingForProcessing,
   ApiRecordingModel,
 } from "../types";
 
@@ -484,13 +484,10 @@ export function TestCreateExpectedRecordingColumns(
   expected.Comment = inputRecording.comment || "";
   if (inputTrackData !== undefined && inputTrackData.tracks !== undefined) {
     expected["Track Count"] = inputTrackData.tracks.length.toString();
-    // make set of unique tags
     expected["Automatic Track Tags"] = inputTrackData.tracks
       .map((track) =>
         track.predictions.map((prediction) => prediction.confident_tag)
       )
-      .flat()
-      .filter((tag, index, self) => self.indexOf(tag) === index)
       .join(";");
   } else {
     expected["Track Count"] = "0";
@@ -500,26 +497,19 @@ export function TestCreateExpectedRecordingColumns(
   expected["Recording Tags"] = "";
   expected.URL =
     BASE_URL + "/recording/" + getCreds(recordingName).id.toString();
-  if (inputRecording.cacophonyIndex) {
-    expected["Cacophony Index"] = inputRecording.cacophonyIndex
-      .map((ci: any) => ci.index_percent)
-      .join(";");
+  if (
+    inputRecording &&
+    inputRecording.cacophonyIndex
+  ) {
+    expected["Cacophony Index"] =
+      inputRecording.cacophonyIndex
+        .map((ci: any) => ci.index_percent)
+        .join(";");
   } else {
     expected["Cacophony Index"] = "";
   }
-  if (
-    inputRecording &&
-    inputRecording.additionalMetadata &&
-    inputRecording.additionalMetadata.analysis &&
-    inputRecording.additionalMetadata.analysis.species_identify
-  ) {
-    expected["Species Classification"] =
-      inputRecording.additionalMetadata.analysis.species_identify
-        .map((si: any) => si.species + ": " + si.begin_s.toString())
-        .join(";");
-  } else {
-    expected["Species Classification"] = "";
-  }
+  expected["Species Classification"] = ""; //FIXME PATRICK - remove once this depracted column gone
+ 
 
   return expected;
 }
@@ -600,9 +590,6 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
       JSON.stringify(inputRecording.additionalMetadata)
     );
   }
-  if (inputRecording.cacophonyIndex !== undefined) {
-    expected.cacophonyIndex = inputRecording.cacophonyIndex;
-  }
   if (inputRecording.location !== undefined) {
     //expected.location = { type: "Point", coordinates: inputRecording.location };
     expected.location = {
@@ -637,8 +624,8 @@ function positionResponseFromSet(positions) {
     newTp["y"] = tp.y;
     newTp["width"] = tp.width;
     newTp["height"] = tp.height;
-    newTp["order"] = tp.frame_number;
-    console.log(tp);
+    //newTp["frameNumber"] = tp.frame_number; FIXME PATRICK - remove once GPs code merged
+    newTp["order"] = tp.frame_number; // FIXME PATRICK - remove once GPs code merged
     tps.push(newTp);
   });
 
@@ -690,7 +677,6 @@ export function trackResponseFromSet(
         end: track.end_s,
         positions: tpos,
         filtered: false,
-
         automatic: true,
       };
       if (

@@ -2,8 +2,8 @@
 import {
   HTTP_Forbidden,
   HTTP_OK200,
-  NOT_NULL,
   NOT_NULL_STRING,
+  NOT_NULL,
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
@@ -15,18 +15,18 @@ import { ApiRecordingNeedsTagReturned } from "@commands/types";
 import { RecordingType } from "@typedefs/api/consts";
 
 import {
-  TestCreateExpectedNeedsTagData,
   TestCreateRecordingData,
+  TestCreateExpectedNeedsTagData,
 } from "@commands/api/recording-tests";
 
 import {
   ApiTrackDataRequest,
-  ApiTrackPosition,
   ApiTrackResponse,
+  ApiTrackPosition,
 } from "@typedefs/api/track";
 import {
-  ApiHumanTrackTagResponse,
   ApiTrackTagRequest,
+  ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import {
   TEMPLATE_THERMAL_RECORDING,
@@ -74,8 +74,8 @@ describe("Track Tags: add, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
-    automatic: true,
     filtered: true,
+    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {

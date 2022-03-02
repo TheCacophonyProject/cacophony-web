@@ -8,7 +8,7 @@ import {
 
 import { getCreds } from "@commands/server";
 
-import { ApiRecordingForProcessing, ApiRecordingSet } from "@commands/types";
+import { ApiRecordingSet, ApiRecordingForProcessing } from "@commands/types";
 
 import {
   TestCreateExpectedProcessingData,
@@ -593,7 +593,6 @@ describe("Recordings - reprocessing tests", () => {
                 end: 4,
                 id: 1,
                 positions: [],
-                automatic: true,
                 filtered: true,
               },
             ];
@@ -620,7 +619,6 @@ describe("Recordings - reprocessing tests", () => {
                   end: 4,
                   id: 1,
                   positions: [],
-                  automatic: true,
                   filtered: false,
                 },
               ];

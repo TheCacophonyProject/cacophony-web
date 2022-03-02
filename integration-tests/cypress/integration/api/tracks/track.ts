@@ -12,8 +12,8 @@ import {
 } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
-  ApiTrackPosition,
   ApiTrackResponse,
+  ApiTrackPosition,
 } from "@typedefs/api/track";
 
 import {
@@ -51,8 +51,8 @@ describe("Tracks: add, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
-    automatic: true,
     filtered: true,
+    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -208,8 +208,8 @@ describe("Tracks: add, check, delete", () => {
       end: 7,
       positions: [],
       tags: [],
-      automatic: true,
       filtered: true,
+      automatic: true,
     };
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
 

@@ -694,7 +694,6 @@ describe("Recordings - processing tests", () => {
               id: 1,
               positions: [],
               filtered: true,
-              automatic: true,
             },
           ];
           cy.apiRecordingCheck(
@@ -739,7 +738,6 @@ describe("Recordings - processing tests", () => {
                 id: 1,
                 positions: [],
                 filtered: false,
-                automatic: true,
               },
             ];
 
@@ -830,7 +828,6 @@ describe("Recordings - processing tests", () => {
               id: 1,
               positions: [],
               filtered: true,
-              automatic: true,
             },
           ];
           cy.apiRecordingCheck(
@@ -856,7 +853,6 @@ describe("Recordings - processing tests", () => {
                 end: 4,
                 id: 1,
                 positions: [],
-                automatic: true,
                 filtered: false,
               },
             ];
@@ -997,6 +993,12 @@ describe("Recordings - processing tests", () => {
         batteryLevel: 87,
         batteryCharging: "CHARGING",
         airplaneModeOn: true,
+        cacophonyIndex: [
+          { end_s: 21, begin_s: 1, index_percent: 81.8 },
+          { end_s: 41, begin_s: 21, index_percent: 78.1 },
+          { end_s: 61, begin_s: 41, index_percent: 72.6 },
+        ],
+
         type: RecordingType.Audio,
         comment: "This is a new comment",
         // add newFields, change algorithm, set previewSecs to null, leave totalFrames unchanged
@@ -1006,7 +1008,6 @@ describe("Recordings - processing tests", () => {
           algorithm: 99999,
           previewSecs: null,
         },
-        cacophonyIndex: [],
         location: [-46.29115, 170.30845],
       };
       //top level recording data
@@ -1046,12 +1047,16 @@ describe("Recordings - processing tests", () => {
         expectedRecording17.batteryCharging = "CHARGING";
         expectedRecording17.airplaneModeOn = true;
         expectedRecording17.type = RecordingType.Audio;
-        expectedRecording17.cacophonyIndex = [];
         expectedRecording17.comment = "This is a new comment";
         expectedRecording17.location = {
           lat: -46.29115,
           lng: 170.30845,
         };
+        expectedRecording17.cacophonyIndex = [
+          { end_s: 21, begin_s: 1, index_percent: 81.8 },
+          { end_s: 41, begin_s: 21, index_percent: 78.1 },
+          { end_s: 61, begin_s: 41, index_percent: 72.6 },
+        ];
         expectedRecording17.additionalMetadata = {
           newField: "newValue",
           newField2: "newValue2",
