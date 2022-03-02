@@ -58,7 +58,7 @@
         <div class="results-header">
           <div>
             <span> ID</span>
-            <span>Type</span>
+            <span v-if="tableItems.includes((val) => val.type)">Type</span>
             <span>Device</span>
             <span>Date</span>
             <span>Time</span>
