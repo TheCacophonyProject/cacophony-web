@@ -541,14 +541,13 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
     groupName: getTestName(groupName),
   };
 
-  let station: ApiRecordingStation = null;
   if (stationName) {
-    station = {};
-    station.name = getTestName(stationName);
-    station.location = getCreds(stationName).location;
-    //expected.StationId = getCreds(stationName).id;
+    expected.stationId = getCreds(stationName).id;
+    expected.stationName = getTestName(stationName);
   } else {
-    //expected.StationId = null;
+    // Ignored
+    expected.stationId = 1;
+    expected.stationName = "Station name";
   }
 
   expected.id = getCreds(recordingName).id;

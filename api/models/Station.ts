@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import Sequelize, { BuildOptions, ModelAttributes } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import util from "./util/util";
-import {GroupId, LatLng, StationId, UserId} from "@typedefs/api/common";
+import { GroupId, LatLng, StationId, UserId } from "@typedefs/api/common";
 
 // Station data as supplied to API on creation.
 export interface CreateStationData {

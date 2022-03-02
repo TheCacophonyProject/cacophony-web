@@ -304,8 +304,7 @@ export default (app: Application, baseUrl: string) => {
    * @api {post} /api/v1/recordings Add a new recording
    * @apiName PostRecording
    * @apiGroup Recordings
-   * @apiDescription Uploads a device's own raw thermal video to the server.  It currently
-   * supports raw thermal video but will eventually support all recording types.
+   * @apiDescription Uploads a device's own recording to the server.
    *
    * @apiUse V1DeviceAuthorizationHeader
    *
@@ -427,7 +426,7 @@ export default (app: Application, baseUrl: string) => {
           )
         );
       }
-      response.locals.device = devices[0];
+      response.locals.device = devices.pop();
       next();
     },
     uploadRawRecording

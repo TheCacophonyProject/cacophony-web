@@ -157,7 +157,7 @@ export default function (
     models.Device.belongsTo(models.Group);
     models.Device.belongsTo(models.Schedule);
     models.Device.hasMany(models.Alert);
-    models.Device.hasMany(models.DeviceLocations);
+    models.Device.hasMany(models.DeviceHistory);
   };
 
   Device.freeDevicename = async function (devicename, groupId) {

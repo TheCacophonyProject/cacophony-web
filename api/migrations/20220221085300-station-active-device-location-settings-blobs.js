@@ -41,7 +41,7 @@ module.exports = {
       comment: "Group specific settings set for all group members by the group admin"
     });
 
-    await queryInterface.createTable("DeviceLocations", {
+    await queryInterface.createTable("DeviceHistory", {
       location: {
         type: Sequelize.GEOMETRY,
         allowNull: false,
@@ -50,15 +50,21 @@ module.exports = {
       fromDateTime: {
         type: Sequelize.DATE,
         allowNull: false,
-        comment: "Earliest time that the device was known to be at this `location`"
+        comment: "Earliest time that the device was known to be at this `location`",
       },
       setBy: {
         type: Sequelize.ENUM('automatic', 'user', 'sidekick'),
         allowNull: false,
         comment: "Where the location of this device was set from - a recording upload, manually by the user, or via sidekick"
+      },
+      deviceName: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        comment: "Purely for auditing/debugging purposes, store the device name at the time the location was logged"
       }
     });
-    await util.migrationAddBelongsTo(queryInterface, "DeviceLocations", "Devices", "strict");
+    await util.migrationAddBelongsTo(queryInterface, "DeviceHistory", "Devices", "strict");
+    await util.migrationAddBelongsTo(queryInterface, "DeviceHistory", "Groups", "strict");
   },
 
   down: async function (queryInterface, Sequelize) {
@@ -74,7 +80,8 @@ module.exports = {
     await queryInterface.removeColumn("GroupUsers", "settings");
     await queryInterface.removeColumn("Groups", "settings");
 
-    await util.migrationRemoveBelongsTo(queryInterface, "DeviceLocations", "Devices");
-    await queryInterface.dropTable("DeviceLocations");
+    await util.migrationRemoveBelongsTo(queryInterface, "DeviceHistory", "Devices");
+    await util.migrationRemoveBelongsTo(queryInterface, "DeviceHistory", "Groups");
+    await queryInterface.dropTable("DeviceHistory");
   },
 };

@@ -43,11 +43,6 @@ interface FailureFetchResult<FAILURE = ErrorResult> {
 
 export type FetchResult<T> = SuccessFetchResult<T> | FailureFetchResult;
 
-export interface Location {
-  type: "Point" | string;
-  coordinates: [number, number];
-}
-
 export interface LimitedTrack {
   trackId: TrackId;
   data: {
@@ -117,22 +112,6 @@ export type TrackTag = ApiAutomaticTrackTagResponse | ApiHumanTrackTagResponse;
 export interface LimitedTrackTag {
   TrackTagId: TrackTagId;
   what: string;
-}
-
-export interface Tag {
-  confidence: number;
-  animal: null | string;
-  automatic: boolean;
-  createdAt: string;
-  detail: string;
-  event: string;
-  duration: null | number;
-  id: number;
-  startTime: null | string;
-  tagger: { username: string; id: number };
-  taggerId: number;
-  version: number;
-  what: null | string;
 }
 
 export interface QueryResultCount {

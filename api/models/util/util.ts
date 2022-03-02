@@ -225,17 +225,26 @@ export function locationField(fieldName: string = "location") {
   return {
     type: DataTypes.GEOMETRY,
     set(value) {
+      log.error("Setting location field %s", value);
       const location = geometrySetter(value);
+      log.error("Got raw location field %s", location);
       if (location) {
+        log.error(
+          "Setting %s, %s, [%s, %s]",
+          this,
+          fieldName,
+          location.coordinates[0],
+          location.coordinates[1]
+        );
         this.setDataValue(fieldName, location);
       }
     },
     get() {
       const location = this.getDataValue(fieldName);
       if (location) {
-        log.warning("Gettings location for this %s, %s", this.id, this.getDataValue(fieldName));
-        return canonicalLatLng(this.getDataValue(fieldName));
+        return canonicalLatLng(location);
       }
+      log.error("Getting null location %s for %s", location, this);
       return null;
     },
     validate: {

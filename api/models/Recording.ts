@@ -19,7 +19,6 @@ import log from "../logging";
 import mime from "mime";
 import moment from "moment-timezone";
 import Sequelize, { FindOptions, Includeable } from "sequelize";
-import assert from "assert";
 import { v4 as uuidv4 } from "uuid";
 import config from "../config";
 import util from "./util/util";
@@ -45,10 +44,10 @@ import {
   UserId,
   TrackId,
   DeviceId,
-  StationId, LatLng,
+  StationId,
+  LatLng,
 } from "@typedefs/api/common";
 import {
-  RecordingPermission,
   RecordingProcessingState,
   RecordingType,
   TagMode,
@@ -210,7 +209,6 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getFileName: () => string;
   getRawFileExt: () => string;
   getFileExt: () => string;
-  getActiveTracks: () => Promise<Track[]>;
   getDevice: () => Promise<Device>;
 
   getActiveTracksTagsAndTagger: () => Promise<any>;
@@ -259,10 +257,6 @@ interface TagLimitedRecording {
   tagJWT: JwtToken<TrackTag>;
 }
 
-type getOptions = {
-  type?: RecordingType;
-  filterOptions?: { latLongPrec?: number };
-};
 export interface RecordingStatic extends ModelStaticCommon<Recording> {
   buildSafely: (fields: Record<string, any>) => Recording;
   isValidTagMode: (mode: TagMode) => boolean;
@@ -700,17 +694,17 @@ from (
   Recording.prototype.filterData = function (options: { latLongPrec: any }) {
     if (this.location) {
       this.location.coordinates = reduceLatLonPrecision(
-        this.location.coordinates,
+        this.location,
         options.latLongPrec
       );
     }
   };
 
-  function reduceLatLonPrecision(latLon, prec) {
-    assert(latLon.length == 2);
+  // TODO(ManageStations) - Move to LatLngUtils
+  function reduceLatLonPrecision(latLng: LatLng, prec) {
     const resolution = (prec * 360) / 40000000;
     const half_resolution = resolution / 2;
-    return latLon.map((val) => {
+    const reducePrecision = (val) => {
       val = val - (val % resolution);
       if (val > 0) {
         val += half_resolution;
@@ -718,22 +712,12 @@ from (
         val -= half_resolution;
       }
       return val;
-    });
+    };
+    return {
+      lat: reducePrecision(latLng.lat),
+      lng: reducePrecision(latLng.lng),
+    };
   }
-
-  // Returns all active tracks for the recording which are not archived.
-  Recording.prototype.getActiveTracks = async function () {
-    return await this.getTracks({
-      where: {
-        archivedAt: null,
-      },
-      include: [
-        {
-          model: models.TrackTag,
-        },
-      ],
-    });
-  };
 
   // reprocess a recording and set all active tracks to archived
   Recording.prototype.reprocess = async function () {

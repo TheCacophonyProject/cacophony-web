@@ -35,7 +35,7 @@
     "module-alias": "^2.2.2",
     "moment": "^2.29.1",
     "moment-timezone": "^0.5.28",
-    "multiparty": "^4.2.2",
+    "multiparty": "^4.2.3",
     "nan": "^2.14.0",
     "node-cmd": "^1.1.1",
     "node-gyp": "^4.0.0",

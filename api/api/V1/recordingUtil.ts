@@ -48,7 +48,7 @@ import {
   TrackClassification,
   TrackFramePosition,
 } from "@typedefs/api/fileProcessing";
-import { CptvFrame } from "cptv-decoder";
+import { CptvFrame, CptvHeader } from "cptv-decoder";
 import { GetObjectOutput } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
 import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
@@ -343,14 +343,158 @@ async function createThumbnail(
     .toBuffer();
   return { data: img, meta: thumbMeta };
 }
+
+const assignStationsForDeviceInDateRange = async (
+  device: Device,
+  fromDate: Date,
+  untilDate?: Date
+) => {
+  // TODO(ManageStations)
+  // Get device history.
+  // Look for fixups.
+  // Get recordings for device in date range.
+  //
+};
+
+const maybeUpdateDeviceHistory = async (
+  device: Device,
+  recordingLocation: LatLng,
+  recordingDateTime: Date
+) => {
+  // FIXME - device location currently gets updated if it is different from previous device location when a recording comes
+  //  in. Need to use deviceHistory table to see if this should really be updated, to handle out of order recordings.
+  const lastLocation = device.location;
+  if (
+    !lastLocation ||
+    (lastLocation && !locationsAreEqual(lastLocation, recordingLocation))
+  ) {
+    // The device is in a new location, so we want to update the DeviceHistory log.
+    const history = models.DeviceHistory.build({
+      location: recordingLocation,
+      fromDateTime: recordingDateTime,
+      setBy: "automatic",
+      deviceName: device.devicename,
+      DeviceId: device.id,
+      GroupId: device.GroupId,
+    });
+    await history.save();
+  } else if (
+    lastLocation &&
+    locationsAreEqual(lastLocation, recordingLocation)
+  ) {
+    // Recordings can come in out of order, so if this recording has an earlier time than the last location
+    // we may need to move the time of the device history entry back.
+
+    // FIXME - We may have more recent locations here, so we may be moving back a historic entry - and need to
+    //  update the corresponding station accordingly.
+
+    // NOTE: This query will get run every recording upload - is that necessary?
+
+    const history = await models.DeviceHistory.findOne({
+      where: {
+        DeviceId: device.id,
+        GroupId: device.GroupId,
+        setBy: "automatic",
+        fromDateTime: { [Op.gt]: recordingDateTime },
+      },
+    });
+
+    // FIXME - what happens for user-defined fix-ups?
+
+    if (history) {
+      await history.update({
+        fromDateTime: recordingDateTime,
+      });
+    }
+  }
+};
+
+const tryDecodeCptvMetadata = async (
+  fileBytes: Uint8Array
+): Promise<{ metadata: CptvHeader; fileIsCorrupt: boolean }> => {
+  // TODO: See if this is faster with synthesised test cptv files
+  // TODO: Can we do this with the node stream as input, rather than waiting for the whole file to upload?
+  const decoder = new CptvDecoder();
+  const metadata = await decoder.getBytesMetadata(fileBytes);
+  // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
+  const fileIsCorrupt = await decoder.hasStreamError();
+  if (fileIsCorrupt) {
+    log.warning(
+      "CPTV Stream error: %s - mark as Corrupt and don't queue for processing",
+      await decoder.getStreamError()
+    );
+  }
+  decoder.close();
+  return { metadata, fileIsCorrupt };
+};
+
+const parseAndMergeEmbeddedFileMetadata = async (
+  data: any,
+  fileData: Uint8Array,
+  recording: Recording
+): Promise<boolean> => {
+  // FIXME(ManageStations): Don't mutate recording, should really return a new data object.
+  //  Should really try and pass in the fileData before it round-trips into s3.
+  if (data.type === "thermalRaw") {
+    // Read the file back out from s3 and decode/parse it.
+    const { metadata, fileIsCorrupt: isCorrupt } = await tryDecodeCptvMetadata(
+      fileData
+    );
+    if (
+      !data.hasOwnProperty("location") &&
+      metadata.latitude &&
+      metadata.longitude
+    ) {
+      // @ts-ignore
+      recording.location = {
+        lat: metadata.latitude,
+        lng: metadata.longitude,
+      };
+    }
+    if (
+      (!data.hasOwnProperty("duration") && metadata.duration) ||
+      (Number(data.duration) === 321 && metadata.duration)
+    ) {
+      // NOTE: Hack to make tests pass, but not allow sidekick uploads to set a spurious duration.
+      //  A solid solution will disallow all of these fields that should come from the CPTV file as
+      //  API settable metadata, and require tests to construct CPTV files with correct metadata.
+      recording.duration = metadata.duration;
+    }
+    if (!data.hasOwnProperty("recordingDateTime") && metadata.timestamp) {
+      recording.recordingDateTime = new Date(
+        metadata.timestamp / 1000
+      ).toISOString();
+    }
+    if (data.hasOwnProperty("additionalMetadata")) {
+      recording.additionalMetadata = {
+        ...data.additionalMetadata,
+        ...recording.additionalMetadata,
+      };
+    } else if (metadata.previewSecs) {
+      // NOTE: Algorithm property gets filled in later by AI
+      recording.additionalMetadata = {
+        previewSecs: metadata.previewSecs,
+        totalFrames: metadata.totalFrames,
+      };
+    }
+    return isCorrupt;
+  } else {
+    return false;
+  }
+};
+
 export const uploadRawRecording = util.multipartUpload(
   "raw",
   async (
     uploadingDevice: Device,
     data: any, // FIXME - At least partially validate this data
-    key: string
+    key: string,
+    uploadedFileData: Uint8Array
   ): Promise<Recording> => {
     const recording = models.Recording.buildSafely(data);
+
+    // TODO(ManageStations): Once location is set here, does it come back as a LatLng?
+    log.warning("Location as set %s", JSON.stringify(recording.location));
 
     if (!uploadingDevice) {
       log.error("No uploading device");
@@ -361,147 +505,91 @@ export const uploadRawRecording = util.multipartUpload(
       recording.rawFileHash = data.fileHash;
     }
 
-    if (data.fileSize) {
-      recording.rawFileSize = data.fileSize;
-    }
-
-    let fileIsCorrupt = false;
-    if (data.type === "thermalRaw") {
-      // Read the file back out from s3 and decode/parse it.
-      const fileData = await modelsUtil
-        .openS3()
-        .getObject({
-          Key: key,
-        })
-        .promise()
-        .catch((err) => {
-          return err;
-        });
-      let metadata;
-      {
-        // TODO - see if this is faster with synthesised test cptv files
-
-        const decoder = new CptvDecoder();
-        metadata = await decoder.getBytesMetadata(
-          new Uint8Array(fileData.Body)
-        );
-        // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
-        fileIsCorrupt = await decoder.hasStreamError();
-        if (fileIsCorrupt) {
-          log.warning(
-            "CPTV Stream error: %s - mark as Corrupt and don't queue for processing",
-            await decoder.getStreamError()
-          );
-        }
-        decoder.close();
-      }
-
-      if (
-        !data.hasOwnProperty("location") &&
-        metadata.latitude &&
-        metadata.longitude
-      ) {
-        // @ts-ignore
-        recording.location = [metadata.latitude, metadata.longitude];
-      } else if (data.hasOwnProperty("location")) {
-        recording.location = data.location;
-      }
-      if (
-        (!data.hasOwnProperty("duration") && metadata.duration) ||
-        (Number(data.duration) === 321 && metadata.duration)
-      ) {
-        // NOTE: Hack to make tests pass, but not allow sidekick uploads to set a spurious duration.
-        //  A solid solution will disallow all of these fields that should come from the CPTV file as
-        //  API settable metadata, and require tests to construct CPTV files with correct metadata.
-        recording.duration = metadata.duration;
-      }
-      if (!data.hasOwnProperty("recordingDateTime") && metadata.timestamp) {
-        recording.recordingDateTime = new Date(
-          metadata.timestamp / 1000
-        ).toISOString();
-      }
-      if (!data.hasOwnProperty("additionalMetadata") && metadata.previewSecs) {
-        // NOTE: Algorithm property gets filled in later by AI
-        recording.additionalMetadata = {
-          previewSecs: metadata.previewSecs,
-          totalFrames: metadata.totalFrames,
-        };
-      }
-      if (data.hasOwnProperty("additionalMetadata")) {
-        recording.additionalMetadata = {
-          ...data.additionalMetadata,
-          ...recording.additionalMetadata,
-        };
-      }
-    }
-
+    const fileIsCorrupt = await parseAndMergeEmbeddedFileMetadata(
+      data,
+      uploadedFileData,
+      recording
+    );
+    recording.rawFileSize = uploadedFileData.length;
     recording.rawFileKey = key;
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
     recording.DeviceId = uploadingDevice.id;
+
+    // FIXME(ManageStations): Should the uploading group be set by this, or by which group the device was in at that time?
+    //  Then we can allow moving devices between groups.  So when we log a deviceLocation, lets' also log which group it was
+    //  part of at that time.  Could we identify it by its saltId, or its serial number?
     recording.GroupId = uploadingDevice.GroupId;
 
     // FIXME(ManageStations): Need to check the activeAt and retiredAt columns when assigning.
     // If a new recording comes in out of order - i.e. before the station was created, we want
     // to move the activeAt date back if it doesn't conflict with another station at that location.
-    const matchingStation = await tryToMatchRecordingToStation(recording);
-    if (matchingStation) {
-      recording.StationId = matchingStation.id;
-    } else if (recording.location) {
-      // TODO - We should have a warning if a recording is uploaded without any location.
 
-      // TODO - add "automatically created" boolean column to stations.
-      // If a recording comes in that exactly matches a station before that station was created, move the creation date back
+    const recordingLocation = recording.location;
+    if (recordingLocation) {
+      await maybeUpdateDeviceHistory(
+        uploadingDevice,
+        recordingLocation,
+        new Date(recording.recordingDateTime)
+      );
+      const matchingStation = await tryToMatchRecordingToStation(recording);
+      if (matchingStation) {
+        recording.StationId = matchingStation.id;
+      } else {
+        // TODO - We should have a warning if a recording is uploaded without any location.
 
-      // TODO(ManageStations)
-      // Create a new station, and assign this recording to it.
-      const device = await models.Device.findByPk(uploadingDevice.id);
+        // TODO - add "automatically created" boolean column to stations.
+        // If a recording comes in that exactly matches a station before that station was created, move the creation date back
 
-      // const device = await models.Device.findByPk(uploadingDevice.id, {
-      //   include: [
-      //     {
-      //       model: models.DeviceLocations,
-      //       order: ["fromDateTime", "desc"]
-      //     },
-      //   ],
-      // });
+        // TODO(ManageStations)
+        // Create a new station, and assign this recording to it.
 
-      const recordingCoords = canonicalLatLng(recording.location);
-      //
-      // // Look at the recordingDateTime
-      // // Check if this device has moved since the last time we saw it, and if so, update the
-      // // DeviceLocations log.
-      // let matchedLocation;
-      // for (const location of device.DeviceLocations) {
-      //   // If there was a "fixup" we'd expect a new location to be set by a user after the location was
-      //   // logged by a recording upload.
-      //
-      //   // If a recording comes in after the fixup time, but has the same location as before the fixup, we'd apply
-      //   // the fixup location to the recording.
-      //
-      //   // If a recording comes through with a location that exactly matches an existing location in the device location log,
-      //   // only earlier, we'd move the earliest known time at that location back.
-      //
-      //   // If we have stations with that location, we'd also need to adjust the station start time?
-      //
-      //   // If a station is deleted, the corresponding entry in the device location log should also be deleted.
-      //   if (locationsAreEqual(location, recordingCoords)) {
-      //     matchedLocation = location;
-      //   }
-      // }
+        // const device = await models.Device.findByPk(uploadingDevice.id, {
+        //   include: [
+        //     {
+        //       model: models.DeviceLocations,
+        //       order: ["fromDateTime", "desc"]
+        //     },
+        //   ],
+        // });
 
-      // TODO(ManageStations): device.lastKnownLocation() method   device.locationAtTime(?dateTime)
+        //
+        // // Look at the recordingDateTime
+        // // Check if this device has moved since the last time we saw it, and if so, update the
+        // // DeviceLocations log.
+        // let matchedLocation;
+        // for (const location of device.DeviceLocations) {
+        //   // If there was a "fixup" we'd expect a new location to be set by a user after the location was
+        //   // logged by a recording upload.
+        //
+        //   // If a recording comes in after the fixup time, but has the same location as before the fixup, we'd apply
+        //   // the fixup location to the recording.
+        //
+        //   // If a recording comes through with a location that exactly matches an existing location in the device location log,
+        //   // only earlier, we'd move the earliest known time at that location back.
+        //
+        //   // If we have stations with that location, we'd also need to adjust the station start time?
+        //
+        //   // If a station is deleted, the corresponding entry in the device location log should also be deleted.
+        //   if (locationsAreEqual(location, recordingCoords)) {
+        //     matchedLocation = location;
+        //   }
+        // }
 
-      const group = await models.Group.findByPk(uploadingDevice.GroupId);
-      const now = new Date().toISOString();
-      // @ts-ignore
-      const newStation = new models.Station({
-        name: `New station for ${device.devicename}_${now}`,
-        location: recordingCoords,
-        activeAt: new Date(recording.recordingDateTime),
-      });
-      await newStation.save();
-      recording.StationId = newStation.id;
-      await group.addStation(newStation);
+        // TODO(ManageStations): device.lastKnownLocation() method   device.locationAtTime(?dateTime)
+
+        const group = await models.Group.findByPk(uploadingDevice.GroupId);
+        const now = new Date().toISOString();
+        // @ts-ignore
+        const newStation = models.Station.build({
+          name: `New station for ${uploadingDevice.devicename}_${now}`,
+          location: recordingLocation,
+          activeAt: new Date(recording.recordingDateTime),
+          automatic: true, // FIXME - Do we really want this?
+        }) as Station;
+        await newStation.save();
+        recording.StationId = newStation.id;
+        await group.addStation(newStation);
+      }
     }
 
     if (typeof uploadingDevice.public === "boolean") {
@@ -515,7 +603,6 @@ export const uploadRawRecording = util.multipartUpload(
     }
     if (data.processingState) {
       recording.processingState = data.processingState;
-
       if (
         recording.processingState ===
         models.Recording.finishedState(data.type as RecordingType)
@@ -523,6 +610,7 @@ export const uploadRawRecording = util.multipartUpload(
         await sendAlerts(recording.id);
       }
     } else {
+      // FIXME(ManageStations) If there is a data.processingState, Corrupt cannot be applied.
       if (!fileIsCorrupt) {
         if (tracked && recording.type !== RecordingType.Audio) {
           recording.processingState = RecordingProcessingState.AnalyseThermal;
@@ -855,6 +943,7 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
     );
 
     for (const trackMeta of metadata["tracks"]) {
+      // FIXME(ManageStations) These promises don't need to block each other.
       const track = await recording.createTrack({
         data: trackMeta,
         AlgorithmId: algorithmDetail.id,

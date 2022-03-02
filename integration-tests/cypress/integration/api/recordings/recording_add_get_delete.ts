@@ -15,6 +15,10 @@ const EXCLUDE_IDS = [
   ".tracks[].tags[].trackId",
   ".tracks[].tags[].id",
   ".tracks[].id",
+
+  // NOTE (Station name and id are automatically generated if there's a new station
+  ".stationId",
+  ".stationName",
 ];
 
 describe("Recordings (thermal): add, get, delete", () => {
@@ -31,6 +35,10 @@ describe("Recordings (thermal): add, get, delete", () => {
     type: RecordingType.ThermalRaw,
     additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
+
+    stationId: 1,
+    stationName: "Station name",
+
     comment: "This is a comment",
     processing: false,
     tags: [],

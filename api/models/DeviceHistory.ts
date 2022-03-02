@@ -15,47 +15,58 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { DeviceId } from "@typedefs/api/common";
+import { DeviceId, GroupId, LatLng } from "@typedefs/api/common";
 import util from "./util/util";
 
-export interface DeviceLocations
+export interface DeviceHistory
   extends Sequelize.Model,
-    ModelCommon<DeviceLocations> {
+    ModelCommon<DeviceHistory> {
   DeviceId: DeviceId;
-  location: { type: "Point"; coordinates: [number, number] };
+  GroupId: GroupId;
+  location: LatLng;
   fromDateTime: Date;
 }
 
-export interface DeviceLocationsStatic
-  extends ModelStaticCommon<DeviceLocations> {}
+export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {}
 
 export default function (
   sequelize: Sequelize.Sequelize,
   DataTypes
-): DeviceLocationsStatic {
-  const name = "DeviceLocations";
+): DeviceHistoryStatic {
+  const name = "DeviceHistory";
 
   const attributes = {
     location: util.locationField(),
     fromDateTime: {
       type: DataTypes.DATE,
+      allowNull: false,
     },
     setBy: {
       type: DataTypes.ENUM("automatic", "user", "sidekick"),
+      allowNull: false,
+    },
+    deviceName: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
   };
 
-  const DeviceLocations = sequelize.define(
-    name,
-    attributes
-  ) as unknown as DeviceLocationsStatic;
+  const DeviceHistory = sequelize.define(name, attributes, {
+    freezeTableName: true,
+    createdAt: false, // Don't create createdAt
+    updatedAt: false, // Don't create updatedAt
+  }) as unknown as DeviceHistoryStatic;
+
+  // We don't have a primary key for this model
+  DeviceHistory.removeAttribute("id");
 
   //---------------
   // CLASS METHODS
   //---------------
-  DeviceLocations.addAssociations = function (models) {
-    models.DeviceLocations.belongsTo(models.Device);
+  DeviceHistory.addAssociations = function (models) {
+    models.DeviceHistory.belongsTo(models.Device);
+    models.DeviceHistory.belongsTo(models.Group);
   };
 
-  return DeviceLocations;
+  return DeviceHistory;
 }

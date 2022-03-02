@@ -65,10 +65,10 @@ function isLatLon(
   }
   const location = canonicalLatLng(point);
   if (
-    location.lng < -90 ||
-    90 < location.lng ||
-    location.lat < -180 ||
-    180 <= location.lat
+    location.lat < -90 ||
+    90 < location.lat ||
+    location.lng < -180 ||
+    180 <= location.lng
   ) {
     valid = false;
     throw new Error(`Location is not valid F. ${JSON.stringify(location)}`);

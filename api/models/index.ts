@@ -35,7 +35,7 @@ import { GroupUsersStatic } from "./GroupUsers";
 import { ScheduleStatic } from "./Schedule";
 import { StationStatic } from "./Station";
 import { asyncLocalStorage } from "@/Globals";
-import { DeviceLocationsStatic } from "@models/DeviceLocations";
+import { DeviceHistoryStatic } from "./DeviceHistory";
 
 const basename = path.basename(module.filename);
 const dbConfig = config.database;
@@ -173,8 +173,8 @@ const AllModels = {
   File: db.File as FileStatic,
   Event: db.Event as EventStatic,
   Device: db.Device as DeviceStatic,
-  DeviceLocations: db.DeviceLocations as DeviceLocationsStatic,
   Group: db.Group as GroupStatic,
+  DeviceHistory: db.DeviceHistory as DeviceHistoryStatic,
   Station: db.Station as StationStatic,
   GroupUsers: db.GroupUsers as GroupUsersStatic,
   Schedule: db.Schedule as ScheduleStatic,

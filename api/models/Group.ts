@@ -29,7 +29,6 @@ import {
 import { Device } from "./Device";
 import { GroupId, UserId, StationId, LatLng } from "@typedefs/api/common";
 import { ApiGroupSettings } from "@typedefs/api/group";
-import { ApiCreateStationData } from "@typedefs/api/station";
 
 const retireMissingStations = (
   existingStations: Station[],
@@ -57,8 +56,10 @@ export const canonicalLatLng = (
   location: LatLng | { coordinates: [number, number] } | [number, number]
 ): LatLng => {
   if (Array.isArray(location)) {
-    return { lat: location[1], lng: location[0] };
+    return { lat: location[0], lng: location[1] };
   } else if (location.hasOwnProperty("coordinates")) {
+    // Lat lng is stored in the database as lng/lat (X,Y).
+    // If we get lat/lng in this format we are getting it from the DB.
     return {
       lat: (location as { coordinates: [number, number] }).coordinates[1],
       lng: (location as { coordinates: [number, number] }).coordinates[0],
@@ -94,7 +95,7 @@ export const checkThatStationsAreNotTooCloseTogether = (
     } else {
       return {
         name: (s as Station).name,
-        ...(s as Station).location
+        ...(s as Station).location,
       };
     }
   });

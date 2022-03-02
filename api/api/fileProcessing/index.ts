@@ -101,9 +101,12 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/processed`,
-    util.multipartUpload("file", async (uploader, data, key) => {
-      return key;
-    })
+    util.multipartUpload(
+      "file",
+      async (uploader, data, key, uploadedFileData) => {
+        return key;
+      }
+    )
   );
 
   // Add tracks
