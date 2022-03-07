@@ -33,6 +33,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   devicename: string;
   groupname: string;
   saltId: number;
+  uuid: number;
   active: boolean;
   public: boolean;
   lastConnectionTime: Date | null;
@@ -83,7 +84,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     deviceId: DeviceId,
     from: Date,
     windowSize: number
-  ) => Promise<{ hour: number; index: number }>;
+  ) => Promise<{ hour: number; index: number }[]>;
   stoppedDevices: () => Promise<Device[]>;
 }
 
@@ -114,6 +115,9 @@ export default function (
       defaultValue: false,
     },
     saltId: {
+      type: DataTypes.INTEGER,
+    },
+    uuid: {
       type: DataTypes.INTEGER,
     },
     active: {
@@ -283,7 +287,7 @@ export default function (
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [result, _] =
-      await sequelize.query(`select round((avg(cacophony_index.scores))::numeric, 2) as cacophony_index from
+      (await sequelize.query(`select round((avg(cacophony_index.scores))::numeric, 2) as cacophony_index from
 (select
 	(jsonb_array_elements("additionalMetadata"->'analysis'->'cacophony_index')->>'index_percent')::float as scores
 from
@@ -291,7 +295,10 @@ from
 where
 	"DeviceId" = ${device.id}
 	and "type" = 'audio'
-	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophony_index;`);
+	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophony_index;`)) as [
+        { cacophony_index: number }[],
+        unknown
+      ];
     const index = result[0].cacophony_index;
     if (index !== null) {
       return Number(index);
@@ -304,14 +311,14 @@ where
     deviceId,
     from,
     windowSizeInHours
-  ) {
+  ): Promise<{ hour: number; index: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
     // Get a spread of 24 results with each result falling into an hour bucket.
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [results, _] = await sequelize.query(`select
+    const [results, _] = (await sequelize.query(`select
 	hour,
 	round((avg(scores))::numeric, 2) as index
 from
@@ -327,7 +334,7 @@ where
 ) as cacophony_index
 group by hour
 order by hour;
-`);
+`)) as [{ hour: number; index: number }[], unknown];
     // TODO(jon): Do we want to validate that there is enough data in a given hour
     //  to get a reasonable index histogram?
     return results.map((item) => ({
@@ -369,14 +376,14 @@ order by hour;
     newGroup: Group,
     newPassword: string
   ): Promise<Device | false> {
-    let newDevice;
+    let newDevice: Device;
+    const now = new Date();
     try {
       await sequelize.transaction(
         {
           isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE,
         },
         async (t) => {
-          // FIXME - Move clientError to API layer
           const conflictingDevice = await Device.findOne({
             where: {
               devicename: newName,
@@ -389,23 +396,35 @@ order by hour;
             logger.warning("Got conflicting device %s", conflictingDevice);
             throw new Error();
           }
+          await this.update({ active: false }, { transaction: t });
 
-          await Device.update(
-            {
-              active: false,
-            },
-            {
-              where: { saltId: this.saltId },
-              transaction: t,
-            }
-          );
-
-          newDevice = await models.Device.create(
+          // NOTE: When a device is re-registered it keeps the last known location.
+          newDevice = (await models.Device.create(
             {
               devicename: newName,
               GroupId: newGroup.id,
               password: newPassword,
               saltId: this.saltId,
+              uuid: this.uuid,
+              lastConnectionTime: now,
+              location: this.location,
+              kind: this.kind,
+            },
+            {
+              transaction: t,
+            }
+          )) as Device;
+
+          await models.DeviceHistory.create(
+            {
+              GroupId: newGroup.id,
+              DeviceId: newDevice.id,
+              location: this.location,
+              fromDateTime: now,
+              setBy: "reregister",
+              deviceName: newName,
+              uuid: newDevice.uuid,
+              saltId: newDevice.saltId,
             },
             {
               transaction: t,

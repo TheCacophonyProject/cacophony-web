@@ -137,6 +137,7 @@ const deviceAttributes = [
   "devicename",
   "location",
   "saltId",
+  "uuid",
   "GroupId",
   "lastConnectionTime",
   "lastRecordingTime",

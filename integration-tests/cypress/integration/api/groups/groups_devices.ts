@@ -98,7 +98,7 @@ describe("Groups - get devices for group", () => {
     );
   });
 
-  it("Lists only active devices", () => {
+  it.only("Lists only active devices", () => {
     let expectedDevice4a: ApiDeviceResponse;
     let expectedDevice4b: ApiDeviceResponse;
     let expectedGroupDevice4b: ApiDeviceResponse;
@@ -153,7 +153,7 @@ describe("Groups - get devices for group", () => {
     });
   });
 
-  it("Handles non-existant group correctly", () => {
+  it("Handles non-existent group correctly", () => {
     cy.apiGroupDevicesCheck("gdUser4", "IDoNotExist", [], [], HTTP_Forbidden, {
       useRawGroupName: true,
     });

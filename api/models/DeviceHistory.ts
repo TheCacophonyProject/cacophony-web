@@ -25,6 +25,9 @@ export interface DeviceHistory
   GroupId: GroupId;
   location: LatLng;
   fromDateTime: Date;
+  saltId: number;
+  uuid: number;
+  setBy: "automatic" | "user" | "sidekick" | "register" | "reregister";
 }
 
 export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {}
@@ -42,11 +45,25 @@ export default function (
       allowNull: false,
     },
     setBy: {
-      type: DataTypes.ENUM("automatic", "user", "sidekick"),
+      type: DataTypes.ENUM(
+        "automatic",
+        "user",
+        "sidekick",
+        "register",
+        "reregister"
+      ),
       allowNull: false,
     },
     deviceName: {
       type: DataTypes.STRING,
+      allowNull: false,
+    },
+    saltId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    uuid: {
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   };

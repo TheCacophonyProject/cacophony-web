@@ -46,6 +46,7 @@ import {
   DeviceId,
   StationId,
   LatLng,
+  IsoFormattedDateString,
 } from "@typedefs/api/common";
 import {
   RecordingProcessingState,
@@ -255,6 +256,7 @@ interface TagLimitedRecording {
   tracks: LimitedTrack[];
   recordingJWT: JwtToken<CptvFile>;
   tagJWT: JwtToken<TrackTag>;
+  fileSize: number;
 }
 
 export interface RecordingStatic extends ModelStaticCommon<Recording> {
@@ -447,7 +449,7 @@ export default function (
     // If the requested device has no more recordings, pick another random recording.
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [result, _] = await sequelize.query(`
+    const [result, _] = (await sequelize.query(`
 select
   g."RId" as "RecordingId",
   g."DeviceId",
@@ -482,7 +484,20 @@ from (
     } and "Recordings"."deletedAt" is null order by RANDOM() limit 1)
   as f left outer join "Tracks" on f."RId" = "Tracks"."RecordingId" and "Tracks"."archivedAt" is null
   left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" is null
-) as g;`);
+) as g;`)) as [
+      {
+        RecordingId: RecordingId;
+        DeviceId: DeviceId;
+        TrackData: any;
+        TrackId: TrackId;
+        TaggedBy: UserId | false;
+        rawFileKey: string;
+        rawMimeType: string;
+        duration: number;
+        recordingDateTime: IsoFormattedDateString;
+      }[],
+      unknown
+    ];
     // NOTE: We bundle everything we need into this one specialised request.
     const flattenedResult = result.reduce(
       (acc, item) => {
@@ -759,10 +774,10 @@ from (
     }
 
     // Ensure track belongs to this recording.
-    if (track.RecordingId !== this.id) {
+    if ((track as Track).RecordingId !== this.id) {
       return null;
     }
-    return track;
+    return track as Track;
   };
 
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;

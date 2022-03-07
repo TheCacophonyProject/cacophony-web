@@ -208,7 +208,7 @@ export default function (
   User.prototype.getDeviceIds = async function () {
     // FIXME(DeviceUsers) Could this just be this.getDevices()?
 
-    const devices = await models.Device.findAll({
+    const devices = (await models.Device.findAll({
       where: {},
       include: [
         {
@@ -229,7 +229,7 @@ export default function (
         },
       ],
       attributes: ["id"],
-    });
+    })) as Device[];
     if (devices !== null) {
       return devices.map((d) => d.id);
     }

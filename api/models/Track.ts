@@ -81,14 +81,14 @@ export default function (
   ): Promise<TrackTag | void> {
     const trackId = this.id;
     return sequelize.transaction(async function (t) {
-      const trackTags = await models.TrackTag.findAll({
+      const trackTags = (await models.TrackTag.findAll({
         where: {
           UserId: tag.UserId,
           automatic: tag.automatic,
           TrackId: trackId,
         },
         transaction: t,
-      });
+      })) as TrackTag[];
       const existingTag = trackTags.find(
         (uTag: TrackTag) => uTag.what === tag.what
       );
@@ -115,15 +115,14 @@ export default function (
     automatic,
     data,
     userId = null
-  ) {
-    const tag = await this.createTrackTag({
+  ): Promise<TrackTag> {
+    return (await this.createTrackTag({
       what,
       confidence,
       automatic,
       data,
       UserId: userId,
-    });
-    return tag;
+    })) as TrackTag;
   };
   // Return a specific track tag for the track.
   Track.prototype.getTrackTag = async function (trackTagId) {
@@ -133,11 +132,11 @@ export default function (
     }
 
     // Ensure track tag belongs to this track.
-    if (trackTag.TrackId !== this.id) {
+    if ((trackTag as TrackTag).TrackId !== this.id) {
       return null;
     }
 
-    return trackTag;
+    return trackTag as TrackTag;
   };
 
   // Archives tags for reprocessing

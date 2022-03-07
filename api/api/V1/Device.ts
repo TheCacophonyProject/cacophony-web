@@ -53,6 +53,7 @@ import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import logging from "@log";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
+import logger from "@log";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -164,11 +165,12 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
     async (request: Request, response: Response) => {
-      const device = await models.Device.create({
+      const device: Device = await models.Device.create({
         devicename: request.body.devicename || request.body.deviceName,
         password: request.body.password,
         GroupId: response.locals.group.id,
       });
+      let saltId;
       if (request.body.saltId) {
         /*
         NOTE: We decided not to use this check, since damage caused by someone
@@ -187,10 +189,22 @@ export default function (app: Application, baseUrl: string) {
           );
         }
         */
-        await device.update({ saltId: request.body.saltId });
+        saltId = request.body.saltId;
       } else {
-        await device.update({ saltId: device.id });
+        saltId = device.id;
       }
+      await device.update({ saltId, uuid: device.id });
+      // Create the initial entry in the device history table.
+      await models.DeviceHistory.create({
+        saltId,
+        setBy: "register",
+        GroupId: device.GroupId,
+        DeviceId: device.id,
+        fromDateTime: new Date(),
+        deviceName: device.devicename,
+        uuid: device.id,
+      });
+
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new device."],
@@ -574,9 +588,10 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
-      const requestDevice = await models.Device.findByPk(
+      const requestDevice: Device = await models.Device.findByPk(
         response.locals.requestDevice.id
       );
+
       const device = await requestDevice.reRegister(
         request.body.newName,
         response.locals.group,

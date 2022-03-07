@@ -206,12 +206,16 @@ export function deleteFile(fileKey) {
 }
 
 const geometrySetter = (
-  val: { coordinates: [number, number] } | [number, number] | LatLng | string
-): { type: "Point"; coordinates: [number, number] } => {
-  // Put here so old apps that send location in a string still work.
-  // TODO remove this when nobody is using the old app that sends a string.
-  if (typeof val === "string") {
-    return;
+  val:
+    | { coordinates: [number, number] }
+    | [number, number]
+    | LatLng
+    | string
+    | undefined
+    | null
+): { type: "Point"; coordinates: [number, number] } | null => {
+  if (val === undefined || val === null || typeof val === "string") {
+    return null;
   }
   const location = canonicalLatLng(val);
   // Flip coordinates to X,Y, expected by PostGIS (Longitude, Latitude)
@@ -225,26 +229,13 @@ export function locationField(fieldName: string = "location") {
   return {
     type: DataTypes.GEOMETRY,
     set(value) {
-      log.error("Setting location field %s", value);
-      const location = geometrySetter(value);
-      log.error("Got raw location field %s", location);
-      if (location) {
-        log.error(
-          "Setting %s, %s, [%s, %s]",
-          this,
-          fieldName,
-          location.coordinates[0],
-          location.coordinates[1]
-        );
-        this.setDataValue(fieldName, location);
-      }
+      this.setDataValue(fieldName, geometrySetter(value));
     },
     get() {
       const location = this.getDataValue(fieldName);
       if (location) {
         return canonicalLatLng(location);
       }
-      log.error("Getting null location %s for %s", location, this);
       return null;
     },
     validate: {

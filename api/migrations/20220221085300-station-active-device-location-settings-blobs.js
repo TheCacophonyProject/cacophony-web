@@ -41,11 +41,17 @@ module.exports = {
       comment: "Group specific settings set for all group members by the group admin"
     });
 
+    await queryInterface.addColumn("Devices", "uuid", {
+      type: Sequelize.INTEGER,
+      comment: "Immutable ID for this device.  Even if a device is re-registered, this should stay the same"
+    });
+
+    // FIXME(ManageStations): Now assign uuids for all current devices - which can be initially derived from their deviceId.
+
     await queryInterface.createTable("DeviceHistory", {
       location: {
         type: Sequelize.GEOMETRY,
-        allowNull: false,
-        comment: "Location of device at `fromDateTime`"
+        comment: "Location of device at `fromDateTime` (if known)"
       },
       fromDateTime: {
         type: Sequelize.DATE,
@@ -53,7 +59,7 @@ module.exports = {
         comment: "Earliest time that the device was known to be at this `location`",
       },
       setBy: {
-        type: Sequelize.ENUM('automatic', 'user', 'sidekick'),
+        type: Sequelize.ENUM('automatic', 'user', 'sidekick', 'reregister', 'register'),
         allowNull: false,
         comment: "Where the location of this device was set from - a recording upload, manually by the user, or via sidekick"
       },
@@ -61,8 +67,21 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
         comment: "Purely for auditing/debugging purposes, store the device name at the time the location was logged"
+      },
+      uuid: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        comment: "Immutable ID for this device.  Even if a device is re-registered, this should stay the same"
+      },
+      saltId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        comment: "Salt id of this device at this time"
       }
     });
+
+    // TODO(ManageStations): Create stations and device history from Recordings, test against real DB dumps
+
     await util.migrationAddBelongsTo(queryInterface, "DeviceHistory", "Devices", "strict");
     await util.migrationAddBelongsTo(queryInterface, "DeviceHistory", "Groups", "strict");
   },
@@ -79,6 +98,7 @@ module.exports = {
     await queryInterface.removeColumn("Users", "settings");
     await queryInterface.removeColumn("GroupUsers", "settings");
     await queryInterface.removeColumn("Groups", "settings");
+    await queryInterface.removeColumn("Devices", "uuid");
 
     await util.migrationRemoveBelongsTo(queryInterface, "DeviceHistory", "Devices");
     await util.migrationRemoveBelongsTo(queryInterface, "DeviceHistory", "Groups");

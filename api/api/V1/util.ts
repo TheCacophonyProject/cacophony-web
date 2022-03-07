@@ -231,45 +231,6 @@ function multipartUpload(
           key,
           fileDataArray
         );
-        if (uploadingDevice) {
-          // Update the device location and lastRecordingTime from the recording data,
-          // if the recording time is *later* than the last recording time, or there
-          // is no last recording time
-
-          // FIXME - Does the recordingDateTime include a timezone?  If not, do
-          //  we need to set one here?
-          const thisRecordingTime = new Date(
-            (dbRecordOrFileKey as Recording).recordingDateTime
-          );
-          if (
-            !uploadingDevice.lastRecordingTime ||
-            uploadingDevice.lastRecordingTime < thisRecordingTime
-          ) {
-            await uploadingDevice.update({
-              location: (dbRecordOrFileKey as Recording).location,
-              lastRecordingTime: thisRecordingTime,
-            });
-
-            // Update the group lastRecordingTime too:
-            const group = await uploadingDevice.getGroup();
-            if (
-              !group.lastRecordingTime ||
-              group.lastRecordingTime < thisRecordingTime
-            ) {
-              await group.update({
-                lastRecordingTime: thisRecordingTime,
-              });
-            }
-          }
-          if (uploadingDevice.kind === DeviceType.Unknown) {
-            // If this is the first recording we've gotten from a device, we can set its type.
-            const deviceType =
-              (dbRecordOrFileKey as Recording).type === RecordingType.ThermalRaw
-                ? "thermal"
-                : "audio";
-            await uploadingDevice.update({ kind: deviceType });
-          }
-        }
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();
           if (dbRecordOrFileKey.type === "audioBait") {
