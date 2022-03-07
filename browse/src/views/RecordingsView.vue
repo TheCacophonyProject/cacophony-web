@@ -325,9 +325,9 @@ $main-content-width: 640px;
     position: fixed;
     top: 0;
     left: 0;
+    z-index: 110;
     transform: translate(0);
     width: var(--search-panel-width);
-    z-index: 2;
     transition: transform 0.2s;
     &.is-collapsed {
       transform: translate(var(--search-panel-offset));
