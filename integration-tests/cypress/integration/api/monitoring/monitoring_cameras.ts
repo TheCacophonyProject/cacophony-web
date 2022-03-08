@@ -1,4 +1,4 @@
-describe("Monitoring : multiple cameras and stations", () => {
+describe.skip("Monitoring : multiple cameras and stations", () => {
   const Penny = "Penny";
 
   before(() => {

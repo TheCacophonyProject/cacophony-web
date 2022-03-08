@@ -26,11 +26,11 @@ export const TEMPLATE_AUDIO_RECORDING: ApiRecordingSet = {
   batteryCharging: "DISCHARGING",
   batteryLevel: 87,
   airplaneModeOn: false,
-  cacophonyIndex: [
+    cacophonyIndex: [
     { end_s: 20, begin_s: 0, index_percent: 80.8 },
     { end_s: 40, begin_s: 20, index_percent: 77.1 },
     { end_s: 60, begin_s: 40, index_percent: 71.6 },
-  ],
+],
   additionalMetadata: {
     normal: "0",
     "SIM IMEI": "990006964660319",
@@ -184,7 +184,6 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
       y: 17,
       width: 48,
       height: 75,
-      //frameNumber: 44, FIXME: PATRICK: Remove once GPs changes integrated
       order: NOT_NULL,
     },
   ],

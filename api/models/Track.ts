@@ -166,6 +166,25 @@ export default function (
     });
   };
 
+  Track.prototype.updateIsFiltered = async function () {
+    const trackId = this.id;
+    return sequelize.transaction(async function (t) {
+      const track = await models.Track.findByPk(trackId, {
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      const tags = await models.TrackTag.findAll({
+        where: {
+          TrackId: trackId,
+          archivedAt: null,
+        },
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      await track.update({ filtered: isFiltered(tags) }, { transaction: t });
+    });
+  };
+
   // Archives tags for reprocessing
   Track.prototype.archiveTags = async function () {
     await models.TrackTag.update(

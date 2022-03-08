@@ -992,10 +992,10 @@ const addTag = async (
 };
 
 async function tracksFromMeta(recording: Recording, metadata: any) {
-  if (!("tracks" in metadata)) {
-    return false;
-  }
   try {
+    if (!("tracks" in metadata)) {
+      return false;
+    }
     const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
       "algorithm",
       metadata["algorithm"]

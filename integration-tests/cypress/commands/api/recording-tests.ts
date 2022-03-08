@@ -618,8 +618,7 @@ function positionResponseFromSet(positions) {
     newTp["y"] = tp.y;
     newTp["width"] = tp.width;
     newTp["height"] = tp.height;
-    //newTp["frameNumber"] = tp.frame_number; FIXME PATRICK - remove once GPs code merged
-    newTp["order"] = tp.frame_number; // FIXME PATRICK - remove once GPs code merged
+    newTp["order"] = tp.order;
     tps.push(newTp);
   });
 

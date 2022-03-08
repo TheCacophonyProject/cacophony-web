@@ -85,7 +85,8 @@ function migrationRemoveBelongsTo(
     options.transaction = opts.transaction;
   }
   return queryInterface.sequelize.query(
-    `ALTER TABLE "${childTable}" DROP COLUMN "${columnName}";`, options
+    `ALTER TABLE "${childTable}" DROP COLUMN "${columnName}";`,
+    options
   );
 }
 exports.migrationRemoveBelongsTo = migrationRemoveBelongsTo;

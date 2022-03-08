@@ -58,6 +58,7 @@
         <div class="results-header">
           <div>
             <span> ID</span>
+            <span>Type</span>
             <span>Device</span>
             <span>Date</span>
             <span>Time</span>

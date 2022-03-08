@@ -2,7 +2,7 @@
 
 import { addSeconds } from "@commands/api/recording-tests";
 
-describe("Monitoring : times and recording groupings", () => {
+describe.skip("Monitoring : times and recording groupings", () => {
   const Dexter = "Dexter";
   const group = "Monitoring_visits";
 
