@@ -4,10 +4,19 @@
     ref="list-container"
   >
     <div v-if="showCards">
-      <div
-        v-for="(itemsByDay, index_a) in recordingsChunkedByDayAndHour"
-        :key="index_a"
-      >
+      <div class="filtered-recordings">
+        <span v-b-tooltip.hover :title="filteredToolTip">
+          <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
+          <label for="cbFiltered"
+            >Show Filtered ( {{ filteredCount }} Recording<span
+              v-if="filteredCount != 1"
+              >s</span
+            >
+            )</label
+          >
+        </span>
+      </div>
+      <div v-for="(itemsByDay, index_a) in recordingsChunked" :key="index_a">
         <h4 class="recordings-day">{{ relativeDay(itemsByDay) }}</h4>
         <div v-for="(itemsByHour, index_b) in itemsByDay" :key="index_b">
           <h5 class="recordings-hour">{{ hour(itemsByHour) }}</h5>
@@ -32,56 +41,83 @@
         />
       </div>
     </div>
-    <div v-else-if="tableItems && tableItems.length !== 0" class="all-rows">
-      <div class="results-header">
-        <div>
-          <span>ID</span>
-          <span>Device</span>
-          <span>Date</span>
-          <span>Time</span>
-          <span>Duration</span>
-          <span>Tags</span>
-          <span>Group</span>
-          <span>Station</span>
-          <span>Location</span>
-          <span>Battery</span>
-        </div>
+    <div v-else-if="tableItems">
+      <div class="filtered-recordings rows">
+        <span v-b-tooltip.hover :title="filteredToolTip">
+          <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
+          <label for="cbFiltered"
+            >Show Filtered ( {{ filteredCount }} Recording<span
+              v-if="filteredCount != 1"
+              >s</span
+            >
+            )</label
+          >
+        </span>
       </div>
-      <div class="results-rows">
-        <RecordingSummary
-          v-for="(item, index) in tableItems"
-          :item="item"
-          :ref="item.id"
-          :index="index"
-          :is-even-row="index % 2 === 1"
-          :key="`${index}_row`"
-          display-style="row"
-          :futureSearchQuery="viewRecordingQuery"
-        />
+      <div class="all-rows" v-if="tableItems.length !== 0">
+        <div class="results-header">
+          <div>
+            <span> ID</span>
+            <span>Device</span>
+            <span>Date</span>
+            <span>Time</span>
+            <span>Duration</span>
+            <span>Tags</span>
+            <span>Group</span>
+            <span>Station</span>
+            <span>Location</span>
+            <span>Battery</span>
+          </div>
+        </div>
+        <div class="results-rows">
+          <RecordingSummary
+            v-for="(item, index) in filteredItems"
+            :item="item"
+            :ref="item.id"
+            :index="index"
+            :is-even-row="index % 2 === 1"
+            :key="`${index}_row`"
+            display-style="row"
+            :futureSearchQuery="viewRecordingQuery"
+          />
 
-        <div
-          v-for="i in queryPending ? 10 : 0"
-          :key="i"
-          class="recording-summary-row"
-          :style="{
-            background: `rgba(240, 240, 240, ${1 / i}`,
-          }"
-        >
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
-          <span>&nbsp;</span>
+          <div
+            v-for="i in queryPending ? 10 : 0"
+            :key="i"
+            class="recording-summary-row"
+            :style="{
+              background: `rgba(240, 240, 240, ${1 / i}`,
+            }"
+          >
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+            <span>&nbsp;</span>
+          </div>
         </div>
       </div>
     </div>
     <div v-if="recordings.length && (allLoaded || atEnd)" class="all-loaded">
       <span>That's all! No more recordings to load for the current query.</span>
+    </div>
+    <div v-else-if="loadButton" class="all-loaded">
+      <div>
+        All {{ this.recordings.length }} recording<span
+          v-if="this.recordings.length > 1"
+          >s</span
+        >
+        are filtered
+      </div>
+
+      <b-button class="load-more" @click="$emit('load-more')"
+        >Load More</b-button
+      >
     </div>
   </div>
 </template>
@@ -98,6 +134,7 @@ import { RecordingType } from "@typedefs/api/consts";
 import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
+  CacophonyIndex,
 } from "@typedefs/api/recording";
 import { LatLng } from "@typedefs/api/common";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
@@ -106,6 +143,7 @@ import {
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { ApiTrackResponse } from "@typedefs/api/track";
+import DefaultLabels, { FILTERED_TOOLTIP } from "../const";
 
 const parseLocation = (location: LatLng): string => {
   if (location && typeof location === "object") {
@@ -118,6 +156,9 @@ const parseLocation = (location: LatLng): string => {
 };
 
 const parseProcessingState = (result: string): string => {
+  if (!result) {
+    return "";
+  }
   const string = result.toLowerCase();
   return string.charAt(0).toUpperCase() + string.slice(1);
 };
@@ -158,50 +199,14 @@ const addToListOfTags = (
   allTags[tagName] = tag;
 };
 
-const collateTags = (
-  tags: ApiRecordingTagResponse[],
-  tracks: ApiTrackResponse[]
-): DisplayTag[] => {
+const collateTags = (tags: ApiRecordingTagResponse[]): DisplayTag[] => {
   // Build a collection of tagItems - one per animal
   const tagItems: Record<string, DisplayTag> = {};
-  for (let i = 0; i < tags.length; i++) {
-    const tag = tags[i];
-    // FIXME - check if we needed animal here
+  tags.forEach((tag) => {
     const tagName = tag.what || tag.detail; //tag.animal === null ? tag.event : tag.animal;
     const taggerId = tag.taggerId;
     addToListOfTags(tagItems, tagName, tag.automatic, taggerId);
-  }
-
-  if (tracks) {
-    for (let j = 0; j < tracks.length; j++) {
-      const track = tracks[j];
-      // For track tags, pick the best one, which is the "master AI" tag.
-      const aiTag = track.tags.find(
-        (tag) =>
-          tag.data &&
-          (tag.data === "Master" ||
-            (typeof tag.data === "object" && tag.data.name === "Master"))
-      ) as ApiAutomaticTrackTagResponse;
-      const humanTags = track.tags.filter(
-        (tag) => !tag.automatic
-      ) as ApiHumanTrackTagResponse[];
-      // If the same track has one or more human tags, and none of them agree with the AI just show that:
-      let humansDisagree = false;
-      if (aiTag && humanTags.length !== 0) {
-        humansDisagree =
-          humanTags.find((tag) => tag.what === aiTag.what) === undefined;
-      }
-
-      if (aiTag && !humansDisagree) {
-        addToListOfTags(tagItems, aiTag.what, aiTag.automatic, null);
-      }
-
-      // Also add human tags:
-      for (const tag of humanTags) {
-        addToListOfTags(tagItems, tag.what, tag.automatic, tag.userId);
-      }
-    }
-  }
+  });
 
   // Use automatic and human status to create an ordered array of objects
   // suitable for parsing into coloured spans
@@ -210,7 +215,6 @@ const collateTags = (
     const tagItem = tagItems[animal];
     let subOrder = 0;
     if (animal === "false positive") {
-      animal = "false positive";
       subOrder = 3;
     } else if (animal === "multiple animals") {
       animal = "multiple";
@@ -242,13 +246,10 @@ const collateTags = (
       });
     }
   }
-  // Sort the result array
-  result.sort((a, b) => {
-    return a.order - b.order;
-  });
   return result;
 };
 
+const FILTERED_MAX = 100;
 interface ItemData {
   kind: "dataRow" | "dataSeparator";
   id: number;
@@ -256,17 +257,20 @@ interface ItemData {
   deviceName: string;
   groupName: string;
   stationName?: string;
+  cacophonyIndex?: CacophonyIndex[];
   stationId?: number;
   location: string;
   dateObj: Date;
   date: string;
   time: string;
   duration: number;
-  tags: DisplayTag[];
+  recTags: DisplayTag[];
   batteryLevel: number | null;
   trackCount: number;
   processingState: string;
   processing: boolean;
+  tracks: any[];
+  filtered: boolean;
 }
 
 export default {
@@ -295,6 +299,24 @@ export default {
     },
   },
   watch: {
+    showFiltered() {
+      if (this.filteredCount == this.recordings.length) {
+        if (this.recordings.length < FILTERED_MAX) {
+          this.$emit("load-more");
+        } else if (!this.showFiltered) {
+          // not showing any recordings but tried the first 100
+          // give the user a button to load more
+          this.loadButton = true;
+        }
+      } else {
+        this.loadButton = false;
+      }
+      if (this.filteredCount > 0) {
+        const scroller =
+          this.$refs["list-container"].parentElement.parentElement;
+        scroller.scrollTop = 0;
+      }
+    },
     showCards() {
       this.$refs["list-container"].style.height = "auto";
     },
@@ -341,12 +363,15 @@ export default {
           type: recording.type,
           deviceName: recording.deviceName,
           groupName: recording.groupName,
+          cacophonyIndex: (recording as ApiAudioRecordingResponse)
+            .cacophonyIndex,
           location: parseLocation(recording.location),
           dateObj: thisDate,
           date: toNZDateString(thisDate),
           time: thisDate.toLocaleTimeString(),
           duration: recording.duration,
-          tags: collateTags(recording.tags, recording.tracks),
+          tracks: recording.tracks,
+          recTags: collateTags(recording.tags, []),
           batteryLevel: (recording as ApiAudioRecordingResponse).batteryLevel,
           trackCount: recording.tracks.length,
           processingState: parseProcessingState(recording.processingState),
@@ -355,10 +380,12 @@ export default {
           stationId: recording.stationId,
         };
 
+        if (itemData.type == "thermalRaw") {
+          itemData.filtered = itemData.tracks.every((track) => track.filtered);
+        }
         items.push(itemData);
       }
       this.tableItems.push(...items);
-
       // Now calculate chunks of days and hour groupings
       {
         const chunks = [];
@@ -411,6 +438,19 @@ export default {
           this.recordingsChunkedByDayAndHour.push(...chunks);
         }
       }
+      this.$emit("filtered-count", this.filteredCount);
+
+      if (this.filteredCount == this.recordings.length) {
+        if (this.recordings.length < FILTERED_MAX) {
+          this.$emit("load-more");
+        } else if (!this.showFiltered) {
+          // not showing any recordings but tried the first 100
+          // give the user a button to load more
+          this.loadButton = true;
+        }
+      } else {
+        this.loadButton = false;
+      }
     },
   },
   beforeDestroy() {
@@ -427,7 +467,7 @@ export default {
     // Just observe the nth to last item, and when it comes into view, we load more, and disconnect the observer.
     const n = 3;
     for (const ref of Object.values(this.$refs)) {
-      if ((ref as any[]).length !== 0) {
+      if ((ref as any[]).length !== 0 && ref != this.$refs["list-container"]) {
         if (ref[0] && ref[0].$el) {
           const bounds = ref[0].$el.getBoundingClientRect();
           maxY.push([bounds.y, ref[0].$el]);
@@ -441,7 +481,16 @@ export default {
     if (maxY.length) {
       const observerTrigger = maxY[maxY.length - 1][1];
       if (this.showCards) {
-        this.$refs["list-container"].style.height = `${maxY[0][0]}px`;
+        let yHeight = maxY[0][0];
+        if (yHeight < 0) {
+          let currentHeight = this.$refs["list-container"].style.height;
+          const index = currentHeight.search("px");
+          if (index > 0) {
+            currentHeight = Number(currentHeight.substring(0, index));
+            yHeight = currentHeight + yHeight;
+          }
+        }
+        this.$refs["list-container"].style.height = `${yHeight}px`;
       }
       this.observer && this.observer.observe(observerTrigger);
     } else {
@@ -478,7 +527,50 @@ export default {
       tableItems: [],
       atEnd: false,
       loadedRecordingsCount: 0,
+      loadButton: false,
+      filteredToolTip: FILTERED_TOOLTIP,
     };
+  },
+  computed: {
+    showFiltered: {
+      set: function (val) {
+        localStorage.setItem("showFiltered", val);
+        this.$store.state.User.userData.showFiltered = val;
+      },
+      get: function () {
+        return this.$store.state.User.userData.showFiltered;
+      },
+    },
+    filteredCount() {
+      return this.tableItems.filter((item) => item.filtered).length;
+    },
+    filteredItems() {
+      if (this.showFiltered) {
+        return this.tableItems;
+      } else {
+        return this.tableItems.filter((item) => !item.filtered);
+      }
+    },
+    recordingsChunked() {
+      if (this.showFiltered) {
+        return this.recordingsChunkedByDayAndHour;
+      } else {
+        const filteredChunks = [];
+        for (const chunk of this.recordingsChunkedByDayAndHour) {
+          const hourChunks = [];
+          for (const hourChunk of chunk) {
+            const filteredHours = hourChunk.filter((item) => !item.filtered);
+            if (filteredHours.length > 0) {
+              hourChunks.push(filteredHours);
+            }
+          }
+          if (hourChunks.length > 0) {
+            filteredChunks.push(hourChunks);
+          }
+        }
+        return filteredChunks;
+      }
+    },
   },
 };
 </script>
@@ -491,11 +583,11 @@ export default {
 .recordings-day {
   position: sticky;
   top: 0;
+  z-index: 100;
   background: transparentize($white, 0.15);
   padding: 0.5rem 0;
   font-size: 1em;
   font-weight: 600;
-  border-bottom: 1px solid $gray-200;
 }
 
 .recordings-hour {
@@ -540,7 +632,7 @@ export default {
 }
 
 .results.display-rows {
-  overflow-x: auto;
+  // overflow-x: auto;
   //overflow-y: unset;
   max-width: unset;
 
@@ -559,11 +651,12 @@ export default {
     display: table-header-group;
     > div {
       display: table-row;
-
       > span {
+        z-index: 1;
         position: sticky;
-        top: 0;
-        background: transparentize($white, 0.15);
+        top: 30px;
+        background: white;
+        // background: transparentize($white, 0.15);
         padding: 5px;
         font-weight: 700;
         vertical-align: middle;
@@ -574,7 +667,6 @@ export default {
     }
   }
 }
-// Row view variant
 .recording-summary-row {
   width: 100%;
   &:nth-child(odd) {
@@ -602,6 +694,18 @@ export default {
     border-radius: 15px;
     background: $gray-100;
     font-weight: bold;
+  }
+}
+
+.filtered-recordings {
+  position: sticky;
+  top: 0;
+  text-align: right;
+  z-index: 101;
+  padding: 8px;
+  &.rows {
+    background: white;
+    height: 30px;
   }
 }
 </style>

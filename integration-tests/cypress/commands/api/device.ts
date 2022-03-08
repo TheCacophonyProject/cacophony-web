@@ -379,11 +379,16 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiDeviceHeartbeat",
-  (deviceName: string, nextHeartbeat: Date, statusCode: number = 200) => {
-    logTestDescription(
-      `${deviceName} Sending heart beat, next heart beat ${nextHeartbeat}'`,
-      { deviceName, nextHeartbeat }
-    );
+  (
+    deviceName: string,
+    nextHeartbeat: string,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(`Register heartbeat for camera '${deviceName}'`, {
+      camera: deviceName,
+      nextHeartbeat: nextHeartbeat,
+    });
 
     makeAuthorizedRequestWithStatus(
       {
@@ -395,6 +400,12 @@ Cypress.Commands.add(
       },
       deviceName,
       statusCode
-    );
+    ).then((response) => {
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
+    });
   }
 );

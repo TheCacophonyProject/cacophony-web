@@ -283,8 +283,11 @@ export default {
           result: { tracks },
         } = tracksResponse;
         const track = tracks.find((track) => track.id === trackId);
-        this.recording.tracks.find((track) => track.id === trackId).tags =
-          track.tags;
+        const localTrack = this.recording.tracks.find(
+          (track) => track.id === trackId
+        );
+        localTrack.tags = track.tags;
+        localTrack.filtered = track.filtered;
       }
     },
     // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars

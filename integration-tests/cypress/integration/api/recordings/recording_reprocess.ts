@@ -2,8 +2,8 @@
 import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL,
   NOT_NULL_STRING,
+  EXCLUDE_IDS,
 } from "@commands/constants";
 
 import { getCreds } from "@commands/server";
@@ -20,196 +20,50 @@ import {
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  TEMPLATE_AUDIO_RECORDING,
+  TEMPLATE_AUDIO_RECORDING_PROCESSING,
+  TEMPLATE_AUDIO_RECORDING_RESPONSE,
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_PROCESSING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 describe("Recordings - reprocessing tests", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  //Do not validate IDs
-  const EXCLUDE_IDS = [
-    ".tracks[].tags[].trackId",
-    ".tracks[].tags[].id",
-    ".tracks[].id",
-  ];
-
   //TODO: workaround for issue 88. Remove rawMimeType from exclude list once fixed
-  const EXCLUDE_IDS_AND_MIME = [
-    ".tracks[].tags[].trackId",
-    ".tracks[].tags[].id",
-    ".tracks[].id",
-    ".rawMimeType",
-  ];
+  const EXCLUDE_IDS_AND_MIME = EXCLUDE_IDS.concat([".rawMimeType"]);
 
   //Do not validate keys
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
 
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: [-45.29115, 169.30845],
-    additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
-    metadata: {
-      algorithm: { model_name: "master" },
-      tracks: [], //{ start_s: 2, end_s: 5, predictions: [{confident_tag: "cat", confidence: 0.9, model_id: 1}] }
-    },
-    comment: "This is a comment",
-    processingState: RecordingProcessingState.Finished,
-  };
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
-  const templateExpectedRecording: ApiThermalRecordingResponse = {
-    deviceId: 0,
-    deviceName: "",
-    groupName: "",
-    tags: [],
-    tracks: [],
-    id: 892972,
-    rawMimeType: "application/x-cptv",
-    processingState: RecordingProcessingState.Finished,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: { lat: -45.29115, lng: 169.30845 },
-    type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-    groupId: 246,
-    comment: "This is a comment",
-    processing: false,
-  };
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
 
-  const templateExpectedProcessing: ApiRecordingForProcessing = {
-    id: 475,
-    type: RecordingType.ThermalRaw,
-    jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawMimeType: "application/x-cptv",
-    fileKey: null,
-    fileMimeType: null,
-    processingState: RecordingProcessingState.Reprocess,
-    processingMeta: null,
-    GroupId: NOT_NULL,
-    DeviceId: NOT_NULL,
-    StationId: null,
-    recordingDateTime: "2021-01-01T01:01:01.018Z",
-    duration: 16.6666666666667,
-    location: null,
-    hasAlert: false,
-    processingStartTime: NOT_NULL_STRING,
-    processingEndTime: null,
-    processing: true,
-    updatedAt: NOT_NULL_STRING,
-  };
+  const templateExpectedProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_PROCESSING)
+  );
+  templateExpectedProcessing.processingState =
+    RecordingProcessingState.Reprocess;
 
-  const templateExpectedAudioRecording: ApiAudioRecordingResponse = {
-    id: 204771,
-    type: RecordingType.Audio,
-    rawMimeType: "audio/mp4",
-    //rawMimeType: "video/mp4",
-    processingState: RecordingProcessingState.Finished,
-    duration: 60,
-    recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDusk: -17219,
-    location: { lat: -43.53345, lng: 172.64745 },
-    version: "1.8.1",
-    batteryLevel: 87,
-    batteryCharging: "DISCHARGING",
-    airplaneModeOn: false,
-    additionalMetadata: {
-      normal: "0",
-      "SIM IMEI": "990006964660319",
-      analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [],
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
-      },
-      "SIM state": "SIM_STATE_READY",
-      "Auto Update": false,
-      "Flight Mode": false,
-      "Phone model": "SM-G900V",
-      amplification: 1.0721460589601806,
-      SimOperatorName: "Verizon",
-      "Android API Level": 23,
-      "Phone manufacturer": "samsung",
-      "App has root access": false,
-    },
-    groupId: 389,
-    groupName: "mattb-audio",
-    tags: [],
-    tracks: [],
-    deviceName: "mattb-s5",
-    deviceId: 2023,
-  };
-
-  const templateExpectedAudioProcessing: ApiRecordingForProcessing = {
-    id: 475,
-    type: RecordingType.Audio,
-    jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawMimeType: "video/mp4",
-    fileKey: null,
-    fileMimeType: null,
-    processingState: RecordingProcessingState.Reprocess,
-    processingMeta: null,
-    GroupId: NOT_NULL,
-    DeviceId: NOT_NULL,
-    StationId: null,
-    recordingDateTime: "2021-01-01T01:01:01.018Z",
-    duration: 16.6666666666667,
-    location: null,
-    hasAlert: false,
-    processingStartTime: NOT_NULL_STRING,
-    processingEndTime: null,
-    processing: true,
-    updatedAt: NOT_NULL_STRING,
-  };
-
-  const templateAudioRecording: ApiRecordingSet = {
-    type: RecordingType.Audio,
-    fileHash: null,
-    duration: 60,
-    recordingDateTime: "2021-08-24T01:35:00.000Z",
-    relativeToDusk: -17219,
-    location: [-43.53345, 172.64745],
-    version: "1.8.1",
-    batteryCharging: "DISCHARGING",
-    batteryLevel: 87,
-    airplaneModeOn: false,
-    additionalMetadata: {
-      normal: "0",
-      "SIM IMEI": "990006964660319",
-      analysis: {
-        cacophony_index: [
-          { end_s: 20, begin_s: 0, index_percent: 80.8 },
-          { end_s: 40, begin_s: 20, index_percent: 77.1 },
-          { end_s: 60, begin_s: 40, index_percent: 71.6 },
-        ],
-        species_identify: [],
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
-      },
-      "SIM state": "SIM_STATE_READY",
-      "Auto Update": false,
-      "Flight Mode": false,
-      "Phone model": "SM-G900V",
-      amplification: 1.0721460589601806,
-      SimOperatorName: "Verizon",
-      "Android API Level": 23,
-      "Phone manufacturer": "samsung",
-      "App has root access": false,
-    },
-    processingState: RecordingProcessingState.Finished,
-  };
+  const templateExpectedAudioRecording: ApiAudioRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
+  );
+  const templateExpectedAudioProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_PROCESSING)
+  );
+  templateExpectedAudioProcessing.processingState =
+    RecordingProcessingState.Reprocess;
+  const templateAudioRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
+  );
 
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
   //recordings that are in analyse state that do not belong to us.  This can be removed once
@@ -297,7 +151,6 @@ describe("Recordings - reprocessing tests", () => {
           null,
           recording1
         );
-
         cy.log("Check recording");
         expectedRecording1.processingState = RecordingProcessingState.Finished;
         expectedRecording1.processing = false;
@@ -311,7 +164,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("Mark for reprocessing");
         cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording1").id]);
 
-        cy.log("Check recording status - original track, tags deleted");
+        cy.log("Check recording status - original tags deleted");
         expectedRecording2 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
           "rrpRecording1",
@@ -322,7 +175,8 @@ describe("Recordings - reprocessing tests", () => {
         );
         expectedRecording2.processingState = RecordingProcessingState.Reprocess;
         expectedRecording2.processing = false;
-        expectedRecording2.tracks = [];
+        expectedRecording2.tracks[0].tags = [];
+        expectedRecording2.tracks[0].filtered = true;
         cy.apiRecordingCheck(
           "rrpGroupAdmin",
           "rrpRecording1",
@@ -357,7 +211,8 @@ describe("Recordings - reprocessing tests", () => {
         );
         expectedRecording3.processingState = RecordingProcessingState.Reprocess;
         expectedRecording3.processing = true;
-        expectedRecording3.tracks = [];
+        expectedRecording3.tracks[0].tags = [];
+        expectedRecording3.tracks[0].filtered = true;
         cy.apiRecordingCheck(
           "rrpGroupAdmin",
           "rrpRecording1",
@@ -379,7 +234,8 @@ describe("Recordings - reprocessing tests", () => {
         );
         expectedRecording4.processingState = RecordingProcessingState.Finished;
         expectedRecording4.processing = false;
-        expectedRecording4.tracks = [];
+        expectedRecording4.tracks[0].tags = [];
+        expectedRecording4.tracks[0].filtered = true;
         cy.apiRecordingCheck(
           "rrpGroupAdmin",
           "rrpRecording1",
@@ -416,7 +272,8 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("Check recording is in reprocess, with existing tracks cleared");
         expectedRecording5.processingState = RecordingProcessingState.Reprocess;
         expectedRecording5.processing = false;
-        expectedRecording5.tracks = [];
+        expectedRecording5.tracks[0].tags = [];
+        expectedRecording5.tracks[0].filtered = true;
         cy.apiRecordingCheck(
           "rrpGroupAdmin",
           "rrpRecording5",
@@ -453,7 +310,8 @@ describe("Recordings - reprocessing tests", () => {
         cy.log("Check recording is in reprocess, with existing tracks cleared");
         expectedRecording6.processingState = RecordingProcessingState.Reprocess;
         expectedRecording6.processing = false;
-        expectedRecording6.tracks = [];
+        expectedRecording6.tracks[0].tags = [];
+        expectedRecording6.tracks[0].filtered = true;
         cy.apiRecordingCheck(
           "rrpGroupMember",
           "rrpRecording6",
@@ -548,7 +406,8 @@ describe("Recordings - reprocessing tests", () => {
         expectedRecording10.processingState =
           RecordingProcessingState.Reprocess;
         expectedRecording10.processing = false;
-        expectedRecording10.tracks = [];
+        expectedRecording10.tracks[0].tags = [];
+        expectedRecording10.tracks[0].filtered = true;
         cy.apiRecordingCheck(
           "rrpGroupMember",
           "rrpRecording10",
@@ -671,8 +530,10 @@ describe("Recordings - reprocessing tests", () => {
     });
 
     it("Reprocessing adds tracks, tracktags, tags correctly", () => {
+      //redording with no initial tracks
       const recording18 = TestCreateRecordingData(templateRecording);
       recording18.processingState = RecordingProcessingState.Finished;
+      recording18.metadata.tracks = [];
       let expectedRecording18: ApiThermalRecordingResponse;
       let expectedProcessing18: ApiRecordingForProcessing;
 
@@ -732,6 +593,8 @@ describe("Recordings - reprocessing tests", () => {
                 end: 4,
                 id: 1,
                 positions: [],
+                filtered: true,
+                automatic: true,
               },
             ];
             cy.apiRecordingCheck(
@@ -749,7 +612,7 @@ describe("Recordings - reprocessing tests", () => {
                       automatic: true,
                       trackId: getCreds("rrpTrack18").id,
                       confidence: 0.9,
-                      data: { name: "master" },
+                      data: { name: "Master" },
                       id: -1,
                     },
                   ],
@@ -757,6 +620,8 @@ describe("Recordings - reprocessing tests", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  filtered: false,
+                  automatic: true,
                 },
               ];
 
@@ -765,7 +630,7 @@ describe("Recordings - reprocessing tests", () => {
                 "rrpRecording18",
                 "possum",
                 0.9,
-                { name: "master" }
+                { name: "Master" }
               );
               cy.apiRecordingCheck(
                 "rrpGroupAdmin",

@@ -61,8 +61,6 @@ import {
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
 import { mapStation, mapStations } from "./Station";
-import { Op } from "sequelize";
-import log from "@log";
 
 const mapGroup = (
   group: Group,

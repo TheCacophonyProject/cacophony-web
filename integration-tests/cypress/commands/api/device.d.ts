@@ -111,8 +111,9 @@ declare namespace Cypress {
 
     apiDeviceHeartbeat(
       deviceName: string,
-      nextHeartbeat: Date,
-      statusCode: number
+      nextHeartbeat: string,
+      statusCode?: number,
+      additionalChecks?: any
     ): any;
   }
 }

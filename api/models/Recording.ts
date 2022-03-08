@@ -41,18 +41,18 @@ import {
 import {
   GroupId,
   RecordingId,
-  UserId,
   TrackId,
+  UserId,
   DeviceId,
   StationId,
   LatLng,
   IsoFormattedDateString,
 } from "@typedefs/api/common";
 import {
+  AcceptableTag,
   RecordingProcessingState,
   RecordingType,
   TagMode,
-  AcceptableTag,
 } from "@typedefs/api/consts";
 import { DeviceBatteryChargeState } from "@typedefs/api/device";
 
@@ -76,7 +76,8 @@ interface RecordingQueryBuilder {
     offset?: number,
     limit?: number,
     order?: any,
-    viewAsSuperAdmin?: boolean
+    viewAsSuperAdmin?: boolean,
+    filtered?: boolean
   ) => RecordingQueryBuilderInstance;
   handleTagMode: (tagMode: TagMode, tagWhatsIn: string[]) => SqlString;
   recordingTaggedWith: (tagModes: string[], any) => SqlString;
@@ -121,12 +122,10 @@ export interface AudioRecordingMetadata {
   ["Android API Level"]: number;
   ["Phone manufacturer"]: string;
   ["App has root access"]: boolean;
+  cacophony_index_version: string;
+  processing_time_seconds: number;
+  species_identify_version: string;
   analysis: {
-    cacophony_index: CacophonyIndex[];
-    species_identify: SpeciesClassification[];
-    cacophony_index_version: string;
-    processing_time_seconds: number;
-    species_identify_version: string;
     speech_detection: boolean;
     speech_detection_version: string;
   };
@@ -178,6 +177,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   relativeToDusk: number;
   version: string;
   additionalMetadata: AudioRecordingMetadata | VideoRecordingMetadata;
+  cacophonyIndex: CacophonyIndex[];
   comment: string;
   public: boolean;
   rawFileKey: string;
@@ -301,6 +301,7 @@ export default function (
     relativeToDusk: DataTypes.INTEGER,
     version: DataTypes.STRING,
     additionalMetadata: DataTypes.JSONB,
+    cacophonyIndex: DataTypes.JSONB,
     comment: DataTypes.STRING,
     deletedAt: DataTypes.DATE,
     deletedBy: DataTypes.INTEGER,
@@ -792,7 +793,8 @@ from (
     offset?: number,
     limit?: number,
     order?: any,
-    viewAsSuperAdmin?: boolean
+    viewAsSuperAdmin?: boolean,
+    hideFiltered?: boolean
   ) {
     if (!where) {
       where = {};
@@ -830,6 +832,26 @@ from (
     if (typeof where === "string") {
       where = JSON.parse(where);
     }
+    const constraints = [];
+    constraints.push(where);
+    constraints.push(
+      Sequelize.literal(Recording.queryBuilder.handleTagMode(tagMode, tags))
+    );
+    const trackWhere = { archivedAt: null };
+    const trackRequired = false;
+    if (hideFiltered) {
+      const filteredSQL = `(
+		select
+			"RecordingId"
+		from
+			"Tracks" as "Tracks"
+		where
+			(("Tracks"."archivedAt" is null
+				and "Tracks"."filtered" = false)
+			and "Tracks"."RecordingId" = "Recording"."id")
+		limit 1 ) is not null`;
+      constraints.push(Sequelize.literal(filteredSQL));
+    }
 
     const requireGroupMembership = viewAsSuperAdmin
       ? []
@@ -848,12 +870,7 @@ from (
 
     this.query = {
       where: {
-        [Op.and]: [
-          where, // User query
-          Sequelize.literal(
-            Recording.queryBuilder.handleTagMode(tagMode, tags)
-          ),
-        ],
+        [Op.and]: constraints,
       },
       order,
       include: [
@@ -879,12 +896,12 @@ from (
         },
         {
           model: models.Track,
-          where: {
-            archivedAt: null,
-          },
+          where: trackWhere,
+          required: trackRequired,
           separate: true,
           attributes: [
             "id",
+            "filtered",
             [
               Sequelize.fn(
                 "json_build_object",
@@ -896,7 +913,6 @@ from (
               "data",
             ],
           ],
-          required: false,
           include: [
             {
               model: models.TrackTag,
@@ -1197,8 +1213,10 @@ from (
     "GroupId",
     "StationId",
     "rawFileKey",
+    "cacophonyIndex",
     "processing",
     "comment",
+    "additionalMetadata",
   ];
 
   // Attributes returned when looking up a single recording.

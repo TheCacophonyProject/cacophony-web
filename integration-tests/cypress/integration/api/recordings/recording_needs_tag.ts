@@ -1,9 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_BadRequest,
-  HTTP_OK200,
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { HTTP_BadRequest, HTTP_OK200 } from "@commands/constants";
 
 import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
@@ -13,7 +9,11 @@ import {
   TestCreateExpectedNeedsTagData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_NEEDS_TAG,
+} from "@commands/dataTemplate";
 
 const NO_SAVE_ID = null;
 
@@ -21,46 +21,12 @@ describe("Recording needs-tag (power-tagger)", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  const templateExpectedRecording: ApiRecordingNeedsTagReturned = {
-    DeviceId: 49,
-    RecordingId: 34,
-    duration: 40,
-    fileSize: 1,
-    recordingJWT: NOT_NULL_STRING,
-    tagJWT: NOT_NULL_STRING,
-    tracks: [],
-  };
-
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 40,
-    recordingDateTime: "2021-01-01T00:00:00.000Z",
-    location: [-45, 169],
-    version: "346",
-    batteryCharging: null,
-    batteryLevel: null,
-    airplaneModeOn: null,
-    additionalMetadata: {
-      algorithm: 31144,
-      previewSecs: 6,
-      totalFrames: 142,
-    },
-    metadata: {
-      algorithm: { model_name: "master" },
-      tracks: [
-        {
-          start_s: 1,
-          end_s: 3,
-          predictions: [
-            { confident_tag: "possum", confidence: 0.8, model_id: 1 },
-          ],
-        },
-      ],
-    },
-    comment: "This is a comment2",
-    processingState: RecordingProcessingState.Finished,
-  };
+  const templateExpectedRecording: ApiRecordingNeedsTagReturned = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_NEEDS_TAG)
+  );
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   let dev_env = false;
   let doNotValidate = true;

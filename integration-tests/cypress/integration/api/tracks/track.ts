@@ -2,41 +2,33 @@
 import {
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL,
   NOT_NULL_STRING,
 } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
-
-import { TestCreateRecordingData } from "@commands/api/recording-tests";
+import {
+  TestCreateRecordingData,
+  predictionResponseFromSet,
+} from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
   ApiTrackResponse,
   ApiTrackPosition,
 } from "@typedefs/api/track";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_TRACK,
+  TEMPLATE_EXPECTED_TRACK,
+} from "@commands/dataTemplate";
 
-const EXCLUDE_IDS = ["[].id"];
+const EXCLUDE_TRACK_IDS = ["[].id"];
 
 describe("Tracks: add, check, delete", () => {
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: [-45.29115, 169.30845],
-    additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
-    metadata: {
-      tracks: [],
-    },
-    comment: "This is a comment",
-    processingState: RecordingProcessingState.Finished,
-  };
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
+  templateRecording.metadata.tracks = [];
 
   const positions1: ApiTrackPosition[] = [
     {
@@ -59,6 +51,8 @@ describe("Tracks: add, check, delete", () => {
     end: 3,
     positions: positions1,
     tags: [],
+    filtered: true,
+    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -115,7 +109,7 @@ describe("Tracks: add, check, delete", () => {
       "trkGroupAdmin",
       "trkRecording1",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Delete tag");
@@ -147,7 +141,7 @@ describe("Tracks: add, check, delete", () => {
       "trkGroupMember",
       "trkRecording2",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
 
     cy.log("Delete tag");
@@ -201,19 +195,21 @@ describe("Tracks: add, check, delete", () => {
       "trkGroup2Admin",
       "trkRecording5",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
   it("Can set all valid parameters", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const minTrack = { start_s: 4, end_s: 7 };
-    const expectedMinTrack = {
+    const expectedMinTrack: ApiTrackResponse = {
       id: -99,
       start: 4,
       end: 7,
       positions: [],
       tags: [],
+      filtered: true,
+      automatic: true,
     };
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
 
@@ -245,7 +241,7 @@ describe("Tracks: add, check, delete", () => {
       "trkGroup2Admin",
       "trkRecording6",
       [expectedTrack, expectedMinTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 
@@ -330,29 +326,15 @@ describe("Tracks: add, check, delete", () => {
 
   it("Can retrieve track and tag data uploaded by device", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
-    recording1.metadata.tracks = [
-      {
-        start_s: 1,
-        end_s: 3,
-        predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
-        positions: positions1,
-      },
-    ];
+    recording1.metadata.tracks = [JSON.parse(JSON.stringify(TEMPLATE_TRACK))];
 
-    const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-    expectedTrack.tags = [
-      {
-        automatic: true,
-        confidence: 0.9,
-        createdAt: NOT_NULL_STRING,
-        //NOTE: assume this is model name and defaults to unknown where mode_id does not match known model?
-        data: { name: "unknown" },
-        id: NOT_NULL,
-        trackId: NOT_NULL,
-        updatedAt: NOT_NULL_STRING,
-        what: "cat",
-      },
-    ];
+    const expectedTrack = JSON.parse(JSON.stringify(TEMPLATE_EXPECTED_TRACK));
+    expectedTrack.tags[0]["createdAt"] = NOT_NULL_STRING;
+    expectedTrack.tags[0]["updatedAt"] = NOT_NULL_STRING;
+    expectedTrack.tags[0]["data"] = predictionResponseFromSet(
+      recording1.metadata.tracks[0].predictions,
+      recording1.metadata.models
+    )[0];
 
     cy.log("Add recording as device");
     cy.apiRecordingAdd("trkCamera1", recording1, undefined, "trkRecording9");
@@ -362,7 +344,7 @@ describe("Tracks: add, check, delete", () => {
       "trkGroupAdmin",
       "trkRecording9",
       [expectedTrack],
-      EXCLUDE_IDS
+      EXCLUDE_TRACK_IDS
     );
   });
 });

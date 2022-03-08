@@ -205,9 +205,7 @@ export default function (
     return groups.map((g) => g.id);
   };
 
-  User.prototype.getDeviceIds = async function () {
-    // FIXME(DeviceUsers) Could this just be this.getDevices()?
-
+  User.prototype.getDeviceIds = async function (): Promise<DeviceId[]> {
     const devices = (await models.Device.findAll({
       where: {},
       include: [

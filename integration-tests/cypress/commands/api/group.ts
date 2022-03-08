@@ -465,6 +465,14 @@ Cypress.Commands.add(
           expect(warnings, "Expect warning to be present").to.contain(warning);
         });
       }
+      if (statusCode == 200) {
+        //store station Ids against names
+        for (let count = 0; count < stations.length; count++) {
+          const stationName = stations[count].name;
+          const stationId = response.body.stationIdsAddedOrUpdated[count];
+          saveIdOnly(stationName, stationId);
+        }
+      }
     });
   }
 );

@@ -29,10 +29,15 @@ module.exports = {
       "Recordings",
       "strict"
     );
-    await util.migrationAddBelongsTo(queryInterface, "Tracks", "DetailSnapshots", {
-      name: "Algorithm",
-      notNull: true,
-    });
+    await util.migrationAddBelongsTo(
+      queryInterface,
+      "Tracks",
+      "DetailSnapshots",
+      {
+        name: "Algorithm",
+        notNull: true,
+      }
+    );
 
     await queryInterface.createTable("TrackTags", {
       id: {

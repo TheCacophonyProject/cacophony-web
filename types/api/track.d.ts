@@ -9,7 +9,7 @@ export interface ApiTrackPosition {
   y: number;
   width: number;
   height: number;
-  frameNumber?: number;
+  order?: number;
   frameTime?: number;
 }
 
@@ -17,8 +17,17 @@ export interface ApiTrackResponse {
   id: TrackId;
   start: Seconds;
   end: Seconds;
-  positions?: ApiTrackPosition[];
+  automatic: boolean;
+  positions: ApiTrackPosition[];
   tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[];
+  filtered: boolean;
+  minFreq?: number;
+  maxFreq?: number;
+}
+
+export interface ApiTrackRequest {
+  data: ApiTrackDataRequest;
+  algorithm?: Object | Array<number>;
 }
 
 export interface ApiTrackDataRequest {
@@ -26,6 +35,10 @@ export interface ApiTrackDataRequest {
   end_s: Seconds;
 
   // FIXME - Make more of these fields mandatory once we know who calls this with what.
+  minFreq?: number;
+  maxFreq?: number;
+  automatic?: boolean;
+  userId?: number;
   label?: string;
   clarity?: number;
   positions?: any;

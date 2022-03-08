@@ -483,6 +483,9 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
         ...recording.additionalMetadata,
       };
     }
+    if (data.hasOwnProperty("cacophonyIndex")) {
+      recording.cacophonyIndex = data.cacophonyIndex;
+    }
     return isCorrupt;
   } else {
     return false;
@@ -714,7 +717,8 @@ async function query(
   limit: number,
   offset: number,
   order: any,
-  type: RecordingType
+  type: RecordingType,
+  hideFiltered: boolean
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
     where.type = type;
@@ -729,7 +733,8 @@ async function query(
     offset,
     limit,
     order,
-    viewAsSuperUser
+    viewAsSuperUser,
+    hideFiltered
   );
   builder.query.distinct = true;
 
@@ -868,7 +873,6 @@ export async function reportRecordings(
     const recording_tags = r.Tags.map((t) => t.what || t.detail);
 
     const cacophonyIndex = getCacophonyIndex(r);
-    const speciesClassifications = getSpeciesIdentification(r);
 
     const thisRow = [
       r.id,
@@ -914,32 +918,14 @@ export async function reportRecordings(
       );
     }
 
-    thisRow.push(
-      urljoin(recording_url_base, r.id.toString()),
-      cacophonyIndex,
-      speciesClassifications
-    );
+    thisRow.push(urljoin(recording_url_base, r.id.toString()), cacophonyIndex);
     out.push(thisRow);
   }
   return out;
 }
 
 function getCacophonyIndex(recording: Recording): string | null {
-  return (
-    recording.additionalMetadata as AudioRecordingMetadata
-  )?.analysis?.cacophony_index
-    ?.map((val) => val.index_percent)
-    .join(";");
-}
-
-function getSpeciesIdentification(recording: Recording): string | null {
-  return (
-    recording.additionalMetadata as AudioRecordingMetadata
-  )?.analysis?.species_identify
-    ?.map(
-      (classification) => `${classification.species}: ${classification.begin_s}`
-    )
-    .join(";");
+  return recording.cacophonyIndex?.map((val) => val.index_percent).join(";");
 }
 
 function findLatestEvent(events: Event[]): Event | null {
@@ -959,7 +945,7 @@ function findLatestEvent(events: Event[]): Event | null {
 function formatTags(tags) {
   const out = Array.from(tags);
   out.sort();
-  return out.join("+");
+  return out.join(";");
 }
 
 export function signedToken(key, file, mimeType) {
@@ -1020,7 +1006,11 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         data: trackMeta,
         AlgorithmId: algorithmDetail.id,
       });
-      if (!("predictions" in trackMeta)) {
+      if (
+        !("predictions" in trackMeta) ||
+        trackMeta["predictions"].length == 0
+      ) {
+        await track.updateIsFiltered();
         continue;
       }
       for (const prediction of trackMeta["predictions"]) {
@@ -1051,10 +1041,6 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         }
         if (prediction.label) {
           tag_data["raw_tag"] = prediction["label"];
-        }
-        if (prediction.all_class_confidences) {
-          tag_data["all_class_confidences"] =
-            prediction["all_class_confidences"];
         }
         if (prediction.all_class_confidences) {
           tag_data["all_class_confidences"] =
@@ -1816,6 +1802,10 @@ export const finishedProcessingRecording = async (
     tracks
   );
 
+  for (const track of tracks) {
+    await track.updateIsFiltered();
+  }
+
   // Add additionalMetadata to recording:
   // model name + classify time (total?)
   // algorithm - tracking_algorithm
@@ -1869,7 +1859,7 @@ const mapPosition = (position: any): ApiTrackPosition => {
       y: position.y,
       width: position.width,
       height: position.height,
-      frameNumber: position.frame_number,
+      order: position.frame_number ?? position.order,
     };
   }
 };

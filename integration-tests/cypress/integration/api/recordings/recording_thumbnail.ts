@@ -12,11 +12,16 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_OK200,
-  NOT_NULL,
   NOT_NULL_STRING,
+  EXCLUDE_IDS,
 } from "@commands/constants";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_PROCESSING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 describe("Recording thumbnails", () => {
   const superuser = getCreds("superuser")["name"];
@@ -25,73 +30,22 @@ describe("Recording thumbnails", () => {
   //Do not validate keys
   const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
 
-  //Do not validate IDs
-  const EXCLUDE_IDS = [
-    ".tracks[].tags[].trackId",
-    ".tracks[].tags[].id",
-    ".tracks[].id",
-  ];
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
 
-  const templateExpectedRecording: ApiThermalRecordingResponse = {
-    deviceId: 0,
-    deviceName: "",
-    groupName: "",
-    tags: [],
-    tracks: [],
-    id: 892972,
-    rawMimeType: "application/x-cptv",
-    processingState: RecordingProcessingState.Finished,
-    duration: 15.6666666666667,
-    recordingDateTime: "0121-07-17T01:13:17.248Z",
-    location: { lat: -45, lng: 169 },
-    type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31144, previewSecs: 6, totalFrames: 142 },
-    groupId: 246,
-    comment: "This is a comment",
-    processing: false,
-  };
+  // tempate thermal recoridng with no tracks - force into Analyse state to do thumbnail generation
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
+  templateRecording.processingState = RecordingProcessingState.Analyse;
+  templateRecording.metadata.tracks = [];
 
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 40,
-    recordingDateTime: "0121-01-01T00:00:00.000Z",
-    location: [-45, 169],
-    additionalMetadata: {
-      algorithm: 31144,
-      previewSecs: 6,
-      totalFrames: 142,
-    },
-    metadata: {
-      algorithm: { model_name: "master" },
-      tracks: [],
-    },
-    comment: "This is a comment2",
-    processingState: RecordingProcessingState.Analyse,
-  };
-
-  const templateExpectedProcessing: ApiRecordingForProcessing = {
-    id: 475,
-    type: RecordingType.ThermalRaw,
-    jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-    rawMimeType: "application/x-cptv",
-    fileKey: null,
-    fileMimeType: null,
-    processingState: RecordingProcessingState.Analyse,
-    processingMeta: null,
-    GroupId: NOT_NULL,
-    DeviceId: NOT_NULL,
-    StationId: null,
-    recordingDateTime: "2021-01-01T01:01:01.018Z",
-    duration: 16.6666666666667,
-    location: null,
-    hasAlert: false,
-    processingStartTime: NOT_NULL_STRING,
-    processingEndTime: null,
-    processing: true,
-    updatedAt: NOT_NULL_STRING,
-  };
+  const templateExpectedProcessing: ApiRecordingForProcessing = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_PROCESSING)
+  );
+  templateExpectedProcessing.processingState = RecordingProcessingState.Analyse;
+  templateExpectedProcessing.updatedAt = NOT_NULL_STRING;
 
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
   //recordings that are in analyse state that do not belong to us.  This can be removed once
@@ -170,7 +124,7 @@ describe("Recording thumbnails", () => {
               "rtRecording01",
               "possum",
               0.9,
-              { name: "master" }
+              { name: "Master" }
             ).then(() => {
               expectedRecording01.tracks = [
                 {
@@ -180,7 +134,7 @@ describe("Recording thumbnails", () => {
                       automatic: true,
                       trackId: getCreds("rtTrack01").id,
                       confidence: 0.9,
-                      data: { name: "master" },
+                      data: { name: "Master" },
                       id: -1,
                     },
                   ],
@@ -188,6 +142,8 @@ describe("Recording thumbnails", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  filtered: false,
+                  automatic: true,
                 },
               ];
 
@@ -318,7 +274,7 @@ describe("Recording thumbnails", () => {
               "rtRecording02",
               "possum",
               0.9,
-              { name: "master" }
+              { name: "Master" }
             ).then(() => {
               expectedRecording02.tracks = [
                 {
@@ -328,7 +284,7 @@ describe("Recording thumbnails", () => {
                       automatic: true,
                       trackId: getCreds("rtTrack02").id,
                       confidence: 0.9,
-                      data: { name: "master" },
+                      data: { name: "Master" },
                       id: -1,
                     },
                   ],
@@ -336,6 +292,8 @@ describe("Recording thumbnails", () => {
                   end: 4,
                   id: 1,
                   positions: [],
+                  filtered: false,
+                  automatic: true,
                 },
               ];
 

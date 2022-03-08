@@ -1,5 +1,6 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { CacophonyIndex } from "@typedefs/api/recording";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {
@@ -311,6 +312,7 @@ export interface ApiRecordingSet {
   batteryLevel?: number;
   airplaneModeOn?: boolean;
   metadata?: ApiRecordingDataMetadata;
+  cacophonyIndex?: CacophonyIndex[];
   additionalMetadata?: ApiThermalAdditionalMetadata | any;
   comment?: string;
   processingState?: RecordingProcessingState;

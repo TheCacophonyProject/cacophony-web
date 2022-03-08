@@ -1,5 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
+import {
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+  EXCLUDE_IDS,
+} from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
@@ -9,81 +13,19 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-
-const EXCLUDE_IDS = [
-  ".tracks[].tags[].trackId",
-  ".tracks[].tags[].id",
-  ".tracks[].id",
-
-  // NOTE (Station name and id are automatically generated if there's a new station
-  ".stationId",
-  ".stationName",
-];
+import { RecordingType } from "@typedefs/api/consts";
+import {
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+  TEMPLATE_THERMAL_RECORDING,
+} from "@commands/dataTemplate";
 
 describe("Recordings (thermal): add, get, delete", () => {
-  const templateExpectedRecording: ApiThermalRecordingResponse = {
-    deviceId: 0,
-    deviceName: "",
-    groupName: "",
-    id: 892972,
-    rawMimeType: "application/x-cptv",
-    processingState: RecordingProcessingState.Finished,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: { lat: -45.29115, lng: 169.30845 },
-    type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-    groupId: 246,
-
-    stationId: 1,
-    stationName: "Station name",
-
-    comment: "This is a comment",
-    processing: false,
-    tags: [],
-    tracks: [
-      {
-        start: 2,
-        end: 5,
-        id: -99,
-        tags: [
-          {
-            what: "cat",
-            data: { name: "unknown" },
-            automatic: true,
-            confidence: 0.9,
-            trackId: -99,
-            id: -99,
-          },
-        ],
-      },
-    ],
-  };
-
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: [-45.29115, 169.30845],
-    additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
-    metadata: {
-      tracks: [
-        {
-          start_s: 2,
-          end_s: 5,
-          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
-        },
-      ],
-    },
-    comment: "This is a comment",
-    processingState: RecordingProcessingState.Finished,
-  };
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   before(() => {
     //Create group1 with 2 devices, admin and member

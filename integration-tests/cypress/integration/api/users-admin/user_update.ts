@@ -4,12 +4,8 @@ import { HTTP_BadRequest, HTTP_Unprocessable } from "@commands/constants";
 import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestName } from "@commands/names";
-import { getCreds } from "@commands/server";
 
 describe("User: update", () => {
-  const superuser = getCreds("superuser")["name"];
-  const suPassword = getCreds("superuser")["password"];
-
   before(() => {});
 
   it("User can update themselves", () => {

@@ -5,7 +5,6 @@ import {
   NOT_NULL_STRING,
 } from "@commands/constants";
 
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
@@ -15,33 +14,14 @@ import {
   ApiRecordingTagRequest,
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 
-const EXCLUDE_IDS = ["[].id"];
+const EXCLUDE_TAG_IDS = ["[].id"];
 
 describe("Recordings: tag", () => {
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: [-45.29115, 169.30845],
-    additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
-    metadata: {
-      tracks: [
-        {
-          start_s: 2,
-          end_s: 5,
-          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
-        },
-      ],
-    },
-    comment: "This is a comment",
-    processingState: RecordingProcessingState.Finished,
-  };
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   const tag1: ApiRecordingTagRequest = {
     detail: "animal in trap",
@@ -93,7 +73,7 @@ describe("Recordings: tag", () => {
       "tagGroupAdmin",
       "tagRecording1",
       [expectedTag],
-      EXCLUDE_IDS
+      EXCLUDE_TAG_IDS
     );
     cy.log("Delete tag");
     cy.apiRecordingTagDelete("tagGroupAdmin", "tagRecording1", "tagTag1");
@@ -119,7 +99,7 @@ describe("Recordings: tag", () => {
       "tagGroupMember",
       "tagRecording2",
       [expectedTag],
-      EXCLUDE_IDS
+      EXCLUDE_TAG_IDS
     );
     cy.log("Delete tag");
     cy.apiRecordingTagDelete("tagGroupMember", "tagRecording2", "tagTag2");
@@ -172,7 +152,7 @@ describe("Recordings: tag", () => {
       "tagGroup2Admin",
       "tagRecording6",
       [expectedTag],
-      EXCLUDE_IDS
+      EXCLUDE_TAG_IDS
     );
   });
 
@@ -242,7 +222,7 @@ describe("Recordings: tag", () => {
       "tagGroupAdmin",
       "tagRecording9",
       [expectedTag],
-      EXCLUDE_IDS
+      EXCLUDE_TAG_IDS
     );
     cy.log("Delete tag");
     cy.apiRecordingTagDelete("tagGroupAdmin", "tagRecording9", "tagTag9");

@@ -46,8 +46,8 @@ const s3Achive = {
 
 const smtpDetails = {
   host: "localhost",
-  port: 25,
-  tls: true,
+  port: 7777, //default for service is 25. 7777 used for smtp-tester
+  tls: false, //default is true.  False used for smtp-tester
   from_name: "Cacophony Reporting",
   //
   // service: "gmail",

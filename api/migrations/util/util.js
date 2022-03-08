@@ -121,7 +121,13 @@ function belongsToMany(queryInterface, viaTable, table1, table2) {
 }
 exports.belongsToMany = belongsToMany;
 
-function removeBelongsToMany(queryInterface, viaTable, table1, table2, options) {
+function removeBelongsToMany(
+  queryInterface,
+  viaTable,
+  table1,
+  table2,
+  options
+) {
   const columnName1 = `${table1.substring(0, table1.length - 1)}Id`;
   const constraintName1 = `${viaTable}_${columnName1}_fkey`;
   const columnName2 = `${table2.substring(0, table2.length - 1)}Id`;
@@ -130,20 +136,24 @@ function removeBelongsToMany(queryInterface, viaTable, table1, table2, options) 
   return new Promise((resolve, reject) => {
     Promise.all([
       queryInterface.sequelize.query(
-        `ALTER TABLE "${viaTable}" DROP COLUMN "${columnName1}";`, options
+        `ALTER TABLE "${viaTable}" DROP COLUMN "${columnName1}";`,
+        options
       ),
       queryInterface.sequelize.query(
-        `ALTER TABLE "${viaTable}" DROP COLUMN "${columnName2}";`, options
+        `ALTER TABLE "${viaTable}" DROP COLUMN "${columnName2}";`,
+        options
       ),
     ])
       .then(() => {
         console.log("Removing belongs to many constraint.");
         return Promise.all([
           queryInterface.sequelize.query(
-            `ALTER TABLE "${viaTable}" DROP CONSTRAINT "${constraintName1}";`, options
+            `ALTER TABLE "${viaTable}" DROP CONSTRAINT "${constraintName1}";`,
+            options
           ),
           queryInterface.sequelize.query(
-            `ALTER TABLE "${viaTable}" DROP CONSTRAINT "${constraintName2}";`, options
+            `ALTER TABLE "${viaTable}" DROP CONSTRAINT "${constraintName2}";`,
+            options
           ),
         ]);
       })
