@@ -1,8 +1,5 @@
 // load the global Cypress types
 /// <reference types="cypress" />
-
-import { ApiStationResponse } from "../../../../types/api/station";
-
 declare namespace Cypress {
   type ApiGroupsUserReturned = import("../types").ApiGroupsUserReturned;
   type ApiGroupReturned = import("../types").ApiGroupReturned;
@@ -13,7 +10,8 @@ declare namespace Cypress {
   type ApiDeviceResponseAlias =
     import("@typedefs/api/device").ApiDeviceResponse;
   type ApiGroupUserRelationshipResponse =
-    import("@typedefs/api/group").ApiGroupUserRelationshipResponse;
+    import("@typedefs/api/group").ApiGroupUserResponse;
+  type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
 
   interface Chainable {
     /**
@@ -107,7 +105,7 @@ declare namespace Cypress {
     apiGroupUsersCheck(
       userName: string,
       groupName: string,
-      expectedUsers: ApiGroupUserRelationshipResponse[],
+      expectedUsers: ApiGroupsUserReturned[],
       excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any

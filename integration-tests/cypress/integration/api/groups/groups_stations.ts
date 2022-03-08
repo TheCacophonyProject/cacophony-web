@@ -145,7 +145,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     });
   });
 
-  it("Group member can query but not add, update, retire stations from a group", () => {
+  it.only("Group member can query but not add, update, retire stations from a group", () => {
     cy.log("Add a station as admin to test with");
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroup", [station1a]).then(
       () => {

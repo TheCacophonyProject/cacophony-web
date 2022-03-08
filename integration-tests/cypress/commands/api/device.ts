@@ -12,7 +12,7 @@ import {
 import { logTestDescription } from "../descriptions";
 import { ApiDevicesDevice } from "../types";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
+import ApiGroupUserRelationshipResponse = Cypress.ApiGroupsUserRelationshipResponse;
 
 Cypress.Commands.add(
   "apiDeviceAdd",
