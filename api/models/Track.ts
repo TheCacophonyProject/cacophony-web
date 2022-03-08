@@ -122,13 +122,13 @@ export default function (
     data,
     userId = null
   ): Promise<TrackTag> {
-    const tag = await this.createTrackTag({
+    const tag = (await this.createTrackTag({
       what,
       confidence,
       automatic,
       data,
       UserId: userId,
-    }) as TrackTag;
+    })) as TrackTag;
     await this.updateIsFiltered();
     return tag;
   };
