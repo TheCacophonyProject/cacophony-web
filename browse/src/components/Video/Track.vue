@@ -1,6 +1,6 @@
 <template>
   <div :class="['card', trackClass]">
-    <div class="card-header">
+    <div :class="['card-header', headerClass]">
       <button
         v-if="index !== 0"
         title="Previous track"
@@ -90,6 +90,7 @@ import {
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { shouldViewAsSuperUser } from "@/utils";
+import DefaultLabels from "../../const";
 
 interface TrackInternalData {
   localTags: ApiTrackTagResponse[];
@@ -189,6 +190,12 @@ export default {
         this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
       );
     },
+    headerClass() {
+      if (this.track.filtered) {
+        return "filtered-track";
+      }
+      return "";
+    },
   },
   created() {
     this.localTags = [...this.track.tags];
@@ -224,19 +231,23 @@ export default {
           createdAt: new Date().toISOString(),
         },
       ];
-      const {
-        result: { trackTagId },
-      } = await api.recording.replaceTrackTag(tag, recordingId, trackId);
-      if (!trackTagId) {
-        return;
+      const replaceTrackTagResponse = await api.recording.replaceTrackTag(
+        tag,
+        recordingId,
+        trackId
+      );
+      if (replaceTrackTagResponse.success) {
+        const trackTagId = replaceTrackTagResponse.result.trackTagId;
+        const newTag: ApiTrackTagResponse = {
+          ...tag,
+          id: trackTagId,
+          trackId,
+          automatic: false,
+          createdAt: new Date().toDateString(),
+          data: "",
+        };
+        this.$emit("change-tag", newTag);
       }
-      // FIXME - This doesn't actually update the UI more quickly.
-      // Add an initial tag to update the UI more quickly.
-      const newTag: ApiTrackTagResponse = { ...tag };
-      newTag.id = trackTagId;
-      newTag.trackId = trackId;
-      newTag.createdAt = new Date().toISOString();
-      this.$emit("change-tag", newTag);
     },
     promptUserToAddTag() {
       this.showUserTaggingHintCountDown = true;
@@ -306,7 +317,10 @@ export default {
   padding-left: 1em;
   padding-right: 1em;
 }
-
+.filtered-track {
+  opacity: 0.7;
+  background: #ddd;
+}
 .card-header {
   display: flex;
   padding-top: 0.5em;

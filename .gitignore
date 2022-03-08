@@ -3,3 +3,9 @@
 */node_modules
 /types/jsonSchemas
 /types/build-schemas.js
+/scripts/audio_files/*
+
+/api/api/V1/apidoc.js
+/types/api/consts.js
+/types/schema-cache.json
+/types/api/*.js

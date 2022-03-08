@@ -21,100 +21,6 @@ import log from "@log";
 import fs from "fs";
 import mime from "mime";
 import config from "@config";
-import Sequelize from "sequelize";
-import { User } from "@models/User";
-import { ModelStaticCommon } from "@models";
-import { ClientError } from "@api/customErrors";
-
-const Op = Sequelize.Op;
-interface QueryResult<T> {
-  rows: null | T[];
-  limit: number;
-  offset: number;
-}
-
-export function findAllWithUser<T extends ModelStaticCommon<T>>(
-  model: T,
-  user,
-  queryParams
-): Promise<QueryResult<T>> {
-  return new Promise(function (resolve) {
-    const models = require("../index");
-    if (typeof queryParams.limit == "undefined") {
-      queryParams.limit = 20;
-    }
-    if (typeof queryParams.offset == "undefined") {
-      queryParams.offset = 0;
-    }
-    queryParams.order = [["recordingDateTime", "DESC"]];
-    // Find what devices the user can see.
-    if (!user) {
-      // Not logged in, can onnly see public recordings.
-      model
-        .findAndCountAll({
-          where: { [Op.and]: [queryParams.where, { public: true }] },
-          include: [models.Group],
-          limit: queryParams.limit,
-          offset: queryParams.offset,
-        })
-        .then(function (result: QueryResult<T>) {
-          result.limit = queryParams.limit;
-          result.offset = queryParams.offset;
-          resolve(result);
-        });
-    } else {
-      user
-        .getGroupsIds()
-        .then(function (ids) {
-          // Adding filter so they only see recordings that they are allowed to.
-          queryParams.where = {
-            [Op.and]: [
-              queryParams.where,
-              { [Op.or]: [{ public: true }, { GroupId: { [Op.in]: ids } }] },
-            ],
-          };
-          queryParams.include = [
-            { model: models.Group },
-            { model: models.Tag },
-          ];
-          return model.findAndCountAll(queryParams);
-        })
-        .then(function (result: QueryResult<T>) {
-          result.limit = queryParams.limit;
-          result.offset = queryParams.offset;
-          resolve(result);
-        });
-    }
-  });
-}
-
-//NOTE: Currently unused by anyone
-export function getFileData<T extends ModelStaticCommon<T>>(
-  model: T,
-  id: number,
-  user: User
-) {
-  return new Promise(function (resolve, reject) {
-    findAllWithUser(model, user, { where: { id } })
-      .then(function (result: { rows: null | T[] }) {
-        if (result.rows !== null && result.rows.length >= 1) {
-          const model = result.rows[0];
-          const fileData = {
-            key: model.getDataValue("fileKey"),
-            name: getFileName(model),
-            mimeType: model.getDataValue("mimeType"),
-          };
-          return resolve(fileData);
-        } else {
-          return resolve(null);
-        }
-      })
-      .catch(function (err) {
-        log.error("Error at models/util.js getFileKey:");
-        reject(err);
-      });
-  });
-}
 
 export function getFileName(model) {
   let fileName;
@@ -141,61 +47,10 @@ export function geometrySetter(val) {
   if (typeof val === "string") {
     return;
   }
-  this.setDataValue("location", { type: "Point", coordinates: val });
-}
-
-export function getFromId(id: number, user: User, attributes) {
-  const modelClass = this;
-  return new Promise((resolve) => {
-    // Get just public models if no user was given
-    if (!user) {
-      return modelClass
-        .findOne({ where: { id: id, public: true } })
-        .then(resolve);
-    }
-
-    user
-      .getGroupsIds()
-      .then((ids) => {
-        // Condition where you get a public recordin or a recording that you
-        // have permission to view (in same group).
-        const condition = {
-          where: {
-            id: id,
-            [Op.or]: [{ GroupId: { [Op.in]: ids } }, { public: true }],
-          },
-          attributes,
-        };
-        return modelClass.findOne(condition);
-      })
-      .then(resolve);
-  });
-}
-
-/**
- * Deletes the deleteModelInstance and the file attached to the model with the
- * given id.
- * A promise is returned that will resolve if successful and reject if failed
- * to delete the file and modelInstance.
- */
-// FIXME - this is dead code?
-export function deleteModelInstance(id, user) {
-  const modelClass = this;
-  let modelInstance = null;
-  return new Promise((resolve, reject) => {
-    modelClass
-      .getFromId(id, user, ["fileKey", "id"])
-      .then((mi) => {
-        modelInstance = mi;
-        if (modelInstance === null) {
-          throw new ClientError("No file found");
-        }
-        return modelInstance.fileKey;
-      })
-      .then((fileKey) => deleteFile(fileKey))
-      .then(() => modelInstance.destroy())
-      .then(resolve)
-      .catch(reject);
+  // Flip coordinates to X,Y, expected by PostGIS (Longitude, Latitude)
+  this.setDataValue("location", {
+    type: "Point",
+    coordinates: [val[1], val[0]],
   });
 }
 
@@ -361,10 +216,6 @@ export function deleteFile(fileKey) {
 
 export default {
   geometrySetter,
-  findAllWithUser,
-  getFileData,
-  getFromId,
-  deleteModelInstance,
   userCanEdit,
   openS3,
   saveFile,

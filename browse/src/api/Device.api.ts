@@ -2,11 +2,9 @@ import CacophonyApi from "./CacophonyApi";
 import * as querystring from "querystring";
 import { shouldViewAsSuperUser } from "@/utils";
 import recording, { FetchResult } from "./Recording.api";
-import {
-  ApiDeviceResponse,
-  ApiDeviceUserRelationshipResponse,
-} from "@typedefs/api/device";
+import { ApiDeviceResponse } from "@typedefs/api/device";
 import { DeviceId, ScheduleId } from "@typedefs/api/common";
+import { ApiGroupUserResponse } from "@typedefs/api/group";
 
 export interface DeviceInfo {
   deviceName: string;
@@ -36,7 +34,7 @@ function getDevices(
 function getUsers(
   deviceId: DeviceId,
   activeAndInactive: boolean = false
-): Promise<FetchResult<{ users: ApiDeviceUserRelationshipResponse[] }>> {
+): Promise<FetchResult<{ users: ApiGroupUserResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/devices/users?deviceId=${deviceId}&${
       shouldViewAsSuperUser()
@@ -70,19 +68,6 @@ function getDeviceById(
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`
-  );
-}
-
-function addUserToDevice(userName: string, deviceId: DeviceId, admin: boolean) {
-  const suppressGlobalMessaging = true;
-  return CacophonyApi.post(
-    "/api/v1/devices/users?only-active=false",
-    {
-      userName,
-      deviceId,
-      admin,
-    },
-    suppressGlobalMessaging
   );
 }
 
@@ -125,24 +110,6 @@ const removeScheduleFromDevice = (
     suppressGlobalMessaging
   );
 };
-
-function removeUserFromDevice(
-  userName: string,
-  deviceId: DeviceId,
-  activeAndInactive: boolean = true
-) {
-  return CacophonyApi.delete(
-    `/api/v1/devices/users${
-      shouldViewAsSuperUser()
-        ? `?only-active=${activeAndInactive ? "false" : "true"}`
-        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
-    {
-      userName,
-      deviceId,
-    }
-  );
-}
 
 function getLatestSoftwareVersion(deviceId: number) {
   const params: EventApiParams = {
@@ -220,8 +187,6 @@ export default {
   getDevice,
   getDeviceById,
   getUsers,
-  addUserToDevice,
-  removeUserFromDevice,
   getLatestSoftwareVersion,
   getLatestEvents,
   getType,

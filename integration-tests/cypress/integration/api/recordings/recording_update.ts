@@ -7,63 +7,25 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
+import { RecordingProcessingState } from "@typedefs/api/consts";
+import {
+  HTTP_Forbidden,
+  HTTP_Unprocessable,
+  EXCLUDE_IDS,
+} from "@commands/constants";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 describe("Update recordings", () => {
-  //Do not validate IDs
-  const EXCLUDE_IDS = [
-    ".tracks[].tags[].trackId",
-    ".tracks[].tags[].id",
-    ".tracks[].id",
-    ".location",
-  ];
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
 
-  const templateExpectedRecording: ApiThermalRecordingResponse = {
-    deviceId: 0,
-    deviceName: "",
-    groupName: "",
-    tags: [],
-    tracks: [],
-    id: 892972,
-    rawMimeType: "application/x-cptv",
-    processingState: RecordingProcessingState.Finished,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: { lat: -45.29115, lng: 169.30845 },
-    type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-    groupId: 246,
-    comment: "This is a comment",
-    processing: false,
-  };
-
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 40,
-    recordingDateTime: "2021-01-01T00:00:00.000Z",
-    location: [-45.00045, 169.00065],
-    additionalMetadata: {
-      algorithm: 31144,
-      previewSecs: 6,
-      totalFrames: 142,
-    },
-    metadata: {
-      algorithm: { model_name: "master" },
-      tracks: [
-        {
-          start_s: 1,
-          end_s: 3,
-          predictions: [
-            { confident_tag: "possum", confidence: 0.8, model_id: 1 },
-          ],
-        },
-      ],
-    },
-    comment: "This is a comment2",
-    processingState: RecordingProcessingState.Finished,
-  };
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   //TODO: Issue 98 - only comments and additional metadata succeed at update
   //location causes server error
@@ -97,12 +59,6 @@ describe("Update recordings", () => {
     cy.apiDeviceAdd("ruCamera1b", "ruGroup");
     cy.apiUserAdd("ruGroupMember");
     cy.apiGroupUserAdd("ruGroupAdmin", "ruGroupMember", "ruGroup", true);
-
-    //Device1 admin and member
-    cy.apiUserAdd("ruDeviceAdmin");
-    cy.apiUserAdd("ruDeviceMember");
-    cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceAdmin", "ruCamera1", true);
-    cy.apiDeviceUserAdd("ruGroupAdmin", "ruDeviceMember", "ruCamera1", true);
 
     //Second group with admin and device
     cy.testCreateUserGroupAndDevice("ruGroup2Admin", "ruGroup2", "ruCamera2");
@@ -184,82 +140,6 @@ describe("Update recordings", () => {
     });
   });
 
-  it("Device admin can update recording", () => {
-    const recording03 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd(
-      "ruCamera1",
-      recording03,
-      "oneframe.cptv",
-      "ruRecording03"
-    ).then(() => {
-      let expectedRecording03 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "ruRecording03",
-        "ruCamera1",
-        "ruGroup",
-        null,
-        recording03
-      );
-      cy.log("Check recording prior to update");
-      cy.apiRecordingCheck(
-        "ruDeviceAdmin",
-        "ruRecording03",
-        expectedRecording03,
-        EXCLUDE_IDS
-      ).then(() => {
-        cy.log("Update recording");
-        cy.apiRecordingUpdate("ruDeviceAdmin", "ruRecording03", fieldUpdates);
-        expectedRecording03 = updateExpected(expectedRecording03);
-
-        cy.log("Check recording after update");
-        cy.apiRecordingCheck(
-          "ruDeviceAdmin",
-          "ruRecording03",
-          expectedRecording03,
-          EXCLUDE_IDS
-        );
-      });
-    });
-  });
-
-  it("Device member can update recording", () => {
-    const recording04 = TestCreateRecordingData(templateRecording);
-    cy.apiRecordingAdd(
-      "ruCamera1",
-      recording04,
-      "oneframe.cptv",
-      "ruRecording04"
-    ).then(() => {
-      let expectedRecording04 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "ruRecording04",
-        "ruCamera1",
-        "ruGroup",
-        null,
-        recording04
-      );
-      cy.log("Check recording prior to update");
-      cy.apiRecordingCheck(
-        "ruDeviceMember",
-        "ruRecording04",
-        expectedRecording04,
-        EXCLUDE_IDS
-      ).then(() => {
-        cy.log("Update recording");
-        cy.apiRecordingUpdate("ruDeviceMember", "ruRecording04", fieldUpdates);
-        expectedRecording04 = updateExpected(expectedRecording04);
-
-        cy.log("Check recording after update");
-        cy.apiRecordingCheck(
-          "ruDeviceMember",
-          "ruRecording04",
-          expectedRecording04,
-          EXCLUDE_IDS
-        );
-      });
-    });
-  });
-
   it("Non member cannot update recording", () => {
     const recording05 = TestCreateRecordingData(templateRecording);
     cy.apiRecordingAdd(
@@ -286,7 +166,7 @@ describe("Update recordings", () => {
 
       cy.log("Check recording not updated");
       cy.apiRecordingCheck(
-        "ruDeviceMember",
+        "ruGroupMember",
         "ruRecording05",
         expectedRecording05,
         EXCLUDE_IDS
@@ -337,7 +217,7 @@ describe("Update recordings", () => {
 
       cy.log("Check recording not updated");
       cy.apiRecordingCheck(
-        "ruDeviceMember",
+        "ruGroupMember",
         "ruRecording06",
         expectedRecording06,
         EXCLUDE_IDS
@@ -363,7 +243,7 @@ function updateExpected(expectedRecording: any) {
   //expectedRecording.type= RecordingType.Audio;
   expectedRecording.comment = "This is a new comment";
   expectedRecording.location = {
-    lat: -46.29105,
+    lat: -46.29115,
     lng: 170.30835,
   };
   //expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};

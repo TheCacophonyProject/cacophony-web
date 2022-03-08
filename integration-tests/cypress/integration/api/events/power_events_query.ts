@@ -51,12 +51,6 @@ describe("Events - query power events", () => {
     cy.apiGroupUserAdd("peGroupAdmin", "peGroupMember", "peGroup", false);
     cy.apiDeviceAdd("peOtherCamera", "peGroup");
 
-    //admin and member for single device
-    cy.apiUserAdd("peDeviceAdmin");
-    cy.apiUserAdd("peDeviceMember");
-    cy.apiDeviceUserAdd("peGroupAdmin", "peDeviceAdmin", "peCamera", true);
-    cy.apiDeviceUserAdd("peGroupAdmin", "peDeviceMember", "peCamera", true);
-
     //another group and device
     cy.testCreateUserGroupAndDevice(
       "peOtherGroupAdmin",
@@ -175,14 +169,6 @@ describe("Events - query power events", () => {
     ]);
   });
 
-  it("Device admin can view events only on their devices", () => {
-    cy.apiPowerEventsCheck("peDeviceAdmin", undefined, {}, [expectedCamera]);
-  });
-
-  it("Device member can view events only on their devices", () => {
-    cy.apiPowerEventsCheck("peDeviceMember", undefined, {}, [expectedCamera]);
-  });
-
   it("Group admin can only request events from within their group", () => {
     cy.apiPowerEventsCheck("peGroupAdmin", "peCamera", {}, [expectedCamera]);
     cy.apiPowerEventsCheck("peGroupAdmin", "peOtherCamera", {}, [
@@ -190,19 +176,6 @@ describe("Events - query power events", () => {
     ]);
     cy.apiPowerEventsCheck(
       "peGroupAdmin",
-      "peOtherGroupCamera",
-      {},
-      [],
-      [],
-      HTTP_Forbidden
-    );
-  });
-
-  it("Device member can only request events from within their device", () => {
-    cy.apiPowerEventsCheck("peDeviceAdmin", "peCamera", {}, [expectedCamera]);
-    //   cy.apiPowerEventsCheck("peDeviceAdmin","peOtherCamera",{}, []);
-    cy.apiPowerEventsCheck(
-      "peDeviceAdmin",
       "peOtherGroupCamera",
       {},
       [],

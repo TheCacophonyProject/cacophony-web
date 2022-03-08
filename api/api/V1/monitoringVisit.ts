@@ -1,10 +1,12 @@
 import moment, { Moment } from "moment";
-import { MonitoringPageCriteria } from "./monitoringPage";
 import models from "@models";
 import { Recording } from "@models/Recording";
 import { getTrackTag, unidentifiedTags } from "./Visits";
 import { ClientError } from "../customErrors";
 import { UserId } from "@typedefs/api/common";
+import { MonitoringPageCriteria } from "@api/V1/monitoringPage";
+import { Op } from "sequelize";
+import { RecordingType } from "@typedefs/api/consts";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -258,9 +260,10 @@ async function getRecordings(
   viewAsSuperAdmin: boolean
 ) {
   const where: any = {
-    duration: { $gte: "0" },
-    type: "thermalRaw",
-    recordingDateTime: { $gte: from, $lt: until },
+    duration: { [Op.gte]: "0" },
+    type: RecordingType.ThermalRaw,
+    deletedAt: { [Op.eq]: null },
+    recordingDateTime: { [Op.gt]: from, [Op.lt]: until }, // FIXME - Used to be gte: from
   };
   if (params.devices) {
     where.DeviceId = params.devices;
@@ -310,7 +313,7 @@ function groupRecordingsIntoVisits(
           recording.Station,
           rec
         );
-        // we want to keep adding recordings to this visit even if first recording is before
+        // we want to keep adding recordings to this visit even if first recording is
         // before the search period
         currentVisitForDevice[rec.DeviceId] = newVisit;
 
@@ -318,7 +321,7 @@ function groupRecordingsIntoVisits(
           visitsStartingInPeriod.push(newVisit);
         } else {
           // First recording for this visit is actually before the time period.
-          // Therefore this visit isn't really part of this time period but some of the its recordings are
+          // Therefore this visit isn't really part of this time period but some of its recordings are
 
           // But if totally missing from the list user may wonder where recordings are so return visit anyway
           // (only relevant to the last page which shows the earliest recordings)

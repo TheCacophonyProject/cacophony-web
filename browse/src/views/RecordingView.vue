@@ -3,23 +3,20 @@
     <b-row>
       <b-col cols="12" lg="8" class="recording-details">
         <h4 class="recording-title">
-          <router-link
-            :to="{
-              name: 'device',
-              params: {
-                deviceName,
-                groupName,
-                tabName: 'recordings',
-              },
-            }"
-          >
+          <GroupLink :group-name="groupName" context="devices" />
+          <span>
             <font-awesome-icon
-              icon="microchip"
+              icon="chevron-right"
               size="xs"
               style="color: #666; font-size: 16px"
             />
-            {{ deviceName }}
-          </router-link>
+          </span>
+          <DeviceLink
+            :group-name="groupName"
+            :device-name="deviceName"
+            context="recordings"
+            :type="recording && recording.type"
+          />
         </h4>
 
         <h5 class="text-muted" v-if="loadingNext">Loading recording...</h5>
@@ -80,10 +77,14 @@ import {
 import { RecordingType } from "@typedefs/api/consts";
 import api from "@api";
 import { RecordingId, TagId, TrackId } from "@typedefs/api/common";
+import GroupLink from "@/components/GroupLink.vue";
+import DeviceLink from "@/components/DeviceLink.vue";
 
 export default {
   name: "RecordingView",
   components: {
+    GroupLink,
+    DeviceLink,
     // We only ever want one of these at a time, so lazy load the required component
     VideoRecording: () => import("@/components/Video/VideoRecording.vue"),
     AudioRecording: () => import("@/components/Video/AudioRecording.vue"),
@@ -99,6 +100,7 @@ export default {
       downloadRawJWT: null,
       rawSize: 0,
       fileSize: 0,
+      group: null,
       loadingNext: false,
       deletedRecordings: [],
     };
@@ -281,10 +283,14 @@ export default {
           result: { tracks },
         } = tracksResponse;
         const track = tracks.find((track) => track.id === trackId);
-        this.recording.tracks.find((track) => track.id === trackId).tags =
-          track.tags;
+        const localTrack = this.recording.tracks.find(
+          (track) => track.id === trackId
+        );
+        localTrack.tags = track.tags;
+        localTrack.filtered = track.filtered;
       }
     },
+    // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
     async refreshRecordingTagData(tagId: TagId): Promise<void> {
       // Resync all recording tags from the API.
       const tagsResponse = await api.recording.id(this.recording.id);

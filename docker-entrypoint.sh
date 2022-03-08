@@ -15,15 +15,26 @@ echo "---- Starting PostgreSQL ----"
 service postgresql start
 
 
-sudo -i -u postgres psql -c "CREATE USER test with password 'test'"
-sudo -i -u postgres psql -c "CREATE DATABASE cacophonytest WITH OWNER test;"
-sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION postgis"
-sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION citext"
+# Check if postgres user test is created
+if ! sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname='test'" | grep -q 1; then
+    echo "---- Creating PostgreSQL user test ----"
+    sudo -i -u postgres psql -c "CREATE USER test with password 'test'"
+    sudo -i -u postgres psql -c "CREATE DATABASE cacophonytest WITH OWNER test;"
+    sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION postgis"
+    sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION citext"
+fi
+
 
 echo "---- Setting up Minio ----"
-./mc config host add myminio http://127.0.0.1:9001 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
-./mc mb myminio/cacophony
-./mc mb myminio/cacophony-archived
+# Check minio has been setup by checking if myminio/cacophony exists
+if ./mc ls myminio | grep -q cacophony; then
+    echo "---- Minio already setup ----"
+else
+    echo "---- Setting up Minio ----"
+    ./mc config host add myminio http://127.0.0.1:9001 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+    ./mc mb myminio/cacophony
+    ./mc mb myminio/cacophony-archived
+fi
 
 cd /app/api
 
@@ -48,4 +59,4 @@ cd ../api
 
 echo "---- Compiling typescript and starting module ----"
 ../node_modules/.bin/tsc --resolveJsonModule
-../node_modules/.bin/tsc-watch --resolveJsonModule --noClear --onSuccess "node --no-warnings=ExperimentalWarnings --experimental-json-modules Server.js --config=$CONFIG"
+../node_modules/.bin/tsc-watch --resolveJsonModule --noClear --onSuccess "node --no-warnings=ExperimentalWarnings --experimental-json-modules --inspect=0.0.0.0:9229 Server.js --config=$CONFIG"

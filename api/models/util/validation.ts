@@ -16,8 +16,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Validate that input is a valid [latitude, longitude]
-function isLatLon(point) {
+// Validate that input is a valid [longitude, latitude]
+function isLatLon(point: { coordinates: [number, number] }) {
   const val = point.coordinates;
   if (
     val === null ||
@@ -26,10 +26,10 @@ function isLatLon(point) {
     val.length !== 2 ||
     typeof val[0] !== "number" ||
     typeof val[1] !== "number" ||
-    val[0] < -90 ||
-    90 < val[0] ||
-    val[1] < -180 ||
-    180 <= val[1]
+    val[1] < -90 ||
+    90 < val[1] ||
+    val[0] < -180 ||
+    180 <= val[0]
   ) {
     throw new Error("Location is not valid.");
   }

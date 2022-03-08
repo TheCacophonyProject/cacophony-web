@@ -19,7 +19,6 @@ import {
   ApiGroupReturned,
   ApiGroupsDevice,
   ApiStationData,
-  ApiStationDataReturned,
 } from "../types";
 import { ApiStationResponse } from "@typedefs/api/station";
 
@@ -40,6 +39,13 @@ Cypress.Commands.add(
     } else {
       fullGroupName = getTestName(groupName);
     }
+    let fullName: string;
+    if (additionalChecks["useRawUserName"] === true) {
+      fullName = userName;
+    } else {
+      fullName = getTestName(userName);
+    }
+
     const adminStr = admin ? " as admin " : "";
     logTestDescription(
       `${groupAdminUser} Adding user '${userName}' to group '${groupName}' ${adminStr}`,
@@ -54,7 +60,7 @@ Cypress.Commands.add(
         body: {
           group: fullGroupName,
           admin: admin.toString(),
-          username: getTestName(userName),
+          username: fullName,
         },
       },
       groupAdminUser,
@@ -79,6 +85,13 @@ Cypress.Commands.add(
       fullGroupName = getTestName(groupName);
     }
 
+    let fullName: string;
+    if (additionalChecks["useRawUserName"] === true) {
+      fullName = userName;
+    } else {
+      fullName = getTestName(userName);
+    }
+
     logTestDescription(
       `${groupAdminUser} Removing user '${userName}' from group '${groupName}' `,
       { user: userName, groupName },
@@ -91,7 +104,7 @@ Cypress.Commands.add(
         url: v1ApiPath("groups/users"),
         body: {
           group: fullGroupName,
-          username: getTestName(userName),
+          username: fullName,
         },
       },
       groupAdminUser,
@@ -451,6 +464,14 @@ Cypress.Commands.add(
         expectedWarnings.forEach(function (warning: string) {
           expect(warnings, "Expect warning to be present").to.contain(warning);
         });
+      }
+      if (statusCode == 200) {
+        //store station Ids against names
+        for (let count = 0; count < stations.length; count++) {
+          const stationName = stations[count].name;
+          const stationId = response.body.stationIdsAddedOrUpdated[count];
+          saveIdOnly(stationName, stationId);
+        }
       }
     });
   }

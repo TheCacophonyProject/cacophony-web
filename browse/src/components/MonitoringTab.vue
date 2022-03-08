@@ -1,13 +1,21 @@
 <template>
   <div class="container visits-container">
-    <h2>
-      All visits
-      <help>
-        All visits ever recorded for this
-        {{ `${deviceName ? "device" : stationName ? "station" : "group"}` }}
-      </help>
+    <h2 class="d-flex flex-row justify-content-between align-items-center">
+      <span>
+        All visits
+        <help>
+          All visits ever recorded for this
+          {{ `${deviceName ? "device" : stationName ? "station" : "group"}` }}
+        </help>
+      </span>
+      <ExportVisits
+        v-if="visits.length !== 0"
+        :groups="visitsQuery.group"
+        :devices="visitsQuery.device"
+      />
     </h2>
     <VisitsList
+      :group-name="groupName"
       :query-pending="loading"
       :visits="visits"
       :all-loaded="allLoaded"
@@ -27,6 +35,8 @@ import api from "@/api";
 import VisitsList from "@/components/VisitsList.vue";
 import { startOfEvening } from "@/helpers/datetime";
 import SunCalc from "suncalc";
+import ExportVisits from "@/components/Monitoring/ExportVisits.vue";
+import { LatLng } from "@typedefs/api/common";
 const LOAD_PER_PAGE_CARDS = 10;
 
 // TODO(jon): A histogram of activity by hour of the night.  Total visits, and by species.
@@ -41,98 +51,43 @@ interface DateSortable {
 const addSupplementaryEvents = (
   visits: DateSortable[],
   devicePowerEvents: DateSortable[],
-  location?: [number, number]
+  location?: LatLng
 ): DateSortable[] => {
-  // Get the days for visits, work out the days covered:
-  const daysCovered = new Set();
-  for (const visit of visits) {
-    const start = startOfEvening(visit.sortDate);
-    daysCovered.add(start.toISOString());
-    start.setDate(start.getDate() + 1);
-    daysCovered.add(start.toISOString());
-  }
-  const latestVisitDay = startOfEvening(visits[0].sortDate);
-  latestVisitDay.setDate(latestVisitDay.getDate() + 1);
-  const earliestVisitDay = startOfEvening(visits[visits.length - 1].sortDate);
-  // console.log(
-  //   "Earliest visit day",
-  //   earliestVisitDay.toLocaleDateString(),
-  //   earliestVisitDay
-  // );
-  // console.log(
-  //   "Latest visit day",
-  //   latestVisitDay.toLocaleDateString(),
-  //   latestVisitDay
-  // );
-  for (const powerEvent of devicePowerEvents) {
-    const eventDay = startOfEvening(powerEvent.sortDate);
-    if (eventDay > earliestVisitDay) {
-      const eventDate = eventDay.toISOString();
-      if (!daysCovered.has(eventDate)) {
-        // No visits during this day, but the device was powered on, so add a dummy event.
-        visits.push(powerEvent);
-        // console.log("Adding power event for", eventDay.toLocaleDateString());
-        daysCovered.add(eventDate);
+  if (visits.length) {
+    // Get the days for visits, work out the days covered:
+    const daysCovered = new Set();
+    for (const visit of visits) {
+      const start = startOfEvening(visit.sortDate);
+      daysCovered.add(start.toISOString());
+      //start.setDate(start.getDate() + 1);
+      //start.setMinutes(start.getMinutes() - 1);
+      //daysCovered.add(start.toISOString());
+    }
+    const latestVisitDay = startOfEvening(visits[0].sortDate);
+    latestVisitDay.setDate(latestVisitDay.getDate() + 1);
+    const earliestVisitDay = startOfEvening(visits[visits.length - 1].sortDate);
+    // console.log(
+    //   "Earliest visit day",
+    //   earliestVisitDay.toLocaleDateString(),
+    //   earliestVisitDay
+    // );
+    // console.log(
+    //   "Latest visit day",
+    //   latestVisitDay.toLocaleDateString(),
+    //   latestVisitDay
+    // );
+    for (const powerEvent of devicePowerEvents) {
+      const eventDay = startOfEvening(powerEvent.sortDate);
+      if (eventDay > earliestVisitDay) {
+        const eventDate = eventDay.toISOString();
+        if (!daysCovered.has(eventDate)) {
+          // No visits during this day, but the device was powered on, so add a dummy event.
+          visits.push(powerEvent);
+          // console.log("Adding power event for", eventDay.toLocaleDateString());
+          daysCovered.add(eventDate);
+        }
       }
     }
-  }
-  // console.log(
-  //   Array.from(daysCovered.keys())
-  //     .map((i) => new Date(i).getTime())
-  //     .sort()
-  //     .map((d) => new Date(d).toLocaleDateString())
-  //     .reverse()
-  // );
-
-  // FIXME(jon): We should still push "no activity" events for days where we don't have a device location?
-  //  If I only get this done today, that will be fine.
-
-  if (location !== undefined) {
-    // Add sunrise and set events for each day that has visits
-    const now = new Date();
-    //now.setHours(17);
-    //debugger;
-    const thisAfternoon = startOfEvening(now);
-    //thisAfternoon.setDate(thisAfternoon.getDate() + 1);
-    if (now > thisAfternoon) {
-      thisAfternoon.setDate(thisAfternoon.getDate() + 1);
-    }
-
-    const duskDawn = [];
-    for (const day of daysCovered.keys()) {
-      const dayDate = new Date(day as string);
-      if (
-        dayDate >= earliestVisitDay &&
-        //dayDate <= latestVisitDay &&
-        dayDate < thisAfternoon
-      ) {
-        const times = SunCalc.getTimes(dayDate, location[0], location[1]);
-        duskDawn.push({
-          sortDate: times.sunsetStart,
-          timeStart: times.sunsetStart,
-          timeEnd: times.sunset,
-          classification: "Sunset",
-        } as DateSortable);
-      }
-      const nextDayDate = new Date(day as string);
-      nextDayDate.setDate(nextDayDate.getDate() + 1);
-      if (
-        nextDayDate > earliestVisitDay &&
-        //nextDayDate <= latestVisitDay &&
-        nextDayDate <= thisAfternoon
-      ) {
-        const times = SunCalc.getTimes(nextDayDate, location[0], location[1]);
-        duskDawn.push({
-          sortDate: times.sunrise,
-          timeStart: times.sunrise,
-          timeEnd: times.sunriseEnd,
-          classification: "Sunrise",
-        } as DateSortable);
-      }
-    }
-    // for (const d of duskDawn) {
-    //   daysCovered.add(startOfEvening(d.sortDate).toISOString());
-    // }
     // console.log(
     //   Array.from(daysCovered.keys())
     //     .map((i) => new Date(i).getTime())
@@ -140,7 +95,68 @@ const addSupplementaryEvents = (
     //     .map((d) => new Date(d).toLocaleDateString())
     //     .reverse()
     // );
-    visits.push(...duskDawn);
+
+    // FIXME(jon): We should still push "no activity" events for days where we don't have a device location?
+
+    if (location) {
+      // Add sunrise and set events for each day that has visits
+      const now = new Date();
+      //now.setHours(17);
+      //debugger;
+      const thisAfternoon = startOfEvening(now);
+      //thisAfternoon.setDate(thisAfternoon.getDate() + 1);
+      if (now > thisAfternoon) {
+        thisAfternoon.setDate(thisAfternoon.getDate() + 1);
+      }
+
+      const duskDawn = [];
+      for (const day of daysCovered.keys()) {
+        const dayDate = new Date(day as string);
+        if (
+          dayDate >= earliestVisitDay &&
+          //dayDate <= latestVisitDay &&
+          dayDate < thisAfternoon
+        ) {
+          const times = SunCalc.getTimes(dayDate, location.lat, location.lng);
+          duskDawn.push({
+            sortDate: times.sunsetStart,
+            timeStart: times.sunsetStart,
+            timeEnd: times.sunset,
+            classification: "Sunset",
+          } as DateSortable);
+        }
+        const nextDayDate = new Date(day as string);
+        nextDayDate.setDate(nextDayDate.getDate() + 1);
+        if (
+          nextDayDate > earliestVisitDay &&
+          //nextDayDate <= latestVisitDay &&
+          nextDayDate <= thisAfternoon
+        ) {
+          const times = SunCalc.getTimes(
+            nextDayDate,
+            location.lat,
+            location.lng
+          );
+          duskDawn.push({
+            sortDate: times.sunrise,
+            timeStart: times.sunrise,
+            timeEnd: times.sunriseEnd,
+            classification: "Sunrise",
+          } as DateSortable);
+        }
+      }
+      // for (const d of duskDawn) {
+      //   daysCovered.add(startOfEvening(d.sortDate).toISOString());
+      // }
+      // console.log(
+      //   Array.from(daysCovered.keys())
+      //     .map((i) => new Date(i).getTime())
+      //     .sort()
+      //     .map((d) => new Date(d).toLocaleDateString())
+      //     .reverse()
+      // );
+      visits.push(...duskDawn);
+    }
   }
 
   return visits;
@@ -151,10 +167,10 @@ const getPowerEventsAndLocationForDevice = async (
   isFirstPage: boolean
 ): Promise<{
   devicePowerEvents: DateSortable[];
-  location: [number, number] | undefined;
+  location: LatLng | undefined;
 }> => {
   const devicePowerEvents = [];
-  let location;
+  let location: LatLng;
   if (currentVisits.length && device) {
     let nextDay = new Date(currentVisits[0].timeEnd);
 
@@ -174,7 +190,7 @@ const getPowerEventsAndLocationForDevice = async (
       endTime: endOfCurrentDay.toISOString(),
       startTime: beginningOfDayOfEarliestDay.toISOString(),
     };
-    const [latestRecording, powerEvents] = await Promise.all([
+    const [latestRecordingResponse, powerEvents] = await Promise.all([
       // Calculate dusk/dawn, moonrise/set events for range.
       api.recording.latestForDevice(device),
       api.device.getLatestEvents(device, eventParams),
@@ -187,7 +203,9 @@ const getPowerEventsAndLocationForDevice = async (
         timeEnd: row.dateTime,
       }))
     );
-    location = latestRecording.result.rows[0].location?.coordinates;
+    if (latestRecordingResponse.success) {
+      location = latestRecordingResponse.result.rows[0].location;
+    }
   }
   return {
     devicePowerEvents,
@@ -198,6 +216,7 @@ const getPowerEventsAndLocationForDevice = async (
 export default {
   name: "MonitoringTab",
   components: {
+    ExportVisits,
     VisitsList,
     Help,
   },
@@ -212,9 +231,10 @@ export default {
       visits: [],
       totalVisitsCount: null,
       totalVisitsPages: null,
-      loading: true,
+      loading: false,
       allLoaded: false,
       currentPage: 1,
+      destroyed: false,
       startDateOfQuery: Date,
     };
   },
@@ -230,8 +250,9 @@ export default {
   methods: {
     async requestVisitsUntilBeginningOfEarliestDay() {
       if (
-        this.totalVisitsPages === null ||
-        this.currentPage < this.totalVisitsPages
+        !this.loading &&
+        (this.totalVisitsPages === null ||
+          this.currentPage < this.totalVisitsPages)
       ) {
         this.loading = true;
         if (!currentVisits.length) {
@@ -239,6 +260,9 @@ export default {
             ...this.visitsQuery,
             page: this.currentPage,
           });
+          if (this.destroyed) {
+            return;
+          }
           if (monitoringResponse.success) {
             const { result } = monitoringResponse;
             if (!this.totalVisitsCount) {
@@ -250,7 +274,6 @@ export default {
                   result.params.pagesEstimate * LOAD_PER_PAGE_CARDS;
               }
             }
-
             this.currentPage += 1;
             // Visits ordered newest to oldest.
             currentVisits.push(...result.visits);
@@ -263,18 +286,31 @@ export default {
             currentVisits.push(extraVisits.shift());
           }
         }
-        // eslint-disable-next-line no-console
-        console.assert(
-          this.visitsQuery.device.length === 1,
-          "Should only have one device"
-        );
-        const { location, devicePowerEvents } =
-          await getPowerEventsAndLocationForDevice(
-            this.visitsQuery.device[0],
-            this.currentPage === 2
+        let location: LatLng | undefined;
+        let devicePowerEvents;
+        if (this.visitsQuery.device.length !== 0) {
+          // eslint-disable-next-line no-console
+          console.assert(
+            this.visitsQuery.device.length === 1,
+            "Should only have one device"
           );
+          const powerEventsAndLocation =
+            await getPowerEventsAndLocationForDevice(
+              this.visitsQuery.device[0],
+              this.currentPage === 2
+            );
+          location = powerEventsAndLocation.location;
+          devicePowerEvents = powerEventsAndLocation.devicePowerEvents;
+        } else {
+          // TODO - Should we try to get an average location for the group?  We can probably assume that devices
+          //  in a group are mostly in the same region, and share sunset/sunrise times.
+          devicePowerEvents = [];
+        }
+
         const oldestVisit = currentVisits[currentVisits.length - 1];
-        const oldestVisitDay = startOfEvening(new Date(oldestVisit.timeStart));
+        const oldestVisitDay =
+          (oldestVisit && startOfEvening(new Date(oldestVisit.timeStart))) ||
+          startOfEvening(new Date());
         // Now request again until we get a day that is less than oldestVisitDay.  Split the remaining array into before and after.
         while (
           extraVisits.length === 0 &&
@@ -350,6 +386,7 @@ export default {
     },
   },
   beforeDestroy() {
+    this.destroyed = true;
     while (extraVisits.length) {
       extraVisits.pop();
     }
@@ -364,6 +401,10 @@ export default {
 @import "~bootstrap/scss/functions";
 @import "~bootstrap/scss/variables";
 @import "~bootstrap/scss/mixins";
+
+.container.visits-container h2 {
+  max-width: 640px;
+}
 
 @include media-breakpoint-down(sm) {
   .container.visits-container {

@@ -31,7 +31,6 @@ import {
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
-  fetchAuthorizedRequiredStations,
   fetchAuthorizedRequiredStationsForGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
@@ -48,10 +47,7 @@ import {
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
 import { Group } from "models/Group";
-import {
-  ApiGroupResponse,
-  ApiGroupUserRelationshipResponse,
-} from "@typedefs/api/group";
+import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
@@ -61,6 +57,7 @@ import {
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
 import { mapStations } from "./Station";
+import logger from "@log";
 
 const mapGroup = (
   group: Group,
@@ -102,7 +99,7 @@ interface ApiGroupResponseSuccess {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiGroupUsersResponseSuccess {
-  users: ApiGroupUserRelationshipResponse[];
+  users: ApiGroupUserResponse[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -346,6 +343,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Schedules
    * @apiDescription This call is used to retrieve the any audio bait schedules for a group.
    * @apiUse V1UserAuthorizationHeader
+   * @apiParam {String|Integer} groupIdOrName Name or id of group to get schedules for
    *
    * @apiInterface {apiSuccess::ApiScheduleConfigs} schedules Metadata of the schedules.
    * @apiUse V1ResponseSuccess

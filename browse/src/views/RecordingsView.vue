@@ -12,7 +12,7 @@
           :disabled="queryPending"
           :is-collapsed="searchPanelIsCollapsed"
           :simple-only="false"
-          @mounted="querySubmitted"
+          @mounted="(query) => querySubmitted(query, true)"
           @submit="querySubmitted"
           @description="saveNextQueryDescription"
           @toggled-search-panel="
@@ -43,6 +43,7 @@
             <p class="search-description" v-html="currentQueryDescription" />
           </div>
           <RecordingsList
+            ref="recList"
             :recordings="recordings"
             :query-pending="queryPending"
             :show-cards="showCards"
@@ -171,7 +172,7 @@ export default {
 
       // Make sure the request wouldn't go past the count?
       if (currentPage < this.totalPages) {
-        this.updateRoute(nextQuery);
+        this.updateRoute(nextQuery, true);
         this.queryPending = true;
         const queryResponse = await api.recording.query(nextQuery);
         const { result } = queryResponse;
@@ -199,16 +200,25 @@ export default {
       query.offset = Math.max(0, (page - 1) * perPage);
       return query;
     },
-    updateRoute(query) {
+    updateRoute(query, replace = false) {
       // Catch errors to avoid redundant navigation error
-      this.$router
-        .push({
-          path: "recordings",
-          query,
-        })
-        .catch(() => {});
+      if (!replace) {
+        this.$router
+          .push({
+            path: "recordings",
+            query,
+          })
+          .catch(() => {});
+      } else {
+        this.$router
+          .replace({
+            path: "recordings",
+            query,
+          })
+          .catch(() => {});
+      }
     },
-    querySubmitted(query) {
+    querySubmitted(query, first = false) {
       const queryParamsHaveChanged =
         JSON.stringify(query) !== JSON.stringify(this.serialisedQuery);
       if (queryParamsHaveChanged) {
@@ -223,7 +233,7 @@ export default {
         this.perPage
       );
       fullQuery.offset = 0;
-      this.updateRoute(fullQuery);
+      this.updateRoute(fullQuery, first);
       this.getRecordings(fullQuery);
     },
     saveNextQueryDescription(description) {
@@ -315,9 +325,9 @@ $main-content-width: 640px;
     position: fixed;
     top: 0;
     left: 0;
+    z-index: 110;
     transform: translate(0);
     width: var(--search-panel-width);
-    z-index: 2;
     transition: transform 0.2s;
     &.is-collapsed {
       transform: translate(var(--search-panel-offset));

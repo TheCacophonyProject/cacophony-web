@@ -44,13 +44,18 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   createdAt: Date;
   updatedAt: Date;
 }
+export const additionalTags = Object.freeze([
+  "poor tracking",
+  "part",
+  "interesting",
+]);
+export const filteredTags = Object.freeze(["false-positive"]);
+
 export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
 export default function (
   sequelize: Sequelize.Sequelize,
   DataTypes
 ): TrackTagStatic {
-  const additionalTags = Object.freeze(["poor tracking", "part"]);
-
   const TrackTag = sequelize.define("TrackTag", {
     what: DataTypes.STRING,
     confidence: DataTypes.FLOAT,

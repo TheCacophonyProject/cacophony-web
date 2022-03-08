@@ -29,8 +29,6 @@ describe("Events - add event on behalf of device", () => {
     cy.testCreateUserGroupAndDevice("groupAdmin8", "group8", "camera8");
     cy.testCreateUserGroupAndDevice("groupAdmin9", "group9", "camera9");
     cy.apiDeviceAdd("otherCamera", "group");
-    cy.apiUserAdd("deviceAdmin");
-    cy.apiDeviceUserAdd("groupAdmin", "deviceAdmin", "camera", true);
     cy.testCreateUserGroupAndDevice(
       "otherGroupAdmin",
       "otherGroup",
@@ -104,78 +102,10 @@ describe("Events - add event on behalf of device", () => {
     );
   });
 
-  it("Device admin can add event on behalf of device", () => {
-    cy.apiUserAdd("deviceAdmin3");
-    cy.apiDeviceUserAdd("groupAdmin3", "deviceAdmin3", "camera3", true);
-    const expectedEvent3 = {
-      id: null,
-      createdAt: null,
-      DeviceId: getCreds("camera3").id,
-      dateTime: firstTime,
-      Device: { devicename: getTestName("camera3") },
-      EventDetail: { type: EventTypes.POWERED_ON, details: {} },
-    };
-
-    // add and verify events
-    cy.apiEventsDeviceAddOnBehalf(
-      "deviceAdmin3",
-      "camera3",
-      { type: EventTypes.POWERED_ON, details: {} },
-      [firstTime]
-    );
-    cy.apiEventsCheck(
-      "deviceAdmin3",
-      "camera3",
-      {},
-      [expectedEvent3],
-      EXCL_ID_CREATED
-    );
-  });
-
-  it("Device member can add event on behalf of device", () => {
-    cy.apiUserAdd("deviceMember4");
-    cy.apiDeviceUserAdd("groupAdmin4", "deviceMember4", "camera4", true);
-    const expectedEvent4 = {
-      id: null,
-      createdAt: null,
-      DeviceId: getCreds("camera4").id,
-      dateTime: firstTime,
-      Device: { devicename: getTestName("camera4") },
-      EventDetail: { type: EventTypes.POWERED_ON, details: {} },
-    };
-
-    // add and verify events
-    cy.apiEventsDeviceAddOnBehalf(
-      "deviceMember4",
-      "camera4",
-      { type: EventTypes.POWERED_ON, details: {} },
-      [firstTime]
-    );
-    cy.apiEventsCheck(
-      "deviceMember4",
-      "camera4",
-      {},
-      [expectedEvent4],
-      EXCL_ID_CREATED
-    );
-  });
-
   it("Group admin cannot add event for a device in another group", () => {
     cy.apiEventsDeviceAddOnBehalf(
       "groupAdmin",
       "otherGroupCamera",
-      { type: EventTypes.POWERED_ON, details: {} },
-      [firstTime],
-      undefined,
-      true,
-      HTTP_Forbidden
-    );
-  });
-
-  it("Device admin cannot add event for another device in group", () => {
-    cy.apiEventsDeviceAddOnBehalf(
-      "deviceAdmin",
-      "otherCamera",
       { type: EventTypes.POWERED_ON, details: {} },
       [firstTime],
       undefined,

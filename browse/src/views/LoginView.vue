@@ -93,7 +93,6 @@ export default {
       });
       if (response.success) {
         if (this.$store.getters["User/isLoggedIn"]) {
-          console.log("Redirect to", this.$route.query.nextUrl);
           if (this.$route.query.nextUrl) {
             await this.$router.push(this.$route.query.nextUrl);
           } else {

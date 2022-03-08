@@ -1,88 +1,122 @@
 <template>
-  <b-container>
-    <b-row>
-      <b-col cols="12" lg="8" class="mb-2">
-        <audio
-          ref="player"
-          :src="audioUrl"
-          volume="0.75"
-          controls
-          autoplay
-          class="audio"
-        />
-      </b-col>
-    </b-row>
-    <b-row>
-      <b-col cols="2" class="db">
-        <b-button-group class="pl-4" vertical>
-          <b-button class="mt-1" @click="volumeLoudest">Loudest</b-button>
-          <b-button class="mt-1" @click="volumeLouder">Louder</b-button>
-          <b-button class="mt-1">Default</b-button>
-          <b-button class="mt-1" @click="volumeQuieter">Quieter</b-button>
-          <b-button class="mt-1" @click="volumeQuietest">Quietest</b-button>
-        </b-button-group>
-      </b-col>
-      <b-row class="db m-0 no-gutters">
-        <b-col offset="1" class="mt-0 ml-0 db" cols="12">
-          <BasicTags @addAudioTag="addAudioTag($event)" />
-          <CustomTags @addAudioTag="addAudioTag($event)" />
-          <b-button class="float-right mt-3 mr-1" size="lg" @click="done()"
-            >Done</b-button
+  <b-row fluid class="audio-recording-container">
+    <b-col lg="8">
+      <b-row class="mb-4">
+        <b-col>
+          <AudioPlayer
+            v-if="!deleted"
+            :tracks="tracks"
+            :url="url"
+            :selectedTrack="selectedTrack"
+            :setSelectedTrack="setSelectedTrack"
+          />
+          <b-row
+            v-else
+            class="undo-delete w-100 justify-content-center align-items-center"
+            @click="undoDeleteRecording"
+            role="button"
           >
-        </b-col>
-        <b-col offset="9" md="3" class="mt-3">
-          <b-button
-            v-b-tooltip.hover.bottomleft="'Delete this recording'"
-            :disabled="deleteDisabled"
-            variant="danger"
-            block
-            @click="deleteRecording()"
-          >
-            <font-awesome-icon
-              icon="exclamation-triangle"
-              class="d-none d-md-inline"
-            />
-            Delete
-          </b-button>
+            <h1 class="pr-2">Undo Delete Recording</h1>
+            <font-awesome-icon class="mb-2" icon="undo" size="2x" />
+          </b-row>
         </b-col>
       </b-row>
-    </b-row>
-    <b-row>
-      <TagList
-        :items="tagItems"
-        @deleteTag="deleteTag($event)"
-        @replay="replay($event)"
+      <b-row class="bottom-container" v-show="!deleted">
+        <b-col lg="6">
+          <TrackList
+            :audio-tracks="tracks"
+            :selected-track="selectedTrack"
+            :set-selected-track="setSelectedTrack"
+            :delete-track="deleteTrack"
+            :undo-delete-track="undoDeleteTrack"
+            :add-tag-to-track="addTagToTrack"
+          />
+        </b-col>
+        <b-col>
+          <LabelButtonGroup
+            :labels="labels"
+            :add-tag-to-selected-track="addTagToSelectedTrack"
+            :delete-tag-from-selected-track="deleteTagFromSelectedTrack"
+            :disabled="!selectedTrack"
+            :selectedLabel="selectedLabel"
+          />
+          <div class="mt-2 mb-4">
+            <multiselect
+              v-model="customTag"
+              :options="BirdLabels"
+              :disabled="!selectedTrack"
+              :value="selectedLabel"
+            />
+          </div>
+        </b-col>
+      </b-row>
+    </b-col>
+    <b-col lg="4">
+      <Playlist
+        :recording-date-time="recording.recordingDateTime"
+        :url="url"
+        :delete-recording="deleteRecording"
       />
-    </b-row>
-  </b-container>
+      <CacophonyIndexGraph
+        class="mt-2"
+        :cacophony-index="recording.cacophonyIndex"
+        :id="recording.id"
+      />
+      <RecordingProperties :recording="recording" />
+    </b-col>
+  </b-row>
 </template>
 
 <script lang="ts">
-import api from "@api";
-import BasicTags from "../Audio/BasicTags.vue";
-import CustomTags from "../Audio/CustomTags.vue";
-import TagList from "../Audio/TagList.vue";
-import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
-import {
-  ApiRecordingTagRequest,
-  ApiRecordingTagResponse,
-} from "@typedefs/api/tag";
-import { RecordingType } from "@typedefs/api/consts";
-import { TagId } from "@typedefs/api/common";
+import { PropType } from "vue";
+import { produce } from "immer";
+import { defineComponent, ref, watch, watchEffect } from "@vue/composition-api";
+import Multiselect from "vue-multiselect";
 
-export default {
+import api from "@api";
+import store from "@/stores";
+import { useState } from "@/utils";
+import { TagColours, BirdLabels } from "@/const";
+
+import AudioPlayer from "../Audio/AudioPlayer.vue";
+import TrackList from "../Audio/TrackList.vue";
+import Playlist from "../Audio/Playlist.vue";
+import LabelButtonGroup from "../Audio/LabelButtonGroup.vue";
+import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
+import RecordingProperties from "../Video/RecordingProperties.vue";
+
+import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
+import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
+import { TrackId } from "@typedefs/api/common";
+
+export enum TagClass {
+  Automatic = "automatic",
+  Human = "human",
+  Confirmed = "confirmed",
+  Denied = "denied",
+}
+
+export interface DisplayTag extends ApiTrackTagResponse {
+  class: TagClass;
+}
+
+export interface AudioTrack extends ApiTrackResponse {
+  colour: string;
+  displayTags: DisplayTag[];
+  confirming: boolean;
+  deleted: boolean;
+}
+export type AudioTracks = Map<TrackId, AudioTrack>;
+
+export default defineComponent({
   name: "AudioRecording",
-  data() {
-    return { deleteDisabled: false };
-  },
-  components: {
-    CustomTags,
-    BasicTags,
-    TagList,
-  },
   props: {
     recording: {
-      type: Object,
+      type: Object as PropType<ApiAudioRecordingResponse>,
       required: true,
     },
     audioUrl: {
@@ -94,158 +128,547 @@ export default {
       required: true,
     },
   },
-  computed: {
-    tagItems() {
-      const tags: ApiRecordingTagResponse[] =
-        (this.recording && this.recording.tags) || [];
-      const tagItems = [];
-      tags.map((tag) => {
-        const tagItem: any = {};
-        if (tag.what) {
-          tagItem.what = tag.what;
-        }
-        tagItem.detail = tag.detail;
-        if (tag.confidence) {
-          tagItem.confidence = tag.confidence.toFixed(2);
-        }
-        if (tag.automatic) {
-          tagItem.who = "Cacophony AI";
-          tagItem["_rowVariant"] = "warning";
-        } else {
-          tagItem.who = tag.taggerName || "-";
-        }
-        tagItem.when = new Date(tag.createdAt).toLocaleString();
-        const startTime = tag.startTime || 0;
-        tagItem.startTime = `${Math.floor(
-          (startTime - (startTime % 60)) / 60
-        )}:${Math.floor(startTime % 60)
-          .toString()
-          .padStart(2, "0")}`;
-        tagItem.tag = tag;
-        tagItems.push(tagItem);
-      });
-      return tagItems;
-    },
-    audioRecording(): ApiAudioRecordingResponse {
-      return this.recording;
-    },
+  components: {
+    AudioPlayer,
+    Playlist,
+    TrackList,
+    CacophonyIndexGraph,
+    RecordingProperties,
+    LabelButtonGroup,
+    Multiselect,
   },
-  methods: {
-    async getNextRecording(
-      direction: "next" | "previous" | "either"
-    ): Promise<boolean> {
-      const params: any = {
-        limit: 1,
-        offset: 0,
-        type: RecordingType.Audio,
+  setup(props) {
+    const userName = store.state.User.userData.userName;
+    const userId = store.state.User.userData.id;
+    const [url, setUrl] = useState(
+      props.audioUrl ? props.audioUrl : props.audioRawUrl
+    );
+    const [deleted, setDeleted] = useState(false);
+    watch(
+      () => [props.audioUrl, props.audioRawUrl],
+      () => {
+        setUrl(props.audioUrl ? props.audioUrl : props.audioRawUrl);
+        setDeleted(false);
+      }
+    );
+
+    const deleteRecording = async () => {
+      const response = await api.recording.del(props.recording.id);
+      if (response.success) {
+        setDeleted(true);
+      }
+    };
+
+    const undoDeleteRecording = async () => {
+      const response = await api.recording.undelete(props.recording.id);
+      if (response.success) {
+        setDeleted(false);
+      }
+    };
+
+    const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
+      const automaticTag = track.tags.find((tag) => tag.automatic);
+      const humanTags = track.tags.filter((tag) => !tag.automatic);
+      const humanTag =
+        humanTags.length === 1
+          ? humanTags[0]
+          : humanTags.length === 0
+          ? null
+          : humanTags.reduce((acc, curr) => {
+              if (acc.what === curr.what) {
+                return curr;
+              } else {
+                return { ...humanTags[0], what: "Multiple" };
+              }
+            });
+      if (automaticTag) {
+        if (humanTags.length > 0) {
+          const confirmedTag = humanTags.find(
+            (tag) => automaticTag.what === tag.what
+          );
+          if (confirmedTag) {
+            return [
+              {
+                ...confirmedTag,
+                class: TagClass.Confirmed,
+              },
+            ];
+          } else {
+            // check if all human tags are the same
+            return [
+              {
+                ...humanTag,
+                class: TagClass.Human,
+              },
+              {
+                ...automaticTag,
+                class: TagClass.Denied,
+              },
+            ];
+          }
+        } else {
+          return [
+            {
+              ...automaticTag,
+              class: TagClass.Automatic,
+            },
+          ];
+        }
+      } else if (humanTags.length > 0) {
+        return [
+          {
+            ...humanTag,
+            class: TagClass.Human,
+          },
+        ];
+      } else {
+        return [];
+      }
+    };
+
+    const createAudioTrack = (
+      track: ApiTrackResponse,
+      index: number
+    ): AudioTrack => {
+      const displayTags = getDisplayTags(track);
+      return {
+        ...track,
+        colour: TagColours[index % TagColours.length],
+        displayTags,
+        confirming: false,
+        deleted: false,
       };
-      let order;
-      switch (direction) {
-        case "next":
-          params.to = null;
-          params.from = this.recording.recordingDateTime;
-          order = "ASC";
-          break;
-        case "previous":
-          params.from = null;
-          params.to = this.recording.recordingDateTime;
-          order = "DESC";
-          break;
-        case "either":
-          // First, we want to see if we have a previous recording.
-          // If so, go prev, else go next
-          if (await this.getNextRecording("previous")) {
-            return true;
-          } else if (await this.getNextRecording("next")) {
+    };
+    const mappedTracks = (tracks: ApiTrackResponse[]) =>
+      new Map(
+        tracks.map((track, index) => {
+          const audioTrack = createAudioTrack(track, index);
+          return [track.id, audioTrack];
+        })
+      );
+
+    const [tracks, setTracks] = useState<AudioTracks>(
+      mappedTracks(props.recording.tracks)
+    );
+    const [selectedTrack, setSelectedTrack] = useState<AudioTrack>(null);
+
+    const addTrack = async (track: AudioTrack): Promise<AudioTrack> => {
+      try {
+        const trackRequest: ApiTrackRequest = {
+          data: {
+            start_s: track.start,
+            end_s: track.end,
+            maxFreq: track.maxFreq,
+            minFreq: track.minFreq,
+            positions: track.positions,
+            userId: userId,
+            automatic: false,
+          },
+        };
+        const response = await api.recording.addTrack(
+          trackRequest,
+          props.recording.id
+        );
+
+        if (response.success) {
+          const id = response.result.trackId;
+          const colour =
+            track.colour && track.id !== -1
+              ? track.colour
+              : TagColours[tracks.value.size % TagColours.length];
+          console.log(colour, tracks.value.size);
+          const newTrack = {
+            ...track,
+            id,
+            colour,
+            deleted: false,
+          };
+          setTracks((tracks) => {
+            const track = tracks.get(id);
+            tracks.set(
+              id,
+              produce(track, () => newTrack)
+            );
+          });
+          return newTrack;
+        } else {
+          throw response.result;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const modifyTrack = (
+      trackId: TrackId,
+      trackChanges: Partial<AudioTrack>
+    ): AudioTrack => {
+      setTracks((draftTracks) => {
+        const track = draftTracks.get(trackId);
+        draftTracks.set(
+          trackId,
+          produce(track, () => ({
+            ...track,
+            ...trackChanges,
+          }))
+        );
+      });
+      return tracks.value.get(trackId) as AudioTrack;
+    };
+
+    const addTagToTrack = async (
+      trackId: TrackId,
+      what: string,
+      automatic = false,
+      confidence = 1,
+      data: any = null,
+      username = userName
+    ): Promise<AudioTrack> => {
+      const track = tracks.value.get(trackId);
+      if (track) {
+        modifyTrack(trackId, {
+          confirming: true,
+        });
+      }
+      const tag: ApiTrackTagRequest = {
+        what: what.toLowerCase(),
+        automatic,
+        confidence,
+        ...(data && { data: JSON.stringify(data) }),
+      };
+      const response = await api.recording.replaceTrackTag(
+        tag,
+        props.recording.id,
+        Number(trackId),
+        tag.automatic
+      );
+      if (response.success) {
+        const newTag: ApiTrackTagResponse = {
+          ...tag,
+          id: response.result.trackTagId ?? 0,
+          trackId,
+          data,
+          userId,
+          automatic,
+          userName: username,
+        };
+        const currTags = track.tags.filter((tag) => tag.userId !== userId);
+        const newTags = [...currTags, newTag];
+        const taggedTrack = modifyTrack(trackId, {
+          confirming: false,
+          tags: newTags,
+        });
+        const displayTags = getDisplayTags(taggedTrack);
+        const currTrack = modifyTrack(trackId, {
+          displayTags,
+          confirming: false,
+        });
+
+        return currTrack;
+      } else {
+        return modifyTrack(trackId, {
+          confirming: false,
+        });
+      }
+    };
+
+    const deleteTrackTag = async (
+      trackId: TrackId,
+      tagId: number
+    ): Promise<AudioTrack> => {
+      const track = tracks.value.get(trackId);
+      if (track) {
+        modifyTrack(trackId, {
+          confirming: true,
+        });
+      }
+      const response = await api.recording.deleteTrackTag(
+        props.recording.id,
+        trackId,
+        tagId
+      );
+      if (response.success) {
+        const currTags = track.tags.filter((tag) => tag.id !== tagId);
+        const taggedTrack = modifyTrack(trackId, {
+          tags: currTags,
+        });
+        const displayTags = getDisplayTags(taggedTrack);
+        const currTrack = modifyTrack(trackId, {
+          displayTags,
+          confirming: false,
+        });
+
+        return currTrack;
+      } else {
+        return modifyTrack(trackId, {
+          confirming: false,
+        });
+      }
+    };
+
+    const addTagToSelectedTrack = async (tag: string) => {
+      if (selectedTrack.value) {
+        if (selectedTrack.value.id === -1) {
+          const track = await addTrack(selectedTrack.value);
+          setSelectedTrack(track);
+        }
+        const newTrack = await addTagToTrack(selectedTrack.value.id, tag);
+        setSelectedTrack(newTrack);
+      }
+    };
+
+    const deleteTagFromSelectedTrack = async () => {
+      if (selectedTrack.value) {
+        const userTag = selectedTrack.value.tags.find(
+          (tag) => tag.userId === userId
+        );
+        if (userTag) {
+          const newTrack = await deleteTrackTag(
+            selectedTrack.value.id,
+            userTag.id
+          );
+          setSelectedTrack(newTrack);
+          if (newTrack.tags.length === 0) {
+            deleteTrack(newTrack.id, true);
+          }
+        }
+      }
+    };
+
+    const deleteTrack = async (trackId: TrackId, permanent = false) => {
+      try {
+        const response = await api.recording.removeTrack(
+          trackId,
+          props.recording.id
+        );
+        if (response.success) {
+          if (permanent) {
+            setTracks((tracks) => {
+              const newTracks = produce(tracks, (draftTracks) => {
+                draftTracks.delete(trackId);
+              });
+              return newTracks;
+            });
+          } else {
+            modifyTrack(trackId, {
+              deleted: true,
+            });
+          }
+          if (selectedTrack.value?.id === trackId) {
+            setSelectedTrack(null);
+          }
+        } else {
+          throw response.result;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    const undoDeleteTrack = async (trackId: TrackId) => {
+      try {
+        const track = tracks.value.get(trackId);
+        if (track) {
+          const renewTrack = await addTrack(track);
+          const newTrack = await track.tags.reduce(
+            async (promisedTrack, tag) => {
+              const resolvedTrack = await promisedTrack;
+              const requestTrack = await addTagToTrack(
+                resolvedTrack.id,
+                tag.what,
+                tag.automatic,
+                tag.confidence,
+                tag.data,
+                tag.userName
+              );
+              return requestTrack;
+            },
+            Promise.resolve(renewTrack)
+          );
+          setTracks((tracks) => {
+            tracks.delete(trackId);
+            tracks.set(newTrack.id, newTrack);
+          });
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    watch(
+      () => props.recording,
+      () => {
+        setTracks(mappedTracks(props.recording.tracks));
+        setSelectedTrack(null);
+      }
+    );
+
+    const createButtonLabels = (): string[] => {
+      const maxBirdButtons = 6;
+      const storedCommonBirds = Object.values(
+        JSON.parse(localStorage.getItem("commonBirds")) ?? {}
+      )
+        .sort((a: { freq: number }, b: { freq: number }) => b.freq - a.freq)
+        .map((bird: { what: string }) => bird.what.toLowerCase());
+      const commonBirdLabels = [
+        "Morepork",
+        "Kiwi",
+        "Kereru",
+        "Tui",
+        "Kea",
+        "Bellbird",
+      ].filter((val: string) => !storedCommonBirds.includes(val.toLowerCase()));
+      const amountToRemove = Math.min(maxBirdButtons, storedCommonBirds.length);
+      const diffToMax = maxBirdButtons - amountToRemove;
+      const commonBirds = [
+        ...storedCommonBirds.slice(0, amountToRemove),
+        ...commonBirdLabels.splice(0, diffToMax),
+      ];
+
+      const otherLabels = ["Bird", "Human", "Unidentified"];
+
+      const labels = [...commonBirds, ...otherLabels];
+      return labels;
+    };
+    const [buttonLabels, setButtonLabels] = useState(createButtonLabels());
+    const [selectedLabel, setSelectedLabel] = useState<string>("");
+    const customTag = ref<string>(selectedLabel.value);
+    watchEffect(() => {
+      if (selectedTrack.value) {
+        const tag = selectedTrack.value.displayTags.find((tag) => {
+          if (tag.userId === userId) {
             return true;
           }
           return false;
-        default:
-          throw `invalid direction: '${direction}'`;
-      }
-      params.order = JSON.stringify([["recordingDateTime", order]]);
-      // Check for recording"
-      const queryResponse = await api.recording.query(params);
-      if (queryResponse.success) {
-        const {
-          result: { rows },
-        } = queryResponse;
-        if (rows.length) {
-          this.$emit("load-next-recording", params);
-          return true;
-        }
-        return false;
-      }
-      return false;
-    },
-    async deleteRecording() {
-      this.deleteDisabled = true;
-      const { success } = await api.recording.del(this.$route.params.id);
-      if (success) {
-        await this.getNextRecording("either");
-      }
-      this.deleteDisabled = false;
-    },
-    addAudioTag: async function (tag: ApiRecordingTagRequest) {
-      const id = Number(this.$route.params.id);
-      if (this.$refs.player.currentTime == this.$refs.player.duration) {
-        tag.startTime = 0;
-      } else {
-        tag.startTime = Number(this.$refs.player.currentTime.toFixed(2));
-      }
-      const addTagResult = await api.recording.addRecordingTag(tag, id);
-      if (addTagResult.success) {
-        const {
-          result: { tagId },
-        } = addTagResult;
-        this.$nextTick(() => {
-          this.$emit("tag-changed", tagId);
         });
+        if (tag) {
+          const capitalizedTag =
+            tag.what.charAt(0).toUpperCase() + tag.what.slice(1);
+          setSelectedLabel(capitalizedTag);
+          customTag.value = capitalizedTag;
+        } else {
+          setSelectedLabel("");
+        }
+      } else {
+        setSelectedLabel("");
+        customTag.value = "";
       }
-    },
-    async deleteTag(tagId: TagId) {
-      const id = Number(this.$route.params.id);
-      await api.recording.deleteRecordingTag(tagId, id);
-      this.$nextTick(() => {
-        this.$emit("tag-changed", tagId);
-      });
-    },
-    async done() {
-      await this.getNextRecording("either");
-    },
-    replay(time) {
-      this.$refs.player.currentTime = time;
-      this.$refs.player.play();
-    },
-    volumeLoudest() {
-      this.$refs.player.volume = 1.0;
-    },
-    volumeLouder() {
-      if (this.$refs.player.volume + 0.1 <= 1.0) {
-        this.$refs.player.volume += 0.1;
-      }
-    },
-    volumeDefault() {
-      this.$refs.player.volume = 0.75;
-    },
-    volumeQuieter() {
-      if (this.$refs.player.volume - 0.1 >= 0) {
-        this.$refs.player.volume -= 0.1;
-      }
-    },
-    volumeQuietest() {
-      this.$refs.player.volume = 0.25;
-    },
-  },
-};
-</script>
+    });
 
-<style scoped>
-.tag-buttons,
-.img-buttons {
-  padding: 0 5px;
+    const storeCommonBird = (bird: string) => {
+      const commonBirds = JSON.parse(localStorage.getItem("commonBirds")) ?? {};
+      const newBird = commonBirds[bird]
+        ? commonBirds[bird]
+        : { what: bird, freq: 0 };
+      newBird.freq += 1;
+      commonBirds[bird] = newBird;
+      localStorage.setItem("commonBirds", JSON.stringify(commonBirds));
+    };
+
+    watch(customTag, (value) => {
+      if (value && value !== selectedLabel.value) {
+        addTagToSelectedTrack(value);
+        storeCommonBird(value);
+        setButtonLabels(createButtonLabels());
+      }
+    });
+
+    return {
+      url,
+      tracks,
+      deleted,
+      deleteRecording,
+      undoDeleteRecording,
+      selectedTrack,
+      selectedLabel,
+      setSelectedTrack,
+      customTag,
+      labels: buttonLabels,
+      BirdLabels: BirdLabels.sort(),
+      addTagToSelectedTrack,
+      addTagToTrack,
+      addTrack,
+      deleteTrack,
+      deleteTrackTag,
+      deleteTagFromSelectedTrack,
+      undoDeleteTrack,
+    };
+  },
+});
+</script>
+<style lang="scss">
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
+#waveform {
+  width: 100%;
+  height: 50px;
 }
-.db {
-  border: 0px;
+@include media-breakpoint-down(lg) {
+  .bottom-container {
+    flex-direction: column-reverse;
+  }
+}
+.audio-recording-container {
+  .undo-button {
+    cursor: pointer;
+    color: #485460;
+    transition: color 0.1s ease-in-out;
+  }
+  .undo-button:hover {
+    color: #d2dae2;
+  }
+
+  .undo-delete {
+    height: 373px;
+  }
+
+  h2 {
+    font-size: 1.3em;
+  }
+  h3 {
+    font-size: 1.1em;
+    text-transform: capitalize;
+  }
+  h4 {
+    font-size: 0.9em;
+  }
+  .classification-header {
+    font-weight: bold;
+  }
+
+  .track-time {
+    color: #999999;
+  }
+
+  .track-colour {
+    display: inline-block;
+    align-self: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    border-radius: 4px;
+    transition: border 0.1s cubic-bezier(1, 0, 0, 1);
+  }
+  .highlight {
+    box-sizing: border-box;
+    box-shadow: inset 0px 0px 0px 2px #9acd32;
+  }
+  .multiselect--disabled {
+    background: none;
+  }
+  .multiselect__element {
+    text-transform: capitalized;
+  }
+  .multiselect__select {
+    height: 41px;
+  }
+  .multiselect__tags {
+    min-height: 43px;
+  }
+  .multiselect__single {
+    padding-top: 4px;
+  }
 }
 </style>

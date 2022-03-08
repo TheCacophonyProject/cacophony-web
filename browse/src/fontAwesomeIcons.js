@@ -38,6 +38,7 @@ import {
   faMapMarkerAlt,
   faMusic,
   faPlay,
+  faStop,
   faPause,
   faPalette,
   faPowerOff,
@@ -63,8 +64,10 @@ import {
   faUserSecret,
   faPlus,
   faVolumeUp,
+  faVolumeMute,
   faUserPlus,
   faChevronRight,
+  faUndo,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   faCalendar,
@@ -126,6 +129,7 @@ library.add(
   faMicrochip,
   faMusic,
   faPlay,
+  faStop,
   faPalette,
   faPause,
   faPowerOff,
@@ -156,7 +160,9 @@ library.add(
   faUserSecret,
   faChevronRight,
   faVolumeUp,
-  faMapMarkerAlt
+  faVolumeMute,
+  faMapMarkerAlt,
+  faUndo
 );
 
 export default FontAwesomeIcon;

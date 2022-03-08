@@ -36,18 +36,11 @@
         />
         <b-table :items="stations" striped hover>
           <template #cell(name)="data">
-            <b-link
-              :to="{
-                name: 'station',
-                params: {
-                  groupName,
-                  stationName: data.item.name,
-                  tabName: 'recordings',
-                },
-              }"
-            >
-              {{ data.item.name }}
-            </b-link>
+            <StationLink
+              :group-name="groupName"
+              :station-name="data.item.name"
+              context="recordings"
+            />
           </template>
           <template #cell(latitude)="data">
             <span v-html="Number(data.value).toFixed(5)" />
@@ -139,6 +132,7 @@ import api from "@/api";
 import * as csv from "csvtojson";
 import Help from "@/components/Help.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
+import StationLink from "@/components/StationLink.vue";
 
 // TODO(jon): Do we want to be able to view retired stations?
 
@@ -160,6 +154,7 @@ interface StationData {
 
 export default {
   components: {
+    StationLink,
     MapWithPoints,
     Help,
   },
@@ -190,7 +185,6 @@ export default {
   computed: {
     stations() {
       return this.items
-        .filter(({ retiredAt }) => retiredAt === null)
         .map(({ name, location }) => ({
           name,
           latitude: location.lat,

@@ -1,33 +1,13 @@
 <template>
-  <b-container>
-    <b-tabs
-      card
-      class="device-tabs"
-      nav-class="device-tabs-container container"
-      v-model="currentTabIndex"
-    >
-      <b-tab title="About" lazy>
+  <b-container class="tabs-container">
+    <tab-list v-model="currentTabIndex">
+      <tab-list-item title="About" lazy>
         <DeviceSoftware :software="software" />
-      </b-tab>
-      <b-tab title="Users" lazy v-if="device.admin">
-        <template #title>
-          <TabTemplate
-            title="Users"
-            :isLoading="usersCountLoading"
-            :value="deviceUsers.length"
-          />
-        </template>
-        <DeviceUsers
-          :device-users="deviceUsers"
-          :device="device"
-          :user="user"
-          @reload-device="fetchDeviceUsers"
-        />
-      </b-tab>
-      <b-tab title="All Events" lazy>
+      </tab-list-item>
+      <tab-list-item title="All Events" lazy>
         <DeviceEvents :device="device" />
-      </b-tab>
-      <b-tab title="Recordings" lazy>
+      </tab-list-item>
+      <tab-list-item title="Recordings" lazy>
         <template #title>
           <TabTemplate
             title="Recordings"
@@ -40,8 +20,12 @@
           :device-name="deviceName"
           :recordings-query="recordingQuery()"
         />
-      </b-tab>
-      <b-tab title="Visits" lazy v-if="!deviceType || deviceType === 'thermal'">
+      </tab-list-item>
+      <tab-list-item
+        title="Visits"
+        lazy
+        v-if="!deviceType || deviceType === 'thermal'"
+      >
         <template #title>
           <TabTemplate
             title="Visits"
@@ -54,25 +38,27 @@
           :device-name="deviceName"
           :visits-query="staticVisitsQuery"
         />
-      </b-tab>
-    </b-tabs>
+      </tab-list-item>
+    </tab-list>
   </b-container>
 </template>
 
 <script lang="ts">
-import DeviceUsers from "./DeviceUsers.vue";
 import DeviceSoftware from "./DeviceSoftware.vue";
 import DeviceEvents from "./DeviceEvents.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
 import MonitoringTab from "@/components/MonitoringTab.vue";
 import api from "@/api";
+import TabList from "@/components/TabList.vue";
+import TabListItem from "@/components/TabListItem.vue";
 
 export default {
   name: "DeviceDetail",
   components: {
+    TabList,
+    TabListItem,
     RecordingsTab,
-    DeviceUsers,
     DeviceSoftware,
     DeviceEvents,
     TabTemplate,
@@ -100,7 +86,6 @@ export default {
       visitsCount: 0,
       visitsCountLoading: false,
       deviceType: null,
-      deviceUsers: [],
     };
   },
   async created() {
@@ -119,11 +104,7 @@ export default {
       });
     }
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
-    await Promise.all([
-      this.fetchRecordingCount(),
-      this.fetchVisitsCount(),
-      this.fetchDeviceUsers(),
-    ]);
+    await Promise.all([this.fetchRecordingCount(), this.fetchVisitsCount()]);
   },
   computed: {
     staticVisitsQuery() {
@@ -138,15 +119,8 @@ export default {
     currentTabName() {
       return this.$route.params.tabName;
     },
-    isDeviceAdmin() {
-      return this.device && this.device.admin;
-    },
     tabNames() {
-      if (this.isDeviceAdmin) {
-        return ["about", "users", "events", "recordings", "visits", "schedule"];
-      } else {
-        return ["about", "events", "recordings", "visits", "schedule"];
-      }
+      return ["about", "events", "recordings", "visits", "schedule"];
     },
     currentTabIndex: {
       get() {
@@ -186,22 +160,6 @@ export default {
 
         device: [this.device.id],
       };
-    },
-    async fetchDeviceUsers() {
-      this.usersCountLoading = true;
-      if (this.device.admin) {
-        // Fetch device users:
-        const usersResponse = await api.device.getUsers(this.device.id, true);
-        if (usersResponse.success) {
-          const {
-            result: { users },
-          } = usersResponse;
-          this.deviceUsers = users.filter((user) => user.relation === "device");
-        } else {
-          // The user may not be an admin, so is not allowed to see user info
-        }
-      }
-      this.usersCountLoading = false;
     },
     async fetchRecordingCount() {
       this.recordingsCountLoading = true;

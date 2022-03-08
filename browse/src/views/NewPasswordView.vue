@@ -65,8 +65,6 @@
 import User from "../api/User.api";
 import { minLength, required, sameAs } from "vuelidate/lib/validators";
 
-const validPattern = (value) =>
-  /^[a-zA-Z0-9]+(?:[_ -]?[a-zA-Z0-9])*$/.test(value);
 const passwordLength = 8;
 
 export default {

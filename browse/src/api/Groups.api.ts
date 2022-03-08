@@ -1,10 +1,7 @@
 import CacophonyApi from "./CacophonyApi";
 import { shouldViewAsSuperUser } from "@/utils";
 import { FetchResult } from "@/api/Recording.api";
-import {
-  ApiGroupResponse,
-  ApiGroupUserRelationshipResponse,
-} from "@typedefs/api/group";
+import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import { GroupId, StationId } from "@typedefs/api/common";
 import { ApiStationResponse } from "@typedefs/api/station";
@@ -70,7 +67,7 @@ function getGroups(): Promise<FetchResult<{ groups: ApiGroupResponse[] }>> {
 
 function getUsersForGroup(
   groupNameOrId: string | number
-): Promise<FetchResult<{ users: ApiGroupUserRelationshipResponse[] }>> {
+): Promise<FetchResult<{ users: ApiGroupUserResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/users`
   );
@@ -146,6 +143,7 @@ export default {
   getUsersForGroup,
   getDevicesForGroup,
   getStationsForGroup,
+  getStationByNameInGroup,
   addStationsToGroup,
   addGroupUser,
   removeGroupUser,

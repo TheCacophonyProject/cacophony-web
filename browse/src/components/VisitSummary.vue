@@ -62,7 +62,15 @@
         </div>
       </div>
     </div>
-    <div v-else :class="['visit-item', 'visit', item.name]">
+    <div
+      v-else
+      :class="[
+        'visit-item',
+        'visit',
+        item.name,
+        { 'group-level': isAtGroupLevel },
+      ]"
+    >
       <div class="icon-name">
         <div class="visit-badge">
           <img
@@ -88,6 +96,20 @@
           <font-awesome-icon :icon="['far', 'clock']" size="xs" />
           {{ visitLength }}
         </span>
+        <DeviceLink
+          v-if="isAtGroupLevel"
+          :group-name="item.groupName"
+          type="thermalRaw"
+          :device-name="item.item.device"
+          context="visits"
+        />
+        <StationLink
+          v-if="isAtGroupLevel && item.item.station"
+          :group-name="item.groupName"
+          :station-name="item.item.station"
+          :station-id="item.item.stationId"
+          context="visits"
+        />
         <a
           class="recordings-link"
           :href="recordingsListLink"
@@ -104,6 +126,9 @@
 <script lang="ts">
 import { imgSrc } from "@/const";
 import { formatName } from "./VisitsListDayItem.vue";
+import { MonitoringRequest } from "@typedefs/api/monitoring";
+import DeviceLink from "@/components/DeviceLink.vue";
+import StationLink from "@/components/StationLink.vue";
 
 const timeElapsed = (start: Date, end: Date): string => {
   const seconds = Math.round((end.getTime() - start.getTime()) / 1000);
@@ -133,6 +158,7 @@ const timeFormat = (fromDate: Date): string => {
 
 export default {
   name: "VisitSummary",
+  components: { StationLink, DeviceLink },
   props: {
     item: {
       type: Object,
@@ -144,6 +170,10 @@ export default {
     },
   },
   computed: {
+    isAtGroupLevel(): boolean {
+      const group = (this.futureSearchQuery as MonitoringRequest).group;
+      return group && group.length !== 0;
+    },
     imgSrc() {
       if (this.item.name === "none" || this.item.name === "conflicting-tags") {
         return imgSrc("unidentified");
@@ -224,9 +254,11 @@ export default {
   .duration {
     display: inline-block;
     min-width: 120px;
+    margin: 0 0.25rem;
   }
   .recordings-link {
     text-decoration: underline;
+    margin: 0 0.25rem;
   }
 
   &.dusk-dawn {
@@ -298,6 +330,19 @@ export default {
   }
 }
 
+.visit-item.group-level {
+  .duration-view {
+    display: flex;
+    flex-direction: column;
+    .duration {
+      display: inline;
+    }
+    .recordings-link {
+      margin-left: 0.25rem;
+    }
+  }
+}
+
 @include media-breakpoint-down(sm) {
   .visit-item {
     .duration-view {
@@ -307,7 +352,7 @@ export default {
         display: inline;
       }
       .recordings-link {
-        margin-left: 0;
+        margin-left: 0.25rem;
       }
     }
   }

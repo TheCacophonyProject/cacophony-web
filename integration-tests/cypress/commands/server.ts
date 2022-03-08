@@ -88,6 +88,13 @@ export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
 
+export function renameCreds(oldName: string, newName: string) {
+  const creds = getCreds(oldName);
+
+  creds["name"] = newName;
+  Cypress.env("testCreds")[newName] = creds;
+}
+
 export function saveCreds(
   response: Cypress.Response<any>,
   name: string,
@@ -299,11 +306,20 @@ export function checkTreeStructuresAreEqualExcept(
         `Expect result includes parameter ${prettyTreeSoFar} :::`
       ).equal(typeof containedStruct);
 
+      const keyDiff = (a, b) => {
+        return {
+          missingKeys: Object.keys(a).filter((key) => !b.hasOwnProperty(key)),
+          unknownKeys: Object.keys(b).filter((key) => !a.hasOwnProperty(key)),
+        };
+      };
+
       expect(
         Object.keys(containingStruct).length,
         `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
           containingStruct
-        ).toString()}]`
+        ).toString()}] - Diff: ${JSON.stringify(
+          keyDiff(containedStruct, containingStruct)
+        )}`
       ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order
@@ -410,5 +426,22 @@ export function removeUndefinedParams(jsStruct: any): any {
     return resultStruct;
   } else {
     return jsStruct;
+  }
+}
+
+export function testRunOnApi(command: string, options = {}) {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    cy.exec(
+      `cd ../api && docker-compose exec -T server bash -lic ${command}`,
+      options
+    );
+  } else {
+    if (Cypress.env("API-ssh-server") != null) {
+      cy.exec(`ssh ${Cypress.env("API-ssh-server")} ${command}`, options);
+    } else {
+      alert(
+        "Asked to run command on API server but have no credentials to do so"
+      );
+    }
   }
 }
