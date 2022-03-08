@@ -108,6 +108,8 @@ export default function (app: Application, baseUrl: string) {
       const tag = await models.Tag.findByPk(request.body.tagId);
       if (tag) {
         response.locals.tag = tag;
+        // FIXME(ManageStations): This breaks undeleting tags in power-tagger.
+        //  Need to check with tagger JWT.
         await fetchAuthorizedRequiredRecordingById(tag.recordingId)(
           request,
           response,
