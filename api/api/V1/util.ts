@@ -24,10 +24,8 @@ import responseUtil from "./responseUtil";
 import modelsUtil from "@models/util/util";
 import crypto from "crypto";
 import { Request, Response } from "express";
-import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
-import { DeviceType, RecordingType } from "@typedefs/api/consts";
 import { User } from "@models/User";
 import stream, { Stream } from "stream";
 

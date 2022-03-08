@@ -30,15 +30,11 @@ import {
   fetchAuthorizedRequiredDeviceById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchAdminAuthorizedRequiredDeviceById,
-  fetchUnauthorizedOptionalUserById,
-  fetchUnauthorizedOptionalUserByNameOrId,
   fetchAuthorizedRequiredDevices,
   fetchUnauthorizedRequiredScheduleById,
   fetchAuthorizedRequiredGroupById,
-  fetchAdminAuthorizedRequiredGroupById,
 } from "../extract-middleware";
 import {
-  booleanOf,
   checkDeviceNameIsUniqueInGroup,
   anyOf,
   idOf,
@@ -53,7 +49,6 @@ import { Device } from "models/Device";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import logging from "@log";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
-import logger from "@log";
 
 export const mapDeviceResponse = (
   device: Device,

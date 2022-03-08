@@ -2,7 +2,6 @@ import { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAdminAuthorizedRequiredStationById,
-  fetchAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStations,
   fetchAuthorizedRequiredStationsForGroup,
@@ -15,13 +14,8 @@ import { ApiStationResponse } from "@typedefs/api/station";
 import { booleanOf, idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
-import {
-  checkThatStationsAreNotTooCloseTogether,
-  stationLocationHasChanged,
-} from "@models/Group";
+import { stationLocationHasChanged } from "@models/Group";
 import models from "@models";
-import { Op } from "sequelize";
-import { StationId } from "@typedefs/api/common";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {

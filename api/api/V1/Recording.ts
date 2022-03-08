@@ -1295,7 +1295,6 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(body("data")),
     // FIXME - extract valid track for trackId on recording with id
     async (request: Request, response: Response) => {
-      debugger;
       const requestUser = response.locals.requestUser;
       const newTag = models.TrackTag.build({
         what: request.body.what,

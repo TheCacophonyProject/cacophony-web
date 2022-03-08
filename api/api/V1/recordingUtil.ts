@@ -26,7 +26,7 @@ import urljoin from "url-join";
 import config from "@config";
 import models from "@models";
 import util from "./util";
-import { AudioRecordingMetadata, Recording } from "@models/Recording";
+import { Recording } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
 import Sequelize, { Op } from "sequelize";
@@ -74,7 +74,7 @@ import { Device } from "@models/Device";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
 import SendData = ManagedUpload.SendData;
-import { canonicalLatLng, locationsAreEqual } from "@models/Group";
+import { locationsAreEqual } from "@models/Group";
 import { DeviceHistory } from "@models/DeviceHistory";
 
 let CptvDecoder;

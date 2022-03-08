@@ -24,7 +24,11 @@ import Sequelize, {
 } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { Group } from "./Group";
-import { EndUserAgreementVersion, UserId } from "@typedefs/api/common";
+import {
+  DeviceId,
+  EndUserAgreementVersion,
+  UserId,
+} from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { sendResetEmail } from "@/scripts/emailUtil";
 import { Device } from "@models/Device";

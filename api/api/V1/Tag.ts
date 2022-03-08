@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware";
-import { body, param } from "express-validator";
+import { body } from "express-validator";
 import models from "@models";
 import recordingUtil from "./recordingUtil";
 import responseUtil from "./responseUtil";
