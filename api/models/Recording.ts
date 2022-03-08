@@ -42,19 +42,19 @@ import {
   tryToMatchRecordingToStation,
 } from "@api/V1/recordingUtil";
 import {
+  DeviceId,
   GroupId,
   RecordingId,
-  UserId,
-  TrackId,
-  DeviceId,
   StationId,
+  TrackId,
+  UserId,
 } from "@typedefs/api/common";
 import {
+  AcceptableTag,
   RecordingPermission,
   RecordingProcessingState,
   RecordingType,
   TagMode,
-  AcceptableTag,
 } from "@typedefs/api/consts";
 import { DeviceBatteryChargeState } from "@typedefs/api/device";
 
@@ -67,8 +67,6 @@ const validTagModes = new Set([
   ...Object.values(AcceptableTag),
 ]);
 
-export const RecordingPermissions = new Set(Object.values(RecordingPermission));
-
 interface RecordingQueryBuilder {
   new (): RecordingQueryBuilder;
   findInclude: (modelType: ModelStaticCommon<any>) => Includeable[];
@@ -80,8 +78,9 @@ interface RecordingQueryBuilder {
     offset?: number,
     limit?: number,
     order?: any,
-    viewAsSuperAdmin?: boolean
-  ) => Promise<RecordingQueryBuilderInstance>;
+    viewAsSuperAdmin?: boolean,
+    filtered?: boolean
+  ) => RecordingQueryBuilderInstance;
   handleTagMode: (tagMode: TagMode, tagWhatsIn: string[]) => SqlString;
   recordingTaggedWith: (tagModes: string[], any) => SqlString;
   trackTaggedWith: (tags: string[], sql: SqlString) => SqlString;
@@ -125,12 +124,10 @@ export interface AudioRecordingMetadata {
   ["Android API Level"]: number;
   ["Phone manufacturer"]: string;
   ["App has root access"]: boolean;
+  cacophony_index_version: string;
+  processing_time_seconds: number;
+  species_identify_version: string;
   analysis: {
-    cacophony_index: CacophonyIndex[];
-    species_identify: SpeciesClassification[];
-    cacophony_index_version: string;
-    processing_time_seconds: number;
-    species_identify_version: string;
     speech_detection: boolean;
     speech_detection_version: string;
   };
@@ -182,6 +179,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   relativeToDusk: number;
   version: string;
   additionalMetadata: AudioRecordingMetadata | VideoRecordingMetadata;
+  cacophonyIndex: CacophonyIndex[];
   comment: string;
   public: boolean;
   rawFileKey: string;
@@ -218,7 +216,6 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getDevice: () => Promise<Device>;
 
   getActiveTracksTagsAndTagger: () => Promise<any>;
-  getUserPermissions: (user: User) => Promise<RecordingPermission[]>;
 
   reprocess: () => Promise<Recording>;
   mergeUpdate: (updates: any) => Promise<void>;
@@ -288,28 +285,9 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
   queryBuilder: RecordingQueryBuilder;
   updateOne: (user: User, id: RecordingId, updates: any) => Promise<boolean>;
   makeFilterOptions: (user: User, options?: { latLongPrec?: number }) => any;
-  deleteOne: (user: User, id: RecordingId) => Promise<Recording | null>;
   getRecordingWithUntaggedTracks: (
     biasDeviceId?: DeviceId
   ) => Promise<TagLimitedRecording>;
-  get: (
-    user: User | Device,
-    id: RecordingId,
-    permission: RecordingPermission,
-    options?: getOptions
-  ) => Promise<Recording>;
-  getForUser: (
-    user: User,
-    id: RecordingId,
-    permission: RecordingPermission,
-    options?: getOptions
-  ) => Promise<Recording>;
-  getForDevice: (
-    device: Device,
-    id: RecordingId,
-    options?: getOptions
-  ) => Promise<Recording>;
-  //findAll: (query: FindOptions) => Promise<Recording[]>;
 }
 
 const Op = Sequelize.Op;
@@ -335,6 +313,7 @@ export default function (
     relativeToDusk: DataTypes.INTEGER,
     version: DataTypes.STRING,
     additionalMetadata: DataTypes.JSONB,
+    cacophonyIndex: DataTypes.JSONB,
     comment: DataTypes.STRING,
     deletedAt: DataTypes.DATE,
     deletedBy: DataTypes.INTEGER,
@@ -463,153 +442,6 @@ export default function (
       });
   };
 
-  function isUser(modelObj: any): modelObj is User {
-    return (modelObj as User).username !== undefined;
-  }
-  function isDevice(modelObj: any): modelObj is Device {
-    return (modelObj as Device).devicename !== undefined;
-  }
-  /**
-   * Return a single recording for a user/device.
-   */
-  Recording.get = async function (
-    modelObj: User | Device,
-    id,
-    permission,
-    options: getOptions = {}
-  ) {
-    // FIXME - permissions should be handled at the API layer.
-    if (isUser(modelObj)) {
-      return Recording.getForUser(modelObj as User, id, permission, options);
-    } else if (isDevice(modelObj)) {
-      return Recording.getForDevice(modelObj as Device, id, options);
-    }
-    return null;
-  };
-
-  /**
-   * Return a single recording for a user.
-   */
-  Recording.getForUser = async function (
-    user: User,
-    id,
-    permission,
-    options: getOptions = {}
-  ) {
-    if (!RecordingPermissions.has(permission)) {
-      throw "valid permission must be specified (e.g. RecordingPermission.VIEW)";
-    }
-
-    const query = {
-      where: {
-        [Op.and]: [
-          {
-            id: id,
-          },
-        ],
-      },
-      include: getRecordingInclude(),
-      attributes: this.userGetAttributes.concat(["rawFileKey"]),
-    };
-
-    if (options.type) {
-      (query.where[Op.and] as any[]).push({
-        type: options.type,
-      });
-    }
-
-    const recording = await this.findOne(query);
-    if (!recording) {
-      return null;
-    }
-
-    // FIXME - This should happen waaaay earlier, at the API layer.
-    const userPermissions = await recording.getUserPermissions(user);
-    if (!userPermissions.includes(permission)) {
-      throw new AuthorizationError(
-        "The user does not have permission to view this file"
-      );
-    }
-    // recording.filterData(
-    //   Recording.makeFilterOptions(user, options.filterOptions)
-    // );
-    return recording;
-  };
-
-  /**
-   * Return a single recording for a device.
-   */
-  Recording.getForDevice = async function (
-    device: Device,
-    id,
-    options: getOptions = {}
-  ) {
-    const query = {
-      where: {
-        [Op.and]: [
-          {
-            id: id,
-            DeviceId: device.id,
-          },
-        ],
-      },
-      include: getRecordingInclude(),
-      attributes: this.userGetAttributes.concat(["rawFileKey"]),
-    };
-
-    if (options.type) {
-      (query.where[Op.and] as any[]).push({
-        type: options.type,
-      });
-    }
-
-    const recording = await this.findOne(query);
-    if (!recording) {
-      return null;
-    }
-
-    // recording.filterData(
-    //   Recording.makeFilterOptions(null, options.filterOptions)
-    // );
-    return recording;
-  };
-
-  /**
-   * Deletes a single recording if the user has permission to do so.
-   * @returns {Promise<Recording|null>} Returns the recording object if deleted, otherwise null.
-   */
-  Recording.deleteOne = async function (user: User, id: RecordingId) {
-    const recording = await Recording.get(user, id, RecordingPermission.DELETE);
-    if (!recording) {
-      return null;
-    }
-    await recording.destroy();
-    return recording;
-  };
-
-  /**
-   * Updates a single recording if the user has permission to do so.
-   */
-  Recording.updateOne = async function (
-    user: User,
-    id: RecordingId,
-    updates: any
-  ): Promise<boolean> {
-    // FIXME - Move this permissions stuff to API layer
-    for (const key in updates) {
-      if (!apiUpdatableFields.includes(key)) {
-        return false;
-      }
-    }
-
-    const recording = await Recording.get(user, id, RecordingPermission.UPDATE);
-    if (!recording) {
-      return false;
-    }
-    await recording.update(updates);
-    return true;
-  };
-
   Recording.makeFilterOptions = function (user: User, options: any) {
     if (!options) {
       options = {};
@@ -621,40 +453,6 @@ export default function (
       options.latLongPrec = Math.max(options.latLongPrec, 100);
     }
     return options;
-  };
-
-  // local
-  const recordingsFor = async function (
-    userId: UserId,
-    viewAsSuperAdmin = true
-  ) {
-    const user = await models.User.findByPk(userId);
-    if (viewAsSuperAdmin && user.hasGlobalRead()) {
-      return null;
-    }
-
-    // FIXME(jon): Should really combine these into a single query?
-    const [deviceIds, groupIds] = await Promise.all([
-      user.getDeviceIds(),
-      user.getGroupsIds(),
-    ]);
-    return {
-      [Op.or]: [
-        {
-          public: true,
-        },
-        {
-          GroupId: {
-            [Op.in]: groupIds,
-          },
-        },
-        {
-          DeviceId: {
-            [Op.in]: deviceIds,
-          },
-        },
-      ],
-    };
   };
 
   Recording.getRecordingWithUntaggedTracks = async (
@@ -871,26 +669,6 @@ from (
     };
   /* eslint-enable indent */
 
-  /**
-   * TODO This will be edited in the future when recordings can be public.
-   */
-  Recording.prototype.getUserPermissions = async function (
-    user: User,
-    viewAsSuperAdmin = true
-  ): Promise<RecordingPermission[]> {
-    if (
-      (user.hasGlobalWrite() && viewAsSuperAdmin) ||
-      (await user.canDirectlyAccessGroup(this.GroupId)) ||
-      (await user.canDirectlyAccessDevice(this.Device.id))
-    ) {
-      return [...RecordingPermissions.values()];
-    }
-    if (user.hasGlobalRead()) {
-      return [RecordingPermission.VIEW];
-    }
-    return [];
-  };
-
   // Bulk update recording values. Any new additionalMetadata fields
   // will be merged.
   Recording.prototype.mergeUpdate = async function (
@@ -1014,15 +792,18 @@ from (
 
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
 
-  Recording.queryBuilder.prototype.init = async function (
+  // TODO(jon): Change recordings queries to be cursor based rather than limit/offset based:
+  //  this will scale better.
+  Recording.queryBuilder.prototype.init = function (
     userId: UserId,
     where: any,
     tagMode?: TagMode,
-    tags?: string[], // AcceptableTag[]
+    tags?: string[],
     offset?: number,
     limit?: number,
     order?: any,
-    viewAsSuperUser?: boolean
+    viewAsSuperAdmin?: boolean,
+    hideFiltered?: boolean
   ) {
     if (!where) {
       where = {};
@@ -1060,99 +841,124 @@ from (
     if (typeof where === "string") {
       where = JSON.parse(where);
     }
-    const recordingPermissions = await recordingsFor(userId, viewAsSuperUser);
+    const constraints = [];
+    constraints.push(where);
+    constraints.push(
+      Sequelize.literal(Recording.queryBuilder.handleTagMode(tagMode, tags))
+    );
+    const trackWhere = { archivedAt: null };
+    const trackRequired = false;
+    if (hideFiltered) {
+      const filteredSQL = `(
+		select
+			"RecordingId"
+		from
+			"Tracks" as "Tracks"
+		where
+			(("Tracks"."archivedAt" is null
+				and "Tracks"."filtered" = false)
+			and "Tracks"."RecordingId" = "Recording"."id")
+		limit 1 ) is not null`;
+      constraints.push(Sequelize.literal(filteredSQL));
+    }
+
+    const requireGroupMembership = viewAsSuperAdmin
+      ? []
+      : [
+          {
+            model: models.User,
+            attributes: [],
+            required: true,
+            where: { id: userId },
+            // If not viewing as super user, make sure the user is a member of the recording group.
+            // This may need to change if we start caring about showing everyone all public recordings.
+            // However, since we're still going to be showing things as "Group centric"  We'd probably just
+            // make the group public - or use a totally different query.
+          },
+        ];
+
     this.query = {
       where: {
-        [Op.and]: [
-          where, // User query
-          recordingPermissions,
-          Sequelize.literal(
-            Recording.queryBuilder.handleTagMode(tagMode, tags)
-          ),
-        ],
+        [Op.and]: constraints,
       },
       order,
-      include: getRecordingInclude(),
+      include: [
+        {
+          model: models.Group,
+          attributes: ["groupname"],
+          required: !viewAsSuperAdmin,
+          include: requireGroupMembership,
+        },
+        {
+          model: models.Station,
+          attributes: ["name", "location"],
+        },
+        {
+          model: models.Tag,
+          attributes: (models.Tag as TagStatic).userGetAttributes,
+          include: [
+            {
+              association: "tagger",
+              attributes: ["username", "id"],
+            },
+          ],
+        },
+        {
+          model: models.Track,
+          where: trackWhere,
+          required: trackRequired,
+          separate: true,
+          attributes: [
+            "id",
+            "filtered",
+            [
+              Sequelize.fn(
+                "json_build_object",
+                "start_s",
+                Sequelize.literal(`"Track"."data"#>'{start_s}'`),
+                "end_s",
+                Sequelize.literal(`"Track"."data"#>'{end_s}'`)
+              ),
+              "data",
+            ],
+          ],
+          include: [
+            {
+              model: models.TrackTag,
+              where: {
+                archivedAt: null,
+              },
+              attributes: [
+                "id",
+                "what",
+                "automatic",
+                "TrackId",
+                "confidence",
+                "UserId",
+                [Sequelize.json("data.name"), "data"],
+              ],
+              include: [
+                {
+                  model: models.User,
+                  attributes: ["username", "id"],
+                },
+              ],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: models.Device,
+          where: {},
+          attributes: ["devicename", "id"],
+        },
+      ],
       limit,
       offset,
       attributes: Recording.queryGetAttributes,
     };
     return this;
   };
-
-  function getRecordingInclude() {
-    return [
-      {
-        model: models.Group,
-        attributes: ["groupname"],
-      },
-      {
-        model: models.Station,
-        attributes: ["name", "location"],
-      },
-      {
-        model: models.Tag,
-        attributes: (models.Tag as TagStatic).userGetAttributes,
-        include: [
-          {
-            association: "tagger",
-            attributes: ["username", "id"],
-          },
-        ],
-      },
-      {
-        model: models.Track,
-        where: {
-          archivedAt: null,
-        },
-        separate: true,
-        attributes: [
-          "id",
-          [
-            Sequelize.fn(
-              "json_build_object",
-              "start_s",
-              Sequelize.literal(`"Track"."data"#>'{start_s}'`),
-              "end_s",
-              Sequelize.literal(`"Track"."data"#>'{end_s}'`)
-            ),
-            "data",
-          ],
-        ],
-
-        required: false,
-        include: [
-          {
-            model: models.TrackTag,
-            where: {
-              archivedAt: null,
-            },
-            attributes: [
-              "id",
-              "what",
-              "automatic",
-              "TrackId",
-              "confidence",
-              "UserId",
-              [Sequelize.json("data.name"), "data"],
-            ],
-            include: [
-              {
-                model: models.User,
-                attributes: ["username", "id"],
-              },
-            ],
-            required: false,
-          },
-        ],
-      },
-      {
-        model: models.Device,
-        where: {},
-        attributes: ["devicename", "id"],
-      },
-    ];
-  }
 
   Recording.queryBuilder.handleTagMode = (
     tagMode: AllTagModes,
@@ -1416,8 +1222,10 @@ from (
     "GroupId",
     "StationId",
     "rawFileKey",
+    "cacophonyIndex",
     "processing",
     "comment",
+    "additionalMetadata",
   ];
 
   // Attributes returned when looking up a single recording.
@@ -1461,9 +1269,6 @@ from (
     "comment",
     "StationId",
   ];
-
-  // local
-  const apiUpdatableFields = ["location", "comment", "additionalMetadata"];
 
   Recording.processingStates = {
     thermalRaw: [

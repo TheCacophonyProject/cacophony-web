@@ -31,7 +31,7 @@
 
 <script>
 import { mapState } from "vuex";
-import { toStringTodayYesterdayOrDate } from "../../helpers/datetime";
+import { toStringTodayYesterdayOrDate } from "@/helpers/datetime";
 
 export default {
   name: "DeviceDetail",

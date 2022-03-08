@@ -29,7 +29,7 @@ import util from "./util";
 import { AudioRecordingMetadata, Recording } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
-import { Op, Order } from "sequelize";
+import Sequelize, { Op } from "sequelize";
 import {
   DeviceSummary,
   DeviceVisitMap,
@@ -40,7 +40,6 @@ import {
 import { Station } from "@models/Station";
 import modelsUtil from "@models/util/util";
 import { dynamicImportESM } from "@/dynamic-import-esm";
-import Sequelize from "sequelize";
 import log from "@log";
 import {
   ClassifierModelDescription,
@@ -53,7 +52,6 @@ import { CptvFrame } from "cptv-decoder";
 import { GetObjectOutput } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
 import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
-import SendData = ManagedUpload.SendData;
 import { Track } from "@models/Track";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Tag } from "@models/Tag";
@@ -64,34 +62,20 @@ import {
   TrackTagId,
   UserId,
 } from "@typedefs/api/common";
-import { AcceptableTag } from "@typedefs/api/consts";
-import { Device } from "@models/Device";
 import {
+  AcceptableTag,
   RecordingProcessingState,
   RecordingType,
-  TagMode,
 } from "@typedefs/api/consts";
+import { Device } from "@models/Device";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
+import SendData = ManagedUpload.SendData;
 
 let CptvDecoder;
 (async () => {
   CptvDecoder = (await dynamicImportESM("cptv-decoder")).CptvDecoder;
 })();
-
-// @ts-ignore
-export interface RecordingQuery {
-  where: null | any;
-  tagMode: null | TagMode;
-  tags: null | string[];
-  offset: null | number;
-  limit: null | number;
-  order: null | Order;
-  distinct: boolean;
-  type: string;
-  audiobait: null | boolean;
-  //filterOptions: null | any;
-}
 
 // How close is a station allowed to be to another station?
 export const MIN_STATION_SEPARATION_METERS = 60;
@@ -451,12 +435,15 @@ export const uploadRawRecording = util.multipartUpload(
           totalFrames: metadata.totalFrames,
         };
       }
-      if (data.hasOwnProperty("additionalMetadata")) {
-        recording.additionalMetadata = {
-          ...data.additionalMetadata,
-          ...recording.additionalMetadata,
-        };
-      }
+    }
+    if (data.hasOwnProperty("additionalMetadata")) {
+      recording.additionalMetadata = {
+        ...data.additionalMetadata,
+        ...recording.additionalMetadata,
+      };
+    }
+    if (data.hasOwnProperty("cacophonyIndex")) {
+      recording.cacophonyIndex = data.cacophonyIndex;
     }
 
     recording.rawFileKey = key;
@@ -517,15 +504,15 @@ async function query(
   limit: number,
   offset: number,
   order: any,
-  type: RecordingType
+  type: RecordingType,
+  hideFiltered: boolean
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
     where.type = type;
   }
 
   // FIXME - Do this in extract-middleware as bulk recording extractor
-
-  const builder = await new models.Recording.queryBuilder().init(
+  const builder = new models.Recording.queryBuilder().init(
     requestUserId,
     where,
     tagMode,
@@ -533,18 +520,19 @@ async function query(
     offset,
     limit,
     order,
-    viewAsSuperUser
+    viewAsSuperUser,
+    hideFiltered
   );
   builder.query.distinct = true;
-  const result = await models.Recording.findAndCountAll(builder.get());
-  // FIXME: Removed less location precision.  Look at addressing this
-  //  if and when we use the public recording feature.
-  // This gives less location precision if the user isn't admin.
-  // const filterOptions = models.Recording.makeFilterOptions(
-  //   request.user,
-  //   request.filterOptions
-  // );
-  return result;
+
+  // FIXME - If getting count as super-user, we don't care about joining on all of the other tables.
+  //  Even if getting count as regular user, we only care about joining through GroupUsers.
+
+  // FIXME - Duration >= 0 constraint is pretty slow.
+
+  // FIXME: In the UI, when we query recordings, we don't need to get the count every time, just the first time
+  //  would be fine!
+  return models.Recording.findAndCountAll(builder.get());
 }
 
 // Returns a promise for report rows for a set of recordings. Takes
@@ -672,7 +660,6 @@ export async function reportRecordings(
     const recording_tags = r.Tags.map((t) => t.what || t.detail);
 
     const cacophonyIndex = getCacophonyIndex(r);
-    const speciesClassifications = getSpeciesIdentification(r);
 
     const thisRow = [
       r.id,
@@ -718,32 +705,14 @@ export async function reportRecordings(
       );
     }
 
-    thisRow.push(
-      urljoin(recording_url_base, r.id.toString()),
-      cacophonyIndex,
-      speciesClassifications
-    );
+    thisRow.push(urljoin(recording_url_base, r.id.toString()), cacophonyIndex);
     out.push(thisRow);
   }
   return out;
 }
 
 function getCacophonyIndex(recording: Recording): string | null {
-  return (
-    recording.additionalMetadata as AudioRecordingMetadata
-  )?.analysis?.cacophony_index
-    ?.map((val) => val.index_percent)
-    .join(";");
-}
-
-function getSpeciesIdentification(recording: Recording): string | null {
-  return (
-    recording.additionalMetadata as AudioRecordingMetadata
-  )?.analysis?.species_identify
-    ?.map(
-      (classification) => `${classification.species}: ${classification.begin_s}`
-    )
-    .join(";");
+  return recording.cacophonyIndex?.map((val) => val.index_percent).join(";");
 }
 
 function findLatestEvent(events: Event[]): Event | null {
@@ -763,7 +732,7 @@ function findLatestEvent(events: Event[]): Event | null {
 function formatTags(tags) {
   const out = Array.from(tags);
   out.sort();
-  return out.join("+");
+  return out.join(";");
 }
 
 export function signedToken(key, file, mimeType) {
@@ -810,10 +779,10 @@ const addTag = async (
 };
 
 async function tracksFromMeta(recording: Recording, metadata: any) {
-  if (!("tracks" in metadata)) {
-    return false;
-  }
   try {
+    if (!("tracks" in metadata)) {
+      return false;
+    }
     const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
       "algorithm",
       metadata["algorithm"]
@@ -824,7 +793,11 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         data: trackMeta,
         AlgorithmId: algorithmDetail.id,
       });
-      if (!("predictions" in trackMeta)) {
+      if (
+        !("predictions" in trackMeta) ||
+        trackMeta["predictions"].length == 0
+      ) {
+        await track.updateIsFiltered();
         continue;
       }
       for (const prediction of trackMeta["predictions"]) {
@@ -855,10 +828,6 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         }
         if (prediction.label) {
           tag_data["raw_tag"] = prediction["label"];
-        }
-        if (prediction.all_class_confidences) {
-          tag_data["all_class_confidences"] =
-            prediction["all_class_confidences"];
         }
         if (prediction.all_class_confidences) {
           tag_data["all_class_confidences"] =
@@ -1620,6 +1589,10 @@ export const finishedProcessingRecording = async (
     tracks
   );
 
+  for (const track of tracks) {
+    await track.updateIsFiltered();
+  }
+
   // Add additionalMetadata to recording:
   // model name + classify time (total?)
   // algorithm - tracking_algorithm
@@ -1673,7 +1646,7 @@ const mapPosition = (position: any): ApiTrackPosition => {
       y: position.y,
       width: position.width,
       height: position.height,
-      frameNumber: position.frame_number,
+      order: position.frame_number ?? position.order,
     };
   }
 };

@@ -231,9 +231,10 @@ export default {
       visits: [],
       totalVisitsCount: null,
       totalVisitsPages: null,
-      loading: true,
+      loading: false,
       allLoaded: false,
       currentPage: 1,
+      destroyed: false,
       startDateOfQuery: Date,
     };
   },
@@ -249,8 +250,9 @@ export default {
   methods: {
     async requestVisitsUntilBeginningOfEarliestDay() {
       if (
-        this.totalVisitsPages === null ||
-        this.currentPage < this.totalVisitsPages
+        !this.loading &&
+        (this.totalVisitsPages === null ||
+          this.currentPage < this.totalVisitsPages)
       ) {
         this.loading = true;
         if (!currentVisits.length) {
@@ -258,6 +260,9 @@ export default {
             ...this.visitsQuery,
             page: this.currentPage,
           });
+          if (this.destroyed) {
+            return;
+          }
           if (monitoringResponse.success) {
             const { result } = monitoringResponse;
             if (!this.totalVisitsCount) {
@@ -269,7 +274,6 @@ export default {
                   result.params.pagesEstimate * LOAD_PER_PAGE_CARDS;
               }
             }
-
             this.currentPage += 1;
             // Visits ordered newest to oldest.
             currentVisits.push(...result.visits);
@@ -382,6 +386,7 @@ export default {
     },
   },
   beforeDestroy() {
+    this.destroyed = true;
     while (extraVisits.length) {
       extraVisits.pop();
     }

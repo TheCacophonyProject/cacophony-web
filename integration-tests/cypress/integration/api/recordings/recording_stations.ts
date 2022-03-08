@@ -4,73 +4,21 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { getCreds } from "@commands/server";
+import { EXCLUDE_IDS } from "@commands/constants";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
+import { ApiRecordingSet } from "@commands/types";
 
-const EXCLUDE_IDS = [
-  ".tracks[].tags[].trackId",
-  ".tracks[].tags[].id",
-  ".tracks[].id",
-];
+const templateRecording: ApiRecordingSet = JSON.parse(
+  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+);
 
-const templateRecording: ApiRecordingSet = {
-  type: RecordingType.ThermalRaw,
-  fileHash: null,
-  duration: 15.6666666666667,
-  recordingDateTime: "2021-07-17T20:13:17.248Z",
-  location: [-45.29115, 169.30845],
-  additionalMetadata: {
-    algorithm: 31143,
-    previewSecs: 5,
-    totalFrames: 141,
-  },
-  metadata: {
-    tracks: [
-      {
-        start_s: 2,
-        end_s: 5,
-        predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
-      },
-    ],
-  },
-  comment: "This is a comment",
-  processingState: RecordingProcessingState.Finished,
-};
-
-const templateExpectedRecording: ApiThermalRecordingResponse = {
-  deviceId: 0,
-  deviceName: "",
-  groupName: "",
-  id: 892972,
-  rawMimeType: "application/x-cptv",
-  processingState: RecordingProcessingState.Finished,
-  duration: 15.6666666666667,
-  recordingDateTime: "2021-07-17T20:13:17.248Z",
-  location: { lat: -43.2, lng: 169 },
-  type: RecordingType.ThermalRaw,
-  additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-  groupId: 246,
-  comment: "This is a comment",
-  processing: false,
-  tags: [],
-  tracks: [
-    {
-      start: 2,
-      end: 5,
-      id: -99,
-      tags: [
-        {
-          what: "cat",
-          data: { name: "unknown" },
-          automatic: true,
-          confidence: 0.9,
-          trackId: -99,
-          id: -99,
-        },
-      ],
-    },
-  ],
-};
+const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+);
 
 describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";

@@ -14,6 +14,9 @@ EXPOSE 2008
 # Minio
 EXPOSE 9001
 
+# Node Debugger
+EXPOSE 9228
+
 # PostgreSQL
 EXPOSE 5432
 

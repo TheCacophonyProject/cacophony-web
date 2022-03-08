@@ -4,7 +4,7 @@ import {
   HTTP_Forbidden,
   HTTP_OK200,
   HTTP_Unprocessable,
-  HTTP_OK200,
+  EXCLUDE_IDS,
 } from "@commands/constants";
 
 import {
@@ -18,59 +18,18 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 describe("Recordings - parameter tests", () => {
-  //Do not validate IDs
-  const EXCLUDE_IDS = [
-    ".tracks[].tags[].trackId",
-    ".tracks[].tags[].id",
-    ".tracks[].id",
-  ];
-
-  const templateExpectedRecording: ApiThermalRecordingResponse = {
-    deviceId: 0,
-    deviceName: "",
-    groupName: "",
-    tags: [],
-    tracks: [],
-    id: 892972,
-    rawMimeType: "application/x-cptv",
-    processingState: RecordingProcessingState.Finished,
-    duration: 16.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: { lat: -45.29115, lng: 169.30845 },
-    type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
-    groupId: 246,
-    comment: "This is a comment",
-    processing: false,
-  };
-
-  const templateRecording: ApiRecordingSet = {
-    type: RecordingType.ThermalRaw,
-    fileHash: null,
-    duration: 15.6666666666667,
-    recordingDateTime: "2021-07-17T20:13:17.248Z",
-    location: [-45.29115, 169.30845],
-    additionalMetadata: {
-      algorithm: 31143,
-      previewSecs: 5,
-      totalFrames: 141,
-    },
-    metadata: {
-      algorithm: { model_name: "master" },
-      tracks: [
-        {
-          start_s: 2,
-          end_s: 5,
-          predictions: [{ confident_tag: "cat", confidence: 0.9, model_id: 1 }],
-        },
-      ],
-    },
-    comment: "This is a comment",
-    processingState: RecordingProcessingState.Finished,
-  };
+  const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+  );
+  const templateRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
 
   before(() => {
     //Create group 1 with 2 devices, admin and member
@@ -78,12 +37,6 @@ describe("Recordings - parameter tests", () => {
     cy.apiDeviceAdd("rpaCamera1b", "rpaGroup");
     cy.apiUserAdd("rpaGroupMember");
     cy.apiGroupUserAdd("rpaGroupAdmin", "rpaGroupMember", "rpaGroup", true);
-
-    //Add device admin & member to device1
-    cy.apiUserAdd("rpaDeviceAdmin");
-    cy.apiUserAdd("rpaDeviceMember");
-    cy.apiDeviceUserAdd("rpaGroupAdmin", "rpaDeviceAdmin", "rpaCamera1", true);
-    cy.apiDeviceUserAdd("rpaGroupAdmin", "rpaDeviceMember", "rpaCamera1", true);
 
     //create a 2nd group with admin and device
     cy.testCreateUserGroupAndDevice(

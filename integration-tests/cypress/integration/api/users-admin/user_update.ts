@@ -1,21 +1,11 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_BadRequest,
-  LATEST_END_USER_AGREEMENT,
-  HTTP_Unprocessable,
-} from "@commands/constants";
+import { HTTP_BadRequest, HTTP_Unprocessable } from "@commands/constants";
 
 import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestName } from "@commands/names";
-import { getCreds } from "@commands/server";
 
 describe("User: update", () => {
-  const superuser = getCreds("superuser")["name"];
-  const suPassword = getCreds("superuser")["password"];
-
   before(() => {});
 
   it("User can update themselves", () => {
@@ -211,7 +201,7 @@ describe("User: update", () => {
       }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
 
       cy.log("Can add user with -, _ or space as subsequent letter");
-      cy.apiUserUpdate("uupUser7", { userName: "Z-Y_ X" });
+      cy.apiUserUpdate("uupUser7", { userName: getTestName("A-B_ C") });
     });
   });
 

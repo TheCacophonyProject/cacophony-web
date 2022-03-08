@@ -201,7 +201,6 @@ export default function (app: Application, baseUrl: string) {
       if (request.query.until) {
         params.until = request.query.until as unknown as Date;
       }
-
       const viewAsSuperAdmin = response.locals.viewAsSuperUser;
       const searchDetails = await calculateMonitoringPageCriteria(
         requestUser,

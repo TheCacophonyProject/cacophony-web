@@ -3,8 +3,8 @@
 
 declare namespace Cypress {
   type ApiDeviceResponse = import("@typedefs/api/device").ApiDeviceResponse;
-  type ApiDeviceUserRelationshipResponse =
-    import("@typedefs/api/device").ApiDeviceUserRelationshipResponse;
+  type ApiGroupsUserRelationshipResponse =
+    import("@typedefs/api/group").ApiGroupUserRelationshipResponse;
 
   interface Chainable {
     /**
@@ -105,52 +105,10 @@ declare namespace Cypress {
     apiDeviceUsersCheck(
       userName: string,
       deviceName: string,
-      expectedUsers: ApiDeviceUserRelationshipResponse[],
+      expectedUsers: ApiGroupsUserRelationshipResponse[],
       statusCode?: number
     ): any;
 
-    // FIXME - Delete?  Doesn't disambiguate by group
-    /**
-     * Add user to a device using /device/users
-     * Specify admin or non admin user (default=non-admin)
-     * takes deviceName and looks up the device Id to pass tot he API.  Hence deviceName must be unique within test environment
-     * optionally check for a non-200 status code
-     * By default user name is made unique. Specify
-     * additionalChecks.useRawUserName=true to keep name as supplied.
-     */
-    apiDeviceUserAdd(
-      deviceAdminUser: string,
-      userName: string,
-      deviceName: string,
-      admin?: boolean,
-      statusCode?: number,
-      additionalChecks?: any
-    ): any;
-
-    // FIXME - Delete?  Doesn't disambiguate by group
-    /**
-     * Remove user from a device using /device/users
-     * takes deviceName and looks up the device Id to pass to the API.  Hence deviceName must be unique within test environment
-     * optionally check for a non-200 status code
-     * By default user name is made unique. Specify
-     * additionalChecks.useRawUserName=true to keep name as supplied.
-     */
-    apiDeviceUserRemove(
-      deviceAdminUser: string,
-      userName: string,
-      deviceName: string,
-      statusCode?: number,
-      additionalChecks?: any
-    ): any;
-
-    /**
-     * Register a heartbeat for a device using /devices/heartbeat (POST)
-     * Looks up the JWT using deviceName
-     * Requires nextHeartbeat as an ISO timestamp
-     * Optionally check for a non-200 statusCode
-     * Optionally check for returned messages includes substring of
-     *   additionalChecks["message"]
-     */
     apiDeviceHeartbeat(
       deviceName: string,
       nextHeartbeat: string,
