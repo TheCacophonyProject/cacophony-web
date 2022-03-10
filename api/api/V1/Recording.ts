@@ -124,8 +124,12 @@ const mapTrackTag = (
 
 const mapTrackTags = (
   trackTags: TrackTag[]
-): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] =>
-  trackTags.map(mapTrackTag);
+): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] => {
+  const t = trackTags.map(mapTrackTag);
+  // Make sure tags are always in some deterministic order for testing purposes.
+  t.sort((a, b) => a.id - b.id);
+  return t;
+};
 
 const mapTrack = (track: Track): ApiTrackResponse => ({
   id: track.id,
@@ -721,7 +725,7 @@ export default (app: Application, baseUrl: string) => {
       //  a recording, show tracks in the UI, and have the user add a tag.
       //  Generate a short-lived JWT token for each recording we return, keyed
       //  to that recording.  Only return a single recording at a time.
-      //
+
       let result;
       if (!request.query.deviceId) {
         result = await models.Recording.getRecordingWithUntaggedTracks();
@@ -1043,7 +1047,7 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     parseJSONField(body("updates")),
     async (request: Request, response: Response) => {
-      // FIXME - If update includes location, rematch stations.  Maybe this should
+      // FIXME(ManageStations) - If update includes location, rematch stations.  Maybe this should
       //  be part of the setter for location, but might be too magic?
       await response.locals.recording.update(
         response.locals.updates as ApiRecordingUpdateRequest
@@ -1536,7 +1540,10 @@ export default (app: Application, baseUrl: string) => {
   );
 
   // FIXME - This function doesn't belong here
-  async function loadTrackForTagJWT(request, response): Promise<Track> {
+  async function loadTrackForTagJWT(
+    request: Request,
+    response: Response
+  ): Promise<Track> {
     let jwtDecoded;
     const tagJWT = request.body.tagJWT || request.query.tagJWT;
     try {

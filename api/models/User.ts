@@ -112,9 +112,6 @@ export default function (
       beforeValidate: beforeValidate,
       beforeCreate: beforeModify,
       beforeUpdate: beforeModify,
-
-      // NOTE: Doesn't exist on publicly available typings, so ignore
-      // @ts-ignore
       beforeUpsert: beforeModify,
     },
   };

@@ -20,7 +20,7 @@ const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
   JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
 );
 
-describe("Stations: add and remove", () => {
+describe.skip("Stations: add and remove", () => {
   const Josie = "Josie_stations";
   const group = "add_stations";
   const forestLatLong = { lat: -43.62367659982, lng: 172.62646754804 };
@@ -51,7 +51,7 @@ describe("Stations: add and remove", () => {
     }).thenCheckStationIs(Josie, "stream");
   });
 
-  it("recording that is not close to any station is not assigned a station", () => {
+  it.skip("recording that is not close to any station is not assigned a station", () => {
     cy.apiDeviceAdd("neither", group);
     cy.testUploadRecording("neither", {
       lat: -43.6,
@@ -59,7 +59,7 @@ describe("Stations: add and remove", () => {
     }).thenCheckStationIs(Josie, "");
   });
 
-  it("recordings in another group are not assigned a station", () => {
+  it.skip("recordings in another group are not assigned a station", () => {
     const otherGroup = "Josies-other";
     const camera = "other-group";
     cy.apiGroupAdd(Josie, otherGroup);
@@ -130,7 +130,7 @@ describe("Stations: add and remove", () => {
     cy.checkRecordingsStationIs(Josie4, "");
   });
 
-  it("Recording is not assigned to a retired station", () => {
+  it.skip("Recording is not assigned to a retired station", () => {
     cy.testCreateUserGroupAndDevice("sta_user1", "sta_group1", "sta_camera1");
     const stations = [
       { name: "test1", lat: -43.1, lng: 172 },

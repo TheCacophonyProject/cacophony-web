@@ -1116,7 +1116,7 @@ const getDevice =
         ],
       };
     }
-    // FIXME - When re-registering we can actually have two devices in the same group with the same name - but one
+    // FIXME(ManageStations) - When re-registering we can actually have two devices in the same group with the same name - but one
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
       (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
@@ -1333,7 +1333,6 @@ export const fetchAuthorizedOptionalDeviceById = (deviceId: ValidationChain) =>
     deviceId
   );
 
-// TODO Check this with the 2040 group...
 export const fetchUnauthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>

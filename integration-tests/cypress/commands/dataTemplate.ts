@@ -26,11 +26,11 @@ export const TEMPLATE_AUDIO_RECORDING: ApiRecordingSet = {
   batteryCharging: "DISCHARGING",
   batteryLevel: 87,
   airplaneModeOn: false,
-    cacophonyIndex: [
+  cacophonyIndex: [
     { end_s: 20, begin_s: 0, index_percent: 80.8 },
     { end_s: 40, begin_s: 20, index_percent: 77.1 },
     { end_s: 60, begin_s: 40, index_percent: 71.6 },
-],
+  ],
   additionalMetadata: {
     normal: "0",
     "SIM IMEI": "990006964660319",
@@ -65,7 +65,7 @@ export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   processingMeta: null,
   GroupId: NOT_NULL,
   DeviceId: NOT_NULL,
-  StationId: null,
+  StationId: NOT_NULL,
   recordingDateTime: "2021-01-01T01:01:01.018Z",
   duration: 60,
   location: null,
@@ -107,15 +107,13 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
   additionalMetadata: {
     normal: "0",
     "SIM IMEI": "990006964660319",
-    analysis: {
-      cacophony_index_version: "2020-01-20_A",
-      processing_time_seconds: 50.7,
-      species_identify_version: "2021-02-01",
-    },
     "SIM state": "SIM_STATE_READY",
     "Auto Update": false,
     "Flight Mode": false,
     "Phone model": "SM-G900V",
+    cacophony_index_version: "2020-01-20_A",
+    processing_time_seconds: 50.7,
+    species_identify_version: "2021-02-01",
     amplification: 1.0721460589601806,
     SimOperatorName: "Verizon",
     "Android API Level": 23,
@@ -127,7 +125,6 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
 //THERMAL RECORDINGS
 
 export const TEMPLATE_TRACK: ApiTrackSet = {
-  id: 2,
   tracker_version: 10,
   start_s: 4.89,
   end_s: 8.67,
@@ -211,7 +208,7 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: { lat: -45.29115, lng: 169.30845 },
     type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
+    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 5 },
     groupId: 246,
     comment: "This is a comment",
     processing: false,
@@ -228,7 +225,7 @@ export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {
   additionalMetadata: {
     algorithm: 31143,
     previewSecs: 5,
-    totalFrames: 141,
+    totalFrames: 5,
   },
   metadata: {
     tracks: [TEMPLATE_TRACK],
@@ -260,7 +257,7 @@ export const TEMPLATE_THERMAL_RECORDING_PROCESSING: ApiRecordingForProcessing =
     processingMeta: null,
     GroupId: NOT_NULL,
     DeviceId: NOT_NULL,
-    StationId: null,
+    StationId: NOT_NULL,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
     location: null,

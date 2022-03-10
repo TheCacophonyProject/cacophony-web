@@ -129,7 +129,7 @@ describe("Groups - get devices for group", () => {
         active: true,
         admin: true,
         type: DeviceType.Unknown,
-        lastConnectionTime: (new Date()).toISOString()
+        lastConnectionTime: new Date().toISOString(),
       };
       expectedDevice4b = {
         id: getCreds("gdCam4b").id,
@@ -150,7 +150,12 @@ describe("Groups - get devices for group", () => {
       });
 
       cy.log("But verify groups query only shows active device");
-      cy.apiGroupDevicesCheck("gdUser4", "gdGroup4", [expectedGroupDevice4b], ["[].lastConnectionTime"]);
+      cy.apiGroupDevicesCheck(
+        "gdUser4",
+        "gdGroup4",
+        [expectedGroupDevice4b],
+        ["[].lastConnectionTime"]
+      );
     });
   });
 

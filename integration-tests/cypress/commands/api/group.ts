@@ -445,7 +445,7 @@ Cypress.Commands.add(
       stations: JSON.stringify(stations),
     };
     if (updateFrom !== undefined) {
-      body["fromDate"] = updateFrom;
+      body["from-date"] = updateFrom;
     }
 
     makeAuthorizedRequestWithStatus(

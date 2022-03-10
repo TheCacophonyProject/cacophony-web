@@ -78,11 +78,7 @@ export const mapDeviceResponse = (
       mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
     }
     if (device.location) {
-      const { coordinates } = device.location;
-      mapped.location = {
-        lat: coordinates[1],
-        lng: coordinates[0],
-      };
+      mapped.location = device.location;
     }
     if (device.public) {
       mapped.public = true;
@@ -188,18 +184,19 @@ export default function (app: Application, baseUrl: string) {
       } else {
         saltId = device.id;
       }
-      await device.update({ saltId, uuid: device.id });
-      // Create the initial entry in the device history table.
-      await models.DeviceHistory.create({
-        saltId,
-        setBy: "register",
-        GroupId: device.GroupId,
-        DeviceId: device.id,
-        fromDateTime: new Date(),
-        deviceName: device.devicename,
-        uuid: device.id,
-      });
-
+      await Promise.all([
+        device.update({ saltId, uuid: device.id }),
+        // Create the initial entry in the device history table.
+        models.DeviceHistory.create({
+          saltId,
+          setBy: "register",
+          GroupId: device.GroupId,
+          DeviceId: device.id,
+          fromDateTime: new Date(),
+          deviceName: device.devicename,
+          uuid: device.id,
+        }),
+      ]);
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new device."],

@@ -1,10 +1,9 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-
 declare namespace Cypress {
   type ApiLoggedInUserResponse =
-      import("@typedefs/api/user").ApiLoggedInUserResponse;
+    import("@typedefs/api/user").ApiLoggedInUserResponse;
   type ApiUserResponse = import("@typedefs/api/user").ApiUserResponse;
 
   interface Chainable {

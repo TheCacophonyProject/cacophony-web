@@ -206,7 +206,7 @@ export default function (sequelize, DataTypes) {
       where: {
         [Op.and]: [
           where, // User query
-          // FIXME: Move permissions stuff to middleware
+          // FIXME: Move permissions stuff to middleware (though this function is invoked via scripts also, so maybe not?)
           options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },

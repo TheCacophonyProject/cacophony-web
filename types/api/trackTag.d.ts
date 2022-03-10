@@ -17,12 +17,12 @@ export interface ApiTrackTagResponse {
   data: any; // FIXME - validation?
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;
-  userId?: UserId;
-  userName?: string;
   archivedAt?: IsoFormattedDateString; // FIXME - is this used?
 }
 
 export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
+  userId?: UserId;
+  userName?: string;
   automatic: false;
 }
 

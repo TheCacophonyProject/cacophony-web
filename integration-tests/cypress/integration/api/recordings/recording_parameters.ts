@@ -897,6 +897,7 @@ describe("Recordings - parameter tests", () => {
     let expectedRecording1: ApiThermalRecordingResponse;
 
     recording1.additionalMetadata = {
+      ...recording1.additionalMetadata,
       ICanSetAnyKey: "ToAnyValue",
     } as unknown as ApiThermalAdditionalMetadata;
     cy.apiRecordingAdd(

@@ -29,6 +29,7 @@ import {
 import { Device } from "./Device";
 import { GroupId, UserId, StationId, LatLng } from "@typedefs/api/common";
 import { ApiGroupSettings } from "@typedefs/api/group";
+import logger from "@log";
 
 const retireMissingStations = (
   existingStations: Station[],
@@ -357,6 +358,8 @@ export default function (sequelize, DataTypes): GroupStatic {
     updatedRecordingsPerStation: Record<StationId, number>;
     warnings?: string;
   }> {
+    // FIXME(ManageStations): Should we rewrite this in terms of the more granular stations APIs?
+
     let existingStations: Station[] = alreadyExistingStations;
     if (!existingStations && group) {
       existingStations = await group.getStations({
@@ -369,7 +372,6 @@ export default function (sequelize, DataTypes): GroupStatic {
       });
     }
     // Enforce name uniqueness to group here:
-
     const existingStationsByName: Record<string, Station> = {};
     const newStationsByName: Record<string, CreateStationData> = {};
     const stationOpsPromises: Promise<any>[] = [];
@@ -383,7 +385,6 @@ export default function (sequelize, DataTypes): GroupStatic {
     const retiredStations = shouldRetireMissingStations
       ? retireMissingStations(existingStations, newStationsByName, authUserId)
       : [];
-
     for (const station of existingStations) {
       existingStationsByName[station.name] = station;
     }
@@ -393,17 +394,19 @@ export default function (sequelize, DataTypes): GroupStatic {
       ...existingStations,
       ...stationsToAdd,
     ]);
-
     // Add new stations, or update lat/lng if station with same name but different lat lng.
     const addedOrUpdatedStations = [];
     const allStations = [];
+    const activeAt = applyToRecordingsFromDate || new Date();
     for (const [name, newStation] of Object.entries(newStationsByName)) {
       let stationToAddOrUpdate;
       if (!existingStationsByName.hasOwnProperty(name)) {
         stationToAddOrUpdate = new models.Station({
           name: newStation.name,
-          location: [newStation.lat, newStation.lng],
+          location: { lat: newStation.lat, lng: newStation.lng },
           lastUpdatedById: authUserId,
+          automatic: false,
+          activeAt,
         });
         addedOrUpdatedStations.push(stationToAddOrUpdate);
         stationOpsPromises.push(
@@ -420,10 +423,10 @@ export default function (sequelize, DataTypes): GroupStatic {
         stationToAddOrUpdate = existingStationsByName[newStation.name];
         if (stationLocationHasChanged(stationToAddOrUpdate, newStation)) {
           // NOTE - Casting this as "any" because station.location has a special setter function
-          (stationToAddOrUpdate as any).location = [
-            newStation.lat,
-            newStation.lng,
-          ];
+          stationToAddOrUpdate.location = {
+            lat: newStation.lat,
+            lng: newStation.lng,
+          };
           stationToAddOrUpdate.lastUpdatedById = authUserId;
           addedOrUpdatedStations.push(stationToAddOrUpdate);
           stationOpsPromises.push(stationToAddOrUpdate.save());

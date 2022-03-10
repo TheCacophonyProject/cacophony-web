@@ -912,8 +912,8 @@ describe("Recording fitering", () => {
 
           cy.log("Check track is filtered");
           expectedRecording20.tracks[0].tags = [
-            expectedTag20_2,
             expectedTag20_1,
+            expectedTag20_2,
           ];
           expectedRecording20.tracks[0].filtered = false;
           cy.apiRecordingCheck(
@@ -999,8 +999,8 @@ describe("Recording fitering", () => {
 
           cy.log("Check track is filtered");
           expectedRecording21.tracks[0].tags = [
-            expectedTag21_2,
             expectedTag21_1,
+            expectedTag21_2,
           ];
           expectedRecording21.tracks[0].filtered = true;
           cy.apiRecordingCheck(

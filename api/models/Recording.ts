@@ -34,10 +34,7 @@ import { Tag } from "./Tag";
 import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
 import { Station } from "./Station";
-import {
-  mapPositions,
-  tryToMatchRecordingToStation,
-} from "@api/V1/recordingUtil";
+import { mapPositions } from "@api/V1/recordingUtil";
 import {
   GroupId,
   RecordingId,
@@ -55,6 +52,11 @@ import {
   TagMode,
 } from "@typedefs/api/consts";
 import { DeviceBatteryChargeState } from "@typedefs/api/device";
+import {
+  ApiAudioRecordingMetadataResponse,
+  ApiThermalRecordingMetadataResponse,
+  CacophonyIndex,
+} from "@typedefs/api/recording";
 
 type SqlString = string;
 
@@ -101,71 +103,10 @@ interface RecordingQueryBuilderInstance {
   query: any;
 }
 
-export interface SpeciesClassification {
-  end_s: number;
-  begin_s: number;
-  species: string;
-}
-
-export interface CacophonyIndex {
-  end_s: number;
-  begin_s: number;
-  index_percent: number;
-}
-
-export interface AudioRecordingMetadata {
-  ["SIM IMEI"]: string;
-  ["SIM state"]: string;
-  ["Phone model"]: string;
-  amplification: number;
-  SimOperatorName: string;
-  ["Android API Level"]: number;
-  ["Phone manufacturer"]: string;
-  ["App has root access"]: boolean;
-  cacophony_index_version: string;
-  processing_time_seconds: number;
-  species_identify_version: string;
-  analysis: {
-    speech_detection: boolean;
-    speech_detection_version: string;
-  };
-}
-
-export interface VideoRecordingMetadata {
-  previewSecs: number;
-  algorithm?: number;
-  totalFrames?: number;
-  oldTags?: {
-    id: number;
-    what: string;
-    detail: string;
-    version: number;
-    duration: null | number;
-    taggerId: null | number;
-    automatic: boolean;
-    createdAt: string;
-    startTime: string | null;
-    updatedAt: string;
-    confidence: number;
-    RecordingId: number;
-  }[];
-  tracks?: {
-    start_s: number;
-    end_s: number;
-    label: string;
-    clarity: number;
-    confidence: number;
-    max_novelty: number;
-    average_novelty: number;
-    all_class_confidences: Record<string, number>;
-  };
-}
-
 export interface RecordingProcessingMetadata {
   // Only set during recording processing?
 }
 
-// TODO(jon): Express audio and video recordings differently.  Recording<Audio>, Recording<Video>
 export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   // Recording columns.
   id: RecordingId;
@@ -176,7 +117,9 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   relativeToDawn: number;
   relativeToDusk: number;
   version: string;
-  additionalMetadata: AudioRecordingMetadata | VideoRecordingMetadata;
+  additionalMetadata:
+    | ApiThermalRecordingMetadataResponse
+    | ApiAudioRecordingMetadataResponse;
   cacophonyIndex: CacophonyIndex[];
   comment: string;
   public: boolean;
@@ -215,7 +158,6 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getActiveTracksTagsAndTagger: () => Promise<any>;
 
   reprocess: () => Promise<Recording>;
-  mergeUpdate: (updates: any) => Promise<void>;
   filterData: (options: any) => void;
   // NOTE: Implicitly created by sequelize associations (along with other
   //  potentially undocumented extension methods).
@@ -232,6 +174,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   Tracks?: Track[];
   Device?: Device;
 }
+
 type CptvFile = "string";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -367,8 +310,8 @@ export default function (
    */
   Recording.getOneForProcessing = async function (type, state) {
     return sequelize
-      .transaction(function (transaction) {
-        return Recording.findOne({
+      .transaction(async (transaction) => {
+        const recording = await Recording.findOne({
           where: {
             type: type,
             deletedAt: { [Op.eq]: null },
@@ -398,33 +341,22 @@ export default function (
           skipLocked: true,
           lock: (transaction as any).LOCK.UPDATE,
           transaction,
-        }).then(async function (recording) {
-          if (!recording) {
-            return recording;
-          }
-          const date = new Date();
-          if (!recording.processingStartTime) {
-            recording.set("processingStartTime", date.toISOString());
-          }
-          recording.set(
-            {
-              processingEndTime: null,
-              jobKey: uuidv4(),
-              processing: true,
-            },
-            {
-              transaction,
-            }
-          );
-          recording.save({
-            transaction,
-          });
-          return recording;
         });
+        if (!recording) {
+          return recording;
+        }
+        if (!recording.processingStartTime) {
+          recording.processingStartTime = new Date().toISOString();
+        }
+        recording.processingEndTime = null;
+        recording.jobKey = uuidv4();
+        recording.processing = true;
+        await recording.save({
+          transaction,
+        });
+        return recording;
       })
-      .then(function (result) {
-        return result;
-      })
+      .then((result) => result)
       .catch(() => {
         return null;
       });
@@ -668,33 +600,6 @@ from (
         ],
       });
     };
-  /* eslint-enable indent */
-
-  // Bulk update recording values. Any new additionalMetadata fields
-  // will be merged.
-  Recording.prototype.mergeUpdate = async function (
-    newValues: any
-  ): Promise<void> {
-    for (const [name, newValue] of Object.entries(newValues)) {
-      if (name == "additionalMetadata") {
-        this.mergeAdditionalMetadata(newValue);
-      } else {
-        this.set(name, newValue);
-        if (name === "location") {
-          // NOTE: When location gets updated, we need to update any matching stations for this recordings' group.
-          const matchingStation = await tryToMatchRecordingToStation(this);
-          if (matchingStation) {
-            this.set("StationId", matchingStation.id);
-          }
-        }
-      }
-    }
-  };
-
-  // Update additionalMetadata fields with new values supplied.
-  Recording.prototype.mergeAdditionalMetadata = function (newValues: any) {
-    this.additionalMetadata = { ...this.additionalMetadata, ...newValues };
-  };
 
   Recording.prototype.getFileExt = function () {
     if (this.fileMimeType == "application/x-cptv") {
@@ -717,8 +622,8 @@ from (
   };
 
   // TODO(ManageStations) - Move to LatLngUtils
-  function reduceLatLonPrecision(latLng: LatLng, prec) {
-    const resolution = (prec * 360) / 40000000;
+  function reduceLatLonPrecision(latLng: LatLng, precision: number): LatLng {
+    const resolution = (precision * 360) / 40000000;
     const half_resolution = resolution / 2;
     const reducePrecision = (val) => {
       val = val - (val % resolution);

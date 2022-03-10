@@ -200,6 +200,7 @@ describe("Recordings - processing tests", () => {
           EXCLUDE_ALL_IDS
         );
 
+        // FIXME = If it's tracking, should it be processing?
         cy.log("Send for processing (tracking)");
         expectedProcessing1.processingStartTime = NOT_NULL_STRING;
         expectedProcessing1.updatedAt = NOT_NULL_STRING;
@@ -210,7 +211,6 @@ describe("Recordings - processing tests", () => {
           expectedProcessing1,
           EXCLUDE_KEYS
         );
-
         cy.log("Check status (tracking, processing)");
         expectedRecording1b = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
@@ -1065,7 +1065,7 @@ describe("Recordings - processing tests", () => {
           newField: "newValue",
           newField2: "newValue2",
           algorithm: 99999,
-          totalFrames: 141,
+          totalFrames: 5,
           previewSecs: null,
         } as any;
 

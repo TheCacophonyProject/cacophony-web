@@ -15,7 +15,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
   const NOT_ADMIN = false;
 
   //do not validate updatedAt or createdAt values
-  const EXCLUDE_CREATED_UPDATED_ID = ["[].createdAt", "[].updatedAt", "[].id"];
+  const EXCLUDE_CREATED_UPDATED_ID = [
+    "[].createdAt",
+    "[].updatedAt",
+    "[].activeAt",
+    "[].id",
+  ];
 
   const station1a = { name: "station1", lat: -45.1, lng: 172.1 };
   const station1b = { name: "station1", lat: -45.2, lng: 172.1 };
@@ -23,13 +28,13 @@ describe("Groups - add/update/query/remove stations from group", () => {
   const station2b = { name: "station2", lat: -45.2, lng: 172.2 };
   const station3a = { name: "station3", lat: -45.1, lng: 172.3 };
 
-  //TODO: These coordinates are back to front.  Issue 73. Reverse once database & API are corrected. Should be X,Y
   const expectedStation1a: ApiStationResponse = {
     id: 0,
     name: "station1",
     location: { lat: -45.1, lng: 172.1 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
@@ -40,6 +45,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.2, lng: 172.1 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
@@ -50,6 +56,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.1, lng: 172.2 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
@@ -60,6 +67,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.2, lng: 172.2 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
@@ -70,6 +78,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.1, lng: 172.3 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
@@ -145,7 +154,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     });
   });
 
-  it.only("Group member can query but not add, update, retire stations from a group", () => {
+  it("Group member can query but not add, update, retire stations from a group", () => {
     cy.log("Add a station as admin to test with");
     cy.apiGroupStationsUpdate("gsGroupAdmin", "gsGroup", [station1a]).then(
       () => {

@@ -109,7 +109,8 @@ export default function (app: Application, baseUrl: string) {
       if (tag) {
         response.locals.tag = tag;
         // FIXME(ManageStations): This breaks undeleting tags in power-tagger.
-        //  Need to check with tagger JWT.
+        //  Need to check with tagger JWT. - Actually, there seems to already be a dedicated API that uses tagJWT for this.
+        //  Is the front-end just using the wrong api here?  Oh wait, this is for *recording* tags, not track tags.
         await fetchAuthorizedRequiredRecordingById(tag.recordingId)(
           request,
           response,

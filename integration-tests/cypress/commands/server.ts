@@ -313,13 +313,16 @@ export function checkTreeStructuresAreEqualExcept(
         };
       };
 
+      const diff = keyDiff(containedStruct, containingStruct);
+      let diffHint = "";
+      if (diff.missingKeys.length || diff.unknownKeys.length) {
+        diffHint = ` - Diff: ${JSON.stringify(diff)}`;
+      }
       expect(
         Object.keys(containingStruct).length,
         `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
           containingStruct
-        ).toString()}] - Diff: ${JSON.stringify(
-          keyDiff(containedStruct, containingStruct)
-        )}`
+        ).toString()}]${diffHint}`
       ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order

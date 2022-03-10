@@ -76,6 +76,7 @@ import { ApiTrackPosition } from "@typedefs/api/track";
 import SendData = ManagedUpload.SendData;
 import { locationsAreEqual } from "@models/Group";
 import { DeviceHistory } from "@models/DeviceHistory";
+import logger from "@log";
 
 let CptvDecoder;
 (async () => {
@@ -353,7 +354,7 @@ const assignStationsForDeviceInDateRange = async (
   fromDate: Date,
   untilDate?: Date
 ) => {
-  // TODO(ManageStations)
+  // TODO(ManageStations):
   // Get device history.
   // Look for fixups.
   // Get recordings for device in date range.
@@ -365,7 +366,7 @@ const maybeUpdateDeviceHistory = async (
   recordingLocation: LatLng,
   recordingDateTime: Date
 ) => {
-  // FIXME - device location currently gets updated if it is different from previous device location when a recording comes
+  // FIXME(ManageStations) - device location currently gets updated if it is different from previous device location when a recording comes
   //  in. Need to use deviceHistory table to see if this should really be updated, to handle out of order recordings.
   const lastLocation = device.location;
   if (
@@ -390,8 +391,10 @@ const maybeUpdateDeviceHistory = async (
     // Recordings can come in out of order, so if this recording has an earlier time than the last location
     // we may need to move the time of the device history entry back.
 
-    // FIXME - We may have more recent locations here, so we may be moving back a historic entry - and need to
+    // FIXME(ManageStations) - We may have more recent locations here, so we may be moving back a historic entry - and need to
     //  update the corresponding station accordingly.
+
+    // FIXME(ManageStations) - We should insert a device history event when we get a config change event with a location change.
 
     // NOTE: This query will get run every recording upload - is that necessary?
 
@@ -405,7 +408,7 @@ const maybeUpdateDeviceHistory = async (
       },
     });
 
-    // FIXME - what happens for user-defined fix-ups?
+    // FIXME(ManageStations) - what happens for user-defined fix-ups?
 
     if (history) {
       await history.update({
@@ -439,7 +442,7 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
   fileData: Uint8Array,
   recording: Recording
 ): Promise<boolean> => {
-  if (data.type === "thermalRaw") {
+  if (data.type === RecordingType.ThermalRaw) {
     // Read the file back out from s3 and decode/parse it.
     const { metadata, fileIsCorrupt: isCorrupt } = await tryDecodeCptvMetadata(
       fileData
@@ -483,13 +486,17 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
         ...recording.additionalMetadata,
       };
     }
+    return isCorrupt;
+  } else if (data.type === RecordingType.Audio) {
+    if (data.hasOwnProperty("additionalMetadata")) {
+      recording.additionalMetadata = data.additionalMetadata;
+    }
     if (data.hasOwnProperty("cacophonyIndex")) {
       recording.cacophonyIndex = data.cacophonyIndex;
     }
-    return isCorrupt;
-  } else {
     return false;
   }
+  return false;
 };
 
 const getDeviceIdAndGroupIdAtRecordingTime = async (
@@ -524,12 +531,9 @@ const assignStationToRecording = async (
   if (matchingStation) {
     recording.StationId = matchingStation.id;
   } else {
-    // TODO - We should have a warning if a recording is uploaded without any location.
+    // TODO(ManageStations) - We should have a warning if a recording is uploaded without any location.
 
-    // TODO - add "automatically created" boolean column to stations.
     // If a recording comes in that exactly matches a station before that station was created, move the creation date back
-
-    // TODO(ManageStations)
     // Create a new station, and assign this recording to it.
 
     // const device = await models.Device.findByPk(uploadingDevice.id, {
@@ -563,9 +567,6 @@ const assignStationToRecording = async (
     //     matchedLocation = location;
     //   }
     // }
-
-    // TODO(ManageStations): device.lastKnownLocation() method   device.locationAtTime(?dateTime)
-
     const group = await models.Group.findByPk(recording.GroupId);
     const now = new Date().toISOString();
     // @ts-ignore
@@ -573,7 +574,7 @@ const assignStationToRecording = async (
       name: `New station for ${deviceName}_${now}`,
       location: recording.location,
       activeAt: new Date(recording.recordingDateTime),
-      automatic: true, // FIXME - Do we really want this?
+      automatic: true,
     })) as Station;
     recording.StationId = newStation.id;
     await group.addStation(newStation);
@@ -589,7 +590,7 @@ export const uploadRawRecording = util.multipartUpload(
     uploadedFileData: Uint8Array
   ): Promise<Recording> => {
     const recording = models.Recording.buildSafely(data);
-    const recordingDateTime = new Date(recording.recordingDateTime);
+    let recordingDateTime = new Date(recording.recordingDateTime);
     // Add the filehash if present
     if (data.fileHash) {
       recording.rawFileHash = data.fileHash;
@@ -602,17 +603,40 @@ export const uploadRawRecording = util.multipartUpload(
     if (typeof uploadingDevice.public === "boolean") {
       recording.public = uploadingDevice.public;
     }
-
+    let fileIsCorrupt: boolean;
+    let deviceId: DeviceId;
+    let groupId: DeviceId;
     // Check if the file is corrupt and use file metadata if it can be parsed.
     // Check what group the uploading device (or the device embedded in the recording) was part of at the time the recording was made.
-    const [fileIsCorrupt, { deviceId, groupId }] = await Promise.all([
-      parseAndMergeEmbeddedFileMetadataIntoRecording(
+    if (recordingDateTime.toString() !== "Invalid Date") {
+      // We can do these in parallel
+      [fileIsCorrupt, { deviceId, groupId }] = await Promise.all([
+        parseAndMergeEmbeddedFileMetadataIntoRecording(
+          data,
+          uploadedFileData,
+          recording
+        ),
+        getDeviceIdAndGroupIdAtRecordingTime(
+          uploadingDevice,
+          recordingDateTime
+        ),
+      ]);
+    } else {
+      // Otherwise, if a recordingDateTime wasn't specified, we need to parse and use the one in the recording metadata.
+      fileIsCorrupt = await parseAndMergeEmbeddedFileMetadataIntoRecording(
         data,
         uploadedFileData,
         recording
-      ),
-      getDeviceIdAndGroupIdAtRecordingTime(uploadingDevice, recordingDateTime),
-    ]);
+      );
+      recordingDateTime = new Date(recording.recordingDateTime);
+      const { deviceId: d, groupId: g } =
+        await getDeviceIdAndGroupIdAtRecordingTime(
+          uploadingDevice,
+          recordingDateTime
+        );
+      deviceId = d;
+      groupId = g;
+    }
     recording.DeviceId = deviceId;
     recording.GroupId = groupId;
 
@@ -882,8 +906,8 @@ export async function reportRecordings(
       r.Station ? r.Station.name : "",
       moment(r.recordingDateTime).tz(config.timeZone).format("YYYY-MM-DD"),
       moment(r.recordingDateTime).tz(config.timeZone).format("HH:mm:ss"),
-      r.location ? r.location.coordinates[1] : "",
-      r.location ? r.location.coordinates[0] : "",
+      r.location ? r.location.lat : "",
+      r.location ? r.location.lng : "",
       r.duration,
       r.batteryLevel,
       r.comment,

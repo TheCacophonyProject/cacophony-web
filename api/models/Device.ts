@@ -22,7 +22,13 @@ import { Group } from "./Group";
 import { Event } from "./Event";
 import logger from "../logging";
 import { DeviceType } from "@typedefs/api/consts";
-import { DeviceId, GroupId, ScheduleId, UserId } from "@typedefs/api/common";
+import {
+  DeviceId,
+  GroupId,
+  LatLng,
+  ScheduleId,
+  UserId,
+} from "@typedefs/api/common";
 import util from "./util/util";
 
 const Op = Sequelize.Op;
@@ -39,7 +45,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   lastConnectionTime: Date | null;
   lastRecordingTime: Date | null;
   password?: string;
-  location?: { type: "Point"; coordinates: [number, number] };
+  location?: LatLng;
   heartbeat: Date | null;
   nextHeartbeat: Date | null;
   comparePassword: (password: string) => Promise<boolean>;
@@ -279,12 +285,6 @@ export default function (
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-
-    // FIXME(jon): So the problem is that we're inserting recordings into the databases without
-    //  saying how to interpret the timestamps, so they are interpreted as being NZ time when they come in.
-    //  This happens to work when both the inserter and the DB are in the same timezone, but otherwise will
-    //  lead to spurious values.  Need to standardize input time.
-
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [result, _] = (await sequelize.query(
       `select round((avg(cacophonyIndex.scores))::numeric, 2) as cacophonyIndex from

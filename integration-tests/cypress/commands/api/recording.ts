@@ -20,7 +20,11 @@ import {
   ApiRecordingNeedsTagReturned,
   ApiRecordingColumns,
 } from "../types";
-import { ApiRecordingColumnNames, HTTP_OK200 } from "../constants";
+import {
+  ApiRecordingColumnNames,
+  HTTP_OK200,
+  NOT_NULL_STRING,
+} from "../constants";
 import {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
@@ -773,12 +777,19 @@ Cypress.Commands.add(
             column++
           ) {
             if (excludeCheckOn.indexOf(ApiRecordingColumnNames[column]) == -1) {
-              expect(
-                columns[column],
-                `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
-              ).to.equal(
-                expectedResults[count][ApiRecordingColumnNames[column]]
-              );
+              if (
+                !(
+                  expectedResults[count][ApiRecordingColumnNames[column]] ===
+                  NOT_NULL_STRING
+                )
+              ) {
+                expect(
+                  columns[column],
+                  `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
+                ).to.equal(
+                  expectedResults[count][ApiRecordingColumnNames[column]]
+                );
+              }
             }
           }
         }

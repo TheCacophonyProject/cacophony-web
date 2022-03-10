@@ -156,11 +156,7 @@
     <span class="recording-time">{{ item.time }}</span>
     <span>{{ Math.round(item.duration) }}s</span>
     <span>
-      <TagBadge
-        v-for="(tag, index) in filteredTags"
-        :key="index"
-        :tag="tag"
-      />
+      <TagBadge v-for="(tag, index) in filteredTags" :key="index" :tag="tag" />
     </span>
     <GroupLink :group-name="item.groupName" context="recordings" />
     <StationLink

@@ -413,10 +413,17 @@ export function TestCreateExpectedProcessingData(
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
   expected.duration = recording.duration;
+
   // NOTE: Locations are currently provided as Y,X (lat, long), but stored raw as X,Y (long, lat)
   expected.location = {
     coordinates: [recording.location[1], recording.location[0]],
     type: "Point",
+    crs: {
+      type: "name",
+      properties: {
+        name: NOT_NULL_STRING,
+      },
+    },
   };
   expected.recordingDateTime = recording.recordingDateTime;
   return expected;
@@ -469,7 +476,8 @@ export function TestCreateExpectedRecordingColumns(
   if (stationName !== undefined) {
     expected.Station = getTestName(stationName);
   } else {
-    expected.Station = "";
+    // This will be an automatically generated name
+    expected.Station = NOT_NULL_STRING;
   }
   expected.Date = new Date(inputRecording.recordingDateTime).toLocaleDateString(
     "en-CA"
@@ -534,8 +542,8 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
     expected.stationName = getTestName(stationName);
   } else {
     // Ignored
-    expected.stationId = 1;
-    expected.stationName = "Station name";
+    expected.stationId = NOT_NULL;
+    expected.stationName = NOT_NULL_STRING;
   }
 
   expected.id = getCreds(recordingName).id;
@@ -544,7 +552,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   expected.groupId = group.id;
   expected.groupName = group.groupName;
   expected.type = inputRecording.type;
-  if (inputRecording.type == "thermalRaw") {
+  if (inputRecording.type == RecordingType.ThermalRaw) {
     expected.rawMimeType = "application/x-cptv";
   } else {
     expected.rawMimeType = "audio/mpeg";
@@ -579,13 +587,29 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputRecording.fileMimeType !== undefined) {
     expected.fileMimeType = inputRecording.fileMimeType;
   }
+  if (inputRecording.cacophonyIndex !== undefined) {
+    expected.cacophonyIndex = inputRecording.cacophonyIndex;
+  }
   if (inputRecording.additionalMetadata !== undefined) {
     expected.additionalMetadata = JSON.parse(
       JSON.stringify(inputRecording.additionalMetadata)
     );
   }
+
+  if (expected.type === RecordingType.ThermalRaw) {
+    // Even if we don't pass additionalMetadata, some will be populated by cptv parsing.
+    if (!expected.additionalMetadata) {
+      expected.additionalMetadata = {};
+    }
+    if (!expected.additionalMetadata.totalFrames) {
+      expected.additionalMetadata.totalFrames = NOT_NULL;
+    }
+    if (!expected.additionalMetadata.previewSecs) {
+      expected.additionalMetadata.previewSecs = NOT_NULL;
+    }
+  }
+
   if (inputRecording.location !== undefined) {
-    //expected.location = { type: "Point", coordinates: inputRecording.location };
     expected.location = {
       lat: inputRecording.location[0],
       lng: inputRecording.location[1],
@@ -618,7 +642,7 @@ function positionResponseFromSet(positions) {
     newTp["y"] = tp.y;
     newTp["width"] = tp.width;
     newTp["height"] = tp.height;
-    newTp["order"] = tp.order;
+    newTp["order"] = tp.frame_number;
     tps.push(newTp);
   });
 

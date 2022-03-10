@@ -281,14 +281,14 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
   });
 
-  it("Group member can add recordings by device on behalf - for inactive device", () => {
+  it("Group admin can add recordings by device on behalf - for inactive device", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log("Rename/reregister device");
     cy.apiDeviceReregister("raCamera1", "raCamera1-renamed", "raGroup").then(
       () => {
-        cy.log("Add recording as group member");
+        cy.log("Add recording as group admin");
         cy.apiRecordingAddOnBehalfUsingDevice(
           "raGroupAdmin",
           "raCamera1",
@@ -330,7 +330,9 @@ describe("Recordings (thermal): add, get, delete", () => {
   it("Group member can add recordings by device on behalf - for inactive device", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
-
+    // NOTE: Recording time needs to be initialised to when the device we're uploading on behalf of
+    //  was active - before we re-register it
+    recording1.recordingDateTime = new Date().toISOString();
     cy.log("Rename/reregister device");
     cy.apiDeviceReregister(
       "raCamera1-renamed",
@@ -338,6 +340,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroup"
     ).then(() => {
       cy.log("Add recording as group member");
+
       cy.apiRecordingAddOnBehalfUsingDevice(
         "raGroupMember",
         "raCamera1-renamed",

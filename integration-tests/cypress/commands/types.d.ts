@@ -460,11 +460,20 @@ export interface ApiTrackSet {
   start_s: number;
   end_s: number;
   predictions: {
+    label?: string;
+    clarity?: number;
+    all_class_confidences?: Record<string, number>;
+    prediction_frames?: number[][];
+    predictions?: number[][];
     model_id: number;
     confident_tag?: string;
     confidence?: number;
   }[];
   all_class_confidences?: any;
+  tracker_version?: number;
+  num_frames?: number;
+  frame_start?: number;
+  frame_end?: number;
 }
 
 //from api/v1/recordings (get)

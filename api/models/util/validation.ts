@@ -26,7 +26,6 @@ function isLatLon(
   let valid = true;
   if (point === null) {
     valid = false;
-    throw new Error("Location is not valid A.");
   } else if (
     Array.isArray(point) &&
     (point.length !== 2 ||
@@ -34,13 +33,11 @@ function isLatLon(
       typeof point[1] !== "number")
   ) {
     valid = false;
-    throw new Error("Location is not valid B.");
   } else if (typeof point === "object") {
     if (point.hasOwnProperty("coordinates")) {
       const coordinates = (point as any).coordinates;
       if (!Array.isArray(coordinates)) {
         valid = false;
-        throw new Error("Location is not valid C.");
       }
       if (
         Array.isArray(coordinates) &&
@@ -49,7 +46,6 @@ function isLatLon(
           typeof coordinates[1] !== "number")
       ) {
         valid = false;
-        throw new Error("Location is not valid D.");
       }
     } else if (
       !point.hasOwnProperty("lat") ||
@@ -58,7 +54,6 @@ function isLatLon(
       typeof (point as any).lng !== "number"
     ) {
       valid = false;
-      throw new Error("Location is not valid E.");
     } else {
       // Okay
     }
@@ -71,7 +66,6 @@ function isLatLon(
     180 <= location.lng
   ) {
     valid = false;
-    throw new Error(`Location is not valid F. ${JSON.stringify(location)}`);
   }
   if (!valid) {
     throw new Error("Location is not valid G.");
