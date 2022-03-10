@@ -1,5 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {EXCLUDE_IDS, NOT_NULL_STRING} from "@commands/constants";
+import { EXCLUDE_IDS, NOT_NULL_STRING } from "@commands/constants";
 import {
   TEMPLATE_AUDIO_RECORDING,
   TEMPLATE_AUDIO_RECORDING_PROCESSING,
@@ -9,18 +9,25 @@ import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
 
-import {ApiAlertConditions, ApiRecordingForProcessing, ApiRecordingSet,} from "@commands/types";
-import {getCreds} from "@commands/server";
+import {
+  ApiAlertConditions,
+  ApiRecordingForProcessing,
+  ApiRecordingSet,
+} from "@commands/types";
+import { getCreds } from "@commands/server";
 
 import {
   TestCreateExpectedProcessingData,
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
-import {ApiAudioRecordingResponse, ApiThermalRecordingResponse,} from "@typedefs/api/recording";
-import {RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
-import {createExpectedAlert} from "@commands/api/alerts";
-import {createExpectedEvent} from "@commands/api/events";
+import {
+  ApiAudioRecordingResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { createExpectedAlert } from "@commands/api/alerts";
+import { createExpectedEvent } from "@commands/api/events";
 
 //Also do not check recording ID in this test suite
 const EXCLUDE_ALL_IDS = EXCLUDE_IDS.concat([".id"]);
@@ -1005,7 +1012,7 @@ describe("Recordings - processing tests", () => {
           SimOperatorName: "Spark",
           "Auto Update": false,
           newField: "newValue",
-          newField2: "newValue2"
+          newField2: "newValue2",
         },
         location: [-46.29115, 170.30845],
       };
@@ -1055,7 +1062,7 @@ describe("Recordings - processing tests", () => {
         ];
         expectedRecording17.additionalMetadata = {
           ...(expectedRecording17 as any).additionalMetadata,
-          ...fieldUpdates.additionalMetadata
+          ...fieldUpdates.additionalMetadata,
         } as any;
 
         cy.processingApiCheck(
@@ -1075,10 +1082,10 @@ describe("Recordings - processing tests", () => {
 
         expectedRecording17.processingState = RecordingProcessingState.Analyse;
         cy.apiRecordingCheck(
-            "rpGroupAdmin",
-            "rpRecording17",
-            expectedRecording17,
-            EXCLUDE_ALL_IDS
+          "rpGroupAdmin",
+          "rpRecording17",
+          expectedRecording17,
+          EXCLUDE_ALL_IDS
         );
       });
     });

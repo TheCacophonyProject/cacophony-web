@@ -310,10 +310,11 @@ export default function (app: Application) {
           }
         }
         return response.status(200).json({
-          messages: ["Processing finished."]
+          messages: ["Processing finished."],
         });
       } else {
-        recording.processingState = `${recording.processingState}.failed` as RecordingProcessingState;
+        recording.processingState =
+          `${recording.processingState}.failed` as RecordingProcessingState;
         await recording.save();
         return response.status(200).json({
           messages: ["Processing failed."],
