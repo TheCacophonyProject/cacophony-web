@@ -1,33 +1,26 @@
 /// <reference path="../../../support/index.d.ts" />
-import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
+import {EXCLUDE_IDS, NOT_NULL_STRING} from "@commands/constants";
 import {
-  TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_AUDIO_RECORDING,
   TEMPLATE_AUDIO_RECORDING_PROCESSING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
-  TEMPLATE_THERMAL_RECORDING_PROCESSING,
+  TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_PROCESSING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
 
-import {
-  ApiAlertConditions,
-  ApiRecordingSet,
-  ApiRecordingForProcessing,
-} from "@commands/types";
-import { getCreds } from "@commands/server";
+import {ApiAlertConditions, ApiRecordingForProcessing, ApiRecordingSet,} from "@commands/types";
+import {getCreds} from "@commands/server";
 
 import {
   TestCreateExpectedProcessingData,
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
-import {
-  ApiAudioRecordingResponse,
-  ApiThermalRecordingResponse,
-} from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { createExpectedAlert } from "@commands/api/alerts";
-import { createExpectedEvent } from "@commands/api/events";
+import {ApiAudioRecordingResponse, ApiThermalRecordingResponse,} from "@typedefs/api/recording";
+import {RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
+import {createExpectedAlert} from "@commands/api/alerts";
+import {createExpectedEvent} from "@commands/api/events";
 
 //Also do not check recording ID in this test suite
 const EXCLUDE_ALL_IDS = EXCLUDE_IDS.concat([".id"]);
@@ -57,7 +50,7 @@ describe("Recordings - processing tests", () => {
   delete templateRecording.processingState;
   delete templateRecording.metadata.tracks;
 
-  //use standard audio recortding template - inject it at ToMp3 state
+  //use standard audio recording template - inject it at ToMp3 state
   const templateAudioRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );
@@ -985,6 +978,7 @@ describe("Recordings - processing tests", () => {
     });
 
     //TODO: Issue 96 - updates of location fail (time out)
+    // FIXME(ManageStations): Location updates probably shouldn't be possible from processing.
     it("Test other metadata can be set by processing", () => {
       const fieldUpdates = {
         rawMimeType: "application/test",
@@ -1005,30 +999,30 @@ describe("Recordings - processing tests", () => {
 
         type: RecordingType.Audio,
         comment: "This is a new comment",
-        // add newFields, change algorithm, set previewSecs to null, leave totalFrames unchanged
+        // add newFields, change SimOperatorName, set amplification to null, leave "Auto update" unchanged
         additionalMetadata: {
+          amplification: null,
+          SimOperatorName: "Spark",
+          "Auto Update": false,
           newField: "newValue",
-          newField2: "newValue2",
-          algorithm: 99999,
-          previewSecs: null,
+          newField2: "newValue2"
         },
         location: [-46.29115, 170.30845],
       };
       //top level recording data
-      const recording17 = TestCreateRecordingData(templateRecording);
+      const recording17 = TestCreateRecordingData(templateAudioRecording);
       cy.apiRecordingAdd(
         "rpCamera1",
         recording17,
-        "oneframe.cptv",
+        "60sec-audio.mp4",
         "rpRecording17"
       ).then(() => {
         const expectedProcessing17 = TestCreateExpectedProcessingData(
-          templateExpectedProcessing,
+          templateExpectedAudioProcessing,
           "rpRecording17",
           recording17
         );
-        expectedProcessing17.processingState =
-          RecordingProcessingState.Tracking;
+        expectedProcessing17.processingState = RecordingProcessingState.ToMp3;
         const expectedRecording17 = TestCreateExpectedRecordingData(
           templateExpectedAudioRecording,
           "rpRecording17",
@@ -1037,8 +1031,7 @@ describe("Recordings - processing tests", () => {
           null,
           recording17
         );
-        expectedRecording17.processingState =
-          RecordingProcessingState.AnalyseThermal;
+        expectedRecording17.processingState = RecordingProcessingState.ToMp3;
         expectedRecording17.processing = false;
         expectedRecording17.rawMimeType = "application/test";
         expectedRecording17.fileMimeType = "application/test2";
@@ -1050,7 +1043,6 @@ describe("Recordings - processing tests", () => {
         expectedRecording17.batteryLevel = 87;
         expectedRecording17.batteryCharging = "CHARGING";
         expectedRecording17.airplaneModeOn = true;
-        expectedRecording17.type = RecordingType.Audio;
         expectedRecording17.comment = "This is a new comment";
         expectedRecording17.location = {
           lat: -46.29115,
@@ -1062,16 +1054,13 @@ describe("Recordings - processing tests", () => {
           { end_s: 61, begin_s: 41, index_percent: 72.6 },
         ];
         expectedRecording17.additionalMetadata = {
-          newField: "newValue",
-          newField2: "newValue2",
-          algorithm: 99999,
-          totalFrames: 5,
-          previewSecs: null,
+          ...(expectedRecording17 as any).additionalMetadata,
+          ...fieldUpdates.additionalMetadata
         } as any;
 
         cy.processingApiCheck(
-          RecordingType.ThermalRaw,
-          RecordingProcessingState.Tracking,
+          RecordingType.Audio,
+          RecordingProcessingState.ToMp3,
           "rpRecording17",
           expectedProcessing17,
           EXCLUDE_KEYS
@@ -1079,15 +1068,17 @@ describe("Recordings - processing tests", () => {
         cy.processingApiPut(
           "rpRecording17",
           true,
-          { fieldUpdates: fieldUpdates },
+          { fieldUpdates },
 
           undefined
         );
+
+        expectedRecording17.processingState = RecordingProcessingState.Analyse;
         cy.apiRecordingCheck(
-          "rpGroupAdmin",
-          "rpRecording17",
-          expectedRecording17,
-          EXCLUDE_ALL_IDS
+            "rpGroupAdmin",
+            "rpRecording17",
+            expectedRecording17,
+            EXCLUDE_ALL_IDS
         );
       });
     });

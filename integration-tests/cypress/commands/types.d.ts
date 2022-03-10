@@ -527,6 +527,8 @@ export interface ApiStationData {
 }
 
 // from api/v1/groups/<>/stations (get), apiRecordings (post)
+
+// FIXME(ManageStations) - This has gone away
 export interface ApiLocation {
   type: string;
   coordinates: number[];

@@ -418,12 +418,6 @@ export function TestCreateExpectedProcessingData(
   expected.location = {
     coordinates: [recording.location[1], recording.location[0]],
     type: "Point",
-    crs: {
-      type: "name",
-      properties: {
-        name: NOT_NULL_STRING,
-      },
-    },
   };
   expected.recordingDateTime = recording.recordingDateTime;
   return expected;
