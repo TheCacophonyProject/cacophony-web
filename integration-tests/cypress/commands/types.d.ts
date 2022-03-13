@@ -461,12 +461,15 @@ export interface ApiTrackSet {
   positions?: any;
   start_s: number;
   end_s: number;
+  minFreq?: number;
+  maxFreq?: number;
   predictions: {
     model_id: number;
     confident_tag?: string;
     confidence?: number;
   }[];
   all_class_confidences?: any;
+  automatic?: boolean;
 }
 
 //from api/v1/recordings (get)

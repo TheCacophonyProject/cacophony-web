@@ -240,6 +240,10 @@ const mapRecordingResponse = (
 interface ApiTracksResponseSuccess {
   tracks: ApiTrackResponse[];
 }
+interface ApiTrackResponseSuccess {
+  track: ApiTrackResponse;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiTracksResponseSuccess {
   track: ApiTrackResponse;
@@ -1189,10 +1193,10 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id/track Get track for recording
+   * @api {get} /api/v1/recordings/:id/tracks/:trackId Get track for recording
    * @apiName GetTrack
-   * @apiGroup Track
-   * @apiDescription Get track for a given recording and track id.
+   * @apiGroup Tracks
+   * @apiDescription Get single track for a given recording and track id.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1200,7 +1204,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} trackId Id of the recording
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiTrackResponseSuccess} tracks
+   * @apiInterface {apiSuccess::ApiTrackResponseSuccess} track
    *
    * @apiUse V1ResponseError
    */

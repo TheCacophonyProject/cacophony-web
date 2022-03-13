@@ -9,6 +9,7 @@ import {
   TEMPLATE_AUDIO_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
   TEMPLATE_TRACK,
+  TEMPLATE_AUDIO_TRACK,
   TEMPLATE_THERMAL_RECORDING,
 } from "@commands/dataTemplate";
 
@@ -69,6 +70,12 @@ describe("Recordings query using where", () => {
   track4.start_s = 2;
   track4.end_s = 5;
   track4.predictions = [];
+  const track5 = JSON.parse(JSON.stringify(TEMPLATE_AUDIO_TRACK));
+  track5.start_s = 10;
+  track5.end_s = 20;
+  track5.minFreq = 20;
+  track5.maxFreq = 10000;
+  const track6 = JSON.parse(JSON.stringify(TEMPLATE_AUDIO_TRACK));
 
   //Four recording templates for setting and their expected return values
   const recording1 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
@@ -155,7 +162,7 @@ describe("Recordings query using where", () => {
               null,
               recording3
             );
-            // TODO: Are these parameters deliberetely msssing from result???
+            // TODO: Are these parameters deliberetely missing from result???
             // remove parameters not returned by where
             delete expectedRecording3.version;
             delete expectedRecording3.batteryCharging;
@@ -202,6 +209,17 @@ describe("Recordings query using where", () => {
                 },
               ];
               expectedRecording4.tracks[0].filtered = false;
+
+              // TODO: Are these parameters deliberetely missing from result???
+              // remove parameters not returned by where
+              delete expectedRecording3.version;
+              delete expectedRecording3.batteryCharging;
+              delete expectedRecording3.airplaneModeOn;
+              delete expectedRecording3.relativeToDawn;
+              delete expectedRecording3.relativeToDusk;
+
+              expectedRecording3.processingState =
+                RecordingProcessingState.ToMp3;
 
               // FIXME TODO: should positons really be blank in query but not in get recording?
               expectedRecording1.tracks[0].positions = [];

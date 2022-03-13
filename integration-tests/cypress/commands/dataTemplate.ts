@@ -128,6 +128,51 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
 
 //THERMAL RECORDINGS
 
+export const TEMPLATE_AUDIO_TRACK: ApiTrackSet = {
+  start_s: 0,
+  end_s: 3,
+  minFreq: 10,
+  maxFreq: 1000,
+  predictions: [
+    {
+      confidence: 1,
+      model_id: 1,
+      confident_tag: "morepork",
+    },
+  ],
+  positions: [],
+  automatic: true,
+};
+
+export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
+  start: 0,
+  end: 3,
+  minFreq: 10,
+  maxFreq: 1000,
+  id: NOT_NULL,
+  filtered: false,
+  automatic: true,
+  positions: [
+    {
+      x: 111,
+      y: 17,
+      width: 48,
+      height: 75,
+      order: NOT_NULL,
+    },
+  ],
+  tags: [
+    {
+      what: "morepork",
+      data: { name: "Master" },
+      automatic: true,
+      confidence: 1,
+      trackId: NOT_NULL,
+      id: NOT_NULL,
+    },
+  ],
+};
+
 export const TEMPLATE_TRACK: ApiTrackSet = {
   id: 2,
   tracker_version: 10,
