@@ -304,7 +304,7 @@ export interface ApiRecordingSet {
   fileHash?: string;
   duration: number;
   location?: ApiLocation | number[];
-  recordingDateTime: string;
+  recordingDateTime?: string;
   relativeToDawn?: number;
   relativeToDusk?: number;
   version?: string;

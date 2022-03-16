@@ -80,8 +80,13 @@ const mapGroup = (
   ) {
     groupData.userSettings = (group as any).Users[0].GroupUsers.settings;
   }
-  if (group.lastRecordingTime) {
-    groupData.lastRecordingTime = group.lastRecordingTime.toISOString();
+  if (group.lastThermalRecordingTime) {
+    groupData.lastThermalRecordingTime =
+      group.lastThermalRecordingTime.toISOString();
+  }
+  if (group.lastAudioRecordingTime) {
+    groupData.lastAudioRecordingTime =
+      group.lastAudioRecordingTime.toISOString();
   }
   return groupData;
 };

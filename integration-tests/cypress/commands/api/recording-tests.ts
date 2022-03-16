@@ -33,6 +33,7 @@ import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingId } from "@typedefs/api/common";
 
 const BASE_URL = Cypress.env("base-url-returned-in-links");
 
@@ -193,7 +194,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "thenUserTagAs",
   { prevSubject: true },
-  (subject, tagger: string, tag: string) => {
+  (subject: RecordingId, tagger: string, tag: string) => {
     cy.testUserTagRecording(subject, 0, tagger, tag);
   }
 );
@@ -239,6 +240,7 @@ function makeRecordingDataFromDetails(
   if (details.processingState) {
     data.processingState = details.processingState as RecordingProcessingState;
   }
+
   return data;
 }
 
@@ -686,10 +688,12 @@ export function trackResponseFromSet(
         tags: [],
         start: track.start_s,
         end: track.end_s,
-        positions: tpos,
         filtered: false,
         automatic: true,
       };
+      if (tpos && tpos.length) {
+        newTrack.positions = tpos;
+      }
       if (
         track.predictions &&
         track.predictions.length &&

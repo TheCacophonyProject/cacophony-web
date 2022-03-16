@@ -37,9 +37,21 @@ export const mapStation = (station: Station): ApiStationResponse => {
     activeAt: station.activeAt.toISOString(),
     location: station.location,
     updatedAt: station.updatedAt.toISOString(),
+    automatic: station.automatic,
   };
   if (station.lastUpdatedById) {
     stationResponse.lastUpdatedById = station.lastUpdatedById;
+  }
+  if (station.settings) {
+    stationResponse.settings = station.settings;
+  }
+  if (station.lastAudioRecordingTime) {
+    stationResponse.lastAudioRecordingTime =
+      station.lastAudioRecordingTime.toISOString();
+  }
+  if (station.lastThermalRecordingTime) {
+    stationResponse.lastThermalRecordingTime =
+      station.lastThermalRecordingTime.toISOString();
   }
   if (station.retiredAt) {
     stationResponse.retiredAt = station.retiredAt.toISOString();

@@ -8,7 +8,8 @@ export interface ApiGroupUserResponse extends ApiUserResponse {
 export interface ApiGroupResponse {
   id: GroupId; // Identifier of the group
   groupName: string; // Name of the group
-  lastRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of last recording seen for group
+  lastThermalRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of last thermal recording seen for group
+  lastAudioRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of last audio recording seen for group
   admin: boolean; // Is the calling user an admin of this group?
   settings?: ApiGroupSettings;
   userSettings?: ApiGroupUserSettings;

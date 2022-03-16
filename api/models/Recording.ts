@@ -34,7 +34,7 @@ import { Tag } from "./Tag";
 import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
 import { Station } from "./Station";
-import { mapPositions } from "@api/V1/recordingUtil";
+import { mapPosition } from "@api/V1/recordingUtil";
 import {
   GroupId,
   RecordingId,
@@ -112,7 +112,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   id: RecordingId;
   type: RecordingType;
   duration: number;
-  recordingDateTime: string;
+  recordingDateTime: Date;
   location?: LatLng;
   relativeToDawn: number;
   relativeToDusk: number;
@@ -441,15 +441,20 @@ from (
           acc.fileMimeType = item.rawMimeType;
           acc.recordingDateTime = item.recordingDateTime;
           acc.duration = item.duration;
-          acc.tracks.push({
+
+          const t: any = {
             trackId: item.TrackId,
             id: item.TrackId,
             start: item.TrackData.start_s,
             end: item.TrackData.end_s,
-            positions: mapPositions(item.TrackData.positions),
+
             numFrames: item.TrackData?.num_frames,
             needsTagging: item.TaggedBy !== false,
-          });
+          };
+          if (item.TrackData.positions && item.TrackData.positions.length) {
+            t.positions = item.TrackData.positions.map(mapPosition);
+          }
+          acc.tracks.push(t);
         }
         return acc;
       },

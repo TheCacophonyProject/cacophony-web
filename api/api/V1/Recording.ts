@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { Application, NextFunction, Request, Response } from "express";
 import { expectedTypeOf, validateFields } from "../middleware";
 import recordingUtil, {
-  mapPositions,
+  mapPosition,
   reportRecordings,
   reportVisits,
   signedToken,
@@ -131,17 +131,22 @@ const mapTrackTags = (
   return t;
 };
 
-const mapTrack = (track: Track): ApiTrackResponse => ({
-  id: track.id,
-  start: track.data.start_s,
-  end: track.data.end_s,
-  tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
-  positions: mapPositions(track.data.positions),
-  automatic: track.data.automatic ?? true,
-  ...(track.data.minFreq && { minFreq: track.data.minFreq }),
-  ...(track.data.maxFreq && { maxFreq: track.data.maxFreq }),
-  filtered: track.filtered,
-});
+const mapTrack = (track: Track): ApiTrackResponse => {
+  const t: ApiTrackResponse = {
+    id: track.id,
+    start: track.data.start_s,
+    end: track.data.end_s,
+    tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
+    automatic: track.data.automatic ?? true,
+    ...(track.data.minFreq && { minFreq: track.data.minFreq }),
+    ...(track.data.maxFreq && { maxFreq: track.data.maxFreq }),
+    filtered: track.filtered,
+  };
+  if (track.data.positions && track.data.positions.length) {
+    t.positions = track.data.positions.map(mapPosition);
+  }
+  return t;
+};
 
 const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
   const t = tracks.map(mapTrack);
@@ -190,48 +195,52 @@ const ifNotNull = (val: any | null) => {
 const mapRecordingResponse = (
   recording: Recording
 ): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
-  const commonRecording: ApiRecordingResponse = {
-    id: recording.id,
-    deviceId: recording.DeviceId,
-    duration: recording.duration,
-    location: recording.location,
-    rawMimeType: recording.rawMimeType,
-    comment: ifNotNull(recording.comment),
-    deviceName: recording.Device?.devicename,
-    groupId: recording.GroupId,
-    groupName: recording.Group?.groupname,
-    processing: recording.processing || false,
-    processingState: recording.processingState,
-    recordingDateTime: recording.recordingDateTime,
-    stationId: ifNotNull(recording.StationId),
-    stationName: recording.Station?.name,
-    type: recording.type,
-    fileHash: recording.rawFileHash,
-    tags: recording.Tags && mapTags(recording.Tags),
-    tracks: recording.Tracks && mapTracks(recording.Tracks),
-  };
-  if (recording.type === RecordingType.ThermalRaw) {
-    return {
-      ...commonRecording,
+  try {
+    const commonRecording: ApiRecordingResponse = {
+      id: recording.id,
+      deviceId: recording.DeviceId,
+      duration: recording.duration,
+      location: recording.location,
+      rawMimeType: recording.rawMimeType,
+      comment: ifNotNull(recording.comment),
+      deviceName: recording.Device?.devicename,
+      groupId: recording.GroupId,
+      groupName: recording.Group?.groupname,
+      processing: recording.processing || false,
+      processingState: recording.processingState,
+      recordingDateTime: recording.recordingDateTime?.toISOString(),
+      stationId: ifNotNull(recording.StationId),
+      stationName: recording.Station?.name,
       type: recording.type,
-      additionalMetadata:
-        recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
+      fileHash: recording.rawFileHash,
+      tags: recording.Tags && mapTags(recording.Tags),
+      tracks: recording.Tracks && mapTracks(recording.Tracks),
     };
-  } else if (recording.type === RecordingType.Audio) {
-    return {
-      ...commonRecording,
-      fileMimeType: ifNotNull(recording.fileMimeType),
-      additionalMetadata:
-        recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map metadata?
-      airplaneModeOn: ifNotNull(recording.airplaneModeOn),
-      batteryCharging: ifNotNull(recording.batteryCharging),
-      batteryLevel: ifNotNull(recording.batteryLevel),
-      relativeToDawn: ifNotNull(recording.relativeToDawn),
-      relativeToDusk: ifNotNull(recording.relativeToDusk),
-      cacophonyIndex: ifNotNull(recording.cacophonyIndex),
-      type: recording.type,
-      version: recording.version,
-    };
+    if (recording.type === RecordingType.ThermalRaw) {
+      return {
+        ...commonRecording,
+        type: recording.type,
+        additionalMetadata:
+          recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
+      };
+    } else if (recording.type === RecordingType.Audio) {
+      return {
+        ...commonRecording,
+        fileMimeType: ifNotNull(recording.fileMimeType),
+        additionalMetadata:
+          recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map metadata?
+        airplaneModeOn: ifNotNull(recording.airplaneModeOn),
+        batteryCharging: ifNotNull(recording.batteryCharging),
+        batteryLevel: ifNotNull(recording.batteryLevel),
+        relativeToDawn: ifNotNull(recording.relativeToDawn),
+        relativeToDusk: ifNotNull(recording.relativeToDusk),
+        cacophonyIndex: ifNotNull(recording.cacophonyIndex),
+        type: recording.type,
+        version: recording.version,
+      };
+    }
+  } catch (e) {
+    log.error("%s", e);
   }
 };
 
@@ -691,7 +700,7 @@ export default (app: Application, baseUrl: string) => {
         ],
       };
       if (response.locals.viewAsSuperUser && user.hasGlobalRead()) {
-        // Dont' filter on user if the user has global read permissions.
+        // Don't filter on user if the user has global read permissions.
         delete countQuery.include[0].include;
       }
       const count = await models.Recording.count(countQuery);

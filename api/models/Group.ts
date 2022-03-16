@@ -29,7 +29,6 @@ import {
 import { Device } from "./Device";
 import { GroupId, UserId, StationId, LatLng } from "@typedefs/api/common";
 import { ApiGroupSettings } from "@typedefs/api/group";
-import logger from "@log";
 
 const retireMissingStations = (
   existingStations: Station[],
@@ -210,7 +209,8 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
 export interface Group extends Sequelize.Model, ModelCommon<Group> {
   id: GroupId;
   groupname: string;
-  lastRecordingTime?: Date;
+  lastThermalRecordingTime?: Date;
+  lastAudioRecordingTime?: Date;
   settings?: ApiGroupSettings;
   addUser: (userToAdd: User, through: any) => Promise<void>;
   addStation: (stationToAdd: Station) => Promise<Station>;
@@ -263,8 +263,13 @@ export default function (sequelize, DataTypes): GroupStatic {
       type: DataTypes.STRING,
       unique: true,
     },
-    lastRecordingTime: {
+    lastThermalRecordingTime: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     settings: {
       type: DataTypes.JSONB,

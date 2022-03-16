@@ -38,6 +38,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
   const expectedStation1b: ApiStationResponse = {
     id: 0,
@@ -49,6 +50,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
   const expectedStation2a: ApiStationResponse = {
     id: 0,
@@ -60,6 +62,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
   const expectedStation2b: ApiStationResponse = {
     id: 0,
@@ -71,6 +74,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
   const expectedStation3a: ApiStationResponse = {
     id: 0,
@@ -82,6 +86,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
 
   before(() => {

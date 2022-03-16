@@ -26,7 +26,15 @@ export interface ApiStationResponse {
   createdAt: IsoFormattedDateString;
   activeAt: IsoFormattedDateString;
   retiredAt?: IsoFormattedDateString;
+  lastThermalRecordingTime?: IsoFormattedDateString;
+  lastAudioRecordingTime?: IsoFormattedDateString;
+  automatic: boolean;
+  settings?: ApiStationSettings;
   updatedAt: IsoFormattedDateString;
   groupId: GroupId;
   groupName: string;
+}
+
+export interface ApiStationSettings {
+  // TBC
 }

@@ -28,6 +28,7 @@ import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
 import { User } from "@models/User";
 import stream, { Stream } from "stream";
+import { RecordingType } from "@typedefs/api/consts";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -93,6 +94,19 @@ function multipartUpload(
 
       try {
         data = JSON.parse(value);
+        if (keyPrefix === "raw") {
+          if (
+            (data.hasOwnProperty("recordingDateTime") ||
+              data.type === RecordingType.Audio) &&
+            isNaN(Date.parse(data.recordingDateTime))
+          ) {
+            responseUtil.send(response, {
+              statusCode: 422,
+              messages: ["Invalid recordingDateTime"],
+            });
+            return;
+          }
+        }
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
         // will fail the upload.

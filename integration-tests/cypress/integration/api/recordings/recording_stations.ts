@@ -20,6 +20,19 @@ const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
   JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
 );
 
+/*
+TODO:
+- Add a single station
+- Add a station where there is already a station (retire existing?)
+- Delete a station
+- Modify a station location, and update recordings (manual user fixup)
+- Rename a station
+- Change station user preferences
+- Update lastRecording time for station, keep track of what kinds of recordings have been seen at a station.
+- Retire a station manually
+- Add a station with a start time to back-date to.
+ */
+
 describe.skip("Stations: add and remove", () => {
   const Josie = "Josie_stations";
   const group = "add_stations";
@@ -77,6 +90,8 @@ describe.skip("Stations: add and remove", () => {
       lat: -43.6,
       lng: 172.8,
     });
+
+    // FIXME(ManageStations) There should be an automatically generated station here
     cy.checkRecordingsStationIs(Josie2, "");
 
     const stations = [

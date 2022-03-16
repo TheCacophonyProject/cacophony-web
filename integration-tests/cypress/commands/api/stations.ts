@@ -1,6 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+import { RecordingId } from "@typedefs/api/common";
 import { logTestDescription } from "../descriptions";
 import { checkRecording } from "./recording-tests";
 
@@ -9,7 +10,7 @@ import { checkRecording } from "./recording-tests";
 Cypress.Commands.add(
   "thenCheckStationIs",
   { prevSubject: true },
-  (subject, userName: string, station: string) => {
+  (subject: RecordingId, userName: string, station: string) => {
     checkStationIs(userName, subject, station);
   }
 );

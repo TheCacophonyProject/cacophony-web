@@ -190,69 +190,19 @@ describe("Recordings - audio recording parameter tests", () => {
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording15");
     });
 
-    //can have blank recordingDateTime
+    //cannot have null recordingDateTime
     const recording16 = TestCreateRecordingData(templateRecording);
-    let expectedRecording16: ApiAudioRecordingResponse;
-
     recording16.recordingDateTime = null;
     cy.apiRecordingAdd(
       "rarDevice1",
       recording16,
       "60sec-audio.mp4",
-      "rarRecording16"
-    ).then(() => {
-      expectedRecording16 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rarRecording16",
-        "rarDevice1",
-        "rarGroup",
-        null,
-        recording16
-      );
-      expectedRecording16.recordingDateTime = recording16.recordingDateTime;
-      cy.apiRecordingCheck(
-        "rarGroupAdmin",
-        "rarRecording16",
-        expectedRecording16,
-        EXCLUDE_IDS
-      );
-      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording16");
-    });
+      "rarRecording16",
+      HTTP_Unprocessable
+    );
   });
 
-  //TODO: confirm audio files do not have dateTime embedded?
-  it.skip("Can read recordingDateTime from file if not provided", () => {
-    const recording7 = TestCreateRecordingData(templateRecording);
-    let expectedRecording7: ApiAudioRecordingResponse;
-
-    delete recording7.recordingDateTime;
-    cy.apiRecordingAdd(
-      "rarDevice1",
-      recording7,
-      "60sec-audio.mp4",
-      "rarRecording7"
-    ).then(() => {
-      expectedRecording7 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rarRecording7",
-        "rarDevice1",
-        "rarGroup",
-        null,
-        recording7
-      );
-      expectedRecording7.recordingDateTime = "2021-03-18T17:36:46.555Z";
-      cy.apiRecordingCheck(
-        "rarGroupAdmin",
-        "rarRecording7",
-        expectedRecording7,
-        EXCLUDE_IDS
-      );
-      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording7");
-    });
-  });
-
-  //TODO: Fails - issue 80
-  it.skip("Invalid recordingDateTime handled correctly", () => {
+  it("Invalid recordingDateTime handled correctly", () => {
     const recording8 = TestCreateRecordingData(templateRecording);
     recording8.recordingDateTime = "BadTimeValue";
     cy.apiRecordingAdd(
@@ -265,7 +215,7 @@ describe("Recordings - audio recording parameter tests", () => {
   });
 
   //TODO: issue 81.  Locations at following locations cause server error:
-  //Grenwich meridian at equator (0 deg long, 0 deg lat)
+  //Greenwich meridian at equator (0 deg long, 0 deg lat)
   //North and south poles (+/-90 deg lat)
   //International date line (+/-180 deg)
   //Locations returned inaccurately (rounded to 100m) - issue 82
@@ -877,20 +827,18 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording34
       );
+      expectedRecording34.cacophonyIndex = [
+        { end_s: 20, begin_s: 0, index_percent: 80.8 },
+        { end_s: 40, begin_s: 20, index_percent: 77.1 },
+        { end_s: 60, begin_s: 40, index_percent: 71.6 },
+      ];
       expectedRecording34.additionalMetadata = {
         normal: "0",
         "SIM IMEI": "990006964660319",
-        analysis: {
-          cacophony_index: [
-            { end_s: 20, begin_s: 0, index_percent: 80.8 },
-            { end_s: 40, begin_s: 20, index_percent: 77.1 },
-            { end_s: 60, begin_s: 40, index_percent: 71.6 },
-          ],
-          species_identify: [],
-          cacophony_index_version: "2020-01-20_A",
-          processing_time_seconds: 50.7,
-          species_identify_version: "2021-02-01",
-        },
+        analysis: {},
+        cacophony_index_version: "2020-01-20_A",
+        processing_time_seconds: 50.7,
+        species_identify_version: "2021-02-01",
         "SIM state": "SIM_STATE_READY",
         "Auto Update": false,
         "Flight Mode": false,

@@ -72,8 +72,7 @@ describe("Recordings: soft delete, undelete", () => {
         null,
         recording1
       );
-      // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      delete expectedRecordingFromQuery1.tracks[0].positions;
 
       cy.log("Soft delete recording");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording1", HTTP_OK200, {
@@ -135,8 +134,7 @@ describe("Recordings: soft delete, undelete", () => {
         null,
         recording1
       );
-      // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      delete expectedRecordingFromQuery1.tracks[0].positions;
 
       cy.log("Soft delete recording");
       cy.apiRecordingDelete("rsdGroupMember", "rsdRecording2", HTTP_OK200, {
@@ -237,8 +235,7 @@ describe("Recordings: soft delete, undelete", () => {
         null,
         recording1
       );
-      // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      delete expectedRecordingFromQuery1.tracks[0].positions;
 
       cy.log("Member of a different group cannot soft delete recording");
       cy.apiRecordingDelete("rsdGroup2Admin", "rsdRecording6", HTTP_Forbidden);
@@ -342,8 +339,7 @@ describe("Recordings: soft delete, undelete", () => {
         null,
         recording1
       );
-      // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      delete expectedRecordingFromQuery1.tracks[0].positions;
 
       expectedReportFromQuery1 = TestCreateExpectedRecordingColumns(
         "rsdRecording8",
@@ -404,8 +400,7 @@ describe("Recordings: soft delete, undelete", () => {
         null,
         recording1
       );
-      // FIXME TODO: should positions really be blank in query but not in get recording?
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      delete expectedRecordingFromQuery1.tracks[0].positions;
 
       cy.log("Delete recording without specifying soft/hard delete");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording9").then(() => {

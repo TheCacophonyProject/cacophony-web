@@ -274,7 +274,9 @@ describe("Recordings - parameter tests", () => {
   });
 
   it("RecordingDateTime takes correct values", () => {
-    //can specify recordingDateTime
+    cy.log(
+      "can specify recordingDateTime, and use it in preference to embedded metadata recordingDateTime"
+    );
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
 
@@ -303,29 +305,42 @@ describe("Recordings - parameter tests", () => {
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording8");
     });
 
-    //can have blank recordingDateTime
+    cy.log("cannot have null recordingDateTime");
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiThermalRecordingResponse;
     recording2.recordingDateTime = null;
     cy.apiRecordingAdd(
       "rpaCamera1",
       recording2,
       "oneframe.cptv",
+      "rpaRecording9",
+      HTTP_Unprocessable
+    );
+
+    cy.log(
+      "cptv can have missing recordingDateTime, since we can extract it from metadata"
+    );
+    const recording3 = TestCreateRecordingData(templateRecording);
+    let expectedRecording3: ApiThermalRecordingResponse;
+    delete recording3.recordingDateTime;
+    cy.apiRecordingAdd(
+      "rpaCamera1",
+      recording3,
+      "oneframe.cptv",
       "rpaRecording9"
     ).then(() => {
-      expectedRecording2 = TestCreateExpectedRecordingData(
+      expectedRecording3 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
         "rpaRecording9",
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording2
+        recording3
       );
-      expectedRecording2.recordingDateTime = null;
+      expectedRecording3.recordingDateTime = "2021-03-18T17:36:46.555Z";
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording9",
-        expectedRecording2,
+        expectedRecording3,
         EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording9");

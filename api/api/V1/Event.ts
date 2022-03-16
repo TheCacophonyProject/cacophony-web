@@ -44,6 +44,7 @@ import {
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { IsoFormattedDateString } from "@typedefs/api/common";
+import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -52,15 +53,6 @@ const uploadEvent = async (
   response: Response,
   next: NextFunction
 ) => {
-  let detailsId = response.locals.detailsnapshot?.id;
-  if (!detailsId) {
-    const description: EventDescription = request.body.description;
-    const detail = await models.DetailSnapshot.getOrCreateMatching(
-      description.type,
-      description.details
-    );
-    detailsId = detail.id;
-  }
   let device = response.locals.device || response.locals.requestDevice;
   if (response.locals.requestDevice) {
     // The device is connecting directly, so update the last connected time.
@@ -69,6 +61,32 @@ const uploadEvent = async (
       device = await models.Device.findByPk(device.id);
     }
     await device.update({ lastConnectionTime: new Date() });
+  }
+  let detailsId = response.locals.detailsnapshot?.id;
+  if (!detailsId) {
+    const description: EventDescription = request.body.description;
+    const detail = await models.DetailSnapshot.getOrCreateMatching(
+      description.type,
+      description.details
+    );
+    detailsId = detail.id;
+
+    // Maybe update the device history entry on config change if location has updated.
+    if (description.type === "config") {
+      try {
+        const details = JSON.parse(description.details);
+        if (details.location !== null) {
+          await maybeUpdateDeviceHistory(
+            device,
+            { lat: details.location.latitude, lng: details.location.longitude },
+            new Date(details.location.updated),
+            "config"
+          );
+        }
+      } catch (e) {
+        //...
+      }
+    }
   }
 
   const eventList = request.body.dateTimes.map((dateTime) => ({

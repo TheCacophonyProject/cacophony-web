@@ -18,6 +18,13 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { DeviceId, GroupId, LatLng } from "@typedefs/api/common";
 import util from "./util/util";
 
+export type DeviceHistorySetBy =
+  | "automatic"
+  | "user"
+  | "config"
+  | "register"
+  | "reregister";
+
 export interface DeviceHistory
   extends Sequelize.Model,
     ModelCommon<DeviceHistory> {
@@ -27,7 +34,7 @@ export interface DeviceHistory
   fromDateTime: Date;
   saltId: number;
   uuid: number;
-  setBy: "automatic" | "user" | "sidekick" | "register" | "reregister";
+  setBy: DeviceHistorySetBy;
 }
 
 export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {}
@@ -48,7 +55,7 @@ export default function (
       type: DataTypes.ENUM(
         "automatic",
         "user",
-        "sidekick",
+        "config",
         "register",
         "reregister"
       ),

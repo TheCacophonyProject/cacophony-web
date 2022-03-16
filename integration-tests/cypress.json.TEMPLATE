@@ -6,5 +6,6 @@
     "base-url-returned-in-links": "http://test.site",
     "testCreds" : { "superuser": { "name":"admin_test", "password": "admin_test" } },
     "running_in_a_dev_environment" : true
-  }
+  },
+  "chromeWebSecurity": false
 }

@@ -73,10 +73,9 @@ import {
 import { Device } from "@models/Device";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
-import SendData = ManagedUpload.SendData;
 import { locationsAreEqual } from "@models/Group";
-import { DeviceHistory } from "@models/DeviceHistory";
-import logger from "@log";
+import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
+import SendData = ManagedUpload.SendData;
 
 let CptvDecoder;
 (async () => {
@@ -118,7 +117,13 @@ export async function tryToMatchRecordingToStation(
     const group = await models.Group.getFromId(recording.GroupId);
     stations = await group.getStations({
       where: {
-        retiredAt: { [Op.eq]: null },
+        activeAt: { [Op.lte]: recording.recordingDateTime },
+        retiredAt: {
+          [Op.or]: [
+            { [Op.eq]: null },
+            { [Op.gt]: recording.recordingDateTime },
+          ],
+        },
       },
     });
   }
@@ -354,40 +359,78 @@ const assignStationsForDeviceInDateRange = async (
   fromDate: Date,
   untilDate?: Date
 ) => {
-  // TODO(ManageStations):
-  // Get device history.
-  // Look for fixups.
-  // Get recordings for device in date range.
-  //
+  // TODO(ManageStations)
+  // Get all the stations for the device group that are active during the period we care about:
+  const group = await device.getGroup();
+  const stations = await group.getStations({
+    where: {
+      activeAt: { [Op.lte]: fromDate },
+    },
+  });
+  // Get all the device locations in this time range:
+  const deviceLocations = await models.DeviceHistory.findAll({
+    where: {},
+  });
+
+  const recordings = await models.Recording.findAll({
+    where: {
+      recordingDateTime: {
+        [Op.and]: [{ [Op.gte]: fromDate }, { [Op.lt]: untilDate }],
+      },
+      DeviceId: device.id, // FIXME - What if the device has been registered during this time?
+    },
+  });
+
+  // Get all the recordings for the device in the date range.
+
+  // For each recording, find out where the device was at that time.
+
+  // Assign the station at that location to the recording.
+
+  // user fix-ups are handled automatically, since the DeviceHistory table is the absolute authority here.
 };
 
-const maybeUpdateDeviceHistory = async (
+export const maybeUpdateDeviceHistory = async (
   device: Device,
-  recordingLocation: LatLng,
-  recordingDateTime: Date
-) => {
-  // FIXME(ManageStations) - device location currently gets updated if it is different from previous device location when a recording comes
-  //  in. Need to use deviceHistory table to see if this should really be updated, to handle out of order recordings.
+  location: LatLng,
+  dateTime: Date,
+  setBy: DeviceHistorySetBy = "automatic"
+): Promise<void> => {
+  /*
+   TODO:
+   - Handle user fixup (comes in after recordings at a certain time, and means all recordings at from the fixup time until the
+     next location change need to be updated to the fixup location
+   - Handle moving back the earliest occurrence of a location change of recordings come in out of order, or if there is a location change
+     registered via a config change. (sidekick updated the location in the context of a thermal camera).
+   - Handle device re-registration retaining the last known location of the device.
+   */
+
   const lastLocation = device.location;
   if (
     !lastLocation ||
-    (lastLocation && !locationsAreEqual(lastLocation, recordingLocation))
+    (lastLocation && !locationsAreEqual(lastLocation, location)) ||
+    setBy === "config"
   ) {
+    if (setBy === "config" && dateTime > device.lastRecordingTime) {
+      // Update the device location on config change.
+      await device.update({
+        location,
+      });
+    }
+
     // The device is in a new location, so we want to update the DeviceHistory log.
     await models.DeviceHistory.create({
-      location: recordingLocation,
-      fromDateTime: recordingDateTime,
-      setBy: "automatic",
+      location,
+      setBy,
+      fromDateTime: dateTime,
       deviceName: device.devicename,
       DeviceId: device.id,
       GroupId: device.GroupId,
       saltId: device.saltId,
       uuid: device.uuid,
     });
-  } else if (
-    lastLocation &&
-    locationsAreEqual(lastLocation, recordingLocation)
-  ) {
+  } else if (lastLocation && locationsAreEqual(lastLocation, location)) {
+    // TODAY/FIRST THING TOMORROW - Get the logic for this function correct.
     // Recordings can come in out of order, so if this recording has an earlier time than the last location
     // we may need to move the time of the device history entry back.
 
@@ -398,21 +441,33 @@ const maybeUpdateDeviceHistory = async (
 
     // NOTE: This query will get run every recording upload - is that necessary?
 
+    // If it's a set-by automatic, also check for config updates that might match it.
+    const setByArr = [];
+    if (setBy === "automatic") {
+      setByArr.push("automatic");
+      setByArr.push("config");
+    } else {
+      setByArr.push(setBy);
+    }
     const history = await models.DeviceHistory.findOne({
       where: {
         DeviceId: device.id,
         GroupId: device.GroupId,
-        setBy: "automatic",
+        setBy: { [Op.in]: setByArr },
         location: { [Op.ne]: null },
-        fromDateTime: { [Op.gt]: recordingDateTime },
+        fromDateTime: { [Op.gt]: dateTime },
       },
+      order: [["fromDateTime", "ASC"]], // Get the earliest one that's later than our current dateTime
     });
 
     // FIXME(ManageStations) - what happens for user-defined fix-ups?
 
+    // TODO(ManageStations): Now, if the device history table has updated, that can mean that the activeAt date of an automatically
+    // created station may need to move back too.
+
     if (history) {
       await history.update({
-        fromDateTime: recordingDateTime,
+        fromDateTime: dateTime,
       });
     }
   }
@@ -469,9 +524,9 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
       recording.duration = metadata.duration;
     }
     if (!data.hasOwnProperty("recordingDateTime") && metadata.timestamp) {
-      recording.recordingDateTime = new Date(
-        metadata.timestamp / 1000
-      ).toISOString();
+      recording.recordingDateTime = new Date(metadata.timestamp / 1000);
+    } else {
+      log.error("Failed setting recordingDateTime");
     }
 
     if (metadata.previewSecs) {
@@ -524,56 +579,35 @@ const assignStationToRecording = async (
   recording: Recording,
   deviceName: string
 ): Promise<void> => {
-  // FIXME(ManageStations): Need to check the activeAt and retiredAt columns when assigning.
-  // If a new recording comes in out of order - i.e. before the station was created, we want
-  // to move the activeAt date back if it doesn't conflict with another station at that location.
   const matchingStation = await tryToMatchRecordingToStation(recording);
   if (matchingStation) {
     recording.StationId = matchingStation.id;
+    // Update the station last recording time, if it's later than what we have:
+    if (matchingStation) {
+      if (
+        recording.type === RecordingType.Audio &&
+        (!matchingStation.lastAudioRecordingTime ||
+          recording.recordingDateTime > matchingStation.lastAudioRecordingTime)
+      ) {
+        matchingStation.lastAudioRecordingTime = recording.recordingDateTime;
+        await matchingStation.save();
+      } else if (
+        recording.type === RecordingType.ThermalRaw &&
+        (!matchingStation.lastThermalRecordingTime ||
+          recording.recordingDateTime >
+            matchingStation.lastThermalRecordingTime)
+      ) {
+        matchingStation.lastThermalRecordingTime = recording.recordingDateTime;
+        await matchingStation.save();
+      }
+    }
   } else {
     // TODO(ManageStations) - We should have a warning if a recording is uploaded without any location.
-
-    // If a recording comes in that exactly matches a station before that station was created, move the creation date back
-    // Create a new station, and assign this recording to it.
-
-    // const device = await models.Device.findByPk(uploadingDevice.id, {
-    //   include: [
-    //     {
-    //       model: models.DeviceLocations,
-    //       order: ["fromDateTime", "desc"]
-    //     },
-    //   ],
-    // });
-
-    //
-    // // Look at the recordingDateTime
-    // // Check if this device has moved since the last time we saw it, and if so, update the
-    // // DeviceLocations log.
-    // let matchedLocation;
-    // for (const location of device.DeviceLocations) {
-    //   // If there was a "fixup" we'd expect a new location to be set by a user after the location was
-    //   // logged by a recording upload.
-    //
-    //   // If a recording comes in after the fixup time, but has the same location as before the fixup, we'd apply
-    //   // the fixup location to the recording.
-    //
-    //   // If a recording comes through with a location that exactly matches an existing location in the device location log,
-    //   // only earlier, we'd move the earliest known time at that location back.
-    //
-    //   // If we have stations with that location, we'd also need to adjust the station start time?
-    //
-    //   // If a station is deleted, the corresponding entry in the device location log should also be deleted.
-    //   if (locationsAreEqual(location, recordingCoords)) {
-    //     matchedLocation = location;
-    //   }
-    // }
     const group = await models.Group.findByPk(recording.GroupId);
-    const now = new Date().toISOString();
-    // @ts-ignore
     const newStation = (await models.Station.create({
-      name: `New station for ${deviceName}_${now}`,
+      name: `New station for ${deviceName}_${recording.recordingDateTime.toISOString()}`,
       location: recording.location,
-      activeAt: new Date(recording.recordingDateTime),
+      activeAt: recording.recordingDateTime,
       automatic: true,
     })) as Station;
     recording.StationId = newStation.id;
@@ -590,7 +624,6 @@ export const uploadRawRecording = util.multipartUpload(
     uploadedFileData: Uint8Array
   ): Promise<Recording> => {
     const recording = models.Recording.buildSafely(data);
-    let recordingDateTime = new Date(recording.recordingDateTime);
     // Add the filehash if present
     if (data.fileHash) {
       recording.rawFileHash = data.fileHash;
@@ -608,7 +641,7 @@ export const uploadRawRecording = util.multipartUpload(
     let groupId: DeviceId;
     // Check if the file is corrupt and use file metadata if it can be parsed.
     // Check what group the uploading device (or the device embedded in the recording) was part of at the time the recording was made.
-    if (recordingDateTime.toString() !== "Invalid Date") {
+    if (recording.recordingDateTime) {
       // We can do these in parallel
       [fileIsCorrupt, { deviceId, groupId }] = await Promise.all([
         parseAndMergeEmbeddedFileMetadataIntoRecording(
@@ -618,7 +651,7 @@ export const uploadRawRecording = util.multipartUpload(
         ),
         getDeviceIdAndGroupIdAtRecordingTime(
           uploadingDevice,
-          recordingDateTime
+          recording.recordingDateTime
         ),
       ]);
     } else {
@@ -628,11 +661,10 @@ export const uploadRawRecording = util.multipartUpload(
         uploadedFileData,
         recording
       );
-      recordingDateTime = new Date(recording.recordingDateTime);
       const { deviceId: d, groupId: g } =
         await getDeviceIdAndGroupIdAtRecordingTime(
           uploadingDevice,
-          recordingDateTime
+          recording.recordingDateTime
         );
       deviceId = d;
       groupId = g;
@@ -642,11 +674,10 @@ export const uploadRawRecording = util.multipartUpload(
 
     const recordingLocation = recording.location;
     if (recordingLocation) {
-      // FIXME(ManageStations)
       await maybeUpdateDeviceHistory(
         uploadingDevice,
         recordingLocation,
-        recordingDateTime
+        recording.recordingDateTime
       );
       await assignStationToRecording(recording, uploadingDevice.devicename);
     }
@@ -657,21 +688,33 @@ export const uploadRawRecording = util.multipartUpload(
       // is no last recording time
       if (
         !uploadingDevice.lastRecordingTime ||
-        uploadingDevice.lastRecordingTime < recordingDateTime
+        uploadingDevice.lastRecordingTime < recording.recordingDateTime
       ) {
         await uploadingDevice.update({
           location: recording.location,
-          lastRecordingTime: recordingDateTime,
+          lastRecordingTime: recording.recordingDateTime,
         });
 
-        // Update the group lastRecordingTime too:
+        // Update the group lastRecordingTimes too:
         const group = await uploadingDevice.getGroup();
+        // Update the last recording time for the group if necessary, to give us a quick and easy way
+        // to see which groups have new recordings, and of what kind.
         if (
-          !group.lastRecordingTime ||
-          group.lastRecordingTime < recordingDateTime
+          recording.type === RecordingType.ThermalRaw &&
+          (!group.lastThermalRecordingTime ||
+            group.lastThermalRecordingTime < recording.recordingDateTime)
         ) {
           await group.update({
-            lastRecordingTime: recordingDateTime,
+            lastThermalRecordingTime: recording.recordingDateTime,
+          });
+        } else if (
+          recording.type === RecordingType.Audio &&
+          (!group.lastAudioRecordingTime ||
+            group.lastAudioRecordingTime < recording.recordingDateTime)
+        ) {
+          group.lastAudioRecordingTime = recording.recordingDateTime;
+          await group.update({
+            lastAudioRecordingTime: recording.recordingDateTime,
           });
         }
       }
@@ -1868,7 +1911,7 @@ export const finishedProcessingRecording = async (
 };
 
 // Mapping
-const mapPosition = (position: any): ApiTrackPosition => {
+export const mapPosition = (position: any): ApiTrackPosition => {
   if (Array.isArray(position)) {
     return {
       x: position[1][0],
@@ -1886,15 +1929,6 @@ const mapPosition = (position: any): ApiTrackPosition => {
       order: position.frame_number ?? position.order,
     };
   }
-};
-
-export const mapPositions = (
-  positions: any[]
-): ApiTrackPosition[] | undefined => {
-  if (positions && positions.length) {
-    return positions.map(mapPosition);
-  }
-  return [];
 };
 
 export default {

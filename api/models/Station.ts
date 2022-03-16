@@ -20,6 +20,7 @@ import Sequelize, { BuildOptions, ModelAttributes } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import util from "./util/util";
 import { GroupId, LatLng, StationId, UserId } from "@typedefs/api/common";
+import { ApiStationSettings } from "@typedefs/api/station";
 
 // Station data as supplied to API on creation.
 export interface CreateStationData {
@@ -33,11 +34,15 @@ export interface Station extends Sequelize.Model, ModelCommon<Station> {
   name: string;
   location: LatLng;
   lastUpdatedById: UserId | null;
+  lastThermalRecordingTime: Date | null;
+  lastAudioRecordingTime: Date | null;
   createdAt: Date;
   updatedAt: Date;
   activeAt: Date;
   retiredAt: Date | null;
   GroupId: GroupId;
+  automatic: boolean;
+  settings?: ApiStationSettings;
 }
 
 export interface StationStatic extends ModelStaticCommon<Station> {
@@ -69,8 +74,25 @@ export default function (
       type: DataTypes.DATE,
       allowNull: true,
     },
+    lastThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     activeAt: {
       type: DataTypes.DATE,
+      allowNull: false,
+    },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    automatic: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
       allowNull: false,
     },
   };

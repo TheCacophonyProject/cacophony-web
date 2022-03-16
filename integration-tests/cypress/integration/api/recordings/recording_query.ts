@@ -125,6 +125,10 @@ describe("Recordings query using where", () => {
           null,
           recording1
         );
+
+        // Positions are not returned by where queries, since they're not used in the UI.
+        delete expectedRecording1.tracks[0].positions;
+
         cy.apiRecordingAdd(
           "rqCamera1",
           recording2,
@@ -140,6 +144,7 @@ describe("Recordings query using where", () => {
             recording2
           );
           expectedRecording2.processingState = RecordingProcessingState.Corrupt;
+          delete expectedRecording2.tracks[0].positions;
 
           cy.apiRecordingAdd(
             "rqCamera1b",
@@ -155,7 +160,7 @@ describe("Recordings query using where", () => {
               null,
               recording3
             );
-            // TODO: Are these parameters deliberetely msssing from result???
+            // TODO: Are these parameters deliberately missing from result???
             // remove parameters not returned by where
             delete expectedRecording3.version;
             delete expectedRecording3.batteryCharging;
@@ -179,7 +184,7 @@ describe("Recordings query using where", () => {
                 null,
                 recording4
               );
-
+              delete expectedRecording4.tracks[0].positions;
               expectedRecording4.processingState =
                 RecordingProcessingState.Finished;
               cy.testUserTagRecording(
@@ -202,12 +207,7 @@ describe("Recordings query using where", () => {
                 },
               ];
               expectedRecording4.tracks[0].filtered = false;
-
-              // FIXME TODO: should positons really be blank in query but not in get recording?
-              expectedRecording1.tracks[0].positions = [];
-              expectedRecording2.tracks[0].positions = [];
-              expectedRecording4.tracks[0].positions = [];
-
+              cy.log(JSON.stringify(expectedRecording1));
               cy.apiRecordingsQueryCheck(
                 "rqGroupAdmin",
                 { where: { id: getCreds("rqRecording1").id } },
@@ -256,8 +256,7 @@ describe("Recordings query using where", () => {
           null,
           tempRecording
         );
-        // FIXME TODO: should positions really be blank in query but not in get recording?
-        expectedRecording[count].tracks[0].positions = [];
+        delete expectedRecording[count].tracks[0].positions;
       });
     }
   });

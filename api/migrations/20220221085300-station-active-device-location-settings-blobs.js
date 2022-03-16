@@ -16,6 +16,22 @@ module.exports = {
       defaultValue: false,
       allowNull: false,
     });
+    await queryInterface.addColumn("Stations", "settings", {
+      type: Sequelize.JSONB,
+      allowNull: true,
+      comment: "Group specific settings set for a station for all group members by the group admin"
+    });
+    await queryInterface.addColumn("Stations", "lastThermalRecordingTime", {
+      type: Sequelize.DATE,
+      allowNull: true,
+      comment: "Last time that a thermal recording was received by this station",
+    });
+    await queryInterface.addColumn("Stations", "lastAudioRecordingTime", {
+      type: Sequelize.DATE,
+      allowNull: true,
+      comment: "Last time that an audio recording was received by this station",
+    });
+
     await queryInterface.changeColumn("Stations", "lastUpdatedById", {
       type: Sequelize.INTEGER,
       allowNull: true,
@@ -41,6 +57,19 @@ module.exports = {
       comment: "Group specific settings set for all group members by the group admin"
     });
 
+    await queryInterface.removeColumn("Groups", "lastRecordingTime");
+    await queryInterface.addColumn("Groups", "lastThermalRecordingTime", {
+      type: Sequelize.DATE,
+      allowNull: true,
+      comment: "Last time that a thermal recording was received in this group",
+    });
+
+    await queryInterface.addColumn("Groups", "lastAudioRecordingTime", {
+      type: Sequelize.DATE,
+      allowNull: true,
+      comment: "Last time that an audio recording was received in this group",
+    });
+
     await queryInterface.addColumn("Devices", "uuid", {
       type: Sequelize.INTEGER,
       comment: "Immutable ID for this device.  Even if a device is re-registered, this should stay the same"
@@ -59,7 +88,7 @@ module.exports = {
         comment: "Earliest time that the device was known to be at this `location`",
       },
       setBy: {
-        type: Sequelize.ENUM('automatic', 'user', 'sidekick', 'reregister', 'register'),
+        type: Sequelize.ENUM('automatic', 'user', 'reregister', 'register', 'config'),
         allowNull: false,
         comment: "Where the location of this device was set from - a recording upload, manually by the user, or via sidekick"
       },
@@ -89,6 +118,9 @@ module.exports = {
   down: async function (queryInterface, Sequelize) {
     await queryInterface.removeColumn("Stations", "activeAt");
     await queryInterface.removeColumn("Stations", "automatic");
+    await queryInterface.removeColumn("Stations", "settings");
+    await queryInterface.removeColumn("Stations", "lastThermalRecordingTime");
+    await queryInterface.removeColumn("Stations", "lastAudioRecordingTime");
 
     await queryInterface.changeColumn("Stations", "lastUpdatedById", {
       type: Sequelize.INTEGER,
@@ -98,6 +130,12 @@ module.exports = {
     await queryInterface.removeColumn("Users", "settings");
     await queryInterface.removeColumn("GroupUsers", "settings");
     await queryInterface.removeColumn("Groups", "settings");
+    await queryInterface.removeColumn("Groups", "lastThermalRecordingTime");
+    await queryInterface.removeColumn("Groups", "lastAudioRecordingTime");
+    await queryInterface.addColumn("Groups", "lastRecordingTime", {
+      type: Sequelize.DATE,
+      allowNull: true
+    });
     await queryInterface.removeColumn("Devices", "uuid");
 
     await util.migrationRemoveBelongsTo(queryInterface, "DeviceHistory", "Devices");
