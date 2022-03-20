@@ -902,10 +902,10 @@ describe("Recordings - processing tests", () => {
 
     //This is a single test to check that alerts are triggered by processing
     //Full tests of the alerts logic are done through the recording upload API
-    //TODO: Work out why this test does not generate an alert - it should!!!
-    it.skip("Alert when desired animal is detected by processing", () => {
+    it("Alert when desired animal is detected by processing", () => {
       //Note: camera 1b has an alert for possums
       const recording20 = TestCreateRecordingData(templateRecording);
+
       cy.apiRecordingAdd(
         "rpCamera1b",
         recording20,
@@ -935,10 +935,12 @@ describe("Recordings - processing tests", () => {
           RecordingProcessingState.Tracking;
         expectedProcessing20.hasAlert = true;
 
-        cy.log("Send for processing and check is flagges as hasAlert");
+        cy.log(
+          "Send for processing (Tracking) and check is flagged as hasAlert"
+        );
         cy.processingApiCheck(
           RecordingType.ThermalRaw,
-          RecordingProcessingState.Analyse,
+          RecordingProcessingState.Tracking,
           "rpRecording20",
           expectedProcessing20,
           EXCLUDE_KEYS
@@ -953,6 +955,21 @@ describe("Recordings - processing tests", () => {
               { start_s: 1, end_s: 4 },
               algorithmId
             );
+            cy.log("set processing to done and recheck tracks");
+            cy.processingApiPut("rpRecording20", true, {}, undefined);
+
+            cy.log(
+              "Send for processing (Analyse) and check is flagged as hasAlert"
+            );
+            expectedProcessing20.processingState =
+              RecordingProcessingState.AnalyseThermal;
+            cy.processingApiCheck(
+              RecordingType.ThermalRaw,
+              RecordingProcessingState.AnalyseThermal,
+              "rpRecording20",
+              expectedProcessing20,
+              EXCLUDE_KEYS
+            );
 
             cy.log("Add tags");
             cy.processingApiTracksTagsPost(
@@ -960,31 +977,39 @@ describe("Recordings - processing tests", () => {
               "rpRecording20",
               "possum",
               0.9,
-              { name: "Master" }
+              {
+                name: "Master",
+                clarity: 1,
+                raw_tag: "possum",
+                model_used: "Inc3",
+                predictions: [],
+                classify_time: 1.2,
+                prediction_frames: [],
+                all_class_confidences: { possum: 1 },
+              }
             ).then(() => {
               cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut(
-                "rpRecording20",
-                true,
-                {},
-
-                undefined
-              ).then(() => {
-                cy.log("Check an event was generated");
-                cy.apiAlertCheck("rpGroupAdmin", "rpCamera1b", expectedAlert20);
-                cy.testEventsCheckAgainstExpected(
-                  "rpGroupAdmin",
-                  "rpCamera1b",
-                  expectedEvent20
-                );
-              });
+              cy.processingApiPut("rpRecording20", true, {}, undefined).then(
+                () => {
+                  cy.log("Check an event was generated");
+                  cy.apiAlertCheck(
+                    "rpGroupAdmin",
+                    "rpCamera1b",
+                    expectedAlert20
+                  );
+                  cy.testEventsCheckAgainstExpected(
+                    "rpGroupAdmin",
+                    "rpCamera1b",
+                    expectedEvent20
+                  );
+                }
+              );
             });
           }
         );
       });
     });
 
-    //TODO: Issue 96 - updates of location fail (time out)
     it("Test other metadata can be set by processing", () => {
       const fieldUpdates = {
         rawMimeType: "application/test",

@@ -1,8 +1,6 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-import { ApiStationResponse } from "../../../../types/api/station";
-
 declare namespace Cypress {
   type ApiGroupsUserReturned = import("../types").ApiGroupsUserReturned;
   type ApiGroupReturned = import("../types").ApiGroupReturned;
@@ -13,7 +11,8 @@ declare namespace Cypress {
   type ApiDeviceResponseAlias =
     import("@typedefs/api/device").ApiDeviceResponse;
   type ApiGroupUserRelationshipResponse =
-    import("@typedefs/api/group").ApiGroupUserRelationshipResponse;
+    import("@typedefs/api/group").ApiGroupUserResponse;
+  type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
 
   interface Chainable {
     /**
@@ -22,9 +21,26 @@ declare namespace Cypress {
      * By default userName and groupName are converted into unique (for this test run) names.
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
+
     apiGroupAdd(
       userName: string,
       groupName: string,
+      log?: boolean,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /**
+     * Add user to group
+     * Optionally check for fail response (statusCode!=200)
+     * By default userName and groupName are converted into unique (for this test run) names.
+     * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+     */
+    apiGroupUserAdd(
+      groupAdminUser: string,
+      userName: string,
+      groupName: string,
+      admin?: boolean,
       log?: boolean,
       statusCode?: number,
       additionalChecks?: any
@@ -76,22 +92,6 @@ declare namespace Cypress {
       groupNameOrId: any,
       expectedDevices: ApiDeviceResponseAlias[],
       excludeCheckOn?: string[],
-      statusCode?: number,
-      additionalChecks?: any
-    ): any;
-
-    /**
-     * Add user to group
-     * Optionally check for fail response (statusCode!=200)
-     * By default userName and groupName are converted into unique (for this test run) names.
-     * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
-     */
-    apiGroupUserAdd(
-      groupAdminUser: string,
-      userName: string,
-      groupName: string,
-      admin?: boolean,
-      log?: boolean,
       statusCode?: number,
       additionalChecks?: any
     ): any;

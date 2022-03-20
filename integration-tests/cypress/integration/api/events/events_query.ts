@@ -539,8 +539,15 @@ describe("Events - query events", () => {
     );
 
     cy.log("Can manually specify increasing order (default)");
-    //TODO: Issue 70 - this test fails.  Enable when fixed
-    //cy.apiEventsCheck("eqGroupAdmin",undefined,{latest: false}, [expectedEvent1, expectedEvent2, expectedEvent3], EXCL_TIME_ID,HTTP_OK200, {doNotSort: true});
+    cy.apiEventsCheck(
+      "eqGroupAdmin",
+      undefined,
+      { latest: false },
+      [expectedEvent1, expectedEvent2, expectedEvent3],
+      EXCL_TIME_ID,
+      HTTP_OK200,
+      { doNotSort: true }
+    );
 
     cy.log("Default is increasing order");
     cy.apiEventsCheck(

@@ -361,7 +361,7 @@ describe("Recordings - parameter tests", () => {
     });
   });
 
-  //TODO: Fails - issue 80
+  //TODO: Fails - issue 80 server error
   it.skip("Invalid recordingDateTime handled correctly", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     recording1.recordingDateTime = "BadTimeValue";

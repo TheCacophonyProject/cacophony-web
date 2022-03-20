@@ -23,7 +23,6 @@ describe("Groups - add/update/query/remove stations from group", () => {
   const station2b = { name: "station2", lat: -45.2, lng: 172.2 };
   const station3a = { name: "station3", lat: -45.1, lng: 172.3 };
 
-  //TODO: These coordinates are back to front.  Issue 73. Reverse once database & API are corrected. Should be X,Y
   const expectedStation1a: ApiStationResponse = {
     id: 0,
     name: "station1",

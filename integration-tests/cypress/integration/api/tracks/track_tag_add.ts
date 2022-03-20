@@ -82,7 +82,6 @@ describe("Track Tags: add, check, delete", () => {
     start_s: 1,
     end_s: 3,
     positions: positions1,
-    //TODO - do the remaining parameters _do_ anything?!
     label: "a label",
     clarity: 0.9,
     message: "a message",
@@ -105,7 +104,7 @@ describe("Track Tags: add, check, delete", () => {
   const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
     createdAt: NOT_NULL_STRING,
-    //TODO: cannot set data above, retuned as blank sting
+    //Note: data not set in a manual tag
     data: "",
     id: 99,
     automatic: false,
@@ -119,7 +118,7 @@ describe("Track Tags: add, check, delete", () => {
   const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
     createdAt: NOT_NULL_STRING,
-    //TODO: cannot set data above, retuned as blank sting
+    //Note: data not set in a manual tag
     data: "",
     id: 99,
     automatic: false,

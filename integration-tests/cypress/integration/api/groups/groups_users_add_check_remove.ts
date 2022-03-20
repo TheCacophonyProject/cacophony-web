@@ -3,7 +3,11 @@
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
-import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
+import {
+  HTTP_OK200,
+  HTTP_Forbidden,
+  HTTP_BadRequest,
+} from "@commands/constants";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
 
 describe("Groups - add, check and remove users", () => {
@@ -142,9 +146,15 @@ describe("Groups - add, check and remove users", () => {
       HTTP_Forbidden
     );
 
-    //TODO: This test fails - returns SUCCESS. Issue 75
-    //cy.log("check that connot remove non-existant user (user exists but not in group)");
-    //cy.apiGroupUserRemove("guGroupAdmin", "guTestUser2", "guGroup", HTTP_Unprocessable);
+    cy.log(
+      "check that connot remove non-existant user (user exists but not in group)"
+    );
+    cy.apiGroupUserRemove(
+      "guGroupAdmin",
+      "guTestUser2",
+      "guGroup",
+      HTTP_BadRequest
+    );
 
     cy.log(
       "check that cannot remove non-existent user (user not registered in system)"

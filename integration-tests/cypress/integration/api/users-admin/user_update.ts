@@ -137,88 +137,85 @@ describe("User: update", () => {
     });
   });
 
-  //TODO:  Issue ##: Wrong error message
   it("Cannot create user with email not matching email format", () => {
     cy.apiUserAdd("uupUser6").then(() => {
       cy.log("Blank email");
-      cy.apiUserUpdate("uupUser6", { email: "" }, HTTP_Unprocessable); //HTTP_BadRequest, { message: "body.email: Invalid value" });
+      cy.apiUserUpdate("uupUser6", { email: "" }, HTTP_Unprocessable);
       cy.log("leading space");
       cy.apiUserUpdate(
         "uupUser6",
         { email: " startswithaspace@email.com" },
         HTTP_Unprocessable
-      ); //HTTP_BadRequest, { message: "body.email: Invalid value" });
+      );
       cy.log("Email with no @");
       cy.apiUserUpdate(
         "uupUser6",
         { email: "noatinemail" },
         HTTP_Unprocessable
-      ); // HTTP_BadRequest, { message: "body.email: Invalid value" });
+      );
       cy.log("Email with no user");
-      cy.apiUserUpdate("uupUser6", { email: "@mail.com" }, HTTP_Unprocessable); // HTTP_BadRequest, { message: "body.email: Invalid value" });
+      cy.apiUserUpdate("uupUser6", { email: "@mail.com" }, HTTP_Unprocessable);
       cy.log("Email with no domain");
-      cy.apiUserUpdate("uupUser6", { email: "user@" }, HTTP_Unprocessable); // HTTP_BadRequest, { message: "body.email: Invalid value" });
+      cy.apiUserUpdate("uupUser6", { email: "user@" }, HTTP_Unprocessable);
     });
   });
 
-  //TODO: Issue ##:  Wrong error message
   it("Invalid user names rejected", () => {
     cy.apiUserAdd("uupUser7").then(() => {
       cy.log("Cannot add user with no letters");
       cy.apiUserUpdate("uupUser7", { userName: "" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { useRawUserName: true });
-      // message: "body.userName  : Invalid value"
+      });
+      //
       cy.apiUserUpdate("uupUser7", { userName: "1234" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
       cy.log("Cannot add user with other non-alphanumeric characters");
       cy.apiUserUpdate("uupUser7", { userName: "ABC%" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
       cy.apiUserUpdate("uupUser7", { userName: "ABC&" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
       cy.apiUserUpdate("uupUser7", { userName: "ABC>" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
       cy.apiUserUpdate("uupUser7", { userName: "ABC<" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
 
       cy.log("Cannot add user with -, _ or space as first letter");
       cy.apiUserUpdate("uupUser7", { userName: "-ABC" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
       cy.apiUserUpdate("uupUser7", { userName: "_ABC" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
       cy.apiUserUpdate("uupUser7", { userName: " ABC" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
       cy.apiUserUpdate("uupUser7", { userName: " ABC" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { message: "body.userName: Invalid value", useRawUserName: true });
+      });
 
       cy.log("Can add user with -, _ or space as subsequent letter");
       cy.apiUserUpdate("uupUser7", { userName: getTestName("A-B_ C") });
     });
   });
 
-  //TODO: Issue ##:  Wrong error message
   it("Invaliid passwords rejected", () => {
     cy.apiUserAdd("uupUser8").then(() => {
       cy.log("Blank password");
       cy.apiUserUpdate("uupUser7", { password: "" }, HTTP_Unprocessable, {
         useRawUserName: true,
-      }); // HTTP_BadRequest, { useRawUserName: true });
+      });
       cy.log("Short password");
       cy.apiUserUpdate(
         "uupUser7",
         { password: "1234567" },
         HTTP_Unprocessable,
         { useRawUserName: true }
-      ); // HTTP_BadRequest, { useRawUserName: true });
+      );
     });
   });
 });

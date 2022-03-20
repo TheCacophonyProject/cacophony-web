@@ -75,7 +75,6 @@ describe("Recordings query using where", () => {
   track5.end_s = 20;
   track5.minFreq = 20;
   track5.maxFreq = 10000;
-  const track6 = JSON.parse(JSON.stringify(TEMPLATE_AUDIO_TRACK));
 
   //Four recording templates for setting and their expected return values
   const recording1 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
@@ -162,8 +161,9 @@ describe("Recordings query using where", () => {
               null,
               recording3
             );
-            // TODO: Are these parameters deliberetely missing from result???
-            // remove parameters not returned by where
+            // TODO Issue 103:These parameters missing from result. If we
+            // never return them, why do we have them?
+            // Workaround: remove parameters not returned by where
             delete expectedRecording3.version;
             delete expectedRecording3.batteryCharging;
             delete expectedRecording3.airplaneModeOn;
@@ -210,18 +210,9 @@ describe("Recordings query using where", () => {
               ];
               expectedRecording4.tracks[0].filtered = false;
 
-              // TODO: Are these parameters deliberetely missing from result???
-              // remove parameters not returned by where
-              delete expectedRecording3.version;
-              delete expectedRecording3.batteryCharging;
-              delete expectedRecording3.airplaneModeOn;
-              delete expectedRecording3.relativeToDawn;
-              delete expectedRecording3.relativeToDusk;
-
-              expectedRecording3.processingState =
-                RecordingProcessingState.ToMp3;
-
-              // FIXME TODO: should positons really be blank in query but not in get recording?
+              // TODO Issue 104:  positions returned as [] blank even
+              // where they exist.  If we don't support this parameter, do
+              // not return it at all
               expectedRecording1.tracks[0].positions = [];
               expectedRecording2.tracks[0].positions = [];
               expectedRecording4.tracks[0].positions = [];
@@ -274,7 +265,9 @@ describe("Recordings query using where", () => {
           null,
           tempRecording
         );
-        // FIXME TODO: should positions really be blank in query but not in get recording?
+        // TODO Issue 104:  positions returned as [] blank even
+        // where they exist.  If we don't support this parameter, do
+        // not return it at all
         expectedRecording[count].tracks[0].positions = [];
       });
     }
@@ -607,7 +600,7 @@ describe("Recordings query using where", () => {
     );
   });
 
-  //TODO: Issue 92: /ap1/v1/recordings/count ignoring tags filter
+  //TODO: Issue 91: /ap1/v1/recordings/count ignoring tags filter
   it("Can limit query by tags and tagmode", () => {
     cy.log("Tagged as possum");
     cy.apiRecordingsQueryCheck(
@@ -737,7 +730,7 @@ describe("Recordings query using where", () => {
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, undefined, HTTP_Unprocessable);
   });
 
-  //TODO: Issue 92: /ap1/v1/recordings/count ignoring view-mode
+  //TODO: Issue 91: /ap1/v1/recordings/count ignoring view-mode
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
@@ -773,7 +766,4 @@ describe("Recordings query using where", () => {
 
   //TODO: wrapper would need to check results contain expected results ... not yet implemented in test wrapper
   it.skip("Super-user should see all recordings", () => {});
-
-  //TODO: This functionality needs to be reworked,  Issue 95
-  it.skip("Can specify location precision", () => {});
 });

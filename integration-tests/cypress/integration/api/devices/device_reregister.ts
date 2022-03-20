@@ -171,7 +171,7 @@ describe("Device reregister", () => {
     cy.apiDeviceAdd("RR_cam5", "RR_group5");
 
     cy.log("attempt to rename camera with duplicate name rejected");
-    //TODO: This should really return 422-Unprocessable.  It is not malformed - just  breaks our rules
+    //TODO: Issue 110 - This should really return 422-Unprocessable.  It is not malformed - just  breaks our rules
     cy.apiDeviceReregister(
       "RR_cam5a",
       "RR_cam5",
@@ -179,6 +179,7 @@ describe("Device reregister", () => {
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
       HTTP_BadRequest
+      //HTTP_Unprocessable
     ).then(() => {
       cy.log("check old device unaltered");
       cy.apiDevicesCheckContains("RR_user5", [expectedDevice5a]);

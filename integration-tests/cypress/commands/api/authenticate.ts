@@ -160,7 +160,6 @@ Cypress.Commands.add(
       userName,
       statusCode
     ).then((response) => {
-      //TODO: remove this once fixed - issue 45 workaround
       response.body.token = "JWT " + response.body.token;
       if (statusCode == 200) {
         saveCreds(response, userName + "_temp_token");
