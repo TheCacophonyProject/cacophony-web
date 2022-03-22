@@ -118,7 +118,6 @@ import api from "@/api";
 import DefaultLabels, { TagColours } from "@/const";
 import Vue from "vue";
 
-// FIXME(ManageStations) Some of these imports should be coming from @types
 import {
   LimitedTrack,
   LimitedTrackTag,

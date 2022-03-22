@@ -61,6 +61,7 @@ import {
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
 import { mapStation, mapStations } from "./Station";
+import logger from "@log";
 
 const mapGroup = (
   group: Group,
@@ -127,6 +128,11 @@ interface ApiGroupDevicesResponseSuccess {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiCreateStationDataBody {
   stations: ApiCreateStationData[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiCreateSingleStationDataBody {
+  station: ApiCreateStationData;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -551,6 +557,10 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiInterface {apiBody::ApiCreateSingleStationDataBody} station ApiStation
+   * @apiParam {Date} [from-date] Start (active from) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParam {Date} [until-date] End (retirement) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Integer} stationId StationId id of new station.
    * @apiUse V1ResponseError
@@ -559,29 +569,35 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/station`,
     extractJwtAuthorizedUser,
     validateFields([
+      nameOrIdOf(param("groupIdOrName")),
       body("station").exists().custom(jsonSchemaOf(ApiCreateStationDataSchema)),
+      body("from-date").isISO8601().toDate().optional(),
+      body("until-date").isISO8601().toDate().optional(),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    parseJSONField(body("station")),
     async (request: Request, response: Response) => {
-      // TODO(StationEdits): Check for other non-retired stations too close to this new station,
+      // TODO(ManageStations): Check for other non-retired stations too close to this new station,
       //  warn if there are any.
 
       // NOTE: If we create a new station, do we want to also have an optional date range that
       //  we pass to make it re-match recordings for that new station?
       //  In that case response could also say how many recordings were matched?
-
       const station = response.locals.station;
       // @ts-ignore
-      const newStation = new models.Station({
-        ...station,
-        location: [station.lng, station.lat],
+      const newStation = await models.Station.create({
+        name: station.name,
+        location: { lat: station.lat, lng: station.lng },
+        activeAt: request.body["from-date"] || new Date(),
+        retiredAt: request.body["until-date"] || null,
+        automatic: false,
       });
-      const newStationCreated = await newStation.save();
+      logger.warning("Created station", newStation.id);
       await response.locals.group.addStation(newStation);
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Got station"],
-        stationId: newStationCreated.id,
+        stationId: newStation.id,
       });
     }
   );

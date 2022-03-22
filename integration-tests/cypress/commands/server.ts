@@ -1,12 +1,13 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
+import { LatLng } from "@typedefs/api/common";
+
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 
 import { format as urlFormat } from "url";
 
 import { NOT_NULL_STRING } from "./constants";
-import { ApiLocation } from "./types";
 
 export function apiPath(): string {
   return Cypress.env("cacophony-api-server");
@@ -58,7 +59,7 @@ interface ApiCreds {
   jwt: string;
   jobKey: string;
   id: number;
-  location: ApiLocation;
+  location: LatLng;
 }
 
 export function saveIdOnly(name: string, id: number) {
@@ -114,15 +115,15 @@ export function saveCreds(
   Cypress.env("testCreds")[name] = creds;
 }
 
-export function saveStation(location: ApiLocation, name: string, id = 0) {
+export function saveStation(location: LatLng, name: string, id = 0) {
   const creds = {
-    name: name,
+    name,
     password: "",
     headers: {},
     jwt: "",
     jobKey: "",
-    id: id,
-    location: location,
+    id,
+    location,
   };
   Cypress.env("testCreds")[name] = creds;
 }

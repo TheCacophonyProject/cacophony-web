@@ -404,71 +404,131 @@ export const maybeUpdateDeviceHistory = async (
      registered via a config change. (sidekick updated the location in the context of a thermal camera).
    - Handle device re-registration retaining the last known location of the device.
    */
-
-  const lastLocation = device.location;
-  if (
-    !lastLocation ||
-    (lastLocation && !locationsAreEqual(lastLocation, location)) ||
-    setBy === "config"
-  ) {
-    if (setBy === "config" && dateTime > device.lastRecordingTime) {
-      // Update the device location on config change.
+  {
+    // Update the device location on config change. (It gets updated elsewhere if a newer recording comes in)
+    const lastLocation = device.location;
+    if (
+      setBy === "config" &&
+      (!device.lastRecordingTime || dateTime > device.lastRecordingTime) &&
+      (!lastLocation ||
+        (lastLocation && !locationsAreEqual(lastLocation, location)))
+    ) {
       await device.update({
         location,
       });
     }
-
-    // The device is in a new location, so we want to update the DeviceHistory log.
-    await models.DeviceHistory.create({
-      location,
-      setBy,
-      fromDateTime: dateTime,
-      deviceName: device.devicename,
-      DeviceId: device.id,
-      GroupId: device.GroupId,
-      saltId: device.saltId,
-      uuid: device.uuid,
-    });
-  } else if (lastLocation && locationsAreEqual(lastLocation, location)) {
-    // TODAY/FIRST THING TOMORROW - Get the logic for this function correct.
-    // Recordings can come in out of order, so if this recording has an earlier time than the last location
-    // we may need to move the time of the device history entry back.
+  }
+  {
+    // Get the location (if any) after this dateTime, check if it's the same as this location.
+    // - If there is a *later* version of this location that doesn't have any other entries before it that are also
+    // later than this location, then we want to move that later instance back to this time.
+    // - If there is a later location that is not the same as this, then we'd insert this location
+    // so long as there isn't a previous location earlier than this which matches this location.
 
     // FIXME(ManageStations) - We may have more recent locations here, so we may be moving back a historic entry - and need to
     //  update the corresponding station accordingly.
-
-    // FIXME(ManageStations) - We should insert a device history event when we get a config change event with a location change.
-
-    // NOTE: This query will get run every recording upload - is that necessary?
-
-    // If it's a set-by automatic, also check for config updates that might match it.
-    const setByArr = [];
-    if (setBy === "automatic") {
-      setByArr.push("automatic");
-      setByArr.push("config");
-    } else {
-      setByArr.push(setBy);
-    }
-    const history = await models.DeviceHistory.findOne({
+    // If it's a set-by automatic, also check for config or re-register updates that might match it.
+    const setByArr =
+      setBy === "automatic" ? ["automatic", "config", "re-register"] : [setBy];
+    let shouldInsertLocation = false;
+    const priorLocation = await models.DeviceHistory.findOne({
       where: {
-        DeviceId: device.id,
+        uuid: device.uuid,
         GroupId: device.GroupId,
         setBy: { [Op.in]: setByArr },
         location: { [Op.ne]: null },
-        fromDateTime: { [Op.gt]: dateTime },
+        fromDateTime: { [Op.lte]: dateTime },
       },
-      order: [["fromDateTime", "ASC"]], // Get the earliest one that's later than our current dateTime
+      order: [["fromDateTime", "DESC"]], // Get the latest one that's earlier than our current dateTime
     });
+    if (priorLocation) {
+      const locationChanged = !locationsAreEqual(
+        priorLocation.location,
+        location
+      );
+      if (!locationChanged && priorLocation.DeviceId !== device.id) {
+        shouldInsertLocation = true;
+      } else if (locationChanged) {
+        // Look later
+        const laterLocation = await models.DeviceHistory.findOne({
+          where: {
+            uuid: device.uuid,
+            GroupId: device.GroupId,
+            setBy: { [Op.in]: setByArr },
+            location: { [Op.ne]: null },
+            fromDateTime: { [Op.gt]: dateTime },
+          },
+          order: [["fromDateTime", "ASC"]], // Get the earliest one that's later than our current dateTime
+        });
+        if (laterLocation) {
+          const locationChanged = !locationsAreEqual(
+            laterLocation.location,
+            location
+          );
+          if (!locationChanged && laterLocation.DeviceId !== device.id) {
+            shouldInsertLocation = true;
+          } else if (!locationChanged) {
+            // Move later location back to this time.
+            await laterLocation.update({
+              fromDateTime: dateTime,
+            });
+          } else if (locationChanged) {
+            shouldInsertLocation = true;
+          }
+        }
+      }
+    } else {
+      // Look later
+      const laterLocation = await models.DeviceHistory.findOne({
+        where: {
+          uuid: device.uuid,
+          GroupId: device.GroupId,
+          setBy: { [Op.in]: setByArr },
+          location: { [Op.ne]: null },
+          fromDateTime: { [Op.gt]: dateTime },
+        },
+        order: [["fromDateTime", "ASC"]], // Get the earliest one that's later than our current dateTime
+      });
+      if (laterLocation) {
+        const locationChanged = !locationsAreEqual(
+          laterLocation.location,
+          location
+        );
+        if (!locationChanged && laterLocation.DeviceId !== device.id) {
+          shouldInsertLocation = true;
+        } else if (!locationChanged) {
+          // Move later location back to this time.
+          await laterLocation.update({
+            fromDateTime: dateTime,
+          });
+        } else if (locationChanged) {
+          shouldInsertLocation = true;
+        }
+      } else {
+        shouldInsertLocation = true;
+      }
+    }
 
     // FIXME(ManageStations) - what happens for user-defined fix-ups?
-
     // TODO(ManageStations): Now, if the device history table has updated, that can mean that the activeAt date of an automatically
     // created station may need to move back too.
 
-    if (history) {
-      await history.update({
+    if (shouldInsertLocation) {
+      // Insert this location.
+      await models.DeviceHistory.create({
+        location,
+        setBy,
         fromDateTime: dateTime,
+        deviceName: device.devicename,
+        DeviceId: device.id,
+        GroupId: device.GroupId,
+        saltId: device.saltId,
+        uuid: device.uuid,
       });
+
+      // TODO(ManageStations)
+      // If we are going to insert a location, then we need to match to existing stations, or create a new station
+      // that is active from this point in time.  Let's ignore retiring stations at the moment.
     }
   }
 };
@@ -575,7 +635,7 @@ const getDeviceIdAndGroupIdAtRecordingTime = async (
   return { deviceId: device.id, groupId: device.GroupId };
 };
 
-const assignStationToRecording = async (
+export const assignStationToRecording = async (
   recording: Recording,
   deviceName: string
 ): Promise<void> => {

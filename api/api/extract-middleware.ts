@@ -201,9 +201,10 @@ const getDeviceInclude =
   });
 
 const getStationInclude =
-  (groupWhere: any) =>
+  (stationWhere: any, groupWhere: any) =>
   (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
     where: {
+      ...stationWhere,
       "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null },
     },
     include: [
@@ -216,7 +217,7 @@ const getStationInclude =
           {
             model: models.User,
             attributes: ["id"],
-            required: false,
+            required: true,
             through: {
               where: {
                 ...useAdminAccess,
@@ -602,7 +603,7 @@ const getStations =
         // Insert request user constraints
         getStationsOptions = getIncludeForUser(
           context,
-          getStationInclude(groupWhere),
+          getStationInclude({}, groupWhere),
           asAdmin
         );
       } else {
@@ -687,7 +688,7 @@ const getStation =
         // Insert request user constraints
         getStationOptions = getIncludeForUser(
           context,
-          getStationInclude(groupWhere),
+          getStationInclude(stationWhere, groupWhere),
           asAdmin
         );
         if (!getStationOptions.where && stationWhere) {
@@ -726,6 +727,7 @@ const getStation =
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
+
     return models.Station.findOne(getStationOptions);
   };
 

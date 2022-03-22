@@ -33,6 +33,14 @@ async function main() {
     "coredev@cacophony.org.nz",
     "Service Errors in the last 24 hours"
   );
+
+  // Send one to Shaun too
+  await sendEmail(
+    html,
+    text,
+    "shaun@2040.co.nz",
+    "Service Errors in the last 24 hours"
+  );
 }
 
 function generateText(

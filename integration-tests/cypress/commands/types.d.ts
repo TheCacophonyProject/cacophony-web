@@ -1,6 +1,7 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { CacophonyIndex } from "@typedefs/api/recording";
+import { LatLng } from "@typedefs/api/common";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {
@@ -290,7 +291,7 @@ export interface ApiRecordingForProcessing {
   StationId: number;
   recordingDateTime: string;
   duration: number;
-  location: { type: "Point"; coordinates: number[] } | null;
+  location: { type: "Point"; coordinates: [number, number] } | null;
   hasAlert: boolean;
   processingStartTime: string;
   processingEndTime: string;
@@ -303,7 +304,9 @@ export interface ApiRecordingSet {
   type: RecordingType;
   fileHash?: string;
   duration: number;
-  location?: ApiLocation | number[];
+  location?:
+    | { type: "Point"; coordinates: [number, number] }
+    | [number, number];
   recordingDateTime?: string;
   relativeToDawn?: number;
   relativeToDusk?: number;
@@ -352,7 +355,7 @@ export interface ApiRecordingReturned {
   recordingDateTime: string;
   relativeToDawn?: number;
   relativeToDusk?: number;
-  location: ApiLocation;
+  location: LatLng;
   version?: string;
   batteryLevel?: number;
   batteryCharging?: string;
@@ -516,7 +519,7 @@ export interface TestThermalRecordingInfo {
 // from api/v1/recording (get)
 export interface ApiRecordingStation {
   name?: string;
-  location?: ApiLocation;
+  location?: LatLng;
 }
 
 // from api/v1/groups/<>/stations (post)
@@ -526,19 +529,11 @@ export interface ApiStationData {
   lng: number;
 }
 
-// from api/v1/groups/<>/stations (get), apiRecordings (post)
-
-// FIXME(ManageStations) - This has gone away
-export interface ApiLocation {
-  type: string;
-  coordinates: number[];
-}
-
 // from api/v1/groups/<>/stations (get)
 export interface ApiStationDataReturned {
   id: number;
   name: string;
-  location: ApiLocation;
+  location: LatLng;
   lastUpdatedById: number;
   createdAt: string;
   retiredAt: string;

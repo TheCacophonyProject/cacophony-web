@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Validate that input is a valid [longitude, latitude]
 import { canonicalLatLng } from "@models/Group";
 import { LatLng } from "@typedefs/api/common";
+import logger from "@log";
 
 function isLatLon(
   point: { coordinates: [number, number] } | [number, number] | LatLng
@@ -26,6 +27,7 @@ function isLatLon(
   let valid = true;
   if (point === null) {
     valid = false;
+    logger.warning("Invalid 5");
   } else if (
     Array.isArray(point) &&
     (point.length !== 2 ||
@@ -33,10 +35,12 @@ function isLatLon(
       typeof point[1] !== "number")
   ) {
     valid = false;
+    logger.warning("Invalid 4");
   } else if (typeof point === "object") {
     if (point.hasOwnProperty("coordinates")) {
       const coordinates = (point as any).coordinates;
       if (!Array.isArray(coordinates)) {
+        logger.warning("Invalid 3");
         valid = false;
       }
       if (
@@ -45,6 +49,7 @@ function isLatLon(
           typeof coordinates[0] !== "number" ||
           typeof coordinates[1] !== "number")
       ) {
+        logger.warning("Invalid 2");
         valid = false;
       }
     } else if (
@@ -53,6 +58,7 @@ function isLatLon(
       typeof (point as any).lat !== "number" ||
       typeof (point as any).lng !== "number"
     ) {
+      logger.warning("Invalid 1");
       valid = false;
     } else {
       // Okay
@@ -65,6 +71,7 @@ function isLatLon(
     location.lng < -180 ||
     180 <= location.lng
   ) {
+    logger.warning("Invalid 6 %s", location);
     valid = false;
   }
   if (!valid) {

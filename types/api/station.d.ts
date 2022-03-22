@@ -13,6 +13,12 @@ export interface ApiCreateStationData {
   lng: number;
 }
 
+export interface ApiUpdateStationData {
+  name?: string;
+  lat?: number;
+  lng?: number;
+}
+
 export interface ApiCreateStationResponse {
   stationIdsAddedOrUpdated: StationId[]; // Station ids that were created or changed by the request
   updatedRecordingsPerStation: Record<StationId, number>; // The number of recordings updated for each station
@@ -23,14 +29,14 @@ export interface ApiStationResponse {
   name: string;
   location: LatLng;
   lastUpdatedById?: UserId; // Not set if station was automatically created.
-  createdAt: IsoFormattedDateString;
+  //createdAt: IsoFormattedDateString;
   activeAt: IsoFormattedDateString;
   retiredAt?: IsoFormattedDateString;
   lastThermalRecordingTime?: IsoFormattedDateString;
   lastAudioRecordingTime?: IsoFormattedDateString;
   automatic: boolean;
   settings?: ApiStationSettings;
-  updatedAt: IsoFormattedDateString;
+  //updatedAt: IsoFormattedDateString;
   groupId: GroupId;
   groupName: string;
 }

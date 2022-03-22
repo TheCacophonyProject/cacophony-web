@@ -419,7 +419,7 @@ order by hour;
               DeviceId: newDevice.id,
               location: this.location,
               fromDateTime: now,
-              setBy: "reregister",
+              setBy: "re-register",
               deviceName: newName,
               uuid: newDevice.uuid,
               saltId: newDevice.saltId,

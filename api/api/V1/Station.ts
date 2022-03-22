@@ -5,17 +5,24 @@ import {
   fetchAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStations,
   fetchAuthorizedRequiredStationsForGroup,
+  parseJSONField,
 } from "@api/extract-middleware";
 import responseUtil from "@api/V1/responseUtil";
 import { validateFields } from "@api/middleware";
 import { body, param, query } from "express-validator";
 import { Station } from "@models/Station";
-import { ApiStationResponse } from "@typedefs/api/station";
+import {
+  ApiCreateStationData,
+  ApiStationResponse,
+} from "@typedefs/api/station";
 import { booleanOf, idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
+import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json";
 import { stationLocationHasChanged } from "@models/Group";
 import models from "@models";
+import logger from "@log";
+import { LatLng } from "@typedefs/api/common";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -33,10 +40,10 @@ export const mapStation = (station: Station): ApiStationResponse => {
     id: station.id,
     groupId: station.GroupId,
     groupName: (station as any).Group.groupname,
-    createdAt: station.createdAt.toISOString(),
+    //createdAt: station.createdAt.toISOString(),
     activeAt: station.activeAt.toISOString(),
     location: station.location,
-    updatedAt: station.updatedAt.toISOString(),
+    //updatedAt: station.updatedAt.toISOString(),
     automatic: station.automatic,
   };
   if (station.lastUpdatedById) {
@@ -145,75 +152,90 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       body("station-updates")
-        .exists()
-        .custom(jsonSchemaOf(ApiCreateStationDataSchema)),
+        .custom(jsonSchemaOf(ApiUpdateStationDataSchema))
+        .optional(),
       body("from-date").isISO8601().toDate().optional(),
       body("until-date").isISO8601().toDate().optional(),
-      body("retire").isBoolean().default(false),
+      body("retire").default(false).isBoolean().toBoolean(),
+      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
+    parseJSONField(body("station-updates")),
     fetchAdminAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       // If a from date is set, that is the date from which the station became active.
       // If an until date is set, that is the date that the station was retired at, and retired will be set to true.
+
       // Any recordings that previously had this station assigned to them outside of this time window
       // will be unassigned.  TODO: Can we now use postgres queries to get the recordings that fall inside the station?
-
       // We only care about non-retired stations for this query.
       const updates = response.locals["station-updates"];
       const existingStation = response.locals.station;
-      const positionUpdated = stationLocationHasChanged(
-        existingStation,
-        updates
-      );
-      if (positionUpdated || request.body.fromDate) {
+      const updatedLocation: ApiCreateStationData = {
+        ...existingStation.location,
+        ...updates,
+      };
+      const positionUpdated =
+        updates && stationLocationHasChanged(existingStation, updatedLocation);
+      if (positionUpdated) {
+        logger.warning("POSITION UPDATED %s", updatedLocation);
+        // FIXME(ManageStations): This doesn't take into account if we shifted the from-date/until-date - we
+        //  really want to only get stations in the group that are active in the correct time window.
+
         // Get other active stations so that we can warn if the newly updated station
         // position is too close to another station.
         response.locals.onlyActive = true;
         await fetchAuthorizedRequiredStationsForGroup(
           response.locals.station.GroupId
         )(request, response, next);
+      } else {
+        next();
       }
     },
     async (request: Request, response: Response) => {
       // Merge existing station with updates, filling in any missing fields.
       const updates = {
         ...mapStation(response.locals.station),
-        ...response.locals["station-updates"],
+        ...(response.locals["station-updates"] || {}),
         lastUpdatedById: response.locals.requestUser.id,
       };
       if (request.body.retire) {
         updates.retiredAt = new Date();
+      } else if (request.body["until-date"]) {
+        updates.retiredAt = request.body["until-date"];
       }
-      let proximityWarnings = null;
+      if (request.body["from-date"]) {
+        updates.activeAt = request.body["from-date"];
+      }
+
+      //let proximityWarnings = null;
       if (response.locals.stations) {
-        const { warnings } = await models.Group.addStationsToGroup(
-          response.locals.requestUser.id,
-          [updates],
-          false,
-          undefined,
-          // Filter out the station we're checking against!
-          response.locals.stations.filter(
-            ({ id }) => id !== Number(request.params.id)
-          ),
-          request.body.fromDate,
-          request.body.untilDate
-        );
-        if (warnings) {
-          proximityWarnings = warnings;
-        }
+        // const { warnings } = await models.Group.addStationsToGroup(
+        //   response.locals.requestUser.id,
+        //   [updates],
+        //   false,
+        //   undefined,
+        //   // Filter out the station we're checking against!
+        //   response.locals.stations.filter(
+        //     ({ id }) => id !== Number(request.params.id)
+        //   ),
+        //   request.body.fromDate,
+        //   request.body.untilDate
+        // );
+        // if (warnings) {
+        //   proximityWarnings = warnings;
+        // }
       } else {
-        await response.locals.station.update(
-          response.locals["station-updates"]
-        );
+        logger.warning("Updating %s", updates);
+        await response.locals.station.update(updates);
       }
       const responseData: any = {
         statusCode: 200,
         messages: ["Updated station"],
       };
-      if (proximityWarnings) {
-        responseData.warnings = proximityWarnings;
-      }
-      return responseUtil.send(response, responseData);
+      // if (proximityWarnings) {
+      //   responseData.warnings = proximityWarnings;
+      // }
+      responseUtil.send(response, responseData);
     }
   );
 

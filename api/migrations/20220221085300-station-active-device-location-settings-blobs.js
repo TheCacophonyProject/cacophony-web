@@ -75,7 +75,8 @@ module.exports = {
       comment: "Immutable ID for this device.  Even if a device is re-registered, this should stay the same"
     });
 
-    // FIXME(ManageStations): Now assign uuids for all current devices - which can be initially derived from their deviceId.
+    // Now assign uuids for all current (active) devices - which can be initially derived from their deviceId.
+    await queryInterface.sequelize.query(`update "Devices" set uuid = "Devices"."saltId"`);
 
     await queryInterface.createTable("DeviceHistory", {
       location: {
@@ -88,7 +89,7 @@ module.exports = {
         comment: "Earliest time that the device was known to be at this `location`",
       },
       setBy: {
-        type: Sequelize.ENUM('automatic', 'user', 'reregister', 'register', 'config'),
+        type: Sequelize.ENUM('automatic', 'user', 're-register', 'register', 'config'),
         allowNull: false,
         comment: "Where the location of this device was set from - a recording upload, manually by the user, or via sidekick"
       },
@@ -106,10 +107,15 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
         comment: "Salt id of this device at this time"
+      },
+      stationId: {
+        type: Sequelize.INTEGER,
+        comment: "Station id of this device history entry.  Note that there are currently no foreign key constraints here, so if a station is deleted this should be updated"
       }
     });
 
     // TODO(ManageStations): Create stations and device history from Recordings, test against real DB dumps
+    // Should we do this migration online?
 
     await util.migrationAddBelongsTo(queryInterface, "DeviceHistory", "Devices", "strict");
     await util.migrationAddBelongsTo(queryInterface, "DeviceHistory", "Groups", "strict");

@@ -374,10 +374,9 @@ Cypress.Commands.add(
 
 export function checkRecording(
   userName: string,
-  recordingId: number,
-  checkFunction: any
+  recordingId: RecordingId,
+  checkFunction: (recording: ApiRecordingResponse) => any
 ) {
-  cy.log(`recording id is ${recordingId}`);
   makeAuthorizedRequest(
     {
       url: v1ApiPath(`recordings`),
@@ -386,10 +385,10 @@ export function checkRecording(
   ).then((response) => {
     let recordings = response.body.rows;
     if (recordingId !== 0) {
-      recordings = recordings.filter((x: any) => x.id == recordingId);
+      recordings = recordings.filter((x: any) => x.id === recordingId);
     }
     if (recordings.length > 0) {
-      checkFunction(recordings[0]);
+      checkFunction(recordings[0] as ApiRecordingResponse);
     } else {
       expect(recordings.length).equal(1);
     }

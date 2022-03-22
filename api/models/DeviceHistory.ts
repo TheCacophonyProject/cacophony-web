@@ -15,7 +15,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { DeviceId, GroupId, LatLng } from "@typedefs/api/common";
+import { DeviceId, GroupId, LatLng, StationId } from "@typedefs/api/common";
 import util from "./util/util";
 
 export type DeviceHistorySetBy =
@@ -23,13 +23,14 @@ export type DeviceHistorySetBy =
   | "user"
   | "config"
   | "register"
-  | "reregister";
+  | "re-register";
 
 export interface DeviceHistory
   extends Sequelize.Model,
     ModelCommon<DeviceHistory> {
   DeviceId: DeviceId;
   GroupId: GroupId;
+  StationId: StationId;
   location: LatLng;
   fromDateTime: Date;
   saltId: number;
@@ -57,7 +58,7 @@ export default function (
         "user",
         "config",
         "register",
-        "reregister"
+        "re-register"
       ),
       allowNull: false,
     },
@@ -73,6 +74,9 @@ export default function (
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    stationId: {
+      type: DataTypes.INTEGER,
+    }
   };
 
   const DeviceHistory = sequelize.define(name, attributes, {
