@@ -76,7 +76,7 @@ export default function (
     },
     stationId: {
       type: DataTypes.INTEGER,
-    }
+    },
   };
 
   const DeviceHistory = sequelize.define(name, attributes, {

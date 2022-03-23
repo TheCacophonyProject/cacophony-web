@@ -30,14 +30,20 @@ import { createExpectedAlert } from "@commands/api/alerts";
 import { createExpectedEvent } from "@commands/api/events";
 
 //Also do not check recording ID in this test suite
-const EXCLUDE_ALL_IDS = EXCLUDE_IDS.concat([".id"]);
+const EXCLUDE_ALL_IDS = EXCLUDE_IDS.concat([".id", ".location"]);
 
 describe("Recordings - processing tests", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
-  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".updatedAt", ".id"];
+  const EXCLUDE_KEYS = [
+    ".jobKey",
+    ".rawFileKey",
+    ".updatedAt",
+    ".id",
+    ".location",
+  ];
 
   const templateExpectedThermalRecording: ApiThermalRecordingResponse =
     JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
@@ -980,8 +986,6 @@ describe("Recordings - processing tests", () => {
       });
     });
 
-    //TODO: Issue 96 - updates of location fail (time out)
-    // FIXME(ManageStations): Location updates probably shouldn't be possible from processing.
     it("Test other metadata can be set by processing", () => {
       const fieldUpdates = {
         rawMimeType: "application/test",
@@ -1010,7 +1014,6 @@ describe("Recordings - processing tests", () => {
           newField: "newValue",
           newField2: "newValue2",
         },
-        location: [-46.29115, 170.30845],
       };
       //top level recording data
       const recording17 = TestCreateRecordingData(templateAudioRecording);
@@ -1047,10 +1050,6 @@ describe("Recordings - processing tests", () => {
         expectedRecording17.batteryCharging = "CHARGING";
         expectedRecording17.airplaneModeOn = true;
         expectedRecording17.comment = "This is a new comment";
-        expectedRecording17.location = {
-          lat: -46.29115,
-          lng: 170.30845,
-        };
         expectedRecording17.cacophonyIndex = [
           { end_s: 21, begin_s: 1, index_percent: 81.8 },
           { end_s: 41, begin_s: 21, index_percent: 78.1 },

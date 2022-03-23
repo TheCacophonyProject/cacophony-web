@@ -61,6 +61,7 @@ import {
   GroupId,
   LatLng,
   RecordingId,
+  StationId,
   TrackTagId,
   UserId,
 } from "@typedefs/api/common";
@@ -73,9 +74,10 @@ import {
 import { Device } from "@models/Device";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
-import { locationsAreEqual } from "@models/Group";
+import { Group, locationsAreEqual } from "@models/Group";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
 import SendData = ManagedUpload.SendData;
+import logger from "@log";
 
 let CptvDecoder;
 (async () => {
@@ -101,6 +103,54 @@ export function latLngApproxDistance(a: LatLng, b: LatLng): number {
     sinLat1 * Math.sin(lat2) + costLat1 * Math.cos(lat2) * Math.cos(deltaLng)
   );
   return part1 * R;
+}
+
+export async function tryToMatchLocationToStationInGroup(
+  location: LatLng,
+  groupId: GroupId,
+  activeFromDate: Date
+): Promise<Station | null> {
+  logger.warning(
+    "Get stations for group %s at location %s, fromDate %s",
+    groupId,
+    location,
+    activeFromDate
+  );
+  // Match the recording to any stations that the group might have:
+
+  const stations = await models.Station.findAll({
+    where: {
+      GroupId: groupId,
+      activeAt: { [Op.lte]: activeFromDate },
+      retiredAt: {
+        [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: activeFromDate }],
+      },
+    },
+  });
+
+  logger.warning("Got stations %s", stations.length);
+  const stationDistances = [];
+  for (const station of stations) {
+    // See if any stations match: Looking at the location distance between this recording and the stations.
+    const distanceToStation = latLngApproxDistance(station.location, location);
+    stationDistances.push({ distanceToStation, station });
+  }
+  const validStationDistances = stationDistances.filter(
+    ({ distanceToStation }) =>
+      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING
+  );
+
+  // There shouldn't really ever be more than one station within our threshold distance,
+  // since we check that stations aren't too close together when we add them.  However, on the off
+  // chance we *do* get two or more valid stations for a recording, take the closest one.
+  validStationDistances.sort((a, b) => {
+    return b.distanceToStation - a.distanceToStation;
+  });
+  const closest = validStationDistances.pop();
+  if (closest) {
+    return closest.station;
+  }
+  return null;
 }
 
 export async function tryToMatchRecordingToStation(
@@ -354,56 +404,15 @@ async function createThumbnail(
   return { data: img, meta: thumbMeta };
 }
 
-const assignStationsForDeviceInDateRange = async (
-  device: Device,
-  fromDate: Date,
-  untilDate?: Date
-) => {
-  // TODO(ManageStations)
-  // Get all the stations for the device group that are active during the period we care about:
-  const group = await device.getGroup();
-  const stations = await group.getStations({
-    where: {
-      activeAt: { [Op.lte]: fromDate },
-    },
-  });
-  // Get all the device locations in this time range:
-  const deviceLocations = await models.DeviceHistory.findAll({
-    where: {},
-  });
-
-  const recordings = await models.Recording.findAll({
-    where: {
-      recordingDateTime: {
-        [Op.and]: [{ [Op.gte]: fromDate }, { [Op.lt]: untilDate }],
-      },
-      DeviceId: device.id, // FIXME - What if the device has been registered during this time?
-    },
-  });
-
-  // Get all the recordings for the device in the date range.
-
-  // For each recording, find out where the device was at that time.
-
-  // Assign the station at that location to the recording.
-
-  // user fix-ups are handled automatically, since the DeviceHistory table is the absolute authority here.
-};
-
 export const maybeUpdateDeviceHistory = async (
   device: Device,
   location: LatLng,
   dateTime: Date,
   setBy: DeviceHistorySetBy = "automatic"
-): Promise<void> => {
-  /*
-   TODO:
-   - Handle user fixup (comes in after recordings at a certain time, and means all recordings at from the fixup time until the
-     next location change need to be updated to the fixup location
-   - Handle moving back the earliest occurrence of a location change of recordings come in out of order, or if there is a location change
-     registered via a config change. (sidekick updated the location in the context of a thermal camera).
-   - Handle device re-registration retaining the last known location of the device.
-   */
+): Promise<{
+  stationToAssignToRecording: Station;
+  deviceHistoryEntry: DeviceHistory;
+}> => {
   {
     // Update the device location on config change. (It gets updated elsewhere if a newer recording comes in)
     const lastLocation = device.location;
@@ -425,12 +434,14 @@ export const maybeUpdateDeviceHistory = async (
     // - If there is a later location that is not the same as this, then we'd insert this location
     // so long as there isn't a previous location earlier than this which matches this location.
 
-    // FIXME(ManageStations) - We may have more recent locations here, so we may be moving back a historic entry - and need to
+    // NOTE: We may have more recent locations here, so we may be moving back a historic entry - and need to
     //  update the corresponding station accordingly.
     // If it's a set-by automatic, also check for config or re-register updates that might match it.
+
     const setByArr =
       setBy === "automatic" ? ["automatic", "config", "re-register"] : [setBy];
     let shouldInsertLocation = false;
+    let existingDeviceHistoryEntry;
     const priorLocation = await models.DeviceHistory.findOne({
       where: {
         uuid: device.uuid,
@@ -469,13 +480,18 @@ export const maybeUpdateDeviceHistory = async (
             shouldInsertLocation = true;
           } else if (!locationChanged) {
             // Move later location back to this time.
-            await laterLocation.update({
+            existingDeviceHistoryEntry = await laterLocation.update({
               fromDateTime: dateTime,
+              setBy,
             });
           } else if (locationChanged) {
             shouldInsertLocation = true;
           }
+        } else {
+          existingDeviceHistoryEntry = priorLocation;
         }
+      } else {
+        existingDeviceHistoryEntry = priorLocation;
       }
     } else {
       // Look later
@@ -498,8 +514,9 @@ export const maybeUpdateDeviceHistory = async (
           shouldInsertLocation = true;
         } else if (!locationChanged) {
           // Move later location back to this time.
-          await laterLocation.update({
+          existingDeviceHistoryEntry = await laterLocation.update({
             fromDateTime: dateTime,
+            setBy,
           });
         } else if (locationChanged) {
           shouldInsertLocation = true;
@@ -509,13 +526,10 @@ export const maybeUpdateDeviceHistory = async (
       }
     }
 
-    // FIXME(ManageStations) - what happens for user-defined fix-ups?
-    // TODO(ManageStations): Now, if the device history table has updated, that can mean that the activeAt date of an automatically
-    // created station may need to move back too.
-
     if (shouldInsertLocation) {
-      // Insert this location.
-      await models.DeviceHistory.create({
+      // If we are going to insert a location, then we need to match to existing stations, or create a new station
+      // that is active from this point in time.
+      const newDeviceHistoryEntry = {
         location,
         setBy,
         fromDateTime: dateTime,
@@ -524,11 +538,49 @@ export const maybeUpdateDeviceHistory = async (
         GroupId: device.GroupId,
         saltId: device.saltId,
         uuid: device.uuid,
-      });
+      };
+      let stationToAssign = await tryToMatchLocationToStationInGroup(
+        location,
+        device.GroupId,
+        dateTime
+      );
+      if (!stationToAssign) {
+        // Create new automatic station
+        stationToAssign = (await models.Station.create({
+          name: `New station for ${
+            device.devicename
+          }_${dateTime.toISOString()}`,
+          location,
+          activeAt: dateTime,
+          automatic: true,
+          GroupId: device.GroupId,
+        })) as Station;
+      }
+      (newDeviceHistoryEntry as any).stationId = stationToAssign.id;
+      // Insert this location.
 
-      // TODO(ManageStations)
-      // If we are going to insert a location, then we need to match to existing stations, or create a new station
-      // that is active from this point in time.  Let's ignore retiring stations at the moment.
+      const newDeviceHistory = await models.DeviceHistory.create(
+        newDeviceHistoryEntry
+      );
+      return {
+        stationToAssignToRecording: stationToAssign,
+        deviceHistoryEntry: newDeviceHistory,
+      };
+    } else {
+      const stationToAssign = await models.Station.findByPk(
+        existingDeviceHistoryEntry.stationId
+      );
+      if (existingDeviceHistoryEntry.fromDateTime < stationToAssign.activeAt) {
+        // Now, if the device history table has updated, that can mean that the activeAt date of an automatically
+        // created station may need to move back too, but there shouldn't be recordings that need their station id updated in this instance.
+        await stationToAssign.update({
+          activeAt: existingDeviceHistoryEntry.fromDateTime,
+        });
+      }
+      return {
+        stationToAssignToRecording: stationToAssign,
+        deviceHistoryEntry: existingDeviceHistoryEntry,
+      };
     }
   }
 };
@@ -635,46 +687,6 @@ const getDeviceIdAndGroupIdAtRecordingTime = async (
   return { deviceId: device.id, groupId: device.GroupId };
 };
 
-export const assignStationToRecording = async (
-  recording: Recording,
-  deviceName: string
-): Promise<void> => {
-  const matchingStation = await tryToMatchRecordingToStation(recording);
-  if (matchingStation) {
-    recording.StationId = matchingStation.id;
-    // Update the station last recording time, if it's later than what we have:
-    if (matchingStation) {
-      if (
-        recording.type === RecordingType.Audio &&
-        (!matchingStation.lastAudioRecordingTime ||
-          recording.recordingDateTime > matchingStation.lastAudioRecordingTime)
-      ) {
-        matchingStation.lastAudioRecordingTime = recording.recordingDateTime;
-        await matchingStation.save();
-      } else if (
-        recording.type === RecordingType.ThermalRaw &&
-        (!matchingStation.lastThermalRecordingTime ||
-          recording.recordingDateTime >
-            matchingStation.lastThermalRecordingTime)
-      ) {
-        matchingStation.lastThermalRecordingTime = recording.recordingDateTime;
-        await matchingStation.save();
-      }
-    }
-  } else {
-    // TODO(ManageStations) - We should have a warning if a recording is uploaded without any location.
-    const group = await models.Group.findByPk(recording.GroupId);
-    const newStation = (await models.Station.create({
-      name: `New station for ${deviceName}_${recording.recordingDateTime.toISOString()}`,
-      location: recording.location,
-      activeAt: recording.recordingDateTime,
-      automatic: true,
-    })) as Station;
-    recording.StationId = newStation.id;
-    await group.addStation(newStation);
-  }
-};
-
 export const uploadRawRecording = util.multipartUpload(
   "raw",
   async (
@@ -696,31 +708,67 @@ export const uploadRawRecording = util.multipartUpload(
     if (typeof uploadingDevice.public === "boolean") {
       recording.public = uploadingDevice.public;
     }
-    let fileIsCorrupt: boolean;
     let deviceId: DeviceId;
     let groupId: DeviceId;
     // Check if the file is corrupt and use file metadata if it can be parsed.
-    // Check what group the uploading device (or the device embedded in the recording) was part of at the time the recording was made.
-    if (recording.recordingDateTime) {
-      // We can do these in parallel
-      [fileIsCorrupt, { deviceId, groupId }] = await Promise.all([
-        parseAndMergeEmbeddedFileMetadataIntoRecording(
-          data,
-          uploadedFileData,
-          recording
-        ),
-        getDeviceIdAndGroupIdAtRecordingTime(
+    const fileIsCorrupt = await parseAndMergeEmbeddedFileMetadataIntoRecording(
+      data,
+      uploadedFileData,
+      recording
+    );
+
+    const recordingLocation = recording.location;
+    if (recordingLocation) {
+      const { stationToAssignToRecording, deviceHistoryEntry } =
+        await maybeUpdateDeviceHistory(
           uploadingDevice,
+          recordingLocation,
           recording.recordingDateTime
-        ),
-      ]);
-    } else {
-      // Otherwise, if a recordingDateTime wasn't specified, we need to parse and use the one in the recording metadata.
-      fileIsCorrupt = await parseAndMergeEmbeddedFileMetadataIntoRecording(
-        data,
-        uploadedFileData,
-        recording
-      );
+        );
+      recording.StationId = stationToAssignToRecording.id;
+
+      {
+        // Was there a previous user fixup of the device location, meaning that we need to update the recording location?
+        // If the recording is *outside* the station location, then we set it to the station location.
+        if (
+          latLngApproxDistance(
+            recordingLocation,
+            stationToAssignToRecording.location
+          ) > MAX_DISTANCE_FROM_STATION_FOR_RECORDING
+        ) {
+          recording.location = stationToAssignToRecording.location;
+          console.assert(recording.changed("location"));
+        }
+      }
+
+      {
+        // Update station lastRecordingTimes if needed.
+        if (
+          recording.type === RecordingType.Audio &&
+          (!stationToAssignToRecording.lastAudioRecordingTime ||
+            recording.recordingDateTime >
+              stationToAssignToRecording.lastAudioRecordingTime)
+        ) {
+          stationToAssignToRecording.lastAudioRecordingTime =
+            recording.recordingDateTime;
+          await stationToAssignToRecording.save();
+        } else if (
+          recording.type === RecordingType.ThermalRaw &&
+          (!stationToAssignToRecording.lastThermalRecordingTime ||
+            recording.recordingDateTime >
+              stationToAssignToRecording.lastThermalRecordingTime)
+        ) {
+          stationToAssignToRecording.lastThermalRecordingTime =
+            recording.recordingDateTime;
+          await stationToAssignToRecording.save();
+        }
+      }
+      deviceId = deviceHistoryEntry.DeviceId;
+      groupId = deviceHistoryEntry.GroupId;
+    }
+
+    if (!deviceId && !groupId) {
+      // Check what group the uploading device (or the device embedded in the recording) was part of at the time the recording was made.
       const { deviceId: d, groupId: g } =
         await getDeviceIdAndGroupIdAtRecordingTime(
           uploadingDevice,
@@ -729,18 +777,9 @@ export const uploadRawRecording = util.multipartUpload(
       deviceId = d;
       groupId = g;
     }
+
     recording.DeviceId = deviceId;
     recording.GroupId = groupId;
-
-    const recordingLocation = recording.location;
-    if (recordingLocation) {
-      await maybeUpdateDeviceHistory(
-        uploadingDevice,
-        recordingLocation,
-        recording.recordingDateTime
-      );
-      await assignStationToRecording(recording, uploadingDevice.devicename);
-    }
 
     {
       // Update the device location and lastRecordingTime from the recording data,

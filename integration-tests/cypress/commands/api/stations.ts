@@ -38,7 +38,7 @@ Cypress.Commands.add(
     stationData: ApiCreateStationData,
     fromDate: Date | null = null,
     untilDate: Date | null = null,
-    returnBody= false
+    returnBody = false
   ) => {
     const createBody: any = {
       station: stationData,

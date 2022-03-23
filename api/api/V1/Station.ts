@@ -40,10 +40,10 @@ export const mapStation = (station: Station): ApiStationResponse => {
     id: station.id,
     groupId: station.GroupId,
     groupName: (station as any).Group.groupname,
-    //createdAt: station.createdAt.toISOString(),
+    createdAt: station.createdAt.toISOString(),
     activeAt: station.activeAt.toISOString(),
     location: station.location,
-    //updatedAt: station.updatedAt.toISOString(),
+    updatedAt: station.updatedAt.toISOString(),
     automatic: station.automatic,
   };
   if (station.lastUpdatedById) {

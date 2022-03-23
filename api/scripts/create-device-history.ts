@@ -6,7 +6,8 @@ import models from "@models";
 import { Client } from "pg";
 import process from "process";
 import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
-import { Station } from "@models/Station";
+import { Op } from "sequelize";
+import { RecordingType } from "@typedefs/api/consts";
 
 const dbOptions = (config) => ({
   host: config.host,
@@ -65,20 +66,21 @@ async function main() {
         }
       }
       const automaticLocationChangesForDevice = await pgClient.query(`
-            select distinct on ("DeviceId", location)            
-                (select pt[1] from (select point(location) as pt) as x) as lat,
-                (select pt[0] from (select point(location) as pt) as x) as lng,
-                "recordingDateTime"
-            from
-                "Recordings"
-            where
-                "DeviceId" = ${device.id}
+              select distinct
+              on ("DeviceId", location)
+                  (select pt[1] from (select point(location) as pt) as x) as lat,
+                  (select pt[0] from (select point(location) as pt) as x) as lng,
+                  "recordingDateTime"                
+              from
+                  "Recordings"
+              where
+                  "DeviceId" = ${device.id}
                 and location is not null
-            order by
-                "DeviceId",
-                "location",
-                "recordingDateTime" asc;
-            `);
+              order by
+                  "DeviceId",
+                  "location",
+                  "recordingDateTime" asc;
+          `);
       // For each device, get all recording location changes for the device, and update the device history table
       for (const automaticLocationChangeForDevice of automaticLocationChangesForDevice.rows) {
         if (
@@ -96,25 +98,118 @@ async function main() {
           );
         }
       }
-      // Now that we have "complete" device history, we should be able to create and assign stations automatically.
 
+      // Now that we have "complete" device history, we should be able to stations to recordings.
       // Get all the histories for the device:
-      // const historyEntries = await models.DeviceHistory.findAll({ where: {
-      //     DeviceId: device.id
-      // }});
-      // for (const history of historyEntries) {
-      //     if (history.location !== null) {
-      //         const newStation = (await models.Station.create({
-      //             name: `New station for ${device.devicename}_${history.fromDateTime.toISOString()}`,
-      //             location: history.location,
-      //             activeAt: history.fromDateTime,
-      //             automatic: true,
-      //         })) as Station;
-      //     }
-      // }
-      //break;
+      const historyEntries = await models.DeviceHistory.findAll({
+        where: {
+          DeviceId: device.id,
+          location: { [Op.ne]: null },
+        },
+        order: [["fromDateTime", "ASC"]],
+      });
+      for (let i = 0; i < historyEntries.length; i++) {
+        // Update all the recordings in this time period for this device with the stationId.
+        const history = historyEntries[i];
+        let nextEntry;
+        if (i + 1 < historyEntries.length) {
+          nextEntry = historyEntries[i + 1];
+        }
+        const recordingTimeWindow = nextEntry
+          ? {
+              [Op.and]: [
+                { [Op.gte]: history.fromDateTime },
+                { [Op.lt]: nextEntry.fromDateTime },
+              ],
+            }
+          : { [Op.gte]: history.fromDateTime };
+        await models.Recording.update(
+          { StationId: history.stationId },
+          {
+            where: {
+              DeviceId: history.DeviceId,
+              location: { [Op.ne]: null },
+              recordingDateTime: recordingTimeWindow,
+            },
+          }
+        );
+      }
+
+      // Update device lastRecordingTime and kind
+      const latestRecordingForDevice = await models.Recording.findOne({
+        where: {
+          DeviceId: device.id,
+        },
+        order: [["recordingDateTime", "DESC"]],
+      });
+      if (latestRecordingForDevice) {
+        await device.update({
+          lastRecordingTime: latestRecordingForDevice.recordingDateTime,
+          kind:
+            latestRecordingForDevice.type === "thermalRaw"
+              ? "thermal"
+              : "audio",
+        });
+      }
     }
-    //break;
+    // Update device last(Thermal|Audio)RecordingTime for stations
+    const allStationsPerDeviceType = await pgClient.query(`
+        select distinct
+          on ("StationId", type)
+          "StationId",
+              type,
+              "recordingDateTime"                
+          from
+              "Recordings"
+          where           
+            location is not null               
+          order by                 
+              "StationId", type, "recordingDateTime" desc;
+    `);
+    for (const recording of allStationsPerDeviceType.rows) {
+      if (recording.type === RecordingType.ThermalRaw) {
+        await pgClient.query(
+          `update "Stations" set "lastThermalRecordingTime" = '${recording.recordingDateTime.toISOString()}' where "id" = ${
+            recording.StationId
+          }`
+        );
+      } else if (recording.type === RecordingType.Audio) {
+        await pgClient.query(
+          `update "Stations" set "lastAudioRecordingTime" = '${recording.recordingDateTime.toISOString()}' where "id" = ${
+            recording.StationId
+          }`
+        );
+      }
+    }
+    // Update device last(Thermal|Audio)RecordingTime for groups
+    const allGroupsPerDeviceType = await pgClient.query(`
+        select distinct
+          on ("GroupId", type)
+          "GroupId",
+              type,
+              "recordingDateTime"                
+          from
+              "Recordings"
+          where           
+            location is not null               
+          order by                 
+              "GroupId", type, "recordingDateTime" desc;
+    `);
+    for (const recording of allGroupsPerDeviceType.rows) {
+      if (recording.type === RecordingType.ThermalRaw) {
+        await pgClient.query(
+          `update "Groups" set "lastThermalRecordingTime" = '${recording.recordingDateTime.toISOString()}' where "id" = ${
+            recording.GroupId
+          }`
+        );
+      } else if (recording.type === RecordingType.Audio) {
+        await pgClient.query(
+          `update "Groups" set "lastAudioRecordingTime" = '${recording.recordingDateTime.toISOString()}' where "id" = ${
+            recording.GroupId
+          }`
+        );
+      }
+    }
   }
 }
 

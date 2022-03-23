@@ -33,6 +33,7 @@ import {
   fetchAuthorizedRequiredDevices,
   fetchUnauthorizedRequiredScheduleById,
   fetchAuthorizedRequiredGroupById,
+  parseJSONField,
 } from "../extract-middleware";
 import {
   checkDeviceNameIsUniqueInGroup,
@@ -46,9 +47,16 @@ import {
   integerOfWithDefault,
 } from "../validation-middleware";
 import { Device } from "models/Device";
-import { ApiDeviceResponse } from "@typedefs/api/device";
+import {
+  ApiDeviceLocationFixup,
+  ApiDeviceResponse,
+} from "@typedefs/api/device";
+import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json";
 import logging from "@log";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
+import { jsonSchemaOf } from "@api/schema-validation";
+import { Op } from "sequelize";
+import { DeviceHistory } from "@models/DeviceHistory";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -112,6 +120,11 @@ interface ApiRegisterDeviceRequestBody {
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
   saltId?: number; // Salt ID of device. Will be set as device id if not given.
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceLocationFixupBody {
+  "set-location-at-time": ApiDeviceLocationFixup;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -324,6 +337,133 @@ export default function (app: Application, baseUrl: string) {
           response.locals.device,
           response.locals.viewAsSuperUser
         ),
+        statusCode: 200,
+        messages: ["Completed get device query."],
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/devices/:deviceId Fix a device location at a given time
+   * @apiName FixupDeviceLocationAtTimeById
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiInterface {apiBody::ApiDeviceLocationFixupBody} recording The recording data.
+   *
+   * @apiDescription A group admin can fix a location of a device at a particular time.
+   * If needed, a new station will be created.
+   *
+   * Once a new station is selected for the device at that time - and until such a time as the device moves again,
+   * recordings from the device for that time interval will be re-assigned to that station, and have their location
+   * set to the location of the station.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/device/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      body("set-location-at-time").custom(
+        jsonSchemaOf(ApiDeviceLocationFixupSchema)
+      ),
+    ]),
+    fetchAdminAuthorizedRequiredDeviceById(param("id")),
+    parseJSONField(body("set-location-at-time")),
+    async (request: Request, response: Response) => {
+      const { location, fromDateTime } =
+        response.locals["set-location-at-time"];
+      const device = response.locals.device;
+
+      // Location will either be the exact location of an existing station in this group,
+      // or if not, will create a new station and assign that.
+      let station = await models.Station.findOne({
+        where: {
+          location,
+          GroupId: device.GroupId,
+          activeAt: { [Op.gte]: fromDateTime },
+          retiredAt: {
+            [Op.and]: [{ [Op.eq]: null }, { [Op.lt]: fromDateTime }],
+          },
+        },
+      });
+
+      if (!station) {
+        station = await models.Station.create({
+          GroupId: device.GroupId,
+          activeAt: fromDateTime,
+          location,
+          name: `New station for ${
+            device.devicename
+          }_${fromDateTime.toISOString()}`,
+          automatic: true,
+        });
+      }
+
+      // Check if there's already a device entry at that time:
+      const deviceHistoryEntry = await models.DeviceHistory.findOne({
+        where: {
+          uuid: device.uuid,
+          fromDateTime,
+        },
+      });
+      if (deviceHistoryEntry) {
+        await deviceHistoryEntry.update({
+          setBy: "user",
+          location,
+          stationId: station.id,
+        });
+      } else {
+        await models.DeviceHistory.create({
+          uuid: device.uuid,
+          saltId: device.saltId,
+          DeviceId: device.id,
+          fromDateTime,
+          location,
+          setBy: "user",
+          GroupId: device.GroupId,
+          deviceName: device.deviceName,
+          stationId: station.id,
+        });
+      }
+
+      // Get the earliest history location that's later than our current fromDateTime, if any
+      const laterLocation: DeviceHistory = await models.DeviceHistory.findOne({
+        where: {
+          uuid: device.uuid,
+          GroupId: device.GroupId,
+          location: { [Op.ne]: null },
+          fromDateTime: { [Op.gt]: fromDateTime },
+        },
+        order: [["fromDateTime", "ASC"]],
+      });
+
+      const recordingTimeWindow = {
+        DeviceId: device.id,
+        recordingDateTime: { [Op.gte]: fromDateTime },
+      };
+      if (laterLocation) {
+        (recordingTimeWindow.recordingDateTime as any) = {
+          [Op.and]: [
+            { [Op.gte]: fromDateTime },
+            { [Op.lt]: laterLocation.fromDateTime },
+          ],
+        };
+        await models.Recording.update(
+          {
+            location,
+            StationId: station.id,
+          },
+          {
+            where: recordingTimeWindow,
+          }
+        );
+      }
+
+      return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Completed get device query."],
       });

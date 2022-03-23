@@ -1035,7 +1035,7 @@ export default (app: Application, baseUrl: string) => {
    * @api {patch} /api/v1/recordings/:id Update an existing recording
    * @apiName UpdateRecording
    * @apiGroup Recordings
-   * @apiDescription This call is used for updating fields of a previously
+   * @apiDescription This call is used for updating some selected fields of a previously
    * submitted recording.
    *
    * @apiUse V1UserAuthorizationHeader
@@ -1056,8 +1056,6 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     parseJSONField(body("updates")),
     async (request: Request, response: Response) => {
-      // FIXME(ManageStations) - If update includes location, rematch stations.  Maybe this should
-      //  be part of the setter for location, but might be too magic?
       await response.locals.recording.update(
         response.locals.updates as ApiRecordingUpdateRequest
       );

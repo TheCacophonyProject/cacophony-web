@@ -30,6 +30,8 @@ import {
   UserId,
 } from "@typedefs/api/common";
 import util from "./util/util";
+import { Station } from "@models/Station";
+import { tryToMatchLocationToStationInGroup } from "@api/V1/recordingUtil";
 
 const Op = Sequelize.Op;
 
@@ -376,6 +378,16 @@ order by hour;
   ): Promise<Device | false> {
     let newDevice: Device;
     const now = new Date();
+    let stationToAssign;
+
+    if (this.location) {
+      // NOTE: This needs to happen outside the transaction to succeed.
+      stationToAssign = await tryToMatchLocationToStationInGroup(
+        this.location,
+        newGroup.id,
+        now
+      );
+    }
     try {
       await sequelize.transaction(
         {
@@ -395,7 +407,7 @@ order by hour;
             throw new Error();
           }
           await this.update({ active: false }, { transaction: t });
-
+          // We need to either find an existing station for this DeviceHistory entry, or create a new one:
           // NOTE: When a device is re-registered it keeps the last known location.
           newDevice = (await models.Device.create(
             {
@@ -413,21 +425,37 @@ order by hour;
             }
           )) as Device;
 
-          await models.DeviceHistory.create(
-            {
-              GroupId: newGroup.id,
-              DeviceId: newDevice.id,
-              location: this.location,
-              fromDateTime: now,
-              setBy: "re-register",
-              deviceName: newName,
-              uuid: newDevice.uuid,
-              saltId: newDevice.saltId,
-            },
-            {
-              transaction: t,
-            }
-          );
+          const newDeviceHistoryEntry = {
+            GroupId: newGroup.id,
+            DeviceId: newDevice.id,
+            location: this.location,
+            fromDateTime: now,
+            setBy: "re-register",
+            deviceName: newName,
+            uuid: newDevice.uuid,
+            saltId: newDevice.saltId,
+          };
+
+          if (this.location && !stationToAssign) {
+            // Create new automatic station
+            stationToAssign = (await models.Station.create(
+              {
+                name: `New station for ${newName}_${now.toISOString()}`,
+                location: this.location,
+                activeAt: now,
+                automatic: true,
+                GroupId: newGroup.id,
+              },
+              { transaction: t }
+            )) as Station;
+          }
+          if (stationToAssign) {
+            (newDeviceHistoryEntry as any).stationId = stationToAssign.id;
+          }
+
+          await models.DeviceHistory.create(newDeviceHistoryEntry, {
+            transaction: t,
+          });
         }
       );
     } catch (e) {

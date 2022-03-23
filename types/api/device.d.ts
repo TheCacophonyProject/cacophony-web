@@ -33,3 +33,8 @@ export interface ApiDeviceResponse {
   scheduleId?: ScheduleId;
   users?: ApiGroupUserResponse[];
 }
+
+export interface ApiDeviceLocationFixup {
+  location: LatLng,
+  fromDateTime: IsoFormattedDateString
+}

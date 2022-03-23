@@ -34,10 +34,13 @@ describe("Recordings - reprocessing tests", () => {
   const suPassword = getCreds("superuser")["password"];
 
   //TODO: workaround for issue 88. Remove rawMimeType from exclude list once fixed
-  const EXCLUDE_IDS_AND_MIME = EXCLUDE_IDS.concat([".rawMimeType"]);
+  const EXCLUDE_IDS_AND_MIME = EXCLUDE_IDS.concat([
+    ".rawMimeType",
+    ".location",
+  ]);
 
   //Do not validate keys
-  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
+  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".location"];
 
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)

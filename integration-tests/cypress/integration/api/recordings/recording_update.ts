@@ -50,7 +50,6 @@ describe("Update recordings", () => {
       algorithm: 99999,
       previewSecs: null,
     },
-    location: [-46.29115, 170.30835],
   };
 
   before(() => {
@@ -242,10 +241,6 @@ function updateExpected(expectedRecording: any) {
   //expectedRecording.airplaneModeOn= true;
   //expectedRecording.type= RecordingType.Audio;
   expectedRecording.comment = "This is a new comment";
-  expectedRecording.location = {
-    lat: -46.29115,
-    lng: 170.30835,
-  };
   //expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};
   //TODO: Issue 99 behaviour here and in fileProcessing inconsistent.  fileProcessing merges additionalMetedata here we replace it
   expectedRecording.additionalMetadata = {

@@ -12,7 +12,7 @@ module.exports = {
     });
     await queryInterface.addColumn("Stations", "automatic", {
       type: Sequelize.BOOLEAN,
-      comment: "Set if station is automatically created by recording upload in a new location",
+      comment: "Set if station is automatically created by recording upload in a new location - this is a flag to let the UI know it needs renaming",
       defaultValue: false,
       allowNull: false,
     });
@@ -114,8 +114,7 @@ module.exports = {
       }
     });
 
-    // TODO(ManageStations): Create stations and device history from Recordings, test against real DB dumps
-    // Should we do this migration online?
+    // NOTE: Create stations and device history from Recordings, migration happens online via /scripts/create-device-history
 
     await util.migrationAddBelongsTo(queryInterface, "DeviceHistory", "Devices", "strict");
     await util.migrationAddBelongsTo(queryInterface, "DeviceHistory", "Groups", "strict");

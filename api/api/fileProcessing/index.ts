@@ -276,6 +276,7 @@ export default function (app: Application) {
         if (result && result.fieldUpdates) {
           // NOTE: We used to re-match stations here if location changed, but really there's no good reason
           //  why file processing should update the location.
+          delete result.fieldUpdates.location;
           _.merge(recording, result.fieldUpdates);
           for (const [key, value] of Object.entries(recording.dataValues)) {
             if (typeof value === "object" && key in result.fieldUpdates) {

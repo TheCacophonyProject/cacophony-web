@@ -626,7 +626,6 @@ from (
     }
   };
 
-  // TODO(ManageStations) - Move to LatLngUtils
   function reduceLatLonPrecision(latLng: LatLng, precision: number): LatLng {
     const resolution = (precision * 360) / 40000000;
     const half_resolution = resolution / 2;

@@ -29,14 +29,14 @@ export interface ApiStationResponse {
   name: string;
   location: LatLng;
   lastUpdatedById?: UserId; // Not set if station was automatically created.
-  //createdAt: IsoFormattedDateString;
+  createdAt: IsoFormattedDateString;
   activeAt: IsoFormattedDateString;
   retiredAt?: IsoFormattedDateString;
   lastThermalRecordingTime?: IsoFormattedDateString;
   lastAudioRecordingTime?: IsoFormattedDateString;
   automatic: boolean;
   settings?: ApiStationSettings;
-  //updatedAt: IsoFormattedDateString;
+  updatedAt: IsoFormattedDateString;
   groupId: GroupId;
   groupName: string;
 }

@@ -1,6 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  checkRecording,
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
@@ -36,17 +35,11 @@ TODO(ManageStations):
 - Add a station with a start time to back-date to.
  */
 
-describe.only("Stations: add and remove", () => {
+describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";
   const group = "add_stations";
 
   const baseLocation = { lat: -43.62367659982, lng: 172.62646754804 };
-
-  const forestLatLong = { lat: -43.62367659982, lng: 172.62646754804 };
-  const forestLatLong2 = { lat: -44.62367659982, lng: 172.62646754804 };
-  const forestLatLong3 = { lat: -45.62367659982, lng: 172.62646754804 };
-  const forestLatLong4 = { lat: -46.62367659982, lng: 172.62646754804 };
-  const forestLatLong5 = { lat: -47.62367659982, lng: 172.62646754804 };
 
   let numGeneratedLocations = -1;
 
@@ -57,9 +50,6 @@ describe.only("Stations: add and remove", () => {
       lng: baseLocation.lng - numGeneratedLocations,
     };
   };
-  // const date = "2021-05-25T09:01:00.000Z";
-  // const earlier = "2021-05-25T08:00:00.000Z";
-  // const later = "2021-05-25T10:00:00.000Z";
 
   before(() => {
     cy.testCreateUserAndGroup(Josie, group);
@@ -75,6 +65,9 @@ describe.only("Stations: add and remove", () => {
       location,
       name: NOT_NULL_STRING,
       id: NOT_NULL,
+      lastThermalRecordingTime: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
       activeAt: recordingTime.toISOString(),
       automatic: true,
       groupId: getCreds(group).id,
@@ -115,6 +108,8 @@ describe.only("Stations: add and remove", () => {
       name: stationName,
       id: NOT_NULL,
       activeAt: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
       automatic: false,
       groupId: getCreds(group).id,
       groupName: getTestName(group),
@@ -135,6 +130,8 @@ describe.only("Stations: add and remove", () => {
       name: stationName,
       id: NOT_NULL,
       activeAt: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
       automatic: false,
       groupId: getCreds(group).id,
       groupName: getTestName(group),
@@ -162,6 +159,8 @@ describe.only("Stations: add and remove", () => {
       name: stationName,
       id: NOT_NULL,
       activeAt: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
       automatic: false,
       groupId: getCreds(group).id,
       groupName: getTestName(group),
@@ -195,6 +194,8 @@ describe.only("Stations: add and remove", () => {
       name: stationName,
       id: NOT_NULL,
       activeAt: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
       automatic: false,
       retiredAt: now.toISOString(),
       groupId: getCreds(group).id,
@@ -218,7 +219,7 @@ describe.only("Stations: add and remove", () => {
   });
 
   it("create station with a startDate (and optionally an end-date) should try to match existing recordings on creation.", () => {
-      //
+    //
   });
 
   it("Adding a new recording within the radius of an existing retired station automatically creates a new station and assigns it to the recording", () => {
@@ -256,12 +257,19 @@ describe.only("Stations: add and remove", () => {
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
 
     cy.testCreateStation(
+      group,
+      Josie,
+      { name: stationName1, ...location },
+      oneMonthAgo // Active from one month ago
+    ).then(() => {
+      cy.testCreateStation(
         group,
         Josie,
-        { name: stationName1, ...location },
-        oneMonthAgo // Active from one month ago
-    ).then(() => {
-      cy.testCreateStation(group, Josie, { name: stationName2, ...location }, null, null, true).then((response) => {
+        { name: stationName2, ...location },
+        null,
+        null,
+        true
+      ).then((response) => {
         // TODO: Make sure we got a proximity warning.
       });
     });
@@ -277,14 +285,12 @@ describe.only("Stations: add and remove", () => {
     const now = new Date();
 
     cy.testCreateStation(
-        group,
-        Josie,
-        { name: stationName, ...location },
-        oneMonthAgo,
-        oneWeekAgo
-    ).then(() => {
-
-    });
+      group,
+      Josie,
+      { name: stationName, ...location },
+      oneMonthAgo,
+      oneWeekAgo
+    ).then(() => {});
 
     // For now, when you delete a station, recordings should not be deleted as well,
 

@@ -577,7 +577,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("station")),
     async (request: Request, response: Response) => {
-      // TODO(ManageStations): Check for other non-retired stations too close to this new station,
+      // FIXME(ManageStations): Check for other non-retired stations too close to this new station,
       //  warn if there are any.
 
       // NOTE: If we create a new station, do we want to also have an optional date range that
@@ -592,7 +592,6 @@ export default function (app: Application, baseUrl: string) {
         retiredAt: request.body["until-date"] || null,
         automatic: false,
       });
-      logger.warning("Created station", newStation.id);
       await response.locals.group.addStation(newStation);
       return responseUtil.send(response, {
         statusCode: 200,
@@ -688,7 +687,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  app.post(
+  app.patch(
     `${apiUrl}/:groupIdOrName/my-settings`,
     extractJwtAuthorizedUser,
     validateFields([
@@ -716,7 +715,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  app.post(
+  app.patch(
     `${apiUrl}/:groupIdOrName/group-settings`,
     extractJwtAuthorizedUser,
     validateFields([
