@@ -24,6 +24,7 @@ import modelsUtil from "@models/util/util";
 import responseUtil from "./responseUtil";
 import { ClientError } from "../customErrors";
 import { Application } from "express";
+import {SmartStream} from "./SmartStream";
 
 export default function (app: Application, baseUrl: string) {
   /**
@@ -44,12 +45,11 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-
   app.get(
     `${baseUrl}/signedUrl`,
     [auth.signedUrl],
     middleware.requestWrapper(async (request, response) => {
-      const mimeType = request.jwtDecoded.mimeType || "";
+      let mimeType = request.jwtDecoded.mimeType || "";
       const filename = request.jwtDecoded.filename || "file";
 
       const key = request.jwtDecoded.key;
@@ -61,7 +61,6 @@ export default function (app: Application, baseUrl: string) {
       const params = {
         Key: key,
       };
-
       s3.getObject(params, function (err, data) {
         if (err) {
           log.error("Error with s3 getObject.");
@@ -77,6 +76,9 @@ export default function (app: Application, baseUrl: string) {
           response.setHeader("Content-type", mimeType);
           response.setHeader("Content-Length", data.ContentLength);
           response.write(data.Body, "binary");
+          // const bufStream = new stream.PassThrough();
+          // bufStream.end(data.body);
+          // bufStream.pipe(response);
           return response.end(null, "binary");
         }
 

@@ -360,6 +360,11 @@ export const uploadRawRecording = util.multipartUpload(
     data: any, // FIXME - At least partially validate this data
     key: string
   ): Promise<Recording> => {
+    let irType = false
+    if (data.type ==="irRaw"){
+      data.type = "thermalRaw"
+      irType = true
+    }
     const recording = models.Recording.buildSafely(data);
 
     if (!uploadingDevice) {
@@ -376,7 +381,7 @@ export const uploadRawRecording = util.multipartUpload(
     }
 
     let fileIsCorrupt = false;
-    if (data.type === "thermalRaw") {
+    if (data.type === "thermalRaw" ) {
       // Read the file back out from s3 and decode/parse it.
       const fileData = await modelsUtil
         .openS3()
@@ -387,23 +392,24 @@ export const uploadRawRecording = util.multipartUpload(
         .catch((err) => {
           return err;
         });
-      let metadata;
+      let metadata = {} as any;
       {
         // TODO - see if this is faster with synthesised test cptv files
-
-        const decoder = new CptvDecoder();
-        metadata = await decoder.getBytesMetadata(
-          new Uint8Array(fileData.Body)
-        );
-        // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
-        fileIsCorrupt = await decoder.hasStreamError();
-        if (fileIsCorrupt) {
-          log.warning(
-            "CPTV Stream error: %s - mark as Corrupt and don't queue for processing",
-            await decoder.getStreamError()
+        if (!irType){
+          const decoder = new CptvDecoder();
+          metadata = await decoder.getBytesMetadata(
+            new Uint8Array(fileData.Body)
           );
+          // If true, the parser failed for some reason, so the file is probably corrupt, and should be investigated later.
+          fileIsCorrupt = await decoder.hasStreamError();
+          if (fileIsCorrupt) {
+            log.warning(
+              "CPTV Stream error: %s - mark as Corrupt and don't queue for processing",
+              await decoder.getStreamError()
+            );
+          }
+          decoder.close();
         }
-        decoder.close();
       }
 
       if (
@@ -448,6 +454,9 @@ export const uploadRawRecording = util.multipartUpload(
 
     recording.rawFileKey = key;
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
+    if(irType){
+      recording.rawMimeType = "video/mp4"
+    }
     recording.DeviceId = uploadingDevice.id;
     recording.GroupId = uploadingDevice.GroupId;
     const matchingStation = await tryToMatchRecordingToStation(recording);
@@ -750,10 +759,13 @@ export function signedToken(key, file, mimeType) {
 
 function guessRawMimeType(type, filename) {
   const mimeType = mime.getType(filename);
+  console.log("MIME TYPE FOR THIS IS", mimeType, filename)
   if (mimeType) {
     return mimeType;
   }
   switch (type) {
+    case "irRaw":
+      return "video/mp4"
     case "thermalRaw":
       return "application/x-cptv";
     case "audio":

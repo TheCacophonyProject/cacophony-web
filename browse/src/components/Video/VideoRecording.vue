@@ -4,25 +4,13 @@
   >
     <b-row class="no-gutters">
       <b-col cols="12" lg="8">
-        <CptvPlayer
-          ref="player"
-          :cptv-url="videoRawUrl"
-          :cptv-size="videoRawSize"
+        <ThermalVideoPlayer
+          ref="thermalPlayer"
+          :video-url="videoRawUrl"
           :tracks="tracks"
-          :user-files="false"
-          :recording-id="recording.id"
-          :known-duration="recording.duration"
+          @trackSelected="trackSelected"
           :current-track="selectedTrack"
-          :colours="colours"
-          :recently-added-tag="recentlyAddedTrackTag"
-          :can-go-backwards="canGoBackwardInSearch"
-          :can-go-forwards="canGoForwardInSearch"
-          :export-requested="requestedExport"
-          @track-selected="trackSelected"
-          @ready-to-play="playerReady"
           @request-next-recording="nextRecording"
-          @request-prev-recording="prevRecording"
-          @export-complete="requestedExport = false"
         />
       </b-col>
       <b-col cols="12" lg="4">
@@ -117,6 +105,8 @@
 </template>
 
 <script lang="ts">
+
+import ThermalVideoPlayer from "./ThermalVideoPlayer.vue";
 /* eslint-disable no-console */
 import RecordingControls from "./RecordingControls.vue";
 import TrackInfo from "./Track.vue";
@@ -138,6 +128,7 @@ import DefaultLabels, { FILTERED_TOOLTIP } from "../../const";
 export default {
   name: "VideoRecording",
   components: {
+    ThermalVideoPlayer,
     RecordingControls,
     RecordingProperties,
     TrackInfo,
@@ -163,6 +154,16 @@ export default {
   },
   data() {
     return {
+      playerOptions: {
+        // videojs options
+        muted: true,
+        language: 'en',
+        playbackRates: [0.7, 1.0, 1.5, 2.0],
+        sources: [{
+          type: "video/mp4",
+          src: this.videoRawUrl + "#.mp4",
+        }],
+      },
       showAddObservation: false,
       selectedTrack: null,
       recentlyAddedTrackTag: null,
@@ -298,6 +299,22 @@ export default {
     },
   },
   methods: {
+    orderTracks() {
+  return ([...this.tracks] || []).sort(
+    (a, b) => a.start - b.end
+  );
+},
+getSelectedTrack() {
+     if (this.$route.params.trackid) {
+       const index = this.orderTracks().findIndex(
+         (track) => track.id == this.$route.params.trackid
+       );
+       if (index > -1) {
+         return index;
+       }
+     }
+     return 0;
+   },
     async reprocess() {
       const { success } = await api.recording.reprocess(this.recordingId);
       if (success) {
