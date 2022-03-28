@@ -759,7 +759,6 @@ export function signedToken(key, file, mimeType) {
 
 function guessRawMimeType(type, filename) {
   const mimeType = mime.getType(filename);
-  console.log("MIME TYPE FOR THIS IS", mimeType, filename);
   if (mimeType) {
     return mimeType;
   }

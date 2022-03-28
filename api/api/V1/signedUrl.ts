@@ -75,9 +75,6 @@ export default function (app: Application, baseUrl: string) {
           response.setHeader("Content-type", mimeType);
           response.setHeader("Content-Length", data.ContentLength);
           response.write(data.Body, "binary");
-          // const bufStream = new stream.PassThrough();
-          // bufStream.end(data.body);
-          // bufStream.pipe(response);
           return response.end(null, "binary");
         }
 

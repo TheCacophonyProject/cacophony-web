@@ -1141,7 +1141,6 @@ export default (app: Application, baseUrl: string) => {
         userId: response.locals.requestUser.id,
         ...response.locals.data,
       };
-      console.log("new track with", data);
 
       const track = await response.locals.recording.createTrack({
         data,
