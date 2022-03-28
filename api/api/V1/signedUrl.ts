@@ -24,7 +24,6 @@ import modelsUtil from "@models/util/util";
 import responseUtil from "./responseUtil";
 import { ClientError } from "../customErrors";
 import { Application } from "express";
-import { SmartStream } from "./SmartStream";
 
 export default function (app: Application, baseUrl: string) {
   /**
