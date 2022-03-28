@@ -63,7 +63,7 @@ interface TrackClassification {
 
 interface RawTrack {
   id: integer;
-  tracker_version: integer;
+  tracker_version: string;
   start_s: Seconds;
   end_s: Seconds;
   num_frames: integer;
@@ -78,7 +78,7 @@ interface RawTrack {
 }
 
 export interface MinimalTrackRequestData {
-  tracker_version?: integer;
+  tracker_version?: string;
   start_s: Seconds;
   end_s: Seconds;
 
@@ -120,7 +120,7 @@ export interface ClassifierRawResult {
   end_time: IsoFormattedDateString;
   tracking_time: Seconds;
   algorithm: {
-    tracker_version: integer;
+    tracker_version: string;
     tracker_config: {
       background_calc: "preview";
       motion_config: {
