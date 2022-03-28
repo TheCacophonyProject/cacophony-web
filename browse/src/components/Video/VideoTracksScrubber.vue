@@ -123,9 +123,7 @@ export default {
       return `${ratio * this.scrubberWidth}px`;
     },
     getOffsetForTrack(track: Track): string {
-      return `${
-        this.getOffsetForTime(track.start) + this.sidePadding
-      }px`;
+      return `${this.getOffsetForTime(track.start) + this.sidePadding}px`;
     },
     getOffsetForTime(time: number): number {
       const pixelsPerSecond = this.scrubberWidth / this.duration;

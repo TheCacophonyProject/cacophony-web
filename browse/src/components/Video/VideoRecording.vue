@@ -105,12 +105,10 @@
 </template>
 
 <script lang="ts">
-
 import ThermalVideoPlayer from "./ThermalVideoPlayer.vue";
 /* eslint-disable no-console */
 import RecordingControls from "./RecordingControls.vue";
 import TrackInfo from "./Track.vue";
-import CptvPlayer from "cptv-player-vue/src/CptvPlayer.vue";
 import RecordingProperties from "./RecordingProperties.vue";
 import { TagColours, WALLABY_GROUP } from "@/const";
 import api from "@/api";
@@ -132,7 +130,6 @@ export default {
     RecordingControls,
     RecordingProperties,
     TrackInfo,
-    CptvPlayer,
   },
   props: {
     trackId: {
@@ -157,12 +154,14 @@ export default {
       playerOptions: {
         // videojs options
         muted: true,
-        language: 'en',
+        language: "en",
         playbackRates: [0.7, 1.0, 1.5, 2.0],
-        sources: [{
-          type: "video/mp4",
-          src: this.videoRawUrl + "#.mp4",
-        }],
+        sources: [
+          {
+            type: "video/mp4",
+            src: this.videoRawUrl + "#.mp4",
+          },
+        ],
       },
       showAddObservation: false,
       selectedTrack: null,
@@ -300,21 +299,19 @@ export default {
   },
   methods: {
     orderTracks() {
-  return ([...this.tracks] || []).sort(
-    (a, b) => a.start - b.end
-  );
-},
-getSelectedTrack() {
-     if (this.$route.params.trackid) {
-       const index = this.orderTracks().findIndex(
-         (track) => track.id == this.$route.params.trackid
-       );
-       if (index > -1) {
-         return index;
-       }
-     }
-     return 0;
-   },
+      return ([...this.tracks] || []).sort((a, b) => a.start - b.end);
+    },
+    getSelectedTrack() {
+      if (this.$route.params.trackid) {
+        const index = this.orderTracks().findIndex(
+          (track) => track.id == this.$route.params.trackid
+        );
+        if (index > -1) {
+          return index;
+        }
+      }
+      return 0;
+    },
     async reprocess() {
       const { success } = await api.recording.reprocess(this.recordingId);
       if (success) {

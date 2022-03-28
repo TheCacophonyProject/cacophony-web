@@ -24,7 +24,7 @@ import modelsUtil from "@models/util/util";
 import responseUtil from "./responseUtil";
 import { ClientError } from "../customErrors";
 import { Application } from "express";
-import {SmartStream} from "./SmartStream";
+import { SmartStream } from "./SmartStream";
 
 export default function (app: Application, baseUrl: string) {
   /**
@@ -49,7 +49,7 @@ export default function (app: Application, baseUrl: string) {
     `${baseUrl}/signedUrl`,
     [auth.signedUrl],
     middleware.requestWrapper(async (request, response) => {
-      let mimeType = request.jwtDecoded.mimeType || "";
+      const mimeType = request.jwtDecoded.mimeType || "";
       const filename = request.jwtDecoded.filename || "file";
 
       const key = request.jwtDecoded.key;

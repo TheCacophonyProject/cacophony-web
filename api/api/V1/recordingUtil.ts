@@ -360,10 +360,10 @@ export const uploadRawRecording = util.multipartUpload(
     data: any, // FIXME - At least partially validate this data
     key: string
   ): Promise<Recording> => {
-    let irType = false
-    if (data.type ==="irRaw"){
-      data.type = "thermalRaw"
-      irType = true
+    let irType = false;
+    if (data.type === "irRaw") {
+      data.type = "thermalRaw";
+      irType = true;
     }
     const recording = models.Recording.buildSafely(data);
 
@@ -381,7 +381,7 @@ export const uploadRawRecording = util.multipartUpload(
     }
 
     let fileIsCorrupt = false;
-    if (data.type === "thermalRaw" ) {
+    if (data.type === "thermalRaw") {
       // Read the file back out from s3 and decode/parse it.
       const fileData = await modelsUtil
         .openS3()
@@ -395,7 +395,7 @@ export const uploadRawRecording = util.multipartUpload(
       let metadata = {} as any;
       {
         // TODO - see if this is faster with synthesised test cptv files
-        if (!irType){
+        if (!irType) {
           const decoder = new CptvDecoder();
           metadata = await decoder.getBytesMetadata(
             new Uint8Array(fileData.Body)
@@ -454,8 +454,8 @@ export const uploadRawRecording = util.multipartUpload(
 
     recording.rawFileKey = key;
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
-    if(irType){
-      recording.rawMimeType = "video/mp4"
+    if (irType) {
+      recording.rawMimeType = "video/mp4";
     }
     recording.DeviceId = uploadingDevice.id;
     recording.GroupId = uploadingDevice.GroupId;
@@ -759,13 +759,13 @@ export function signedToken(key, file, mimeType) {
 
 function guessRawMimeType(type, filename) {
   const mimeType = mime.getType(filename);
-  console.log("MIME TYPE FOR THIS IS", mimeType, filename)
+  console.log("MIME TYPE FOR THIS IS", mimeType, filename);
   if (mimeType) {
     return mimeType;
   }
   switch (type) {
     case "irRaw":
-      return "video/mp4"
+      return "video/mp4";
     case "thermalRaw":
       return "application/x-cptv";
     case "audio":

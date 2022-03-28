@@ -48,7 +48,7 @@
       :duration="duration"
       :tracks="tracks"
       :current-video-time="currentVideoTime"
-      :current-track="currentTrack? currentTrack.trackIndex : 0"
+      :current-track="currentTrack ? currentTrack.trackIndex : 0"
       :canvas-width="canvasWidth"
       :side-padding="vjsButtonWidth"
       @start-scrub="startScrub"
@@ -253,10 +253,12 @@ export default {
     },
     selectTrack() {
       this.lastDisplayedVideoTime = -1;
-      if (this.tracks &&this.currentTrack &&  this.currentTrack < this.tracks.length) {
-        this.setTimeAndRedraw(
-          this.currentTrack.start + 0.01
-        );
+      if (
+        this.tracks &&
+        this.currentTrack &&
+        this.currentTrack < this.tracks.length
+      ) {
+        this.setTimeAndRedraw(this.currentTrack.start + 0.01);
       }
     },
     onResize() {
@@ -269,7 +271,7 @@ export default {
     },
     initOverlayCanvas() {
       const WIDTH = 640;
-      const  HEIGHT = 480;
+      const HEIGHT = 480;
       this.canvasWidth = this.$refs.container.clientWidth;
       this.scale = this.canvasWidth / WIDTH;
       this.canvasHeight = this.scale * HEIGHT + 30;
@@ -317,7 +319,7 @@ export default {
           const x = event.x - canvasOffset.x;
           const y = event.y - canvasOffset.y;
           const hitRect = hitTestPos(x, y);
-          const hitIndex = this.tracks[hitRect.trackIndex]
+          const hitIndex = this.tracks[hitRect.trackIndex];
 
           if (hitRect && this.currentTrack !== this.tracks[hitIndex]) {
             this.$emit("trackSelected", this.currentTrack);
@@ -357,7 +359,8 @@ export default {
     drawRectWithText(context, { trackIndex, rectWidth, rectHeight, x, y }) {
       const hitIndex = this.tracks[trackIndex];
       context.strokeStyle = this.colours[hitIndex % this.colours.length];
-      const selected = this.currentTrack &&  this.currentTrack.trackIndex === hitIndex;
+      const selected =
+        this.currentTrack && this.currentTrack.trackIndex === hitIndex;
       const lineWidth = selected ? 3 : 1;
       const halfLineWidth = lineWidth / 2;
       context.lineWidth = lineWidth;
@@ -367,10 +370,13 @@ export default {
         rectWidth + halfLineWidth,
         rectHeight + halfLineWidth
       );
-      console.log("drawing rect", x - halfLineWidth,
-      y - halfLineWidth,
-      rectWidth + halfLineWidth,
-      rectHeight + halfLineWidth)
+      console.log(
+        "drawing rect",
+        x - halfLineWidth,
+        y - halfLineWidth,
+        rectWidth + halfLineWidth,
+        rectHeight + halfLineWidth
+      );
 
       if (selected) {
         context.font = "12px Verdana";
@@ -390,7 +396,7 @@ export default {
     getVideoFrameDataForAllTracksAtTime(currentTime, currentTrackOnly) {
       const search = (positions, currentFrame) => {
         let i = positions.length - 1;
-        while (positions[i] && positions[i].frameNumber> currentTime) {
+        while (positions[i] && positions[i].frameNumber > currentTime) {
           i--;
         }
         i = Math.max(0, i);
@@ -410,21 +416,21 @@ export default {
       }
       const frameTime = 1 / 10;
       const currentFrame = Math.floor(this.currentVideoTime / frameTime);
-      let data =  tracks
+      const data = tracks
         .filter(
-        (track) =>
-            track.start <= currentTime && track.end >= currentTime
-        ).map(( track, trackIndex) => {
+          (track) => track.start <= currentTime && track.end >= currentTime
+        )
+        .map((track, trackIndex) => {
           const item = search(track.positions, currentFrame);
           return {
             rectWidth: item.width * this.scale,
-            rectHeight:item.height * this.scale,
+            rectHeight: item.height * this.scale,
             x: item.x * this.scale,
             y: item.y * this.scale,
             trackIndex,
           };
         });
-      return data
+      return data;
     },
     draw() {
       if (this.videoJsPlayer() && this.htmlPlayer) {
@@ -566,7 +572,6 @@ export default {
 }
 </style>
 <style scoped lang="scss">
-
 @import "~video.js/dist/video-js.css";
 </style>
 <!-- <style src="video.js/dist/video-js.css"></style> -->
