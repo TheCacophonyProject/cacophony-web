@@ -370,13 +370,6 @@ export default {
         rectWidth + halfLineWidth,
         rectHeight + halfLineWidth
       );
-      console.log(
-        "drawing rect",
-        x - halfLineWidth,
-        y - halfLineWidth,
-        rectWidth + halfLineWidth,
-        rectHeight + halfLineWidth
-      );
 
       if (selected) {
         context.font = "12px Verdana";
@@ -396,7 +389,7 @@ export default {
     getVideoFrameDataForAllTracksAtTime(currentTime, currentTrackOnly) {
       const search = (positions, currentFrame) => {
         let i = positions.length - 1;
-        while (positions[i] && positions[i].frameNumber > currentTime) {
+        while (positions[i] && positions[i].frameNumber > currentFrame) {
           i--;
         }
         i = Math.max(0, i);
