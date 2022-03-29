@@ -61,7 +61,6 @@ interface TrackClassification {
   message: string;
 }
 
-
 interface RawTrack {
   id: integer;
   tracker_version: string;
@@ -76,6 +75,7 @@ interface RawTrack {
   // Fields used in api when calculating good tracks/tags
   confidence?: FloatZeroToOne;
   message?: string;
+  crap?: string;
 }
 
 export interface MinimalTrackRequestData {
