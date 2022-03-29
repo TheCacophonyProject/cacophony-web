@@ -124,7 +124,7 @@ interface ApiRegisterDeviceRequestBody {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDeviceLocationFixupBody {
-  "set-location-at-time": ApiDeviceLocationFixup;
+  "set-station-at-time": ApiDeviceLocationFixup;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
