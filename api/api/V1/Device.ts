@@ -374,8 +374,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredDeviceById(param("id")),
     parseJSONField(body("setStationAtTime")),
     async (request: Request, response: Response) => {
-      const { stationId, fromDateTime } =
-        response.locals.setStationAtTime;
+      const { stationId, fromDateTime } = response.locals.setStationAtTime;
       const device = response.locals.device;
       const station = await models.Station.findByPk(stationId);
       // Check if there's already a device entry at that time:
