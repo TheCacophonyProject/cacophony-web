@@ -186,7 +186,9 @@ export default function (app: Application, baseUrl: string) {
           const retiredAt =
             request.body["until-date"] ||
             (request.body.retire && new Date()) ||
-            existingStation.retiredAt;
+            existingStation.retiredAt === null
+              ? undefined
+              : existingStation.retiredAt;
 
           const otherActiveStationsInTimeWindow = (
             await models.Station.activeInGroupDuringTimeRange(
@@ -214,6 +216,11 @@ export default function (app: Application, baseUrl: string) {
         ...(response.locals["station-updates"] || {}),
         lastUpdatedById: response.locals.requestUser.id,
       };
+      delete updates.lat;
+      delete updates.lng;
+      if (positionUpdated) {
+        updates.location = updatedLocation;
+      }
       if (request.body.retire) {
         updates.retiredAt = new Date();
       } else if (request.body["until-date"]) {
@@ -236,7 +243,7 @@ export default function (app: Application, baseUrl: string) {
         statusCode: 200,
         messages: ["Updated station"],
       };
-      if (proximityWarnings) {
+      if (proximityWarnings.length) {
         responseData.warnings = proximityWarnings;
       }
       responseUtil.send(response, responseData);

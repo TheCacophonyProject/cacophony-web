@@ -253,16 +253,18 @@ Cypress.Commands.add(
       deviceName,
       userName,
     });
-    const fullUrl = v1ApiPath("devices/" + getCreds(deviceName).id);
+    const fullUrl = v1ApiPath("devices/device/" + getCreds(deviceName).id);
 
-    return makeAuthorizedRequestWithStatus(
+    makeAuthorizedRequestWithStatus(
       {
         method: "GET",
         url: fullUrl,
       },
       userName,
       statusCode
-    );
+    ).then((response) => {
+      cy.wrap(response.body.device);
+    });
   }
 );
 

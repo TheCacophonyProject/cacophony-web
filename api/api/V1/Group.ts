@@ -672,8 +672,17 @@ export default function (app: Application, baseUrl: string) {
         (existingStation) => existingStation.name === name
       );
       if (nameCollision) {
-        // We rename any existing station in the active range that has the same name.
-        await nameCollision.update({ name: `${nameCollision.name}_moved` });
+        return responseUtil.send(response, {
+          statusCode: 400,
+          messages: [
+            `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
+              (untilTime && untilTime.toISOString()) || "now"
+            }.`,
+          ],
+        });
+
+        // NOTE: Alternate behaviour: We rename any existing station in the active range that has the same name.
+        // await nameCollision.update({ name: `${nameCollision.name}_moved` });
       }
 
       const station = await models.Station.create({

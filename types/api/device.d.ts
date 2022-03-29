@@ -36,6 +36,6 @@ export interface ApiDeviceResponse {
 }
 
 export interface ApiDeviceLocationFixup {
-  location: LatLng;
+  fromDateTime: IsoFormattedDateString;
   stationId: StationId;
 }

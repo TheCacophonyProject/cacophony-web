@@ -1,5 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
+  checkRecording,
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
@@ -11,6 +12,7 @@ import {
 } from "@commands/server";
 import {
   EXCLUDE_IDS,
+  HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_OK200,
   NOT_NULL,
@@ -23,6 +25,19 @@ import {
 import { ApiRecordingSet } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { LatLng } from "@typedefs/api/common";
+import { ApiDeviceResponse } from "@typedefs/api/device";
+
+const getNewLocation = (function () {
+  let numGeneratedLocations = -1;
+  const baseLocation = { lat: -43.62367659982, lng: 172.62646754804 };
+  return (): LatLng => {
+    numGeneratedLocations++;
+    return {
+      lat: baseLocation.lat + numGeneratedLocations,
+      lng: baseLocation.lng - numGeneratedLocations,
+    };
+  };
+})();
 
 const templateRecording: ApiRecordingSet = JSON.parse(
   JSON.stringify(TEMPLATE_THERMAL_RECORDING)
@@ -35,19 +50,6 @@ const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
 describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";
   const group = "add_stations";
-
-  const baseLocation = { lat: -43.62367659982, lng: 172.62646754804 };
-
-  let numGeneratedLocations = -1;
-
-  const getNewLocation = (): LatLng => {
-    numGeneratedLocations++;
-    cy.log("Generating location", numGeneratedLocations);
-    return {
-      lat: baseLocation.lat + numGeneratedLocations,
-      lng: baseLocation.lng - numGeneratedLocations,
-    };
-  };
 
   before(() => {
     cy.testCreateUserAndGroup(Josie, group);
@@ -181,7 +183,104 @@ describe("Stations: add and remove", () => {
     );
   });
 
-  it("Cannot rename a station to have an existing active station name", () => {});
+  it("Changing a station location to collide with another in the same time window generates a proximity warning", () => {
+    const location1 = getNewLocation();
+    const location2 = getNewLocation();
+
+    cy.log("Create two stations in separate locations");
+
+    const stationName1 = "Josie-station-333";
+    const expectedStation1 = {
+      location: location1,
+      name: stationName1,
+      id: NOT_NULL,
+      activeAt: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
+      automatic: false,
+      groupId: getCreds(group).id,
+      lastUpdatedById: NOT_NULL,
+      groupName: getTestName(group),
+    };
+    cy.testCreateStation(group, Josie, {
+      name: stationName1,
+      ...location1,
+    }).then((stationId) => {
+      expectedStation1.id = stationId;
+      cy.apiStationCheck(Josie, stationId, expectedStation1);
+    });
+
+    const stationName2 = "Josie-station-3333";
+    const expectedStation2 = {
+      location: location2,
+      name: stationName2,
+      id: NOT_NULL,
+      activeAt: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
+      automatic: false,
+      groupId: getCreds(group).id,
+      lastUpdatedById: NOT_NULL,
+      groupName: getTestName(group),
+    };
+    cy.testCreateStation(group, Josie, {
+      name: stationName2,
+      ...location2,
+    }).then((stationId) => {
+      expectedStation2.id = stationId;
+      cy.apiStationCheck(Josie, stationId, expectedStation2);
+      cy.log(`Move ${stationName2} to the location of ${stationName1}`);
+      cy.testUpdateStation(Josie, stationId, { ...location1 }).then(
+        (responseBody) => {
+          expect(responseBody).to.haveOwnProperty("warnings");
+          expect((responseBody as any).warnings.length).to.equal(1);
+          expectedStation2.location = location1;
+          cy.apiStationCheck(Josie, stationId, expectedStation2);
+        }
+      );
+    });
+  });
+
+  it("Cannot rename a station to have an existing active station name", () => {
+    const location = getNewLocation();
+    const stationName = "Josie-station-33";
+
+    const expectedStation = {
+      location,
+      name: stationName,
+      id: NOT_NULL,
+      activeAt: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
+      automatic: false,
+      groupId: getCreds(group).id,
+      lastUpdatedById: NOT_NULL,
+      groupName: getTestName(group),
+    };
+    cy.testCreateStation(group, Josie, { name: stationName, ...location }).then(
+      (stationId) => {
+        expectedStation.id = stationId;
+
+        cy.apiStationCheck(Josie, stationId, expectedStation);
+
+        cy.log(
+          "Attempt to create another station with the same name active in the same time range"
+        );
+        cy.testCreateStation(
+          group,
+          Josie,
+          { name: stationName, ...location },
+          undefined,
+          undefined,
+          true,
+          HTTP_BadRequest
+        ).then((response) => {
+          cy.log(JSON.stringify(response));
+          expect((response as any).success).to.equal(false);
+        });
+      }
+    );
+  });
 
   it("Renaming an automatically created station sets automatic to false", () => {
     const deviceName = "new-device-33";
@@ -417,10 +516,99 @@ describe("Stations: add and remove", () => {
     });
   });
 
-  it.skip("Device can have a manual location change added, and stations are reassigned to the correct device recordings", () => {});
+  it("Device can have a manual location change added, and stations are reassigned to the correct device recordings", () => {
+    cy.log(
+      "Create a device (in the past), give it a location by uploading a recording for it at a given point in time."
+    );
+    const deviceName = "new-device-99";
+    const stationName = "Josie-station-99";
+    const location = getNewLocation();
+    const fixedLocation = getNewLocation();
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+    const twoWeeksAgo = new Date(new Date().setDate(new Date().getDate() - 14));
+    cy.apiDeviceAdd(deviceName, group);
 
-  // FIXME(ManageStations): Or should we allow it and rename the old one?
-  it.skip("Can't create a new active station with the same name as an existing active station in a group", () => {});
+    cy.testUploadRecording(deviceName, {
+      ...location,
+      time: oneWeekAgo,
+    })
+      .then((recordingId) => {
+        checkRecording(Josie, recordingId, (recording) => {
+          expect(recording.stationName).equals(
+            `New station for ${getTestName(deviceName)}_${
+              recording.recordingDateTime
+            }`
+          );
+          cy.wrap(recordingId);
+        });
+      })
+      .then((recordingId) => {
+        cy.log(
+          "Create a new station at a point in time (where the device *actually* was)"
+        );
+        cy.testCreateStation(
+          group,
+          Josie,
+          { name: stationName, ...fixedLocation },
+          twoWeeksAgo
+        ).then((stationId) => {
+          cy.log(
+            "Change our mind about where the device was at that point in time. (Assign it to the newly created station)."
+          );
+          makeAuthorizedRequestWithStatus(
+            {
+              method: "PATCH",
+              url: v1ApiPath(`devices/fix-location/${getCreds(deviceName).id}`),
+              body: {
+                "set-station-at-time": {
+                  stationId,
+                  fromDateTime: oneWeekAgo,
+                },
+              },
+            },
+            Josie,
+            HTTP_OK200
+          ).then((response) => {
+            expect((response as any).body.messages.length).to.equal(2);
+            expect((response as any).body.messages[1]).to.equal(
+              "Updated 1 recording(s)"
+            );
+            cy.log(
+              "Make sure the recording is reassigned to the correct station, and the location updated."
+            );
+            checkRecording(Josie, recordingId, (recording) => {
+              expect(recording.stationId).to.equal(stationId);
+              expect(recording.location.lat).to.equal(fixedLocation.lat);
+              expect(recording.location.lng).to.equal(fixedLocation.lng);
+            });
+
+            cy.log(
+              "Make sure the device location is updated since there are no future DeviceHistory entries for this device"
+            );
+            cy.apiDevice(Josie, deviceName).then(
+              (device: ApiDeviceResponse) => {
+                expect(device.location.lat).to.equal(fixedLocation.lat);
+                expect(device.location.lng).to.equal(fixedLocation.lng);
+              }
+            );
+
+            cy.log(
+              "Adding a new recording for the device in the correct time range should use the fixed station"
+            );
+            cy.testUploadRecording(deviceName, {
+              ...fixedLocation,
+            }).then((recordingId) => {
+              checkRecording(Josie, recordingId, (recording) => {
+                expect(recording.stationName).to.equal(stationName);
+                expect(recording.stationId).to.equal(stationId);
+                expect(recording.location.lat).to.equal(fixedLocation.lat);
+                expect(recording.location.lng).to.equal(fixedLocation.lng);
+              });
+            });
+          });
+        });
+      });
+  });
 
   it.skip("recordings are not updated if before date specified", () => {
     const Josie2 = "Josie2";

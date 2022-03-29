@@ -34,7 +34,8 @@ Cypress.Commands.add(
     stationData: ApiCreateStationData,
     fromDate: Date | null = null,
     untilDate: Date | null = null,
-    returnBody = false
+    returnBody = false,
+    expectedStatus: number = HTTP_OK200
   ) => {
     logTestDescription(
       `Create station '${stationData.name}' in group '${groupName}'`,
@@ -57,7 +58,7 @@ Cypress.Commands.add(
         body: createBody,
       },
       userName,
-      HTTP_OK200
+      expectedStatus
     ).then((response) => {
       if (!returnBody) {
         cy.wrap(response.body.stationId);
@@ -116,7 +117,9 @@ Cypress.Commands.add(
       },
       userName,
       HTTP_OK200
-    );
+    ).then((response) => {
+      cy.wrap(response.body);
+    });
   }
 );
 

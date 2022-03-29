@@ -52,7 +52,8 @@ declare namespace Cypress {
       stationData: ApiCreateStationData,
       fromDate?: Date | null,
       untilDate?: Date | null,
-      returnBody?: boolean
+      returnBody?: boolean,
+      expectedStatus?: number
     ): Cypress.Chainable<StationId>;
 
     thenCheckStationBeginsWith(

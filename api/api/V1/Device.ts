@@ -344,7 +344,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/devices/:deviceId Fix a device location at a given time
+   * @api {patch} /api/v1/devices/fix-location/:deviceId Fix a device location at a given time
    * @apiName FixupDeviceLocationAtTimeById
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
@@ -363,7 +363,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.patch(
-    `${apiUrl}/device/:id`,
+    `${apiUrl}/fix-location/:id`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
@@ -427,20 +427,27 @@ export default function (app: Application, baseUrl: string) {
             { [Op.lt]: laterLocation.fromDateTime },
           ],
         };
-        await models.Recording.update(
-          {
-            location: station.location,
-            StationId: station.id,
-          },
-          {
-            where: recordingTimeWindow,
-          }
-        );
+      } else {
+        // Update the device known location if this is the latest device history entry.
+        await device.update({ location: station.location });
       }
+
+      const updates = await models.Recording.update(
+        {
+          location: station.location,
+          StationId: station.id,
+        },
+        {
+          where: recordingTimeWindow,
+        }
+      );
 
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Completed get device query."],
+        messages: [
+          "Updated device station at time.",
+          `Updated ${updates.shift() || 0} recording(s)`,
+        ],
       });
     }
   );
