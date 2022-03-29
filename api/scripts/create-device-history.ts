@@ -81,6 +81,7 @@ async function main() {
                   "location",
                   "recordingDateTime" asc;
           `);
+
       // For each device, get all recording location changes for the device, and update the device history table
       for (const automaticLocationChangeForDevice of automaticLocationChangesForDevice.rows) {
         if (
@@ -98,7 +99,6 @@ async function main() {
           );
         }
       }
-
       // Now that we have "complete" device history, we should be able to stations to recordings.
       // Get all the histories for the device:
       const historyEntries = await models.DeviceHistory.findAll({
@@ -108,6 +108,7 @@ async function main() {
         },
         order: [["fromDateTime", "ASC"]],
       });
+
       for (let i = 0; i < historyEntries.length; i++) {
         // Update all the recordings in this time period for this device with the stationId.
         const history = historyEntries[i];
@@ -134,7 +135,6 @@ async function main() {
           }
         );
       }
-
       // Update device lastRecordingTime and kind
       const latestRecordingForDevice = await models.Recording.findOne({
         where: {

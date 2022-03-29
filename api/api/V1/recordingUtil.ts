@@ -437,10 +437,12 @@ export const maybeUpdateDeviceHistory = async (
         GroupId: device.GroupId,
         setBy: { [Op.in]: setByArr },
         location: { [Op.ne]: null },
+        stationId: { [Op.ne]: null },
         fromDateTime: { [Op.lte]: dateTime },
       },
       order: [["fromDateTime", "DESC"]], // Get the latest one that's earlier than our current dateTime
     });
+
     if (priorLocation) {
       const locationChanged = !locationsAreEqual(
         priorLocation.location,
@@ -456,6 +458,7 @@ export const maybeUpdateDeviceHistory = async (
             GroupId: device.GroupId,
             setBy: { [Op.in]: setByArr },
             location: { [Op.ne]: null },
+            stationId: { [Op.ne]: null },
             fromDateTime: { [Op.gt]: dateTime },
           },
           order: [["fromDateTime", "ASC"]], // Get the earliest one that's later than our current dateTime
@@ -490,6 +493,7 @@ export const maybeUpdateDeviceHistory = async (
           GroupId: device.GroupId,
           setBy: { [Op.in]: setByArr },
           location: { [Op.ne]: null },
+          stationId: { [Op.ne]: null },
           fromDateTime: { [Op.gt]: dateTime },
         },
         order: [["fromDateTime", "ASC"]], // Get the earliest one that's later than our current dateTime
@@ -517,7 +521,6 @@ export const maybeUpdateDeviceHistory = async (
         shouldInsertLocation = true;
       }
     }
-
     if (shouldInsertLocation) {
       // If we are going to insert a location, then we need to match to existing stations, or create a new station
       // that is active from this point in time.

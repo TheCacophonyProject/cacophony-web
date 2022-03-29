@@ -273,6 +273,20 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
+      // Remove stationId from DeviceHistory entries
+      await models.DeviceHistory.update(
+        {
+          stationId: null,
+        },
+        {
+          where: {
+            stationId: Number(request.params.id),
+          },
+        }
+      );
+      // FIXME(ManageStationsV2): Should we reassign device history entries to another close-by station, or automatically
+      //  create a new station for the entry, or should we just delete the entry?
+
       if (request.query["delete-recordings"]) {
         // Delete this station, and mark delete recordings associated with it as deleted by this user.
         const recordings = await models.Recording.findAll({
