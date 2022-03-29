@@ -560,7 +560,7 @@ describe("Stations: add and remove", () => {
               method: "PATCH",
               url: v1ApiPath(`devices/fix-location/${getCreds(deviceName).id}`),
               body: {
-                "set-station-at-time": {
+                setStationAtTime: {
                   stationId,
                   fromDateTime: oneWeekAgo,
                 },

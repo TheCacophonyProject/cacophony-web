@@ -124,7 +124,7 @@ interface ApiRegisterDeviceRequestBody {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDeviceLocationFixupBody {
-  "set-station-at-time": ApiDeviceLocationFixup;
+  setStationAtTime: ApiDeviceLocationFixup;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -367,15 +367,15 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      body("set-station-at-time").custom(
+      body("setStationAtTime").custom(
         jsonSchemaOf(ApiDeviceLocationFixupSchema)
       ),
     ]),
     fetchAdminAuthorizedRequiredDeviceById(param("id")),
-    parseJSONField(body("set-station-at-time")),
+    parseJSONField(body("setStationAtTime")),
     async (request: Request, response: Response) => {
       const { stationId, fromDateTime } =
-        response.locals["set-station-at-time"];
+        response.locals.setStationAtTime;
       const device = response.locals.device;
       const station = await models.Station.findByPk(stationId);
       // Check if there's already a device entry at that time:
