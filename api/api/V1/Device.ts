@@ -367,42 +367,17 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      body("set-location-at-time").custom(
+      body("set-station-at-time").custom(
         jsonSchemaOf(ApiDeviceLocationFixupSchema)
       ),
     ]),
     fetchAdminAuthorizedRequiredDeviceById(param("id")),
-    parseJSONField(body("set-location-at-time")),
+    parseJSONField(body("set-station-at-time")),
     async (request: Request, response: Response) => {
-      const { location, fromDateTime } =
-        response.locals["set-location-at-time"];
+      const { stationId, fromDateTime } =
+        response.locals["set-station-at-time"];
       const device = response.locals.device;
-
-      // Location will either be the exact location of an existing station in this group,
-      // or if not, will create a new station and assign that.
-      let station = await models.Station.findOne({
-        where: {
-          location,
-          GroupId: device.GroupId,
-          activeAt: { [Op.gte]: fromDateTime },
-          retiredAt: {
-            [Op.and]: [{ [Op.eq]: null }, { [Op.lt]: fromDateTime }],
-          },
-        },
-      });
-
-      if (!station) {
-        station = await models.Station.create({
-          GroupId: device.GroupId,
-          activeAt: fromDateTime,
-          location,
-          name: `New station for ${
-            device.devicename
-          }_${fromDateTime.toISOString()}`,
-          automatic: true,
-        });
-      }
-
+      const station = await models.Station.findByPk(stationId);
       // Check if there's already a device entry at that time:
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
@@ -413,7 +388,7 @@ export default function (app: Application, baseUrl: string) {
       if (deviceHistoryEntry) {
         await deviceHistoryEntry.update({
           setBy: "user",
-          location,
+          location: station.location,
           stationId: station.id,
         });
       } else {
@@ -422,7 +397,7 @@ export default function (app: Application, baseUrl: string) {
           saltId: device.saltId,
           DeviceId: device.id,
           fromDateTime,
-          location,
+          location: station.location,
           setBy: "user",
           GroupId: device.GroupId,
           deviceName: device.deviceName,
@@ -454,7 +429,7 @@ export default function (app: Application, baseUrl: string) {
         };
         await models.Recording.update(
           {
-            location,
+            location: station.location,
             StationId: station.id,
           },
           {

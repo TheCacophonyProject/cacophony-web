@@ -17,12 +17,15 @@ import {
 } from "@typedefs/api/station";
 import { booleanOf, idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "@api/schema-validation";
-import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
 import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json";
 import { stationLocationHasChanged } from "@models/Group";
 import models from "@models";
 import logger from "@log";
-import { LatLng } from "@typedefs/api/common";
+import { Op } from "sequelize";
+import {
+  latLngApproxDistance,
+  MIN_STATION_SEPARATION_METERS,
+} from "@api/V1/recordingUtil";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -161,38 +164,51 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("station-updates")),
     fetchAdminAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response) => {
       // If a from date is set, that is the date from which the station became active.
-      // If an until date is set, that is the date that the station was retired at, and retired will be set to true.
+      // If an until date is set, that is the date that the station was retired at
 
-      // Any recordings that previously had this station assigned to them outside of this time window
-      // will be unassigned.  TODO: Can we now use postgres queries to get the recordings that fall inside the station?
-      // We only care about non-retired stations for this query.
-      const updates = response.locals["station-updates"];
+      // Merge existing station with updates, filling in any missing fields.
+      const possibleLocationUpdates = response.locals["station-updates"];
+      const proximityWarnings = [];
       const existingStation = response.locals.station;
       const updatedLocation: ApiCreateStationData = {
         ...existingStation.location,
-        ...updates,
+        ...possibleLocationUpdates,
       };
       const positionUpdated =
-        updates && stationLocationHasChanged(existingStation, updatedLocation);
+        possibleLocationUpdates &&
+        stationLocationHasChanged(existingStation, updatedLocation);
       if (positionUpdated) {
-        logger.warning("POSITION UPDATED %s", updatedLocation);
-        // FIXME(ManageStations): This doesn't take into account if we shifted the from-date/until-date - we
-        //  really want to only get stations in the group that are active in the correct time window.
+        {
+          const activeAt =
+            request.body["from-date"] || existingStation.activeAt;
+          const retiredAt =
+            request.body["until-date"] ||
+            (request.body.retire && new Date()) ||
+            existingStation.retiredAt;
 
-        // Get other active stations so that we can warn if the newly updated station
-        // position is too close to another station.
-        response.locals.onlyActive = true;
-        await fetchAuthorizedRequiredStationsForGroup(
-          response.locals.station.GroupId
-        )(request, response, next);
-      } else {
-        next();
+          const otherActiveStationsInTimeWindow = (
+            await models.Station.activeInGroupDuringTimeRange(
+              existingStation.GroupId,
+              activeAt,
+              retiredAt
+            )
+          ).filter(({ id }) => id !== existingStation.id);
+
+          for (const otherStation of otherActiveStationsInTimeWindow) {
+            if (
+              latLngApproxDistance(otherStation.location, updatedLocation) <
+              MIN_STATION_SEPARATION_METERS
+            ) {
+              proximityWarnings.push(
+                `Updated station location is too close to ${otherStation.name}(${otherStation.id} - recordings may be incorrectly matched`
+              );
+            }
+          }
+        }
       }
-    },
-    async (request: Request, response: Response) => {
-      // Merge existing station with updates, filling in any missing fields.
+
       const updates = {
         ...mapStation(response.locals.station),
         ...(response.locals["station-updates"] || {}),
@@ -207,40 +223,28 @@ export default function (app: Application, baseUrl: string) {
         updates.activeAt = request.body["from-date"];
       }
 
-      //let proximityWarnings = null;
-      if (response.locals.stations) {
-        // const { warnings } = await models.Group.addStationsToGroup(
-        //   response.locals.requestUser.id,
-        //   [updates],
-        //   false,
-        //   undefined,
-        //   // Filter out the station we're checking against!
-        //   response.locals.stations.filter(
-        //     ({ id }) => id !== Number(request.params.id)
-        //   ),
-        //   request.body.fromDate,
-        //   request.body.untilDate
-        // );
-        // if (warnings) {
-        //   proximityWarnings = warnings;
-        // }
-      } else {
-        logger.warning("Updating %s", updates);
-        await response.locals.station.update(updates);
+      // If the name changed, and the station was automatically created, set automatic to false:
+      if (
+        updates.name !== response.locals.station.name &&
+        response.locals.station.automatic === true
+      ) {
+        updates.automatic = false;
       }
+
+      await response.locals.station.update(updates);
       const responseData: any = {
         statusCode: 200,
         messages: ["Updated station"],
       };
-      // if (proximityWarnings) {
-      //   responseData.warnings = proximityWarnings;
-      // }
+      if (proximityWarnings) {
+        responseData.warnings = proximityWarnings;
+      }
       responseUtil.send(response, responseData);
     }
   );
 
   /**
-   * @api {patch} /api/v1/stations/:id
+   * @api {delete} /api/v1/stations/:id
    * @apiName DeleteStationById
    * @apiGroup Station
    * @apiDescription Delete a single station by id.  Must be an admin of the group that owns this station.
@@ -257,11 +261,12 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
-      booleanOf(body("delete-recordings")).optional().toBoolean(),
+      booleanOf(query("delete-recordings")).default(false),
+      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchAdminAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
-      if (request.body["delete-recordings"]) {
+      if (request.query["delete-recordings"]) {
         // Delete this station, and mark delete recordings associated with it as deleted by this user.
         const recordings = await models.Recording.findAll({
           where: {

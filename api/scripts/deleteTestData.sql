@@ -35,11 +35,14 @@ DELETE from "Events" where "DeviceId" in (select "id" from "Devices" d where d."
 -- Delete stations for device
 DELETE from "Stations" where "GroupId" in (select "id" from "Groups" g where g."groupname" like 'cy_%');
 
+-- Delete device history entries
+DELETE from "DeviceHistory" where "deviceName" like 'cy_%';
+
 -- delete users device and groups from testing
 DELETE FROM "Devices" where "devicename" like 'cy_%';
 DELETE FROM "Groups" where "groupname" like 'cy_%';
 -- DELETE FROM "Users" where "username" like 'cy_%';
-END; 
+END;
 
 -- Hack by Matt - delete users 100 at a time to avoid timeout limit
 DELETE FROM "Users" where id in (select id from "Users" where "username" like 'cy_%' limit 100);

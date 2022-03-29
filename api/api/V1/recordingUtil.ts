@@ -74,10 +74,9 @@ import {
 import { Device } from "@models/Device";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
-import { Group, locationsAreEqual } from "@models/Group";
+import { locationsAreEqual } from "@models/Group";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
 import SendData = ManagedUpload.SendData;
-import logger from "@log";
 
 let CptvDecoder;
 (async () => {
@@ -92,6 +91,9 @@ export const MAX_DISTANCE_FROM_STATION_FOR_RECORDING =
   MIN_STATION_SEPARATION_METERS / 2;
 
 export function latLngApproxDistance(a: LatLng, b: LatLng): number {
+  if (a.lat === b.lat && a.lng === b.lng) {
+    return 0;
+  }
   const R = 6371e3;
   // Using 'spherical law of cosines' from https://www.movable-type.co.uk/scripts/latlong.html
   const lat1 = (a.lat * Math.PI) / 180;
@@ -110,25 +112,12 @@ export async function tryToMatchLocationToStationInGroup(
   groupId: GroupId,
   activeFromDate: Date
 ): Promise<Station | null> {
-  logger.warning(
-    "Get stations for group %s at location %s, fromDate %s",
-    groupId,
-    location,
-    activeFromDate
-  );
   // Match the recording to any stations that the group might have:
 
-  const stations = await models.Station.findAll({
-    where: {
-      GroupId: groupId,
-      activeAt: { [Op.lte]: activeFromDate },
-      retiredAt: {
-        [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: activeFromDate }],
-      },
-    },
-  });
-
-  logger.warning("Got stations %s", stations.length);
+  const stations = await models.Station.activeInGroupAtTime(
+    groupId,
+    activeFromDate
+  );
   const stationDistances = [];
   for (const station of stations) {
     // See if any stations match: Looking at the location distance between this recording and the stations.
@@ -522,6 +511,9 @@ export const maybeUpdateDeviceHistory = async (
           shouldInsertLocation = true;
         }
       } else {
+        // There's no prior location in the device history, and no later location, so we should
+        // check to see if there are any existing stations near this recording location first.
+
         shouldInsertLocation = true;
       }
     }

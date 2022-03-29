@@ -27,28 +27,8 @@ import {
   tryToMatchRecordingToStation,
 } from "@api/V1/recordingUtil";
 import { Device } from "./Device";
-import { GroupId, UserId, StationId, LatLng } from "@typedefs/api/common";
+import { GroupId, UserId, LatLng } from "@typedefs/api/common";
 import { ApiGroupSettings } from "@typedefs/api/group";
-
-const retireMissingStations = (
-  existingStations: Station[],
-  newStationsByName: Record<string, CreateStationData>,
-  userId: UserId
-): Promise<Station>[] => {
-  const retirePromises = [];
-  const numExisting = existingStations.length;
-  for (let i = 0; i < numExisting; i++) {
-    const station = existingStations.pop();
-    if (!newStationsByName.hasOwnProperty(station.name)) {
-      station.retiredAt = new Date();
-      station.lastUpdatedById = userId;
-      retirePromises.push(station.save());
-    } else {
-      existingStations.unshift(station);
-    }
-  }
-  return retirePromises;
-};
 
 const EPSILON = 0.000000000001;
 
@@ -239,20 +219,6 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
   removeUserFromGroup: (group: Group, userToRemove: User) => Promise<boolean>;
   getFromId: (id: GroupId) => Promise<Group>;
   getIdFromName: (groupname: string) => Promise<GroupId | null>;
-
-  addStationsToGroup: (
-    authUserId: UserId,
-    stationsToAdd: CreateStationData[],
-    shouldRetireMissingStations: boolean,
-    group?: Group,
-    existingStations?: Station[],
-    applyToRecordingsFromDate?: Date,
-    applyToRecordingsUntilDate?: Date
-  ) => Promise<{
-    stationIdsAddedOrUpdated: StationId[];
-    updatedRecordingsPerStation: Record<StationId, number>;
-    warnings?: string;
-  }>;
 }
 
 export default function (sequelize, DataTypes): GroupStatic {
@@ -334,146 +300,6 @@ export default function (sequelize, DataTypes): GroupStatic {
     }
     await groupUser.destroy();
     return true;
-  };
-
-  /**
-   * Add stations to a group.
-   * This will update any changes to position of existing stations.
-   * If there are existing stations that are not in the new set, those stations will be retired.
-   * Any new stations will be added.
-   *
-   * If there is an `applyToRecordingFromDate` Date provided, recordings belonging to this group
-   * will be matched against the new list of stations to see if they fall within the station radius.
-   *
-   * As designed, this will *always* be a bulk import operation of external data from trap.nz
-   *
-   * Returns ids of updated or added stations
-   *
-   */
-  Group.addStationsToGroup = async function (
-    authUserId: UserId,
-    stationsToAdd,
-    shouldRetireMissingStations = false,
-    group,
-    alreadyExistingStations,
-    applyToRecordingsFromDate,
-    applyToRecordingsUntilDate
-  ): Promise<{
-    stationIdsAddedOrUpdated: StationId[];
-    updatedRecordingsPerStation: Record<StationId, number>;
-    warnings?: string;
-  }> {
-    // FIXME(ManageStations): Should we rewrite this in terms of the more granular stations APIs?
-
-    let existingStations: Station[] = alreadyExistingStations;
-    if (!existingStations && group) {
-      existingStations = await group.getStations({
-        where: {
-          // Filter out retired stations.
-          retiredAt: {
-            [Op.eq]: null,
-          },
-        },
-      });
-    }
-    // Enforce name uniqueness to group here:
-    const existingStationsByName: Record<string, Station> = {};
-    const newStationsByName: Record<string, CreateStationData> = {};
-    const stationOpsPromises: Promise<any>[] = [];
-    for (const station of stationsToAdd) {
-      newStationsByName[station.name] = station;
-    }
-
-    // Make sure existing stations that are not in the current update are retired, and removed from
-    // the list of existing stations that we are comparing with.
-    // NOTE: This mutates `existingStations` to remove retired stations
-    const retiredStations = shouldRetireMissingStations
-      ? retireMissingStations(existingStations, newStationsByName, authUserId)
-      : [];
-    for (const station of existingStations) {
-      existingStationsByName[station.name] = station;
-    }
-
-    // Make sure no two stations are too close to each other:
-    const tooCloseWarning = checkThatStationsAreNotTooCloseTogether([
-      ...existingStations,
-      ...stationsToAdd,
-    ]);
-    // Add new stations, or update lat/lng if station with same name but different lat lng.
-    const addedOrUpdatedStations = [];
-    const allStations = [];
-    const activeAt = applyToRecordingsFromDate || new Date();
-    for (const [name, newStation] of Object.entries(newStationsByName)) {
-      let stationToAddOrUpdate;
-      if (!existingStationsByName.hasOwnProperty(name)) {
-        stationToAddOrUpdate = new models.Station({
-          name: newStation.name,
-          location: { lat: newStation.lat, lng: newStation.lng },
-          lastUpdatedById: authUserId,
-          automatic: false,
-          activeAt,
-        });
-        addedOrUpdatedStations.push(stationToAddOrUpdate);
-        stationOpsPromises.push(
-          new Promise((resolve) => {
-            stationToAddOrUpdate.save().then(() => {
-              group.addStation(stationToAddOrUpdate).then(() => {
-                resolve(null);
-              });
-            });
-          })
-        );
-      } else {
-        // Update lat/lng if it has changed but the name is the same
-        stationToAddOrUpdate = existingStationsByName[newStation.name];
-        if (stationLocationHasChanged(stationToAddOrUpdate, newStation)) {
-          // NOTE - Casting this as "any" because station.location has a special setter function
-          stationToAddOrUpdate.location = {
-            lat: newStation.lat,
-            lng: newStation.lng,
-          };
-          stationToAddOrUpdate.lastUpdatedById = authUserId;
-          addedOrUpdatedStations.push(stationToAddOrUpdate);
-          stationOpsPromises.push(stationToAddOrUpdate.save());
-        }
-      }
-      allStations.push(stationToAddOrUpdate);
-    }
-    await Promise.all([...stationOpsPromises, ...retiredStations]);
-    let updatedRecordings = [];
-    if (applyToRecordingsFromDate) {
-      // After adding stations, we need to apply any station matches to recordings from a start date:
-      updatedRecordings =
-        await updateExistingRecordingsForGroupWithMatchingStationsFromDate(
-          authUserId,
-          group,
-          applyToRecordingsFromDate,
-          allStations,
-          applyToRecordingsUntilDate
-        );
-      updatedRecordings = await Promise.all(updatedRecordings);
-    }
-    const result: {
-      stationIdsAddedOrUpdated: StationId[];
-      updatedRecordingsPerStation: Record<StationId, number>;
-      warnings?: string;
-    } = {
-      stationIdsAddedOrUpdated: addedOrUpdatedStations.map(({ id }) => id),
-      updatedRecordingsPerStation: updatedRecordings
-        .map(({ station }) => ({ stationId: station.id }))
-        .reduce((acc, item) => {
-          if (!acc.hasOwnProperty(item.stationId)) {
-            acc[item.stationId] = 1;
-          } else {
-            acc[item.stationId]++;
-          }
-          return acc;
-        }, {}),
-    };
-    if (tooCloseWarning !== null) {
-      result.warnings = tooCloseWarning;
-    }
-    return result;
   };
 
   Group.getFromId = async function (id) {

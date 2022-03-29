@@ -5,6 +5,7 @@ import {
   LatLng,
   SaltId,
   ScheduleId,
+  StationId,
 } from "./common";
 import { DeviceType } from "./consts";
 import { ApiGroupUserResponse } from "./group";
@@ -35,6 +36,6 @@ export interface ApiDeviceResponse {
 }
 
 export interface ApiDeviceLocationFixup {
-  location: LatLng,
-  fromDateTime: IsoFormattedDateString
+  location: LatLng;
+  stationId: StationId;
 }

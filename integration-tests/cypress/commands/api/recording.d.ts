@@ -143,7 +143,7 @@ declare namespace Cypress {
      */
     apiRecordingCheck(
       userName: string,
-      recordingNameOrId: string,
+      recordingNameOrId: string | RecordingId,
       expectedRecording: ApiRecordingResponse,
       excludeCheckOn?: string[],
       statusCode?: number,

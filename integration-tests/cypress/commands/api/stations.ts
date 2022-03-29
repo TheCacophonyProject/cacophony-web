@@ -5,15 +5,11 @@ import { RecordingId, StationId } from "@typedefs/api/common";
 import { logTestDescription } from "../descriptions";
 import { checkRecording } from "./recording-tests";
 import { getTestName } from "@commands/names";
-import { TestThermalRecordingInfo } from "@commands/types";
 import {
   checkTreeStructuresAreEqualExcept,
-  getCreds,
-  makeAuthorizedRequest,
   makeAuthorizedRequestWithStatus,
   v1ApiPath,
 } from "@commands/server";
-import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { HTTP_OK200 } from "@commands/constants";
 import {
   ApiCreateStationData,
@@ -40,6 +36,11 @@ Cypress.Commands.add(
     untilDate: Date | null = null,
     returnBody = false
   ) => {
+    logTestDescription(
+      `Create station '${stationData.name}' in group '${groupName}'`,
+      stationData
+    );
+
     const createBody: any = {
       station: stationData,
     };
@@ -69,7 +70,11 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "testRetireStation",
-  (userName: string, stationId: StationId, retirementDate: Date) => {
+  (
+    userName: string,
+    stationId: StationId,
+    retirementDate: Date = new Date()
+  ) => {
     makeAuthorizedRequestWithStatus(
       {
         method: "PATCH",
@@ -108,6 +113,26 @@ Cypress.Commands.add(
         method: "PATCH",
         url: v1ApiPath(`stations/${stationId}`),
         body: updateBody,
+      },
+      userName,
+      HTTP_OK200
+    );
+  }
+);
+
+Cypress.Commands.add(
+  "testDeleteStation",
+  (
+    userName: string,
+    stationId: StationId,
+    deleteRecordings: boolean = false
+  ) => {
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "DELETE",
+        url: v1ApiPath(`stations/${stationId}`, {
+          "delete-recordings": deleteRecordings,
+        }),
       },
       userName,
       HTTP_OK200
@@ -195,6 +220,7 @@ Cypress.Commands.add(
           response.body.station,
           excludeCheckOn
         );
+        cy.wrap(response.body.station.id);
       } else {
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages.join("|")).to.include(

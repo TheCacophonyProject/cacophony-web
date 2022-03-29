@@ -24,7 +24,7 @@ declare namespace Cypress {
     testRetireStation(
       userName: string,
       stationId: StationId,
-      retirementDate: Date
+      retirementDate?: Date
     ): Cypress.Chainable<void>;
 
     testUpdateStation(
@@ -33,6 +33,12 @@ declare namespace Cypress {
       stationUpdates?: ApiUpdateStationData | null,
       fromDate?: Date | null,
       untilDate?: Date | null
+    ): Cypress.Chainable<void>;
+
+    testDeleteStation(
+      userName: string,
+      stationId: StationId,
+      deleteRecordings?: boolean
     ): Cypress.Chainable<void>;
 
     testGetStation(

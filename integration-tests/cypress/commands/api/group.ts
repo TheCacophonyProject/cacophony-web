@@ -472,6 +472,7 @@ Cypress.Commands.add(
           const stationId = response.body.stationIdsAddedOrUpdated[count];
           saveIdOnly(stationName, stationId);
         }
+        cy.wrap(response.body.stationIdsAddedOrUpdated);
       }
     });
   }

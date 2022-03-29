@@ -420,7 +420,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url: url,
+        url,
         body: additionalParams,
       },
       userName,

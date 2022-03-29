@@ -50,7 +50,11 @@ import {
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
-import { Group } from "models/Group";
+import {
+  checkThatStationsAreNotTooCloseTogether,
+  Group,
+  locationsAreEqual,
+} from "@/models/Group";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -61,7 +65,13 @@ import {
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
 import { mapStation, mapStations } from "./Station";
-import logger from "@log";
+import { Op } from "sequelize";
+import {
+  latLngApproxDistance,
+  MIN_STATION_SEPARATION_METERS,
+} from "@api/V1/recordingUtil";
+import { Station } from "@/models/Station";
+import { StationId } from "@typedefs/api/common";
 
 const mapGroup = (
   group: Group,
@@ -531,21 +541,78 @@ export default function (app: Application, baseUrl: string) {
     // Extract further non-dependent resources:
     parseJSONField(body("stations")),
     async (request, response) => {
-      const stationsUpdated = await models.Group.addStationsToGroup(
-        response.locals.requestUser.id,
-        response.locals.stations,
-        true,
-        response.locals.group,
-        undefined,
-        request.body.fromDate,
-        request.body.untilDate
-      );
-      // FIXME - validate/formalize return type.
-      return responseUtil.send(response, {
+      // Get the existing stations for the group:
+      const existingStationsInTimeRange =
+        await models.Station.activeInGroupDuringTimeRange(
+          response.locals.group.id,
+          request.body["from-date"],
+          request.body["until-date"]
+        );
+
+      const newStations = response.locals.stations;
+      const stationsToCreate = [];
+      const stationsToUpdate: Record<StationId, Station> = {};
+      // Check to see if any of these new stations exist:
+      for (const station of newStations) {
+        let matches = false;
+        for (const existingStation of existingStationsInTimeRange) {
+          const locationMatches = locationsAreEqual(
+            existingStation.location,
+            station
+          );
+          const nameMatches = existingStation.name === station.name;
+          if (locationMatches && !nameMatches) {
+            // Rename the existing station with the new name.
+            existingStation.name = station.name;
+            existingStation.lastUpdatedById = response.locals.requestUser.id;
+            stationsToUpdate[existingStation.id] = existingStation;
+            matches = true;
+          } else if (nameMatches && !locationMatches) {
+            // Rename the existing station to a "_moved" name, and create a new station.
+            existingStation.name = `${existingStation.name}_moved`;
+            existingStation.lastUpdatedById = response.locals.requestUser.id;
+            stationsToUpdate[existingStation.id] = existingStation;
+            stationsToCreate.push(station);
+            matches = true;
+          } else if (nameMatches && locationMatches) {
+            // No changes required
+            matches = true;
+          }
+        }
+        if (!matches) {
+          stationsToCreate.push(station);
+        }
+      }
+      const creationParams = stationsToCreate.map((station) => ({
+        name: station.name,
+        location: { lat: station.lat, lng: station.lng },
+        activeAt: request.body["from-date"] || new Date(),
+        retiredAt: request.body["until-date"] || null,
+        lastUpdatedById: response.locals.requestUser.id,
+        automatic: false,
+        GroupId: response.locals.group.id,
+      }));
+      const updates = await Promise.all([
+        ...Object.values(stationsToUpdate).map((station) => station.save()),
+        ...creationParams.map((params) => models.Station.create(params)),
+      ]);
+
+      const proximityWarnings = checkThatStationsAreNotTooCloseTogether([
+        ...updates,
+        ...existingStationsInTimeRange,
+      ]);
+
+      const responseData = {
         statusCode: 200,
-        messages: ["Added stations to group."],
-        ...stationsUpdated,
-      });
+        messages: ["Updated and stations in group."],
+        stationIdsAddedOrUpdated: updates.map(({ id }) => id),
+      };
+
+      if (proximityWarnings) {
+        (responseData as any).warnings = proximityWarnings;
+      }
+      // FIXME - validate/formalize return type.
+      return responseUtil.send(response, responseData);
     }
   );
 
@@ -577,27 +644,57 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("station")),
     async (request: Request, response: Response) => {
-      // FIXME(ManageStations): Check for other non-retired stations too close to this new station,
-      //  warn if there are any.
+      const { name, lat, lng } = response.locals.station;
+      const groupId = response.locals.group.id;
+      const userId = response.locals.requestUser.id;
+      const location = { lat, lng };
+      const fromTime = request.body["from-date"] || new Date();
+      const untilTime = request.body["until-date"];
+      const proximityWarnings = [];
+      const activeStationsInTimeWindow =
+        await models.Station.activeInGroupDuringTimeRange(
+          groupId,
+          fromTime,
+          untilTime
+        );
+      for (const existingStation of activeStationsInTimeWindow) {
+        if (
+          latLngApproxDistance(existingStation.location, location) <
+          MIN_STATION_SEPARATION_METERS
+        ) {
+          proximityWarnings.push(
+            `New station is too close to ${existingStation.name}(${existingStation.id} - recordings may be incorrectly matched`
+          );
+        }
+      }
 
-      // NOTE: If we create a new station, do we want to also have an optional date range that
-      //  we pass to make it re-match recordings for that new station?
-      //  In that case response could also say how many recordings were matched?
-      const station = response.locals.station;
-      // @ts-ignore
-      const newStation = await models.Station.create({
-        name: station.name,
-        location: { lat: station.lat, lng: station.lng },
-        activeAt: request.body["from-date"] || new Date(),
-        retiredAt: request.body["until-date"] || null,
+      const nameCollision = activeStationsInTimeWindow.find(
+        (existingStation) => existingStation.name === name
+      );
+      if (nameCollision) {
+        // We rename any existing station in the active range that has the same name.
+        await nameCollision.update({ name: `${nameCollision.name}_moved` });
+      }
+
+      const station = await models.Station.create({
+        name,
+        location,
+        activeAt: fromTime,
+        retiredAt: untilTime || null,
         automatic: false,
+        lastUpdatedById: userId,
+        GroupId: groupId,
       });
-      await response.locals.group.addStation(newStation);
-      return responseUtil.send(response, {
+
+      const responseData = {
         statusCode: 200,
         messages: ["Got station"],
-        stationId: newStation.id,
-      });
+        stationId: station.id,
+      };
+      if (proximityWarnings.length) {
+        (responseData as any).warnings = proximityWarnings;
+      }
+      return responseUtil.send(response, responseData);
     }
   );
 

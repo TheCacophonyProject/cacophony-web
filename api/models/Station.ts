@@ -16,11 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize, { BuildOptions, ModelAttributes } from "sequelize";
+import Sequelize, { BuildOptions, ModelAttributes, Op } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import util from "./util/util";
 import { GroupId, LatLng, StationId, UserId } from "@typedefs/api/common";
 import { ApiStationSettings } from "@typedefs/api/station";
+import models from "@models/index";
 
 // Station data as supplied to API on creation.
 export interface CreateStationData {
@@ -49,6 +50,15 @@ export interface StationStatic extends ModelStaticCommon<Station> {
   new (values?: object, options?: BuildOptions): Station;
   getAll: (where: any) => Promise<Station[]>;
   getFromId: (id: StationId) => Promise<Station | null>;
+  activeInGroupAtTime: (
+    groupId: GroupId,
+    atDateTime: Date
+  ) => Promise<Station[]>;
+  activeInGroupDuringTimeRange: (
+    groupId: GroupId,
+    fromTime?: Date,
+    untilTime?: Date
+  ) => Promise<Station[]>;
 }
 export default function (
   sequelize: Sequelize.Sequelize,
@@ -114,6 +124,46 @@ export default function (
 
   Station.getFromId = async function (id) {
     return this.findByPk(id);
+  };
+
+  Station.activeInGroupAtTime = async function (
+    groupId: GroupId,
+    atDateTime: Date
+  ): Promise<Station[]> {
+    return await models.Station.findAll({
+      where: {
+        GroupId: groupId,
+        activeAt: { [Op.lte]: atDateTime },
+        retiredAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: atDateTime }],
+        },
+      },
+    });
+  };
+
+  Station.activeInGroupDuringTimeRange = async function (
+    groupId: GroupId,
+    fromTime: Date = new Date(),
+    untilTime: Date = new Date()
+  ): Promise<Station[]> {
+    return await models.Station.findAll({
+      where: {
+        GroupId: groupId,
+        [Op.or]: [
+          {
+            [Op.and]: [
+              { retiredAt: { [Op.eq]: null } },
+              { activeAt: { [Op.lte]: untilTime } },
+            ],
+          },
+          {
+            retiredAt: {
+              [Op.and]: [{ [Op.gte]: fromTime }, { [Op.lt]: untilTime }],
+            },
+          },
+        ],
+      },
+    });
   };
 
   return Station;

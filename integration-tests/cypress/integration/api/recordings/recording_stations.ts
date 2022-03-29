@@ -4,8 +4,18 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { getCreds } from "@commands/server";
-import { EXCLUDE_IDS, NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
+import {
+  getCreds,
+  makeAuthorizedRequestWithStatus,
+  v1ApiPath,
+} from "@commands/server";
+import {
+  EXCLUDE_IDS,
+  HTTP_Forbidden,
+  HTTP_OK200,
+  NOT_NULL,
+  NOT_NULL_STRING,
+} from "@commands/constants";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
@@ -22,19 +32,6 @@ const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
   JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
 );
 
-/*
-TODO(ManageStations):
-- Add a single station
-- Add a station where there is already a station (retire existing?)
-- Delete a station
-- Modify a station location, and update recordings (manual user fixup)
-- Rename a station
-- Change station user preferences
-- Update lastRecording time for station, keep track of what kinds of recordings have been seen at a station.
-- Retire a station manually
-- Add a station with a start time to back-date to.
- */
-
 describe("Stations: add and remove", () => {
   const Josie = "Josie_stations";
   const group = "add_stations";
@@ -45,6 +42,7 @@ describe("Stations: add and remove", () => {
 
   const getNewLocation = (): LatLng => {
     numGeneratedLocations++;
+    cy.log("Generating location", numGeneratedLocations);
     return {
       lat: baseLocation.lat + numGeneratedLocations,
       lng: baseLocation.lng - numGeneratedLocations,
@@ -112,6 +110,7 @@ describe("Stations: add and remove", () => {
       updatedAt: NOT_NULL_STRING,
       automatic: false,
       groupId: getCreds(group).id,
+      lastUpdatedById: NOT_NULL,
       groupName: getTestName(group),
     };
     cy.testCreateStation(group, Josie, { name: stationName, ...location }).then(
@@ -134,6 +133,7 @@ describe("Stations: add and remove", () => {
       updatedAt: NOT_NULL_STRING,
       automatic: false,
       groupId: getCreds(group).id,
+      lastUpdatedById: NOT_NULL,
       groupName: getTestName(group),
     };
     cy.testCreateStation(group, Josie, { name: stationName, ...location }).then(
@@ -163,6 +163,7 @@ describe("Stations: add and remove", () => {
       updatedAt: NOT_NULL_STRING,
       automatic: false,
       groupId: getCreds(group).id,
+      lastUpdatedById: NOT_NULL,
       groupName: getTestName(group),
     };
     cy.testCreateStation(group, Josie, { name: stationName, ...location }).then(
@@ -180,8 +181,45 @@ describe("Stations: add and remove", () => {
     );
   });
 
+  it("Cannot rename a station to have an existing active station name", () => {});
+
+  it("Renaming an automatically created station sets automatic to false", () => {
+    const deviceName = "new-device-33";
+    const recordingTime = new Date();
+    const location = getNewLocation();
+
+    cy.apiDeviceAdd(deviceName, group);
+    const expectedStation = {
+      location,
+      name: NOT_NULL_STRING,
+      id: NOT_NULL,
+      lastThermalRecordingTime: NOT_NULL_STRING,
+      createdAt: NOT_NULL_STRING,
+      updatedAt: NOT_NULL_STRING,
+      activeAt: recordingTime.toISOString(),
+      automatic: true,
+      groupId: getCreds(group).id,
+      groupName: getTestName(group),
+    };
+    cy.testUploadRecording(deviceName, { ...location, time: recordingTime })
+      .thenCheckAutomaticallyGeneratedStationIsAssignedToRecording(
+        Josie,
+        deviceName
+      )
+      .then((stationId) => {
+        cy.apiStationCheck(Josie, stationId, expectedStation);
+        const newName = "renamed-station";
+        cy.testUpdateStation(Josie, stationId, { name: newName }).then(() => {
+          (expectedStation as any).lastUpdatedById = getCreds(Josie).id;
+          expectedStation.automatic = false;
+          expectedStation.name = newName;
+          cy.apiStationCheck(Josie, stationId, expectedStation);
+        });
+      });
+  });
+
   it("Adding an older recording within the radius of an existing retired station which was active at the time the recording was made assigns the station to the recording", () => {
-    const deviceName = "new-device-3";
+    const deviceName = "new-device-4";
     const stationName = "Josie-station-4";
     const location = getNewLocation();
     cy.apiDeviceAdd(deviceName, group);
@@ -199,6 +237,7 @@ describe("Stations: add and remove", () => {
       automatic: false,
       retiredAt: now.toISOString(),
       groupId: getCreds(group).id,
+      lastUpdatedById: NOT_NULL,
       groupName: getTestName(group),
     };
 
@@ -209,21 +248,23 @@ describe("Stations: add and remove", () => {
       oneMonthAgo,
       now
     ).then((stationId) => {
-      cy.apiStationCheck(Josie, stationId, expectedStation).then(() => {
-        cy.testUploadRecording(deviceName, {
-          ...location,
-          time: oneWeekAgo,
-        }).thenCheckRecordingsStationHasId(Josie, stationId);
-      });
+      cy.apiStationCheck(Josie, stationId, expectedStation).then(
+        (stationId) => {
+          cy.testUploadRecording(deviceName, {
+            ...location,
+            time: oneWeekAgo,
+          }).thenCheckRecordingsStationHasId(Josie, stationId);
+        }
+      );
     });
   });
 
-  it("create station with a startDate (and optionally an end-date) should try to match existing recordings on creation.", () => {
-    //
+  it.skip("Manually creating station with a startDate (and optionally an end-date) should try to match existing recordings on creation.", () => {
+    // TODO - Not 100% sure of behaviour here
   });
 
   it("Adding a new recording within the radius of an existing retired station automatically creates a new station and assigns it to the recording", () => {
-    const deviceName = "new-device-4";
+    const deviceName = "new-device-5";
     const stationName = "Josie-station-5";
     const location = getNewLocation();
     cy.apiDeviceAdd(deviceName, group);
@@ -249,7 +290,7 @@ describe("Stations: add and remove", () => {
   });
 
   it("Can manually add a single station where or close to where there is already a station - creating a warning", () => {
-    const deviceName = "new-device-5";
+    const deviceName = "new-device-6";
     const stationName1 = "Josie-station-6";
     const stationName2 = "Josie-station-7";
     const location = getNewLocation();
@@ -270,19 +311,19 @@ describe("Stations: add and remove", () => {
         null,
         true
       ).then((response) => {
-        // TODO: Make sure we got a proximity warning.
+        expect(response).to.haveOwnProperty("warnings");
+        expect((response as any).warnings.length).to.equal(1);
       });
     });
   });
 
   it("Can manually delete a station", () => {
-    const deviceName = "new-device-6";
+    const deviceName = "new-device-7";
     const stationName = "Josie-station-8";
     const location = getNewLocation();
     cy.apiDeviceAdd(deviceName, group);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
-    const now = new Date();
 
     cy.testCreateStation(
       group,
@@ -290,25 +331,149 @@ describe("Stations: add and remove", () => {
       { name: stationName, ...location },
       oneMonthAgo,
       oneWeekAgo
-    ).then(() => {});
+    ).then((stationId) => {
+      cy.testDeleteStation(Josie, stationId).then(() => {
+        cy.apiStationCheck(Josie, stationId, null, null, HTTP_Forbidden);
+      });
+    });
+  });
 
-    // For now, when you delete a station, recordings should not be deleted as well,
+  it("Can manually delete a station, and have all recordings belonging to the station be deleted too", () => {
+    const deviceName = "new-device-8";
+    const stationName = "Josie-station-9";
+    const location = getNewLocation();
+    cy.apiDeviceAdd(deviceName, group);
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
 
-    // TODO:
+    cy.testCreateStation(
+      group,
+      Josie,
+      { name: stationName, ...location },
+      oneMonthAgo
+    ).then((stationId) => {
+      cy.testUploadRecording(deviceName, {
+        ...location,
+        time: oneWeekAgo,
+      }).then((recordingId) => {
+        cy.testDeleteStation(Josie, stationId, true).then(() => {
+          cy.log("Check that station and its recordings are deleted");
+          cy.apiStationCheck(Josie, stationId, null, null, HTTP_Forbidden);
+          cy.apiRecordingCheck(Josie, recordingId, null, null, HTTP_Forbidden, {
+            useRawRecordingId: true,
+          });
+        });
+      });
+    });
+  });
+
+  it("Can manually delete a station, and have the station unassigned from any recordings", () => {
+    const deviceName = "new-device-9";
+    const stationName = "Josie-station-9";
+    const location = getNewLocation();
+    cy.apiDeviceAdd(deviceName, group);
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+
+    cy.testCreateStation(
+      group,
+      Josie,
+      { name: stationName, ...location },
+      oneMonthAgo
+    ).then((stationId) => {
+      cy.testUploadRecording(deviceName, {
+        ...location,
+        time: oneWeekAgo,
+      }).then((recordingId) => {
+        makeAuthorizedRequestWithStatus(
+          {
+            method: "GET",
+            url: v1ApiPath(`recordings/${recordingId}`),
+          },
+          Josie,
+          HTTP_OK200
+        ).then((response) => {
+          const recording = response.body.recording;
+          expect(recording.stationId).to.equal(stationId);
+          cy.testDeleteStation(Josie, stationId).then(() => {
+            cy.log(
+              "Check that station is deleted, and its recordings don't have the station id"
+            );
+            cy.apiStationCheck(Josie, stationId, null, null, HTTP_Forbidden);
+            makeAuthorizedRequestWithStatus(
+              {
+                method: "GET",
+                url: v1ApiPath(`recordings/${recordingId}`),
+              },
+              Josie,
+              HTTP_OK200
+            ).then((response) => {
+              const recording = response.body.recording;
+              expect(recording.stationId).to.equal(undefined);
+            });
+          });
+        });
+      });
+    });
+  });
+
+  it.skip("Device can have a manual location change added, and stations are reassigned to the correct device recordings", () => {});
+
+  // FIXME(ManageStations): Or should we allow it and rename the old one?
+  it.skip("Can't create a new active station with the same name as an existing active station in a group", () => {});
+
+  it.skip("recordings are not updated if before date specified", () => {
+    const Josie2 = "Josie2";
+    const groupUpdate = "update-stations";
+    const camera = "update-after";
+
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+
+    cy.testCreateUserGroupAndDevice(Josie2, groupUpdate, camera);
+    cy.testUploadRecording(camera, {
+      time: oneMonthAgo,
+      lat: -43.6,
+      lng: 172.8,
+    });
+
+    cy.checkRecordingsStationIs(Josie2, "");
+
+    const stations = [
+      { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
+      { name: "waterfall", lat: -43.6, lng: 172.8 },
+    ];
+    cy.apiGroupStationsUpdate(Josie2, groupUpdate, stations);
+    cy.checkRecordingsStationIs(Josie2, "");
+  });
+
+  it.skip("Stations can have bulk changes applied, with changes back-dated", () => {
+    const Josie2 = "Josie3";
+    const groupUpdate = "update-stations-2";
+    const camera = "update-after";
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+    const fromDate = oneWeekAgo.toISOString();
+
+    cy.testCreateUserGroupAndDevice(Josie2, groupUpdate, camera);
+    cy.apiGroupStationsUpdate(
+      Josie2,
+      groupUpdate,
+      [{ name: "foo", lat: 1, lng: 2 }],
+      fromDate
+    );
+
     /*
-    Create station
-    Add recordings to station
-    Delete station
-    Check that station is deleted
-    Check that station recordings are also deleted.
-    */
+    1) Create. This stays as-currently-is
+    2) Rename. This functionality should be kept - rename the existing station if the location is the same
+    3) Move. This is currently broken. In this case we need to rename the old station to keep it unique and create a new one as-per trapNZ
+     */
+
+    // Stations will be matched on name, location,
   });
 });
 
 describe.skip("Stations: add and remove", () => {
   const Josie = "Josie_stations";
   const group = "add_stations";
-  const forestLatLong = { lat: -43.62367659982, lng: 172.62646754804 };
   const date = "2021-05-25T09:01:00.000Z";
   const earlier = "2021-05-25T08:00:00.000Z";
   const later = "2021-05-25T10:00:00.000Z";
@@ -320,57 +485,6 @@ describe.skip("Stations: add and remove", () => {
       { name: "stream", lat: -43.62367659983, lng: 172.62646754804 },
     ];
     cy.apiGroupStationsUpdate(Josie, group, stations);
-  });
-
-  it.skip("recordings are assigned to the correct stations", () => {
-    cy.apiDeviceAdd("in-forest", group);
-    cy.testUploadRecording("in-forest", forestLatLong).thenCheckStationIs(
-      Josie,
-      "forest"
-    );
-
-    cy.apiDeviceAdd("in-stream", group);
-    cy.testUploadRecording("in-stream", {
-      lat: -43.62367659983,
-      lng: 172.62646754804,
-    }).thenCheckStationIs(Josie, "stream");
-  });
-
-  it.skip("recording that is not close to any station is not assigned a station", () => {
-    cy.apiDeviceAdd("neither", group);
-    cy.testUploadRecording("neither", {
-      lat: -43.6,
-      lng: 172.6,
-    }).thenCheckStationIs(Josie, "");
-  });
-
-  it.skip("recordings in another group are not assigned a station", () => {
-    const otherGroup = "Josies-other";
-    const camera = "other-group";
-    cy.apiGroupAdd(Josie, otherGroup);
-    cy.apiDeviceAdd(camera, otherGroup);
-    cy.testUploadRecording(camera, forestLatLong).thenCheckStationIs(Josie, "");
-  });
-
-  it("recordings are not updated if before date specified", () => {
-    const Josie2 = "Josie2";
-    const groupUpdate = "update-stations";
-    const camera = "update-after";
-    cy.testCreateUserGroupAndDevice(Josie2, groupUpdate, camera);
-    cy.testUploadRecording(camera, {
-      time: new Date(date),
-      lat: -43.6,
-      lng: 172.8,
-    });
-
-    cy.checkRecordingsStationIs(Josie2, "");
-
-    const stations = [
-      { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
-      { name: "waterfall", lat: -43.6, lng: 172.8 },
-    ];
-    cy.apiGroupStationsUpdate(Josie2, groupUpdate, stations, later);
-    cy.checkRecordingsStationIs(Josie2, "");
   });
 
   it("recordings are updated if after date specified", () => {
@@ -391,49 +505,6 @@ describe.skip("Stations: add and remove", () => {
     ];
     cy.apiGroupStationsUpdate(Josie3, groupNotUpdate, stations, earlier);
     cy.checkRecordingsStationIs(Josie3, "waterfall");
-  });
-
-  it.skip("recordings will lose their station assignment if the station is removed", () => {
-    const Josie4 = "Josie4";
-    const camera = "update-remove";
-    const groupRemove = "remove-station";
-    const date = "2021-03-25T21:01:00.000Z";
-    const earlier = "2021-03-25T20:01:00.000Z";
-    cy.testCreateUserGroupAndDevice(Josie4, groupRemove, camera);
-    const stations = [{ name: "waterfall", lat: -43.6, lng: 172.8 }];
-    cy.apiGroupStationsUpdate(Josie4, groupRemove, stations, earlier);
-    cy.testUploadRecording(camera, {
-      time: new Date(date),
-      lat: -43.6,
-      lng: 172.8,
-    });
-    cy.checkRecordingsStationIs(Josie4, "waterfall");
-
-    const stations2 = [
-      { name: "forest", lat: -43.62367659982, lng: 172.62646754804 },
-    ];
-    cy.apiGroupStationsUpdate(Josie4, groupRemove, stations2, earlier);
-    cy.checkRecordingsStationIs(Josie4, "");
-  });
-
-  it.skip("Recording is not assigned to a retired station", () => {
-    cy.testCreateUserGroupAndDevice("sta_user1", "sta_group1", "sta_camera1");
-    const stations = [
-      { name: "test1", lat: -43.1, lng: 172 },
-      { name: "test2", lat: -43.2, lng: 172 },
-    ];
-    cy.apiGroupStationsUpdate("sta_user1", "sta_group1", stations);
-
-    const stations2 = [{ name: "test1", lat: -43.1, lng: 172 }];
-    cy.apiGroupStationsUpdate("sta_user1", "sta_group1", stations2).then(() => {
-      cy.testUploadRecording("sta_camera1", {
-        time: new Date(Date.now()),
-        lat: -43.2,
-        lng: 172,
-      });
-
-      cy.checkRecordingsStationIs("sta_user1", "");
-    });
   });
 
   it("Recording is assigned to a correct station after rename", () => {
@@ -514,69 +585,6 @@ describe.skip("Stations: add and remove", () => {
         expectedRecording1,
         EXCLUDE_IDS
       );
-    });
-  });
-
-  it.skip("Recording assigned based on their recordingDateTime after stations renamed", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-
-    let expectedRecording1: ApiThermalRecordingResponse;
-
-    cy.testCreateUserGroupAndDevice("staUser4", "staGroup4", "staCamera4");
-    cy.log("Add stations test1 and test2");
-    const stations = [
-      { name: "test4-1", lat: -43.1, lng: 172 },
-      { name: "test4-2", lat: -43.2, lng: 172 },
-    ];
-    cy.apiGroupStationsUpdate("staUser4", "staGroup4", stations).then(() => {
-      const recordingDate = new Date(Date.now()).toISOString();
-      const station2Id = getCreds("test4-2").id;
-
-      cy.log("Rename test4-2 to test4-3 (retire test4-2, create test4-3)");
-      const stations2 = [
-        { name: "test4-1", lat: -43.1, lng: 172 },
-        { name: "test4-3", lat: -43.2, lng: 172 },
-      ];
-      cy.apiGroupStationsUpdate("staUser4", "staGroup4", stations2);
-
-      cy.log("Rename test4-3 to test4-2 (retire test4-3, create new test4-2)");
-      cy.apiGroupStationsUpdate("staUser4", "staGroup4", stations);
-
-      cy.log(
-        "Add a recording at location of station test4-2 timed before the 1st update"
-      );
-      recording1.recordingDateTime = recordingDate;
-      recording1.location = [-43.2, 172];
-
-      cy.apiRecordingAdd(
-        "staCamera4",
-        recording1,
-        undefined,
-        "staRecording4"
-      ).then(() => {
-        expectedRecording1 = TestCreateExpectedRecordingData(
-          templateExpectedRecording,
-          "staRecording4",
-          "staCamera4",
-          "staGroup4",
-          null,
-          recording1
-        );
-
-        expectedRecording1.stationName = "test4-2";
-        expectedRecording1.stationId = station2Id;
-
-        cy.log(
-          "Check recording assigned to station that was active at time it was recorded (not the latest version)"
-        );
-        //check stationId
-        cy.apiRecordingCheck(
-          "staUser4",
-          "staRecording4",
-          expectedRecording1,
-          EXCLUDE_IDS
-        );
-      });
     });
   });
 });

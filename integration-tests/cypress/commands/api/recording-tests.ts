@@ -377,6 +377,7 @@ export function checkRecording(
   recordingId: RecordingId,
   checkFunction: (recording: ApiRecordingResponse) => any
 ) {
+  // Why not using the get recording by id api?
   makeAuthorizedRequest(
     {
       url: v1ApiPath(`recordings`),

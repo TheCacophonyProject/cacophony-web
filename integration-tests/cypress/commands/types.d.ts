@@ -529,6 +529,11 @@ export interface ApiStationData {
   lng: number;
 }
 
+export interface ApiLocation {
+  type: "Point";
+  coordinates: [number, number];
+}
+
 // from api/v1/groups/<>/stations (get)
 export interface ApiStationDataReturned {
   id: number;
