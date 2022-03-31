@@ -10,8 +10,9 @@ module.exports = {
         await queryInterface.addColumn(
           "Recordings",
           "cacophonyIndex",
-          Sequelize.JSONB, {
-            transaction
+          Sequelize.JSONB,
+          {
+            transaction,
           }
         );
       }
@@ -25,8 +26,9 @@ module.exports = {
           `
           INSERT INTO "DetailSnapshots" ("type", "details", "createdAt", "updatedAt")
           VALUES ('algorithm', '{"algorithm":"sliding_window"}', NOW(), NOW())
-          RETURNING "id";`, {
-            transaction
+          RETURNING "id";`,
+          {
+            transaction,
           }
         );
       }
@@ -37,30 +39,21 @@ module.exports = {
         `
         SELECT "id", "duration", "additionalMetadata"->'analysis'->'species_identify' as speciesindentify FROM "Recordings"
         WHERE jsonb_array_length("additionalMetadata"->'analysis'->'species_identify') != 0;
-        `, {
-          transaction
+        `,
+        {
+          transaction,
         }
       );
 
-
       console.log("Creating Tracks & Tags");
       for (const recording of analysedRecordings[0]) {
-        const {
-          id,
-          duration,
-          speciesindentify
-        } = recording;
+        const { id, duration, speciesindentify } = recording;
 
         if (!speciesindentify) {
           continue;
         }
         for (const speciesId of speciesindentify) {
-          const {
-            end_s,
-            begin_s,
-            species,
-            liklihood: likelihood
-          } = speciesId;
+          const { end_s, begin_s, species, liklihood: likelihood } = speciesId;
           // Create a new track in Track table
           // round to 2 decimals using round
           let x = begin_s / duration;
@@ -76,32 +69,33 @@ module.exports = {
             height,
             order: 0,
           };
-          const resId =
-            await queryInterface.sequelize.query(
-              `
+          const resId = await queryInterface.sequelize.query(
+            `
                     INSERT INTO "Tracks" ("RecordingId", "AlgorithmId", "data", "createdAt", "updatedAt")
                     VALUES (:id, :algorithmId, :data, NOW(), NOW())
-                    RETURNING "id";`, {
-                transaction,
-                replacements: {
-                  id,
-                  algorithmId,
-                  data: JSON.stringify({
-                    start_s: begin_s,
-                    end_s: end_s,
-                    positions: [trackPosition],
-                    automatic: true,
-                  }),
-                },
-              }
-            );
+                    RETURNING "id";`,
+            {
+              transaction,
+              replacements: {
+                id,
+                algorithmId,
+                data: JSON.stringify({
+                  start_s: begin_s,
+                  end_s: end_s,
+                  positions: [trackPosition],
+                  automatic: true,
+                }),
+              },
+            }
+          );
           const trackId = resId[0][0].id;
 
           await queryInterface.sequelize.query(
             `
                   INSERT INTO "TrackTags" ("what", "confidence", "automatic", "data", "createdAt", "updatedAt", "TrackId")
                   VALUES (:species, :likelihood, true, '{"name": "Master"}', NOW(), NOW(), :trackId)
-                  `, {
+                  `,
+            {
               transaction,
               replacements: {
                 species: species,
@@ -120,8 +114,9 @@ module.exports = {
         UPDATE "Recordings"
         SET "cacophonyIndex" = "additionalMetadata"->'analysis'->'cacophony_index'
         WHERE "additionalMetadata"->'analysis'->'cacophony_index' IS NOT NULL
-        `, {
-          transaction
+        `,
+        {
+          transaction,
         }
       );
 
@@ -132,8 +127,9 @@ module.exports = {
         UPDATE "Recordings"
         SET "additionalMetadata" = ("additionalMetadata"||("additionalMetadata"->'analysis')-'cacophony_index'-'species_identify')-'analysis'
         WHERE "additionalMetadata"->'analysis'->'cacophony_index' IS NOT NULL
-        `, {
-          transaction
+        `,
+        {
+          transaction,
         }
       );
       await transaction.commit();
@@ -155,24 +151,22 @@ module.exports = {
         `
         SELECT "id", "cacophonyIndex", "additionalMetadata" FROM "Recordings"
         WHERE "cacophonyIndex" IS NOT NULL
-        `, {
-          transaction
+        `,
+        {
+          transaction,
         }
       );
 
       await Promise.all(
         analysedRecordings[0].map(
-          async ({
-            id: recordingId,
-            cacophonyIndex,
-            additionalMetadata
-          }) => {
+          async ({ id: recordingId, cacophonyIndex, additionalMetadata }) => {
             console.log("Querying for tracks", recordingId);
             const tracks = await queryInterface.sequelize.query(
               `
             SELECT "id", "data" FROM "Tracks"
             WHERE "RecordingId"= :recordingId
-            `, {
+            `,
+              {
                 transaction,
                 replacements: {
                   recordingId,
@@ -181,20 +175,15 @@ module.exports = {
             );
 
             const speciesIdentify = await Promise.all(
-              tracks[0].map(async ({
-                id: trackId,
-                data
-              }) => {
-                const {
-                  start_s,
-                  end_s
-                } = data;
+              tracks[0].map(async ({ id: trackId, data }) => {
+                const { start_s, end_s } = data;
                 console.log("Querying for trackTags", trackId);
                 const tags = await queryInterface.sequelize.query(
                   `
                 SELECT "id", "what", "confidence" FROM "TrackTags"
                 WHERE "TrackId"=:trackId
-                `, {
+                `,
+                  {
                     transaction,
                     replacements: {
                       trackId,
@@ -205,20 +194,19 @@ module.exports = {
                 const tagIds = tags[0].map((tag) => tag.id);
                 console.log("Delete trackTags", tagIds);
                 await queryInterface.bulkDelete(
-                  "TrackTags", {
+                  "TrackTags",
+                  {
                     id: {
-                      [Op.in]: tagIds
-                    }
-                  }, {
-                    transaction
+                      [Op.in]: tagIds,
+                    },
+                  },
+                  {
+                    transaction,
                   }
                 );
 
                 console.log(tags);
-                const speciesIndentify = tags[0].map(({
-                  what,
-                  confidence
-                }) => {
+                const speciesIndentify = tags[0].map(({ what, confidence }) => {
                   const species_identify = {
                     begin_s: start_s,
                     end_s: end_s,
@@ -235,12 +223,14 @@ module.exports = {
             const trackIds = tracks[0].map((track) => track.id);
             console.log("Delete tracks", trackIds);
             await queryInterface.bulkDelete(
-              "Tracks", {
+              "Tracks",
+              {
                 id: {
-                  [Op.in]: trackIds
-                }
-              }, {
-                transaction
+                  [Op.in]: trackIds,
+                },
+              },
+              {
+                transaction,
               }
             );
             const analysis = {
@@ -271,7 +261,8 @@ module.exports = {
             UPDATE "Recordings"
             SET "additionalMetadata" = :additionalMetadata
             WHERE "id" = :id
-            `, {
+            `,
+              {
                 transaction,
                 replacements: {
                   id: recordingId,
