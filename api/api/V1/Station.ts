@@ -20,8 +20,6 @@ import { jsonSchemaOf } from "@api/schema-validation";
 import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json";
 import { stationLocationHasChanged } from "@models/Group";
 import models from "@models";
-import logger from "@log";
-import { Op } from "sequelize";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,

@@ -86,6 +86,7 @@ const mapGroup = (
     groupData.settings = group.settings;
   }
   if (
+    (group as any).Users &&
     (group as any).Users.length &&
     (group as any).Users[0].GroupUsers.settings
   ) {

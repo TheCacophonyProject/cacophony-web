@@ -4,9 +4,17 @@ const util = require("./util/util");
 
 module.exports = {
   up: async function (queryInterface, Sequelize) {
-    // Stations get a start date
+    // Stations get a start date, allowing null for now
     await queryInterface.addColumn("Stations", "activeAt", {
       type: Sequelize.DATE,
+      comment: "Earliest date that this station was active from"
+    });
+    await queryInterface.sequelize.query(`update "Stations" set "activeAt" = "createdAt" where "activeAt" is null`);
+
+    // Now we no longer allow null.
+    await queryInterface.changeColumn("Stations", "activeAt", {
+      type: Sequelize.DATE,
+      allowNull: false,
       comment: "Earliest date that this station was active from"
     });
     await queryInterface.addColumn("Stations", "automatic", {
