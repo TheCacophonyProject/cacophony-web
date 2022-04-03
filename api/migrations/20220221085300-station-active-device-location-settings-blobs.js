@@ -7,7 +7,6 @@ module.exports = {
     // Stations get a start date
     await queryInterface.addColumn("Stations", "activeAt", {
       type: Sequelize.DATE,
-      allowNull: false,
       comment: "Earliest date that this station was active from"
     });
     await queryInterface.addColumn("Stations", "automatic", {
