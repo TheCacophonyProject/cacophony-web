@@ -542,7 +542,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1UserAuthorizationHeader
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
-   * @apiQuery {Boolean} [countAll=true] Count all query matches rather than just number or results (as much as the limit parameter)
+   * @apiQuery {Boolean} [countAll=true] Count all query matches rather than just number of results (as much as the limit parameter)
    * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
