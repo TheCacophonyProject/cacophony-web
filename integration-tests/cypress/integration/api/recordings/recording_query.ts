@@ -764,6 +764,128 @@ describe("Recordings query using where", () => {
     it.skip("Super-user as user should see only their recordings", () => {});
   }
 
+  it("Count shows all matches (not just current mage) if countAll=true specified", () => {
+    //note: .slice takes params (startPos, endPos+1) - how wierd is that?!
+    cy.log("Get first page, setting limit - expect count of ALL results");
+    cy.apiRecordingsQueryCheck(
+      "rqGroup2Admin",
+      {
+        where: {},
+        offset: 0,
+        limit: 3,
+        order: '[["id", "ASC"]]',
+        countAll: true,
+      },
+      expectedRecording.slice(0, 3),
+      EXCLUDE_PARAMS,
+      HTTP_OK200,
+      { count: 20 }
+    );
+
+    cy.log(
+      "Get intermediate page, setting limit - expect count of ALL results"
+    );
+    cy.apiRecordingsQueryCheck(
+      "rqGroup2Admin",
+      {
+        where: {},
+        offset: 3,
+        limit: 3,
+        order: '[["id", "ASC"]]',
+        countAll: true,
+      },
+      expectedRecording.slice(3, 6),
+      EXCLUDE_PARAMS,
+      HTTP_OK200,
+      { count: 20 }
+    );
+
+    cy.log(
+      "Get final (part) page, setting limit - expect count of ALL results"
+    );
+    cy.apiRecordingsQueryCheck(
+      "rqGroup2Admin",
+      {
+        where: {},
+        offset: 19,
+        limit: 3,
+        order: '[["id", "ASC"]]',
+        countAll: true,
+      },
+      expectedRecording.slice(19, 20),
+      EXCLUDE_PARAMS,
+      HTTP_OK200,
+      { count: 20 }
+    );
+  });
+
+  it("Count restricted to limit if countAll=false specified", () => {
+    //note: .slice takes params (startPos, endPos+1) - how wierd is that?!
+    cy.log("Get first page, setting limit - expect count of this page only");
+    cy.apiRecordingsQueryCheck(
+      "rqGroup2Admin",
+      {
+        where: {},
+        offset: 0,
+        limit: 3,
+        order: '[["id", "ASC"]]',
+        countAll: false,
+      },
+      expectedRecording.slice(0, 3),
+      EXCLUDE_PARAMS,
+      HTTP_OK200,
+      { count: 3 }
+    );
+
+    cy.log(
+      "Get intermediate page, setting limit - expect count of this page only"
+    );
+    cy.apiRecordingsQueryCheck(
+      "rqGroup2Admin",
+      {
+        where: {},
+        offset: 3,
+        limit: 3,
+        order: '[["id", "ASC"]]',
+        countAll: false,
+      },
+      expectedRecording.slice(3, 6),
+      EXCLUDE_PARAMS,
+      HTTP_OK200,
+      { count: 3 }
+    );
+
+    cy.log(
+      "Get final (part) page, setting limit - expect count of this page only"
+    );
+    cy.apiRecordingsQueryCheck(
+      "rqGroup2Admin",
+      {
+        where: {},
+        offset: 19,
+        limit: 3,
+        order: '[["id", "ASC"]]',
+        countAll: false,
+      },
+      expectedRecording.slice(19, 20),
+      EXCLUDE_PARAMS,
+      HTTP_OK200,
+      { count: 1 }
+    );
+  });
+
+  it("Default countAll is 'true' (all results counted)", () => {
+    cy.log("Get first page, setting limit - expect count to count ALL results");
+    cy.apiRecordingsQueryCheck(
+      "rqGroup2Admin",
+      { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
+      expectedRecording.slice(0, 3),
+      EXCLUDE_PARAMS,
+      HTTP_OK200,
+      { count: 20 }
+    );
+  });
+
   //TODO: wrapper would need to check results contain expected results ... not yet implemented in test wrapper
   it.skip("Super-user should see all recordings", () => {});
 });
