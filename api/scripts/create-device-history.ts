@@ -41,9 +41,15 @@ async function main() {
         and details->'device'->'id' != 'null'
     `);
 
+  // FIXME: Already created stations should have their activeAt dates extended back to the first recordingTime for the device.
+  // FIXME: We need to sort these devices (saltIds) from oldest to newest in terms of their oldest recordings.
+
   for (const { saltId } of saltIds.rows) {
     // Find all versions of the device with this saltId
     const devices = await models.Device.findAll({ where: { saltId } });
+
+    // FIXME: We need to sort these devices from oldest to newest in terms of their oldest recordings.
+
     for (const device of devices) {
       // For each device, find any "config" events.  Apply locations from those events.
       const configChangesForDevice = allConfigUpdatesToLocation.rows.filter(
