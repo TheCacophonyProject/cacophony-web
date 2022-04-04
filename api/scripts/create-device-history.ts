@@ -66,20 +66,21 @@ async function main() {
         }
       }
       const automaticLocationChangesForDevice = await pgClient.query(`
-              select distinct
-              on ("DeviceId", location)
-                  (select pt[1] from (select point(location) as pt) as x) as lat,
-                  (select pt[0] from (select point(location) as pt) as x) as lng,
-                  "recordingDateTime"                
-              from
-                  "Recordings"
-              where
-                  "DeviceId" = ${device.id}
-                and location is not null
-              order by
-                  "DeviceId",
-                  "location",
-                  "recordingDateTime" asc;
+        select * from (select distinct
+           on ("DeviceId", location)
+             ST_Y(location) as lat,
+             ST_X(location) as lng,
+             "recordingDateTime"
+           from
+             "Recordings"
+           where
+             "DeviceId" = ${device.id}
+             and location is not null
+           order by
+             "DeviceId",
+             "location",
+             "recordingDateTime" asc) 
+            as a order by "recordingDateTime" asc;
           `);
 
       // For each device, get all recording location changes for the device, and update the device history table
