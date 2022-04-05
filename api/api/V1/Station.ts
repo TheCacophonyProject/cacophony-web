@@ -74,7 +74,7 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/stations`;
 
   /**
-   * @api {get} /api/v1/stations
+   * @api {get} /api/v1/stations Get stations for current user
    * @apiName GetStationsForCurrentUser
    * @apiGroup Station
    * @apiDescription List all stations that the requesting user has access to via group membership
@@ -105,7 +105,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/stations/:id
+   * @api {get} /api/v1/stations/:id Get a station by id
    * @apiName GetStationById
    * @apiGroup Station
    * @apiDescription Get a single station by id
@@ -137,7 +137,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {patch} /api/v1/stations/:id
+   * @api {patch} /api/v1/stations/:id Update a station by id
    * @apiName UpdateStationById
    * @apiGroup Station
    * @apiDescription Update a single station by id.  Must be an admin of the group that owns this station.
@@ -249,7 +249,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {delete} /api/v1/stations/:id
+   * @api {delete} /api/v1/stations/:id Delete a station by id
    * @apiName DeleteStationById
    * @apiGroup Station
    * @apiDescription Delete a single station by id.  Must be an admin of the group that owns this station.
