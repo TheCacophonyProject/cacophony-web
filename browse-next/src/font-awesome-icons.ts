@@ -10,6 +10,8 @@ import {
   faGear,
   faChartPie,
   faScrewdriverWrench,
+  faRetweet,
+    faPlus
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -21,7 +23,9 @@ library.add(
   faCircleExclamation,
   faGear,
   faChartPie,
-  faScrewdriverWrench
+  faScrewdriverWrench,
+  faRetweet,
+    faPlus
 );
 
 export default FontAwesomeIcon;

@@ -2,23 +2,43 @@
 import { RouterView } from "vue-router";
 import IconCacophonyLogo from "@/components/icons/IconCacophonyLogo.vue";
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
+import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 </script>
 <template>
   <git-release-info-bar />
   <main id="main-wrapper">
     <nav id="global-side-nav" class="d-flex flex-column flex-shrink-0">
-      <a
-        href="/"
-        class="d-block py-2 px-1"
-        title=""
-        data-bs-toggle="tooltip"
-        data-bs-placement="right"
-        data-bs-original-title="Icon-only"
-      >
-        <icon-cacophony-logo />
-        <span class="visually-hidden">Icon-only</span>
-      </a>
-      <ul class="nav nav-pills nav-flush flex-column mb-auto">
+      <div class="nav-top">
+        <a
+          href="/"
+          class="d-block cacophony-logo-link"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Icon-only"
+        >
+          <icon-cacophony-logo-full />
+          <span class="visually-hidden">Icon-only</span>
+        </a>
+        <div
+          class="d-flex flex-row group-switcher justify-content-between mt-5 mb-2"
+        >
+          <div class="d-flex">
+            <button class="btn current-group">
+              Living Springs
+              <span class="switch-label figure"
+                >change&nbsp;<font-awesome-icon
+                  icon="retweet"
+                  class="switch-icon"
+              /></span>
+            </button>
+          </div>
+          <button class="btn add-group">
+            <font-awesome-icon icon="plus" />
+          </button>
+        </div>
+      </div>
+      <ul class="nav nav-pills nav-flush flex-column mb-auto pt-3">
         <li class="nav-item">
           <a
             href="#"
@@ -32,9 +52,10 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="gauge-high" />
             </span>
+            <span>Dashboard</span>
           </a>
         </li>
-        <li>
+        <li class="nav-item mb-4">
           <a
             href="#"
             class="nav-link py-3"
@@ -46,9 +67,10 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="location-dot" />
             </span>
+            <span>Stations</span>
           </a>
         </li>
-        <li>
+        <li class="nav-item">
           <a
             href="#"
             class="nav-link py-3"
@@ -60,9 +82,10 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="magnifying-glass" />
             </span>
+            <span>Search</span>
           </a>
         </li>
-        <li>
+        <li class="nav-item">
           <a
             href="#"
             class="nav-link py-3"
@@ -87,9 +110,10 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
                 </svg>
               </span>
             </span>
+            <span>Devices</span>
           </a>
         </li>
-        <li>
+        <li class="nav-item">
           <a
             href="#"
             class="nav-link py-3"
@@ -101,9 +125,10 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="chart-pie" />
             </span>
+            <span>Report</span>
           </a>
         </li>
-        <li>
+        <li class="nav-item">
           <a
             href="#"
             class="nav-link py-3"
@@ -115,9 +140,10 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="gear" />
             </span>
+            <span>My preferences</span>
           </a>
         </li>
-        <li>
+        <li class="nav-item">
           <a
             href="#"
             class="nav-link py-3"
@@ -129,14 +155,22 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="screwdriver-wrench" />
             </span>
+            <span>Manage group</span>
           </a>
         </li>
       </ul>
       <div class="dropdown border-top">
-        <a href="#" class="d-flex py-3 text-decoration-none" id="dropdownUser3">
+        <a href="#" class="d-flex py-3 text-decoration-none">
           <span class="nav-icon-wrapper">
             <font-awesome-icon icon="user" />
           </span>
+          <span>Username</span>
+        </a>
+        <a href="#" class="d-flex py-3 text-decoration-none">
+          <span class="nav-icon-wrapper">
+            <font-awesome-icon icon="user" />
+          </span>
+          <span>Username</span>
         </a>
       </div>
     </nav>
@@ -164,24 +198,29 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
 }
 
 #global-side-nav {
+  @collapsed-width: 3.5rem;
+  @expanded-width: 20rem;
+
   background: white;
   position: absolute;
   bottom: 0;
   top: 0;
   left: 0;
-  width: 3.5rem;
+  width: @collapsed-width;
+  overflow: hidden;
   transition: width 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
 
   .nav-icon-wrapper {
     // Keep the icons vertically aligned relative to one-another.
     display: block;
-    width: 3.5rem;
+    width: @collapsed-width;
     text-align: center;
   }
 
   .nav-link {
     padding-left: 0;
+    padding-right: 0;
   }
 
   a {
@@ -189,6 +228,12 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
       color: #808080;
     }
     &:active,
+    &.active {
+      svg {
+        color: #4c4c4c;
+      }
+    }
+
     &.active {
       background: unset;
       position: relative;
@@ -201,15 +246,67 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
         width: 4px;
         background-color: #6dbd4b;
       }
+    }
 
-      svg {
-        color: #4c4c4c;
+    &:active,
+    &:active:hover {
+      background-color: #efefef;
+    }
+    &:hover {
+      // Some kind of animated gradient here?
+      background-color: #fcfcfc;
+    }
+  }
+
+  // Top part of nav containing logo and group selector.
+  .nav-top {
+    transition: background-color 0.2s;
+    .group-switcher {
+      opacity: 0;
+      transition: opacity 0.2s;
+      width: @expanded-width;
+      .current-group {
+        text-transform: uppercase;
+      }
+      .switch-label {
+        font-variant: small-caps;
+        font-style: italic;
+        font-size: 70%;
+        .switch-icon {
+          transform: skewX(-20deg);
+        }
+      }
+      .add-group {
       }
     }
   }
 
+  .cacophony-logo-link {
+    padding: 0.6rem;
+  }
+
+  #cacophony-logo-full {
+    transform: scale(0.725);
+    transform-origin: 0 0;
+    .text {
+      transition: opacity 0.2s;
+      opacity: 0;
+    }
+  }
+
+  // Expanded menu state
   &:hover {
-    width: 20rem;
+    width: @expanded-width;
+    .nav-top {
+      background-color: #fafafa;
+      .group-switcher {
+        opacity: 1;
+      }
+    }
+
+    #cacophony-logo-full .text {
+      opacity: 1;
+    }
   }
 
   .icon-alert-wrapper {
@@ -233,3 +330,4 @@ main {
   /*overflow-y: hidden;*/
 }
 </style>
+<style src="vue-multiselect/dist/vue-multiselect.css"></style>
