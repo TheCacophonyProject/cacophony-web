@@ -296,6 +296,8 @@ export interface ApiRecordingForProcessing {
   processingEndTime: string;
   processing: boolean;
   updatedAt: string;
+  currentStateStartTime: string;
+  processingFailedCount: number;
 }
 
 // from api/v1/recordings (post)

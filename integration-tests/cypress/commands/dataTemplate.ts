@@ -74,6 +74,8 @@ export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   processingEndTime: null,
   processing: true,
   updatedAt: "",
+  currentStateStartTime: NOT_NULL_STRING,
+  processingFailedCount: 0,
 };
 
 export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
@@ -270,6 +272,8 @@ export const TEMPLATE_THERMAL_RECORDING_PROCESSING: ApiRecordingForProcessing =
     processingEndTime: null,
     processing: true,
     updatedAt: NOT_NULL_STRING,
+    currentStateStartTime: NOT_NULL_STRING,
+    processingFailedCount: 0,
   };
 
 export const TEMPLATE_THERMAL_RECORDING_NEEDS_TAG: ApiRecordingNeedsTagReturned =

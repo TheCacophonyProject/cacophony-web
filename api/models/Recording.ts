@@ -67,6 +67,7 @@ const validTagModes = new Set([
   ...Object.values(AcceptableTag),
 ]);
 
+const MaxProcessingRetries = 1;
 interface RecordingQueryBuilder {
   new (): RecordingQueryBuilder;
   findInclude: (modelType: ModelStaticCommon<any>) => Includeable[];
@@ -205,6 +206,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   DeviceId: DeviceId;
   GroupId: GroupId;
   StationId: StationId;
+  currentStateStartTime: Date | null;
+  processingFailedCount: number;
   // Recording columns end
 
   getFileBaseName: () => string;
@@ -342,6 +345,8 @@ export default function (
     batteryLevel: DataTypes.DOUBLE,
     batteryCharging: DataTypes.STRING,
     airplaneModeOn: DataTypes.BOOLEAN,
+    processingFailedCount: DataTypes.INTEGER,
+    currentStateStartTime: DataTypes.DATE,
   };
 
   const Recording = sequelize.define(
@@ -385,7 +390,20 @@ export default function (
             type: type,
             deletedAt: { [Op.eq]: null },
             processingState: state,
-            processing: { [Op.or]: [null, false] },
+            [Op.or]: [
+              {
+                processing: { [Op.or]: [null, false] },
+              },
+              {
+                [Op.and]: {
+                  processing: true,
+                  currentStateStartTime: {
+                    [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
+                  },
+                  processingFailedCount: { [Op.lt]: MaxProcessingRetries },
+                },
+              },
+            ],
           },
           attributes: [
             ...(models.Recording as RecordingStatic).processingAttributes,
@@ -402,6 +420,7 @@ export default function (
             ],
           ],
           order: [
+            ["processing", "DESC NULLS FIRST"],
             Sequelize.literal(`"hasAlert" DESC`),
             ["recordingDateTime", "asc"],
             ["id", "asc"], // Adding another order is a "fix" for a bug in postgresql causing the query to be slow
@@ -418,8 +437,13 @@ export default function (
           if (!recording.processingStartTime) {
             recording.set("processingStartTime", date.toISOString());
           }
+
+          if (recording.processing) {
+            recording.processingFailedCount += 1;
+          }
           recording.set(
             {
+              currentStateStartTime: date.toISOString(),
               processingEndTime: null,
               jobKey: uuidv4(),
               processing: true,
@@ -770,6 +794,7 @@ from (
       processingStartTime: null,
       processingEndTime: null,
       processing: false,
+      processingFailedCount: 0,
       processingState: RecordingProcessingState.Reprocess,
     });
   };
@@ -1313,6 +1338,8 @@ from (
     "recordingDateTime",
     "duration",
     "location",
+    "processing",
+    "processingFailedCount",
   ];
 
   return Recording;
