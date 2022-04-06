@@ -11,7 +11,8 @@ import {
   faChartPie,
   faScrewdriverWrench,
   faRetweet,
-    faPlus
+  faPlus,
+  faRightFromBracket,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -25,7 +26,8 @@ library.add(
   faChartPie,
   faScrewdriverWrench,
   faRetweet,
-    faPlus
+  faPlus,
+  faRightFromBracket
 );
 
 export default FontAwesomeIcon;

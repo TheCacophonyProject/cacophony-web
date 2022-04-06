@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
-import IconCacophonyLogo from "@/components/icons/IconCacophonyLogo.vue";
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 </script>
@@ -27,9 +26,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
             <button class="btn current-group">
               Living Springs
               <span class="switch-label figure"
-                >change&nbsp;<font-awesome-icon
-                  icon="retweet"
-                  class="switch-icon"
+                ><font-awesome-icon icon="retweet" class="switch-icon"
               /></span>
             </button>
           </div>
@@ -42,7 +39,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
         <li class="nav-item">
           <a
             href="#"
-            class="nav-link active py-3"
+            class="nav-link active py-3 d-flex flex-row"
             aria-current="page"
             title=""
             data-bs-toggle="tooltip"
@@ -58,7 +55,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
         <li class="nav-item mb-4">
           <a
             href="#"
-            class="nav-link py-3"
+            class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
             data-bs-placement="right"
@@ -73,7 +70,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
         <li class="nav-item">
           <a
             href="#"
-            class="nav-link py-3"
+            class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
             data-bs-placement="right"
@@ -88,7 +85,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
         <li class="nav-item">
           <a
             href="#"
-            class="nav-link py-3"
+            class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
             data-bs-placement="right"
@@ -116,7 +113,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
         <li class="nav-item">
           <a
             href="#"
-            class="nav-link py-3"
+            class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
             data-bs-placement="right"
@@ -131,7 +128,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
         <li class="nav-item">
           <a
             href="#"
-            class="nav-link py-3"
+            class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
             data-bs-placement="right"
@@ -140,13 +137,13 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="gear" />
             </span>
-            <span>My preferences</span>
+            <span>My&nbsp;preferences</span>
           </a>
         </li>
         <li class="nav-item">
           <a
             href="#"
-            class="nav-link py-3"
+            class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
             data-bs-placement="right"
@@ -155,22 +152,21 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="screwdriver-wrench" />
             </span>
-            <span>Manage group</span>
+            <span>Manage&nbsp;group</span>
           </a>
         </li>
       </ul>
-      <div class="dropdown border-top">
-        <a href="#" class="d-flex py-3 text-decoration-none">
+      <div class="border-top d-flex">
+        <a href="#" class="d-flex py-3 text-decoration-none flex-fill">
           <span class="nav-icon-wrapper">
             <font-awesome-icon icon="user" />
           </span>
           <span>Username</span>
         </a>
-        <a href="#" class="d-flex py-3 text-decoration-none">
+        <a href="#" class="d-block py-3 text-decoration-none border-start">
           <span class="nav-icon-wrapper">
-            <font-awesome-icon icon="user" />
+            <font-awesome-icon icon="right-from-bracket" />
           </span>
-          <span>Username</span>
         </a>
       </div>
     </nav>
@@ -186,7 +182,26 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
   flex-direction: column;
   min-height: 100vh;
 }
+#global-side-nav {
+  #cacophony-logo-full {
+    transform: scale(0.725);
+    transform-origin: 0 0;
 
+    .text {
+      transform: translate3d(0, 0, 0);
+      transition: opacity 0.2s;
+      opacity: 0;
+    }
+  }
+  &:hover {
+    #cacophony-logo-full .text {
+      opacity: 1;
+    }
+  }
+}
+</style>
+
+<style lang="less" scoped>
 #main-wrapper {
   position: relative;
   padding-left: 3.5rem;
@@ -224,6 +239,10 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
   }
 
   a {
+    color: #444;
+    font-weight: 500;
+    font-size: 0.875rem;
+
     svg {
       color: #808080;
     }
@@ -285,15 +304,6 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
     padding: 0.6rem;
   }
 
-  #cacophony-logo-full {
-    transform: scale(0.725);
-    transform-origin: 0 0;
-    .text {
-      transition: opacity 0.2s;
-      opacity: 0;
-    }
-  }
-
   // Expanded menu state
   &:hover {
     width: @expanded-width;
@@ -302,10 +312,6 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
       .group-switcher {
         opacity: 1;
       }
-    }
-
-    #cacophony-logo-full .text {
-      opacity: 1;
     }
   }
 
