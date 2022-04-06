@@ -112,8 +112,6 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiQuery {Boolean} [only-active=false] By default, returns the station if it is retired or active.
-   *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations ApiStationResponse showing details of station
    * @apiUse V1ResponseError
@@ -124,7 +122,6 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
-      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
@@ -158,7 +155,6 @@ export default function (app: Application, baseUrl: string) {
       body("from-date").isISO8601().toDate().optional(),
       body("until-date").isISO8601().toDate().optional(),
       body("retire").default(false).isBoolean().toBoolean(),
-      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     parseJSONField(body("station-updates")),
     fetchAdminAuthorizedRequiredStationById(param("id")),

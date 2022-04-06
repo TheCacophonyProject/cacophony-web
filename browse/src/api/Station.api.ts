@@ -24,12 +24,12 @@ function updateStationWithId(
   retire?: boolean
 ): Promise<FetchResult<{ station: ApiStationResponse }>> {
   const payload: {
-    station: string;
+    "station-updates": string;
     fromDate?: string;
     untilDate?: string;
     retire?: boolean;
   } = {
-    station: JSON.stringify(updates),
+    "station-updates": JSON.stringify(updates),
   };
   if (applyFromDate) {
     payload["from-date"] = applyFromDate.toISOString();
@@ -57,10 +57,20 @@ function retireStationById(stationId: StationId): Promise<FetchResult<{}>> {
   return updateStationWithId(stationId, {}, undefined, undefined, true);
 }
 
+function renameStationById(
+  stationId: StationId,
+  name: string
+): Promise<FetchResult<{}>> {
+  return updateStationWithId(stationId, {
+    name,
+  });
+}
+
 export default {
   getStations,
   updateStationWithId,
   getStationById,
   deleteStationById,
   retireStationById,
+  renameStationById,
 };
