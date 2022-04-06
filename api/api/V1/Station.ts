@@ -74,7 +74,7 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/stations`;
 
   /**
-   * @api {get} /api/v1/stations
+   * @api {get} /api/v1/stations Get stations for current user
    * @apiName GetStationsForCurrentUser
    * @apiGroup Station
    * @apiDescription List all stations that the requesting user has access to via group membership
@@ -105,14 +105,12 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/stations/:id
+   * @api {get} /api/v1/stations/:id Get a station by id
    * @apiName GetStationById
    * @apiGroup Station
    * @apiDescription Get a single station by id
    *
    * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiQuery {Boolean} [only-active=false] By default, returns the station if it is retired or active.
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations ApiStationResponse showing details of station
@@ -124,7 +122,6 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
-      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
@@ -137,7 +134,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {patch} /api/v1/stations/:id
+   * @api {patch} /api/v1/stations/:id Update a station by id
    * @apiName UpdateStationById
    * @apiGroup Station
    * @apiDescription Update a single station by id.  Must be an admin of the group that owns this station.
@@ -158,7 +155,6 @@ export default function (app: Application, baseUrl: string) {
       body("from-date").isISO8601().toDate().optional(),
       body("until-date").isISO8601().toDate().optional(),
       body("retire").default(false).isBoolean().toBoolean(),
-      query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     parseJSONField(body("station-updates")),
     fetchAdminAuthorizedRequiredStationById(param("id")),
@@ -249,7 +245,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {delete} /api/v1/stations/:id
+   * @api {delete} /api/v1/stations/:id Delete a station by id
    * @apiName DeleteStationById
    * @apiGroup Station
    * @apiDescription Delete a single station by id.  Must be an admin of the group that owns this station.

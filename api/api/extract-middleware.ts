@@ -205,7 +205,6 @@ const getStationInclude =
   (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
     where: {
       ...stationWhere,
-      "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null },
     },
     include: [
       {
@@ -637,6 +636,7 @@ const getStation =
     groupNameOrId?: string,
     context?: any
   ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
+    logger.error("Group %s, Station %s", groupNameOrId, stationNameOrId);
     const groupIsId =
       groupNameOrId &&
       !isNaN(parseInt(groupNameOrId)) &&
@@ -686,6 +686,8 @@ const getStation =
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
+        logger.error("GroupWhere %s", groupWhere);
+
         getStationOptions = getIncludeForUser(
           context,
           getStationInclude(stationWhere, groupWhere),
@@ -727,8 +729,12 @@ const getStation =
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
-
-    return models.Station.findOne(getStationOptions);
+    logger.error("HERE %s, %s", stationIsId, context.onlyActive);
+    try {
+      return models.Station.findOne(getStationOptions);
+    } catch (e) {
+      logger.error("%s", e.original);
+    }
   };
 
 const getSchedules =
@@ -1563,8 +1569,8 @@ export const fetchAdminAuthorizedRequiredStationById = (
   );
 
 export const fetchAdminAuthorizedRequiredStationByNameInGroup = (
-  stationNameOrId: ValidationChain,
-  groupNameOrId: ValidationChain
+  groupNameOrId: ValidationChain,
+  stationNameOrId: ValidationChain
 ) =>
   fetchRequiredModel(
     models.Station,

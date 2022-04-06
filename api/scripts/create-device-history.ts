@@ -25,6 +25,16 @@ async function main() {
     `select distinct "saltId" from "Devices";`
   );
 
+  // Set all already created stations creation date back to "Cacophony Epoch"
+  await models.Station.update(
+    {
+      activeAt: new Date("2010-01-01"),
+    },
+    {
+      where: {},
+    }
+  );
+
   const allConfigUpdatesToLocation = await pgClient.query(`
     select distinct
         (details->'device'->>'id')::int as device_id,
@@ -40,8 +50,6 @@ async function main() {
         and details->'location'->'longitude' != 'null'
         and details->'device'->'id' != 'null'
     `);
-
-  // FIXME: Already created stations should have their activeAt dates extended back to the first recordingTime for the device.
 
   const allDevices = [];
   for (const { saltId } of saltIds.rows) {
