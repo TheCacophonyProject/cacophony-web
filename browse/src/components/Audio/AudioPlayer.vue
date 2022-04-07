@@ -165,10 +165,6 @@ export default defineComponent({
       type: Number,
       required: true,
     },
-    sampleRate: {
-      type: Number,
-      default: 44100,
-    },
     selectedTrack: {
       type: Object as PropType<AudioTrack | null>,
       default: null,
@@ -184,8 +180,7 @@ export default defineComponent({
     const isLoading = ref(true);
     const player = ref<WaveSurfer>(null);
     const [isFinished, setIsFinished] = useState(false);
-    const sampleRate =
-      props.sampleRate < 10000 ? props.sampleRate * 2 : props.sampleRate;
+    const sampleRate = 23000;
     const [isPlaying, setIsPlaying] = useState(false);
     watch([isPlaying, () => props.selectedTrack], () => {
       if (isPlaying.value) {

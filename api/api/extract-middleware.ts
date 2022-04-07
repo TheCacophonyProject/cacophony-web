@@ -807,7 +807,6 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     "DeviceId",
     "type",
     "duration",
-    "sampleRate",
     "recordingDateTime",
     "location",
     "cacophonyIndex",

@@ -929,7 +929,6 @@ export default (app: Application, baseUrl: string) => {
           recordingItem.rawFileSize ||
           (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
       }
-      log.debug("!!!sampleRate %s", response.locals.recording.sampleRate);
       const recording = mapRecordingResponse(response.locals.recording);
 
       if (!config.productionEnv) {
