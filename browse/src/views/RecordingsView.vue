@@ -94,9 +94,9 @@ export default {
   },
   watch: {
     $route() {
-      if (this.$route.query.limit) {
-        this.perPage = parseInt(this.$route.query.limit);
-      }
+      //if (this.$route.query.limit) {
+      //  this.perPage = parseInt(this.$route.query.limit);
+      //}
       if (this.$route.query.offset) {
         this.currentPage =
           Math.ceil(Number(this.$route.query.offset) / this.perPage) + 1;
@@ -107,9 +107,6 @@ export default {
   },
   mounted() {
     window.addEventListener("resize", this.onResize);
-    if (this.$route.query.limit) {
-      this.perPage = Number(this.$route.query.limit);
-    }
     if (this.$route.query.offset) {
       this.currentPage =
         Math.ceil(Number(this.$route.query.offset) / this.perPage) + 1;

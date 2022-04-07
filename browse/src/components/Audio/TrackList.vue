@@ -12,7 +12,7 @@
         <b-row>
           <b-col
             cols="10"
-            v-on:click="setSelectedTrack(() => track)"
+            v-on:click="() => playTrack(track)"
             class="track-container"
           >
             <b-row>
@@ -42,7 +42,7 @@
                       "
                       variant="outline-success"
                       size="sm"
-                      @click="confirmTrack(track)"
+                      @click="() => confirmTrack(track)"
                     >
                       <b-spinner
                         v-if="track.confirming"
@@ -116,7 +116,7 @@
               <template #button-content>
                 <font-awesome-icon icon="cog" />
               </template>
-              <b-dropdown-item @click="deleteTrack(track.id)">
+              <b-dropdown-item @click="() => deleteTrack(track.id)">
                 <div class="text-danger">
                   <font-awesome-icon icon="trash" />
                   delete
@@ -153,7 +153,7 @@
       </b-col>
       <b-col class="d-flex align-items-center justify-content-center" v-else>
         <b-row
-          @click="undoDeleteTrack(track.id)"
+          @click="() => undoDeleteTrack(track.id)"
           class="undo-button justify-content-center align-items-center"
         >
           <h2 class="pr-2">Undo Deletion</h2>
@@ -210,12 +210,12 @@ export default defineComponent({
       >,
       required: true,
     },
-    setSelectedTrack: {
-      type: Function as PropType<SetState<AudioTrack>>,
+    playTrack: {
+      type: Function as PropType<(track: AudioTrack) => void>,
       required: true,
     },
   },
-  setup(props) {
+  setup(props, ctx) {
     const confirmTrack = async (track: AudioTrack) => {
       const tag = track.tags.find((t) => t.automatic);
       if (!tag) {

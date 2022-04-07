@@ -28,6 +28,8 @@ export interface TrackTagData {
   all_class_confidences: null | Record<string, number>;
   classify_time: number;
   message?: string;
+  gender: "male" | "female";
+  maturity: "juvenile" | "adult";
 }
 
 export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {

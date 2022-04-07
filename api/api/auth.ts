@@ -72,7 +72,7 @@ export const getVerifiedJWT = (
   let token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
   if (!token) {
     // allow taking the jwt from the query params.
-    token = request.query.jwt;
+    token = request.query.jwt as string;
   }
   if (!token) {
     throw new customErrors.AuthenticationError("Could not find JWT token.");

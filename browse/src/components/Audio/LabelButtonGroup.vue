@@ -55,7 +55,6 @@ export default defineComponent({
   },
   setup(props) {
     // create 2d array of labels where each row has props.cols elements
-
     const createGridValues = (labels: string[]) =>
       labels.reduce((acc, label, index) => {
         const rowIndex = Math.floor(index / props.cols);

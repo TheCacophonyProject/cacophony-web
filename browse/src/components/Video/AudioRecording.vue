@@ -4,11 +4,14 @@
       <b-row class="mb-4">
         <b-col>
           <AudioPlayer
+            :key="url"
             v-if="!deleted"
             :tracks="tracks"
             :url="url"
+            :duration="recording.duration"
+            :sampleRate="recording.sampleRate"
             :selectedTrack="selectedTrack"
-            :setSelectedTrack="setSelectedTrack"
+            :setSelectedTrack="playTrack"
           />
           <b-row
             v-else
@@ -26,13 +29,30 @@
           <TrackList
             :audio-tracks="tracks"
             :selected-track="selectedTrack"
-            :set-selected-track="setSelectedTrack"
+            :play-track="playTrack"
             :delete-track="deleteTrack"
             :undo-delete-track="undoDeleteTrack"
             :add-tag-to-track="addTagToTrack"
           />
         </b-col>
         <b-col>
+          <div class="mt-2 mb-2 d-flex align-items-center">
+            <multiselect
+              v-model="customTag"
+              :options="BirdLabels"
+              :disabled="!selectedTrack"
+              :value="selectedLabel"
+              :show-labels="false"
+            />
+            <font-awesome-icon
+              role="button"
+              class="mx-4 text-primary"
+              icon="thumbtack"
+              size="2x"
+              v-b-tooltip.hover
+              title="Pin current tag to buttons"
+            />
+          </div>
           <LabelButtonGroup
             :labels="labels"
             :add-tag-to-selected-track="addTagToSelectedTrack"
@@ -40,14 +60,70 @@
             :disabled="!selectedTrack"
             :selectedLabel="selectedLabel"
           />
-          <div class="mt-2 mb-4">
-            <multiselect
-              v-model="customTag"
-              :options="BirdLabels"
-              :disabled="!selectedTrack"
-              :value="selectedLabel"
-            />
-          </div>
+          <b-row
+            v-if="usersTag"
+            class="
+              d-flex
+              mt-2
+              flex-wrap
+              justify-content-center
+              attribute-selectors
+            "
+          >
+            <h3 class="w-100 ml-4">Attributes</h3>
+            <b-button-group class="mr-2">
+              <b-button
+                :class="{ highlight: usersTag.data.gender === 'male' }"
+                @click="
+                  addAttributeToTrackTag(
+                    { gender: 'male' },
+                    selectedTrack.id,
+                    usersTag.id
+                  )
+                "
+                :disabled="!selectedTrack"
+                >Male</b-button
+              >
+              <b-button
+                :class="{ highlight: usersTag.data.gender === 'female' }"
+                @click="
+                  addAttributeToTrackTag(
+                    { gender: 'female' },
+                    selectedTrack.id,
+                    usersTag.id
+                  )
+                "
+                :disabled="!selectedTrack"
+                >Female</b-button
+              >
+            </b-button-group>
+            <b-button-group class="ml-2">
+              <b-button
+                :class="{ highlight: usersTag.data.maturity === 'adult' }"
+                @click="
+                  addAttributeToTrackTag(
+                    { maturity: 'adult' },
+                    selectedTrack.id,
+                    usersTag.id
+                  )
+                "
+                :disabled="!selectedTrack"
+                >Adult</b-button
+              >
+              <b-button
+                :class="{ highlight: usersTag.data.maturity === 'juvenile' }"
+                @click="
+                  addAttributeToTrackTag(
+                    { maturity: 'juvenile' },
+                    selectedTrack.id,
+                    usersTag.id
+                  )
+                "
+                :disabled="!selectedTrack"
+                >Juvenile</b-button
+              >
+            </b-button-group>
+          </b-row>
         </b-col>
       </b-row>
     </b-col>
@@ -58,6 +134,7 @@
         :delete-recording="deleteRecording"
       />
       <CacophonyIndexGraph
+        v-if="recording.cacophonyIndex"
         class="mt-2"
         :cacophony-index="recording.cacophonyIndex"
         :id="recording.id"
@@ -75,7 +152,7 @@ import Multiselect from "vue-multiselect";
 
 import api from "@api";
 import store from "@/stores";
-import { useState } from "@/utils";
+import { useState, UUIDv4 } from "@/utils";
 import { TagColours, BirdLabels } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
@@ -86,6 +163,7 @@ import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
 import RecordingProperties from "../Video/RecordingProperties.vue";
 
 import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
+import { ApiTrackTagAttributes } from "@typedefs/api/trackTag";
 import {
   ApiTrackTagRequest,
   ApiTrackTagResponse,
@@ -109,6 +187,7 @@ export interface AudioTrack extends ApiTrackResponse {
   displayTags: DisplayTag[];
   confirming: boolean;
   deleted: boolean;
+  playEventId?: string;
 }
 export type AudioTracks = Map<TrackId, AudioTrack>;
 
@@ -239,6 +318,7 @@ export default defineComponent({
         deleted: false,
       };
     };
+
     const mappedTracks = (tracks: ApiTrackResponse[]) =>
       new Map(
         tracks.map((track, index) => {
@@ -251,6 +331,17 @@ export default defineComponent({
       mappedTracks(props.recording.tracks)
     );
     const [selectedTrack, setSelectedTrack] = useState<AudioTrack>(null);
+
+    const playTrack = (track?: AudioTrack) => {
+      if (track) {
+        setSelectedTrack(() => ({
+          ...track,
+          playEventId: UUIDv4(),
+        }));
+      } else {
+        setSelectedTrack(null);
+      }
+    };
 
     const addTrack = async (track: AudioTrack): Promise<AudioTrack> => {
       try {
@@ -276,7 +367,6 @@ export default defineComponent({
             track.colour && track.id !== -1
               ? track.colour
               : TagColours[tracks.value.size % TagColours.length];
-          console.log(colour, tracks.value.size);
           const newTrack = {
             ...track,
             id,
@@ -372,6 +462,40 @@ export default defineComponent({
       }
     };
 
+    const addAttributeToTrackTag = async (
+      attr: Partial<ApiTrackTagAttributes>,
+      trackId: TrackId,
+      tagId: number
+    ) => {
+      console.log(attr, trackId, tagId);
+      try {
+        const response = await api.recording.updateTrackTag(
+          attr,
+          props.recording.id,
+          trackId,
+          tagId
+        );
+        if (response.success) {
+          setTracks((tracks) => {
+            tracks.get(trackId).tags.forEach((tag) => {
+              if (tag.id === tagId) {
+                tag.data = {
+                  ...tag.data,
+                  ...attr,
+                };
+              }
+            });
+          });
+          const newTag = tracks.value
+            .get(trackId)
+            .tags.find((tag) => tag.id === tagId);
+          setUsersTag(newTag);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
     const deleteTrackTag = async (
       trackId: TrackId,
       tagId: number
@@ -428,16 +552,13 @@ export default defineComponent({
             userTag.id
           );
           setSelectedTrack(newTrack);
-          if (newTrack.tags.length === 0) {
-            deleteTrack(newTrack.id, true);
-          }
         }
       }
     };
 
     const deleteTrack = async (trackId: TrackId, permanent = false) => {
       try {
-        const response = await api.recording.removeTrack(
+        const response = await api.recording.deleteTrack(
           trackId,
           props.recording.id
         );
@@ -467,28 +588,16 @@ export default defineComponent({
 
     const undoDeleteTrack = async (trackId: TrackId) => {
       try {
-        const track = tracks.value.get(trackId);
-        if (track) {
-          const renewTrack = await addTrack(track);
-          const newTrack = await track.tags.reduce(
-            async (promisedTrack, tag) => {
-              const resolvedTrack = await promisedTrack;
-              const requestTrack = await addTagToTrack(
-                resolvedTrack.id,
-                tag.what,
-                tag.automatic,
-                tag.confidence,
-                tag.data,
-                tag.userName
-              );
-              return requestTrack;
-            },
-            Promise.resolve(renewTrack)
-          );
-          setTracks((tracks) => {
-            tracks.delete(trackId);
-            tracks.set(newTrack.id, newTrack);
+        const response = await api.recording.undeleteTrack(
+          trackId,
+          props.recording.id
+        );
+        if (response.success) {
+          modifyTrack(trackId, {
+            deleted: false,
           });
+        } else {
+          throw response.result;
         }
       } catch (error) {
         console.error(error);
@@ -532,28 +641,38 @@ export default defineComponent({
     };
     const [buttonLabels, setButtonLabels] = useState(createButtonLabels());
     const [selectedLabel, setSelectedLabel] = useState<string>("");
+    const [usersTag, setUsersTag] = useState<ApiTrackTagResponse>(null);
     const customTag = ref<string>(selectedLabel.value);
-    watchEffect(() => {
-      if (selectedTrack.value) {
-        const tag = selectedTrack.value.displayTags.find((tag) => {
-          if (tag.userId === userId) {
-            return true;
+    watch(
+      selectedTrack,
+      () => {
+        if (selectedTrack.value) {
+          const tag = selectedTrack.value.displayTags.find((tag) => {
+            if (tag.userId === userId) {
+              return true;
+            }
+            return false;
+          });
+          if (tag) {
+            const capitalizedTag =
+              tag.what.charAt(0).toUpperCase() + tag.what.slice(1);
+            setSelectedLabel(capitalizedTag);
+            customTag.value = capitalizedTag;
+            setUsersTag(tag);
+          } else {
+            setSelectedLabel("");
+            setUsersTag(null);
           }
-          return false;
-        });
-        if (tag) {
-          const capitalizedTag =
-            tag.what.charAt(0).toUpperCase() + tag.what.slice(1);
-          setSelectedLabel(capitalizedTag);
-          customTag.value = capitalizedTag;
         } else {
           setSelectedLabel("");
+          setUsersTag(null);
+          customTag.value = "";
         }
-      } else {
-        setSelectedLabel("");
-        customTag.value = "";
+      },
+      {
+        deep: true,
       }
-    });
+    );
 
     const storeCommonBird = (bird: string) => {
       const commonBirds = JSON.parse(localStorage.getItem("commonBirds")) ?? {};
@@ -581,12 +700,14 @@ export default defineComponent({
       undoDeleteRecording,
       selectedTrack,
       selectedLabel,
-      setSelectedTrack,
+      usersTag,
+      playTrack,
       customTag,
       labels: buttonLabels,
       BirdLabels: BirdLabels.sort(),
       addTagToSelectedTrack,
       addTagToTrack,
+      addAttributeToTrackTag,
       addTrack,
       deleteTrack,
       deleteTrackTag,
@@ -601,16 +722,30 @@ export default defineComponent({
 @import "~bootstrap/scss/variables";
 @import "~bootstrap/scss/mixins";
 
-#waveform {
-  width: 100%;
-  height: 50px;
-}
 @include media-breakpoint-down(lg) {
   .bottom-container {
     flex-direction: column-reverse;
   }
 }
 .audio-recording-container {
+  .attribute-selectors {
+    button {
+      padding: 0.5em 1em;
+      background-color: white;
+      color: #2b333f;
+      border-radius: 0.5em;
+      border: 1px #e8e8e8 solid;
+      box-shadow: 0px 1px 2px 1px #ebebeb70;
+      text-transform: capitalize;
+      &:hover {
+        color: #7f8c8d;
+      }
+    }
+  }
+  .audio-selected-button {
+    color: #c1f951;
+    background-color: #2b333f;
+  }
   .undo-button {
     cursor: pointer;
     color: #485460;
@@ -653,16 +788,16 @@ export default defineComponent({
   }
   .highlight {
     box-sizing: border-box;
-    box-shadow: inset 0px 0px 0px 2px #9acd32;
+    box-shadow: inset 0px 0px 0px 2px #9acd32 !important;
   }
   .multiselect--disabled {
     background: none;
   }
-  .multiselect__element {
-    text-transform: capitalized;
-  }
   .multiselect__select {
     height: 41px;
+  }
+  .multiselect__option {
+    text-transform: capitalize;
   }
   .multiselect__tags {
     min-height: 43px;

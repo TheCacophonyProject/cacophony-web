@@ -807,6 +807,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     "DeviceId",
     "type",
     "duration",
+    "sampleRate",
     "recordingDateTime",
     "location",
     "cacophonyIndex",
@@ -1581,6 +1582,15 @@ export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>
     true,
     getUnauthorizedGenericModelById(models.Track),
     trackId
+  );
+
+export const fetchUnauthorizedRequiredTrackTagById = (tagId: ValidationChain) =>
+  fetchRequiredModel(
+    models.TrackTag,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.TrackTag),
+    tagId
   );
 
 export const fetchUnauthorizedRequiredFileById = (fileId: ValidationChain) =>
