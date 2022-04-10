@@ -56,7 +56,7 @@ describe("Stations: updating", () => {
   });
 
 
-  //TODO: fix - This scenario creates duplicate-named station.s Issue 12
+  //TODO: Issue 12 - fix - This scenario creates duplicate-named station.s Issue 12
   it.skip("Can update an exsting station with new unique location", () => {
     cy.apiGroupAdd("stsuAdmin","stsuGroup2");
 
@@ -224,7 +224,7 @@ describe("Stations: updating", () => {
         expect(stationIds.length, "Expect only 1 updated station").to.equal(1);
   
         cy.log("Check station1 exists")
-        //TODO bug: cy.apiStationCheck("stsuAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
+        //TODO Issue 6 : cy.apiStationCheck("stsuAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
         cy.log("Check station2 exists")
         cy.apiGroupStationCheck("stsuAdmin", "stsuGroup9", "stsuStation9", expectedStationWithSameName);
       });
@@ -337,7 +337,7 @@ describe("Stations: updating", () => {
       cy.apiGroupStationsUpdate("stsuAdmin","stsuGroup15",[stationTooClose], undefined, HTTP_OK200, {warnings: "none"});
   
       cy.log("Check stations both exist")
-      //TODO bug: cy.apiStationCheck("stuAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
+      //TODO Issue 6 bug: cy.apiStationCheck("stuAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
 
       cy.apiGroupStationCheck("stsuAdmin", "stsuGroup15", "stationTooClose1", expectedStationTooClose);
     });

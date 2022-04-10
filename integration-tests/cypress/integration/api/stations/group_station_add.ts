@@ -136,7 +136,7 @@ describe("Stations: adding", () => {
       cy.apiGroupStationAdd("staAdmin","staGroup",stationWithSameName);
   
       cy.log("Check station1 exists")
-      //TODO bug: cy.apiStationCheck("staAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
+      //TODO Issue 6 bug: cy.apiStationCheck("staAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
       cy.log("Check station2 exists")
       cy.apiGroupStationCheck("staAdmin", "staGroup", "staStation4", expectedStation2);
     });
@@ -197,7 +197,7 @@ describe("Stations: adding", () => {
       cy.apiGroupStationAdd("staAdmin","staGroup",stationWithSameLocation, undefined, undefined, undefined, {warnings: "none"});
 
       cy.log("Check that both stations exist");
-      //TODO bug: cy.apiGroupStationCheck("staAdmin", "staGroup", "staStation8", expectedStation1);
+      //TODO Issue 7: bug: cy.apiGroupStationCheck("staAdmin", "staGroup", "staStation8", expectedStation1);
       cy.apiGroupStationCheck("staAdmin", "staGroup", "stationWithSameLocation8", expectedStationWithSameLocation);
     });
   });

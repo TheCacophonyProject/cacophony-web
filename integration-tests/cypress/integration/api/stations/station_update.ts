@@ -188,7 +188,7 @@ describe("Stations: updating", () => {
       cy.apiStationUpdate("stuAdmin","stuStation10",stationWithSameName);
   
       cy.log("Check station1 exists")
-      //TODO bug: cy.apiStationCheck("stuAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
+      //TODO Issue 6 bug: cy.apiStationCheck("stuAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
       cy.log("Check station2 exists")
       cy.apiGroupStationCheck("stuAdmin", "stuGroup", "stuStation9", expectedStationWithSameName);
     });
@@ -268,7 +268,7 @@ describe("Stations: updating", () => {
       cy.apiStationUpdate("stuAdmin","stuStation18",stationWithSameLocation, undefined, undefined, undefined, undefined, {warnings: "none"});
 
       cy.log("Check that both stations exist");
-      //TODO bug: cy.apiGroupStationCheck("stuAdmin", "stuGroup", "stuStation17", expectedStation1);
+      //TODO Issue 6 bug: cy.apiGroupStationCheck("stuAdmin", "stuGroup", "stuStation17", expectedStation1);
       cy.apiGroupStationCheck("stuAdmin", "stuGroup", "stationWithSameLocation18", expectedStationWithSameLocation);
     });
   });

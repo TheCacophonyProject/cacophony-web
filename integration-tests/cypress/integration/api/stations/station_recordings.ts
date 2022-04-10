@@ -121,7 +121,7 @@ describe("Stations: add and remove", () => {
       oneMonthAgo.toISOString(),
       now.toISOString()
     ).then((stationId) => {
-   //TODO. fix. not returning retired stations   cy.apiStationCheck(Josie, stationId, expectedStation,undefined,undefined,{useRawStationId: true}).then(
+   //TODO Issue 6. fix. not returning retired stations   cy.apiStationCheck(Josie, stationId, expectedStation,undefined,undefined,{useRawStationId: true}).then(
    //     (stationId) => {
           cy.testUploadRecording(deviceName, {
             ...location,

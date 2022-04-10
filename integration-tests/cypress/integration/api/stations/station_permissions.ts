@@ -82,7 +82,7 @@ describe("Stations: permissions", () => {
         cy.apiGroupStationCheck("saAdmin", "saGroup", "saStation1", saExpectedStation1);
 
         cy.log("Can get stations by user");
-//TODO: times out        cy.apiStationsCheck("saAdmin", [saExpectedStation1]);
+//TODO issue 16: times out        cy.apiStationsCheck("saAdmin", [saExpectedStation1]);
 
         cy.log("Can update a station");
         cy.apiStationUpdate("saAdmin", "saStation1", {name: "newName"}).then(() => {
@@ -118,22 +118,22 @@ describe("Stations: permissions", () => {
     cy.log("Get admin to add a station to test with"); 
     cy.apiGroupStationAdd("saAdmin","saGroup",saStation).then(() => {
       cy.log("Member can get station by id")
-//      cy.apiStationCheck("saMember", "saStation2", saExpectedStation);
+//TODO issue 3      cy.apiStationCheck("saMember", "saStation2", saExpectedStation);
  
       cy.log("Member can get station by group");
-//      cy.apiGroupStationCheck("saMember", "saGroup", "saStation2", saExpectedStation);
+//TODO issue 3      cy.apiGroupStationCheck("saMember", "saGroup", "saStation2", saExpectedStation);
    
       cy.log("Get stations by user does not list this station");
-//      cy.apiStationsCheck("saMember", []);
+//TODO issue 3      cy.apiStationsCheck("saMember", []);
 
       cy.log("Cannot update station");
-//      cy.apiStationUpdate("saMember", "saStation2", {name: "newName"}, undefined, undefined, false, HTTP_Forbidden);
+//TODO issue 3      cy.apiStationUpdate("saMember", "saStation2", {name: "newName"}, undefined, undefined, false, HTTP_Forbidden);
  
       cy.log("Cannot update a group's stations");
       cy.apiGroupStationsUpdate("saMember", "saGroup", [saUpdatedStation1], undefined, HTTP_Forbidden);
 
       cy.log("Cannot delete station");
-//      cy.apiStationDelete("saMember", "saStation2", true, HTTP_Forbidden);
+//TODO issue 3      cy.apiStationDelete("saMember", "saStation2", true, HTTP_Forbidden);
     
       cy.log("Station still exists");
       cy.apiStationCheck("saAdmin", "saStation2", saExpectedStation);
@@ -151,22 +151,22 @@ describe("Stations: permissions", () => {
     cy.log("Get admin to add a station to test with");
     cy.apiGroupStationAdd("saAdmin","saGroup",saStation).then(() => {
       cy.log("Non-Member cannot get station by id")
-//      cy.apiStationCheck("saNonMember", "saStation3", undefined, undefined, HTTP_Forbidden);
+//TODO issue 4      cy.apiStationCheck("saNonMember", "saStation3", undefined, undefined, HTTP_Forbidden);
   
       cy.log("Non-Member cannot get station by group");
       cy.apiGroupStationCheck("saNonMember", "saGroup", "saStation3", undefined, undefined, HTTP_Forbidden);
   
       cy.log("Get stations by user does not list this station");
-//      cy.apiStationsCheck("saNonMember", []);
+//TODO issue 4      cy.apiStationsCheck("saNonMember", []);
 
       cy.log("Non-member Cannot update station");
-//      cy.apiStationUpdate("saNonMember", "saStation3", {name: "newName"}, undefined, undefined, false, HTTP_Forbidden);
+//TODO issue 4      cy.apiStationUpdate("saNonMember", "saStation3", {name: "newName"}, undefined, undefined, false, HTTP_Forbidden);
       
       cy.log("Cannot update a group's stations");
       cy.apiGroupStationsUpdate("saNonMember", "saGroup", [saUpdatedStation1], undefined, HTTP_Forbidden);
   
       cy.log("Non-member Cannot delete station");
- //     cy.apiStationDelete("saNonMember", "saStation3", true, HTTP_Forbidden);
+//TODO issue 4     cy.apiStationDelete("saNonMember", "saStation3", true, HTTP_Forbidden);
  
       cy.log("Station still exists");
       cy.apiStationCheck("saAdmin", "saStation3", saExpectedStation);
