@@ -24,6 +24,7 @@ import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@api/V1/recordingUtil";
+import logger from "@log";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -122,6 +123,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
+      query("only-active").default(false).isBoolean().toBoolean(), // NOTE: Don't document this, it shouldn't be changed.
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
@@ -155,6 +157,7 @@ export default function (app: Application, baseUrl: string) {
       body("from-date").isISO8601().toDate().optional(),
       body("until-date").isISO8601().toDate().optional(),
       body("retire").default(false).isBoolean().toBoolean(),
+      query("only-active").default(false).isBoolean().toBoolean(), // NOTE: Don't document this, it shouldn't be changed.
     ]),
     parseJSONField(body("station-updates")),
     fetchAdminAuthorizedRequiredStationById(param("id")),
@@ -163,7 +166,8 @@ export default function (app: Application, baseUrl: string) {
       // If an until date is set, that is the date that the station was retired at
 
       // Merge existing station with updates, filling in any missing fields.
-      const possibleLocationUpdates = response.locals["station-updates"];
+      const stationUpdates = response.locals["station-updates"];
+      const possibleLocationUpdates = stationUpdates;
       const proximityWarnings = [];
       const existingStation = response.locals.station;
       const updatedLocation: ApiCreateStationData = {
@@ -173,41 +177,52 @@ export default function (app: Application, baseUrl: string) {
       const positionUpdated =
         possibleLocationUpdates &&
         stationLocationHasChanged(existingStation, updatedLocation);
+
+      const activeAt = request.body["from-date"] || existingStation.activeAt;
+      const retiredAt =
+        request.body["until-date"] ||
+        (request.body.retire && new Date()) ||
+        existingStation.retiredAt === null
+          ? undefined
+          : existingStation.retiredAt;
+
+      const otherActiveStationsInTimeWindow = (
+        await models.Station.activeInGroupDuringTimeRange(
+          existingStation.GroupId,
+          activeAt,
+          retiredAt
+        )
+      ).filter(({ id }) => id !== existingStation.id);
+
+      const newName = stationUpdates?.name;
+      if (
+        newName &&
+        otherActiveStationsInTimeWindow.find(({ name }) => name === newName)
+      ) {
+        responseUtil.send(response, {
+          statusCode: 400,
+          messages: [
+            `An active station with the name ${newName} already exists between ${activeAt.toISOString()} and ${retiredAt.toISOString()}`,
+          ],
+        });
+      }
+
       if (positionUpdated) {
-        {
-          const activeAt =
-            request.body["from-date"] || existingStation.activeAt;
-          const retiredAt =
-            request.body["until-date"] ||
-            (request.body.retire && new Date()) ||
-            existingStation.retiredAt === null
-              ? undefined
-              : existingStation.retiredAt;
-
-          const otherActiveStationsInTimeWindow = (
-            await models.Station.activeInGroupDuringTimeRange(
-              existingStation.GroupId,
-              activeAt,
-              retiredAt
-            )
-          ).filter(({ id }) => id !== existingStation.id);
-
-          for (const otherStation of otherActiveStationsInTimeWindow) {
-            if (
-              latLngApproxDistance(otherStation.location, updatedLocation) <
-              MIN_STATION_SEPARATION_METERS
-            ) {
-              proximityWarnings.push(
-                `Updated station location is too close to ${otherStation.name}(${otherStation.id} - recordings may be incorrectly matched`
-              );
-            }
+        for (const otherStation of otherActiveStationsInTimeWindow) {
+          if (
+            latLngApproxDistance(otherStation.location, updatedLocation) <
+            MIN_STATION_SEPARATION_METERS
+          ) {
+            proximityWarnings.push(
+              `Updated station location is too close to ${otherStation.name}(${otherStation.id} - recordings may be incorrectly matched`
+            );
           }
         }
       }
 
       const updates = {
         ...mapStation(response.locals.station),
-        ...(response.locals["station-updates"] || {}),
+        ...(stationUpdates || {}),
         lastUpdatedById: response.locals.requestUser.id,
       };
       delete updates.lat;
@@ -249,7 +264,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiName DeleteStationById
    * @apiGroup Station
    * @apiDescription Delete a single station by id.  Must be an admin of the group that owns this station.
-   * Optionally, delete all recordings that were associated with this station.
+   *
+   * @apiQuery {Boolean=false} delete-recordings Optionally, delete all recordings that were associated with this station.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -261,9 +277,8 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      query("view-mode").optional().equals("user"),
       booleanOf(query("delete-recordings")).default(false),
-      query("only-active").default(false).isBoolean().toBoolean(),
+      query("only-active").default(false).isBoolean().toBoolean(), // NOTE: Don't document this, it shouldn't be changed.
     ]),
     fetchAdminAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {

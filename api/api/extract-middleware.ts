@@ -730,11 +730,8 @@ const getStation =
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
     logger.error("HERE %s, %s", stationIsId, context.onlyActive);
-    try {
-      return models.Station.findOne(getStationOptions);
-    } catch (e) {
-      logger.error("%s", e.original);
-    }
+
+    return models.Station.findOne(getStationOptions);
   };
 
 const getSchedules =
@@ -1577,6 +1574,19 @@ export const fetchAdminAuthorizedRequiredStationByNameInGroup = (
     true,
     true,
     getStation(true, true),
+    stationNameOrId,
+    groupNameOrId
+  );
+
+export const fetchAuthorizedRequiredStationByNameInGroup = (
+  groupNameOrId: ValidationChain,
+  stationNameOrId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Station,
+    true,
+    true,
+    getStation(true, false),
     stationNameOrId,
     groupNameOrId
   );

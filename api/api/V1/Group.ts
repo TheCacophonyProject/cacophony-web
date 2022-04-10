@@ -33,6 +33,7 @@ import {
   fetchAuthorizedRequiredSchedulesForGroup,
   fetchAuthorizedRequiredStationsForGroup,
   fetchAdminAuthorizedRequiredStationByNameInGroup,
+  fetchAuthorizedRequiredStationByNameInGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -567,10 +568,15 @@ export default function (app: Application, baseUrl: string) {
             existingStation.name = station.name;
             existingStation.lastUpdatedById = response.locals.requestUser.id;
             stationsToUpdate[existingStation.id] = existingStation;
+            if (existingStation.automatic) {
+              stationsToUpdate[existingStation.id].automatic = false;
+            }
             matches = true;
           } else if (nameMatches && !locationMatches) {
             // Rename the existing station to a "_moved" name, and create a new station.
-            existingStation.name = `${existingStation.name}_moved`;
+            existingStation.name = `${
+              existingStation.name
+            }_moved_${new Date().toISOString()}`;
             existingStation.lastUpdatedById = response.locals.requestUser.id;
             stationsToUpdate[existingStation.id] = existingStation;
             stationsToCreate.push(station);
@@ -605,7 +611,11 @@ export default function (app: Application, baseUrl: string) {
 
       const responseData = {
         statusCode: 200,
-        messages: ["Updated and stations in group."],
+        messages: [
+          `Updated${
+            stationsToCreate.length ? " and added" : ""
+          } stations in group.`,
+        ],
         stationIdsAddedOrUpdated: updates.map(({ id }) => id),
       };
 
@@ -664,7 +674,7 @@ export default function (app: Application, baseUrl: string) {
           MIN_STATION_SEPARATION_METERS
         ) {
           proximityWarnings.push(
-            `New station is too close to ${existingStation.name}(${existingStation.id} - recordings may be incorrectly matched`
+            `New station is too close to ${existingStation.name}(#${existingStation.id}) - recordings may be incorrectly matched`
           );
         }
       }
@@ -731,7 +741,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    fetchAdminAuthorizedRequiredStationByNameInGroup(
+    fetchAuthorizedRequiredStationByNameInGroup(
       param("groupIdOrName"),
       param("stationName")
     ),
