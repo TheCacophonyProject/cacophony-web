@@ -8,7 +8,11 @@ import {
 
 import { getCreds } from "@commands/server";
 
-import { ApiRecordingSet, ApiRecordingForProcessing } from "@commands/types";
+import {
+  ApiAlertConditions,
+  ApiRecordingSet,
+  ApiRecordingForProcessing,
+} from "@commands/types";
 
 import {
   TestCreateExpectedProcessingData,
@@ -29,18 +33,15 @@ import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
 
+import { createExpectedAlert } from "@commands/api/alerts";
+import { createExpectedEvent } from "@commands/api/events";
+
 describe("Recordings - reprocessing tests", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  //TODO: workaround for issue 88. Remove rawMimeType from exclude list once fixed
-  const EXCLUDE_IDS_AND_MIME = EXCLUDE_IDS.concat([
-    ".rawMimeType",
-    ".location",
-  ]);
-
   //Do not validate keys
-  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".location"];
+  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
 
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
@@ -68,6 +69,10 @@ describe("Recordings - reprocessing tests", () => {
     JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );
 
+  const POSSUM_ALERT: ApiAlertConditions[] = [
+    { tag: "possum", automatic: true },
+  ];
+
   //TODO: These tests will not currently work unless we have SU access as we need to be able to delete any
   //recordings that are in analyse state that do not belong to us.  This can be removed once
   //the analyse.test state has been implemented.  All analyse/reprocess/FINISHED states in this test suite
@@ -89,7 +94,8 @@ describe("Recordings - reprocessing tests", () => {
         "rrpGroupAdmin",
         "rrpAlert1b",
         [{ tag: "possum", automatic: true }],
-        "rrpCamera1b"
+        "rrpCamera1b",
+        0
       );
 
       //Group2 with device and admin
@@ -130,7 +136,6 @@ describe("Recordings - reprocessing tests", () => {
       ); //remove
     });
 
-    //TODO: test to be updated when new processing workflow implemented
     it("Can reprocess a single recording", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       recording1.processingState = RecordingProcessingState.Finished;
@@ -451,7 +456,7 @@ describe("Recordings - reprocessing tests", () => {
           "rrpGroupAdmin",
           "rrpRecording11",
           expectedRecording1,
-          EXCLUDE_IDS_AND_MIME
+          EXCLUDE_IDS
         );
 
         cy.log("Mark for reprocessing");
@@ -472,7 +477,7 @@ describe("Recordings - reprocessing tests", () => {
           "rrpGroupAdmin",
           "rrpRecording11",
           expectedRecording2,
-          EXCLUDE_IDS_AND_MIME
+          EXCLUDE_IDS
         );
 
         cy.log("pick up for processing");
@@ -506,7 +511,7 @@ describe("Recordings - reprocessing tests", () => {
           "rrpGroupAdmin",
           "rrpRecording11",
           expectedRecording3,
-          EXCLUDE_IDS_AND_MIME
+          EXCLUDE_IDS
         );
 
         cy.log("Mark as done");
@@ -527,7 +532,7 @@ describe("Recordings - reprocessing tests", () => {
           "rrpGroupAdmin",
           "rrpRecording11",
           expectedRecording4,
-          EXCLUDE_IDS_AND_MIME
+          EXCLUDE_IDS
         );
       });
     });
@@ -595,6 +600,7 @@ describe("Recordings - reprocessing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
+                positions: [],
                 filtered: true,
                 automatic: true,
               },
@@ -621,6 +627,7 @@ describe("Recordings - reprocessing tests", () => {
                   start: 1,
                   end: 4,
                   id: 1,
+                  positions: [],
                   filtered: false,
                   automatic: true,
                 },
@@ -657,8 +664,100 @@ describe("Recordings - reprocessing tests", () => {
       });
     });
 
-    //TODO: blocked as we can't get alerts to generate in processing tests
-    it.skip("Reprocessing does / doesn't? trigger new alerts", () => {});
+    //TODO: Issue 106: Reprocess does not generate an alert.  Should it?
+    it.skip("Reprocessing triggers alert", () => {
+      //Note: camera 1b has an alert for possums
+      const recording20 = TestCreateRecordingData(templateRecording);
+      recording20.processingState = RecordingProcessingState.Finished;
+      cy.apiRecordingAdd(
+        "rrpCamera1b",
+        recording20,
+        "oneframe.cptv",
+        "rrpRecording20"
+      ).then(() => {
+        const expectedAlert20 = createExpectedAlert(
+          "rrpAlert1b",
+          0,
+          POSSUM_ALERT,
+          true,
+          "rrpGroupAdmin",
+          "rrpCamera1b"
+        );
+        const expectedEvent20 = createExpectedEvent(
+          "rrpCamera1b",
+          "rrpRecording20",
+          "rrpAlert1b"
+        );
+
+        const expectedProcessing20 = TestCreateExpectedProcessingData(
+          templateExpectedProcessing,
+          "rrpRecording20",
+          recording20
+        );
+        expectedProcessing20.processingState =
+          RecordingProcessingState.Reprocess;
+        expectedProcessing20.hasAlert = true;
+
+        cy.log("Check admin can mark for reprocessing");
+        cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording20").id]);
+
+        cy.log("Send for reprocessing and check is flagged as hasAlert");
+        cy.processingApiCheck(
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.Reprocess,
+          "rrpRecording20",
+          expectedProcessing20,
+          EXCLUDE_KEYS
+        );
+
+        cy.log("Look up algorithm and then post tracks");
+        cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
+          (algorithmId) => {
+            cy.processingApiTracksPost(
+              "rrpTrack20",
+              "rrpRecording20",
+              { start_s: 1, end_s: 4 },
+              algorithmId
+            );
+
+            cy.log("Add tags");
+            cy.processingApiTracksTagsPost(
+              "rrpTrack20",
+              "rrpRecording20",
+              "possum",
+              0.9,
+              {
+                name: "Master",
+                clarity: 1,
+                raw_tag: "possum",
+                model_used: "Inc3",
+                predictions: [],
+                classify_time: 1.2,
+                prediction_frames: [],
+                all_class_confidences: { possum: 1 },
+              }
+            ).then(() => {
+              cy.log("set processing to done and recheck tracks");
+              cy.processingApiPut("rrpRecording20", true, {}, undefined).then(
+                () => {
+                  cy.log("Check an event was generated");
+                  cy.apiAlertCheck(
+                    "rrpGroupAdmin",
+                    "rrpCamera1b",
+                    expectedAlert20
+                  );
+                  cy.testEventsCheckAgainstExpected(
+                    "rrpGroupAdmin",
+                    "rrpCamera1b",
+                    expectedEvent20
+                  );
+                }
+              );
+            });
+          }
+        );
+      });
+    });
   } else {
     it.skip(
       "NOTE: reprocess tests disables as environment variables have superuser access disabled"

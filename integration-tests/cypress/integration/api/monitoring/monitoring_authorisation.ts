@@ -2,7 +2,7 @@
 
 import { logTestDescription, NO_LOG_MESSAGE } from "@commands/descriptions";
 
-describe.skip("Recording authorizations", () => {
+describe("Recording authorizations", () => {
   const admin = "Betty-groupAdmin";
   const member = "Bob-groupMember";
   const hacker = "Hacker-recordings";

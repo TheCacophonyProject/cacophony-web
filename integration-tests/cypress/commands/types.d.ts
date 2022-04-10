@@ -1,7 +1,6 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { CacophonyIndex } from "@typedefs/api/recording";
-import { LatLng } from "@typedefs/api/common";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {
@@ -291,12 +290,14 @@ export interface ApiRecordingForProcessing {
   StationId: number;
   recordingDateTime: string;
   duration: number;
-  location: { type: "Point"; coordinates: [number, number] } | null;
+  location: { type: "Point"; coordinates: number[] } | null;
   hasAlert: boolean;
   processingStartTime: string;
   processingEndTime: string;
   processing: boolean;
   updatedAt: string;
+  currentStateStartTime: string;
+  processingFailedCount: number;
 }
 
 // from api/v1/recordings (post)
@@ -304,10 +305,8 @@ export interface ApiRecordingSet {
   type: RecordingType;
   fileHash?: string;
   duration: number;
-  location?:
-    | { type: "Point"; coordinates: [number, number] }
-    | [number, number];
-  recordingDateTime?: string;
+  location?: ApiLocation | number[];
+  recordingDateTime: string;
   relativeToDawn?: number;
   relativeToDusk?: number;
   version?: string;
@@ -355,7 +354,7 @@ export interface ApiRecordingReturned {
   recordingDateTime: string;
   relativeToDawn?: number;
   relativeToDusk?: number;
-  location: LatLng;
+  location: ApiLocation;
   version?: string;
   batteryLevel?: number;
   batteryCharging?: string;
@@ -462,21 +461,15 @@ export interface ApiTrackSet {
   positions?: any;
   start_s: number;
   end_s: number;
+  minFreq?: number;
+  maxFreq?: number;
   predictions: {
-    label?: string;
-    clarity?: number;
-    all_class_confidences?: Record<string, number>;
-    prediction_frames?: number[][];
-    predictions?: number[][];
     model_id: number;
     confident_tag?: string;
     confidence?: number;
   }[];
   all_class_confidences?: any;
-  tracker_version?: number;
-  num_frames?: number;
-  frame_start?: number;
-  frame_end?: number;
+  automatic?: boolean;
 }
 
 //from api/v1/recordings (get)
@@ -519,7 +512,7 @@ export interface TestThermalRecordingInfo {
 // from api/v1/recording (get)
 export interface ApiRecordingStation {
   name?: string;
-  location?: LatLng;
+  location?: ApiLocation;
 }
 
 // from api/v1/groups/<>/stations (post)
@@ -529,16 +522,17 @@ export interface ApiStationData {
   lng: number;
 }
 
+// from api/v1/groups/<>/stations (get), apiRecordings (post)
 export interface ApiLocation {
-  type: "Point";
-  coordinates: [number, number];
+  type: string;
+  coordinates: number[];
 }
 
 // from api/v1/groups/<>/stations (get)
 export interface ApiStationDataReturned {
   id: number;
   name: string;
-  location: LatLng;
+  location: ApiLocation;
   lastUpdatedById: number;
   createdAt: string;
   retiredAt: string;

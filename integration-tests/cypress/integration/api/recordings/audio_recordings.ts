@@ -113,39 +113,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: confirm audio files do not have duration embedded?
-  it.skip("Can read duration from file if not supplied", () => {
-    cy.log("Takes duration from recording if not specified");
-    const recording13 = TestCreateRecordingData(templateRecording);
-    let expectedRecording13: ApiAudioRecordingResponse;
-
-    delete recording13.duration;
-    cy.apiRecordingAdd(
-      "rarDevice1",
-      recording13,
-      "60sec-audio.mp4",
-      "rarRecording13"
-    ).then(() => {
-      expectedRecording13 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rarRecording13",
-        "rarDevice1",
-        "rarGroup",
-        null,
-        recording13
-      );
-      expectedRecording13.duration = 60;
-      cy.apiRecordingCheck(
-        "rarGroupAdmin",
-        "rarRecording13",
-        expectedRecording13,
-        EXCLUDE_IDS
-      );
-      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording13");
-    });
-  });
-
-  //TODO: Invalid duration causes server error.  Should be caught with 4xx
+  //TODO: Ussue 108: Invalid duration ignored
   it.skip("Handles invalid duration correctly", () => {
     cy.log("Invalid duration rejected correctly");
     const recording14 = TestCreateRecordingData(templateRecording);
@@ -190,19 +158,38 @@ describe("Recordings - audio recording parameter tests", () => {
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording15");
     });
 
-    //cannot have null recordingDateTime
+    //can have blank recordingDateTime
     const recording16 = TestCreateRecordingData(templateRecording);
+    let expectedRecording16: ApiAudioRecordingResponse;
+
     recording16.recordingDateTime = null;
     cy.apiRecordingAdd(
       "rarDevice1",
       recording16,
       "60sec-audio.mp4",
-      "rarRecording16",
-      HTTP_Unprocessable
-    );
+      "rarRecording16"
+    ).then(() => {
+      expectedRecording16 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rarRecording16",
+        "rarDevice1",
+        "rarGroup",
+        null,
+        recording16
+      );
+      expectedRecording16.recordingDateTime = recording16.recordingDateTime;
+      cy.apiRecordingCheck(
+        "rarGroupAdmin",
+        "rarRecording16",
+        expectedRecording16,
+        EXCLUDE_IDS
+      );
+      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording16");
+    });
   });
 
-  it("Invalid recordingDateTime handled correctly", () => {
+  //TODO: Fails - issue 80
+  it.skip("Invalid recordingDateTime handled correctly", () => {
     const recording8 = TestCreateRecordingData(templateRecording);
     recording8.recordingDateTime = "BadTimeValue";
     cy.apiRecordingAdd(
@@ -215,7 +202,7 @@ describe("Recordings - audio recording parameter tests", () => {
   });
 
   //TODO: issue 81.  Locations at following locations cause server error:
-  //Greenwich meridian at equator (0 deg long, 0 deg lat)
+  //Grenwich meridian at equator (0 deg long, 0 deg lat)
   //North and south poles (+/-90 deg lat)
   //International date line (+/-180 deg)
   //Locations returned inaccurately (rounded to 100m) - issue 82
@@ -827,18 +814,20 @@ describe("Recordings - audio recording parameter tests", () => {
         null,
         recording34
       );
-      expectedRecording34.cacophonyIndex = [
-        { end_s: 20, begin_s: 0, index_percent: 80.8 },
-        { end_s: 40, begin_s: 20, index_percent: 77.1 },
-        { end_s: 60, begin_s: 40, index_percent: 71.6 },
-      ];
       expectedRecording34.additionalMetadata = {
         normal: "0",
         "SIM IMEI": "990006964660319",
-        analysis: {},
-        cacophony_index_version: "2020-01-20_A",
-        processing_time_seconds: 50.7,
-        species_identify_version: "2021-02-01",
+        analysis: {
+          cacophony_index: [
+            { end_s: 20, begin_s: 0, index_percent: 80.8 },
+            { end_s: 40, begin_s: 20, index_percent: 77.1 },
+            { end_s: 60, begin_s: 40, index_percent: 71.6 },
+          ],
+          species_identify: [],
+          cacophony_index_version: "2020-01-20_A",
+          processing_time_seconds: 50.7,
+          species_identify_version: "2021-02-01",
+        },
         "SIM state": "SIM_STATE_READY",
         "Auto Update": false,
         "Flight Mode": false,
@@ -983,7 +972,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: No validation in API on battery status fields
+  //TODO: Issue 108 - No validation in API on battery status fields
   it.skip("Invalid battery charging data rejected correctly", () => {
     cy.log("Invalid charge level");
     const recording43 = TestCreateRecordingData(templateRecording);
@@ -1125,7 +1114,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Invalid airplane mode causes server error
+  //TODO: Issue 108 - Invalid airplane mode causes server error
   it.skip("Invalid airplane mode data rejected correctly", () => {
     const recording45 = TestCreateRecordingData(templateRecording);
     recording45.airplaneModeOn = "NotAValidValue" as unknown as boolean;
@@ -1320,7 +1309,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Invalid relativeToDawn/Dusk causes server error
+  //TODO: Issue 109 - Invalid relativeToDawn/Dusk causes server error
   it.skip("Invalid relativeToDawn/dusk data rejected correctly", () => {
     cy.log("Invalid relativeToDawn");
     const recording52 = TestCreateRecordingData(templateRecording);

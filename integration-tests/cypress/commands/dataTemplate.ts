@@ -65,7 +65,7 @@ export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   processingMeta: null,
   GroupId: NOT_NULL,
   DeviceId: NOT_NULL,
-  StationId: NOT_NULL,
+  StationId: null,
   recordingDateTime: "2021-01-01T01:01:01.018Z",
   duration: 60,
   location: null,
@@ -74,6 +74,8 @@ export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   processingEndTime: null,
   processing: true,
   updatedAt: "",
+  currentStateStartTime: NOT_NULL_STRING,
+  processingFailedCount: 0,
 };
 
 export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
@@ -107,13 +109,15 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
   additionalMetadata: {
     normal: "0",
     "SIM IMEI": "990006964660319",
+    analysis: {
+      cacophony_index_version: "2020-01-20_A",
+      processing_time_seconds: 50.7,
+      species_identify_version: "2021-02-01",
+    },
     "SIM state": "SIM_STATE_READY",
     "Auto Update": false,
     "Flight Mode": false,
     "Phone model": "SM-G900V",
-    cacophony_index_version: "2020-01-20_A",
-    processing_time_seconds: 50.7,
-    species_identify_version: "2021-02-01",
     amplification: 1.0721460589601806,
     SimOperatorName: "Verizon",
     "Android API Level": 23,
@@ -124,7 +128,53 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
 
 //THERMAL RECORDINGS
 
+export const TEMPLATE_AUDIO_TRACK: ApiTrackSet = {
+  start_s: 0,
+  end_s: 3,
+  minFreq: 10,
+  maxFreq: 1000,
+  predictions: [
+    {
+      confidence: 1,
+      model_id: 1,
+      confident_tag: "morepork",
+    },
+  ],
+  positions: [],
+  automatic: true,
+};
+
+export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
+  start: 0,
+  end: 3,
+  minFreq: 10,
+  maxFreq: 1000,
+  id: NOT_NULL,
+  filtered: false,
+  automatic: true,
+  positions: [
+    {
+      x: 111,
+      y: 17,
+      width: 48,
+      height: 75,
+      order: NOT_NULL,
+    },
+  ],
+  tags: [
+    {
+      what: "morepork",
+      data: { name: "Master" },
+      automatic: true,
+      confidence: 1,
+      trackId: NOT_NULL,
+      id: NOT_NULL,
+    },
+  ],
+};
+
 export const TEMPLATE_TRACK: ApiTrackSet = {
+  id: 2,
   tracker_version: 10,
   start_s: 4.89,
   end_s: 8.67,
@@ -181,6 +231,7 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
       y: 17,
       width: 48,
       height: 75,
+      //frameNumber: 44, FIXME: PATRICK: Remove once GPs changes integrated
       order: NOT_NULL,
     },
   ],
@@ -208,7 +259,7 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: { lat: -45.29115, lng: 169.30845 },
     type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 5 },
+    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
     comment: "This is a comment",
     processing: false,
@@ -225,7 +276,7 @@ export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {
   additionalMetadata: {
     algorithm: 31143,
     previewSecs: 5,
-    totalFrames: 5,
+    totalFrames: 141,
   },
   metadata: {
     tracks: [TEMPLATE_TRACK],
@@ -257,7 +308,7 @@ export const TEMPLATE_THERMAL_RECORDING_PROCESSING: ApiRecordingForProcessing =
     processingMeta: null,
     GroupId: NOT_NULL,
     DeviceId: NOT_NULL,
-    StationId: NOT_NULL,
+    StationId: null,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
     location: null,
@@ -266,6 +317,8 @@ export const TEMPLATE_THERMAL_RECORDING_PROCESSING: ApiRecordingForProcessing =
     processingEndTime: null,
     processing: true,
     updatedAt: NOT_NULL_STRING,
+    currentStateStartTime: NOT_NULL_STRING,
+    processingFailedCount: 0,
   };
 
 export const TEMPLATE_THERMAL_RECORDING_NEEDS_TAG: ApiRecordingNeedsTagReturned =

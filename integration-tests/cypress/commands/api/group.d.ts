@@ -1,7 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+
 declare namespace Cypress {
-  type ApiGroupsUserReturned = import("../types").ApiGroupsUserReturned;
   type ApiGroupReturned = import("../types").ApiGroupReturned;
   type ApiDeviceIdAndName = import("../types").ApiDeviceIdAndName;
   type ApiGroupsDevice = import("../types").ApiGroupsDevice;
@@ -20,9 +20,26 @@ declare namespace Cypress {
      * By default userName and groupName are converted into unique (for this test run) names.
      * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
      */
+
     apiGroupAdd(
       userName: string,
       groupName: string,
+      log?: boolean,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /**
+     * Add user to group
+     * Optionally check for fail response (statusCode!=200)
+     * By default userName and groupName are converted into unique (for this test run) names.
+     * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+     */
+    apiGroupUserAdd(
+      groupAdminUser: string,
+      userName: string,
+      groupName: string,
+      admin?: boolean,
       log?: boolean,
       statusCode?: number,
       additionalChecks?: any
@@ -79,22 +96,6 @@ declare namespace Cypress {
     ): any;
 
     /**
-     * Add user to group
-     * Optionally check for fail response (statusCode!=200)
-     * By default userName and groupName are converted into unique (for this test run) names.
-     * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
-     */
-    apiGroupUserAdd(
-      groupAdminUser: string,
-      userName: string,
-      groupName: string,
-      admin?: boolean,
-      log?: boolean,
-      statusCode?: number,
-      additionalChecks?: any
-    ): any;
-
-    /**
      * Call api/v1/groups/<groupname>/users and check that returned values match expectedUsers
      * Optionally check for fail response (statusCode!=200)
      * By default userName and groupName are converted into unique (for this test run) names.
@@ -105,7 +106,7 @@ declare namespace Cypress {
     apiGroupUsersCheck(
       userName: string,
       groupName: string,
-      expectedUsers: ApiGroupsUserReturned[],
+      expectedUsers: ApiGroupUserRelationshipResponse[],
       excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any
@@ -121,38 +122,6 @@ declare namespace Cypress {
       groupAdminUser: string,
       userName: string,
       groupName: string,
-      statusCode?: number,
-      additionalChecks?: any
-    ): any;
-
-    /**
-     * POST to api/v1/groups/<groupidorname>/stations to add, update or retire stations from the group
-     * Optionally check for fail response (statusCode!=200)
-     * By default userName and groupName are converted into unique (for this test run) names.
-     * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
-     */
-    apiGroupStationsUpdate(
-      userName: string,
-      groupIdOrName: string,
-      stations: ApiStationData[],
-      updateFrom?: string,
-      statusCode?: number,
-      additionalChecks?: any
-    ): any;
-
-    /**
-     * Call api/v1/groups/<groupidorname>/stations and check that returned values match expectedStations
-     * Optionally check for fail response (statusCode!=200)
-     * By default userName and groupName are converted into unique (for this test run) names.
-     * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
-     * By default stations and expectedStations are sorted on userName before comparison
-     * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
-     */
-    apiGroupsStationsCheck(
-      userName: string,
-      groupIdOrName: any,
-      expectedStations: ApiStationResponse[],
-      excludeCheckOn?: string[],
       statusCode?: number,
       additionalChecks?: any
     ): any;

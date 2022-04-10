@@ -8,11 +8,16 @@ import {
   checkRequestFails,
   makeAuthorizedRequestWithStatus,
   sortArrayOn,
+  checkTreeStructuresAreEqualExcept
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { ApiDevicesDevice } from "../types";
+import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
+
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import ApiGroupUserRelationshipResponse = Cypress.ApiGroupsUserRelationshipResponse;
+import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
+import { DeviceType } from "@typedefs/api/consts";
+
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -52,6 +57,63 @@ Cypress.Commands.add(
     }
   }
 );
+
+Cypress.Commands.add(
+  "apiDeviceFixLocation",
+  (
+    userName: string,
+    deviceIdOrName: string,
+    stationFromDate: string,
+    stationIdOrName: string,
+    statusCode: number = HTTP_OK200,
+    additionalChecks: any = {}
+  ) => {
+    let stationId: number;
+    let deviceId: string;
+
+    //Get station ID from name (unless we're asked not to)
+    if (additionalChecks["useRawStationId"] === true) {
+      stationId = parseInt(stationIdOrName);
+    } else {
+      stationId = getCreds(getTestName(stationIdOrName)).id;
+    }
+
+    //Get device ID from name (unless we're asked not to)
+    if (additionalChecks["useRawDeviceId"] === true) {
+      deviceId = deviceIdOrName;
+    } else {
+      deviceId = getCreds(deviceIdOrName).id.toString();
+    }
+    
+    const body = {
+      "setStationAtTime": {
+        fromDateTime: stationFromDate,
+        stationId: stationId    
+      },
+      ...additionalChecks["additionalParams"]
+    };
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "PATCH",
+        url: v1ApiPath(`devices/fix-location/${deviceId}`),
+        body,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["messsages"]) {
+        const messages = response.body.messsages;
+        const expectedMessages = additionalChecks["messsages"];
+        expect(messages).to.exist;
+        expectedMessages.forEach(function (message: string) {
+          expect(messages, "Expect message to be present").to.contain(message);
+        });
+      }
+    });
+  }
+);
+
 
 Cypress.Commands.add(
   "apiDeviceReregister",
@@ -232,7 +294,7 @@ Cypress.Commands.add(
           // Note that deviceNames only need to be unique within groups, so
           // match on groupName also.
           const found = devices.find(
-            (device) =>
+            (device:any) =>
               device.deviceName === expectedDevices[devCount].deviceName &&
               device.groupName === expectedDevices[devCount].groupName
           );
@@ -253,18 +315,16 @@ Cypress.Commands.add(
       deviceName,
       userName,
     });
-    const fullUrl = v1ApiPath("devices/device/" + getCreds(deviceName).id);
+    const fullUrl = v1ApiPath("devices/" + getCreds(deviceName).id);
 
-    makeAuthorizedRequestWithStatus(
+    return makeAuthorizedRequestWithStatus(
       {
         method: "GET",
         url: fullUrl,
       },
       userName,
       statusCode
-    ).then((response) => {
-      cy.wrap(response.body.device);
-    });
+    );
   }
 );
 
@@ -323,13 +383,13 @@ Cypress.Commands.add(
       groupId,
       params,
       statusCode
-    ).then((response) => {
+    ).then((response:any) => {
       if (statusCode === null || statusCode == 200) {
-        const device = response.body.device;
-        expect(device.id).to.equal(getCreds(deviceName).id);
-        expect(device.deviceName).to.equal(getTestName(deviceName));
-        expect(device.groupName).to.equal(getTestName(groupName));
-        expect(device.admin).to.equal(expectedDevice.admin);
+        checkTreeStructuresAreEqualExcept(
+          expectedDevice,
+          response.body.device,
+        );
+
       }
     });
   }
@@ -411,3 +471,34 @@ Cypress.Commands.add(
     });
   }
 );
+
+export function TestCreateExpectedDevice
+  (
+    deviceName: string,
+    groupName: string,
+    hasDeviceConnected: boolean = false,
+    type: DeviceType = DeviceType.Unknown,
+    admin: boolean = true,
+    active: boolean = true
+  ) 
+  {
+    let expectedDevice:ApiDeviceResponse = {
+      id: getCreds(deviceName).id,
+      saltId: NOT_NULL,           
+      deviceName: getTestName(deviceName), 
+      groupName: getTestName(groupName),
+      groupId: getCreds(groupName).id,
+      type: type,
+      admin: admin,
+      active: active,
+    };
+    if (hasDeviceConnected==true) {
+      expectedDevice.lastConnectionTime = NOT_NULL_STRING;
+      expectedDevice.lastRecordingTime = NOT_NULL_STRING;
+      expectedDevice.location = {
+        lat: NOT_NULL,
+        lng: NOT_NULL
+      };
+    };
+    return(expectedDevice);
+}

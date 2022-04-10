@@ -20,11 +20,7 @@ import {
   ApiRecordingNeedsTagReturned,
   ApiRecordingColumns,
 } from "../types";
-import {
-  ApiRecordingColumnNames,
-  HTTP_OK200,
-  NOT_NULL_STRING,
-} from "../constants";
+import { ApiRecordingColumnNames, HTTP_OK200 } from "../constants";
 import {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
@@ -420,7 +416,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url,
+        url: url,
         body: additionalParams,
       },
       userName,
@@ -715,12 +711,16 @@ Cypress.Commands.add(
           response.body.rows,
           excludeCheckOn
         );
-      } else {
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"]
-          );
-        }
+      }
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
+      if (additionalChecks["count"] !== undefined) {
+        expect(response.body.count, "Count should be: ").to.equal(
+          additionalChecks["count"]
+        );
       }
     });
   }
@@ -777,19 +777,12 @@ Cypress.Commands.add(
             column++
           ) {
             if (excludeCheckOn.indexOf(ApiRecordingColumnNames[column]) == -1) {
-              if (
-                !(
-                  expectedResults[count][ApiRecordingColumnNames[column]] ===
-                  NOT_NULL_STRING
-                )
-              ) {
-                expect(
-                  columns[column],
-                  `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
-                ).to.equal(
-                  expectedResults[count][ApiRecordingColumnNames[column]]
-                );
-              }
+              expect(
+                columns[column],
+                `Row ${count}, ${ApiRecordingColumnNames[column]} should be`
+              ).to.equal(
+                expectedResults[count][ApiRecordingColumnNames[column]]
+              );
             }
           }
         }

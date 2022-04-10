@@ -274,9 +274,7 @@ describe("Recordings - parameter tests", () => {
   });
 
   it("RecordingDateTime takes correct values", () => {
-    cy.log(
-      "can specify recordingDateTime, and use it in preference to embedded metadata recordingDateTime"
-    );
+    //can specify recordingDateTime
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
 
@@ -305,42 +303,29 @@ describe("Recordings - parameter tests", () => {
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording8");
     });
 
-    cy.log("cannot have null recordingDateTime");
+    //can have blank recordingDateTime
     const recording2 = TestCreateRecordingData(templateRecording);
+    let expectedRecording2: ApiThermalRecordingResponse;
     recording2.recordingDateTime = null;
     cy.apiRecordingAdd(
       "rpaCamera1",
       recording2,
       "oneframe.cptv",
-      "rpaRecording9",
-      HTTP_Unprocessable
-    );
-
-    cy.log(
-      "cptv can have missing recordingDateTime, since we can extract it from metadata"
-    );
-    const recording3 = TestCreateRecordingData(templateRecording);
-    let expectedRecording3: ApiThermalRecordingResponse;
-    delete recording3.recordingDateTime;
-    cy.apiRecordingAdd(
-      "rpaCamera1",
-      recording3,
-      "oneframe.cptv",
       "rpaRecording9"
     ).then(() => {
-      expectedRecording3 = TestCreateExpectedRecordingData(
+      expectedRecording2 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
         "rpaRecording9",
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording3
+        recording2
       );
-      expectedRecording3.recordingDateTime = "2021-03-18T17:36:46.555Z";
+      expectedRecording2.recordingDateTime = null;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording9",
-        expectedRecording3,
+        expectedRecording2,
         EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording9");
@@ -376,7 +361,7 @@ describe("Recordings - parameter tests", () => {
     });
   });
 
-  //TODO: Fails - issue 80
+  //TODO: Fails - issue 80 server error
   it.skip("Invalid recordingDateTime handled correctly", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     recording1.recordingDateTime = "BadTimeValue";
@@ -912,7 +897,6 @@ describe("Recordings - parameter tests", () => {
     let expectedRecording1: ApiThermalRecordingResponse;
 
     recording1.additionalMetadata = {
-      ...recording1.additionalMetadata,
       ICanSetAnyKey: "ToAnyValue",
     } as unknown as ApiThermalAdditionalMetadata;
     cy.apiRecordingAdd(

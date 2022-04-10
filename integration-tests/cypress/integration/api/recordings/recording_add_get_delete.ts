@@ -281,14 +281,14 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
   });
 
-  it("Group admin can add recordings by device on behalf - for inactive device", () => {
+  it("Group member can add recordings by device on behalf - for inactive device", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log("Rename/reregister device");
     cy.apiDeviceReregister("raCamera1", "raCamera1-renamed", "raGroup").then(
       () => {
-        cy.log("Add recording as group admin");
+        cy.log("Add recording as group member");
         cy.apiRecordingAddOnBehalfUsingDevice(
           "raGroupAdmin",
           "raCamera1",
@@ -330,9 +330,7 @@ describe("Recordings (thermal): add, get, delete", () => {
   it("Group member can add recordings by device on behalf - for inactive device", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
-    // NOTE: Recording time needs to be initialised to when the device we're uploading on behalf of
-    //  was active - before we re-register it
-    recording1.recordingDateTime = new Date().toISOString();
+
     cy.log("Rename/reregister device");
     cy.apiDeviceReregister(
       "raCamera1-renamed",
@@ -340,7 +338,6 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroup"
     ).then(() => {
       cy.log("Add recording as group member");
-
       cy.apiRecordingAddOnBehalfUsingDevice(
         "raGroupMember",
         "raCamera1-renamed",
@@ -579,8 +576,6 @@ describe("Recordings (thermal): add, get, delete", () => {
       [],
       EXCLUDE_IDS
     );
-    cy.log("Check /recordings/id:/tracks ignores deleted recording");
-    //TODO: add check here where apiRecordingsTracksCheck has been written
 
     cy.log("Check /monitoring ignores deleted recording");
     cy.checkMonitoringWithFilter("raGroupAdmin", "raCamera1", filter, []);
