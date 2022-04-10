@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-describe.skip("Monitoring : evaluate ai model", () => {
+describe("Monitoring : evaluate ai model", () => {
   const Claris = "Claris";
   const group = "Visit-ai";
 

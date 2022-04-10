@@ -16,16 +16,6 @@
 
 // eslint-disable-next-line no-unused-vars
 module.exports = (on, config) => {
-
-  // Disable CORS
-  on('before:browser:launch', (browser = {}, launchOptions) => {
-    if (browser.name === 'chrome') {
-      launchOptions.args.push("--disable-features=CrossSiteDocumentBlockingIfIsolating,CrossSiteDocumentBlockingAlways,IsolateOrigins,site-per-process");
-      launchOptions.args.push("--load-extension=cypress/extensions/Ignore-X-Frame-headers_v1.1");
-    }
-    return launchOptions;
-  });
-
   // on('after:spec', (spec) => {
   //   const path = spec.relative + '.md';
   //   cy.writeFile(path, 'helloworld');

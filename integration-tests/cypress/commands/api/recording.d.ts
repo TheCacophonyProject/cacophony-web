@@ -132,10 +132,10 @@ declare namespace Cypress {
       recordingName?: string,
       statusCode?: number,
       additionalChecks?: any
-    ): Cypress.Chainable<RecordingId>;
+    ): any;
 
     /* Get a single recording using api/v1/recordings/{id}
-     * Verify that the recording data matched the expectedRecording
+     * Verfiy that the recording data matched the expectedRecording
      * Optionally: check for a non-200 statusCode
      * By default function looks up the recording Id using the recordingNameOrId supplied when
      * recording was created
@@ -143,7 +143,7 @@ declare namespace Cypress {
      */
     apiRecordingCheck(
       userName: string,
-      recordingNameOrId: string | RecordingId,
+      recordingNameOrId: string,
       expectedRecording: ApiRecordingResponse,
       excludeCheckOn?: string[],
       statusCode?: number,

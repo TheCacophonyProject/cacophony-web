@@ -27,21 +27,10 @@ describe("Update recordings", () => {
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
 
-  //TODO: Issue 98 - only comments and additional metadata succeed at update
-  //location causes server error
-  //all others rejected with bad request
+  // Allowed update fields defined in
+  // jsonSchemas/api/recording/ApiRecordingUpdateRequest.schema.json
+  // (location, comment and additionalMetadata)
   const fieldUpdates = {
-    //rawMimeType: "application/test",
-    //fileMimeType: "application/test2",
-    //duration: 20,
-    //recordingDateTime: "2020-01-01T00:00:00.000Z",
-    //relativeToDawn: 1000,
-    //relativeToDusk: -1000,
-    //version: "346",
-    //batteryLevel: 87,
-    //batteryCharging: "CHARGING",
-    //airplaneModeOn: true,
-    //type: RecordingType.Audio
     comment: "This is a new comment",
     // add newFields, change algorithm, set previewSecs to null, leave totalFrames unchanged
     additionalMetadata: {
@@ -50,6 +39,7 @@ describe("Update recordings", () => {
       algorithm: 99999,
       previewSecs: null,
     },
+    location: [-46.29115, 170.30835],
   };
 
   before(() => {
@@ -225,22 +215,13 @@ describe("Update recordings", () => {
   });
 });
 
-//TODO: Issue 98 - mosty parameters appear unsupported. Commented out - remove from here if we will never support them
 function updateExpected(expectedRecording: any) {
   expectedRecording.processingState = RecordingProcessingState.Finished;
-  //expectedRecording.processing = false;
-  //expectedRecording.rawMimeType= "application/test";
-  //expectedRecording.fileMimeType= "application/test2";
-  //expectedRecording.duration= 20;
-  //expectedRecording.recordingDateTime= "2020-01-01T00:00:00.000Z";
-  //expectedRecording.relativeToDawn= 1000;
-  //expectedRecording.relativeToDusk= -1000;
-  //expectedRecording.version= "346";
-  //expectedRecording.batteryLevel= 87;
-  //expectedRecording.batteryCharging= "CHARGING";
-  //expectedRecording.airplaneModeOn= true;
-  //expectedRecording.type= RecordingType.Audio;
   expectedRecording.comment = "This is a new comment";
+  expectedRecording.location = {
+    lat: -46.29115,
+    lng: 170.30835,
+  };
   //expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};
   //TODO: Issue 99 behaviour here and in fileProcessing inconsistent.  fileProcessing merges additionalMetedata here we replace it
   expectedRecording.additionalMetadata = {

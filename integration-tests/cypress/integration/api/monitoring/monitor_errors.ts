@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-describe.skip("Monitoring : Errors and validation", () => {
+describe("Monitoring : Errors and validation", () => {
   before(() => {});
 
   it.skip("Caller must supply valid user JWT token", () => {});

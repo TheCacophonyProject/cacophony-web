@@ -52,7 +52,7 @@ describe("Recordings report using where", () => {
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
-    location: [-45.00045, 169.00065],
+    location: [-45.12345, 169.12345],
     version: "346",
     batteryCharging: null,
     batteryLevel: null,
@@ -95,8 +95,7 @@ describe("Recordings report using where", () => {
     fileHash: null,
     duration: 40,
     recordingDateTime: "2021-01-01T00:00:00.000Z",
-    //TODO: Issue 95, locations rounded to 100m.  Replace .00045 and .00065 with non-100m rounded valeus when fixed
-    location: [-45.00045, 169.00065],
+    location: [-45.12345, 169.12345],
     version: "346",
     batteryCharging: null,
     batteryLevel: null,
@@ -543,8 +542,14 @@ describe("Recordings report using where", () => {
 
   //TODO: Issue 94: invalid where, order parameters not caught - cause server error
   it.skip("Can handle invalid queries", () => {
-    //cy.log("Where");
-    //cy.apiRecordingsReportCheck( "rreGroupAdmin", {where: {badParameter: "bad value"}}, [], HTTP_Unprocessable);
+    cy.log("Where");
+    cy.apiRecordingsReportCheck(
+      "rreGroupAdmin",
+      { where: { badParameter: "bad value" } },
+      [],
+      [],
+      HTTP_Unprocessable
+    );
     cy.log("Tagmode");
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
@@ -593,7 +598,4 @@ describe("Recordings report using where", () => {
 
   //TODO: wrapper would need to check results contain expected results ... not yet implemented in test wrapper
   it.skip("Super-user should see all recordings", () => {});
-
-  //TODO: This functionality needs to be reworked,  Issue 95
-  it.skip("Can specify location precision", () => {});
 });
