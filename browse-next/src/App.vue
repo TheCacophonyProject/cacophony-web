@@ -1,15 +1,31 @@
 <script setup lang="ts">
-import { RouterView } from "vue-router";
+import { RouterView, RouterLink } from "vue-router";
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
+
+const userIsSuperAdmin = false;
+const userIsLoggedIn = true;
+const loggedInAsAnotherUser = false;
+const environmentIsProduction = false;
+
+// TODO: This should be an exported ref/reactive thingy.
+// Once a user logs in, they have a last selected group.
+// When a user switches a group, it gets flagged and saved server-side as the last selected group (saved as group id *and name*, since groups can be renamed?)
+const lastSelectedGroup = "foo";
 </script>
 <template>
   <git-release-info-bar />
   <main id="main-wrapper">
     <nav id="global-side-nav" class="d-flex flex-column flex-shrink-0">
       <div class="nav-top">
-        <a
-          href="/"
+        <router-link
+          :to="{
+            name: 'dashboard',
+            params: {
+              groupName: lastSelectedGroup,
+            },
+          }"
+          alt="home"
           class="d-block cacophony-logo-link"
           title=""
           data-bs-toggle="tooltip"
@@ -18,7 +34,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
         >
           <icon-cacophony-logo-full />
           <span class="visually-hidden">Icon-only</span>
-        </a>
+        </router-link>
         <div
           class="d-flex flex-row group-switcher justify-content-between mt-5 mb-2"
         >
@@ -37,8 +53,14 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
       </div>
       <ul class="nav nav-pills nav-flush flex-column mb-auto pt-3">
         <li class="nav-item">
-          <a
-            href="#"
+          <router-link
+            :to="{
+              name: 'dashboard',
+              params: {
+                groupName: lastSelectedGroup,
+              },
+            }"
+            alt="dashboard"
             class="nav-link active py-3 d-flex flex-row"
             aria-current="page"
             title=""
@@ -50,11 +72,16 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
               <font-awesome-icon icon="gauge-high" />
             </span>
             <span>Dashboard</span>
-          </a>
+          </router-link>
         </li>
         <li class="nav-item mb-4">
-          <a
-            href="#"
+          <router-link
+            :to="{
+              name: 'stations',
+              params: {
+                groupName: lastSelectedGroup,
+              },
+            }"
             class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
@@ -65,7 +92,7 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
               <font-awesome-icon icon="location-dot" />
             </span>
             <span>Stations</span>
-          </a>
+          </router-link>
         </li>
         <li class="nav-item">
           <a
