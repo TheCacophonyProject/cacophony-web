@@ -89,16 +89,21 @@ export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
 
-export function getCredsByIdAndNameLike(id: number, nameLike: string): ApiCreds {
-  let creds=Cypress.env("testCreds");
-  let values:ApiCreds[]=Object.values(creds);
+export function getCredsByIdAndNameLike(
+  id: number,
+  nameLike: string
+): ApiCreds {
+  const creds = Cypress.env("testCreds");
+  const values: ApiCreds[] = Object.values(creds);
   logTestDescription(`${JSON.stringify(values)}`, {
-        values,
-      });
-  let cred:ApiCreds=values.find(cred => cred.id === id && cred.name.includes(nameLike));
- 
+    values,
+  });
+  const cred: ApiCreds = values.find(
+    (cred) => cred.id === id && cred.name.includes(nameLike)
+  );
+
   return cred;
-};
+}
 
 export function renameCreds(oldName: string, newName: string) {
   const creds = getCreds(oldName);

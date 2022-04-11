@@ -214,7 +214,7 @@ export default function (app: Application, baseUrl: string) {
             MIN_STATION_SEPARATION_METERS
           ) {
             proximityWarnings.push(
-              `Updated station location is too close to ${otherStation.name}(${otherStation.id} - recordings may be incorrectly matched`
+              `Updated station location is too close to ${otherStation.name} (#${otherStation.id}) - recordings may be incorrectly matched`
             );
           }
         }

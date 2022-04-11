@@ -382,13 +382,13 @@ export function checkRecording(
     },
     userName
   ).then((response) => {
-    let rtrn:any=undefined;
+    let rtrn: any = undefined;
     let recordings = response.body.rows;
     if (recordingId !== 0) {
       recordings = recordings.filter((x: any) => x.id == recordingId);
     }
     if (recordings.length > 0) {
-      rtrn=checkFunction(recordings[0]);
+      rtrn = checkFunction(recordings[0]);
     } else {
       expect(recordings.length).equal(1);
     }

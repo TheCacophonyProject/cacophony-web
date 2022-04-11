@@ -210,7 +210,7 @@ const getStationInclude =
       {
         model: models.Group,
         attributes: ["id", "groupname"],
-        required: Object.keys(groupWhere).length !== 0,
+        required: true,
         where: groupWhere,
         include: [
           {
@@ -584,7 +584,6 @@ const getStations =
         groupWhere = { groupname: groupNameOrId };
       }
     }
-
     const allStationsOptions = {
       where: {},
       include: [
@@ -623,6 +622,7 @@ const getStations =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
     }
+
     return models.Station.findAll({
       ...getStationsOptions,
       order: ["name"],
@@ -636,7 +636,6 @@ const getStation =
     groupNameOrId?: string,
     context?: any
   ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
-    logger.error("Group %s, Station %s", groupNameOrId, stationNameOrId);
     const groupIsId =
       groupNameOrId &&
       !isNaN(parseInt(groupNameOrId)) &&
@@ -686,7 +685,6 @@ const getStation =
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
-        logger.error("GroupWhere %s", groupWhere);
 
         getStationOptions = getIncludeForUser(
           context,
@@ -729,7 +727,6 @@ const getStation =
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
-    logger.error("HERE %s, %s", stationIsId, context.onlyActive);
 
     return models.Station.findOne(getStationOptions);
   };
@@ -1537,8 +1534,8 @@ export const fetchAuthorizedRequiredStationsForGroup = (
 ) =>
   fetchRequiredModels(
     models.Station,
-    false,
-    false,
+    true,
+    true,
     getStations(true, false),
     groupNameOrId
   );
