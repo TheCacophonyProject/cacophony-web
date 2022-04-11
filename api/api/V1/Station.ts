@@ -140,6 +140,10 @@ export default function (app: Application, baseUrl: string) {
    * @apiName UpdateStationById
    * @apiGroup Station
    * @apiDescription Update a single station by id.  Must be an admin of the group that owns this station.
+   * @apiInterface {apiBody::ApiUpdateStationData} station-updates ApiUpdateStationData with updated station fields
+   * @apiBody {String} [from-date] Date the station should be active from
+   * @apiBody {String} [until-date] Date the station should be active until (if retiring station)
+   * @apiBody {Boolean} [retire=false] Set to true to retire station `NOW`
    *
    * @apiUse V1UserAuthorizationHeader
    *
