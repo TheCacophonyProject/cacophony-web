@@ -13,6 +13,7 @@ import {
   sortArrayOnHash,
   checkTreeStructuresAreEqualExcept,
 } from "../server";
+import { RecordingId } from "@typedefs/api/common";
 
 Cypress.Commands.add(
   "apiGroupStationAdd",
@@ -348,7 +349,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "thenCheckStationNameIs",
   { prevSubject: true },
-  (subject, userName: string, station: string) => {
+  (subject: RecordingId, userName: string, station: string) => {
     checkStationNameIs(userName, subject, station);
   }
 );
@@ -356,7 +357,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "thenCheckStationIdIs",
   { prevSubject: true },
-  (subject, userName: string, stationId: number) => {
+  (subject: RecordingId, userName: string, stationId: number) => {
     checkStationIdIs(userName, subject, stationId);
   }
 );
@@ -364,7 +365,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "thenCheckStationIsNew",
   { prevSubject: true },
-  (subject, userName: string) => {
+  (subject: RecordingId, userName: string) => {
     checkRecording(userName, subject, (recording) => {
       expect(recording.stationName).contains("New station for ");
       expect(recording.stationName).contains(recording.recordingDateTime);

@@ -33,6 +33,7 @@ import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingId } from "@typedefs/api/common";
 
 const BASE_URL = Cypress.env("base-url-returned-in-links");
 
@@ -193,7 +194,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "thenUserTagAs",
   { prevSubject: true },
-  (subject, tagger: string, tag: string) => {
+  (subject: RecordingId, tagger: string, tag: string) => {
     cy.testUserTagRecording(subject, 0, tagger, tag);
   }
 );
