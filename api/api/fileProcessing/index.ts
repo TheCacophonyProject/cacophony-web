@@ -173,6 +173,7 @@ export default function (app: Application) {
 
       const prevState = recording.processingState;
       if (success) {
+        recording.set("currentStateStartTime", null);
         if (newProcessedFileKey) {
           recording.fileKey = newProcessedFileKey;
         }

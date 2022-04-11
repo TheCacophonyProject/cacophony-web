@@ -15,7 +15,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
   const NOT_ADMIN = false;
 
   //do not validate updatedAt or createdAt values
-  const EXCLUDE_CREATED_UPDATED_ID = ["[].createdAt", "[].updatedAt", "[].id"];
+  const EXCLUDE_CREATED_UPDATED_ID = [
+    "[].createdAt",
+    "[].updatedAt",
+    "[].activeAt",
+    "[].id",
+  ];
 
   const station1a = { name: "station1", lat: -45.1, lng: 172.1 };
   const station1b = { name: "station1", lat: -45.2, lng: 172.1 };
@@ -29,9 +34,11 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.1, lng: 172.1 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
   const expectedStation1b: ApiStationResponse = {
     id: 0,
@@ -39,9 +46,11 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.2, lng: 172.1 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
   const expectedStation2a: ApiStationResponse = {
     id: 0,
@@ -49,9 +58,11 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.1, lng: 172.2 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
   const expectedStation2b: ApiStationResponse = {
     id: 0,
@@ -59,9 +70,11 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.2, lng: 172.2 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
   const expectedStation3a: ApiStationResponse = {
     id: 0,
@@ -69,9 +82,11 @@ describe("Groups - add/update/query/remove stations from group", () => {
     location: { lat: -45.1, lng: 172.3 },
     lastUpdatedById: 0,
     createdAt: null,
+    activeAt: null,
     updatedAt: null,
     groupId: null,
     groupName: null,
+    automatic: false,
   };
 
   before(() => {
@@ -150,6 +165,7 @@ describe("Groups - add/update/query/remove stations from group", () => {
       () => {
         expectedStation1a["groupId"] = getCreds("gsGroup").id;
         expectedStation1a["groupName"] = getTestName("gsGroup");
+        expectedStation1a["name"] = getTestName(station1a.name);
         delete expectedStation1a["retiredAt"];
         expectedStation1a["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 
@@ -372,10 +388,12 @@ describe("Groups - add/update/query/remove stations from group", () => {
     ]).then(() => {
       expectedStation1b["groupId"] = getCreds("gsGroupE").id;
       expectedStation1b["groupName"] = getTestName("gsGroupE");
+      expectedStation1b["name"] = getTestName(station1b.name);
       delete expectedStation1b["retiredAt"];
       expectedStation1b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
       expectedStation2b["groupId"] = getCreds("gsGroupE").id;
       expectedStation2b["groupName"] = getTestName("gsGroupE");
+      expectedStation2b["name"] = getTestName(station2b.name);
       delete expectedStation2b["retiredAt"];
       expectedStation2b["lastUpdatedById"] = getCreds("gsGroupAdmin").id;
 

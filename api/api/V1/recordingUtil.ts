@@ -865,7 +865,8 @@ async function query(
   offset: number,
   order: any,
   type: RecordingType,
-  hideFiltered: boolean
+  hideFiltered: boolean,
+  countAll: boolean
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
     where.type = type;
@@ -892,7 +893,11 @@ async function query(
 
   // FIXME: In the UI, when we query recordings, we don't need to get the count every time, just the first time
   //  would be fine!
-  return models.Recording.findAndCountAll(builder.get());
+  if (countAll === true) {
+    return models.Recording.findAndCountAll(builder.get());
+  }
+  const rows = await models.Recording.findAll(builder.get());
+  return { count: rows.length, rows: rows };
 }
 
 // Returns a promise for report rows for a set of recordings. Takes
