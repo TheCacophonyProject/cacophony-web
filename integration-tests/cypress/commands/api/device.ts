@@ -8,7 +8,7 @@ import {
   checkRequestFails,
   makeAuthorizedRequestWithStatus,
   sortArrayOn,
-  checkTreeStructuresAreEqualExcept,
+  checkTreeStructuresAreEqualExcept
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { ApiDevicesDevice } from "../types";
@@ -17,6 +17,7 @@ import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
 import { DeviceType } from "@typedefs/api/consts";
+
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -83,13 +84,13 @@ Cypress.Commands.add(
     } else {
       deviceId = getCreds(deviceIdOrName).id.toString();
     }
-
+    
     const body = {
-      setStationAtTime: {
+      "setStationAtTime": {
         fromDateTime: stationFromDate,
-        stationId: stationId,
+        stationId: stationId    
       },
-      ...additionalChecks["additionalParams"],
+      ...additionalChecks["additionalParams"]
     };
 
     makeAuthorizedRequestWithStatus(
@@ -101,9 +102,9 @@ Cypress.Commands.add(
       userName,
       statusCode
     ).then((response) => {
-      if (additionalChecks["messages"]) {
-        const messages = response.body.messages;
-        const expectedMessages = additionalChecks["messages"];
+      if (additionalChecks["messsages"]) {
+        const messages = response.body.messsages;
+        const expectedMessages = additionalChecks["messsages"];
         expect(messages).to.exist;
         expectedMessages.forEach(function (message: string) {
           expect(messages, "Expect message to be present").to.contain(message);
@@ -112,6 +113,7 @@ Cypress.Commands.add(
     });
   }
 );
+
 
 Cypress.Commands.add(
   "apiDeviceReregister",
@@ -292,7 +294,7 @@ Cypress.Commands.add(
           // Note that deviceNames only need to be unique within groups, so
           // match on groupName also.
           const found = devices.find(
-            (device: any) =>
+            (device:any) =>
               device.deviceName === expectedDevices[devCount].deviceName &&
               device.groupName === expectedDevices[devCount].groupName
           );
@@ -381,9 +383,13 @@ Cypress.Commands.add(
       groupId,
       params,
       statusCode
-    ).then((response: any) => {
+    ).then((response:any) => {
       if (statusCode === null || statusCode == 200) {
-        checkTreeStructuresAreEqualExcept(expectedDevice, response.body.device);
+        checkTreeStructuresAreEqualExcept(
+          expectedDevice,
+          response.body.device,
+        );
+
       }
     });
   }
@@ -466,31 +472,33 @@ Cypress.Commands.add(
   }
 );
 
-export function TestCreateExpectedDevice(
-  deviceName: string,
-  groupName: string,
-  hasDeviceConnected: boolean = false,
-  type: DeviceType = DeviceType.Unknown,
-  admin: boolean = true,
-  active: boolean = true
-) {
-  const expectedDevice: ApiDeviceResponse = {
-    id: getCreds(deviceName).id,
-    saltId: NOT_NULL,
-    deviceName: getTestName(deviceName),
-    groupName: getTestName(groupName),
-    groupId: getCreds(groupName).id,
-    type: type,
-    admin: admin,
-    active: active,
-  };
-  if (hasDeviceConnected == true) {
-    expectedDevice.lastConnectionTime = NOT_NULL_STRING;
-    expectedDevice.lastRecordingTime = NOT_NULL_STRING;
-    expectedDevice.location = {
-      lat: NOT_NULL,
-      lng: NOT_NULL,
+export function TestCreateExpectedDevice
+  (
+    deviceName: string,
+    groupName: string,
+    hasDeviceConnected: boolean = false,
+    type: DeviceType = DeviceType.Unknown,
+    admin: boolean = true,
+    active: boolean = true
+  ) 
+  {
+    let expectedDevice:ApiDeviceResponse = {
+      id: getCreds(deviceName).id,
+      saltId: NOT_NULL,           
+      deviceName: getTestName(deviceName), 
+      groupName: getTestName(groupName),
+      groupId: getCreds(groupName).id,
+      type: type,
+      admin: admin,
+      active: active,
     };
-  }
-  return expectedDevice;
+    if (hasDeviceConnected==true) {
+      expectedDevice.lastConnectionTime = NOT_NULL_STRING;
+      expectedDevice.lastRecordingTime = NOT_NULL_STRING;
+      expectedDevice.location = {
+        lat: NOT_NULL,
+        lng: NOT_NULL
+      };
+    };
+    return(expectedDevice);
 }

@@ -13,7 +13,10 @@ import {
   checkTreeStructuresAreEqualExcept,
 } from "../server";
 
-import { ApiGroupReturned, ApiGroupsDevice } from "../types";
+import {
+  ApiGroupReturned,
+  ApiGroupsDevice,
+} from "../types";
 
 import { ApiGroupUserResponse } from "@typedefs/api/group";
 

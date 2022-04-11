@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 import { checkRecording } from "./recording-tests";
-import { ApiStationData } from "../types";
+import { ApiStationData, } from "../types";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getTestName } from "../names";
 import { logTestDescription, prettyLog } from "../descriptions";
@@ -13,6 +13,7 @@ import {
   sortArrayOnHash,
   checkTreeStructuresAreEqualExcept,
 } from "../server";
+
 
 Cypress.Commands.add(
   "apiGroupStationAdd",
@@ -26,7 +27,7 @@ Cypress.Commands.add(
     additionalChecks: any = {}
   ) => {
     let fullGroupName: string;
-    const thisStation = JSON.parse(JSON.stringify(station));
+    let thisStation=JSON.parse(JSON.stringify(station));
 
     //Make group name unique unless we're asked not to
     if (additionalChecks["useRawGroupName"] === true) {
@@ -37,7 +38,7 @@ Cypress.Commands.add(
 
     //Make station name unique unless we're asked not to
     if (additionalChecks["useRawStationName"] !== true) {
-      thisStation.name = getTestName(thisStation.name);
+      thisStation.name  = getTestName(thisStation.name);
     }
 
     logTestDescription(
@@ -65,22 +66,20 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["warnings"]) {
-        if (additionalChecks["warnings"] == "none") {
+        if (additionalChecks["warnings"]=="none") {
           expect(response.body.warnings).to.be.undefined;
         } else {
           const warnings = response.body.warnings;
           const expectedWarnings = additionalChecks["warnings"];
           expect(warnings).to.exist;
           expectedWarnings.forEach(function (warning: string) {
-            expect(warnings, "Expect warning to be present").to.contain(
-              warning
-            );
+            expect(warnings, "Expect warning to be present").to.contain(warning);
           });
         }
       }
-      if (additionalChecks["messages"]) {
-        const messages = response.body.messages;
-        const expectedMessages = additionalChecks["messages"];
+      if (additionalChecks["messsages"]) {
+        const messages = response.body.messsages;
+        const expectedMessages = additionalChecks["messsages"];
         expect(messages).to.exist;
         expectedMessages.forEach(function (message: string) {
           expect(messages, "Expect message to be present").to.contain(message);
@@ -89,12 +88,13 @@ Cypress.Commands.add(
 
       if (statusCode == 200) {
         //store station Id against name
-        const stationName = thisStation.name;
-        const stationId = response.body.stationId;
-        saveIdOnly(stationName, stationId);
-        cy.wrap(stationId);
+          const stationName = thisStation.name;
+          const stationId = response.body.stationId;
+          saveIdOnly(stationName, stationId);
+          cy.wrap(stationId);
       }
     });
+
   }
 );
 
@@ -109,13 +109,10 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    logTestDescription(
-      `Check station ${stationName} for group ${groupIdOrName}`,
-      {
-        userName,
-        groupIdOrName,
-      }
-    );
+    logTestDescription(`Check station ${stationName} for group ${groupIdOrName}`, {
+      userName,
+      groupIdOrName,
+    });
     let fullGroupName: string;
     let fullStationName: string;
 
@@ -132,18 +129,16 @@ Cypress.Commands.add(
     } else {
       fullGroupName = getTestName(groupIdOrName);
     }
-    let params = {};
-    if (additionalChecks["additionalParams"] !== undefined) {
-      params = { ...params, ...additionalChecks["additionalParams"] };
-    }
+    let params={};
+    if (additionalChecks["additionalParams"]!==undefined) {
+       params={...params, ...additionalChecks["additionalParams"]};
+    };
+  
 
     makeAuthorizedRequestWithStatus(
-      {
+    {
         method: "GET",
-        url: v1ApiPath(
-          `groups/${fullGroupName}/station/${fullStationName}`,
-          params
-        ),
+        url: v1ApiPath(`groups/${fullGroupName}/station/${fullStationName}`, params),
       },
       userName,
       statusCode
@@ -171,127 +166,7 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiGroupStationsUpdate",
-  (
-    userName: string,
-    groupIdOrName: string,
-    stations: ApiStationData[],
-    updateFrom?: string,
-    statusCode: number = 200,
-    additionalChecks: any = {}
-  ) => {
-    let fullGroupName: string;
-    const stationUpdates = JSON.parse(JSON.stringify(stations));
-
-    //Make group name unique unless we're asked not to
-    if (additionalChecks["useRawGroupName"] === true) {
-      fullGroupName = groupIdOrName;
-    } else {
-      fullGroupName = getTestName(groupIdOrName);
-    }
-
-    //Make station name unique unless we're asked not to
-    if (additionalChecks["useRawStationName"] !== true) {
-      stationUpdates.forEach((station: ApiStationData) => {
-        station.name = getTestName(station.name);
-      });
-    }
-
-    logTestDescription(
-      `Update stations ${prettyLog(stations)} to group '${groupIdOrName}' `,
-      { userName, groupIdOrName, stationUpdates, updateFrom }
-    );
-
-    const body: { [key: string]: string } = {
-      stations: JSON.stringify(stationUpdates),
-    };
-    if (updateFrom !== undefined) {
-      body["from-date"] = updateFrom;
-    }
-
-    makeAuthorizedRequestWithStatus(
-      {
-        method: "POST",
-        url: v1ApiPath(`groups/${fullGroupName}/stations`),
-        body,
-      },
-      userName,
-      statusCode
-    ).then((response) => {
-      if (additionalChecks["warnings"]) {
-        if (additionalChecks["warnings"] == "none") {
-          expect(response.body.warnings, "Expect no warnings").to.be.undefined;
-        } else {
-          const warnings = response.body.warnings;
-          const expectedWarnings = additionalChecks["warnings"];
-          expect(warnings).to.exist;
-          expectedWarnings.forEach(function (warning: string) {
-            expect(warnings, "Expect warning to be present").to.contain(
-              warning
-            );
-          });
-        }
-      }
-      if (statusCode == 200) {
-        //store station Ids against names
-        for (let count = 0; count < stations.length; count++) {
-          const stationName = stations[count].name;
-          const stationId = response.body.stationIdsAddedOrUpdated[count];
-          saveIdOnly(stationName, stationId);
-        }
-        cy.wrap(response.body.stationIdsAddedOrUpdated);
-      }
-
-      if (additionalChecks["stationIdsAddedOrUpdated"]) {
-        if (additionalChecks["stationIdsAddedOrUpdated"].length > 0) {
-          const expectedIds =
-            additionalChecks["stationIdsAddedOrUpdated"].sort();
-          const ids = response.body.stationIdsAddedOrUpdated.sort();
-          expect(
-            expectedIds.length,
-            "Check stationIdsAddedOrUpdated has correct number of entries"
-          ).to.equal(ids.length);
-          for (let count = 0; count < ids.length; count++) {
-            expect(
-              ids[count],
-              "Check stationIdsAddedOrUpdated matches expected"
-            ).to.equal(expectedIds[count]);
-          }
-        } else {
-          expect(
-            response.body.stationIdsAddedOrUpdated,
-            "Check stationIdsAddedOrUpdated has no entries"
-          ).to.be.undefined;
-        }
-      }
-
-      if (additionalChecks["stationIdsRetired"]) {
-        if (additionalChecks["stationIdsRetired"].length > 0) {
-          const expectedIds = additionalChecks["stationIdsRetired"].sort();
-          const ids = response.body.stationIdsRetired.sort();
-          expect(
-            expectedIds.length,
-            "Check stationIdsRetired has correct number of entries"
-          ).to.equal(ids.length);
-          for (let count = 0; count < ids.length; count++) {
-            expect(
-              ids[count],
-              "Check stationIdsRetired matches expected"
-            ).to.equal(expectedIds[count]);
-          }
-        } else {
-          expect(
-            response.body.stationIdsRetired,
-            "Check stationIdsRetired has no entries"
-          ).to.be.undefined;
-        }
-      }
-    });
-  }
-);
-
-Cypress.Commands.add(
-  "apiGroupsStationsCheck",
+  "apiGroupStationsCheck",
   (
     userName: string,
     groupIdOrName: string,
@@ -315,10 +190,15 @@ Cypress.Commands.add(
       fullGroupName = getTestName(groupIdOrName);
     }
 
+    let params={};
+    if (additionalChecks["additionalParams"]!==undefined) {
+       params={...params, ...additionalChecks["additionalParams"]};
+    }
+
     makeAuthorizedRequestWithStatus(
-      {
+    {
         method: "GET",
-        url: v1ApiPath(`groups/${fullGroupName}/stations`),
+        url: v1ApiPath(`groups/${fullGroupName}/stations`, params),
       },
       userName,
       statusCode
@@ -369,7 +249,7 @@ Cypress.Commands.add(
       expect(recording.stationName).contains("New station for ");
       expect(recording.stationName).contains(recording.recordingDateTime);
       saveIdOnly(recording.stationName, recording.stationId);
-      return { id: recording.stationId, name: recording.stationName };
+      return({id: recording.stationId, name: recording.stationName});
     });
   }
 );
@@ -377,23 +257,23 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "checkRecordingsStationNameIs",
   (userName: string, station: string) => {
-    const returnedStation = checkStationNameIs(userName, 0, station);
+    let returnedStation=checkStationNameIs(userName, 0, station);
     cy.wrap(returnedStation);
   }
 );
 
-Cypress.Commands.add(
-  "checkRecordingsStationIsNew",
-  (userName: string, recId: number) => {
-    checkRecording(userName, recId, (recording) => {
-      expect(recording.stationName).contains("New station for ");
-      expect(recording.stationName).contains(recording.recordingDateTime);
-      saveIdOnly(recording.stationName, recording.stationId);
+ Cypress.Commands.add(
+    "checkRecordingsStationIsNew",
+    (userName: string, recId: number) => {
+      checkRecording(userName, recId, (recording) => {
+        expect(recording.stationName).contains("New station for ");
+        expect(recording.stationName).contains(recording.recordingDateTime);
+        saveIdOnly(recording.stationName, recording.stationId);
 
-      return { id: recording.stationId, name: recording.stationName };
-    });
-  }
-);
+        return({id: recording.stationId, name: recording.stationName});
+      });
+    }
+  );
 
 function checkStationNameIs(userName: string, recId: number, station: string) {
   const text =
@@ -409,19 +289,17 @@ function checkStationNameIs(userName: string, recId: number, station: string) {
     } else {
       expect("").equals(station);
     }
-    return { id: recording.stationId, name: recording.stationName };
+    return({id: recording.stationId, name: recording.stationName});
   });
 }
 
 function checkStationIdIs(userName: string, recId: number, stationId: number) {
-  logTestDescription(
-    `and check recording is assigned to station ${stationId}`,
-    {
-      userName,
-    }
-  );
+  logTestDescription(`and check recording is assigned to station ${stationId}`, {
+    userName,
+  });
   checkRecording(userName, recId, (recording) => {
     expect(recording.stationId).equals(stationId);
-    return { id: recording.stationId, name: recording.stationName };
+    return({id: recording.stationId, name: recording.stationName});
   });
 }
+

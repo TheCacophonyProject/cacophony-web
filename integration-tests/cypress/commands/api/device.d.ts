@@ -5,7 +5,8 @@ declare namespace Cypress {
   type ApiDeviceResponse = import("@typedefs/api/device").ApiDeviceResponse;
   type ApiGroupsUserRelationshipResponse =
     import("@typedefs/api/group").ApiGroupUserResponse;
-  type DeviceType = import("@typedefs/api/consts").DeviceType;
+  type DeviceType =
+    import("@typedefs/api/consts").DeviceType;
 
   interface Chainable {
     /**
@@ -27,11 +28,11 @@ declare namespace Cypress {
      * optionally check for non-200 statusCode
      * By default deviceId and stationId are looked up from
      * names in deviceIdOrName and stationIdOrName
-     * Optionally supply raw ids by specifying
-     *   additionalParams: {useRawDeviceId: true}
-     *   additionalParams: {useRawStationId: true}
+     * Optionally supply raw ids by specifying 
+     *   additonalParams: {useRawDeviceId: true}
+     *   additonalParams: {useRawStationId: true}
      */
-    apiDeviceFixLocation(
+    apiDeviceFixLocation( 
       userName: string,
       deviceIdOrName: string,
       stationFromDate: string,
@@ -134,5 +135,7 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
   }
 }
+
