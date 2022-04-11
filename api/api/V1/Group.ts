@@ -33,6 +33,7 @@ import {
   fetchAuthorizedRequiredSchedulesForGroup,
   fetchAuthorizedRequiredStationsForGroup,
   fetchAdminAuthorizedRequiredStationByNameInGroup,
+  fetchAuthorizedRequiredStationByNameInGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -553,6 +554,21 @@ export default function (app: Application, baseUrl: string) {
       const newStations = response.locals.stations;
       const stationsToCreate = [];
       const stationsToUpdate: Record<StationId, Station> = {};
+
+      // Check for duplicate names in the supplied stations:
+      const uniqueNames = {};
+      for (const station of newStations) {
+        if (uniqueNames[station.name]) {
+          return responseUtil.send(response, {
+            statusCode: 422,
+            messages: [
+              `Name ${station.name} supplied multiple times in station update request.`,
+            ],
+          });
+        }
+        uniqueNames[station.name] = true;
+      }
+
       // Check to see if any of these new stations exist:
       for (const station of newStations) {
         let matches = false;
@@ -563,14 +579,34 @@ export default function (app: Application, baseUrl: string) {
           );
           const nameMatches = existingStation.name === station.name;
           if (locationMatches && !nameMatches) {
+            // Make sure none of the other active stations have this name
+            const otherExistingStationMatchesName =
+              existingStationsInTimeRange
+                .filter((otherStation) => otherStation !== existingStation)
+                .find((otherStation) => otherStation.name === station.name) !==
+              undefined;
+            if (otherExistingStationMatchesName) {
+              return responseUtil.send(response, {
+                statusCode: 422,
+                messages: [
+                  `Name ${station.name} is already in use by another active station`,
+                ],
+              });
+            }
+
             // Rename the existing station with the new name.
             existingStation.name = station.name;
             existingStation.lastUpdatedById = response.locals.requestUser.id;
             stationsToUpdate[existingStation.id] = existingStation;
+            if (existingStation.automatic) {
+              stationsToUpdate[existingStation.id].automatic = false;
+            }
             matches = true;
           } else if (nameMatches && !locationMatches) {
             // Rename the existing station to a "_moved" name, and create a new station.
-            existingStation.name = `${existingStation.name}_moved`;
+            existingStation.name = `${
+              existingStation.name
+            }_moved_${new Date().toISOString()}`;
             existingStation.lastUpdatedById = response.locals.requestUser.id;
             stationsToUpdate[existingStation.id] = existingStation;
             stationsToCreate.push(station);
@@ -605,7 +641,11 @@ export default function (app: Application, baseUrl: string) {
 
       const responseData = {
         statusCode: 200,
-        messages: ["Updated and stations in group."],
+        messages: [
+          `Updated${
+            stationsToCreate.length ? " and added" : ""
+          } stations in group.`,
+        ],
         stationIdsAddedOrUpdated: updates.map(({ id }) => id),
       };
 
@@ -664,7 +704,7 @@ export default function (app: Application, baseUrl: string) {
           MIN_STATION_SEPARATION_METERS
         ) {
           proximityWarnings.push(
-            `New station is too close to ${existingStation.name}(${existingStation.id} - recordings may be incorrectly matched`
+            `New station is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`
           );
         }
       }
@@ -698,7 +738,7 @@ export default function (app: Application, baseUrl: string) {
 
       const responseData = {
         statusCode: 200,
-        messages: ["Got station"],
+        messages: ["Created station"],
         stationId: station.id,
       };
       if (proximityWarnings.length) {
@@ -731,7 +771,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    fetchAdminAuthorizedRequiredStationByNameInGroup(
+    fetchAuthorizedRequiredStationByNameInGroup(
       param("groupIdOrName"),
       param("stationName")
     ),

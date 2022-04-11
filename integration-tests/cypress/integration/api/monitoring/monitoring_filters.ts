@@ -1,6 +1,6 @@
 import { getCreds } from "@commands/server";
 
-describe.skip("Monitoring : filters", () => {
+describe("Monitoring : filters", () => {
   const Poppy = "Poppy";
   const groupRabbits = "rabbits";
   const groupHedgehogs = "hedgehogs";

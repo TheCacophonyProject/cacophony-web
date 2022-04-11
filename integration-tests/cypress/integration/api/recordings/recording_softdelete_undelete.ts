@@ -20,9 +20,9 @@ import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
 
-//FIXME: Disabled checking DATA as that would require creating a model and associating
-//model name and id
-//TODO: do that once prior to all tests and enable checking of DATA
+//Note: Disabled checking DATA as that would require creating a model and associating
+//model name and id, and that can only be done through processing API
+//and only done safely on dev
 const EXCLUDE_IDS_RECORDINGS = EXCLUDE_IDS_ARRAY.concat([
   "[].tracks[].tags[].data",
 ]);

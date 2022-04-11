@@ -240,7 +240,6 @@ function makeRecordingDataFromDetails(
   if (details.processingState) {
     data.processingState = details.processingState as RecordingProcessingState;
   }
-
   return data;
 }
 
@@ -374,25 +373,27 @@ Cypress.Commands.add(
 
 export function checkRecording(
   userName: string,
-  recordingId: RecordingId,
-  checkFunction: (recording: ApiRecordingResponse) => any
+  recordingId: number,
+  checkFunction: any
 ) {
-  // Why not using the get recording by id api?
+  cy.log(`recording id is ${recordingId}`);
   makeAuthorizedRequest(
     {
       url: v1ApiPath(`recordings`),
     },
     userName
   ).then((response) => {
+    let rtrn: any = undefined;
     let recordings = response.body.rows;
     if (recordingId !== 0) {
-      recordings = recordings.filter((x: any) => x.id === recordingId);
+      recordings = recordings.filter((x: any) => x.id == recordingId);
     }
     if (recordings.length > 0) {
-      checkFunction(recordings[0] as ApiRecordingResponse);
+      rtrn = checkFunction(recordings[0]);
     } else {
       expect(recordings.length).equal(1);
     }
+    cy.wrap(rtrn);
   });
 }
 
@@ -415,7 +416,6 @@ export function TestCreateExpectedProcessingData(
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
   expected.duration = recording.duration;
-
   // NOTE: Locations are currently provided as Y,X (lat, long), but stored raw as X,Y (long, lat)
   expected.location = {
     coordinates: [recording.location[1], recording.location[0]],
@@ -472,8 +472,7 @@ export function TestCreateExpectedRecordingColumns(
   if (stationName !== undefined) {
     expected.Station = getTestName(stationName);
   } else {
-    // This will be an automatically generated name
-    expected.Station = NOT_NULL_STRING;
+    expected.Station = "";
   }
   expected.Date = new Date(inputRecording.recordingDateTime).toLocaleDateString(
     "en-CA"
@@ -533,13 +532,14 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
     groupName: getTestName(groupName),
   };
 
+  let station: ApiRecordingStation = null;
   if (stationName) {
-    expected.stationId = getCreds(stationName).id;
-    expected.stationName = getTestName(stationName);
+    station = {};
+    station.name = getTestName(stationName);
+    station.location = getCreds(stationName).location;
+    //expected.StationId = getCreds(stationName).id;
   } else {
-    // Ignored
-    expected.stationId = NOT_NULL;
-    expected.stationName = NOT_NULL_STRING;
+    //expected.StationId = null;
   }
 
   expected.id = getCreds(recordingName).id;
@@ -548,7 +548,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   expected.groupId = group.id;
   expected.groupName = group.groupName;
   expected.type = inputRecording.type;
-  if (inputRecording.type == RecordingType.ThermalRaw) {
+  if (inputRecording.type == "thermalRaw") {
     expected.rawMimeType = "application/x-cptv";
   } else {
     expected.rawMimeType = "audio/mpeg";
@@ -583,29 +583,13 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputRecording.fileMimeType !== undefined) {
     expected.fileMimeType = inputRecording.fileMimeType;
   }
-  if (inputRecording.cacophonyIndex !== undefined) {
-    expected.cacophonyIndex = inputRecording.cacophonyIndex;
-  }
   if (inputRecording.additionalMetadata !== undefined) {
     expected.additionalMetadata = JSON.parse(
       JSON.stringify(inputRecording.additionalMetadata)
     );
   }
-
-  if (expected.type === RecordingType.ThermalRaw) {
-    // Even if we don't pass additionalMetadata, some will be populated by cptv parsing.
-    if (!expected.additionalMetadata) {
-      expected.additionalMetadata = {};
-    }
-    if (!expected.additionalMetadata.totalFrames) {
-      expected.additionalMetadata.totalFrames = NOT_NULL;
-    }
-    if (!expected.additionalMetadata.previewSecs) {
-      expected.additionalMetadata.previewSecs = NOT_NULL;
-    }
-  }
-
   if (inputRecording.location !== undefined) {
+    //expected.location = { type: "Point", coordinates: inputRecording.location };
     expected.location = {
       lat: inputRecording.location[0],
       lng: inputRecording.location[1],
@@ -638,7 +622,8 @@ function positionResponseFromSet(positions) {
     newTp["y"] = tp.y;
     newTp["width"] = tp.width;
     newTp["height"] = tp.height;
-    newTp["order"] = tp.frame_number;
+    //newTp["frameNumber"] = tp.frame_number; FIXME PATRICK - remove once GPs code merged
+    newTp["order"] = tp.frame_number; // FIXME PATRICK - remove once GPs code merged
     tps.push(newTp);
   });
 
@@ -688,12 +673,10 @@ export function trackResponseFromSet(
         tags: [],
         start: track.start_s,
         end: track.end_s,
+        positions: tpos,
         filtered: false,
         automatic: true,
       };
-      if (tpos && tpos.length) {
-        newTrack.positions = tpos;
-      }
       if (
         track.predictions &&
         track.predictions.length &&

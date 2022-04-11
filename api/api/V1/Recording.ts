@@ -549,6 +549,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1UserAuthorizationHeader
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
+   * @apiQuery {Boolean} [countAll=true] Count all query matches rather than just number of results (as much as the limit parameter)
    * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
@@ -578,6 +579,7 @@ export default (app: Application, baseUrl: string) => {
           return models.Recording.isValidTagMode(value);
         }),
       query("hideFiltered").default(false).isBoolean().toBoolean(),
+      query("countAll").default(true).isBoolean().toBoolean(),
     ]),
     parseJSONField(query("order")),
     parseJSONField(query("where")),
@@ -604,7 +606,8 @@ export default (app: Application, baseUrl: string) => {
         request.query.offset && parseInt(request.query.offset as string),
         response.locals.order,
         request.query.type as RecordingType,
-        request.query.hideFiltered ? true : false
+        request.query.hideFiltered ? true : false,
+        request.query.countAll ? true : false
       );
       responseUtil.send(response, {
         statusCode: 200,

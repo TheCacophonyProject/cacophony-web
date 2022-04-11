@@ -1,11 +1,10 @@
 // load the global Cypress types
 /// <reference types="cypress" />
+type ApiLoggedInUserResponse =
+  import("@typedefs/api/user").ApiLoggedInUserResponse;
+type ApiUserResponse = import("@typedefs/api/user").ApiUserResponse;
 
 declare namespace Cypress {
-  type ApiLoggedInUserResponse =
-    import("@typedefs/api/user").ApiLoggedInUserResponse;
-  type ApiUserResponse = import("@typedefs/api/user").ApiUserResponse;
-
   interface Chainable {
     /**
      * Create user and save api credentials further use

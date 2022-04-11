@@ -1,13 +1,13 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-import { LatLng } from "@typedefs/api/common";
-
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
+import { logTestDescription, prettyLog } from "./descriptions";
 
 import { format as urlFormat } from "url";
 
 import { NOT_NULL_STRING } from "./constants";
+import { ApiLocation } from "./types";
 
 export function apiPath(): string {
   return Cypress.env("cacophony-api-server");
@@ -59,7 +59,7 @@ interface ApiCreds {
   jwt: string;
   jobKey: string;
   id: number;
-  location: LatLng;
+  location: ApiLocation;
 }
 
 export function saveIdOnly(name: string, id: number) {
@@ -89,6 +89,22 @@ export function getCreds(userName: string): ApiCreds {
   return Cypress.env("testCreds")[userName];
 }
 
+export function getCredsByIdAndNameLike(
+  id: number,
+  nameLike: string
+): ApiCreds {
+  const creds = Cypress.env("testCreds");
+  const values: ApiCreds[] = Object.values(creds);
+  logTestDescription(`${JSON.stringify(values)}`, {
+    values,
+  });
+  const cred: ApiCreds = values.find(
+    (cred) => cred.id === id && cred.name.includes(nameLike)
+  );
+
+  return cred;
+}
+
 export function renameCreds(oldName: string, newName: string) {
   const creds = getCreds(oldName);
 
@@ -115,15 +131,15 @@ export function saveCreds(
   Cypress.env("testCreds")[name] = creds;
 }
 
-export function saveStation(location: LatLng, name: string, id = 0) {
+export function saveStation(location: ApiLocation, name: string, id = 0) {
   const creds = {
-    name,
+    name: name,
     password: "",
     headers: {},
     jwt: "",
     jobKey: "",
-    id,
-    location,
+    id: id,
+    location: location,
   };
   Cypress.env("testCreds")[name] = creds;
 }
@@ -314,16 +330,13 @@ export function checkTreeStructuresAreEqualExcept(
         };
       };
 
-      const diff = keyDiff(containedStruct, containingStruct);
-      let diffHint = "";
-      if (diff.missingKeys.length || diff.unknownKeys.length) {
-        diffHint = ` - Diff: ${JSON.stringify(diff)}`;
-      }
       expect(
         Object.keys(containingStruct).length,
         `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
           containingStruct
-        ).toString()}]${diffHint}`
+        ).toString()}] - Diff: ${JSON.stringify(
+          keyDiff(containedStruct, containingStruct)
+        )}`
       ).to.equal(Object.keys(containedStruct).length);
 
       //push two hashes in same order
