@@ -480,7 +480,7 @@ export const maybeUpdateDeviceHistory = async (
             shouldInsertLocation = true;
           }
         } else {
-          existingDeviceHistoryEntry = priorLocation;
+          shouldInsertLocation = true;
         }
       } else {
         existingDeviceHistoryEntry = priorLocation;
@@ -721,20 +721,6 @@ export const uploadRawRecording = util.multipartUpload(
           recording.recordingDateTime
         );
       recording.StationId = stationToAssignToRecording.id;
-
-      {
-        // Was there a previous user fixup of the device location, meaning that we need to update the recording location?
-        // If the recording is *outside* the station location, then we set it to the station location.
-        if (
-          latLngApproxDistance(
-            recordingLocation,
-            stationToAssignToRecording.location
-          ) > MAX_DISTANCE_FROM_STATION_FOR_RECORDING
-        ) {
-          recording.location = stationToAssignToRecording.location;
-          console.assert(recording.changed("location"));
-        }
-      }
 
       {
         // Update station lastRecordingTimes if needed.

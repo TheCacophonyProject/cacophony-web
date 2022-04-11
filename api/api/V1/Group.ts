@@ -738,7 +738,7 @@ export default function (app: Application, baseUrl: string) {
 
       const responseData = {
         statusCode: 200,
-        messages: ["Got station"],
+        messages: ["Created station"],
         stationId: station.id,
       };
       if (proximityWarnings.length) {

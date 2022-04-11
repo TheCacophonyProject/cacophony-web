@@ -283,17 +283,8 @@ describe("Stations: permissions", () => {
   });
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    it.skip("Super-user as user should see only their recordings", () => {
+    it("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
-      cy.apiGroupUserAdd(
-        "saAdmin",
-        superuser,
-        "saGroup",
-        true,
-        true,
-        undefined,
-        { useRawUserName: true }
-      );
 
       cy.apiGroupAdd(superuser, "saSuGroup");
       cy.apiDeviceAdd("saSuCamera", "saSuGroup");
@@ -384,6 +375,7 @@ describe("Stations: permissions", () => {
         );
       });
     });
+
   } else {
     it.skip("Super-user as user should see only their recordings", () => {});
   }
