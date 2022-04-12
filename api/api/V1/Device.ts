@@ -389,7 +389,6 @@ export default function (app: Application, baseUrl: string) {
           ],
         });
       }
-
       const { stationId, fromDateTime, location } =
         response.locals.setStationAtTime;
       const device = response.locals.device;
@@ -419,11 +418,10 @@ export default function (app: Application, baseUrl: string) {
           location: setLocation,
           setBy: "user",
           GroupId: device.GroupId,
-          deviceName: device.deviceName,
+          deviceName: device.devicename,
           stationId: station.id,
         });
       }
-
       // Get the earliest history location that's later than our current fromDateTime, if any
       const laterLocation: DeviceHistory = await models.DeviceHistory.findOne({
         where: {
@@ -450,8 +448,8 @@ export default function (app: Application, baseUrl: string) {
         // Update the device known location if this is the latest device history entry.
         await device.update({ location: setLocation });
       }
-
-      const updates = await models.Recording.update(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const [affectedCount] = await models.Recording.update(
         {
           location: setLocation,
           StationId: station.id,
@@ -460,12 +458,11 @@ export default function (app: Application, baseUrl: string) {
           where: recordingTimeWindow,
         }
       );
-
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [
           "Updated device station at time.",
-          `Updated ${updates.shift() || 0} recording(s)`,
+          `Updated ${affectedCount} recording(s)`,
         ],
       });
     }
