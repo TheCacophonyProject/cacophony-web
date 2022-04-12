@@ -58,6 +58,8 @@ import { ApiGroupUserResponse } from "@typedefs/api/group";
 import { jsonSchemaOf } from "@api/schema-validation";
 import { Op } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory";
+import { RecordingType } from "@typedefs/api/consts";
+import { Recording } from "@models/Recording";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -458,6 +460,51 @@ export default function (app: Application, baseUrl: string) {
           where: recordingTimeWindow,
         }
       );
+
+      {
+        // Make sure we update the latest times for both kinds of recordings on the station.
+        const [latestThermalRecording, latestAudioRecording] =
+          await Promise.all([
+            models.Recording.findOne({
+              where: {
+                ...recordingTimeWindow,
+                StationId: station.id,
+                type: RecordingType.ThermalRaw,
+              },
+              order: [["recordingDateTime", "DESC"]],
+            }),
+
+            models.Recording.findOne({
+              where: {
+                ...recordingTimeWindow,
+                StationId: station.id,
+                type: RecordingType.Audio,
+              },
+              order: [["recordingDateTime", "DESC"]],
+            }),
+          ]);
+        if (
+          latestAudioRecording &&
+          latestAudioRecording.recordingDateTime >
+            station.lastAudioRecordingTime
+        ) {
+          await station.update({
+            lastAudioRecordingTime: (latestAudioRecording as Recording)
+              .recordingDateTime,
+          });
+        }
+        if (
+          latestThermalRecording &&
+          latestThermalRecording.recordingDateTime >
+            station.lastThermalRecordingTime
+        ) {
+          await station.update({
+            lastThermalRecordingTime: (latestThermalRecording as Recording)
+              .recordingDateTime,
+          });
+        }
+      }
+
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [
