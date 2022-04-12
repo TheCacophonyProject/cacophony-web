@@ -118,6 +118,12 @@ export default function (app: Application, baseUrl: string) {
       }
     },
     async (request: Request, response: Response) => {
+
+      // FIXME Send a welcome email, with a requirement to validate the email address.
+      //  We won't send transactional emails until the address has been validated.
+      //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
+      //  User alerts and group invitations would not be activated until the user has confirmed their email address.
+
       const user: User = await models.User.create({
         username: request.body.username || request.body.userName,
         password: request.body.password,

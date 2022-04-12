@@ -11,7 +11,7 @@ const environmentIsProduction = false;
 // TODO: This should be an exported ref/reactive thingy.
 // Once a user logs in, they have a last selected group.
 // When a user switches a group, it gets flagged and saved server-side as the last selected group (saved as group id *and name*, since groups can be renamed?)
-const lastSelectedGroup = "foo";
+const currentSelectedGroup = { groupName: "foo", id: 1 };
 </script>
 <template>
   <git-release-info-bar />
@@ -22,7 +22,7 @@ const lastSelectedGroup = "foo";
           :to="{
             name: 'dashboard',
             params: {
-              groupName: lastSelectedGroup,
+              groupName: currentSelectedGroup.groupName,
             },
           }"
           alt="home"
@@ -57,7 +57,7 @@ const lastSelectedGroup = "foo";
             :to="{
               name: 'dashboard',
               params: {
-                groupName: lastSelectedGroup,
+                groupName: currentSelectedGroup.groupName,
               },
             }"
             alt="dashboard"
@@ -79,7 +79,7 @@ const lastSelectedGroup = "foo";
             :to="{
               name: 'stations',
               params: {
-                groupName: lastSelectedGroup,
+                groupName: currentSelectedGroup.groupName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -95,8 +95,13 @@ const lastSelectedGroup = "foo";
           </router-link>
         </li>
         <li class="nav-item">
-          <a
-            href="#"
+          <router-link
+            :to="{
+              name: 'search',
+              params: {
+                groupName: currentSelectedGroup.groupName,
+              },
+            }"
             class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
@@ -107,11 +112,16 @@ const lastSelectedGroup = "foo";
               <font-awesome-icon icon="magnifying-glass" />
             </span>
             <span>Search</span>
-          </a>
+          </router-link>
         </li>
         <li class="nav-item">
-          <a
-            href="#"
+          <router-link
+            :to="{
+              name: 'devices',
+              params: {
+                groupName: currentSelectedGroup.groupName,
+              },
+            }"
             class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
@@ -135,11 +145,16 @@ const lastSelectedGroup = "foo";
               </span>
             </span>
             <span>Devices</span>
-          </a>
+          </router-link>
         </li>
         <li class="nav-item">
-          <a
-            href="#"
+          <router-link
+            :to="{
+              name: 'report',
+              params: {
+                groupName: currentSelectedGroup.groupName,
+              },
+            }"
             class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
@@ -150,11 +165,16 @@ const lastSelectedGroup = "foo";
               <font-awesome-icon icon="chart-pie" />
             </span>
             <span>Report</span>
-          </a>
+          </router-link>
         </li>
         <li class="nav-item">
-          <a
-            href="#"
+          <router-link
+            :to="{
+              name: 'user-group-settings',
+              params: {
+                groupName: currentSelectedGroup.groupName,
+              },
+            }"
             class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
@@ -165,11 +185,16 @@ const lastSelectedGroup = "foo";
               <font-awesome-icon icon="gear" />
             </span>
             <span>My&nbsp;preferences</span>
-          </a>
+          </router-link>
         </li>
         <li class="nav-item">
-          <a
-            href="#"
+          <router-link
+            :to="{
+              name: 'group-settings',
+              params: {
+                groupName: currentSelectedGroup.groupName,
+              },
+            }"
             class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
@@ -180,21 +205,27 @@ const lastSelectedGroup = "foo";
               <font-awesome-icon icon="screwdriver-wrench" />
             </span>
             <span>Manage&nbsp;group</span>
-          </a>
+          </router-link>
         </li>
       </ul>
       <div class="border-top d-flex">
-        <a href="#" class="d-flex py-3 text-decoration-none flex-fill">
+        <router-link
+          to="user-settings"
+          class="d-flex py-3 text-decoration-none flex-fill"
+        >
           <span class="nav-icon-wrapper">
             <font-awesome-icon icon="user" />
           </span>
           <span>Username</span>
-        </a>
-        <a href="#" class="d-block py-3 text-decoration-none border-start">
+        </router-link>
+        <router-link
+          to="sign-out"
+          class="d-block py-3 text-decoration-none border-start"
+        >
           <span class="nav-icon-wrapper">
             <font-awesome-icon icon="right-from-bracket" />
           </span>
-        </a>
+        </router-link>
       </div>
     </nav>
     <section id="main-content">

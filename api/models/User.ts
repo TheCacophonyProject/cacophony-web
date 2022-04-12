@@ -40,6 +40,8 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
   comparePassword: (password: string) => Promise<boolean>;
   updatePassword: (password: string) => Promise<boolean>;
+  resetPassword: () => Promise<boolean>;
+
   getDeviceIds: () => Promise<number[]>;
   getGroupsIds: () => Promise<number[]>;
   getGroups: (options?: {
@@ -235,7 +237,7 @@ export default function (
     return [];
   };
 
-  User.prototype.comparePassword = function (password: string) {
+  User.prototype.comparePassword = function (password: string): Promise<boolean> {
     const user = this;
     return new Promise(function (resolve, reject) {
       bcrypt.compare(password, user.password, function (err, isMatch) {
@@ -247,13 +249,13 @@ export default function (
       });
     });
   };
-  User.prototype.updatePassword = async function (password: string) {
+  User.prototype.updatePassword = async function (password: string): Promise<User> {
     return this.update({ password: password });
   };
 
-  User.prototype.resetPassword = async function () {
+  User.prototype.resetPassword = async function (): Promise<boolean> {
     console.log("resetting");
-    await sendResetEmail(this, this.password);
+    return await sendResetEmail(this, this.password);
   };
 
   return User;

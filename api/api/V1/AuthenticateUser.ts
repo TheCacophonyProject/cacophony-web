@@ -36,6 +36,8 @@ import {
 const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
 
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import {mapUser} from "@api/V1/User";
+import {User} from "@models/User";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
@@ -78,6 +80,8 @@ export default function (app: Application) {
         ],
         "could not find a user with the given username or email"
       ),
+
+
       // FIXME - How about not sending our passwords in the clear eh?
       //  Ideally should generate hash on client side, and compare hashes with one
       //  stored on the backend.  Salt on both sides with some timestamp
@@ -207,7 +211,11 @@ export default function (app: Application) {
    */
   app.post(
     "/token",
-    [body("ttl").optional(), body("access").optional(), auth.authenticateUser],
+    validateFields([
+      body("ttl").optional(),
+      body("access").optional(),
+    ]),
+    auth.authenticateUser,
     middleware.requestWrapper(async (request, response) => {
       // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
@@ -224,6 +232,8 @@ export default function (app: Application) {
       });
     })
   );
+
+  // FIXME - change these endpoints to kebab-case for consistency
 
   /**
    * @api {post} /api/v1/resetpassword Sends an email to a user for resetting password
@@ -251,7 +261,7 @@ export default function (app: Application) {
     ),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
-        response.locals.user.resetPassword();
+        await (response.locals.user as User).resetPassword();
       }
       return responseUtil.send(response, {
         statusCode: 200,
@@ -280,28 +290,10 @@ export default function (app: Application) {
           messages: ["Your password has already been changed"],
         });
       }
-
-      const {
-        id,
-        username,
-        firstName,
-        lastName,
-        email,
-        globalPermission,
-        endUserAgreement,
-      } = response.locals.user;
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        userData: {
-          id,
-          userName: username,
-          firstName,
-          lastName,
-          email,
-          globalPermission,
-          endUserAgreement,
-        },
+        userData: mapUser(response.locals.user),
       });
     }
   );
