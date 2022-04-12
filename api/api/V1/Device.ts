@@ -374,9 +374,13 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredDeviceById(param("id")),
     parseJSONField(body("setStationAtTime")),
     async (request: Request, response: Response) => {
-      const { stationId, fromDateTime } = response.locals.setStationAtTime;
+      const { stationId, fromDateTime, location } =
+        response.locals.setStationAtTime;
       const device = response.locals.device;
       const station = await models.Station.findByPk(stationId);
+
+      const setLocation = location || station.location;
+
       // Check if there's already a device entry at that time:
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
@@ -387,7 +391,7 @@ export default function (app: Application, baseUrl: string) {
       if (deviceHistoryEntry) {
         await deviceHistoryEntry.update({
           setBy: "user",
-          location: station.location,
+          location: setLocation,
           stationId: station.id,
         });
       } else {
@@ -396,7 +400,7 @@ export default function (app: Application, baseUrl: string) {
           saltId: device.saltId,
           DeviceId: device.id,
           fromDateTime,
-          location: station.location,
+          location: setLocation,
           setBy: "user",
           GroupId: device.GroupId,
           deviceName: device.deviceName,
@@ -428,12 +432,12 @@ export default function (app: Application, baseUrl: string) {
         };
       } else {
         // Update the device known location if this is the latest device history entry.
-        await device.update({ location: station.location });
+        await device.update({ location: setLocation });
       }
 
       const updates = await models.Recording.update(
         {
-          location: station.location,
+          location: setLocation,
           StationId: station.id,
         },
         {
