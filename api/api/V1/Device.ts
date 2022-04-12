@@ -34,6 +34,7 @@ import {
   fetchUnauthorizedRequiredScheduleById,
   fetchAuthorizedRequiredGroupById,
   parseJSONField,
+  fetchAuthorizedRequiredStationById,
 } from "../extract-middleware";
 import {
   checkDeviceNameIsUniqueInGroup,
@@ -373,7 +374,22 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredDeviceById(param("id")),
     parseJSONField(body("setStationAtTime")),
+    async (request, response, next) => {
+      // Now make sure we have access to the station.
+      await fetchAuthorizedRequiredStationById(
+        response.locals.setStationAtTime.stationId
+      )(request, response, next);
+    },
     async (request: Request, response: Response) => {
+      if (response.locals.device.GroupId !== response.locals.station.GroupId) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: [
+            "Supplied station doesn't belong to the same group as supplied device",
+          ],
+        });
+      }
+
       const { stationId, fromDateTime, location } =
         response.locals.setStationAtTime;
       const device = response.locals.device;
