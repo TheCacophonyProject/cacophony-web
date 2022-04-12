@@ -457,3 +457,23 @@ export function testRunOnApi(command: string, options = {}) {
     }
   }
 }
+
+export function checkMessages(response:any, expectedMessages: string[]) {
+        const messages = response.body.messages;
+        expect(messages).to.exist;
+        expectedMessages.forEach(function (message: string) {
+          expect(messages.find((el:string) => el.includes(message)),`Messages should contain ${message}`).to.exist;
+        });
+}
+
+export function checkWarnings(response:any, expectedWarnings: any) {
+        const warnings = response.body.warnings;
+        if (expectedWarnings=="none") {
+          expect(response.body.warnings).to.be.undefined;
+        } else {
+          expect(warnings).to.exist;
+          expectedWarnings.forEach(function (warning: string) {
+            expect(warnings.find((el:string) => el.includes(warning)),`Messages should contain ${warning}`).to.exist;
+          });
+        };
+}

@@ -77,9 +77,9 @@ Cypress.Commands.add(
           });
         }
       }
-      if (additionalChecks["messsages"]) {
-        const messages = response.body.messsages;
-        const expectedMessages = additionalChecks["messsages"];
+      if (additionalChecks["messages"]) {
+        const messages = response.body.messages;
+        const expectedMessages = additionalChecks["messages"];
         expect(messages).to.exist;
         expectedMessages.forEach(function (message: string) {
           expect(messages, "Expect message to be present").to.contain(message);

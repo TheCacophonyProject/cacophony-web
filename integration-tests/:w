@@ -8,8 +8,7 @@ import {
   checkRequestFails,
   makeAuthorizedRequestWithStatus,
   sortArrayOn,
-  checkTreeStructuresAreEqualExcept,
-  checkMessages,
+  checkTreeStructuresAreEqualExcept
 } from "../server";
 import { logTestDescription, prettyLog} from "../descriptions";
 import { ApiDevicesDevice } from "../types";
@@ -114,7 +113,12 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["messages"]) {
-        checkMessages(response, additionalChecks["messages"]);
+        const messages = response.body.messages;
+        const expectedMessages = additionalChecks["messages"];
+        expect(messages).to.exist;
+        expectedMessages.forEach(function (message: string) {
+          expect(messages.find((el:string) => el.includes(message)),`Messages should contain ${message}`).to.exist;
+        });
       }
     });
   }
@@ -470,7 +474,9 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
-        checkMessages(response, additionalChecks["messages"]);
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
       }
     });
   }

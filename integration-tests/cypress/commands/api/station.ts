@@ -15,6 +15,8 @@ import {
   v1ApiPath,
   sortArrayOn,
   checkTreeStructuresAreEqualExcept,
+  checkMessages,
+  checkWarnings
 } from "../server";
 
 
@@ -71,13 +73,8 @@ Cypress.Commands.add(
           expect(warnings, "Expect warning to be present").to.contain(warning)  ;
         });
       }
-      if (additionalChecks["messsages"]) {
-        const messages = response.body.messsages;
-        const expectedMessages = additionalChecks["messsages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+      if (additionalChecks["messages"]) {
+        checkMessages(response, additionalChecks["messages"]);
       }
     });
   }
@@ -128,20 +125,10 @@ Cypress.Commands.add(
         cy.wrap(response.body.station.id);
       }
       if (additionalChecks["warnings"]) {
-        const warnings = response.body.warnings;
-        const expectedWarnings = additionalChecks["warnings"];
-        expect(warnings).to.exist;
-        expectedWarnings.forEach(function (warning: string) {
-          expect(warnings, "Expect warning to be present").to.contain(warning)  ;
-        });
+        checkWarnings(response, additionalChecks["warnings"]);
       }
-      if (additionalChecks["messsages"]) {
-        const messages = response.body.messsages;
-        const expectedMessages = additionalChecks["messsages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+      if (additionalChecks["messages"]) {
+        checkMessages(response, additionalChecks["messages"]);
       }
     });
   }
@@ -209,24 +196,10 @@ Cypress.Commands.add(
         saveIdOnly(stationName, stationId);
       }
       if (additionalChecks["warnings"]) {
-        if (additionalChecks["warnings"]=="none") {
-          expect(response.body.warnings).to.be.undefined;
-        } else {
-          const warnings = response.body.warnings;
-          const expectedWarnings = additionalChecks["warnings"];
-          expect(warnings).to.exist;
-          expectedWarnings.forEach(function (warning: string) {
-            expect(warnings, "Expect warning to be present").to.contain(warning);
-          });
-        }
+        checkWarnings(response, additionalChecks["warnings"]);
       }
-      if (additionalChecks["messsages"]) {
-        const messages = response.body.messsages;
-        const expectedMessages = additionalChecks["messsages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+      if (additionalChecks["messages"]) {
+        checkMessages(response, additionalChecks["messages"]);
       }
     });
   }
@@ -272,13 +245,8 @@ Cypress.Commands.add(
           expect(warnings, "Expect warning to be present").to.contain(warning);
         });
       }
-      if (additionalChecks["messsages"]) {
-        const messages = response.body.messsages;
-        const expectedMessages = additionalChecks["messsages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+      if (additionalChecks["messages"]) {
+        checkMessages(response, additionalChecks["messages"]);
       }
 
     });
