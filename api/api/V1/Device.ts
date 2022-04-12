@@ -60,6 +60,7 @@ import { Op } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory";
 import { RecordingType } from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
+import config from "@config";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -904,4 +905,39 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+  if (config.server.loggerLevel === "debug") {
+    // NOTE: This api is currently for facilitating testing only, and is
+    //  not available in production builds.
+
+    /**
+     * @api {post} /api/v1/devices/history/:deviceId Get device history
+     * @apiName history
+     * @apiGroup Device
+     *
+     * @apiUse V1UserAuthorizationHeader
+     *
+     * @apiUse V1ResponseSuccess
+     * @apiUse V1ResponseError
+     */
+    app.get(
+      `${apiUrl}/history/:deviceId`,
+      extractJwtAuthorizedUser,
+      validateFields([idOf(param("deviceId"))]),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      async function (request: Request, response: Response) {
+        const history = await models.DeviceHistory.findAll({
+          where: {
+            DeviceId: response.locals.device.id,
+          },
+        });
+
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got device history"],
+          history,
+        });
+      }
+    );
+  }
 }

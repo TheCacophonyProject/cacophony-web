@@ -428,7 +428,9 @@ export const maybeUpdateDeviceHistory = async (
     // If it's a set-by automatic, also check for config or re-register updates that might match it.
 
     const setByArr =
-      setBy === "automatic" ? ["automatic", "config", "re-register"] : [setBy];
+      setBy === "automatic"
+        ? ["automatic", "config", "re-register", "user"]
+        : [setBy];
     let shouldInsertLocation = false;
     let existingDeviceHistoryEntry;
     const priorLocation = await models.DeviceHistory.findOne({
