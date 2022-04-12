@@ -1,36 +1,12 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "@commands/api/recording-tests";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 import { NOT_NULL, NOT_NULL_STRING, HTTP_OK200, HTTP_Unprocessable } from "@commands/constants";
-import { TestCreateStationData, TestCreateExpectedStation, TestGetLocation } from "@commands/api/station";
-
-import {
-  TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
-} from "@commands/dataTemplate";
-import { ApiRecordingSet, ApiStationData } from "@commands/types";
-
-const templateRecording: ApiRecordingSet = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
-);
-
-const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
-);
+import { TestCreateStationData, TestCreateExpectedStation } from "@commands/api/station";
 
 describe("Stations: adding", () => {
 
-  const TemplateStation: ApiStationData = {
-    name: "saStation1",
-    lat: -43.62367659982,
-    lng: 172.62646754804 
-  };
   const TemplateExpectedStation: ApiStationResponse  = {
     id: NOT_NULL,
     name: "saStation1",
@@ -144,7 +120,6 @@ describe("Stations: adding", () => {
 
   it("No warning on add station with unique location", () => {
     let station1=TestCreateStationData("staStation", 5);
-    let expectedStation1=TestCreateExpectedStation(TemplateExpectedStation,"staStation", 5);
 
     cy.log("Adding station and check no warnings returned");
     cy.apiGroupStationAdd("staAdmin","staGroup",station1,undefined,undefined,HTTP_OK200,{warnings: "none"});

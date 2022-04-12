@@ -3,6 +3,7 @@
 
 declare namespace Cypress {
   type ApiDeviceResponse = import("@typedefs/api/device").ApiDeviceResponse;
+  type LatLng = import("@typedefs/api/common").LatLng;
   type ApiGroupsUserRelationshipResponse =
     import("@typedefs/api/group").ApiGroupUserResponse;
   type DeviceType =
@@ -37,6 +38,7 @@ declare namespace Cypress {
       deviceIdOrName: string,
       stationFromDate: string,
       stationIdOrName: string,
+      location? : ApiLocation,
       statusCode?: number,
       additionalParams?: any
     ): any;

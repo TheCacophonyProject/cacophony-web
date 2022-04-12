@@ -1,19 +1,14 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  checkRecording,
-  TestCreateExpectedRecordingData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { TestGetLocation } from "@commands/api/station";
-import { TestCreateExpectedDevice } from "@commands/api/device";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import { TEMPLATE_AUDIO_RECORDING } from "@commands/dataTemplate";
 import {
   getCreds,
 } from "@commands/server";
 import {
-  EXCLUDE_IDS,
-  HTTP_Forbidden,
-  HTTP_OK200,
   NOT_NULL,
   NOT_NULL_STRING,
 } from "@commands/constants";
@@ -21,17 +16,9 @@ import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
-import { ApiRecordingSet } from "@commands/types";
 import { getTestName } from "@commands/names";
-import { DeviceType } from "@typedefs/api/consts";
+import { TestNameAndId } from "@commands/types";
 
-const templateRecording: ApiRecordingSet = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
-);
-
-const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
-);
 const templateExpectedCypressRecording: ApiThermalRecordingResponse = JSON.parse(
   JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
 );
@@ -77,7 +64,7 @@ describe("Stations: assign recordings to stations", () => {
 
     cy.log("Add a recording and check new station is created");
     cy.testUploadRecording(deviceName, { ...location, time: recordingTime })
-      .thenCheckStationIsNew(Josie).then((station) => {
+      .thenCheckStationIsNew(Josie).then((station:TestNameAndId) => {
         cy.log("Check station created correctly");
         cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
       });
@@ -102,7 +89,7 @@ describe("Stations: assign recordings to stations", () => {
       { ...location, time: oneWeekAgo }
     ).thenCheckStationIsNew(
       Josie,
-    ).then((station) => {
+    ).then((station:TestNameAndId) => {
       cy.log("Check activeAt and lastThermalRecording match recordingDateTime");
       cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
 
@@ -120,10 +107,10 @@ describe("Stations: assign recordings to stations", () => {
   });
 
   it("Adding an earlier recording within the radius of an existing station assigns the existing station to the recording, does not update lastThermalRecording", () => {
-    const deviceName = "new-device-25";
-    const stationName = "new-station-25";
-    const location = TestGetLocation(25);
-    const nearbyLocation = TestGetLocation(25,0.0001);
+    const deviceName = "new-device-3";
+    const stationName = "new-station-3";
+    const location = TestGetLocation(3);
+    const nearbyLocation = TestGetLocation(3,0.0001);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
     const now = new Date();
@@ -140,7 +127,7 @@ describe("Stations: assign recordings to stations", () => {
       group,
       { name: stationName, ...location },
       oneMonthAgo.toISOString(),
-    ).then((stationId) => {
+    ).then((stationId:number) => {
       cy.log("Check activeAt matches set value, no retiredAt, no lastThermalRecording");
       expectedStation1.activeAt = oneMonthAgo.toISOString(),
       delete(expectedStation1.lastThermalRecordingTime);
@@ -154,7 +141,7 @@ describe("Stations: assign recordings to stations", () => {
       ).thenCheckStationIdIs(
         Josie,
         stationId
-      ).then((station) => {
+      ).then((station:TestNameAndId) => {
         cy.log("Check activeAt unchanged, lastThermalRecordingi now matches recordingDateTime");
         expectedStation1.activeAt = oneMonthAgo.toISOString(),
         expectedStation1.lastThermalRecordingTime = now.toISOString(),
@@ -175,10 +162,10 @@ describe("Stations: assign recordings to stations", () => {
   });
 
   it("Adding a recording matching location but in another group creates new station", () => {
-    const device1Name = "new-device-26-1";
-    const device2Name = "new-device-26-2";
-    const location = TestGetLocation(26);
-    const nearbyLocation = TestGetLocation(26,0.0001);
+    const device1Name = "new-device-4-1";
+    const device2Name = "new-device-4-2";
+    const location = TestGetLocation(4);
+    const nearbyLocation = TestGetLocation(4,0.0001);
 
     cy.apiDeviceAdd(device1Name, group);
     cy.apiDeviceAdd(device2Name, group2);
@@ -194,39 +181,37 @@ describe("Stations: assign recordings to stations", () => {
     });
   });
 
-  //TODO FAILS - Issue 17
-  it.skip("Adding a recording matching location before automatic start-time extends start-time backwards", () => {
-    const deviceName = "new-device-20";
-    const location = TestGetLocation(20);
-    const nearbyLocation = TestGetLocation(20,0.0001);
+  it("Adding a recording matching location before automatic start-time extends start-time backwards", () => {
+    const deviceName = "new-device-5";
+    const nearbyLocation = TestGetLocation(5,0.0001);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
     const expectedStation1 = JSON.parse(JSON.stringify(templateExpectedStation));
-    expectedStation1.location = location;
+    expectedStation1.location = nearbyLocation;
     expectedStation1.activeAt = oneWeekAgo.toISOString(),
 
     cy.apiDeviceAdd(deviceName, group);
-    cy.testUploadRecording( deviceName, { ...location, time: oneWeekAgo })
-      .thenCheckStationIsNew( Josie,).then((station: any) => {
+    cy.testUploadRecording( deviceName, { ...nearbyLocation, time: oneWeekAgo })
+      .thenCheckStationIsNew( Josie,).then((station: TestNameAndId) => {
       cy.log("Check startDate is same as recording (oneWeekAgo)");
-      cy.apiStationCheck(Josie, station.id, expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
 
       cy.log("Upload another recording and check assigned to same station");
       cy.testUploadRecording(deviceName, { ...nearbyLocation, time: oneMonthAgo}).thenCheckStationIdIs(Josie, station.id).then(() => {
         cy.log("Check station start time extended backwards (now oneMonthAgo)");
         expectedStation1.activeAt=oneMonthAgo.toISOString();
-        cy.apiStationCheck(Josie, station.id, expectedStation1, undefined, undefined, { useRawStationId: true });
+        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
       });
     });
   });
 
 
   it("Subsequent recording in new location creates new station", () => {
-    const deviceName = "new-device-28";
-    const station1Name = "new-station-28-1";
-    const location1 = TestGetLocation(28);
-    const location1Nearby = TestGetLocation(28,0.0001);
-    const location2 = TestGetLocation(29);
+    const deviceName = "new-device-6";
+    const station1Name = "new-station-6-1";
+    const location1 = TestGetLocation(6);
+    const location1Nearby = TestGetLocation(6,0.0001);
+    const location2 = TestGetLocation(0);
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
     const sixDaysAgo = new Date(new Date().setDate(new Date().getDate() - 6));
     const now = new Date();
@@ -241,12 +226,12 @@ describe("Stations: assign recordings to stations", () => {
   });
 
   it("Multiple recordings match multiple stations", () => {
-    const deviceName = "new-device-30";
-    const station1Name = "new-station-30-1";
-    const station2Name = "new-station-30-2";
-    const location1 = TestGetLocation(30);
-    const location1Nearby = TestGetLocation(30,0.0001);
-    const location2 = TestGetLocation(31);
+    const deviceName = "new-device-7";
+    const station1Name = "new-station-7-1";
+    const station2Name = "new-station-7-2";
+    const location1 = TestGetLocation(7);
+    const location1Nearby = TestGetLocation(7,0.0001);
+    const location2 = TestGetLocation(8);
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
     const sixDaysAgo = new Date(new Date().setDate(new Date().getDate() - 6));
     const now = new Date();
@@ -264,10 +249,10 @@ describe("Stations: assign recordings to stations", () => {
 
 
   it("Adding a recording matching location before manual start-time creates new station", () => {
-    const deviceName = "new-device-21";
-    const stationName = "new-station-21";
-    const location = TestGetLocation(21);
-    const nearbyLocation = TestGetLocation(21,0.0001);
+    const deviceName = "new-device-9";
+    const stationName = "new-station-9";
+    const location = TestGetLocation(9);
+    const nearbyLocation = TestGetLocation(9,0.0001);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
     cy.apiDeviceAdd(deviceName, group);
@@ -280,9 +265,9 @@ describe("Stations: assign recordings to stations", () => {
 
 
   it("Adding recording matching location during time-period of now-retired station assigns retired station", () => {
-    const deviceName = "new-device-4";
-    const stationName = "Josie-station-4";
-    const location = TestGetLocation(4);
+    const deviceName = "new-device-10";
+    const stationName = "Josie-station-10";
+    const location = TestGetLocation(10);
     cy.apiDeviceAdd(deviceName, group);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
@@ -301,7 +286,7 @@ describe("Stations: assign recordings to stations", () => {
       { name: stationName, ...location },
       oneMonthAgo.toISOString(),
       now.toISOString()
-    ).then((stationId) => {
+    ).then((stationId:number) => {
       cy.testUploadRecording(deviceName, {
         ...location,
         time: oneWeekAgo,
@@ -311,9 +296,9 @@ describe("Stations: assign recordings to stations", () => {
 
 
   it("Adding recording matching location at start of time-period of now-retired station assigns retired station", () => {
-    const deviceName = "new-device-23";
-    const stationName = "Josie-station-23";
-    const location = TestGetLocation(23);
+    const deviceName = "new-device-11";
+    const stationName = "Josie-station-11";
+    const location = TestGetLocation(11);
     cy.apiDeviceAdd(deviceName, group);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
@@ -333,9 +318,9 @@ describe("Stations: assign recordings to stations", () => {
   });
 
   it("Adding recording matching location at end of time-period of now-retired station creates new", () => {
-    const deviceName = "new-device-24";
-    const stationName = "Josie-station-24";
-    const location = TestGetLocation(24);
+    const deviceName = "new-device-12";
+    const stationName = "Josie-station-12";
+    const location = TestGetLocation(12);
     cy.apiDeviceAdd(deviceName, group);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
@@ -355,9 +340,9 @@ describe("Stations: assign recordings to stations", () => {
   });
 
   it("Adding recording matching location after time-period of now-retired station creates new", () => {
-    const deviceName = "new-device-22";
-    const stationName = "Josie-station-22";
-    const location = TestGetLocation(22);
+    const deviceName = "new-device-13";
+    const stationName = "Josie-station-13";
+    const location = TestGetLocation(13);
     cy.apiDeviceAdd(deviceName, group);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
@@ -377,16 +362,16 @@ describe("Stations: assign recordings to stations", () => {
       cy.testUploadRecording(deviceName, {
         ...location,
         time: now,
-      }).thenCheckStationIsNew(Josie).then((station:any) => {
-        cy.apiStationCheck(Josie, station.id, expectedNewStation,undefined,undefined,{useRawStationId: true});
+      }).thenCheckStationIsNew(Josie).then((station:TestNameAndId) => {
+        cy.apiStationCheck(Josie, station.id.toString(), expectedNewStation,undefined,undefined,{useRawStationId: true});
       });
     });
   });
 
   it("Adding a new recording within the radius of an existing retired station automatically creates a new station and assigns it to the recording", () => {
-    const deviceName = "new-device-5";
-    const stationName = "Josie-station-5";
-    const location = TestGetLocation(5);
+    const deviceName = "new-device-14";
+    const stationName = "Josie-station-14";
+    const location = TestGetLocation(14);
     cy.apiDeviceAdd(deviceName, group);
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
@@ -406,7 +391,309 @@ describe("Stations: assign recordings to stations", () => {
     });
   });
 
-  //TODO write me!
-  it.skip("Staions and audio recordings");
+  it("Verify audio recording correctly assigned to and updates station", () => {
+    const deviceName = "new-device-15";
+    const stationName = "new-station-15";
+    const recording1Name = "new-recording-15-1";
+    const recording2Name = "new-recording-15-2";
+    const now = new Date();
+    const location = TestGetLocation(15);
+    const nearbyLocation = TestGetLocation(15,0.0001);
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+
+    const expectedStation1 = JSON.parse(JSON.stringify(templateExpectedStation));
+    expectedStation1.location = location;
+    expectedStation1.activeAt = oneMonthAgo.toISOString();
+    expectedStation1.lastUpdatedById = getCreds(Josie).id;
+    expectedStation1.automatic = false;
+
+    const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
+    audioRecording.recordingDateTime=oneWeekAgo.toISOString();
+    audioRecording.location=[nearbyLocation.lat, nearbyLocation.lng];
+
+    cy.apiDeviceAdd(deviceName, group);
+
+    cy.apiGroupStationAdd( Josie, group, { name: stationName, ...location }, oneMonthAgo.toISOString(),
+    ).then((stationId:number) => {
+
+      cy.log("Check station created correctly");
+      delete(expectedStation1.lastAudioRecordingTime);
+      delete(expectedStation1.lastThermalRecordingTime);
+      cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+      cy.log("Add an audio recording and check is updated correctly");
+      cy.apiRecordingAdd(deviceName, audioRecording, undefined, recording1Name)
+        .thenCheckStationNameIs(Josie, getTestName(stationName)).then(() => {
+
+          cy.log("Check station updated correctly with lastAudioRecordingTime`");
+          expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
+          cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+          cy.log("Add a 2nd audio recording");
+          audioRecording.recordingDateTime=now.toISOString();
+          cy.apiRecordingAdd(deviceName, audioRecording, undefined, recording2Name)
+            .thenCheckStationNameIs(Josie, getTestName(stationName)).then(() => {
+
+              cy.log("Check station updated correctly with lastThermalRecordingTime");
+              expectedStation1.lastAudioRecordingTime = now.toISOString();   
+              cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+            });
+        });
+      });
+  });
+
+  it("Verify audio recording correctly creates station", () => {
+    const deviceName = "new-device-16";
+    const recording1Name = "new-recording-16-1";
+    const recording2Name = "new-recording-16-2";
+    const location = TestGetLocation(17);
+    const nearbyLocation = TestGetLocation(17,0.0001);
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+
+    const expectedStation1 = JSON.parse(JSON.stringify(templateExpectedStation));
+    expectedStation1.location = location;
+    expectedStation1.activeAt = oneMonthAgo.toISOString();
+    expectedStation1.automatic = true;
+
+    const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
+    audioRecording.recordingDateTime=oneMonthAgo.toISOString();
+    audioRecording.location=[location.lat, location.lng];
+
+    cy.apiDeviceAdd(deviceName, group);
+
+    cy.log("Add an audio recording and check station is created correctly");
+    cy.apiRecordingAdd(deviceName, audioRecording, undefined, recording1Name)
+      .thenCheckStationIsNew(Josie).then((station:TestNameAndId) => {
+
+      cy.log("Check station created correctly with lastAudioRecordingTime`");
+      expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();
+      delete(expectedStation1.lastThermalRecordingTime);
+      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+
+      cy.log("Add another audio recording and check station is updated correctly");
+      audioRecording.location=[nearbyLocation.lat, nearbyLocation.lng];
+      audioRecording.recordingDateTime=oneWeekAgo.toISOString();
+      cy.apiRecordingAdd(deviceName, audioRecording, undefined, recording2Name)
+        .thenCheckStationIdIs(Josie,station.id).then(() => {
+
+        cy.log("Check station updated correctly with lastAudioRecordingTime`");
+        expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
+        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId:   true });
+      });
+    });
+  });
+
+  it("Verify separate audio and thermal device can share a station (manual station)", () => {
+    const audioDeviceName = "new-device-18a";
+    const thermalDeviceName = "new-device-18t";
+    const audioRecordingName = "new-recording-18a"
+    const thermalRecordingName = "new-recording-18t";
+
+    const stationName = "new-station-18";
+    const location = TestGetLocation(18);
+    const nearbyLocation = TestGetLocation(18,0.0001);
+    const now = new Date();
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+
+    const expectedStation1 = JSON.parse(JSON.stringify(templateExpectedStation));
+    expectedStation1.location = location;
+    expectedStation1.activeAt = oneMonthAgo.toISOString();
+    expectedStation1.lastUpdatedById = getCreds(Josie).id;
+    expectedStation1.automatic = false;
+
+    const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
+    audioRecording.recordingDateTime=oneWeekAgo.toISOString();
+    audioRecording.location=[nearbyLocation.lat, nearbyLocation.lng];
+
+    const thermalRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
+    thermalRecording.recordingDateTime=now.toISOString();
+    thermalRecording.location=[nearbyLocation.lat, nearbyLocation.lng];
+
+    cy.apiDeviceAdd(audioDeviceName, group);
+    cy.apiDeviceAdd(thermalDeviceName, group);
+
+    cy.apiGroupStationAdd( Josie, group, { name: stationName, ...location }, oneMonthAgo.toISOString(),
+    ).then((stationId:number) => {
+
+      cy.log("Check station created correctly");
+      delete(expectedStation1.lastAudioRecordingTime);
+      delete(expectedStation1.lastThermalRecordingTime);
+      cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+      cy.log("Add an audio recording and check is updated correctly");
+      cy.apiRecordingAdd(audioDeviceName, audioRecording, undefined, audioRecordingName)
+        .thenCheckStationNameIs(Josie, getTestName(stationName)).then(() => {
+
+          cy.log("Check station updated correctly with lastAudioRecordingTime`");
+          expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
+          cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+          cy.log("Add a thermal recording and check station is updated correctly");
+          cy.apiRecordingAdd(thermalDeviceName, thermalRecording, undefined, thermalRecordingName)
+            .thenCheckStationNameIs(Josie, getTestName(stationName)).then(() => {
+
+              cy.log("Check station updated correctly with lastThermalRecordingTime");
+              expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();   
+              expectedStation1.lastThermalRecordingTime = now.toISOString();   
+              cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+            });
+        });
+      });
+  });
+
+  it("Verify separate audio and thermal device can share a station (auto station)", () => {
+    const audioDeviceName = "new-device-19a";
+    const thermalDeviceName = "new-device-19t";
+    const audioRecordingName = "new-recording-19a"
+    const thermalRecordingName = "new-recording-19t";
+    const location = TestGetLocation(19);
+    const nearbyLocation = TestGetLocation(19,0.0001);
+    const now = new Date();
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+
+    const expectedStation1 = JSON.parse(JSON.stringify(templateExpectedStation));
+    expectedStation1.location = location;
+    expectedStation1.activeAt = oneMonthAgo.toISOString();
+    expectedStation1.automatic = true;
+
+    const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
+    audioRecording.recordingDateTime=oneMonthAgo.toISOString();
+    audioRecording.location=[location.lat, location.lng];
+
+    const thermalRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
+    thermalRecording.recordingDateTime=now.toISOString();
+    thermalRecording.location=[nearbyLocation.lat, nearbyLocation.lng];
+
+    cy.apiDeviceAdd(audioDeviceName, group);
+    cy.apiDeviceAdd(thermalDeviceName, group);
+
+    cy.log("Add an audio recording and check station is created correctly");
+    cy.apiRecordingAdd(audioDeviceName, audioRecording, undefined, audioRecordingName)
+      .thenCheckStationIsNew(Josie).then((station:TestNameAndId) => {
+
+      cy.log("Check station created correctly with lastAudioRecordingTime`");
+      expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();
+      delete(expectedStation1.lastThermalRecordingTime);
+      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+      cy.log("Add a thermal recording and check station is updated correctly");
+      cy.apiRecordingAdd(thermalDeviceName, thermalRecording, undefined, thermalRecordingName)
+        .thenCheckStationIdIs(Josie, station.id).then(() => {
+
+        cy.log("Check station updated correctly with lastThermalRecordingTime");
+        expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();   
+        expectedStation1.lastThermalRecordingTime = now.toISOString();   
+        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      });
+    });
+  });
+
+  it("Verify single device can support both audio and thermal recordings (auto station)", () => {
+    const deviceName = "new-device-20";
+    const audioRecordingName = "new-recording-20a"
+    const thermalRecordingName = "new-recording-20t";
+    const location = TestGetLocation(20);
+    const nearbyLocation = TestGetLocation(20,0.0001);
+    const anotherNearbyLocation = TestGetLocation(20,-0.0001);
+    const now = new Date();
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+
+    const expectedStation1 = JSON.parse(JSON.stringify(templateExpectedStation));
+    expectedStation1.location = location;
+    expectedStation1.activeAt = oneMonthAgo.toISOString();
+    expectedStation1.automatic = true;
+
+    const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
+    audioRecording.recordingDateTime=oneMonthAgo.toISOString();
+    audioRecording.location=[location.lat, location.lng];
+
+    const thermalRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
+    thermalRecording.recordingDateTime=now.toISOString();
+    thermalRecording.location=[anotherNearbyLocation.lat, nearbyLocation.lng];
+
+    cy.apiDeviceAdd(deviceName, group);
+
+    cy.log("Add an audio recording and check station is created correctly");
+    cy.apiRecordingAdd(deviceName, audioRecording, undefined, audioRecordingName)
+      .thenCheckStationIsNew(Josie).then((station:TestNameAndId) => {
+
+      cy.log("Check station created correctly with lastAudioRecordingTime`");
+      expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();
+      delete(expectedStation1.lastThermalRecordingTime);
+      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+      cy.log("Add a thermal recording and check station is updated correctly");
+      cy.apiRecordingAdd(deviceName, thermalRecording, undefined, thermalRecordingName)
+        .thenCheckStationNameIs(Josie, station.name).then(() => {
+
+        cy.log("Check station updated correctly with lastThermalRecordingTime");
+        expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();   
+        expectedStation1.lastThermalRecordingTime = now.toISOString();   
+          cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+        });
+    });
+  });
+
+  it("Verify single device can support both audio and thermal recordings (manual station)", () => {
+    const deviceName = "new-device-21";
+    const stationName = "new-station-21";
+    const audioRecordingName = "new-recording-21a"
+    const thermalRecordingName = "new-recording-21t";
+    const now = new Date();
+    const location = TestGetLocation(21);
+    const nearbyLocation = TestGetLocation(21,0.0001);
+    const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+
+    const expectedStation1 = JSON.parse(JSON.stringify(templateExpectedStation));
+    expectedStation1.location = location;
+    expectedStation1.activeAt = oneMonthAgo.toISOString();
+    expectedStation1.lastUpdatedById = getCreds(Josie).id;
+    expectedStation1.automatic = false;
+
+    const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
+    audioRecording.recordingDateTime=oneWeekAgo.toISOString();
+    audioRecording.location=[nearbyLocation.lat, nearbyLocation.lng];
+
+    const thermalRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
+    thermalRecording.recordingDateTime=now.toISOString();
+    thermalRecording.location=[nearbyLocation.lat, nearbyLocation.lng];
+
+    cy.apiDeviceAdd(deviceName, group);
+
+    cy.apiGroupStationAdd( Josie, group, { name: stationName, ...location }, oneMonthAgo.toISOString(),
+    ).then((stationId:number) => {
+
+      cy.log("Check station created correctly");
+      delete(expectedStation1.lastAudioRecordingTime);
+      delete(expectedStation1.lastThermalRecordingTime);
+      cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+      cy.log("Add an audio recording and check is updated correctly");
+      cy.apiRecordingAdd(deviceName, audioRecording, undefined, audioRecordingName)
+        .thenCheckStationNameIs(Josie, getTestName(stationName)).then(() => {
+
+          cy.log("Check station updated correctly with lastAudioRecordingTime`");
+          expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
+          cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+
+          cy.apiRecordingAdd(deviceName, thermalRecording, undefined, thermalRecordingName)
+            .thenCheckStationNameIs(Josie, getTestName(stationName)).then(() => {
+
+              cy.log("Check station updated correctly with lastThermalRecordingTime");
+              expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();   
+              expectedStation1.lastThermalRecordingTime = now.toISOString();   
+              cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+            });
+        });
+      });
+  });
 });
+
+
+
 

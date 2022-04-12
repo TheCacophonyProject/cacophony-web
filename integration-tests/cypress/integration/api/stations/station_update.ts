@@ -1,36 +1,15 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "@commands/api/recording-tests";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 import { NOT_NULL, NOT_NULL_STRING, HTTP_OK200, HTTP_Unprocessable, HTTP_Forbidden } from "@commands/constants";
 import { TestCreateStationData, TestCreateExpectedStation, TestCreateExpectedAutomaticStation, TestGetLocation } from "@commands/api/station";
 
-import {
-  TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
-} from "@commands/dataTemplate";
-import { ApiRecordingSet, ApiStationData } from "@commands/types";
+import { ApiStationData } from "@commands/types";
 
-const templateRecording: ApiRecordingSet = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
-);
-
-const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
-);
 
 describe("Stations: updating", () => {
 
-  const TemplateStation: ApiStationData = {
-    name: "saStation1",
-    lat: -43.62367659982,
-    lng: 172.62646754804 
-  };
   const TemplateExpectedStation: ApiStationResponse  = {
     id: NOT_NULL,
     name: "saStation1",
@@ -59,9 +38,8 @@ describe("Stations: updating", () => {
 
   it("Can update a station with new unique name", () => {
     let station1=TestCreateStationData("stuStation", 1);
-    let expectedStation1=TestCreateExpectedStation(TemplateExpectedStation,"stuStation", 1);
 
-    let station2={name: "stuUpdateStation1"};
+    let station2:ApiStationData = {name: "stuUpdateStation1"} as unknown as ApiStationData;
     let expectedStation2=TestCreateExpectedStation(TemplateExpectedStation,"stuUpdateStation", 1);
 
     cy.log("Adding station");
@@ -81,9 +59,8 @@ describe("Stations: updating", () => {
 
   it("Can update a station with new unique location", () => {
     let station1=TestCreateStationData("stuStation", 2);
-    let expectedStation1=TestCreateExpectedStation(TemplateExpectedStation,"stuStation", 2);
 
-    let station2={lat: -47, lng: 177};
+    let station2={lat: -47, lng: 177} as unknown as ApiStationData;
     let expectedStation2=TestCreateExpectedStation(TemplateExpectedStation,"stuStation", 2);
     expectedStation2.location={lat: -47, lng: 177};
 
@@ -101,7 +78,6 @@ describe("Stations: updating", () => {
 
   it("Can update a station with both name and new unique location", () => {
     let station1=TestCreateStationData("stuStation", 3);
-    let expectedStation1=TestCreateExpectedStation(TemplateExpectedStation,"stuStation", 3);
 
     let station2=TestCreateStationData("stuUpdateStation",4);
     let expectedStation2=TestCreateExpectedStation(TemplateExpectedStation,"stuUpdateStation", 4);
@@ -276,7 +252,6 @@ describe("Stations: updating", () => {
 
   it("Automatic station becomes manual when updated", () => {
     let recordingTime=new Date();
-    let station1=TestCreateStationData("stuStation", 19);
     let station2=TestCreateStationData("stuStation", 20);
     let expectedStation1=TestCreateExpectedAutomaticStation(TemplateExpectedStation,19,"stuCamera1", recordingTime.toISOString());
 

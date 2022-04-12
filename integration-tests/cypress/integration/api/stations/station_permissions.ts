@@ -1,38 +1,15 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "@commands/api/recording-tests";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 import { NOT_NULL, NOT_NULL_STRING, HTTP_Forbidden } from "@commands/constants";
 import { TestCreateStationData, TestCreateExpectedStation, TestGetLocation } from "@commands/api/station";
-
-import {
-  TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
-} from "@commands/dataTemplate";
-import { ApiRecordingSet, ApiStationData } from "@commands/types";
-
-const templateRecording: ApiRecordingSet = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
-);
-
-const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
-);
+import { ApiStationData } from "@commands/types";
 
 describe("Stations: permissions", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  const TemplateStation: ApiStationData = {
-    name: "saStation1",
-    lat: -43.62367659982,
-    lng: 172.62646754804 
-  };
   const TemplateExpectedStation: ApiStationResponse  = {
     id: NOT_NULL,
     name: "saStation1",
@@ -60,7 +37,6 @@ describe("Stations: permissions", () => {
 
   it("Permissions: Group admin can add, get, update, delete a station", () => {
     let saStation1=TestCreateStationData("saStation", 1);
-    let saUpdatedStation1=TestCreateStationData("saUpdatedStation", 1);
     let saExpectedStation1=TestCreateExpectedStation(TemplateExpectedStation,"saStation", 1);
     let saUpdatedExpectedStation1=TestCreateExpectedStation(TemplateExpectedStation,"saUpdatedStation", 1);
     let thisLocation=TestGetLocation(1);
@@ -88,7 +64,7 @@ describe("Stations: permissions", () => {
         cy.apiStationsCheck("saAdmin", [saExpectedStation1]);
 
         cy.log("Can update a station");
-        cy.apiStationUpdate("saAdmin", "saStation1", {name: "newName"}).then(() => {
+        cy.apiStationUpdate("saAdmin", "saStation1", {name: "newName"} as unknown as ApiStationData).then(() => {
           saExpectedStation1.name=getTestName("newName");
           cy.apiStationCheck("saAdmin", "saStation1", saExpectedStation1);
         });
@@ -127,7 +103,7 @@ describe("Stations: permissions", () => {
       cy.apiStationsCheck("saMember", [saExpectedStation]);
 
       cy.log("Cannot update station");
-      cy.apiStationUpdate("saMember", "saStation2", {name: "newName"}, undefined, undefined, false, HTTP_Forbidden);
+      cy.apiStationUpdate("saMember", "saStation2", {name: "newName"} as unknown as ApiStationData, undefined, undefined, false, HTTP_Forbidden);
  
       cy.log("Cannot delete station");
       cy.apiStationDelete("saMember", "saStation2", true, HTTP_Forbidden);
@@ -159,7 +135,7 @@ describe("Stations: permissions", () => {
       cy.apiStationsCheck("saNonMember", []);
 
       cy.log("Non-member Cannot update station");
-      cy.apiStationUpdate("saNonMember", "saStation3", {name: "newName"}, undefined, undefined, false, HTTP_Forbidden);
+      cy.apiStationUpdate("saNonMember", "saStation3", {name: "newName"} as unknown as ApiStationData, undefined, undefined, false, HTTP_Forbidden);
       
       cy.log("Non-member Cannot delete station");
       cy.apiStationDelete("saNonMember", "saStation3", true, HTTP_Forbidden);

@@ -537,7 +537,6 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   } else {
     //expected.StationId = null;
   }
-
   expected.id = getCreds(recordingName).id;
   expected.deviceId = device.id;
   expected.deviceName = device.deviceName;

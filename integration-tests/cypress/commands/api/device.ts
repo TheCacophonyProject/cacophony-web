@@ -10,10 +10,10 @@ import {
   sortArrayOn,
   checkTreeStructuresAreEqualExcept
 } from "../server";
-import { logTestDescription } from "../descriptions";
+import { logTestDescription, prettyLog} from "../descriptions";
 import { ApiDevicesDevice } from "../types";
 import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
-
+import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
 import { DeviceType } from "@typedefs/api/consts";
@@ -65,6 +65,7 @@ Cypress.Commands.add(
     deviceIdOrName: string,
     stationFromDate: string,
     stationIdOrName: string,
+    recordingLocation: LatLng,
     statusCode: number = HTTP_OK200,
     additionalChecks: any = {}
   ) => {
@@ -84,14 +85,23 @@ Cypress.Commands.add(
     } else {
       deviceId = getCreds(deviceIdOrName).id.toString();
     }
-    
+ 
     const body = {
       "setStationAtTime": {
         fromDateTime: stationFromDate,
-        stationId: stationId    
+        stationId: stationId,
       },
       ...additionalChecks["additionalParams"]
     };
+
+    if (recordingLocation ) {
+      body.setStationAtTime.location=recordingLocation;
+    };
+
+    logTestDescription(
+      `Fix device ${deviceId} (${deviceIdOrName})  to station '${stationId}' (${stationIdOrName}) ${prettyLog(body)}`,
+      {body: body }
+    );
 
     makeAuthorizedRequestWithStatus(
       {
