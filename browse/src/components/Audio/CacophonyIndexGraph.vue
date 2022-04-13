@@ -1,10 +1,16 @@
 <template>
-  <canvas :ref="id.toString()" />
+  <canvas ref="chart" />
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from "vue";
-import { defineComponent } from "@vue/composition-api";
+import { PropType } from "vue";
+import {
+  defineComponent,
+  onMounted,
+  shallowRef,
+  ref,
+  watch,
+} from "@vue/composition-api";
 import {
   Chart,
   LineController,
@@ -64,52 +70,7 @@ export default defineComponent({
       default: false,
     },
   },
-  computed: {
-    data() {
-      const cacophonySet = this.cacophonyIndex.map(
-        (cacophonyIndex: CacophonyIndex) => {
-          const { begin_s, end_s, index_percent } = cacophonyIndex;
-          return {
-            x: end_s - begin_s,
-            y: index_percent,
-          };
-        }
-      );
-      return cacophonySet;
-    },
-    timeLimit() {
-      const highestEnd = this.cacophonyIndex.reduce(
-        (highest: number, current: CacophonyIndex) => {
-          return current.end_s > highest ? current.end_s : highest;
-        },
-        0
-      );
-      return highestEnd;
-    },
-    cacophonyIndexMin(): number {
-      const minIndex = this.cacophonyIndex.reduce(
-        (lowest: number, current: CacophonyIndex) => {
-          return current.index_percent < lowest
-            ? current.index_percent
-            : lowest;
-        },
-        100
-      );
-      return minIndex;
-    },
-    cacophonyIndexMax(): number {
-      const maxIndex = this.cacophonyIndex.reduce(
-        (highest: number, current: CacophonyIndex) => {
-          return current.index_percent > highest
-            ? current.index_percent
-            : highest;
-        },
-        0
-      );
-      return maxIndex;
-    },
-  },
-  mounted() {
+  setup(props) {
     Chart.register([
       LineElement,
       LineController,
@@ -118,78 +79,125 @@ export default defineComponent({
       PointElement,
       Tooltip,
     ]);
-    new Chart(this.$refs[this.id] as HTMLCanvasElement, {
-      type: "line",
-      data: {
-        labels: this.cacophonyIndex.map(({ time }) => time),
-        datasets: [
-          {
-            label: "Cacophony Index",
-            data: this.data,
-            borderColor: (context: any) =>
-              createGradient(
-                context,
-                this.simplify ? this.cacophonyIndexMin : 0,
-                this.simplify ? this.cacophonyIndexMax : 100
-              ),
-            borderWidth: 4,
-            stepped: "middle",
-          },
-        ],
-      },
-      options: {
-        plugins: {
-          tooltip: {
-            mode: "index",
-            intersect: false,
-            displayColors: false,
-            callbacks: {
-              title: (tooltipItem) => {
-                return "";
+    const chart = ref<HTMLCanvasElement>(null);
+    onMounted(() => {
+      const chartRef = shallowRef(null);
+      watch(
+        () => props.cacophonyIndex,
+        () => {
+          if (chartRef.value !== null) {
+            chartRef.value.destroy();
+          }
+          const data = props.cacophonyIndex.map(
+            (cacophonyIndex: CacophonyIndex) => {
+              const { begin_s, end_s, index_percent } = cacophonyIndex;
+              return {
+                x: end_s - begin_s,
+                y: index_percent,
+              };
+            }
+          );
+
+          const highestEndVal = props.cacophonyIndex.reduce(
+            (highest: number, current: CacophonyIndex) => {
+              return current.end_s > highest ? current.end_s : highest;
+            },
+            0
+          );
+
+          const minIndexVal = props.cacophonyIndex.reduce(
+            (lowest: number, current: CacophonyIndex) => {
+              return current.index_percent < lowest
+                ? current.index_percent
+                : lowest;
+            },
+            100
+          );
+          const maxIndexVal = props.cacophonyIndex.reduce(
+            (highest: number, current: CacophonyIndex) => {
+              return current.index_percent > highest
+                ? current.index_percent
+                : highest;
+            },
+            0
+          );
+          chartRef.value = new Chart(chart.value, {
+            type: "line",
+            data: {
+              labels: props.cacophonyIndex.map(({ time }) => time),
+              datasets: [
+                {
+                  label: "Cacophony Index",
+                  data,
+                  borderColor: (context: any) =>
+                    createGradient(
+                      context,
+                      props.simplify ? minIndexVal : 0,
+                      props.simplify ? maxIndexVal : 100
+                    ),
+                  borderWidth: 4,
+                  stepped: "middle",
+                },
+              ],
+            },
+            options: {
+              plugins: {
+                tooltip: {
+                  mode: "index",
+                  intersect: false,
+                  displayColors: false,
+                  callbacks: {
+                    title: (tooltipItem) => {
+                      return "";
+                    },
+                    label: (tooltipItem) => {
+                      const value = tooltipItem.formattedValue;
+                      return value;
+                    },
+                  },
+                },
+                legend: {
+                  display: false,
+                },
               },
-              label: (tooltipItem) => {
-                const value = tooltipItem.formattedValue;
-                return value;
+              elements: {
+                point: {
+                  radius: 2,
+                },
+              },
+              scales: {
+                x: {
+                  ...(!props.simplify
+                    ? {
+                        max: highestEndVal,
+                        min: 0,
+                      }
+                    : {}),
+                  display: !props.simplify,
+                  grid: {
+                    display: !props.simplify,
+                  },
+                },
+                y: {
+                  ...(!props.simplify
+                    ? {
+                        max: 100,
+                        min: 0,
+                      }
+                    : {}),
+                  display: !props.simplify,
+                  grid: {
+                    display: !props.simplify,
+                  },
+                },
               },
             },
-          },
-          legend: {
-            display: false,
-          },
+          });
         },
-        elements: {
-          point: {
-            radius: 2,
-          },
-        },
-        scales: {
-          x: {
-            ...(!this.simplify
-              ? {
-                  max: this.timeLimit,
-                  min: 0,
-                }
-              : {}),
-            display: !this.simplify,
-            grid: {
-              display: !this.simplify,
-            },
-          },
-          y: {
-            ...(!this.simplify
-              ? {
-                  max: 100,
-                  min: 0,
-                }
-              : {}),
-            display: !this.simplify,
-            grid: {
-              display: !this.simplify,
-            },
-          },
-        },
-      },
+        { immediate: true }
+      );
     });
+    return { chart };
   },
 });
 </script>

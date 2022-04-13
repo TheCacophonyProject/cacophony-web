@@ -9,7 +9,6 @@
             :tracks="tracks"
             :url="url"
             :duration="recording.duration"
-            :sampleRate="recording.sampleRate"
             :selectedTrack="selectedTrack"
             :setSelectedTrack="playTrack"
           />
@@ -73,7 +72,9 @@
             <h3 class="w-100 ml-4">Attributes</h3>
             <b-button-group class="mr-2">
               <b-button
-                :class="{ highlight: usersTag.data.gender === 'male' }"
+                :class="{
+                  highlight: usersTag.data && usersTag.data.gender === 'male',
+                }"
                 @click="
                   addAttributeToTrackTag(
                     { gender: 'male' },
@@ -85,7 +86,9 @@
                 >Male</b-button
               >
               <b-button
-                :class="{ highlight: usersTag.data.gender === 'female' }"
+                :class="{
+                  highlight: usersTag.data && usersTag.data.gender === 'female',
+                }"
                 @click="
                   addAttributeToTrackTag(
                     { gender: 'female' },
@@ -99,7 +102,10 @@
             </b-button-group>
             <b-button-group class="ml-2">
               <b-button
-                :class="{ highlight: usersTag.data.maturity === 'adult' }"
+                :class="{
+                  highlight:
+                    usersTag.data && usersTag.data.maturity === 'adult',
+                }"
                 @click="
                   addAttributeToTrackTag(
                     { maturity: 'adult' },
@@ -111,7 +117,10 @@
                 >Adult</b-button
               >
               <b-button
-                :class="{ highlight: usersTag.data.maturity === 'juvenile' }"
+                :class="{
+                  highlight:
+                    usersTag.data && usersTag.data.maturity === 'juvenile',
+                }"
                 @click="
                   addAttributeToTrackTag(
                     { maturity: 'juvenile' },
@@ -134,9 +143,9 @@
         :delete-recording="deleteRecording"
       />
       <CacophonyIndexGraph
-        v-if="recording.cacophonyIndex"
+        v-if="cacophonyIndex"
         class="mt-2"
-        :cacophony-index="recording.cacophonyIndex"
+        :cacophony-index="cacophonyIndex"
         :id="recording.id"
       />
       <RecordingProperties :recording="recording" />
@@ -444,6 +453,7 @@ export default defineComponent({
         };
         const currTags = track.tags.filter((tag) => tag.userId !== userId);
         const newTags = [...currTags, newTag];
+        setUsersTag(newTag);
         const taggedTrack = modifyTrack(trackId, {
           confirming: false,
           tags: newTags,
@@ -467,7 +477,6 @@ export default defineComponent({
       trackId: TrackId,
       tagId: number
     ) => {
-      console.log(attr, trackId, tagId);
       try {
         const response = await api.recording.updateTrackTag(
           attr,
@@ -604,11 +613,16 @@ export default defineComponent({
       }
     };
 
+    const [cacophonyIndex, setCacophonyIndex] = useState(
+      props.recording.cacophonyIndex
+    );
+
     watch(
       () => props.recording,
       () => {
         setTracks(mappedTracks(props.recording.tracks));
         setSelectedTrack(null);
+        setCacophonyIndex(props.recording.cacophonyIndex);
       }
     );
 
@@ -691,7 +705,6 @@ export default defineComponent({
         setButtonLabels(createButtonLabels());
       }
     });
-
     return {
       url,
       tracks,
@@ -703,6 +716,7 @@ export default defineComponent({
       usersTag,
       playTrack,
       customTag,
+      cacophonyIndex,
       labels: buttonLabels,
       BirdLabels: BirdLabels.sort(),
       addTagToSelectedTrack,

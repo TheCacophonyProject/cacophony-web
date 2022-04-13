@@ -57,7 +57,7 @@
               @input="changeVolume"
             />
           </div>
-          <div class="ml-2 player-time d-flex flex-row">
+          <div class="player-bar-time ml-2 player-time d-flex flex-row">
             {{ time.curr }} / {{ time.total }}
           </div>
         </div>
@@ -107,7 +107,6 @@
             :icon="['fa', zoomed.enabled ? 'search-minus' : 'search-plus']"
             :class="{ highlighted: zoomed.enabled }"
             role="button"
-            size="lg"
             @click="
               setZoomed((zoom) => {
                 zoom.enabled = !zoom.enabled;
@@ -118,7 +117,6 @@
             :icon="['fa', 'palette']"
             class="ml-2"
             role="button"
-            size="lg"
           />
         </div>
       </div>
@@ -515,7 +513,6 @@ export default defineComponent({
       if (window.TouchEvent && "targetTouches" in e) {
         const x = (e.targetTouches[0].clientX - rect.left) / rect.width;
         const y = (e.targetTouches[0].clientY - rect.top) / rect.height;
-        console.log(e.targetTouches[0].clientY, rect.left, rect.width);
         return {
           x,
           y,
@@ -538,27 +535,27 @@ export default defineComponent({
       const percent = Math.max(Math.floor(relativeX * 100) / 100, 0);
       const duration = player.value.getDuration();
       const time = Math.min(Math.max(duration * percent, 0), duration);
-      console.log(time);
       return { time, percent };
     };
     const [dragTime, setDragTime] = useState(false);
     const onDragStartTime = () => {
       setDragTime(true);
-      console.log("start");
     };
 
     const onDragTime = (e: MouseEvent | TouchEvent) => {
       if (dragTime.value) {
-        const { time } = calcDragTime(e);
-        console.log(time);
+        const { time, percent } = calcDragTime(e);
+        player.value.seekTo(percent);
         if (time > 0) {
           setPlayerTime(time);
-          updateZoom();
+          if (zoomed.value.enabled) {
+            updateZoom();
+          }
         }
       }
     };
 
-    const onDragEndTime = (e: MouseEvent | TouchEvent) => {
+    const onDragEndTime = () => {
       setDragTime(false);
     };
 
@@ -569,7 +566,9 @@ export default defineComponent({
       const { time, percent } = calcDragTime(e);
       setPlayerTime(time);
       player.value.seekTo(percent);
-      updateZoom();
+      if (zoomed.value.enabled) {
+        updateZoom();
+      }
     };
 
     const [dragZoom, setDragZoom] = useState<{
@@ -578,7 +577,6 @@ export default defineComponent({
     }>({ started: false, from: "start" });
     const onDragStartZoom = (from: "start" | "end") => {
       setDragZoom({ started: true, from });
-      console.log("start");
     };
     const onDragZoom = (e: MouseEvent | TouchEvent) => {
       if (dragZoom.value.started) {
@@ -590,10 +588,9 @@ export default defineComponent({
         setZoomed((zoom) => {
           zoom.scale = scale;
         });
-        console.log(difference);
       }
     };
-    const onDragEndZoom = (e: MouseEvent | TouchEvent) => {
+    const onDragEndZoom = () => {
       setDragZoom((zoom) => {
         zoom.started = false;
       });
@@ -904,7 +901,6 @@ export default defineComponent({
         // Due to spectrogram plugin, we need to wait for the canvas to be rendered
         player.value.on("redraw", () => {
           player.value.spectrogram.init();
-          console.log(player.value.spectrogram);
           attachSpectrogramOverlay();
           if (props.selectedTrack && props.selectedTrack.id === -1) {
             // remove previous
@@ -920,6 +916,7 @@ export default defineComponent({
           addTracksToOverlay([...props.tracks.values()]);
         });
       };
+
       // Get indicator by id player-bar-loader-indicator
       player.value.on("audioprocess", () => {
         // don't up time if we are scrubbing
@@ -985,9 +982,10 @@ spectrogram {
 }
 .player-bar {
   display: grid;
-  grid-template-columns: 1fr 7fr 1fr;
+  grid-template-columns: 1fr 7fr 2fr;
   justify-content: start;
   justify-content: space-between;
+  justify-items: center;
   align-items: center;
   padding: 0.5rem;
   background-color: #2b333f;
@@ -1018,16 +1016,25 @@ spectrogram {
 .volume-selection {
   display: none;
 }
+.player-bar-time {
+  visibility: hidden;
+  position: absolute;
+  bottom: 80px;
+}
+spectrogram > svg {
+  border-radius: 0 0 0.25rem 0.25rem;
+}
+.player-bar {
+  border-radius: 0 0 0.25rem 0.25rem;
+}
 @include media-breakpoint-up(sm) {
   .volume-selection {
     display: flex;
     justify-content: flex-start;
   }
-  spectrogram > svg {
-    border-radius: 0 0 0.25rem 0.25rem;
-  }
-  .player-bar {
-    border-radius: 0 0 0.25rem 0.25rem;
+  .player-bar-time {
+    position: static;
+    visibility: visible;
   }
 }
 .volume-selection:hover {
@@ -1058,6 +1065,9 @@ spectrogram {
 #player-bar {
   &:hover {
     .player-bar-indicator {
+      visibility: visible;
+    }
+    .player-bar-time {
       visibility: visible;
     }
   }
