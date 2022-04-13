@@ -11,6 +11,7 @@ export interface ApiTrackPosition {
   height: number;
   order?: number;
   frameTime?: number;
+  frameNumber?: number;
 }
 
 export interface ApiTrackResponse {
