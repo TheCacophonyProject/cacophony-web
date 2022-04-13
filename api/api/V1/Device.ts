@@ -451,6 +451,19 @@ export default function (app: Application, baseUrl: string) {
         // Update the device known location if this is the latest device history entry.
         await device.update({ location: setLocation });
       }
+
+      const affectedRecordings = await models.Recording.findAll({
+        where: recordingTimeWindow,
+      });
+      const stationsIdsToUpdateLatestRecordingFor = Object.keys(
+        affectedRecordings.reduce((acc, recording) => {
+          if (recording.StationId) {
+            acc[recording.StationId] = true;
+          }
+          return acc;
+        }, {})
+      ).map(Number);
+
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const [affectedCount] = await models.Recording.update(
         {
@@ -461,14 +474,25 @@ export default function (app: Application, baseUrl: string) {
           where: recordingTimeWindow,
         }
       );
+      let stationsToUpdateLatestRecordingFor = [];
+      if (stationsIdsToUpdateLatestRecordingFor.length !== 0) {
+        stationsToUpdateLatestRecordingFor = await models.Station.findAll({
+          where: {
+            id: { [Op.in]: Object.keys(stationsIdsToUpdateLatestRecordingFor) },
+          },
+        });
+      }
+      stationsToUpdateLatestRecordingFor.push(station);
 
-      {
+      for (const station of stationsToUpdateLatestRecordingFor) {
+        // Get the latest thermal recording, and the latest audio recording, and update
+
         // Make sure we update the latest times for both kinds of recordings on the station.
         const [latestThermalRecording, latestAudioRecording] =
           await Promise.all([
             models.Recording.findOne({
               where: {
-                ...recordingTimeWindow,
+                DeviceId: device.id,
                 StationId: station.id,
                 type: RecordingType.ThermalRaw,
               },
@@ -477,7 +501,7 @@ export default function (app: Application, baseUrl: string) {
 
             models.Recording.findOne({
               where: {
-                ...recordingTimeWindow,
+                DeviceId: device.id,
                 StationId: station.id,
                 type: RecordingType.Audio,
               },
