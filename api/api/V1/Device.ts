@@ -61,6 +61,7 @@ import { DeviceHistory } from "@models/DeviceHistory";
 import { RecordingType } from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
 import config from "@config";
+import logger from "@log";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -478,7 +479,7 @@ export default function (app: Application, baseUrl: string) {
       if (stationsIdsToUpdateLatestRecordingFor.length !== 0) {
         stationsToUpdateLatestRecordingFor = await models.Station.findAll({
           where: {
-            id: { [Op.in]: Object.keys(stationsIdsToUpdateLatestRecordingFor) },
+            id: { [Op.in]: stationsIdsToUpdateLatestRecordingFor },
           },
         });
       }
@@ -487,7 +488,8 @@ export default function (app: Application, baseUrl: string) {
       for (const station of stationsToUpdateLatestRecordingFor) {
         // Get the latest thermal recording, and the latest audio recording, and update
 
-        // Make sure we update the latest times for both kinds of recordings on the station.
+        // Make sure we update the latest times for both kinds of recordings on the station,
+        // and if removing the last recording from a station, null out the lastXXRecordingTime field
         const [latestThermalRecording, latestAudioRecording] =
           await Promise.all([
             models.Recording.findOne({
@@ -508,24 +510,38 @@ export default function (app: Application, baseUrl: string) {
               order: [["recordingDateTime", "DESC"]],
             }),
           ]);
+
         if (
           latestAudioRecording &&
-          latestAudioRecording.recordingDateTime >
-            station.lastAudioRecordingTime
+          (!station.lastAudioRecordingTime ||
+            latestAudioRecording.recordingDateTime >
+              station.lastAudioRecordingTime)
         ) {
           await station.update({
             lastAudioRecordingTime: (latestAudioRecording as Recording)
               .recordingDateTime,
           });
+        } else if (!latestAudioRecording && station.lastAudioRecordingTime) {
+          await station.update({
+            lastAudioRecordingTime: null,
+          });
         }
         if (
           latestThermalRecording &&
-          latestThermalRecording.recordingDateTime >
-            station.lastThermalRecordingTime
+          (!station.lastThermalRecordingTime ||
+            latestThermalRecording.recordingDateTime >
+              station.lastThermalRecordingTime)
         ) {
           await station.update({
             lastThermalRecordingTime: (latestThermalRecording as Recording)
               .recordingDateTime,
+          });
+        } else if (
+          !latestThermalRecording &&
+          station.lastThermalRecordingTime
+        ) {
+          await station.update({
+            lastThermalRecordingTime: null,
           });
         }
       }
