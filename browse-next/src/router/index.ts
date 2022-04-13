@@ -96,42 +96,43 @@ router.beforeEach(async (to, from, next) => {
   const intercepts = ["end-user-agreement", "add-email"];
   console.log(to, from, next);
 
-  /*
   if (isLoggedIn && hasEmail && acceptedEUA) {
-      if (
-        ["login", "register", "addEmail", "endUserAgreement"].includes(to.name)
-      ) {
-        return next({
-          name: "home",
-        });
-      } else {
-        return next();
-      }
-    } else if (isLoggedIn && !hasEmail) {
-      if (to.name !== "addEmail") {
-        return next({
-          name: "addEmail",
-        });
-      } else {
-        return next();
-      }
-    } else if (isLoggedIn && !acceptedEUA) {
-      // FIXME - nextUrl seems busted
-      if (to.name !== "endUserAgreement") {
-        return next({
-          name: "endUserAgreement",
-          query: {
-            nextUrl: from.fullPath,
-          },
-        });
-      } else {
-        return next();
-      }
-    } else if (to.matched.some((record) => record.meta.noAuth)) {
+    if (
+      ["login", "register", "add-email", "end-user-agreement"].includes(
+        to.name as string
+      )
+    ) {
+      return next({
+        name: "home",
+      });
+    } else {
       return next();
     }
-   */
+  } else if (isLoggedIn && !hasEmail) {
+    if (to.name !== "addEmail") {
+      return next({
+        name: "addEmail",
+      });
+    } else {
+      return next();
+    }
+  } else if (isLoggedIn && !acceptedEUA) {
+    // FIXME - nextUrl seems busted
+    if (to.name !== "endUserAgreement") {
+      return next({
+        name: "endUserAgreement",
+        query: {
+          nextUrl: from.fullPath,
+        },
+      });
+    } else {
+      return next();
+    }
+  } else if (to.matched.some((record) => record.meta.noAuth)) {
+    return next();
+  }
 
+  /*
   if (isLoggedIn) {
     if (
       !hasEmail &&
@@ -178,6 +179,7 @@ router.beforeEach(async (to, from, next) => {
       },
     });
   }
+  */
   /*
   const now = new Date().getTime();
 

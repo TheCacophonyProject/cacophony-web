@@ -237,7 +237,9 @@ export default function (
     return [];
   };
 
-  User.prototype.comparePassword = function (password: string): Promise<boolean> {
+  User.prototype.comparePassword = function (
+    password: string
+  ): Promise<boolean> {
     const user = this;
     return new Promise(function (resolve, reject) {
       bcrypt.compare(password, user.password, function (err, isMatch) {
@@ -249,7 +251,9 @@ export default function (
       });
     });
   };
-  User.prototype.updatePassword = async function (password: string): Promise<User> {
+  User.prototype.updatePassword = async function (
+    password: string
+  ): Promise<User> {
     return this.update({ password: password });
   };
 
