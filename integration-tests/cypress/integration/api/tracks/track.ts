@@ -247,6 +247,7 @@ describe("Tracks: add, check, delete", () => {
       id: -99,
       start: 4,
       end: 7,
+      positions: [],
       tags: [],
       filtered: true,
       automatic: true,

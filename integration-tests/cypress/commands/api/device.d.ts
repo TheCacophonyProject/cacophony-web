@@ -3,9 +3,11 @@
 
 declare namespace Cypress {
   type ApiDeviceResponse = import("@typedefs/api/device").ApiDeviceResponse;
+  type LatLng = import("@typedefs/api/common").LatLng;
   type ApiGroupsUserRelationshipResponse =
     import("@typedefs/api/group").ApiGroupUserResponse;
-  type DeviceType = import("@typedefs/api/consts").DeviceType;
+  type DeviceType =
+    import("@typedefs/api/consts").DeviceType;
 
   interface Chainable {
     /**
@@ -27,17 +29,34 @@ declare namespace Cypress {
      * optionally check for non-200 statusCode
      * By default deviceId and stationId are looked up from
      * names in deviceIdOrName and stationIdOrName
-     * Optionally supply raw ids by specifying
-     *   additionalParams: {useRawDeviceId: true}
-     *   additionalParams: {useRawStationId: true}
+     * Optionally supply raw ids by specifying 
+     *   additonalParams: {useRawDeviceId: true}
+     *   additonalParams: {useRawStationId: true}
      */
-    apiDeviceFixLocation(
+    apiDeviceFixLocation( 
       userName: string,
       deviceIdOrName: string,
       stationFromDate: string,
       stationIdOrName: string,
+      location? : LatLng,
       statusCode?: number,
       additionalParams?: any
+    ): any;
+
+    /**
+     * Get history for a device
+     * compare with expected history
+     * by default DeviceId is looked up using name.  Set additionalChecks["useRawDeviceId"]=true to use Id provided
+     * By default history and expectedHistory are sorted before comparison
+     * Set additionalChecks["doNotSort"]=true to skip sorting
+     * optionally check for a non-200 status code
+     */
+    apiDeviceHistoryCheck (
+      userName: string,
+      deviceIdOrName: string,
+      expectedHistory: any[],
+      statusCode?: number,
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -134,5 +153,7 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
   }
 }
+

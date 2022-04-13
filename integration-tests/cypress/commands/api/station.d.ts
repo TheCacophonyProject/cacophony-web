@@ -2,11 +2,12 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiStationResponseAlias =
+  type ApiCreateStationData =
+    import("@typedefs/api/station").ApiCreateStationData;
+  type ApiStationResponse = 
     import("@typedefs/api/station").ApiStationResponse;
-  type ApiUpdateStationData =
-    import("@typedefs/api/station").ApiUpdateStationData;
   interface Chainable {
+
     /**
      * GET to api/v1/stations to retrieve all stations for current user
      * Check returned data matches expectedStations
@@ -15,9 +16,9 @@ declare namespace Cypress {
      * Optionally: check for returned additionalChecks["messages"]
      * Optionally: check for returned additionalChecks["warnings"]
      */
-    apiStationsCheck(
+    apiStationsCheck (
       userName: string,
-      expectedStations: ApiStationResponseAlias[],
+      expectedStations: ApiStationResponse[],
       excludeCheckOn?: any,
       statusCode?: number,
       additionalChecks?: any
@@ -35,11 +36,12 @@ declare namespace Cypress {
     apiStationCheck(
       userName: string,
       stationIdOrName: string,
-      expectedStation: ApiStationResponseAlias,
+      expectedStation: ApiStationResponse,
       excludeCheckOn?: any,
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
 
     /**
      * PATCH to api/v1/stations/:stationId to update a single station
@@ -52,7 +54,7 @@ declare namespace Cypress {
     apiStationUpdate(
       userName: string,
       stationIdOrName: string,
-      stationUpdates: ApiUpdateStationData,
+      stationUpdates: ApiStationData,
       fromDate?: string,
       untilDate?: string,
       retire?: boolean,
@@ -77,14 +79,15 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /** Shortcut to apiStationUpdate which only sets the untilDate
-     * (retirementDate)
-     */
+   /** Shortcut to apiStationUpdate which only sets the untilDate
+    * (retirementDate)
+    */
     testStationRetire(
       userName: string,
       stationIdOrName: string,
       retirementDate?: string,
       additionalChecks?: any
     ): Cypress.Chainable<void>;
+
   }
 }
