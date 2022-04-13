@@ -485,6 +485,7 @@ export default function (app: Application, baseUrl: string) {
       }
       stationsToUpdateLatestRecordingFor.push(station);
 
+      const allStationRecordingTimeUpdates = [];
       for (const station of stationsToUpdateLatestRecordingFor) {
         // Get the latest thermal recording, and the latest audio recording, and update
 
@@ -511,20 +512,18 @@ export default function (app: Application, baseUrl: string) {
             }),
           ]);
 
+        const updates: any = {};
         if (
           latestAudioRecording &&
           (!station.lastAudioRecordingTime ||
             latestAudioRecording.recordingDateTime >
               station.lastAudioRecordingTime)
         ) {
-          await station.update({
-            lastAudioRecordingTime: (latestAudioRecording as Recording)
-              .recordingDateTime,
-          });
+          updates.lastAudioRecordingTime = (
+            latestAudioRecording as Recording
+          ).recordingDateTime;
         } else if (!latestAudioRecording && station.lastAudioRecordingTime) {
-          await station.update({
-            lastAudioRecordingTime: null,
-          });
+          updates.lastAudioRecordingTime = null;
         }
         if (
           latestThermalRecording &&
@@ -532,18 +531,21 @@ export default function (app: Application, baseUrl: string) {
             latestThermalRecording.recordingDateTime >
               station.lastThermalRecordingTime)
         ) {
-          await station.update({
-            lastThermalRecordingTime: (latestThermalRecording as Recording)
-              .recordingDateTime,
-          });
+          updates.lastThermalRecordingTime = (
+            latestThermalRecording as Recording
+          ).recordingDateTime;
         } else if (
           !latestThermalRecording &&
           station.lastThermalRecordingTime
         ) {
-          await station.update({
-            lastThermalRecordingTime: null,
-          });
+          updates.lastThermalRecordingTime = null;
         }
+        if (Object.keys(updates).length !== 0) {
+          allStationRecordingTimeUpdates.push(updates);
+        }
+      }
+      if (allStationRecordingTimeUpdates.length) {
+        await Promise.all(allStationRecordingTimeUpdates);
       }
 
       return responseUtil.send(response, {
