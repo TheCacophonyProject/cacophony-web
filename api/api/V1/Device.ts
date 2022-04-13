@@ -61,6 +61,7 @@ import { DeviceHistory } from "@models/DeviceHistory";
 import { RecordingType } from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
 import config from "@config";
+import logger from "@log";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -478,7 +479,7 @@ export default function (app: Application, baseUrl: string) {
       if (stationsIdsToUpdateLatestRecordingFor.length !== 0) {
         stationsToUpdateLatestRecordingFor = await models.Station.findAll({
           where: {
-            id: { [Op.in]: Object.keys(stationsIdsToUpdateLatestRecordingFor) },
+            id: { [Op.in]: stationsIdsToUpdateLatestRecordingFor },
           },
         });
       }
@@ -511,9 +512,10 @@ export default function (app: Application, baseUrl: string) {
           ]);
 
         if (
-          (latestAudioRecording && !station.lastAudioRecordingTime) ||
-          latestAudioRecording.recordingDateTime >
-            station.lastAudioRecordingTime
+          latestAudioRecording &&
+          (!station.lastAudioRecordingTime ||
+            latestAudioRecording.recordingDateTime >
+              station.lastAudioRecordingTime)
         ) {
           await station.update({
             lastAudioRecordingTime: (latestAudioRecording as Recording)
@@ -525,9 +527,10 @@ export default function (app: Application, baseUrl: string) {
           });
         }
         if (
-          (latestThermalRecording && !station.lastThermalRecordingTime) ||
-          latestThermalRecording.recordingDateTime >
-            station.lastThermalRecordingTime
+          latestThermalRecording &&
+          (!station.lastThermalRecordingTime ||
+            latestThermalRecording.recordingDateTime >
+              station.lastThermalRecordingTime)
         ) {
           await station.update({
             lastThermalRecordingTime: (latestThermalRecording as Recording)
