@@ -86,7 +86,31 @@ export function saveJWTByName(name: string, jwt: string) {
 }
 
 export function getCreds(userName: string): ApiCreds {
-  return Cypress.env("testCreds")[userName];
+  if(userName) {
+    const creds:ApiCreds = Cypress.env("testCreds")[userName]; 
+    if (creds==undefined) {
+      logTestDescription(
+          `ERROR: could not find credentials for '${userName}'`,
+          {name: userName}
+        );
+    };
+    return creds;
+  } else {
+     logTestDescription(
+        `NOTE: asked to retieve credential for 'undefined'`,
+        {  }
+      );
+
+    return {
+      name: null,
+      id: null,
+      password: undefined,
+      jwt: undefined,
+      headers: undefined,
+      jobKey: undefined,
+      location: undefined
+    };
+  }
 }
 
 export function getCredsByIdAndNameLike(id: number, nameLike: string): ApiCreds {

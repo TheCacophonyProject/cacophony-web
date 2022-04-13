@@ -38,9 +38,25 @@ declare namespace Cypress {
       deviceIdOrName: string,
       stationFromDate: string,
       stationIdOrName: string,
-      location? : ApiLocation,
+      location? : LatLng,
       statusCode?: number,
       additionalParams?: any
+    ): any;
+
+    /**
+     * Get history for a device
+     * compare with expected history
+     * by default DeviceId is looked up using name.  Set additionalChecks["useRawDeviceId"]=true to use Id provided
+     * By default history and expectedHistory are sorted before comparison
+     * Set additionalChecks["doNotSort"]=true to skip sorting
+     * optionally check for a non-200 status code
+     */
+    apiDeviceHistoryCheck (
+      userName: string,
+      deviceIdOrName: string,
+      expectedHistory: any[],
+      statusCode?: number,
+      additionalChecks?: any,
     ): any;
 
     /**

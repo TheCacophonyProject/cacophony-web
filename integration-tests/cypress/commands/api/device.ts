@@ -12,7 +12,7 @@ import {
   checkMessages,
 } from "../server";
 import { logTestDescription, prettyLog} from "../descriptions";
-import { ApiDevicesDevice } from "../types";
+import { ApiDevicesDevice, DeviceHistoryEntry } from "../types";
 import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
 import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
@@ -119,6 +119,59 @@ Cypress.Commands.add(
     });
   }
 );
+
+Cypress.Commands.add(
+  "apiDeviceHistoryCheck",
+  (
+    userName: string,
+    deviceIdOrName: string,
+    expectedHistory: any[],
+    statusCode: number = HTTP_OK200,
+    additionalChecks: any = {}
+  ) => {
+    let deviceId: string;
+
+
+    //Get device ID from name (unless we're asked not to)
+    if (additionalChecks["useRawDeviceId"] === true) {
+      deviceId = deviceIdOrName;
+    } else {
+      deviceId = getCreds(deviceIdOrName).id.toString();
+    }
+
+    logTestDescription(
+      `Check device history for  device ${deviceId} (${deviceIdOrName})`,
+      {deviceId: deviceId }
+    );
+
+    makeAuthorizedRequestWithStatus(
+        {
+          method: "GET",
+          url: v1ApiPath(`devices/history/${deviceId}`),
+        },
+        userName,
+        statusCode
+      ).then((response) => {
+        if (additionalChecks["messages"]) {
+          checkMessages(response, additionalChecks["messages"]);
+        }
+        if (statusCode === null || statusCode == 200) {
+          const deviceHistory = response.body.history;
+          expect(deviceHistory.length).to.equal(expectedHistory.length);
+          let devCount: number;
+          const sortHistory = sortArrayOn(deviceHistory, "uuid");
+          const sortExpectedHistory = sortArrayOn(expectedHistory, "uuid");
+          for (devCount = 0; devCount < expectedHistory.length; devCount++) {
+            checkTreeStructuresAreEqualExcept(
+              sortExpectedHistory[devCount],
+              sortHistory[devCount],
+              []
+            );
+          }
+        }
+      });
+    }
+  );
 
 
 Cypress.Commands.add(
@@ -506,3 +559,29 @@ export function TestCreateExpectedDevice
     };
     return(expectedDevice);
 }
+
+export function TestCreateExpectedHistoryEntry
+  (
+     deviceName: string,
+     groupName: string,
+     fromDate: string,
+     location: LatLng,
+     setBy: string,
+     stationName: string
+  ):DeviceHistoryEntry
+  {
+     const expectedHistory:DeviceHistoryEntry = {
+       DeviceId: getCreds(deviceName).id,
+       GroupId: getCreds(groupName).id,
+       deviceName: getTestName(deviceName),
+       fromDateTime: fromDate,
+       location: location,
+       saltId: NOT_NULL,
+       setBy: setBy,
+       stationId: getCreds(stationName).id,
+       uuid: NOT_NULL
+     };
+
+     return(expectedHistory);
+  };
+

@@ -123,260 +123,47 @@ describe("Stations: station updates also update recordings", () => {
     });
   });
 
-  it.only("fix-location: update recording location to match a manual station", () => {
-    cy.log( "Create a device (in the past), give it a location by uploading a recording for it at a given point in time.");
+  it.skip("station-update: Name change applied to all recordings", () => {
     const deviceName = "new-device-3";
-    const stationName = "Josie-station-3";
-    const oldRecordingName = "sr-old-recording-3";
+    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
+    const twoWeeksAgo = new Date(new Date().setDate(new Date().getDate() - 7));
     const location = TestGetLocation(3);
-    const fixedLocation = TestGetLocation(4);
-    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
-    const twoWeeksAgo = new Date(new Date().setDate(new Date().getDate() - 14));
-    const now = new Date();
-    const oldRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-    oldRecording.recordingDateTime=oneWeekAgo.toISOString();
-    oldRecording.location=[location.lat, location.lng];
-
-    const newRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-    newRecording.recordingDateTime=now.toISOString();
-    newRecording.location=[location.lat, location.lng];
-
-    cy.apiDeviceAdd(deviceName, group).then(() => {;
-
-      cy.log("Check device location is blank");
-      const expectedInitialDevice=TestCreateExpectedDevice(deviceName, group, false);
-      cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedInitialDevice, DeviceType.Unknown);
- 
-      cy.log("Add a recording and check new station created for it"); 
-      cy.apiRecordingAdd( deviceName, oldRecording, undefined, oldRecordingName)
-      .thenCheckStationIsNew(Josie)
-      .then(() => {
-        cy.log("Check device location updated to match recording location");
-        const expectedDevice=TestCreateExpectedDevice(deviceName, group, true, DeviceType.Thermal);
-        expectedDevice.location=location;
-        cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedDevice);
-
-
-        cy.log( "Create a new station at a point in time");
-        cy.apiGroupStationAdd(
-          Josie,
-          group,
-          { name: stationName, ...fixedLocation },
-          twoWeeksAgo.toISOString()
-        ).then(() => {
-          cy.log( "Re-assign device to the newly created station).");
-          cy.apiDeviceFixLocation(Josie, deviceName, oneWeekAgo.toISOString(), stationName, null, HTTP_OK200, { messages: ["Updated 1 recording(s)"]}).then(() => {
-            cy.log( "Make sure the old recording is reassigned to the correct station, and the location updated.");
-            const expectedOldRecording=TestCreateExpectedRecordingData(TEMPLATE_THERMAL_RECORDING_RESPONSE, oldRecordingName, deviceName, group, getTestName(stationName), oldRecording);
-            expectedOldRecording.stationId=getCreds(getTestName(stationName)).id;
-            expectedOldRecording.stationName=getTestName(stationName);
-            expectedOldRecording.location=fixedLocation;
-            cy.apiRecordingCheck(Josie, oldRecordingName, expectedOldRecording, EXCLUDE_IDS); 
-          
-            cy.log( "Make sure the device location is updated since there are no future DeviceHistory entries for this device");
-            const expectedDevice=TestCreateExpectedDevice(deviceName, group, true, DeviceType.Thermal);
-            expectedDevice.location=fixedLocation;
-            cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedDevice);
-          });
-        });
-      });
-    });
-  });
-
-  it("fix-location: update recording location to match later recordings", () => {
-    const deviceName = "new-device-5";
-    const oldRecordingName = "sr-old-recording-5";
-    const newRecordingName = "sr-new-recording-5";
-    const oldLocation = TestGetLocation(5);
-    const newLocation = TestGetLocation(6);
-    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
-    const twoWeeksAgo = new Date(new Date().setDate(new Date().getDate() - 14));
-
-    const oldRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-    oldRecording.recordingDateTime=twoWeeksAgo.toISOString();
-    oldRecording.location=[oldLocation.lat, oldLocation.lng];
-
-    const newRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-    newRecording.recordingDateTime=oneWeekAgo.toISOString();
-    newRecording.location=[newLocation.lat, newLocation.lng];
-
-    cy.apiDeviceAdd(deviceName, group).then(() => {;
-
-      cy.log("Create recording, station and device history at location 1");
-      cy.apiRecordingAdd( deviceName, oldRecording, undefined, oldRecordingName)
-      .thenCheckStationIsNew(Josie).then((oldStation:TestNameAndId) => {
-
-        cy.log("Check device location updated to match recording location");
-        const expectedDevice=TestCreateExpectedDevice(deviceName, group, true, DeviceType.Thermal);
-        expectedDevice.location=oldLocation;
-        cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedDevice);
-
-        cy.log("Create new recording, station and device history at location 2, later");
-        cy.apiRecordingAdd( deviceName, newRecording, undefined, newRecordingName)
-        .thenCheckStationIsNew(Josie).then((newStation:TestNameAndId) => {
-          expect(oldStation.id,"Stations are different").to.not.equal(newStation.id);
-
-          cy.log("Check device location updated to match recording location");
-          const expectedDevice=TestCreateExpectedDevice(deviceName, group, true, DeviceType.Thermal);
-          expectedDevice.location=newLocation;
-          cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedDevice);
-
-          cy.log("Check initial recording was correctly assigned to old station, location, etc");
-          const expectedOldRecording=TestCreateExpectedRecordingData(TEMPLATE_THERMAL_RECORDING_RESPONSE, oldRecordingName, deviceName, group, oldStation.name, oldRecording);
-          expectedOldRecording.stationId=oldStation.id;
-          expectedOldRecording.stationName=oldStation.name;
-          expectedOldRecording.location=oldLocation;
-          cy.apiRecordingCheck(Josie, oldRecordingName, expectedOldRecording, EXCLUDE_IDS);
-
-          cy.log("Update initial device location to match later");
-          cy.apiDeviceFixLocation(Josie, deviceName, twoWeeksAgo.toISOString(), newStation.id.toString(), null, HTTP_OK200, { messages: ["Updated 1 recording(s)"], useRawStationId: true}).then(() => {
-
-            cy.log("Check old recording re-assigned to new station, recording location updated");
-            expectedOldRecording.stationId=newStation.id;
-            expectedOldRecording.stationName=newStation.name;
-            expectedOldRecording.location=newLocation;
-            cy.apiRecordingCheck(Josie, oldRecordingName, expectedOldRecording, EXCLUDE_IDS);
-  
-            cy.log("Check device location preserved unchanged");
-            cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedDevice);
-  
-          });
-        });
-      });
-    });
-  });
-
-  it.only("fix-location: Correct device-station mapping for recordings without changing recording location", () => {
-    const deviceName = "new-device-6";
-    const stationName = "new-station-6";
-    const oldRecordingName = "sr-old-recording-6";
-    const newRecordingName = "sr-new-recording-6";
-    const movedDeviceRecordingName = "sr-new-recording-6";
-    const stationLocation = TestGetLocation(6);
-    const recordingLocation = TestGetLocation(6,0.001); //~100m off-target location
-    const movedDeviceLocation = TestGetLocation(6,-0.001); //~100m in the oppsite direction
-    const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
-    const twoWeeksAgo = new Date(new Date().setDate(new Date().getDate() - 14));
-    const threeWeeksAgo = new Date(new Date().setDate(new Date().getDate() - 21));
-    const now = new Date();
-
-  
-    const oldRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-    oldRecording.recordingDateTime=twoWeeksAgo.toISOString();
-    oldRecording.location=[recordingLocation.lat, recordingLocation.lng];
-
-    const newRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-    newRecording.recordingDateTime=oneWeekAgo.toISOString();
-    newRecording.location=[recordingLocation.lat, recordingLocation.lng];
-
-    const movedDeviceRecording=TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
-    movedDeviceRecording.recordingDateTime=now.toISOString();
-    movedDeviceRecording.location=[movedDeviceLocation.lat, movedDeviceLocation.lng];
-
     const expectedStation1 = JSON.parse(JSON.stringify(templateExpectedStation));
-    expectedStation1.location = stationLocation;
-    expectedStation1.activeAt = threeWeeksAgo.toISOString();
-    expectedStation1.lastThermalRecordingTime = twoWeeksAgo.toISOString(),
-    expectedStation1.lastUpdatedById = getCreds(Josie).id;
-    expectedStation1.automatic = false;
- 
+    expectedStation1.location = location;
+    expectedStation1.activeAt = recordingTime.toISOString(),
+    expectedStation1.lastThermalRecordingTime = recordingTime.toISOString(),
 
-    cy.apiDeviceAdd(deviceName, group).then(() => {
-
-      cy.log("Check device location is blank");
-      const expectedInitialDevice=TestCreateExpectedDevice(deviceName, group, false);
-      cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedInitialDevice, DeviceType.Unknown);
- 
-      cy.log( "Create a new station");
-      cy.apiGroupStationAdd( Josie, group, { name: stationName, ...stationLocation }, threeWeeksAgo.toISOString()
-        ).then((stationId:number ) => {
-        cy.log("Add a recording too far from exisiting station and check new station created for it"); 
-        cy.apiRecordingAdd( deviceName, oldRecording, undefined, oldRecordingName)
-        .thenCheckStationIsNew(Josie)
-        .then(() => {
-          cy.log("Check device location updated to match recording location");
-          const expectedDevice=TestCreateExpectedDevice(deviceName, group, true, DeviceType.Thermal);
-          expectedDevice.location=recordingLocation;
-          cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedDevice);
-
-          cy.log( "Re-assign recording to the correct station preserving recording locations.");
-          cy.apiDeviceFixLocation(Josie, deviceName, twoWeeksAgo.toISOString(), stationId.toString(), recordingLocation, HTTP_OK200, { messages: ["Updated 1 recording(s)"], useRawStationId: true}).then(() => {
-            cy.log( "Make sure the old recording is reassigned to the correct station, and the recording location retained.");
-            const expectedOldRecording=TestCreateExpectedRecordingData(TEMPLATE_THERMAL_RECORDING_RESPONSE, oldRecordingName, deviceName, group, getTestName(stationName), oldRecording);
-            expectedOldRecording.stationId=stationId;
-            expectedOldRecording.stationName=getTestName(stationName);
-            expectedOldRecording.location=recordingLocation;
-            cy.apiRecordingCheck(Josie, oldRecordingName, expectedOldRecording, EXCLUDE_IDS); 
-          
-            cy.log( "Make sure the device location is unaffected (still matches recording location)");
-            const expectedDevice=TestCreateExpectedDevice(deviceName, group, true, DeviceType.Thermal);
-            expectedDevice.location=recordingLocation;
-            cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedDevice);
- 
-            cy.log("Make sure station location in unaffected (still matches original station location)"); 
-            cy.apiStationCheck(Josie, stationName, expectedStation1);
-
-            cy.log("Make sure future recordings are correctly assigned");
-            cy.apiRecordingAdd( deviceName, newRecording, undefined, newRecordingName).then(() => {
+    cy.apiDeviceAdd(deviceName, group);
     
-              cy.log( "Make sure the new recording in same loction is assigned to the corrected station, but the location is preserved.");
-              const expectedNewRecording=TestCreateExpectedRecordingData(TEMPLATE_THERMAL_RECORDING_RESPONSE, newRecordingName, deviceName, group, getTestName(stationName), newRecording);
-              expectedNewRecording.stationId=getCreds(getTestName(stationName)).id;
-              expectedNewRecording.stationName=getTestName(stationName);
-              expectedNewRecording.location=recordingLocation;
-              cy.apiRecordingCheck(Josie, newRecordingName, expectedNewRecording, EXCLUDE_IDS); 
+    cy.log("Add a recording and check new station is created");
+    cy.testUploadRecording(deviceName, { ...location, time: twoWeeksAgo })
+      .thenCheckStationIsNew(Josie).then((station1:TestNameAndId) => {
 
-              cy.log("Make sure a new recording in a new location triggers a new station, etc");
-              cy.apiRecordingAdd( deviceName, movedDeviceRecording, undefined, movedDeviceRecordingName).thenCheckStationIsNew(Josie).then((station:TestNameAndId) => {
-    
-                cy.log( "Make sure the new recording created a correct new station in the new location.");
-                const expectedMovedDeviceRecording=TestCreateExpectedRecordingData(TEMPLATE_THERMAL_RECORDING_RESPONSE, movedDeviceRecordingName, deviceName, group, station.name, movedDeviceRecording);
-                expectedNewRecording.stationId=station.id;
-                expectedNewRecording.stationName=station.name;
-                expectedNewRecording.location=movedDeviceLocation;
-                cy.apiRecordingCheck(Josie, movedDeviceRecordingName, expectedMovedDeviceRecording, EXCLUDE_IDS);
-            });
-          });
-        });
-      });
-    });
+       cy.testUploadRecording(deviceName, { ...location, time: twoWeeksAgo })
+         .thenCheckStationIdIs(Josie, station1.id);
+
+       
+        cy.log("Updating name");
+        cy.apiStationUpdate("stuAdmin","stuStation1",station2);
+
   });
 
-
-    cy.log("Create recording, station and device history at location 1");
-
-    cy.log("Create new recording, station and device history at location 2, later");
-
-    cy.log("Create a new station for the early device location");
-
-    cy.log("Update initial device location to match manual station");
-
-    cy.log("Check early recordings assigned to correct station");
-
-    cy.log("Check later recordings not reassigned");
-
-    cy.log("Check current device location not changed");
+  it.skip("station-update: Location change does not affect existing recordings", () => {
   });
 
-  it("station-update: Name change applied to all recordings", () => {
+  it.skip("station-update: New location matched by new recordings", () => {
   });
 
-  it("station-update: Location change does not affect existing recordings", () => {
+  it.skip("station-update: Old location not matched by new recordings", () => {
   });
 
-  it("station-update: New location matched by new recordings", () => {
+  it.skip("station-update: Retire station - old recordings unaffected if before retiredAt", () => {
   });
 
-  it("station-update: Old location not matched by new recordings", () => {
+  it.skip("station-update: Retire-station - new recordings still match if before retiredAt", () => {
   });
 
-  it("station-update: Retire station - old recordings unaffected if before retiredAt", () => {
-  });
-
-  it("station-update: Retire-station - new recordings match if before retiredAt", () => {
-  });
-
-  it("station-update: Retire-station - new recordings do not match if after retiredAt", () => {
+  it.skip("station-update: Retire-station - new recordings do not match if >= retiredAt", () => {
   });
 
 });
