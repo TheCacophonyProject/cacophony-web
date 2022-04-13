@@ -487,7 +487,8 @@ export default function (app: Application, baseUrl: string) {
       for (const station of stationsToUpdateLatestRecordingFor) {
         // Get the latest thermal recording, and the latest audio recording, and update
 
-        // Make sure we update the latest times for both kinds of recordings on the station.
+        // Make sure we update the latest times for both kinds of recordings on the station,
+        // and if removing the last recording from a station, null out the lastXXRecordingTime field
         const [latestThermalRecording, latestAudioRecording] =
           await Promise.all([
             models.Recording.findOne({
@@ -508,8 +509,9 @@ export default function (app: Application, baseUrl: string) {
               order: [["recordingDateTime", "DESC"]],
             }),
           ]);
+
         if (
-          latestAudioRecording &&
+          (latestAudioRecording && !station.lastAudioRecordingTime) ||
           latestAudioRecording.recordingDateTime >
             station.lastAudioRecordingTime
         ) {
@@ -517,15 +519,26 @@ export default function (app: Application, baseUrl: string) {
             lastAudioRecordingTime: (latestAudioRecording as Recording)
               .recordingDateTime,
           });
+        } else if (!latestAudioRecording && station.lastAudioRecordingTime) {
+          await station.update({
+            lastAudioRecordingTime: null,
+          });
         }
         if (
-          latestThermalRecording &&
+          (latestThermalRecording && !station.lastThermalRecordingTime) ||
           latestThermalRecording.recordingDateTime >
             station.lastThermalRecordingTime
         ) {
           await station.update({
             lastThermalRecordingTime: (latestThermalRecording as Recording)
               .recordingDateTime,
+          });
+        } else if (
+          !latestThermalRecording &&
+          station.lastThermalRecordingTime
+        ) {
+          await station.update({
+            lastThermalRecordingTime: null,
           });
         }
       }
