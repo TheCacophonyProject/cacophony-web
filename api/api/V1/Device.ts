@@ -34,6 +34,7 @@ import {
   fetchUnauthorizedRequiredScheduleById,
   fetchAuthorizedRequiredGroupById,
   parseJSONField,
+  fetchAuthorizedRequiredStationById,
 } from "../extract-middleware";
 import {
   checkDeviceNameIsUniqueInGroup,
@@ -57,6 +58,9 @@ import { ApiGroupUserResponse } from "@typedefs/api/group";
 import { jsonSchemaOf } from "@api/schema-validation";
 import { Op } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory";
+import { RecordingType } from "@typedefs/api/consts";
+import { Recording } from "@models/Recording";
+import config from "@config";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -373,10 +377,28 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredDeviceById(param("id")),
     parseJSONField(body("setStationAtTime")),
+    async (request, response, next) => {
+      // Now make sure we have access to the station.
+      await fetchAuthorizedRequiredStationById(
+        response.locals.setStationAtTime.stationId
+      )(request, response, next);
+    },
     async (request: Request, response: Response) => {
-      const { stationId, fromDateTime } = response.locals.setStationAtTime;
+      if (response.locals.device.GroupId !== response.locals.station.GroupId) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: [
+            "Supplied station doesn't belong to the same group as supplied device",
+          ],
+        });
+      }
+      const { stationId, fromDateTime, location } =
+        response.locals.setStationAtTime;
       const device = response.locals.device;
       const station = await models.Station.findByPk(stationId);
+
+      const setLocation = location || station.location;
+
       // Check if there's already a device entry at that time:
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
@@ -387,7 +409,7 @@ export default function (app: Application, baseUrl: string) {
       if (deviceHistoryEntry) {
         await deviceHistoryEntry.update({
           setBy: "user",
-          location: station.location,
+          location: setLocation,
           stationId: station.id,
         });
       } else {
@@ -396,14 +418,13 @@ export default function (app: Application, baseUrl: string) {
           saltId: device.saltId,
           DeviceId: device.id,
           fromDateTime,
-          location: station.location,
+          location: setLocation,
           setBy: "user",
           GroupId: device.GroupId,
-          deviceName: device.deviceName,
+          deviceName: device.devicename,
           stationId: station.id,
         });
       }
-
       // Get the earliest history location that's later than our current fromDateTime, if any
       const laterLocation: DeviceHistory = await models.DeviceHistory.findOne({
         where: {
@@ -428,24 +449,92 @@ export default function (app: Application, baseUrl: string) {
         };
       } else {
         // Update the device known location if this is the latest device history entry.
-        await device.update({ location: station.location });
+        await device.update({ location: setLocation });
       }
 
-      const updates = await models.Recording.update(
+      const affectedRecordings = await models.Recording.findAll({
+        where: recordingTimeWindow,
+      });
+      const stationsIdsToUpdateLatestRecordingFor = Object.keys(
+        affectedRecordings.reduce((acc, recording) => {
+          if (recording.StationId) {
+            acc[recording.StationId] = true;
+          }
+          return acc;
+        }, {})
+      ).map(Number);
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const [affectedCount] = await models.Recording.update(
         {
-          location: station.location,
+          location: setLocation,
           StationId: station.id,
         },
         {
           where: recordingTimeWindow,
         }
       );
+      let stationsToUpdateLatestRecordingFor = [];
+      if (stationsIdsToUpdateLatestRecordingFor.length !== 0) {
+        stationsToUpdateLatestRecordingFor = await models.Station.findAll({
+          where: {
+            id: { [Op.in]: Object.keys(stationsIdsToUpdateLatestRecordingFor) },
+          },
+        });
+      }
+      stationsToUpdateLatestRecordingFor.push(station);
+
+      for (const station of stationsToUpdateLatestRecordingFor) {
+        // Get the latest thermal recording, and the latest audio recording, and update
+
+        // Make sure we update the latest times for both kinds of recordings on the station.
+        const [latestThermalRecording, latestAudioRecording] =
+          await Promise.all([
+            models.Recording.findOne({
+              where: {
+                DeviceId: device.id,
+                StationId: station.id,
+                type: RecordingType.ThermalRaw,
+              },
+              order: [["recordingDateTime", "DESC"]],
+            }),
+
+            models.Recording.findOne({
+              where: {
+                DeviceId: device.id,
+                StationId: station.id,
+                type: RecordingType.Audio,
+              },
+              order: [["recordingDateTime", "DESC"]],
+            }),
+          ]);
+        if (
+          latestAudioRecording &&
+          latestAudioRecording.recordingDateTime >
+            station.lastAudioRecordingTime
+        ) {
+          await station.update({
+            lastAudioRecordingTime: (latestAudioRecording as Recording)
+              .recordingDateTime,
+          });
+        }
+        if (
+          latestThermalRecording &&
+          latestThermalRecording.recordingDateTime >
+            station.lastThermalRecordingTime
+        ) {
+          await station.update({
+            lastThermalRecordingTime: (latestThermalRecording as Recording)
+              .recordingDateTime,
+          });
+        }
+      }
 
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [
           "Updated device station at time.",
-          `Updated ${updates.shift() || 0} recording(s)`,
+          `Updated ${affectedCount} recording(s)`,
         ],
       });
     }
@@ -840,4 +929,39 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+  if (config.server.loggerLevel === "debug") {
+    // NOTE: This api is currently for facilitating testing only, and is
+    //  not available in production builds.
+
+    /**
+     * @api {post} /api/v1/devices/history/:deviceId Get device history
+     * @apiName history
+     * @apiGroup Device
+     *
+     * @apiUse V1UserAuthorizationHeader
+     *
+     * @apiUse V1ResponseSuccess
+     * @apiUse V1ResponseError
+     */
+    app.get(
+      `${apiUrl}/history/:deviceId`,
+      extractJwtAuthorizedUser,
+      validateFields([idOf(param("deviceId"))]),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      async function (request: Request, response: Response) {
+        const history = await models.DeviceHistory.findAll({
+          where: {
+            DeviceId: response.locals.device.id,
+          },
+        });
+
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got device history"],
+          history,
+        });
+      }
+    );
+  }
 }
