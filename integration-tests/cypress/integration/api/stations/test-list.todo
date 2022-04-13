@@ -1,0 +1,125 @@
+// User add a device
+// -> Unassigned device history entry created: register
+// -> device.activeAt set to creation time
+// -> device.lastThermalRecordingTime undefined
+// -> device.lastThermalRecordingTime undefined
+//
+//
+//User add a station
+// -> default values: automatic: false, location: null, 
+//
+// User add a recording which creates a station
+// -> default values of station: activeAt, last..., location
+// -> default values of deviceHistory: stationId, location, dateTime, auto
+// -> device.Location updated
+
+// User add a recording to an unused  manual station
+// -> station updated: actveAt, last...
+// -> deviceHistory entry added: automatic, location, station
+
+// User adds an additional recording in same location
+// -> station updated: last...
+// -> deviceHistory unchanged
+// -> device unchanged
+//
+// User adds an additional recording in different location, same station
+// -> station updated: last...
+// -> deviceHistory entry added: automatic, location, same station ???
+// -> device location updated ????
+//
+// User adds an additional recording in different location, different station
+// -> new station updated: last...
+// -> deviceHistory entry added: automatic, location, station 
+// -> device location updated
+//
+// user adds an earlier recording to a station within same window (same location)
+// -> station: same
+// -> deviceHistory: same
+//
+//user adds an earlier recording to a station (before first recording, after station created):
+// -> station: same
+// -> deviceHistory: new entry? or 1st enttry backdated?a
+//
+//User adds an earlier recording to a manual station (before station creation)
+// -> new station (auto)
+// -> new device history
+// -> device location unchanged
+//
+// User adds n earlier recording to an auto station (before station creation):
+// -> station extended backwards
+// -> deviceHistory: new entry? or 1st enttry backdated?
+// -> device location unchaged
+//
+// User adds a recording in same location as last corrected location:
+// -> station: last ...
+// -> deviceHistory: unchanged
+// -> recording: uploaded location, corrected station
+//
+// User adds a recording in same location as last corrected location, before lastRec:
+// -> station: unchanged
+// -> deviceHistory: unchanged
+// -> recording: uploaded location, corrected station
+
+// User adds a recording in same location as last corrected location, before firstRec:
+// -> station: unchanged
+// -> deviceHistory: new entry? or 1st enttry backdated?
+// -> recording: uploaded location, corrected station. Expect this to fail!!!
+//
+
+// User adds a recording in same location as a past corrected location, after lastRec:
+// -> station: last ...
+// -> deviceHistory: unchanged
+// -> device locn unchanged
+// -> recording: uploaded locn, corrected station
+//
+// User adds a recording in same location as a past corrected location, before lastRec:
+// -> station: unchanged
+// -> deviceHistory: unchanged
+// -> device locn unchanged
+// -> recording: uploaded locn, corrected station
+
+// User adds a recording in same location as a past corrected location, before firstRec:
+// -> station: unchanged
+// -> deviceHistory: new or extended back???
+// -> device locn unchanged
+// -> recording: uploaded locn, corrected station??? expect thus to fail!!!
+
+//DEVICE FIX
+//Move all recordings from auto to manual, after activeAt
+// -> autoStation: noThermalLast
+// -> manualStation: activeAt unchanged, lastThermal ...
+// -> deviceHistory: entry updated
+// -> device: moved
+//
+//Move all recordings from auto to manual, before activeAt
+// -> autoStation: noThermalLast
+// -> manualStation: activeAt changed, lastThermal ...
+// -> deviceHistory: entry updated
+// -> device: moved
+//
+// Move all recordings from auto to manual, before lastRec
+// -> autoStation: noThermalLast
+// -> manualStation: activeAt unchanged, lastThermal unchaged
+// -> deviceHistory: entry updated
+// -> device: moved
+
+//Move last recordings from auto to manual
+// -> autoStation1: thermalLast updated
+// -> autoStation2: thermalLast updated
+// -> deviceHistory: changed both location and starttimes?
+// -> device location chgnaged
+//
+// Move first recordings from auto to manual
+// -> autoStation1: no change
+// -> autoStation2: thermalLast updated
+// -> deviceHistory: changed both location and starttimes?
+// -> device unchgnaged
+//
+// Move middle recordings from auto to manual
+// -> autoStation1: no change
+// -> autoStation2: as apprpriate
+// -> deviceHistory: changed both location and starttimes?
+// -> device unchgnaged
+
+//DEVICE FIX KEEP REC LOCN
+
