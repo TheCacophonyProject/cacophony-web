@@ -682,6 +682,16 @@ export const BirdLabels = [
   "yellow-eyed penguin",
   "yellowhammer",
   "yellowhead",
+  // OTHER SOUNDS
+  "dog",
+  "deer",
+  "mustelid",
+  "wind",
+  "rain",
+  "insect",
+  "static",
+  "vehicle",
+  "other",
 ];
 
 //filter out duplicates

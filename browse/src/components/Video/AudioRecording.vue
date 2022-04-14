@@ -43,37 +43,59 @@
               :value="selectedLabel"
               :show-labels="false"
             />
-            <font-awesome-icon
-              role="button"
-              class="mx-4 text-primary"
-              icon="thumbtack"
-              size="2x"
-              v-b-tooltip.hover
-              title="Pin current tag to buttons"
-            />
+            <div class="button-selectors d-flex">
+              <b-button
+                class="ml-2 tag-pin"
+                :disabled="!usersTag"
+                @click="togglePinTag(usersTag.what)"
+              >
+                <font-awesome-icon
+                  icon="thumbtack"
+                  size="1x"
+                  v-b-tooltip.hover
+                  title="Pin current tag to buttons"
+                />
+              </b-button>
+              <b-button
+                class="ml-2 tag-cross"
+                :disabled="!usersTag"
+                @click="deleteTagFromSelectedTrack()"
+              >
+                <font-awesome-icon
+                  icon="times"
+                  size="1x"
+                  v-b-tooltip.hover
+                  title="Remove Tag from Track"
+                />
+              </b-button>
+            </div>
           </div>
           <LabelButtonGroup
             :labels="labels"
             :add-tag-to-selected-track="addTagToSelectedTrack"
             :delete-tag-from-selected-track="deleteTagFromSelectedTrack"
             :disabled="!selectedTrack"
-            :selectedLabel="selectedLabel"
+            :selected-label="selectedLabel"
+            :toggle-pin-tag="togglePinTag"
           />
           <b-row
-            v-if="usersTag"
             class="
               d-flex
               mt-2
+              mb-4
               flex-wrap
               justify-content-center
-              attribute-selectors
+              button-selectors
             "
           >
             <h3 class="w-100 ml-4">Attributes</h3>
             <b-button-group class="mr-2">
               <b-button
                 :class="{
-                  highlight: usersTag.data && usersTag.data.gender === 'male',
+                  highlight:
+                    usersTag &&
+                    usersTag.data &&
+                    usersTag.data.gender === 'male',
                 }"
                 @click="
                   addAttributeToTrackTag(
@@ -82,12 +104,15 @@
                     usersTag.id
                   )
                 "
-                :disabled="!selectedTrack"
+                :disabled="!usersTag"
                 >Male</b-button
               >
               <b-button
                 :class="{
-                  highlight: usersTag.data && usersTag.data.gender === 'female',
+                  highlight:
+                    usersTag &&
+                    usersTag.data &&
+                    usersTag.data.gender === 'female',
                 }"
                 @click="
                   addAttributeToTrackTag(
@@ -96,7 +121,7 @@
                     usersTag.id
                   )
                 "
-                :disabled="!selectedTrack"
+                :disabled="!usersTag"
                 >Female</b-button
               >
             </b-button-group>
@@ -104,7 +129,9 @@
               <b-button
                 :class="{
                   highlight:
-                    usersTag.data && usersTag.data.maturity === 'adult',
+                    usersTag &&
+                    usersTag.data &&
+                    usersTag.data.maturity === 'adult',
                 }"
                 @click="
                   addAttributeToTrackTag(
@@ -113,13 +140,15 @@
                     usersTag.id
                   )
                 "
-                :disabled="!selectedTrack"
+                :disabled="!usersTag"
                 >Adult</b-button
               >
               <b-button
                 :class="{
                   highlight:
-                    usersTag.data && usersTag.data.maturity === 'juvenile',
+                    usersTag &&
+                    usersTag.data &&
+                    usersTag.data.maturity === 'juvenile',
                 }"
                 @click="
                   addAttributeToTrackTag(
@@ -128,7 +157,7 @@
                     usersTag.id
                   )
                 "
-                :disabled="!selectedTrack"
+                :disabled="!usersTag"
                 >Juvenile</b-button
               >
             </b-button-group>
@@ -136,7 +165,7 @@
         </b-col>
       </b-row>
     </b-col>
-    <b-col lg="4">
+    <b-col lg="4" class="mb-4">
       <Playlist
         :recording-date-time="recording.recordingDateTime"
         :url="url"
@@ -156,7 +185,7 @@
 <script lang="ts">
 import { PropType } from "vue";
 import { produce } from "immer";
-import { defineComponent, ref, watch, watchEffect } from "@vue/composition-api";
+import { defineComponent, ref, watch } from "@vue/composition-api";
 import Multiselect from "vue-multiselect";
 
 import api from "@api";
@@ -560,7 +589,12 @@ export default defineComponent({
             selectedTrack.value.id,
             userTag.id
           );
-          setSelectedTrack(newTrack);
+          // check if the track is now empty
+          if (newTrack.tags.length === 0) {
+            deleteTrack(newTrack.id, true);
+          } else {
+            setSelectedTrack(newTrack);
+          }
         }
       }
     };
@@ -626,13 +660,26 @@ export default defineComponent({
       }
     );
 
-    const createButtonLabels = (): string[] => {
+    const createButtonLabels = () => {
       const maxBirdButtons = 6;
-      const storedCommonBirds = Object.values(
-        JSON.parse(localStorage.getItem("commonBirds")) ?? {}
-      )
-        .sort((a: { freq: number }, b: { freq: number }) => b.freq - a.freq)
-        .map((bird: { what: string }) => bird.what.toLowerCase());
+      const storedCommonBirds: { label: string; pinned: boolean }[] =
+        Object.values(JSON.parse(localStorage.getItem("commonBirds")) ?? {})
+          .sort((a: { freq: number }, b: { freq: number }) => b.freq - a.freq)
+          // sort those that are pinned first
+          .sort((a: { pinned: boolean }, b: { pinned: boolean }) => {
+            if (a.pinned && !b.pinned) {
+              return -1;
+            } else if (!a.pinned && b.pinned) {
+              return 1;
+            } else {
+              return 0;
+            }
+          })
+          .map((bird: { what: string; pinned: boolean }) => ({
+            label: bird.what.toLowerCase(),
+            pinned: bird.pinned,
+          }));
+
       const commonBirdLabels = [
         "Morepork",
         "Kiwi",
@@ -640,7 +687,13 @@ export default defineComponent({
         "Tui",
         "Kea",
         "Bellbird",
-      ].filter((val: string) => !storedCommonBirds.includes(val.toLowerCase()));
+      ]
+        .filter(
+          (val: string) =>
+            !storedCommonBirds.find((bird) => bird.label === val.toLowerCase())
+        )
+        .map((label: string) => ({ label, pinned: false }));
+
       const amountToRemove = Math.min(maxBirdButtons, storedCommonBirds.length);
       const diffToMax = maxBirdButtons - amountToRemove;
       const commonBirds = [
@@ -648,7 +701,9 @@ export default defineComponent({
         ...commonBirdLabels.splice(0, diffToMax),
       ];
 
-      const otherLabels = ["Bird", "Human", "Unidentified"];
+      const otherLabels = ["Bird", "Human", "Unidentified"].map(
+        (label: string) => ({ label, pinned: false })
+      );
 
       const labels = [...commonBirds, ...otherLabels];
       return labels;
@@ -676,6 +731,7 @@ export default defineComponent({
           } else {
             setSelectedLabel("");
             setUsersTag(null);
+            customTag.value = "";
           }
         } else {
           setSelectedLabel("");
@@ -688,14 +744,21 @@ export default defineComponent({
       }
     );
 
-    const storeCommonBird = (bird: string) => {
+    const storeCommonBird = (bird: string, togglePin = false, freq = 1) => {
       const commonBirds = JSON.parse(localStorage.getItem("commonBirds")) ?? {};
       const newBird = commonBirds[bird]
         ? commonBirds[bird]
-        : { what: bird, freq: 0 };
-      newBird.freq += 1;
+        : { what: bird, freq: 0, pinned: false };
+      newBird.freq += freq;
+      if (togglePin) {
+        newBird.pinned = !newBird.pinned;
+      }
       commonBirds[bird] = newBird;
       localStorage.setItem("commonBirds", JSON.stringify(commonBirds));
+    };
+    const togglePinTag = (label: string) => {
+      storeCommonBird(label, true, 0);
+      setButtonLabels(createButtonLabels());
     };
 
     watch(customTag, (value) => {
@@ -714,6 +777,7 @@ export default defineComponent({
       selectedTrack,
       selectedLabel,
       usersTag,
+      togglePinTag,
       playTrack,
       customTag,
       cacophonyIndex,
@@ -742,16 +806,15 @@ export default defineComponent({
   }
 }
 .audio-recording-container {
-  .attribute-selectors {
+  .button-selectors {
     button {
-      padding: 0.5em 1em;
       background-color: white;
       color: #2b333f;
       border-radius: 0.5em;
       border: 1px #e8e8e8 solid;
       box-shadow: 0px 1px 2px 1px #ebebeb70;
       text-transform: capitalize;
-      &:hover {
+      &:hover:enabled {
         color: #7f8c8d;
       }
     }
@@ -818,6 +881,12 @@ export default defineComponent({
   }
   .multiselect__single {
     padding-top: 4px;
+  }
+  .tag-pin:enabled {
+    color: #3498db;
+  }
+  .tag-cross:enabled {
+    color: #e74c3c;
   }
 }
 </style>

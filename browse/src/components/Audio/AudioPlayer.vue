@@ -107,16 +107,12 @@
             :icon="['fa', zoomed.enabled ? 'search-minus' : 'search-plus']"
             :class="{ highlighted: zoomed.enabled }"
             role="button"
+            size="lg"
             @click="
               setZoomed((zoom) => {
                 zoom.enabled = !zoom.enabled;
               })
             "
-          />
-          <font-awesome-icon
-            :icon="['fa', 'palette']"
-            class="ml-2"
-            role="button"
           />
         </div>
       </div>
@@ -149,6 +145,52 @@ import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 import { ApiTrackPosition } from "@typedefs/api/track";
 import WebAudio from "wavesurfer.js/src/webaudio";
 
+const fetchAudioBuffer = async (url: string) => {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  return arrayBuffer;
+};
+
+const getSampleRate = (
+  arrayBuffer: ArrayBuffer
+): { sampleRate: number; bitsPerSample: number } => {
+  const view = new DataView(arrayBuffer);
+  const chunkCellSize = 4;
+
+  const getChunkName = (newOffset: number) =>
+    String.fromCharCode.apply(
+      null,
+      new Int8Array(arrayBuffer.slice(newOffset, newOffset + chunkCellSize))
+    );
+
+  const isWave = getChunkName(0).includes("RIFF");
+  if (!isWave) {
+    return { sampleRate: 0, bitsPerSample: 0 };
+  }
+
+  let offset = 12;
+  let chunkName = getChunkName(offset);
+  let chunkSize = 0;
+
+  while (!chunkName.includes("fmt")) {
+    chunkSize = view.getUint32(offset + chunkCellSize, true);
+    offset += 2 * chunkCellSize + chunkSize; // name cell + data_size cell + data size
+    chunkName = getChunkName(offset);
+
+    if (offset > view.byteLength) {
+      throw new Error("Couldn't find sampleRate.");
+    }
+  }
+
+  const sampleRateOffset = 12;
+  const bitsPerSampleOffset = 22;
+
+  const sampleRate = view.getUint32(offset + sampleRateOffset, true);
+  const bitsPerSample = view.getUint16(offset + bitsPerSampleOffset, true);
+
+  return { sampleRate, bitsPerSample };
+};
+
 export default defineComponent({
   props: {
     tracks: {
@@ -174,12 +216,13 @@ export default defineComponent({
   },
   setup(props) {
     // Player
+
     const spectrogram = ref<HTMLCanvasElement>(null);
     const isLoading = ref(true);
     const player = ref<WaveSurfer>(null);
     const [isFinished, setIsFinished] = useState(false);
-    const sampleRate = 23000;
     const [isPlaying, setIsPlaying] = useState(false);
+
     watch([isPlaying, () => props.selectedTrack], () => {
       if (isPlaying.value) {
         setIsFinished(false);
@@ -224,10 +267,13 @@ export default defineComponent({
       const startDiff = Math.abs(start + half);
       const endDiff = Math.abs(end - half);
       overlay.value.style.transform = `scale(${zoomed.value.scale}, 1)`;
-      zoomIndicatorStart.style.transform = `translateX(${start - endDiff}px)`;
+      const translateY = "translateY(-3px)";
+      zoomIndicatorStart.style.transform = `translateX(${
+        start - endDiff
+      }px) ${translateY}`;
       zoomIndicatorEnd.style.transform = `translateX(${
         end + startDiff + 10
-      }px)`;
+      }px) ${translateY}`;
     };
 
     watch(zoomed, (zoom) => {
@@ -297,53 +343,6 @@ export default defineComponent({
         draft.pos.height = height;
       });
     };
-
-    const createRectFromTrack = (track: AudioTrack) => {
-      const pos = track.positions[0];
-      const y = track.maxFreq ? track.maxFreq / (sampleRate / 2) : pos.y;
-      const height = track.minFreq
-        ? (track.maxFreq - track.minFreq) / (sampleRate / 2)
-        : pos.height;
-      const rect = createSVGElement(
-        {
-          attributes: {
-            id: `track_${track.id.toString()}`,
-            x: (pos.x * spectrogram.value.width).toString(),
-            y: (y * spectrogram.value.height).toString(),
-            width: (pos.width * spectrogram.value.width).toString(),
-            height: (height * spectrogram.value.height).toString(),
-            stroke: track.colour,
-            "stroke-width": "2",
-            cursor: "pointer",
-            fill: "none",
-          },
-        },
-        "rect"
-      );
-
-      rect.addEventListener("mouseover", () => {
-        if (
-          props.selectedTrack === null ||
-          props.selectedTrack.id !== track.id
-        ) {
-          rect.setAttribute("stroke-width", "3");
-        }
-      });
-      rect.addEventListener("mouseout", () => {
-        rect.setAttribute("stroke-width", "2");
-      });
-      rect.addEventListener("click", () => {
-        props.setSelectedTrack(props.tracks.get(track.id));
-      });
-      return rect;
-    };
-
-    const addTracksToOverlay = (tracks: AudioTrack[]) =>
-      tracks
-        .filter((track) => !track.deleted)
-        .map(createRectFromTrack)
-        .map((trackRect) => overlay.value.appendChild(trackRect));
-
     // Update the overlay track when temp track changes
     watch(tempTrack, () => {
       const { x, y, height, width } = tempTrack.value.pos;
@@ -368,39 +367,6 @@ export default defineComponent({
         (height * spectrogram.value.height).toString()
       );
     });
-
-    // Modify the overlay tracks when props tracks change
-    watch(
-      () => props.tracks,
-      (newTracks, oldTracks) => {
-        const newTrackIds = new Set(newTracks.keys());
-        const oldTrackIds = new Set(oldTracks.keys());
-        const { added, deleted } = changedContext(oldTrackIds, newTrackIds);
-        const markedForDeletion = [...newTracks.values()]
-          .filter((track) => track.deleted)
-          .map((track) => track.id);
-
-        [...added].forEach((trackId) => {
-          const track = newTracks.get(trackId);
-          if (track) {
-            const rect = createRectFromTrack(track);
-            overlay.value.appendChild(rect);
-          }
-        });
-        [...deleted, ...markedForDeletion].forEach((trackId) => {
-          const track = oldTracks.get(trackId);
-          if (track) {
-            const rect = overlay.value.querySelector(
-              `#track_${trackId.toString()}`
-            );
-            if (rect) {
-              overlay.value.removeChild(rect);
-            }
-          }
-        });
-      }
-    );
-
     // Watch for changes to the selected track and update the spectrogram
     watch(
       () => props.selectedTrack,
@@ -532,7 +498,7 @@ export default defineComponent({
       const { width, x } = playerBar.getBoundingClientRect();
       const posX = "clientX" in e ? e.clientX : e.touches[0].clientX;
       const relativeX = (posX - x) / width;
-      const percent = Math.max(Math.floor(relativeX * 100) / 100, 0);
+      const percent = Math.max(Math.floor(relativeX * 10000) / 10000, 0);
       const duration = player.value.getDuration();
       const time = Math.min(Math.max(duration * percent, 0), duration);
       return { time, percent };
@@ -600,30 +566,7 @@ export default defineComponent({
       volume: 0.5,
       muted: false,
     });
-    const audioContext = new AudioContext({
-      sampleRate,
-    });
-    const gainNode = audioContext.createGain();
     const [volumeSlider, setVolumeSlider] = useState<HTMLInputElement>(null);
-    watch(volume, (v) => {
-      if (!volumeSlider.value) {
-        return;
-      }
-      if (v.muted) {
-        gainNode.gain.value = 0;
-        volumeSlider.value.value = "0";
-      } else {
-        if (v.volume < 1) {
-          player.value.setVolume(v.volume);
-          gainNode.gain.value = 0;
-        } else {
-          player.value.setVolume(1);
-          gainNode.gain.value = v.volume;
-        }
-        volumeSlider.value.value = v.volume.toString();
-      }
-      storeVolume(volume.value);
-    });
 
     const toggleMute = () => {
       setVolume((draft) => {
@@ -665,23 +608,129 @@ export default defineComponent({
         // do nothing
       }
     }
-    const waveSurferOptions = {
-      audioContext,
-      container: "#waveform",
-      height: 0,
-      backgroundColor: "#2B333F",
-      progressColor: "#FFF",
-      cursorColor: "#dc3545",
-      waveColor: "#FFF",
-      pixelRatio: 1,
-      hideScrollbar: true,
-      responsive: true,
-      normalize: true,
-      cursorWidth: 1,
-      plugins: [SpectrogramPlugin.create(SpectrogramSettings)],
-    };
 
-    onMounted(() => {
+    onMounted(async () => {
+      const audioBuffer = await fetchAudioBuffer(props.url);
+      let { sampleRate } = getSampleRate(audioBuffer);
+      sampleRate = sampleRate < 10000 ? sampleRate + 8000 : sampleRate;
+      const audioContext = new AudioContext({
+        sampleRate,
+      });
+      const gainNode = audioContext.createGain();
+      const waveSurferOptions = {
+        audioContext,
+        container: "#waveform",
+        height: 0,
+        backgroundColor: "#2B333F",
+        progressColor: "#FFF",
+        cursorColor: "#dc3545",
+        waveColor: "#FFF",
+        pixelRatio: 1,
+        hideScrollbar: true,
+        responsive: true,
+        normalize: true,
+        cursorWidth: 1,
+        plugins: [SpectrogramPlugin.create(SpectrogramSettings)],
+      };
+
+      const createRectFromTrack = (track: AudioTrack) => {
+        const pos = track.positions[0];
+        const y = track.maxFreq ? track.maxFreq / (sampleRate / 2) : pos.y;
+        const height = track.minFreq
+          ? (track.maxFreq - track.minFreq) / (sampleRate / 2)
+          : pos.height;
+        const rect = createSVGElement(
+          {
+            attributes: {
+              id: `track_${track.id.toString()}`,
+              x: (pos.x * spectrogram.value.width).toString(),
+              y: (y * spectrogram.value.height).toString(),
+              width: (pos.width * spectrogram.value.width).toString(),
+              height: (height * spectrogram.value.height).toString(),
+              stroke: track.colour,
+              "stroke-width": "2",
+              cursor: "pointer",
+              fill: "none",
+            },
+          },
+          "rect"
+        );
+
+        rect.addEventListener("mouseover", () => {
+          if (
+            props.selectedTrack === null ||
+            props.selectedTrack.id !== track.id
+          ) {
+            rect.setAttribute("stroke-width", "3");
+          }
+        });
+        rect.addEventListener("mouseout", () => {
+          rect.setAttribute("stroke-width", "2");
+        });
+        rect.addEventListener("click", () => {
+          props.setSelectedTrack(props.tracks.get(track.id));
+        });
+        return rect;
+      };
+
+      const addTracksToOverlay = (tracks: AudioTrack[]) =>
+        tracks
+          .filter((track) => !track.deleted)
+          .map(createRectFromTrack)
+          .map((trackRect) => overlay.value.appendChild(trackRect));
+
+      // Modify the overlay tracks when props tracks change
+      watch(
+        () => props.tracks,
+        (newTracks, oldTracks) => {
+          const newTrackIds = new Set(newTracks.keys());
+          const oldTrackIds = new Set(oldTracks.keys());
+          const { added, deleted } = changedContext(oldTrackIds, newTrackIds);
+          const markedForDeletion = [...newTracks.values()]
+            .filter((track) => track.deleted)
+            .map((track) => track.id);
+
+          [...added].forEach((trackId) => {
+            const track = newTracks.get(trackId);
+            if (track) {
+              const rect = createRectFromTrack(track);
+              overlay.value.appendChild(rect);
+            }
+          });
+          [...deleted, ...markedForDeletion].forEach((trackId) => {
+            const track = oldTracks.get(trackId);
+            if (track) {
+              const rect = overlay.value.querySelector(
+                `#track_${trackId.toString()}`
+              );
+              if (rect) {
+                overlay.value.removeChild(rect);
+              }
+            }
+          });
+        }
+      );
+
+      watch(volume, (v) => {
+        if (!volumeSlider.value) {
+          return;
+        }
+        if (v.muted) {
+          gainNode.gain.value = 0;
+          volumeSlider.value.value = "0";
+        } else {
+          if (v.volume < 1) {
+            player.value.setVolume(v.volume);
+            gainNode.gain.value = 0;
+          } else {
+            player.value.setVolume(1);
+            gainNode.gain.value = v.volume;
+          }
+          volumeSlider.value.value = v.volume.toString();
+        }
+        storeVolume(volume.value);
+      });
+
       player.value = WaveSurfer.create({
         ...waveSurferOptions,
       });
@@ -934,7 +983,7 @@ export default defineComponent({
       if ((window as any).WaveSurferOfflineAudioContext) {
         (window as any).WaveSurferOfflineAudioContext = null;
       }
-      player.value.load(props.url);
+      player.value.loadArrayBuffer(audioBuffer);
     });
     onBeforeUnmount(() => {
       player.value.empty();
@@ -1019,7 +1068,7 @@ spectrogram {
 .player-bar-time {
   visibility: hidden;
   position: absolute;
-  bottom: 80px;
+  transform: translateY(-60px);
 }
 spectrogram > svg {
   border-radius: 0 0 0.25rem 0.25rem;
@@ -1035,6 +1084,7 @@ spectrogram > svg {
   .player-bar-time {
     position: static;
     visibility: visible;
+    transform: translateY(0);
   }
 }
 .volume-selection:hover {
@@ -1080,13 +1130,12 @@ spectrogram > svg {
   display: flex;
   flex-direction: row-reverse;
   height: 100%;
-  width: 10px;
+  width: 0px;
   background: linear-gradient(#c1f951, #9acd32);
 }
 .player-bar-indicator {
   visibility: hidden;
-  transform: translateX(10px);
-  bottom: 19%;
+  transform: translate(8px, -4px);
   z-index: 200;
   position: absolute;
   display: block;

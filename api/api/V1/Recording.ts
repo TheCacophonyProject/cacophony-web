@@ -1396,7 +1396,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/:tagId Adds/Replaces  a
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/tags/:tagId Adds/Replaces  a
    * Track Tag
    * @apiDescription Adds or Replaces track tag based off:
    * if tag already exists for this user, ignore request
@@ -1421,7 +1421,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.patch(
-    `${apiUrl}/:id/tracks/:trackId/:tagId`,
+    `${apiUrl}/:id/tracks/:trackId/tags/:tagId`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
@@ -1454,7 +1454,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id/tracks/:trackId Undelete an existing
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/undelete Undelete an existing
    soft-deleted track
    * @apiName UndeleteTrack
    * @apiGroup Recordings

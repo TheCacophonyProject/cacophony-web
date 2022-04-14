@@ -409,7 +409,7 @@ function updateTrackTag(
   tagId: number
 ): Promise<FetchResult<{ trackTagId?: number }>> {
   return CacophonyApi.patch(
-    `${apiPath}/${recordingId}/tracks/${trackId}/${tagId}`,
+    `${apiPath}/${recordingId}/tracks/${trackId}/tags/${tagId}`,
     { updates: body }
   );
 }
