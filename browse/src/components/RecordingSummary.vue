@@ -89,6 +89,7 @@
         title="Cacophony Index: Measures Richness of Audio"
         class="cacophony-container"
         :style="{
+          maxHeight: '50px',
           marginRight:
             item.location !== '(unknown)' ? '0.5em' : 'calc(109px + 0.5em)',
         }"
@@ -517,6 +518,7 @@ $recording-side-padding-small: 0.5rem;
   flex: 1 1 auto;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
   min-height: 110px;
   @include media-breakpoint-up(xs) {
@@ -530,6 +532,7 @@ $recording-side-padding-small: 0.5rem;
     flex-direction: column;
     justify-content: space-between;
     padding: 0.7rem $recording-side-padding;
+    max-width: 15em;
 
     @include media-breakpoint-down(xs) {
       padding: 0.25rem $recording-side-padding-small;
@@ -584,7 +587,7 @@ $recording-side-padding-small: 0.5rem;
 }
 
 .recording-tags {
-  max-width: 23em;
+  max-width: 15em;
 }
 
 .recording-summary > .recording-location {
@@ -624,8 +627,8 @@ $recording-side-padding-small: 0.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 50px;
   margin-top: 0.5em;
+  width: 19vw;
   margin-bottom: 0.5em;
   border-radius: 0.5em;
   padding: 0.1em;

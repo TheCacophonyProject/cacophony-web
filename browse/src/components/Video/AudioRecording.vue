@@ -171,6 +171,7 @@
         :url="url"
         :delete-recording="deleteRecording"
       />
+      <h3 class="pt-4">Cacophony Index</h3>
       <CacophonyIndexGraph
         v-if="cacophonyIndex"
         class="mt-2"

@@ -1,8 +1,5 @@
 <template>
-  <div>
-    <h3 v-if="!simplify" class="pt-2">Cacophony Index</h3>
-    <canvas ref="chart" />
-  </div>
+  <canvas ref="chart" />
 </template>
 
 <script lang="ts">
