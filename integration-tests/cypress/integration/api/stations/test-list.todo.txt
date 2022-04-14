@@ -122,4 +122,4 @@
 // -> device unchgnaged
 
 //DEVICE FIX KEEP REC LOCN
-
+As above but reassign without moving
