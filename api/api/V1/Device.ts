@@ -580,9 +580,7 @@ export default function (app: Application, baseUrl: string) {
               earliestRecording as Recording
             ).recordingDateTime;
           } else if (!earliestRecording) {
-            // FIXME - For consistency, should we be destroying automatically generated stations when the last
-            //  recording for it has been removed/reassigned/deleted?
-            // await station.destroy();
+            await station.destroy();
             await models.DeviceHistory.destroy({
               where: {
                 stationId: station.id,
