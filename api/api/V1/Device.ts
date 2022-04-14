@@ -514,6 +514,7 @@ export default function (app: Application, baseUrl: string) {
             where: {
               StationId: station.id,
               type: RecordingType.ThermalRaw,
+              recordingDateTime: { [Op.ne]: null },
             },
             order: [["recordingDateTime", "DESC"]],
           }),
@@ -521,6 +522,7 @@ export default function (app: Application, baseUrl: string) {
             where: {
               StationId: station.id,
               type: RecordingType.Audio,
+              recordingDateTime: { [Op.ne]: null },
             },
             order: [["recordingDateTime", "DESC"]],
           }),
@@ -528,6 +530,7 @@ export default function (app: Application, baseUrl: string) {
           models.Recording.findOne({
             where: {
               StationId: station.id,
+              recordingDateTime: { [Op.ne]: null },
             },
             order: [["recordingDateTime", "ASC"]],
           }),
