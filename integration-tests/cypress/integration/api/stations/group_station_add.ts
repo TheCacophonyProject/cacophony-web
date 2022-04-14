@@ -40,7 +40,7 @@ describe("Stations: adding", () => {
     cy.log("Adding station");
     cy.apiGroupStationAdd("staAdmin","staGroup",station1).then(() => {
       cy.log("Check station exists")
-      cy.apiStationCheck("staAdmin", "staStation1", expectedStation1);
+      cy.apiStationCheck("staAdmin", getTestName("staStation1"), expectedStation1);
     });
   });
 
@@ -164,18 +164,20 @@ describe("Stations: adding", () => {
     let expectedStation1=TestCreateExpectedStation(TemplateExpectedStation,"staStation", 8);
     let expectedStationWithSameLocation=TestCreateExpectedStation(TemplateExpectedStation,"stationWithSameLocation", 8);
 
-    cy.apiGroupStationAdd("staAdmin","staGroup",station1,"2020-01-01T00:00:00.000Z").then(() => {
+    cy.apiGroupStationAdd("staAdmin","staGroup",station1,"2020-01-01T00:00:00.000Z").then((firstStationId:number) => {
         
       cy.log("Retire that station");
       cy.testStationRetire("staAdmin","staStation8","2020-02-01T00:00:00.000Z");
+      expectedStation1.retiredAt="2020-02-01T00:00:00.000Z";
         
       cy.log("Can add duplicate-located station with no warning");
-      cy.apiGroupStationAdd("staAdmin","staGroup",stationWithSameLocation, undefined, undefined, undefined, {warnings: "none"});
+      cy.apiGroupStationAdd("staAdmin","staGroup",stationWithSameLocation, undefined, undefined, undefined, {warnings: "none"}).then((secondStationId: number) => {
 
-      cy.log("Check that both stations exist");
-      //TODO Issue 7: bug: cy.apiGroupStationCheck("staAdmin", "staGroup", "staStation8", expectedStation1);
-      cy.apiStationCheck("staAdmin", "staStation8", expectedStation1, null, null, {additionalParams: {"only-active": false}});
-      cy.apiGroupStationCheck("staAdmin", "staGroup", "stationWithSameLocation8", expectedStationWithSameLocation);
+        cy.log("Check that both stations exist");
+        cy.apiStationCheck("staAdmin", firstStationId.toString(), expectedStation1, undefined, undefined, {useRawStationId: true});
+        cy.apiStationCheck("staAdmin", secondStationId.toString(), expectedStationWithSameLocation,undefined, undefined, {useRawStationId: true});
+        cy.apiGroupStationCheck("staAdmin", "staGroup", "stationWithSameLocation8", expectedStationWithSameLocation);
+      });
     });
   });
 

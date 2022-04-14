@@ -66,7 +66,7 @@ describe("Stations: assign recordings to stations", () => {
     cy.testUploadRecording(deviceName, { ...location, time: recordingTime })
       .thenCheckStationIsNew(Josie).then((station:TestNameAndId) => {
         cy.log("Check station created correctly");
-        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+        cy.apiStationCheck(Josie, station.name, expectedStation1);
       });
   });
 
@@ -91,7 +91,7 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
     ).then((station:TestNameAndId) => {
       cy.log("Check activeAt and lastThermalRecording match recordingDateTime");
-      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, station.name, expectedStation1);
 
       cy.log("Upload another recording and check assigned to existing station");
       cy.testUploadRecording(deviceName, {...nearbyLocation, time: now}).thenCheckStationNameIs(
@@ -100,7 +100,7 @@ describe("Stations: assign recordings to stations", () => {
       ).then(() => {
       cy.log("Check activeAt unchanged, lastThermalRecording matches new recordingDateTime");
         expectedStation1.lastThermalRecordingTime = now.toISOString(),
-        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+        cy.apiStationCheck(Josie, station.name, expectedStation1);
 
       });
     });
@@ -132,7 +132,7 @@ describe("Stations: assign recordings to stations", () => {
       expectedStation1.activeAt = oneMonthAgo.toISOString(),
       delete(expectedStation1.lastThermalRecordingTime);
       delete(expectedStation1.retiredAt);
-      cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
       cy.log("Add a matching recording, dated now and check assinged to exsiting station");
       cy.testUploadRecording(
@@ -145,7 +145,7 @@ describe("Stations: assign recordings to stations", () => {
         cy.log("Check activeAt unchanged, lastThermalRecordingi now matches recordingDateTime");
         expectedStation1.activeAt = oneMonthAgo.toISOString(),
         expectedStation1.lastThermalRecordingTime = now.toISOString(),
-        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+        cy.apiStationCheck(Josie, station.name, expectedStation1);
   
         cy.log("Upload another recording dated 1 week ago and check assigned to exsitng station");
         cy.testUploadRecording(deviceName, {...nearbyLocation, time: oneWeekAgo}).thenCheckStationNameIs(
@@ -155,7 +155,7 @@ describe("Stations: assign recordings to stations", () => {
         cy.log("Check activeAt unchanged, lastThermalRecording not changed (as 2nd recording was earlier than 1st)");
           expectedStation1.activeAt = oneMonthAgo.toISOString(),
           expectedStation1.lastThermalRecordingTime = now.toISOString(),
-          cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+          cy.apiStationCheck(Josie, station.name, expectedStation1);
         });
       });
     });
@@ -194,13 +194,13 @@ describe("Stations: assign recordings to stations", () => {
     cy.testUploadRecording( deviceName, { ...nearbyLocation, time: oneWeekAgo })
       .thenCheckStationIsNew( Josie,).then((station: TestNameAndId) => {
       cy.log("Check startDate is same as recording (oneWeekAgo)");
-      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, station.name, expectedStation1);
 
       cy.log("Upload another recording and check assigned to same station");
       cy.testUploadRecording(deviceName, { ...nearbyLocation, time: oneMonthAgo}).thenCheckStationIdIs(Josie, station.id).then(() => {
         cy.log("Check station start time extended backwards (now oneMonthAgo)");
         expectedStation1.activeAt=oneMonthAgo.toISOString();
-        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+        cy.apiStationCheck(Josie, station.name, expectedStation1);
       });
     });
   });
@@ -363,7 +363,7 @@ describe("Stations: assign recordings to stations", () => {
         ...location,
         time: now,
       }).thenCheckStationIsNew(Josie).then((station:TestNameAndId) => {
-        cy.apiStationCheck(Josie, station.id.toString(), expectedNewStation,undefined,undefined,{useRawStationId: true});
+        cy.apiStationCheck(Josie, station.name, expectedNewStation);
       });
     });
   });
@@ -420,7 +420,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.log("Check station created correctly");
       delete(expectedStation1.lastAudioRecordingTime);
       delete(expectedStation1.lastThermalRecordingTime);
-      cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
       cy.log("Add an audio recording and check is updated correctly");
       cy.apiRecordingAdd(deviceName, audioRecording, undefined, recording1Name)
@@ -428,7 +428,7 @@ describe("Stations: assign recordings to stations", () => {
 
           cy.log("Check station updated correctly with lastAudioRecordingTime`");
           expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
-          cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+          cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
           cy.log("Add a 2nd audio recording");
           audioRecording.recordingDateTime=now.toISOString();
@@ -437,7 +437,7 @@ describe("Stations: assign recordings to stations", () => {
 
               cy.log("Check station updated correctly with lastThermalRecordingTime");
               expectedStation1.lastAudioRecordingTime = now.toISOString();   
-              cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+              cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
             });
         });
       });
@@ -470,7 +470,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.log("Check station created correctly with lastAudioRecordingTime`");
       expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();
       delete(expectedStation1.lastThermalRecordingTime);
-      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, station.name, expectedStation1);
 
 
       cy.log("Add another audio recording and check station is updated correctly");
@@ -481,7 +481,7 @@ describe("Stations: assign recordings to stations", () => {
 
         cy.log("Check station updated correctly with lastAudioRecordingTime`");
         expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
-        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId:   true });
+        cy.apiStationCheck(Josie, station.name, expectedStation1);
       });
     });
   });
@@ -522,7 +522,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.log("Check station created correctly");
       delete(expectedStation1.lastAudioRecordingTime);
       delete(expectedStation1.lastThermalRecordingTime);
-      cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
       cy.log("Add an audio recording and check is updated correctly");
       cy.apiRecordingAdd(audioDeviceName, audioRecording, undefined, audioRecordingName)
@@ -530,7 +530,7 @@ describe("Stations: assign recordings to stations", () => {
 
           cy.log("Check station updated correctly with lastAudioRecordingTime`");
           expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
-          cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+          cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
           cy.log("Add a thermal recording and check station is updated correctly");
           cy.apiRecordingAdd(thermalDeviceName, thermalRecording, undefined, thermalRecordingName)
@@ -539,7 +539,7 @@ describe("Stations: assign recordings to stations", () => {
               cy.log("Check station updated correctly with lastThermalRecordingTime");
               expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();   
               expectedStation1.lastThermalRecordingTime = now.toISOString();   
-              cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+              cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
             });
         });
       });
@@ -578,7 +578,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.log("Check station created correctly with lastAudioRecordingTime`");
       expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();
       delete(expectedStation1.lastThermalRecordingTime);
-      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, station.name, expectedStation1);
 
       cy.log("Add a thermal recording and check station is updated correctly");
       cy.apiRecordingAdd(thermalDeviceName, thermalRecording, undefined, thermalRecordingName)
@@ -587,7 +587,7 @@ describe("Stations: assign recordings to stations", () => {
         cy.log("Check station updated correctly with lastThermalRecordingTime");
         expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();   
         expectedStation1.lastThermalRecordingTime = now.toISOString();   
-        cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+        cy.apiStationCheck(Josie, station.name, expectedStation1);
       });
     });
   });
@@ -624,7 +624,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.log("Check station created correctly with lastAudioRecordingTime`");
       expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();
       delete(expectedStation1.lastThermalRecordingTime);
-      cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, station.name, expectedStation1);
 
       cy.log("Add a thermal recording and check station is updated correctly");
       cy.apiRecordingAdd(deviceName, thermalRecording, undefined, thermalRecordingName)
@@ -633,7 +633,7 @@ describe("Stations: assign recordings to stations", () => {
         cy.log("Check station updated correctly with lastThermalRecordingTime");
         expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();   
         expectedStation1.lastThermalRecordingTime = now.toISOString();   
-          cy.apiStationCheck(Josie, station.id.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+          cy.apiStationCheck(Josie, station.name, expectedStation1);
         });
     });
   });
@@ -671,7 +671,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.log("Check station created correctly");
       delete(expectedStation1.lastAudioRecordingTime);
       delete(expectedStation1.lastThermalRecordingTime);
-      cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+      cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
       cy.log("Add an audio recording and check is updated correctly");
       cy.apiRecordingAdd(deviceName, audioRecording, undefined, audioRecordingName)
@@ -679,7 +679,7 @@ describe("Stations: assign recordings to stations", () => {
 
           cy.log("Check station updated correctly with lastAudioRecordingTime`");
           expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
-          cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+          cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
           cy.apiRecordingAdd(deviceName, thermalRecording, undefined, thermalRecordingName)
             .thenCheckStationNameIs(Josie, getTestName(stationName)).then(() => {
@@ -687,7 +687,7 @@ describe("Stations: assign recordings to stations", () => {
               cy.log("Check station updated correctly with lastThermalRecordingTime");
               expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();   
               expectedStation1.lastThermalRecordingTime = now.toISOString();   
-              cy.apiStationCheck(Josie, stationId.toString(), expectedStation1, undefined, undefined, { useRawStationId: true });
+              cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
             });
         });
       });

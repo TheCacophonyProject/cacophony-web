@@ -76,7 +76,7 @@ describe("Stations: station updates also update recordings", () => {
       }).then((recordingId) => {
         cy.apiStationDelete(Josie, stationId.toString(), true, HTTP_OK200, { useRawStationId: true}).then(() => {
           cy.log("Check that station and its recordings are deleted");
-          cy.apiStationCheck(Josie, stationId.toString(), null, null, HTTP_Forbidden, { useRawStationId: true});
+          cy.apiStationCheck(Josie, getTestName(stationName), null, null, HTTP_Forbidden);
           cy.apiRecordingCheck(Josie, recordingId.toString(), null, null, HTTP_Forbidden, {
             useRawRecordingId: true,
           });
@@ -113,7 +113,7 @@ describe("Stations: station updates also update recordings", () => {
           cy.log(
             "Check that station is deleted, and its recordings don't have the station id"
           );
-          cy.apiStationCheck(Josie, stationId.toString(), null, null, HTTP_Forbidden,{useRawStationId: true});
+          cy.apiStationCheck(Josie, getTestName(stationName), null, null, HTTP_Forbidden);
 
           delete(expectedRecording.stationId);
           delete(expectedRecording.stationName);
@@ -146,6 +146,8 @@ describe("Stations: station updates also update recordings", () => {
         cy.log("Updating name");
         cy.apiStationUpdate("stuAdmin","stuStation1",station2);
 
+        //TODO Unfinished
+      });
   });
 
   it.skip("station-update: Location change does not affect existing recordings", () => {

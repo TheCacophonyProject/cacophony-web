@@ -245,7 +245,7 @@ describe("Stations: updating", () => {
       cy.apiStationUpdate("stuAdmin","stuStation18",stationWithSameLocation, undefined, undefined, undefined, undefined, {warnings: "none"});
 
       cy.log("Check that both stations exist");
-      cy.apiStationCheck("stuAdmin", "stuStation17", expectedStation1, undefined, undefined, { additionalParams: { "only-active": false }});
+      cy.apiStationCheck("stuAdmin", getTestName("stuStation17"), expectedStation1, undefined, undefined, { additionalParams: { "only-active": false }});
       cy.apiGroupStationCheck("stuAdmin", "stuGroup", "stationWithSameLocation18", expectedStationWithSameLocation);
     });
   });
