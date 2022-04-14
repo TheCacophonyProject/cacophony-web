@@ -150,7 +150,6 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
     });
   });
 
-  //TODO fails - issue1
   it("correct station: Reassign all recordings from auto to manual station, before current activeAt ", () => {
     const deviceName = "new-device-2";
     const manualStationName = "Josie-station-2";
