@@ -716,7 +716,7 @@ export default defineComponent({
       selectedTrack,
       () => {
         if (selectedTrack.value) {
-          const tag = selectedTrack.value.displayTags.find((tag) => {
+          const tag = selectedTrack.value.tags.find((tag) => {
             if (tag.userId === userId) {
               return true;
             }
