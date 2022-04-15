@@ -159,8 +159,8 @@ Cypress.Commands.add(
           const deviceHistory = response.body.history;
           expect(deviceHistory.length).to.equal(expectedHistory.length);
           let devCount: number;
-          const sortHistory = sortArrayOn(deviceHistory, "uuid");
-          const sortExpectedHistory = sortArrayOn(expectedHistory, "uuid");
+          const sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
+          const sortExpectedHistory = sortArrayOn(expectedHistory, "fromDateTime");
           for (devCount = 0; devCount < expectedHistory.length; devCount++) {
             checkTreeStructuresAreEqualExcept(
               sortExpectedHistory[devCount],

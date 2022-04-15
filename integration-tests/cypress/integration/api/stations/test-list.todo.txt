@@ -4,7 +4,13 @@
 // -> device.lastThermalRecordingTime undefined
 // -> device.lastThermalRecordingTime undefined
 //
-//
+// User reregisters a device
+// -> Unassigned device history entry created: re-register
+// -> device.activeAt set to creation time
+// -> device.lastThermalRecordingTime undefined
+// -> device.lastThermalRecordingTime undefined
+// -> old device history no longer available
+
 //User add a station
 // -> default values: automatic: false, location: null, 
 //
@@ -12,6 +18,7 @@
 // -> default values of station: activeAt, last..., location
 // -> default values of deviceHistory: stationId, location, dateTime, auto
 // -> device.Location updated
+// -> deviceHistory for that device created with station, location, time
 
 // User add a recording to an unused  manual station
 // -> station updated: actveAt, last...
@@ -24,8 +31,8 @@
 //
 // User adds an additional recording in different location, same station
 // -> station updated: last...
-// -> deviceHistory entry added: automatic, location, same station ???
-// -> device location updated ????
+// -> deviceHistory entry added: automatic, newLocation, same station 
+// -> device location updated 
 //
 // User adds an additional recording in different location, different station
 // -> new station updated: last...
@@ -36,9 +43,13 @@
 // -> station: same
 // -> deviceHistory: same
 //
-//user adds an earlier recording to a station (before first recording, after station created):
+//user adds an earlier recording to a station (before first recording, same location, after station created):
 // -> station: same
-// -> deviceHistory: new entry? or 1st enttry backdated?a
+// -> deviceHistory: 1st entry backdated
+//
+//user adds an earlier recording to a station (before first recording, nearby location, after station created):
+// -> station: same
+// -> deviceHistory: new earlier entry created
 //
 //User adds an earlier recording to a manual station (before station creation)
 // -> new station (auto)
@@ -47,37 +58,47 @@
 //
 // User adds n earlier recording to an auto station (before station creation):
 // -> station extended backwards
-// -> deviceHistory: new entry? or 1st enttry backdated?
+// -> deviceHistory: 1st entry backdated
 // -> device location unchaged
 //
+
+//// Recordings and moved locations ////
+//// Recordings and reassigned locations ////
+
+*** TODO ***
 // User adds a recording in same location as last corrected location:
 // -> station: last ...
 // -> deviceHistory: unchanged
 // -> recording: uploaded location, corrected station
 //
+*** TODO ***
 // User adds a recording in same location as last corrected location, before lastRec:
 // -> station: unchanged
 // -> deviceHistory: unchanged
 // -> recording: uploaded location, corrected station
 
+*** TODO ***
 // User adds a recording in same location as last corrected location, before firstRec:
 // -> station: unchanged
 // -> deviceHistory: new entry? or 1st enttry backdated?
 // -> recording: uploaded location, corrected station. Expect this to fail!!!
 //
 
+*** TODO ***
 // User adds a recording in same location as a past corrected location, after lastRec:
 // -> station: last ...
 // -> deviceHistory: unchanged
 // -> device locn unchanged
 // -> recording: uploaded locn, corrected station
 //
+*** TODO ***
 // User adds a recording in same location as a past corrected location, before lastRec:
 // -> station: unchanged
 // -> deviceHistory: unchanged
 // -> device locn unchanged
 // -> recording: uploaded locn, corrected station
 
+*** TODO ***
 // User adds a recording in same location as a past corrected location, before firstRec:
 // -> station: unchanged
 // -> deviceHistory: new or extended back???

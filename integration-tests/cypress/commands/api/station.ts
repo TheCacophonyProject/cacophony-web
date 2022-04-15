@@ -95,7 +95,7 @@ Cypress.Commands.add(
     if (additionalChecks["useRawStationId"] === true) {
       stationId = stationIdOrName;
     } else {
-      stationId = getCreds(getTestName(stationIdOrName)).id.toString();
+      stationId = getCreds(stationIdOrName).id.toString();
     }
 
     let params={};
@@ -320,7 +320,7 @@ export function TestCreateExpectedAutomaticStation(template: ApiStationResponse,
 
 export function TestGetLocation(identifier = 0, offsetDegrees = 0) {
   let thisLocation= {
-    lat: -45-(identifier/10)+offsetDegrees,
+    lat: -45-(identifier/10)-offsetDegrees,
     lng: 172+(identifier/10)+offsetDegrees
   };
 
