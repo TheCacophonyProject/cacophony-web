@@ -4,10 +4,8 @@
 declare namespace Cypress {
   type ApiCreateStationData =
     import("@typedefs/api/station").ApiCreateStationData;
-  type ApiStationResponse = 
-    import("@typedefs/api/station").ApiStationResponse;
+  type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
   interface Chainable {
-
     /**
      * GET to api/v1/stations to retrieve all stations for current user
      * Check returned data matches expectedStations
@@ -16,7 +14,7 @@ declare namespace Cypress {
      * Optionally: check for returned additionalChecks["messages"]
      * Optionally: check for returned additionalChecks["warnings"]
      */
-    apiStationsCheck (
+    apiStationsCheck(
       userName: string,
       expectedStations: ApiStationResponse[],
       excludeCheckOn?: any,
@@ -41,7 +39,6 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
-
 
     /**
      * PATCH to api/v1/stations/:stationId to update a single station
@@ -79,15 +76,14 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-   /** Shortcut to apiStationUpdate which only sets the untilDate
-    * (retirementDate)
-    */
+    /** Shortcut to apiStationUpdate which only sets the untilDate
+     * (retirementDate)
+     */
     testStationRetire(
       userName: string,
       stationIdOrName: string,
       retirementDate?: string,
       additionalChecks?: any
     ): Cypress.Chainable<void>;
-
   }
 }

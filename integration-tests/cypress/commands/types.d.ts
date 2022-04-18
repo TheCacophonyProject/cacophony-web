@@ -609,7 +609,6 @@ export interface TestDeviceAndGroup {
 
 // hash of name and ID - for wherever needed!
 export interface TestNameAndId {
-  name: string,
-  id: number
+  name: string;
+  id: number;
 }
-

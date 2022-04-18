@@ -383,10 +383,10 @@ export function checkRecording(
     },
     userName
   ).then((response) => {
-    let rtrn:any=undefined;
-    let recording = response.body.recording
-    if (recording!==undefined) {
-      rtrn=checkFunction(recording);
+    let rtrn: any = undefined;
+    const recording = response.body.recording;
+    if (recording !== undefined) {
+      rtrn = checkFunction(recording);
     } else {
       expect(recording, "Recording should be returned").to.exist;
     }

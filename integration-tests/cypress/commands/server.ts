@@ -86,20 +86,20 @@ export function saveJWTByName(name: string, jwt: string) {
 }
 
 export function getCreds(userName: string): ApiCreds {
-  if(userName) {
-    const creds:ApiCreds = Cypress.env("testCreds")[userName]; 
-    if (creds==undefined) {
+  if (userName) {
+    const creds: ApiCreds = Cypress.env("testCreds")[userName];
+    if (creds == undefined) {
       logTestDescription(
-          `ERROR: could not find credentials for '${userName}'`,
-          {name: userName}
-        );
-    };
+        `ERROR: could not find credentials for '${userName}'`,
+        { name: userName }
+      );
+    }
     return creds;
   } else {
-     logTestDescription(
-        `NOTE: asked to retieve credential for 'undefined'`,
-        {  }
-      );
+    logTestDescription(
+      `NOTE: asked to retrieve credential for 'undefined'`,
+      {}
+    );
 
     return {
       name: null,
@@ -108,21 +108,26 @@ export function getCreds(userName: string): ApiCreds {
       jwt: undefined,
       headers: undefined,
       jobKey: undefined,
-      location: undefined
+      location: undefined,
     };
   }
 }
 
-export function getCredsByIdAndNameLike(id: number, nameLike: string): ApiCreds {
-  let creds=Cypress.env("testCreds");
-  let values:ApiCreds[]=Object.values(creds);
+export function getCredsByIdAndNameLike(
+  id: number,
+  nameLike: string
+): ApiCreds {
+  const creds = Cypress.env("testCreds");
+  const values: ApiCreds[] = Object.values(creds);
   logTestDescription(`${JSON.stringify(values)}`, {
-        values,
-      });
-  let cred:ApiCreds=values.find(cred => cred.id === id && cred.name.includes(nameLike));
- 
+    values,
+  });
+  const cred: ApiCreds = values.find(
+    (cred) => cred.id === id && cred.name.includes(nameLike)
+  );
+
   return cred;
-};
+}
 
 export function renameCreds(oldName: string, newName: string) {
   const creds = getCreds(oldName);
@@ -482,22 +487,28 @@ export function testRunOnApi(command: string, options = {}) {
   }
 }
 
-export function checkMessages(response:any, expectedMessages: string[]) {
-        const messages = response.body.messages;
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages.find((el:string) => el.includes(message)),`Messages should contain ${message}`).to.exist;
-        });
+export function checkMessages(response: any, expectedMessages: string[]) {
+  const messages = response.body.messages;
+  expect(messages).to.exist;
+  expectedMessages.forEach(function (message: string) {
+    expect(
+      messages.find((el: string) => el.includes(message)),
+      `Messages should contain ${message}`
+    ).to.exist;
+  });
 }
 
-export function checkWarnings(response:any, expectedWarnings: any) {
-        const warnings = response.body.warnings;
-        if (expectedWarnings=="none") {
-          expect(response.body.warnings).to.be.undefined;
-        } else {
-          expect(warnings).to.exist;
-          expectedWarnings.forEach(function (warning: string) {
-            expect(warnings.find((el:string) => el.includes(warning)),`Messages should contain ${warning}`).to.exist;
-          });
-        };
+export function checkWarnings(response: any, expectedWarnings: any) {
+  const warnings = response.body.warnings;
+  if (expectedWarnings == "none") {
+    expect(response.body.warnings).to.be.undefined;
+  } else {
+    expect(warnings).to.exist;
+    expectedWarnings.forEach(function (warning: string) {
+      expect(
+        warnings.find((el: string) => el.includes(warning)),
+        `Messages should contain ${warning}`
+      ).to.exist;
+    });
+  }
 }

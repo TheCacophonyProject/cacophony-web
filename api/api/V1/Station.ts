@@ -24,7 +24,6 @@ import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@api/V1/recordingUtil";
-import logger from "@log";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -50,6 +49,9 @@ export const mapStation = (station: Station): ApiStationResponse => {
   };
   if (station.lastUpdatedById) {
     stationResponse.lastUpdatedById = station.lastUpdatedById;
+  }
+  if (station.needsRename) {
+    stationResponse.needsRename = true;
   }
   if (station.settings) {
     stationResponse.settings = station.settings;
@@ -246,8 +248,13 @@ export default function (app: Application, baseUrl: string) {
       // If the name changed, and the station was automatically created, set automatic to false:
       if (
         updates.name !== response.locals.station.name &&
-        response.locals.station.automatic === true
+        response.locals.station.needsRename === true
       ) {
+        updates.needsRename = false;
+      }
+      // If we update the station, it's no longer automatically created, and should not be automatically deleted if
+      // there are no recordings assigned to it.
+      if (response.locals.station.automatic) {
         updates.automatic = false;
       }
 

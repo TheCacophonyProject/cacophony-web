@@ -416,8 +416,10 @@ export default function (app: Application, baseUrl: string) {
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
           uuid: device.uuid,
-          fromDateTime: { [Op.gte]: fromDateTime },
+          //fromDateTime: { [Op.gte]: fromDateTime },
+          fromDateTime,
         },
+        //order: [["fromDateTime", "asc"]]
       });
       if (deviceHistoryEntry) {
         await deviceHistoryEntry.update({
@@ -450,6 +452,7 @@ export default function (app: Application, baseUrl: string) {
         order: [["fromDateTime", "ASC"]],
       });
 
+      // FIXME - Do we need to exclude null recordingDateTime?
       const recordingTimeWindow = {
         DeviceId: device.id,
         StationId: { [Op.ne]: stationId },
@@ -535,7 +538,7 @@ export default function (app: Application, baseUrl: string) {
             order: [["recordingDateTime", "ASC"]],
           }),
         ]);
-        const updates: any = {};
+        let updates: any = {};
 
         if (
           latestAudioRecording &&
@@ -564,17 +567,7 @@ export default function (app: Application, baseUrl: string) {
         ) {
           updates.lastThermalRecordingTime = null;
         }
-
-        const histories = await models.DeviceHistory.findAll({
-          where: {
-            stationId: station.id,
-            setBy: { [Op.in]: ["automatic", "user"] },
-          },
-        });
-        const wasAutomaticallyCreated = histories.every(
-          (history) => history.setBy === "automatic"
-        );
-        if (wasAutomaticallyCreated && station.id !== stationId) {
+        if (station.automatic && station.id !== stationId) {
           if (
             earliestRecording &&
             earliestRecording.recordingDateTime < station.activeAt
@@ -584,6 +577,7 @@ export default function (app: Application, baseUrl: string) {
             ).recordingDateTime;
           } else if (!earliestRecording) {
             await station.destroy();
+            updates = {};
             await models.DeviceHistory.destroy({
               where: {
                 stationId: station.id,
@@ -1023,6 +1017,7 @@ export default function (app: Application, baseUrl: string) {
           where: {
             DeviceId: response.locals.device.id,
           },
+          order: [["fromDateTime", "ASC"]],
         });
 
         return responseUtil.send(response, {

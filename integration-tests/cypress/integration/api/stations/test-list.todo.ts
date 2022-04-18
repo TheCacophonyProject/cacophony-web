@@ -1,3 +1,4 @@
+/*
 // User add a device
 // -> Unassigned device history entry created: register
 // -> device.activeAt set to creation time
@@ -12,7 +13,7 @@
 // -> old device history no longer available
 
 //User add a station
-// -> default values: automatic: false, location: null, 
+// -> default values: automatic: false, location: null,
 //
 // User add a recording which creates a station
 // -> default values of station: activeAt, last..., location
@@ -31,12 +32,12 @@
 //
 // User adds an additional recording in different location, same station
 // -> station updated: last...
-// -> deviceHistory entry added: automatic, newLocation, same station 
-// -> device location updated 
+// -> deviceHistory entry added: automatic, newLocation, same station
+// -> device location updated
 //
 // User adds an additional recording in different location, different station
 // -> new station updated: last...
-// -> deviceHistory entry added: automatic, location, station 
+// -> deviceHistory entry added: automatic, location, station
 // -> device location updated
 //
 // user adds an earlier recording to a station within same window (same location)
@@ -144,3 +145,4 @@
 
 //DEVICE FIX KEEP REC LOCN
 As above but reassign without moving
+*/

@@ -35,13 +35,13 @@ describe("Monitoring : multiple cameras and stations", () => {
           tags: ["possum"],
           lat: -44.0,
           lng: 172.7,
-          time: new Date()
+          time: new Date(),
         }).thenCheckStationNameIs(Penny, getTestName("forest"));
         cy.testUploadRecording(camera, {
           tags: ["cat"],
           lat: -44.0,
           lng: 172.7,
-          time: new Date()
+          time: new Date(),
         }).thenCheckStationNameIs(Penny, getTestName("forest"));
         cy.checkMonitoring(Penny, camera, [{ station: getTestName("forest") }]);
       });
@@ -55,25 +55,30 @@ describe("Monitoring : multiple cameras and stations", () => {
 
     const location1 = { lat: -44.0, lng: 172.7 };
     const location2 = { lat: -43.6, lng: 172.8 };
-      
-    cy.apiGroupStationAdd(Penny, group, {...location1, name: "forest"}).then(() => {
-      cy.apiGroupStationAdd(Penny, group, {...location2, name: "waterfall"}).then(() => {
-        cy.testUploadRecording(camera, {
-          ...location1,
-          tags: ["possum"],
-          time: new Date()
-        }).thenCheckStationNameIs(Penny, getTestName("forest"));
-  
-        cy.testUploadRecording(camera, {
+
+    cy.apiGroupStationAdd(Penny, group, { ...location1, name: "forest" }).then(
+      () => {
+        cy.apiGroupStationAdd(Penny, group, {
           ...location2,
-          tags: ["cat"],
-          time: new Date()
-        }).thenCheckStationNameIs(Penny, getTestName("waterfall"));
-        cy.checkMonitoring(Penny, camera, [
-          { station: getTestName("forest") },
-          { station: getTestName("waterfall") },
-        ]);
-      });
-    });
+          name: "waterfall",
+        }).then(() => {
+          cy.testUploadRecording(camera, {
+            ...location1,
+            tags: ["possum"],
+            time: new Date(),
+          }).thenCheckStationNameIs(Penny, getTestName("forest"));
+
+          cy.testUploadRecording(camera, {
+            ...location2,
+            tags: ["cat"],
+            time: new Date(),
+          }).thenCheckStationNameIs(Penny, getTestName("waterfall"));
+          cy.checkMonitoring(Penny, camera, [
+            { station: getTestName("forest") },
+            { station: getTestName("waterfall") },
+          ]);
+        });
+      }
+    );
   });
 });

@@ -550,6 +550,7 @@ export const maybeUpdateDeviceHistory = async (
           location,
           activeAt: dateTime,
           automatic: true,
+          needsRename: true,
           GroupId: device.GroupId,
         })) as Station;
       }

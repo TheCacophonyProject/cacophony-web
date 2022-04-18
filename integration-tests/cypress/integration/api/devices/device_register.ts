@@ -10,7 +10,7 @@ import {
   HTTP_Forbidden,
   HTTP_OK200,
   HTTP_Unprocessable,
-  NOT_NULL_STRING
+  NOT_NULL_STRING,
 } from "@commands/constants";
 import { DeviceType } from "@typedefs/api/consts";
 
@@ -32,10 +32,17 @@ describe("Device register", () => {
 
   it("Adding device created valid deviceHistory entry", () => {
     cy.apiDeviceAdd("aNewDevice", camsGroup, 1234567).then(() => {
-      let expectedHistory:DeviceHistoryEntry = 
-        TestCreateExpectedHistoryEntry("aNewDevice", camsGroup, NOT_NULL_STRING, null, "register", null);
-      expectedHistory.saltId=1234567;
-  
+      const expectedHistory: DeviceHistoryEntry =
+        TestCreateExpectedHistoryEntry(
+          "aNewDevice",
+          camsGroup,
+          NOT_NULL_STRING,
+          null,
+          "register",
+          null
+        );
+      expectedHistory.saltId = 1234567;
+
       cy.apiDeviceHistoryCheck("Anita", "aNewDevice", [expectedHistory]);
     });
   });

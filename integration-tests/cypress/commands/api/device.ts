@@ -11,14 +11,13 @@ import {
   checkTreeStructuresAreEqualExcept,
   checkMessages,
 } from "../server";
-import { logTestDescription, prettyLog} from "../descriptions";
+import { logTestDescription, prettyLog } from "../descriptions";
 import { ApiDevicesDevice, DeviceHistoryEntry } from "../types";
 import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
 import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
 import { DeviceType } from "@typedefs/api/consts";
-
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -86,22 +85,24 @@ Cypress.Commands.add(
     } else {
       deviceId = getCreds(deviceIdOrName).id.toString();
     }
- 
+
     const body = {
-      "setStationAtTime": {
+      setStationAtTime: {
         fromDateTime: stationFromDate,
         stationId: stationId,
       },
-      ...additionalChecks["additionalParams"]
+      ...additionalChecks["additionalParams"],
     };
 
-    if (recordingLocation ) {
-      body.setStationAtTime.location=recordingLocation;
-    };
+    if (recordingLocation) {
+      body.setStationAtTime.location = recordingLocation;
+    }
 
     logTestDescription(
-      `Fix device ${deviceId} (${deviceIdOrName})  to station '${stationId}' (${stationIdOrName}) ${prettyLog(body)}`,
-      {body: body }
+      `Fix device ${deviceId} (${deviceIdOrName})  to station '${stationId}' (${stationIdOrName}) ${prettyLog(
+        body
+      )}`,
+      { body: body }
     );
 
     makeAuthorizedRequestWithStatus(
@@ -131,7 +132,6 @@ Cypress.Commands.add(
   ) => {
     let deviceId: string;
 
-
     //Get device ID from name (unless we're asked not to)
     if (additionalChecks["useRawDeviceId"] === true) {
       deviceId = deviceIdOrName;
@@ -141,38 +141,40 @@ Cypress.Commands.add(
 
     logTestDescription(
       `Check device history for  device ${deviceId} (${deviceIdOrName})`,
-      {deviceId: deviceId }
+      { deviceId: deviceId }
     );
 
     makeAuthorizedRequestWithStatus(
-        {
-          method: "GET",
-          url: v1ApiPath(`devices/history/${deviceId}`),
-        },
-        userName,
-        statusCode
-      ).then((response) => {
-        if (additionalChecks["messages"]) {
-          checkMessages(response, additionalChecks["messages"]);
+      {
+        method: "GET",
+        url: v1ApiPath(`devices/history/${deviceId}`),
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["messages"]) {
+        checkMessages(response, additionalChecks["messages"]);
+      }
+      if (statusCode === null || statusCode == 200) {
+        const deviceHistory = response.body.history;
+        expect(deviceHistory.length).to.equal(expectedHistory.length);
+        let devCount: number;
+        const sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
+        const sortExpectedHistory = sortArrayOn(
+          expectedHistory,
+          "fromDateTime"
+        );
+        for (devCount = 0; devCount < expectedHistory.length; devCount++) {
+          checkTreeStructuresAreEqualExcept(
+            sortExpectedHistory[devCount],
+            sortHistory[devCount],
+            []
+          );
         }
-        if (statusCode === null || statusCode == 200) {
-          const deviceHistory = response.body.history;
-          expect(deviceHistory.length).to.equal(expectedHistory.length);
-          let devCount: number;
-          const sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
-          const sortExpectedHistory = sortArrayOn(expectedHistory, "fromDateTime");
-          for (devCount = 0; devCount < expectedHistory.length; devCount++) {
-            checkTreeStructuresAreEqualExcept(
-              sortExpectedHistory[devCount],
-              sortHistory[devCount],
-              []
-            );
-          }
-        }
-      });
-    }
-  );
-
+      }
+    });
+  }
+);
 
 Cypress.Commands.add(
   "apiDeviceReregister",
@@ -353,7 +355,7 @@ Cypress.Commands.add(
           // Note that deviceNames only need to be unique within groups, so
           // match on groupName also.
           const found = devices.find(
-            (device:any) =>
+            (device: any) =>
               device.deviceName === expectedDevices[devCount].deviceName &&
               device.groupName === expectedDevices[devCount].groupName
           );
@@ -442,13 +444,9 @@ Cypress.Commands.add(
       groupId,
       params,
       statusCode
-    ).then((response:any) => {
+    ).then((response: any) => {
       if (statusCode === null || statusCode == 200) {
-        checkTreeStructuresAreEqualExcept(
-          expectedDevice,
-          response.body.device,
-        );
-
+        checkTreeStructuresAreEqualExcept(expectedDevice, response.body.device);
       }
     });
   }
@@ -529,59 +527,54 @@ Cypress.Commands.add(
   }
 );
 
-export function TestCreateExpectedDevice
-  (
-    deviceName: string,
-    groupName: string,
-    hasDeviceConnected: boolean = false,
-    type: DeviceType = DeviceType.Unknown,
-    admin: boolean = true,
-    active: boolean = true
-  ) 
-  {
-    let expectedDevice:ApiDeviceResponse = {
-      id: getCreds(deviceName).id,
-      saltId: NOT_NULL,           
-      deviceName: getTestName(deviceName), 
-      groupName: getTestName(groupName),
-      groupId: getCreds(groupName).id,
-      type: type,
-      admin: admin,
-      active: active,
+export function TestCreateExpectedDevice(
+  deviceName: string,
+  groupName: string,
+  hasDeviceConnected: boolean = false,
+  type: DeviceType = DeviceType.Unknown,
+  admin: boolean = true,
+  active: boolean = true
+) {
+  const expectedDevice: ApiDeviceResponse = {
+    id: getCreds(deviceName).id,
+    saltId: NOT_NULL,
+    deviceName: getTestName(deviceName),
+    groupName: getTestName(groupName),
+    groupId: getCreds(groupName).id,
+    type: type,
+    admin: admin,
+    active: active,
+  };
+  if (hasDeviceConnected == true) {
+    expectedDevice.lastConnectionTime = NOT_NULL_STRING;
+    expectedDevice.lastRecordingTime = NOT_NULL_STRING;
+    expectedDevice.location = {
+      lat: NOT_NULL,
+      lng: NOT_NULL,
     };
-    if (hasDeviceConnected==true) {
-      expectedDevice.lastConnectionTime = NOT_NULL_STRING;
-      expectedDevice.lastRecordingTime = NOT_NULL_STRING;
-      expectedDevice.location = {
-        lat: NOT_NULL,
-        lng: NOT_NULL
-      };
-    };
-    return(expectedDevice);
+  }
+  return expectedDevice;
 }
 
-export function TestCreateExpectedHistoryEntry
-  (
-     deviceName: string,
-     groupName: string,
-     fromDate: string,
-     location: LatLng,
-     setBy: string,
-     stationName: string
-  ):DeviceHistoryEntry
-  {
-     const expectedHistory:DeviceHistoryEntry = {
-       DeviceId: getCreds(deviceName).id,
-       GroupId: getCreds(groupName).id,
-       deviceName: getTestName(deviceName),
-       fromDateTime: fromDate,
-       location: location,
-       saltId: NOT_NULL,
-       setBy: setBy,
-       stationId: getCreds(stationName).id,
-       uuid: NOT_NULL
-     };
-
-     return(expectedHistory);
+export function TestCreateExpectedHistoryEntry(
+  deviceName: string,
+  groupName: string,
+  fromDate: string,
+  location: LatLng,
+  setBy: string,
+  stationName: string
+): DeviceHistoryEntry {
+  const expectedHistory: DeviceHistoryEntry = {
+    DeviceId: getCreds(deviceName).id,
+    GroupId: getCreds(groupName).id,
+    deviceName: getTestName(deviceName),
+    fromDateTime: fromDate,
+    location: location,
+    saltId: NOT_NULL,
+    setBy: setBy,
+    stationId: getCreds(stationName).id,
+    uuid: NOT_NULL,
   };
 
+  return expectedHistory;
+}

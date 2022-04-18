@@ -4,7 +4,7 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL_STRING
+  NOT_NULL_STRING,
 } from "@commands/constants";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
@@ -12,7 +12,6 @@ import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import { DeviceType } from "@typedefs/api/consts";
 import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
-
 
 describe("Device reregister", () => {
   const KEEP_DEVICE_NAME = false;
@@ -70,23 +69,46 @@ describe("Device reregister", () => {
 
   it("Reregistering device creates valid deviceHistory entry", () => {
     cy.log("Register new device");
-    cy.apiDeviceAdd("RR_history_cam", "RR_group1",1234567).then(() => {
-
+    cy.apiDeviceAdd("RR_history_cam", "RR_group1", 1234567).then(() => {
       cy.log("Check deviceHistory created correctly for new device");
-      let expectedHistory:DeviceHistoryEntry =
-        TestCreateExpectedHistoryEntry("RR_history_cam", "RR_group1", NOT_NULL_STRING, null, "register", null); 
-      expectedHistory.saltId=1234567;
+      const expectedHistory: DeviceHistoryEntry =
+        TestCreateExpectedHistoryEntry(
+          "RR_history_cam",
+          "RR_group1",
+          NOT_NULL_STRING,
+          null,
+          "register",
+          null
+        );
+      expectedHistory.saltId = 1234567;
       cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [expectedHistory]);
 
-      cy.apiDeviceReregister("RR_history_cam", "RR_history_cam2", "RR_group1").then(() => {
-
+      cy.apiDeviceReregister(
+        "RR_history_cam",
+        "RR_history_cam2",
+        "RR_group1"
+      ).then(() => {
         cy.log("Check deviceHistory created correctly for new device");
-        let expectedNewHistory:DeviceHistoryEntry =
-          TestCreateExpectedHistoryEntry("RR_history_cam2", "RR_group1", NOT_NULL_STRING, null, "re-register", null); 
-        expectedNewHistory.saltId=1234567;
-        cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [expectedNewHistory]);
+        const expectedNewHistory: DeviceHistoryEntry =
+          TestCreateExpectedHistoryEntry(
+            "RR_history_cam2",
+            "RR_group1",
+            NOT_NULL_STRING,
+            null,
+            "re-register",
+            null
+          );
+        expectedNewHistory.saltId = 1234567;
+        cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [
+          expectedNewHistory,
+        ]);
         cy.log("Check deviceHistory for old device no longer exists");
-        cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [], HTTP_Forbidden);
+        cy.apiDeviceHistoryCheck(
+          "RR_user1",
+          "RR_history_cam",
+          [],
+          HTTP_Forbidden
+        );
       });
     });
   });

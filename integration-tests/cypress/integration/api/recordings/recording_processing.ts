@@ -57,7 +57,7 @@ describe("Recordings - processing tests", () => {
   delete templateRecording.processingState;
   delete templateRecording.metadata.tracks;
 
-  //use standard audio recortding template - inject it at ToMp3 state
+  //use standard audio recording template - inject it at ToMp3 state
   const templateAudioRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );
@@ -935,9 +935,7 @@ describe("Recordings - processing tests", () => {
           RecordingProcessingState.Tracking;
         expectedProcessing20.hasAlert = true;
 
-        cy.log(
-          "Send for processing (Tracking) and check is flagged as hasAlert"
-        );
+        cy.log("Send for processing and check is flagges as hasAlert");
         cy.processingApiCheck(
           RecordingType.ThermalRaw,
           RecordingProcessingState.Tracking,
