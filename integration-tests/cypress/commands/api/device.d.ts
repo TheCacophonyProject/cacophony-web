@@ -8,6 +8,7 @@ declare namespace Cypress {
     import("@typedefs/api/group").ApiGroupUserResponse;
   type DeviceType =
     import("@typedefs/api/consts").DeviceType;
+  type DeviceHistoryEntry = import("@commands/types").DeviceHistoryEntry;
 
   interface Chainable {
     /**
@@ -154,6 +155,24 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
+    /**
+     * Retrieve list of users  who can access a device from /devices/users
+     * compare with expected list of users
+     * takes deviceName and looks up the device Id to pass tot he API.  Hence deviceName must be unique within test environment
+     * optionally check for a non-200 status code
+     */
+    createDeviceStationRecordingAndFix (
+          userName:string,
+          deviceName: string,
+          stationName:string,
+          recName:string,
+          group: string,
+          oldLocation: LatLng,
+          newLocation: LatLng,
+          recTime: string,
+          stationTime: string,
+          move: boolean
+      ):any;
   }
 }
 
