@@ -13,6 +13,7 @@ import {
   HTTP_OK200,
   NOT_NULL,
   NOT_NULL_STRING,
+  HTTP_Forbidden
 } from "@commands/constants";
 import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
@@ -123,15 +124,14 @@ describe("Device: fix-location of device and/or recordings", () => {
           cy.log("Update first and subsequect recording's location to match manual station");
           cy.apiDeviceFixLocation(Josie, deviceName, firstTime.toISOString(), manualStationId.toString(), null, HTTP_OK200, { messages: ["Updated 4 recording(s)"], useRawStationId: true}).  then(() => {
 
-            cy.log("Check 4 recoridng reassigned, moved");
+            cy.log("Check 4 recording reassigned, moved");
             checkRecordingLocationAndStation(Josie, firstName, newLocation, getTestName(manualStationName));
             checkRecordingLocationAndStation(Josie, secondName, newLocation, getTestName(manualStationName));
             checkRecordingLocationAndStation(Josie, thirdName, newLocation, getTestName(manualStationName));
             checkRecordingLocationAndStation(Josie, fourthName, newLocation, getTestName(manualStationName));
 
-            cy.log("check old station lastThermalRecordingTime now undefined");
-            delete(expectedAutoStation.lastThermalRecordingTime);
-            cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
+            cy.log("check old station now undefined");
+            cy.apiStationCheck(Josie, autoStation.name, undefined, undefined, HTTP_Forbidden);
 
             cy.log("check new station lastThermalRecordingTime now fourthTime");
             expectedManualStation.lastThermalRecordingTime=fourthTime.toISOString();
@@ -182,15 +182,14 @@ describe("Device: fix-location of device and/or recordings", () => {
           cy.apiDeviceFixLocation(Josie, deviceName, firstTime.toISOString(), manualStationId.toString(), null, HTTP_OK200, { messages: ["Updated 4 recording(s)"], useRawStationId: true}).  then(() => {
 
             //check all 4 recordings updated
-            cy.log("Check 4 recoridng reassigned, moved");
+            cy.log("Check 4 recording reassigned, moved");
             checkRecordingLocationAndStation(Josie, firstName, newLocation, getTestName(manualStationName));
             checkRecordingLocationAndStation(Josie, secondName, newLocation, getTestName(manualStationName));
             checkRecordingLocationAndStation(Josie, thirdName, newLocation, getTestName(manualStationName));
             checkRecordingLocationAndStation(Josie, fourthName, newLocation, getTestName(manualStationName));
 
-            cy.log("check old station lastThermalRecordingTime now undefined");
-            delete(expectedAutoStation.lastThermalRecordingTime);
-            cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
+            cy.log("check old station now undefined");
+            cy.apiStationCheck(Josie, autoStation.name, undefined, undefined, HTTP_Forbidden);
 
             cy.log("check new station lastThermalRecordingTime now fourthTime");
             cy.log("check new station activeAt now firstTime");
@@ -237,14 +236,14 @@ describe("Device: fix-location of device and/or recordings", () => {
           //set expectedStation time to match
           expectedManualStation.activeAt = afterRecordings.toISOString();
 
-          cy.log("Add a pre-exiting recoridng to the new station");
+          cy.log("Add a pre-exiting recording to the new station");
           cy.testUploadRecording(deviceName, {...newLocation, time: fifthTime}, fifthName);
 
           cy.log("Update first and subsequect recording's location to match manual station");
           cy.apiDeviceFixLocation(Josie, deviceName, firstTime.toISOString(), manualStationId.toString(), null, HTTP_OK200, { messages: ["Updated 4 recording(s)"], useRawStationId: true}).  then(() => {
 
             //check all 4 recordings updated
-            cy.log("Check 4 recoridng reassigned, moved");
+            cy.log("Check 4 recording reassigned, moved");
             checkRecordingLocationAndStation(Josie, firstName, newLocation, getTestName(manualStationName));
             checkRecordingLocationAndStation(Josie, secondName, newLocation, getTestName(manualStationName));
             checkRecordingLocationAndStation(Josie, thirdName, newLocation, getTestName(manualStationName));
@@ -253,9 +252,8 @@ describe("Device: fix-location of device and/or recordings", () => {
             //check 5th recording unaffected
             checkRecordingLocationAndStation(Josie, fifthName, newLocation, getTestName(manualStationName));
 
-            cy.log("check old station lastThermalRecordingTime now undefined");
-            delete(expectedAutoStation.lastThermalRecordingTime);
-            cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
+            cy.log("check old station now undefined");
+            cy.apiStationCheck(Josie, autoStation.name, undefined, undefined, HTTP_Forbidden);
 
             cy.log("check new station lastThermalRecordingTime unchanged");
             cy.log("check new station activeAt now firstTime");
@@ -324,10 +322,9 @@ describe("Device: fix-location of device and/or recordings", () => {
               checkRecordingLocationAndStation(Josie, thirdName, intermediateLocation, intermediateStation.name);
               checkRecordingLocationAndStation(Josie, fourthName, intermediateLocation, intermediateStation.name);
   
-              cy.log("check old station lastThermalRecordingTime now undefined");
-              delete(expectedAutoStation.lastThermalRecordingTime);
-              cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
-   
+              cy.log("check old station now undefined");
+              cy.apiStationCheck(Josie, autoStation.name, undefined, undefined, HTTP_Forbidden);
+ 
               cy.log("check intermediate station lastThermalRecordingTime still fourthTime");
               expectedIntermediateStation.lastThermalRecordingTime=fourthTime.toISOString();
               expectedIntermediateStation.activeAt=thirdTime.toISOString();
@@ -442,7 +439,7 @@ describe("Device: fix-location of device and/or recordings", () => {
         .thenCheckStationIsNew(Josie).then((intermediateStation:TestNameAndId) => {
           cy.testUploadRecording(deviceName, {...intermediateLocation, time: thirdTime}, thirdName);
 
-          // then one recoridng elsewhere
+          // then one recording elsewhere
           cy.testUploadRecording(deviceName, {...elsewhereLocation, time: fourthTime}, fourthName)
           .thenCheckStationIsNew(Josie).then((elsewhereStation:TestNameAndId) => {
 
@@ -471,12 +468,11 @@ describe("Device: fix-location of device and/or recordings", () => {
     
                 cy.log("check old station lastThermalRecordingTime now firstTime");
                 expectedAutoStation.lastThermalRecordingTime=firstTime.toISOString();
-//                cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
+                cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
+
+                cy.log("check intermediate station now undefined");
+                cy.apiStationCheck(Josie, intermediateStation.name, undefined, undefined, HTTP_Forbidden);
      
-                cy.log("check intermediate station lastThermalRecordingTime now undefined");
-                delete(expectedIntermediateStation.lastThermalRecordingTime);
-                expectedIntermediateStation.activeAt=secondTime.toISOString();
-                cy.apiStationCheck(Josie, intermediateStation.name, expectedIntermediateStation);
    
                 cy.log("check new station lastThermalRecordingTime now thirdTime");
                 expectedManualStation.lastThermalRecordingTime=thirdTime.toISOString();
@@ -506,9 +502,55 @@ describe("Device: fix-location of device and/or recordings", () => {
     });
   });
 
+  it("correct-location: Verify empty manual station NOT deleted by fix-loction, move", () => {
+    const deviceName = "new-device-7";
+    const oldStationName = "Josie-station-7-old";
+    const newStationName = "Josie-station-7-new";
 
-  //Nest set of tests - rassign recording to station without moving it
+    let expectedOldStation:ApiStationResponse=JSON.parse(JSON.stringify(expectedManualStation));
+    let expectedNewStation:ApiStationResponse=JSON.parse(JSON.stringify(expectedManualStation));
 
+    cy.log( "Create a device now");
+    cy.apiDeviceAdd(deviceName, group).then(() => {;
+
+      // Initial device history entry added
+      
+      cy.log( "Create a new station before all recordings");
+      cy.apiGroupStationAdd( Josie, group, { name: oldStationName, ...oldLocation }, beforeRecordings.toISOString()).then((oldStationId:number ) => {
+
+        cy.log( "Create another new station before all recordings");
+        cy.apiGroupStationAdd( Josie, group, { name: newStationName, ...newLocation }, beforeRecordings.toISOString()).then((newStationId:number ) => {
+
+          // 1 recording at old location, 2 at intermediate, then one elsewhere
+          cy.testUploadRecording(deviceName, {...oldLocation, time: firstTime}, firstName)
+          .thenCheckStationIdIs(Josie, oldStationId).then(() => {
+  
+            //Device history for firstTime, oldLocation, autoStation added
+
+            cy.log("Update recording's location to match new manual station");
+            cy.apiDeviceFixLocation(Josie, deviceName, firstTime.toISOString(), newStationId.toString(), null, HTTP_OK200, { messages: ["Updated 1 recording(s)"], useRawStationId: true}).  then(() => {
+      
+              cy.log("Check recording moved");
+              checkRecordingLocationAndStation(Josie, firstName, newLocation, getTestName(newStationName));
+
+              cy.log("check new station lastThermalRecordingTime now firstTime");
+              expectedNewStation.lastThermalRecordingTime=firstTime.toISOString();
+              expectedNewStation.activeAt=beforeRecordings.toISOString();
+              cy.apiStationCheck(Josie, getTestName(newStationName), expectedNewStation);
+  
+              cy.log("check old station still defined, with lastRecordingTime=undefiend");
+              delete(expectedOldStation.lastThermalRecordingTime);
+              expectedOldStation.activeAt=beforeRecordings.toISOString();
+              cy.apiStationCheck(Josie, getTestName(oldStationName), expectedOldStation);
+       
+            });
+          });
+        });
+      });
+    });
+  });
+
+  
 
 });
 

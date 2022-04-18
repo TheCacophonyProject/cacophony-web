@@ -13,6 +13,7 @@ import {
 import {
   EXCLUDE_IDS,
   HTTP_OK200,
+  HTTP_Forbidden,
   NOT_NULL,
   NOT_NULL_STRING,
 } from "@commands/constants";
@@ -163,9 +164,8 @@ describe("Stations: use cases", () => {
             expectedHistory[1]=TestCreateExpectedHistoryEntry(deviceName, group, oneWeekFromNow.toISOString(), fixedLocation, "user", getTestName(stationName));
             cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
-            cy.log("Verify auto-created station now has no lastThermalRecordingTime");
-            delete(expectedAutoStation.lastThermalRecordingTime);
-            cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
+            cy.log("Verify auto-created station now deleted");
+            cy.apiStationCheck(Josie, autoStation.name, undefined, undefined, HTTP_Forbidden);
             
             cy.log("Verify manual station now has lastThermalRecordingTime=recordingDateTime");
             expectedManualStation.lastThermalRecordingTime=oneWeekFromNow.toISOString();
@@ -500,9 +500,8 @@ describe("Stations: use cases", () => {
             expectedManualStation.lastThermalRecordingTime = firstRecordingTime.toISOString();
             cy.apiStationCheck(Josie, getTestName(manualStationName), expectedManualStation);
 
-            cy.log("Make sure auto station is updated (lastThermalRecordingTime undefined)");
-            delete(expectedAutoStation.lastThermalRecordingTime);
-            cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
+            cy.log("Make sure auto station is deleted");
+            cy.apiStationCheck(Josie, autoStation.name, undefined, undefined, HTTP_Forbidden);
 
             cy.log("Make sure device history is updated to correct station, location unchanged, setBy: user");
             expectedHistory[1]=TestCreateExpectedHistoryEntry(deviceName, group, firstRecordingTime.toISOString(), firstRecordingLocation, "user", getTestName(manualStationName));
