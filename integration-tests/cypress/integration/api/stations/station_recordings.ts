@@ -33,6 +33,7 @@ const templateExpectedStation = {
   updatedAt: NOT_NULL_STRING,
   activeAt: NOT_NULL_STRING,
   automatic: true,
+  needsRename: true,
   groupId: NOT_NULL,
   groupName: NOT_NULL_STRING,
 };
@@ -60,8 +61,8 @@ describe("Stations: assign recordings to stations", () => {
     let expectedHistory:DeviceHistoryEntry[] = [];
 
     expectedStation1.location = location;
-    expectedStation1.activeAt = recordingTime.toISOString(),
-    expectedStation1.lastThermalRecordingTime = recordingTime.toISOString(),
+    expectedStation1.activeAt = recordingTime.toISOString();
+    expectedStation1.lastThermalRecordingTime = recordingTime.toISOString();
 
     cy.apiDeviceAdd(deviceName, group).then(() => {
       cy.log("Add a recording and check new station is created");
@@ -140,6 +141,7 @@ describe("Stations: assign recordings to stations", () => {
     expectedStation1.location = location;
     expectedStation1.lastUpdatedById = getCreds(Josie).id;
     expectedStation1.automatic = false;
+    delete(expectedStation1.needsRename);
   
     cy.apiDeviceAdd(deviceName, group);
 
@@ -205,6 +207,7 @@ describe("Stations: assign recordings to stations", () => {
     expectedStation1.location = location;
     expectedStation1.lastUpdatedById = getCreds(Josie).id;
     expectedStation1.automatic = false;
+    delete(expectedStation1.needsRename);
   
     cy.apiDeviceAdd(deviceName, group);
 
@@ -406,6 +409,7 @@ describe("Stations: assign recordings to stations", () => {
     expectedStation.location=location;
     expectedStation.name=stationName;
     expectedStation.automatic=false;
+    delete(expectedStation.needsRename);
     expectedStation.activeAt= dayOne.toISOString();
     expectedStation.retiredAt= dayThree.toISOString();
 
@@ -543,6 +547,7 @@ describe("Stations: assign recordings to stations", () => {
     expectedStation1.activeAt = dayOne.toISOString();
     expectedStation1.lastUpdatedById = getCreds(Josie).id;
     expectedStation1.automatic = false;
+    delete(expectedStation1.needsRename);
 
     const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
     audioRecording.recordingDateTime=dayTwo.toISOString();
@@ -645,6 +650,7 @@ describe("Stations: assign recordings to stations", () => {
     expectedStation1.activeAt = oneMonthAgo.toISOString();
     expectedStation1.lastUpdatedById = getCreds(Josie).id;
     expectedStation1.automatic = false;
+    delete(expectedStation1.needsRename);
 
     const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
     audioRecording.recordingDateTime=oneWeekAgo.toISOString();
@@ -658,7 +664,7 @@ describe("Stations: assign recordings to stations", () => {
     cy.apiDeviceAdd(thermalDeviceName, group);
 
     cy.apiGroupStationAdd( Josie, group, { name: stationName, ...location }, oneMonthAgo.toISOString(),
-    ).then((stationId:number) => {
+    ).then(() => {
 
       cy.log("Check station created correctly");
       delete(expectedStation1.lastAudioRecordingTime);
@@ -796,6 +802,7 @@ describe("Stations: assign recordings to stations", () => {
     expectedStation1.activeAt = dayOne.toISOString();
     expectedStation1.lastUpdatedById = getCreds(Josie).id;
     expectedStation1.automatic = false;
+    delete(expectedStation1.needsRename);
 
     const audioRecording=TestCreateRecordingData(TEMPLATE_AUDIO_RECORDING);
     audioRecording.recordingDateTime=dayTwo.toISOString();

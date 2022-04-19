@@ -18,9 +18,10 @@ const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
 const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
 const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
 const dayFour = new Date(new Date().setDate(new Date().getDate() + 4));
-const firstName = "recording 1";
-const secondName = "recording 2";
-const thirdName = "recording 3";
+const firstName = "flrr_recording 1";
+const secondName = "flrr_recording 2";
+const thirdName = "flrr_recording 3";
+const fourthName = "flrr_recording 3";
 const oldLocation = TestGetLocation(1);
 const newLocation = TestGetLocation(3);
 const elsewhereLocation = TestGetLocation(4);
@@ -247,7 +248,7 @@ describe("Fix location: subsequent recordings", () => {
  
       cy.log("Add new recording located elsewhere, dayFour - after lastRecordingTime"); 
       cy.log("and check recording created new station");
-      cy.testUploadRecording(deviceName, {...elsewhereLocation, time: dayFour}, thirdName)
+      cy.testUploadRecording(deviceName, {...elsewhereLocation, time: dayFour}, fourthName)
       .thenCheckStationIsNew(Josie)
       .then((newStation:TestNameAndId) => {
 
@@ -286,7 +287,7 @@ describe("Fix location: subsequent recordings", () => {
  
       cy.log("Add new recording located elsewhere, dayFour - after lastRecordingTime"); 
       cy.log("and check recording created new station");
-      cy.testUploadRecording(deviceName, {...elsewhereLocation, time: dayFour}, thirdName)
+      cy.testUploadRecording(deviceName, {...elsewhereLocation, time: dayFour}, fourthName)
       .thenCheckStationIsNew(Josie)
       .then((newStation:TestNameAndId) => {
 

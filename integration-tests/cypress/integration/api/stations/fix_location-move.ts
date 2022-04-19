@@ -83,6 +83,7 @@ describe("Device: fix-location of device and/or recordings", () => {
       expectedAutoStation.location = oldLocation;
       expectedAutoStation.activeAt = firstTime.toISOString();
       expectedAutoStation.lastThermalRecordingTime = fourthTime.toISOString();
+      expectedAutoStation.needsRename = true;
   
       expectedManualStation = JSON.parse(JSON.stringify(templateExpectedStation));
       expectedManualStation.location = newLocation;
@@ -264,7 +265,7 @@ describe("Device: fix-location of device and/or recordings", () => {
             cy.log("check device history updated to new location, station");
             expectedHistory[0]=TestCreateExpectedHistoryEntry(deviceName, group, NOT_NULL_STRING, null, "register", null);
             expectedHistory[1]=TestCreateExpectedHistoryEntry(deviceName, group, firstTime.toISOString(), newLocation, "user", getTestName(manualStationName));
-            expectedHistory[2]=TestCreateExpectedHistoryEntry(deviceName, group, fifthTime.toISOString(), newLocation, "user", getTestName(manualStationName));
+            expectedHistory[2]=TestCreateExpectedHistoryEntry(deviceName, group, fifthTime.toISOString(), newLocation, "automatic", getTestName(manualStationName));
             cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
             cy.log("check device location unchanged at new location");
@@ -541,6 +542,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               cy.log("check old station still defined, with lastRecordingTime=undefiend");
               delete(expectedOldStation.lastThermalRecordingTime);
               expectedOldStation.activeAt=beforeRecordings.toISOString();
+              expectedOldStation.location=oldLocation;
               cy.apiStationCheck(Josie, getTestName(oldStationName), expectedOldStation);
        
             });

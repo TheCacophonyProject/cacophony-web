@@ -264,7 +264,7 @@ Cypress.Commands.add(
   ):any => {
     let stationId: string;
     //Get station ID from name (unless we're asked not to)
-    if (additionalChecks["useRawStatonId"] === true) {
+    if (additionalChecks["useRawStationId"] === true) {
       stationId = stationIdOrName;
     } else {
       stationId = getCreds(getTestName(stationIdOrName)).id.toString();
@@ -312,6 +312,7 @@ export function TestCreateExpectedAutomaticStation(template: ApiStationResponse,
   expectedStation.location.lat=thisLocation.lat;
   expectedStation.location.lng=thisLocation.lng;
   expectedStation.automatic=true;
+  expectedStation.needsRename=true;
   expectedStation.lastThermalRecordingTime=recTime;
   delete(expectedStation.lastUpdatedById);
 

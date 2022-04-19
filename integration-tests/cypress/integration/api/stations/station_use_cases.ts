@@ -106,6 +106,7 @@ describe("Stations: use cases", () => {
     expectedAutoStation.location = location;
     expectedAutoStation.activeAt = oneWeekFromNow.toISOString();
     expectedAutoStation.lastThermalRecordingTime = oneWeekFromNow.toISOString();
+    expectedAutoStation.needsRename = true;
 
     const expectedManualStation = JSON.parse(JSON.stringify(templateExpectedStation));
     expectedManualStation.location = fixedLocation;
@@ -242,6 +243,7 @@ describe("Stations: use cases", () => {
 
     const expectedOldStation = JSON.parse(JSON.stringify(templateExpectedStation));
     expectedOldStation.location = oldLocation;
+    expectedOldStation.needsRename = true;
     expectedOldStation.activeAt = firstRecordingTime.toISOString();
     expectedOldStation.lastThermalRecordingTime = secondRecordingTime.toISOString();
 
@@ -431,6 +433,7 @@ describe("Stations: use cases", () => {
 
     const expectedAutoStation = JSON.parse(JSON.stringify(templateExpectedStation));
     expectedAutoStation.automatic = true;
+    expectedAutoStation.needsRename = true;
 
     const expectedManualStation = JSON.parse(JSON.stringify(templateExpectedStation));
     expectedManualStation.location = stationLocation;
