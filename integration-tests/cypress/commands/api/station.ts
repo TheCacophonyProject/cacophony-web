@@ -322,7 +322,7 @@ export function TestCreateExpectedAutomaticStation(
   expectedStation.location.lat = thisLocation.lat;
   expectedStation.location.lng = thisLocation.lng;
   expectedStation.automatic = true;
-  expectedStation.needsRename=true;
+  expectedStation.needsRename = true;
   expectedStation.lastThermalRecordingTime = recTime;
   delete expectedStation.lastUpdatedById;
 

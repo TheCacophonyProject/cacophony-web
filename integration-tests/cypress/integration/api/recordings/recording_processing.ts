@@ -692,8 +692,8 @@ describe("Recordings - processing tests", () => {
               start: 1,
               end: 4,
               id: 1,
-//              positions: [],
-// TODO enable after merge
+              //              positions: [],
+              // TODO enable after merge
               filtered: true,
               automatic: true,
             },
@@ -738,8 +738,8 @@ describe("Recordings - processing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
-//              positions: [],
-// TODO enable after merge
+                //              positions: [],
+                // TODO enable after merge
                 filtered: false,
                 automatic: true,
               },
@@ -830,8 +830,8 @@ describe("Recordings - processing tests", () => {
               start: 1,
               end: 4,
               id: 1,
-//              positions: [],
-// TODO enable after merge
+              //              positions: [],
+              // TODO enable after merge
               filtered: true,
               automatic: true,
             },
@@ -858,8 +858,8 @@ describe("Recordings - processing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
-//              positions: [],
-// TODO enable after merge
+                //              positions: [],
+                // TODO enable after merge
                 filtered: false,
                 automatic: true,
               },
@@ -1041,7 +1041,7 @@ describe("Recordings - processing tests", () => {
         },
       };
       //NOTE: loction no longer supported
-      
+
       //top level recording data
       const recording17 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(

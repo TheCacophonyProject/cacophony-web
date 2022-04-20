@@ -157,7 +157,6 @@ describe("Recordings - audio recording parameter tests", () => {
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording15");
     });
-
   });
 
   //TODO: Fails - issue 80

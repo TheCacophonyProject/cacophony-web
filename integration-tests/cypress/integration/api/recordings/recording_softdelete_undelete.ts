@@ -6,7 +6,11 @@ import {
   EXCLUDE_IDS_ARRAY,
 } from "@commands/constants";
 
-import { ApiRecordingSet, ApiRecordingColumns, TestNameAndId } from "@commands/types";
+import {
+  ApiRecordingSet,
+  ApiRecordingColumns,
+  TestNameAndId,
+} from "@commands/types";
 import { getCreds } from "@commands/server";
 
 import {
@@ -331,63 +335,61 @@ describe("Recordings: soft delete, undelete", () => {
     let expectedReportFromQuery1: ApiRecordingColumns;
 
     cy.log("Add recording as device");
-    cy.apiRecordingAdd(
-      "rsdCamera1",
-      recording1,
-      undefined,
-      "rsdRecording8"
-    ).thenCheckStationIsNew("rsdGroupAdmin")
-    .then((station:TestNameAndId) => {
-      expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rsdRecording8",
-        "rsdCamera1",
-        "rsdGroup",
-        station.name,
-        recording1,
-        false
-      );
-      // TODO: Isue 104: positions whould be returned or absent, but not empty
-      //expectedRecordingFromQuery1.tracks[0].positions = [];
+    cy.apiRecordingAdd("rsdCamera1", recording1, undefined, "rsdRecording8")
+      .thenCheckStationIsNew("rsdGroupAdmin")
+      .then((station: TestNameAndId) => {
+        expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "rsdRecording8",
+          "rsdCamera1",
+          "rsdGroup",
+          station.name,
+          recording1,
+          false
+        );
+        // TODO: Isue 104: positions whould be returned or absent, but not empty
+        //expectedRecordingFromQuery1.tracks[0].positions = [];
 
-      expectedReportFromQuery1 = TestCreateExpectedRecordingColumns(
-        "rsdRecording8",
-        "rsdCamera1",
-        "rsdGroup",
-        station.name,
-        recording1
-      );
-
-      cy.log("Soft-delete recording");
-      cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording8", HTTP_OK200, {
-        additionalParams: "{soft-delete: true}",
-      }).then(() => {
-        cy.log("Check returned when deleted requested by /recordings/?where=");
-        cy.apiRecordingsQueryCheck(
-          "rsdGroupAdmin",
-          { deleted: true, where: { id: getCreds("rsdRecording8").id } },
-          [expectedRecordingFromQuery1],
-          EXCLUDE_IDS_RECORDINGS
+        expectedReportFromQuery1 = TestCreateExpectedRecordingColumns(
+          "rsdRecording8",
+          "rsdCamera1",
+          "rsdGroup",
+          station.name,
+          recording1
         );
 
-        //check /recordings/count
-        cy.log("Check returned when deleted requested by /recordings/count");
-        cy.apiRecordingsCountCheck(
-          "rsdGroupAdmin",
-          { deleted: true, where: { id: getCreds("rsdRecording8").id } },
-          1
-        );
+        cy.log("Soft-delete recording");
+        cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording8", HTTP_OK200, {
+          additionalParams: "{soft-delete: true}",
+        }).then(() => {
+          cy.log(
+            "Check returned when deleted requested by /recordings/?where="
+          );
+          cy.apiRecordingsQueryCheck(
+            "rsdGroupAdmin",
+            { deleted: true, where: { id: getCreds("rsdRecording8").id } },
+            [expectedRecordingFromQuery1],
+            EXCLUDE_IDS_RECORDINGS
+          );
 
-        //check /recordings/report
-        cy.log("Check returned when deleted requested by /recordings/report");
-        cy.apiRecordingsReportCheck(
-          "rsdGroupAdmin",
-          { deleted: true, where: { id: getCreds("rsdRecording8").id } },
-          [expectedReportFromQuery1],
-          EXCLUDE_COLUMNS
-        );
+          //check /recordings/count
+          cy.log("Check returned when deleted requested by /recordings/count");
+          cy.apiRecordingsCountCheck(
+            "rsdGroupAdmin",
+            { deleted: true, where: { id: getCreds("rsdRecording8").id } },
+            1
+          );
+
+          //check /recordings/report
+          cy.log("Check returned when deleted requested by /recordings/report");
+          cy.apiRecordingsReportCheck(
+            "rsdGroupAdmin",
+            { deleted: true, where: { id: getCreds("rsdRecording8").id } },
+            [expectedReportFromQuery1],
+            EXCLUDE_COLUMNS
+          );
+        });
       });
-    });
   });
 
   it("Check default action is soft-delete", () => {

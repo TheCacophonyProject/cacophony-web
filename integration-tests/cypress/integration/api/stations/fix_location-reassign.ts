@@ -57,7 +57,7 @@ const elsewhereLocation = TestGetLocation(2);
 let expectedHistory: DeviceHistoryEntry[] = [];
 let count = 0;
 let group: string;
-let baseGroup:string = "fix_location_reassign_group"
+const baseGroup: string = "fix_location_reassign_group";
 const Josie = "Josie_reassign_stations";
 
 describe("Device: fix-location (reassign) recordings to correct station", () => {
@@ -1160,7 +1160,8 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
                 );
                 delete expectedOldStation.lastThermalRecordingTime;
                 expectedOldStation.activeAt = beforeRecordings.toISOString();
-                expectedOldStation.location=oldLocation;cy.apiStationCheck(
+                expectedOldStation.location = oldLocation;
+                cy.apiStationCheck(
                   Josie,
                   getTestName(oldStationName),
                   expectedOldStation

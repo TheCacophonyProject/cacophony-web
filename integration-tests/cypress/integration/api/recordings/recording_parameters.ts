@@ -313,7 +313,7 @@ describe("Recordings - parameter tests", () => {
       "oneframe.cptv",
       "rpaRecording9",
       HTTP_Unprocessable
-    )
+    );
   });
   it("Can read recordingDateTime from file if not provided", () => {
     const recording1 = TestCreateRecordingData(templateRecording);

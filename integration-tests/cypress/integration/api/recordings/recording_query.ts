@@ -29,9 +29,9 @@ import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
-  const queryHasPositions=false;
+  const queryHasPositions = false;
   //TODO enable after merge
- 
+
   //Do not validate IDs or additoonaMetadata
   //On test server, do not validate processingData, as recordings may be processed during test
   let EXCLUDE_PARAMS = [];

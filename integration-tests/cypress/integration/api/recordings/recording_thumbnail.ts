@@ -142,8 +142,8 @@ describe("Recording thumbnails", () => {
                   start: 1,
                   end: 4,
                   id: 1,
-//                  positions: [],
-// TODO enable after merge
+                  //                  positions: [],
+                  // TODO enable after merge
                   filtered: false,
                   automatic: true,
                 },
@@ -292,8 +292,8 @@ describe("Recording thumbnails", () => {
                   start: 1,
                   end: 4,
                   id: 1,
-//                  positions: [],
-// TODO: enable after merge
+                  //                  positions: [],
+                  // TODO: enable after merge
                   filtered: false,
                   automatic: true,
                 },

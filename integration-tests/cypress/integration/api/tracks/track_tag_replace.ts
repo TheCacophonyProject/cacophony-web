@@ -93,8 +93,8 @@ describe("Track Tags: replaceTag, check, delete", () => {
     id: NOT_NULL,
     filtered: true,
     automatic: false,
-//    positions: [],
-//    TODO: enable after merge
+    //    positions: [],
+    //    TODO: enable after merge
     tags: [],
   };
 

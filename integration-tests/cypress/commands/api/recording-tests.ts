@@ -516,7 +516,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   groupName: string,
   stationName: string,
   inputRecording: any,
-  includePositions: boolean = true,
+  includePositions: boolean = true
 ): T {
   const inputTrackData = inputRecording.metadata;
   const expected = JSON.parse(JSON.stringify(template));
@@ -667,7 +667,7 @@ export function trackResponseFromSet(
       const tpos = positionResponseFromSet(track.positions);
       const tpreddata = predictionResponseFromSet(track.predictions, models);
 
-      let newTrack: ApiTrackResponse = {
+      const newTrack: ApiTrackResponse = {
         id: -99,
         tags: [],
         start: track.start_s,
