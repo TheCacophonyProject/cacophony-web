@@ -12,7 +12,7 @@ import {
   checkMessages,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { ApiDevicesDevice, DeviceHistoryEntry } from "../types";
+import { ApiDevicesDevice, DeviceHistoryEntry, TestNameAndId } from "../types";
 import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
 import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
@@ -526,6 +526,82 @@ Cypress.Commands.add(
     });
   }
 );
+
+// Custom test functions
+
+
+Cypress.Commands.add(
+    "createDeviceStationRecordingAndFix",
+    (
+        userName:string,
+        deviceName: string,
+        stationName:string,
+        recName:string,
+        group: string,
+        oldLocation: LatLng,
+        newLocation: LatLng,
+        recTime: string,
+        stationTime: string,
+        move = true
+    ) =>  {
+      let fixLocation:LatLng;
+      let expectedLocation:LatLng;
+      let expectedHistory:DeviceHistoryEntry[]=[];
+
+      logTestDescription(
+          `Create device, station, recording & fix '${deviceName}' in group '${group}' with recName '${recName}'`,
+          {
+            userName: userName,
+            deviceName: deviceName,
+            stationName: stationName,
+            recName: recName,
+            group: group,
+            oldLocation: oldLocation,
+            newLocation: newLocation,
+            recTime: recTime,
+            stationTime: stationTime,
+            move: move
+          },
+          true
+      );
+      //set move=true to move the recording to new location
+      //set move=false to reassign recoridng to station, but keep old location
+      if (move==true) {
+        fixLocation=null;
+        expectedLocation=newLocation;
+      } else {
+        fixLocation=oldLocation;
+        expectedLocation=oldLocation;
+      }
+
+      cy.log( "Create a device now");
+      cy.apiDeviceAdd(deviceName, group).then(() => {;
+
+        // Initial device history entry added
+        expectedHistory[0]=TestCreateExpectedHistoryEntry(deviceName, group, NOT_NULL_STRING, null, "register", null);
+
+        cy.testUploadRecording(deviceName, {...oldLocation, time: new Date(recTime)}, recName)
+            .thenCheckStationIsNew(userName).then((autoStation:TestNameAndId) => {
+          //Device history for firstTime, oldLocation, autoStation added
+          expectedHistory[1]=TestCreateExpectedHistoryEntry(deviceName, group, recTime, oldLocation, "automatic", autoStation.name);
+
+          // USER ADDS STATION AND FIXES RECORDINGS
+
+          cy.log( "Create a new station");
+          cy.apiGroupStationAdd( userName, group, { name: stationName, ...newLocation }, stationTime).then((manualStationId:number ) => {
+
+            cy.log("Update first and subsequect recording's location to match manu  al station");
+            cy.apiDeviceFixLocation(userName, deviceName, recTime, manualStationId  .toString(), fixLocation, HTTP_OK200, { messages: ["Updated 1 recording(s)"],   useRawStationId: true}).  then(() => {
+              expectedHistory[1].stationId=manualStationId;
+              expectedHistory[1].location=expectedLocation;
+              expectedHistory[1].setBy="user";
+            });
+          });
+        });
+      });
+
+      cy.wrap(expectedHistory);
+    });
 
 export function TestCreateExpectedDevice(
   deviceName: string,

@@ -3,7 +3,7 @@ import { HTTP_Unprocessable, HTTP_OK200 } from "@commands/constants";
 
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
-import { ApiRecordingColumns, ApiRecordingSet } from "@commands/types";
+import { ApiRecordingColumns, ApiRecordingSet, TestNameAndId } from "@commands/types";
 
 import { getCreds } from "@commands/server";
 
@@ -153,12 +153,13 @@ describe("Recordings report using where", () => {
       recording1,
       undefined,
       "rreRecording1"
-    ).then(() => {
+    ).thenCheckStationIsNew("rreGroupAdmin")
+    .then((station:TestNameAndId) => {
       expectedRecording1 = TestCreateExpectedRecordingColumns(
         "rreRecording1",
         "rreCamera1",
         "rreGroup",
-        undefined,
+        station.name,
         recording1
       );
     });
@@ -167,12 +168,13 @@ describe("Recordings report using where", () => {
       recording2,
       undefined,
       "rreRecording2"
-    ).then(() => {
+    ).thenCheckStationIsNew("rreGroupAdmin")
+    .then((station:TestNameAndId) => {
       expectedRecording2 = TestCreateExpectedRecordingColumns(
         "rreRecording2",
         "rreCamera1",
         "rreGroup",
-        undefined,
+        station.name,
         recording2
       );
     });
@@ -181,12 +183,13 @@ describe("Recordings report using where", () => {
       recording3,
       undefined,
       "rreRecording3"
-    ).then(() => {
+    ).thenCheckStationIsNew("rreGroupAdmin")
+    .then((station:TestNameAndId) => {
       expectedRecording3 = TestCreateExpectedRecordingColumns(
         "rreRecording3",
         "rreCamera1b",
         "rreGroup",
-        undefined,
+        station.name,
         recording3
       );
     });
@@ -196,12 +199,13 @@ describe("Recordings report using where", () => {
       recording4,
       undefined,
       "rreRecording4"
-    ).then(() => {
+    ).thenCheckStationIsNew("rreGroupAdmin")
+    .then((station:TestNameAndId) => {
       expectedRecording4 = TestCreateExpectedRecordingColumns(
         "rreRecording4",
         "rreCamera1b",
         "rreGroup",
-        undefined,
+        station.name,
         recording4
       );
       cy.testUserTagRecording(
@@ -212,26 +216,48 @@ describe("Recordings report using where", () => {
       );
       expectedRecording4["Human Track Tags"] = "possum";
     });
-    for (let count = 0; count < 20; count++) {
-      const tempRecording = JSON.parse(JSON.stringify(recording1));
-      //recordingDateTime order different to id order to test sort on different parameters
-      tempRecording.recordingDateTime =
-        "2021-07-17T20:13:00." + (900 - count).toString() + "Z";
-      cy.apiRecordingAdd(
+
+    //upload one and get station
+    const tempRecording = JSON.parse(JSON.stringify(recording1));
+    //recordingDateTime order different to id order to test sort on different parameters
+    tempRecording.recordingDateTime =
+      "2021-07-17T20:13:00." + (900 - 0).toString() + "Z";
+    cy.apiRecordingAdd(
+      "rreCamera2",
+      tempRecording,
+      undefined,
+      "rreRecordingB0"
+    ).thenCheckStationIsNew("rreGroup2Admin").then((station:TestNameAndId) => {
+      expectedRecording[0] = TestCreateExpectedRecordingColumns(
+        "rreRecordingB0",
         "rreCamera2",
-        tempRecording,
-        undefined,
-        "rreRecordingB" + count.toString()
-      ).then(() => {
-        expectedRecording[count] = TestCreateExpectedRecordingColumns(
-          "rreRecordingB" + count.toString(),
+        "rreGroup2",
+        station.name,
+        tempRecording
+      );
+
+      //then upload the rest
+      for (let count = 1; count < 20; count++) {
+        const tempRecording = JSON.parse(JSON.stringify(recording1));
+        //recordingDateTime order different to id order to test sort on different parameters
+        tempRecording.recordingDateTime =
+          "2021-07-17T20:13:00." + (900 - count).toString() + "Z";
+        cy.apiRecordingAdd(
           "rreCamera2",
-          "rreGroup2",
+          tempRecording,
           undefined,
-          tempRecording
-        );
-      });
-    }
+          "rreRecordingB" + count.toString()
+        ).then(() => {
+          expectedRecording[count] = TestCreateExpectedRecordingColumns(
+            "rreRecordingB" + count.toString(),
+            "rreCamera2",
+            "rreGroup2",
+            station.name,
+            tempRecording
+          );
+        });
+      }
+    });
   });
 
   it("Group admin can view report on their device's recordings", () => {

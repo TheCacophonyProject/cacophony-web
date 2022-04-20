@@ -112,6 +112,7 @@ describe("Stations: use cases", () => {
     expectedAutoStation.location = location;
     expectedAutoStation.activeAt = oneWeekFromNow.toISOString();
     expectedAutoStation.lastThermalRecordingTime = oneWeekFromNow.toISOString();
+    expectedAutoStation.needsRename = true;
 
     const expectedManualStation = JSON.parse(
       JSON.stringify(templateExpectedStation)
@@ -390,6 +391,7 @@ describe("Stations: use cases", () => {
       JSON.stringify(templateExpectedStation)
     );
     expectedOldStation.location = oldLocation;
+    expectedOldStation.needsRename = true;
     expectedOldStation.activeAt = firstRecordingTime.toISOString();
     expectedOldStation.lastThermalRecordingTime =
       secondRecordingTime.toISOString();
@@ -399,8 +401,9 @@ describe("Stations: use cases", () => {
     );
     expectedNewStation.location = newLocation;
     expectedNewStation.activeAt = thirdRecordingTime.toISOString();
-    expectedNewStation.lastThermalRecordingTime =
-      thirdRecordingTime.toISOString();
+    expectedNewStation.lastThermalRecordingTime = thirdRecordingTime.toISOString();
+    expectedNewStation.needsRename = true;
+
 
     cy.apiDeviceAdd(deviceName, group).then(() => {
       cy.log("Check deviceHistory created as expected");
@@ -789,6 +792,7 @@ describe("Stations: use cases", () => {
       JSON.stringify(templateExpectedStation)
     );
     expectedAutoStation.automatic = true;
+    expectedAutoStation.needsRename = true;
 
     const expectedManualStation = JSON.parse(
       JSON.stringify(templateExpectedStation)

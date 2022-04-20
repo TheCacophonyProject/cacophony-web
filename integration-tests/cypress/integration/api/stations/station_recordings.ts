@@ -31,7 +31,7 @@ const templateExpectedStation = {
 };
 
 describe("Stations: assign recordings to stations", () => {
-  const Josie = "Josie_stations";
+  const Josie = "Josie_recordings_stations";
   const group = "recordings_stations";
   const group2 = "recordings_stations-2";
 
@@ -954,7 +954,7 @@ describe("Stations: assign recordings to stations", () => {
       group,
       { name: stationName, ...location },
       oneMonthAgo.toISOString()
-    ).then((stationId: number) => {
+    ).then(() => {
       cy.log("Check station created correctly");
       delete expectedStation1.lastAudioRecordingTime;
       delete expectedStation1.lastThermalRecordingTime;
