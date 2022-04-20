@@ -65,7 +65,7 @@ export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   processingMeta: null,
   GroupId: NOT_NULL,
   DeviceId: NOT_NULL,
-  StationId: null,
+  StationId: NOT_NULL,
   recordingDateTime: "2021-01-01T01:01:01.018Z",
   duration: 60,
   location: null,
@@ -142,7 +142,8 @@ export const TEMPLATE_AUDIO_TRACK: ApiTrackSet = {
       confident_tag: "morepork",
     },
   ],
-  positions: [],
+//  positions: [],
+//  TODO enable after merge
   automatic: true,
 };
 
@@ -154,15 +155,16 @@ export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
   id: NOT_NULL,
   filtered: false,
   automatic: true,
-  positions: [
-    {
-      x: 111,
-      y: 17,
-      width: 48,
-      height: 75,
-      order: NOT_NULL,
-    },
-  ],
+//  positions: [
+//    {
+//      x: 111,
+//      y: 17,
+//      width: 48,
+//      height: 75,
+//      order: NOT_NULL,
+//    },
+//  ],
+// TODO enable after merge
   tags: [
     {
       what: "morepork",
@@ -227,16 +229,17 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
   id: NOT_NULL,
   filtered: false,
   automatic: true,
-  positions: [
-    {
-      x: 111,
-      y: 17,
-      width: 48,
-      height: 75,
-      //frameNumber: 44, FIXME: PATRICK: Remove once GPs changes integrated
-      order: NOT_NULL,
-    },
-  ],
+// TODO enable after merge 
+//  positions: [
+//    {
+//      x: 111,
+//      y: 17,
+//      width: 48,
+//      height: 75,
+//      //frameNumber: 44, FIXME: PATRICK: Remove once GPs changes integrated
+//      order: NOT_NULL,
+//    },
+//  ],
   tags: [
     {
       what: "cat",
@@ -281,7 +284,7 @@ export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {
   additionalMetadata: {
     algorithm: 31143,
     previewSecs: 5,
-    totalFrames: 141,
+    totalFrames: 5,
   },
   metadata: {
     tracks: [TEMPLATE_TRACK],
@@ -313,7 +316,7 @@ export const TEMPLATE_THERMAL_RECORDING_PROCESSING: ApiRecordingForProcessing =
     processingMeta: null,
     GroupId: NOT_NULL,
     DeviceId: NOT_NULL,
-    StationId: null,
+    StationId: NOT_NULL,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
     location: null,

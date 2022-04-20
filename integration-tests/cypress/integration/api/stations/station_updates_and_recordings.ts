@@ -63,7 +63,7 @@ const templateExpectedStation = {
 };
 
 describe("Stations: station updates also update recordings", () => {
-  const Josie = "Josie_stations";
+  const Josie = "Josie_update_recordings_stations";
   const group = "recordings_updates_stations";
   const group2 = "recordings_updates_stations-2";
 

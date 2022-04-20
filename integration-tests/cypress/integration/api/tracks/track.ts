@@ -9,6 +9,7 @@ import { ApiRecordingSet } from "@commands/types";
 import {
   TestCreateRecordingData,
   predictionResponseFromSet,
+  positionResponseFromSet,
 } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
@@ -247,7 +248,8 @@ describe("Tracks: add, check, delete", () => {
       id: -99,
       start: 4,
       end: 7,
-      positions: [],
+//      positions: [],
+//      TODO enable after merge
       tags: [],
       filtered: true,
       automatic: true,
@@ -391,7 +393,9 @@ describe("Tracks: add, check, delete", () => {
       recording1.metadata.tracks[0].predictions,
       recording1.metadata.models
     )[0];
-
+    expectedTrack.positions=positionResponseFromSet(recording1.metadata.tracks[0].positions);
+    //TODO enable after merge
+   
     cy.log("Add recording as device");
     cy.apiRecordingAdd("trkCamera1", recording1, undefined, "trkRecording9");
 

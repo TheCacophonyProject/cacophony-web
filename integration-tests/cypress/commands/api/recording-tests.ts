@@ -466,7 +466,7 @@ export function TestCreateExpectedRecordingColumns(
   expected.Group = getTestName(groupName);
   expected.Device = getTestName(deviceName);
   if (stationName !== undefined) {
-    expected.Station = getTestName(stationName);
+    expected.Station = stationName;
   } else {
     expected.Station = "";
   }
@@ -514,7 +514,8 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   deviceName: string,
   groupName: string,
   stationName: string,
-  inputRecording: any
+  inputRecording: any,
+  includePositions: boolean = true,
 ): T {
   const inputTrackData = inputRecording.metadata;
   const expected = JSON.parse(JSON.stringify(template));
@@ -599,7 +600,8 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputTrackData) {
     expected.tracks = trackResponseFromSet(
       inputTrackData.tracks,
-      inputTrackData.models
+      inputTrackData.models,
+      includePositions
     );
   }
 
@@ -609,7 +611,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   return removeUndefinedParams(expected);
 }
 
-function positionResponseFromSet(positions) {
+export function positionResponseFromSet(positions) {
   const tps = [];
   positions.forEach((tp) => {
     const newTp = {};
@@ -654,7 +656,8 @@ export function predictionResponseFromSet(
 
 export function trackResponseFromSet(
   tracks: ApiTrackSet[],
-  models: ApiRecordingModel[]
+  models: ApiRecordingModel[],
+  includePositions: boolean = true
 ) {
   const expected: ApiTrackResponse[] = [];
   if (tracks) {
@@ -663,15 +666,18 @@ export function trackResponseFromSet(
       const tpos = positionResponseFromSet(track.positions);
       const tpreddata = predictionResponseFromSet(track.predictions, models);
 
-      const newTrack: ApiTrackResponse = {
+      let newTrack: ApiTrackResponse = {
         id: -99,
         tags: [],
         start: track.start_s,
         end: track.end_s,
-        positions: tpos,
         filtered: false,
         automatic: true,
       };
+      if (includePositions) {
+        newTrack.positions = tpos;
+      }
+
       if (
         track.predictions &&
         track.predictions.length &&

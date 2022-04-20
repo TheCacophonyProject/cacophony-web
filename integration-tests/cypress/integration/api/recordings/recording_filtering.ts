@@ -844,8 +844,9 @@ describe("Recording fitering", () => {
     });
   });
 
+  //TODO enable after merge
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    it("Verify manual tag overrides automatic tag (not filtered)", () => {
+    it.skip("Verify manual tag overrides automatic tag (not filtered)", () => {
       //Recording with no tracks
       const recording20: ApiRecordingSet = JSON.parse(
         JSON.stringify(TEMPLATE_THERMAL_RECORDING)
@@ -932,7 +933,7 @@ describe("Recording fitering", () => {
   }
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    it("Verify manual tag overrides automatic tag (filtered)", () => {
+    it.skip("Verify manual tag overrides automatic tag (filtered)", () => {
       //Recording with no tracks
       const recording21: ApiRecordingSet = JSON.parse(
         JSON.stringify(TEMPLATE_THERMAL_RECORDING)

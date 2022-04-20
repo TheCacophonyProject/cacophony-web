@@ -29,7 +29,9 @@ import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
-
+  const queryHasPositions=false;
+  //TODO enable after merge
+ 
   //Do not validate IDs or additoonaMetadata
   //On test server, do not validate processingData, as recordings may be processed during test
   let EXCLUDE_PARAMS = [];
@@ -129,7 +131,8 @@ describe("Recordings query using where", () => {
           "rqCamera1",
           "rqGroup",
           null,
-          recording1
+          recording1,
+          false
         );
         cy.apiRecordingAdd(
           "rqCamera1",
@@ -143,7 +146,8 @@ describe("Recordings query using where", () => {
             "rqCamera1",
             "rqGroup",
             null,
-            recording2
+            recording2,
+            false
           );
           expectedRecording2.processingState = RecordingProcessingState.Corrupt;
 
@@ -159,7 +163,8 @@ describe("Recordings query using where", () => {
               "rqCamera1b",
               "rqGroup",
               null,
-              recording3
+              recording3,
+              false
             );
             // TODO Issue 103:These parameters missing from result. If we
             // never return them, why do we have them?
@@ -184,7 +189,8 @@ describe("Recordings query using where", () => {
                 "rqCamera1b",
                 "rqGroup",
                 null,
-                recording4
+                recording4,
+                false
               );
 
               expectedRecording4.processingState =
@@ -213,9 +219,10 @@ describe("Recordings query using where", () => {
               // TODO Issue 104:  positions returned as [] blank even
               // where they exist.  If we don't support this parameter, do
               // not return it at all
-              expectedRecording1.tracks[0].positions = [];
-              expectedRecording2.tracks[0].positions = [];
-              expectedRecording4.tracks[0].positions = [];
+              // TODO enable after merge
+              //expectedRecording1.tracks[0].positions = [];
+              //expectedRecording2.tracks[0].positions = [];
+              //expectedRecording4.tracks[0].positions = [];
 
               cy.apiRecordingsQueryCheck(
                 "rqGroupAdmin",
@@ -263,12 +270,14 @@ describe("Recordings query using where", () => {
           "rqCamera2",
           "rqGroup2",
           null,
-          tempRecording
+          tempRecording,
+          false
         );
         // TODO Issue 104:  positions returned as [] blank even
         // where they exist.  If we don't support this parameter, do
         // not return it at all
-        expectedRecording[count].tracks[0].positions = [];
+        // TODO enable after merge
+        //expectedRecording[count].tracks[0].positions = [];
       });
     }
   });

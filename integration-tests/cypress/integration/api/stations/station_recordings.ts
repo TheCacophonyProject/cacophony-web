@@ -39,7 +39,7 @@ const templateExpectedStation = {
 };
 
 describe("Stations: assign recordings to stations", () => {
-  const Josie = "Josie_stations";
+  const Josie = "Josie_recordings_stations";
   const group = "recordings_stations";
   const group2 = "recordings_stations-2";
 

@@ -97,7 +97,8 @@ describe("Recording thumbnails", () => {
           "rtCamera1",
           "rtGroup",
           null,
-          recording01
+          recording01,
+          false
         );
 
         cy.log("Send for processing");
@@ -141,7 +142,8 @@ describe("Recording thumbnails", () => {
                   start: 1,
                   end: 4,
                   id: 1,
-                  positions: [],
+//                  positions: [],
+// TODO enable after merge
                   filtered: false,
                   automatic: true,
                 },
@@ -290,7 +292,8 @@ describe("Recording thumbnails", () => {
                   start: 1,
                   end: 4,
                   id: 1,
-                  positions: [],
+//                  positions: [],
+// TODO: enable after merge
                   filtered: false,
                   automatic: true,
                 },

@@ -251,6 +251,8 @@ describe("Stations: use cases", () => {
     expectedNewStation.location = newLocation;
     expectedNewStation.activeAt = thirdRecordingTime.toISOString();
     expectedNewStation.lastThermalRecordingTime = thirdRecordingTime.toISOString();
+    expectedNewStation.needsRename = true;
+
 
     cy.apiDeviceAdd(deviceName, group).then(() => {;
 

@@ -44,7 +44,7 @@ const templateExpectedStation = {
 };
 
 describe("Fix location: subsequent recordings", () => {
-  const Josie = "Josie_stations";
+  const Josie = "Josie_reassign_rec_stations";
 
   before(() => {
     cy.apiUserAdd(Josie);

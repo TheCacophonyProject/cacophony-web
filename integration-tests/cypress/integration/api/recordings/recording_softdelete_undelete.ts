@@ -6,7 +6,7 @@ import {
   EXCLUDE_IDS_ARRAY,
 } from "@commands/constants";
 
-import { ApiRecordingSet, ApiRecordingColumns } from "@commands/types";
+import { ApiRecordingSet, ApiRecordingColumns, TestNameAndId } from "@commands/types";
 import { getCreds } from "@commands/server";
 
 import {
@@ -70,10 +70,11 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdCamera1",
         "rsdGroup",
         null,
-        recording1
+        recording1,
+        false
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Soft delete recording");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording1", HTTP_OK200, {
@@ -133,10 +134,11 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdCamera1",
         "rsdGroup",
         null,
-        recording1
+        recording1,
+        false
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Soft delete recording");
       cy.apiRecordingDelete("rsdGroupMember", "rsdRecording2", HTTP_OK200, {
@@ -235,10 +237,11 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdCamera1",
         "rsdGroup",
         null,
-        recording1
+        recording1,
+        false
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Member of a different group cannot soft delete recording");
       cy.apiRecordingDelete("rsdGroup2Admin", "rsdRecording6", HTTP_Forbidden);
@@ -333,23 +336,25 @@ describe("Recordings: soft delete, undelete", () => {
       recording1,
       undefined,
       "rsdRecording8"
-    ).then(() => {
+    ).thenCheckStationIsNew("rsdGroupAdmin")
+    .then((station:TestNameAndId) => {
       expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
         "rsdRecording8",
         "rsdCamera1",
         "rsdGroup",
-        null,
-        recording1
+        station.name,
+        recording1,
+        false
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       expectedReportFromQuery1 = TestCreateExpectedRecordingColumns(
         "rsdRecording8",
         "rsdCamera1",
         "rsdGroup",
-        undefined,
+        station.name,
         recording1
       );
 
@@ -402,10 +407,11 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdCamera1",
         "rsdGroup",
         null,
-        recording1
+        recording1,
+        false
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
-      expectedRecordingFromQuery1.tracks[0].positions = [];
+      //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Delete recording without specifying soft/hard delete");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording9").then(() => {

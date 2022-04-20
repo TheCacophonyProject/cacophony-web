@@ -3,7 +3,7 @@
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
-import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
+import { HTTP_OK200, HTTP_Forbidden, NOT_NULL_STRING } from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import { DeviceType } from "@typedefs/api/consts";
 
@@ -129,6 +129,7 @@ describe("Groups - get devices for group", () => {
         active: true,
         admin: true,
         type: DeviceType.Unknown,
+        lastConnectionTime: NOT_NULL_STRING
       };
       expectedDevice4b = {
         id: getCreds("gdCam4b").id,
@@ -139,6 +140,7 @@ describe("Groups - get devices for group", () => {
         active: true,
         admin: true,
         type: DeviceType.Unknown,
+        lastConnectionTime: NOT_NULL_STRING
       };
 
       cy.log(

@@ -61,8 +61,8 @@ const elsewhereLocation = TestGetLocation(2);
 let expectedHistory:DeviceHistoryEntry[]=[];
 let count=0;
 let group:string;
-let baseGroup:string = "fix_location_group"
-const Josie = "Josie_stations";
+let baseGroup:string = "fix_location_reassign_group"
+const Josie = "Josie_reassign_stations";
 
 describe("Device: fix-location (reassign) recordings to correct station", () => {
   before(() => { 
