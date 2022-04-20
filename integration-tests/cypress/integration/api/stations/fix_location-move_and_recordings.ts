@@ -67,7 +67,7 @@ describe("Fix location: subsequent recordings", () => {
 
   // Adding recordings after a REASSIGN
 
-  it("Move recording: add new recording on same place, after lastRecTime", () => {
+  it("Move recording: add new recording in same place, after lastRecTime", () => {
     const deviceName = "update-device-10";
     const manualStationName = "Josie-station-10";
    
@@ -133,7 +133,7 @@ describe("Fix location: subsequent recordings", () => {
     //reassign recording from auto station to manual station
     cy.createDeviceStationRecordingAndFix(Josie, deviceName, manualStationName, secondName, group, oldLocation, newLocation, dayTwo.toISOString(), dayOne.toISOString(), true).then((expectedHistory:DeviceHistoryEntry[]) => {
  
-      cy.log("Add new recording in same place, before manual station creation time"); 
+      cy.log("Add new recording in same place, day0 - before manual station creation time"); 
       cy.log("and check recording creates a new station");
       cy.testUploadRecording(deviceName, {...newLocation, time: dayZero}, firstName)
       .thenCheckStationIsNew(Josie)

@@ -6,7 +6,6 @@ import {
 import { TestGetLocation } from "@commands/api/station";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 import { TestCreateExpectedDevice } from "@commands/api/device";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import {
   getCreds,
 } from "@commands/server";
@@ -24,10 +23,10 @@ import {
 import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { DeviceType } from "@typedefs/api/consts";
+let count=0;
+let group:string;
+let baseGroup:string = "station_use_case_group"
 
-const templateExpectedCypressRecording: ApiThermalRecordingResponse = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
-);
 
 const templateExpectedStation = {
   location,
@@ -44,17 +43,18 @@ const templateExpectedStation = {
 
 describe("Stations: use cases", () => {
   const Josie = "Josie_stations";
-  const group = "use_cases_group"
-  const group2 = "use_cases_group2";
 
   before(() => {
-    cy.testCreateUserAndGroup(Josie, group).then(() => {
-      templateExpectedCypressRecording.groupId=getCreds(group).id;
-      templateExpectedCypressRecording.groupName=getTestName(group);
+    cy.apiUserAdd(Josie);
+  });
+
+  beforeEach(() => {
+    count=count+1;
+    group=baseGroup+count.toString();
+    cy.apiGroupAdd(Josie, group).then(() => {
       templateExpectedStation.groupId = getCreds(group).id;
       templateExpectedStation.groupName = getTestName(group);
     });
-    cy.apiGroupAdd(Josie, group2);
   });
 
   it("Use case: camera deployed without setting location, create manual station and move recordings to it", () => {
@@ -118,7 +118,7 @@ describe("Stations: use cases", () => {
     cy.apiDeviceAdd(deviceName, group).then(() => {; 
 
       cy.log("Check deviceHistory created as expected");
-      expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, NOT_NULL_STRING, null, "register", null));
+      expectedHistory[0]=TestCreateExpectedHistoryEntry(deviceName, group, NOT_NULL_STRING, null, "register", null);
       cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
       cy.log("Check device location is blank");
@@ -139,7 +139,7 @@ describe("Stations: use cases", () => {
         cy.apiDeviceInGroupCheck(Josie, deviceName, group, null, expectedDevice);
 
         cy.log("Check device history is updated as expected");
-        expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, oneWeekFromNow.toISOString(), location, "automatic", autoStation.name));
+        expectedHistory[1]=TestCreateExpectedHistoryEntry(deviceName, group, oneWeekFromNow.toISOString(), location, "automatic", autoStation.name);
         cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
         ///Now we create a station and correct the recording to use that station & location
@@ -184,7 +184,7 @@ describe("Stations: use cases", () => {
                   .thenCheckStationIsNew(Josie).then((station2:TestNameAndId) => {
 
                   cy.log("Check new device history entry added");
-                  expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, twoWeeksFromNow.toISOString(), movedLocation, "automatic", station2.name));
+                  expectedHistory[2]=TestCreateExpectedHistoryEntry(deviceName, group, twoWeeksFromNow.toISOString(), movedLocation, "automatic", station2.name);
                   cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
                 });
               });
@@ -257,7 +257,7 @@ describe("Stations: use cases", () => {
     cy.apiDeviceAdd(deviceName, group).then(() => {;
 
       cy.log("Check deviceHistory created as expected");
-      expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, NOT_NULL_STRING, null, "register", null));
+      expectedHistory[0]=TestCreateExpectedHistoryEntry(deviceName, group, NOT_NULL_STRING, null, "register", null);
       cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
       cy.log("Check device location is blank");
@@ -282,7 +282,7 @@ describe("Stations: use cases", () => {
         cy.apiStationCheck(Josie, oldStation.name, expectedOldStation);
 
         cy.log("Check deviceHistory updated as expected");
-        expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, firstRecordingTime.toISOString(), oldLocation, "automatic", oldStation.name));
+        expectedHistory[1]=TestCreateExpectedHistoryEntry(deviceName, group, firstRecordingTime.toISOString(), oldLocation, "automatic", oldStation.name);
         cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
         cy.log("Check device location updated to match recording location");
@@ -337,7 +337,7 @@ describe("Stations: use cases", () => {
             cy.apiStationCheck(Josie, newStation.name, expectedNewStation);
        
             cy.log("Check new deviceHistory entry created");
-            expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, thirdRecordingTime.toISOString(), newLocation, "automatic", newStation.name));
+            expectedHistory[2]=TestCreateExpectedHistoryEntry(deviceName, group, thirdRecordingTime.toISOString(), newLocation, "automatic", newStation.name);
             cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
             // now correct the second recording to be where it should be - third recording location
@@ -369,7 +369,8 @@ describe("Stations: use cases", () => {
               cy.apiStationCheck(Josie, newStation.name, expectedNewStation);
 
               cy.log("Check device history updated correctly");
-              expectedHistory[2]=TestCreateExpectedHistoryEntry(deviceName, group, secondRecordingTime.toISOString(), newLocation, "user", newStation.name);
+              //TODO this creates a new entry rather than updating the existing one ... is this correct?
+              expectedHistory[3]=TestCreateExpectedHistoryEntry(deviceName, group, secondRecordingTime.toISOString(), newLocation, "user", newStation.name);
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
             });
@@ -446,7 +447,7 @@ describe("Stations: use cases", () => {
 
     cy.apiDeviceAdd(deviceName, group).then(() => {
       cy.log("Check deviceHistory created as expected");
-      expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, NOT_NULL_STRING, null, "register", null));
+      expectedHistory[0]=TestCreateExpectedHistoryEntry(deviceName, group, NOT_NULL_STRING, null, "register", null);
       cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
       cy.log("Check device location is blank");
@@ -483,7 +484,7 @@ describe("Stations: use cases", () => {
           cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
 
           cy.log("Check device history entry created");
-          expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, firstRecordingTime.toISOString(), firstRecordingLocation, "automatic", autoStation.name));
+          expectedHistory[1]=TestCreateExpectedHistoryEntry(deviceName, group, firstRecordingTime.toISOString(), firstRecordingLocation, "automatic", autoStation.name);
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
  
           cy.log( "Re-assign recording to the correct station preserving recording locations");
@@ -544,7 +545,7 @@ describe("Stations: use cases", () => {
                 cy.apiRecordingCheck(Josie, thirdRecordingName, expectedMovedDeviceRecording, EXCLUDE_IDS);
 
                 cy.log("Check new device history entry created");
-                expectedHistory.push(TestCreateExpectedHistoryEntry(deviceName, group, thirdRecordingTime.toISOString(), thirdRecordingLocation, "automatic", movedStation.name));
+                expectedHistory[2]=TestCreateExpectedHistoryEntry(deviceName, group, thirdRecordingTime.toISOString(), thirdRecordingLocation, "automatic", movedStation.name);
                 cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
                 cy.log( "Make sure the device location is updated to thirdRecordingLocation");
