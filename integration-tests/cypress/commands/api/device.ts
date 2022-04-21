@@ -541,11 +541,13 @@ Cypress.Commands.add(
     newLocation: LatLng,
     recTime: string,
     stationTime: string,
-    move = true
+    move = true,
+    additionalRecTime?: string
   ) => {
     let fixLocation: LatLng;
     let expectedLocation: LatLng;
     const expectedHistory: DeviceHistoryEntry[] = [];
+    let expectedMessage="Updated 1 recording(s)";
 
     logTestDescription(
       `Create device, station, recording & fix '${deviceName}' in group '${group}' with recName '${recName}'`,
@@ -603,7 +605,17 @@ Cypress.Commands.add(
             autoStation.name
           );
 
+          if(additionalRecTime) {
+            cy.testUploadRecording(
+              deviceName,
+              { ...oldLocation, time: new Date(additionalRecTime) },
+              recName
+            );
+            expectedMessage="Updated 2 recording(s)";
+          };
+
           // USER ADDS STATION AND FIXES RECORDINGS
+
 
           cy.log("Create a new station");
           cy.apiGroupStationAdd(
@@ -623,7 +635,7 @@ Cypress.Commands.add(
               manualStationId.toString(),
               fixLocation,
               HTTP_OK200,
-              { messages: ["Updated 1 recording(s)"], useRawStationId: true }
+              { messages: [expectedMessage], useRawStationId: true }
             ).then(() => {
               expectedHistory[1].stationId = manualStationId;
               expectedHistory[1].location = expectedLocation;

@@ -170,7 +170,8 @@ declare namespace Cypress {
       newLocation: LatLng,
       recTime: string,
       stationTime: string,
-      move: boolean
+      move?: boolean,
+      additionalRecTime?: string,
     ): any;
   }
 }

@@ -62,10 +62,27 @@ describe("Fix location: subsequent recordings", () => {
       expectedManualStation.groupId = getCreds(group).id;
       expectedManualStation.groupName = getTestName(group);
     });
+
+    cy.log(`Day Zero ${dayZero.toISOString()}`);
+    cy.log(`Day One ${dayOne.toISOString()}`);
+    cy.log(`Day Two ${dayTwo.toISOString()}`);
+    cy.log(`Day Three ${dayThree.toISOString()}`);
+    cy.log(`Day Four ${dayFour.toISOString()}`);
+
+    cy.log(`Old location ${JSON.stringify(oldLocation)}`);
+    cy.log(`New location ${JSON.stringify(newLocation)}`);
+    cy.log(`Elsewhere location ${JSON.stringify(elsewhereLocation)}`);
   });
 
   // Adding recordings after a REASSIGN
 
+ /* User adds a recording in same location as last moved recording location 
+  * after lastRecTime:
+  * -> existing station: lastRec Time updated
+  * -> deviceHistory: unchanged
+  * -> recording: uses location as uploaded, uses corrected station
+  * -> device location remains at updated location
+  */
   it("Move recording: add new recording in same place, after lastRecTime", () => {
     const deviceName = "update-device-10";
     const manualStationName = "Josie-station-10";
@@ -104,7 +121,7 @@ describe("Fix location: subsequent recordings", () => {
             expectedManualStation
           );
 
-          cy.log("Check devicehistory unchanged by new recording");
+          cy.log("Check deviceHistory unchanged by new recording");
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
           cy.log("check device location still at new location");
@@ -126,6 +143,12 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
+ /* User adds a recording in same location as last moved recording location, before firstRec:
+  * -> existing station: unchanged
+  * -> deviceHistory: new entry for the new earlier recording
+  * -> recording: uses location as uploaded, creates new station
+  * -> device location remains at updated location
+  */
   it("Move recording: add new recording in same place, before lastRecTime", () => {
     const deviceName = "update-device-11";
     const manualStationName = "Josie-station-11";
@@ -192,6 +215,12 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
+ /* User adds a recording in same location as last moved recording location, before station creation:
+  * -> existing station: unchanged
+  * -> deviceHistory: new entry created for earlier recording
+  * -> recording: uses location as uploaded, creates new automatic station
+  * -> device location remains at updated location
+  */
   it("Move recording: add new recording in same place, before station creation time", () => {
     const deviceName = "update-device-12";
     const manualStationName = "Josie-station-12";
@@ -261,6 +290,14 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
+
+ /* User adds a recording in a different location to last moved recording
+  * after lastRecTime:
+  * -> existing station: unchanged
+  * -> deviceHistory: new entry for new location
+  * -> recording: uses location as uploaded, creates new auto station
+  * -> device: location updated to different location
+  */
   it("Move recording: add new recording on different place, after lastRecTime", () => {
     const deviceName = "update-device-13";
     const manualStationName = "Josie-station-13";
@@ -296,7 +333,7 @@ describe("Fix location: subsequent recordings", () => {
           );
 
           cy.log(
-            "Check deviceHistory has new entry for new recording locvation"
+            "Check deviceHistory has new entry for new recording location"
           );
           expectedHistory[2] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -327,6 +364,13 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
+ /* User adds a recording in a different location to last moved recording
+  * before lastRecTime:
+  * -> existing station: unchanged
+  * -> deviceHistory: new entry for new location
+  * -> recording: uses location as uploaded, creates new auto station
+  * -> device: location unchanged at updated location
+  */
   it("Move recording: add new recording in different place, before lastRecTime", () => {
     const deviceName = "update-device-15";
     const manualStationName = "Josie-station-15";
@@ -393,6 +437,13 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
+ /* User adds a recording in a different location to last moved recording
+  * before station creation time:
+  * -> existing station: unchanged
+  * -> deviceHistory: new entry for new location
+  * -> recording: uses location as uploaded, creates new auto station
+  * -> device: location unchanged at updated location
+  */
   it("Move recording: add new recording in different place, before station creation time", () => {
     const deviceName = "update-device-16";
     const manualStationName = "Josie-station-16";
@@ -424,7 +475,7 @@ describe("Fix location: subsequent recordings", () => {
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
-          cy.log("Check manual station changed by prior recording");
+          cy.log("Check manual station unchanged by prior recording");
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
@@ -432,7 +483,7 @@ describe("Fix location: subsequent recordings", () => {
           );
 
           cy.log(
-            "Check new devicehistory entry created (automatically) by new recording"
+            "Check new deviceHistory entry created (automatically) by new recording"
           );
           expectedHistory[2] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -463,7 +514,15 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
-  it("Move recording: after subsequent new location & recordings, add past recordings in same location after lastRecTime for that location", () => {
+ /* After subsequent new recordings located elsewhere, user adds a recording in 
+  * same location as moved recording after lastRecTime for that earlier location:
+  * -> existing moved station: lastRecTime updated
+  * -> existing later station: unchanged
+  * -> deviceHistory: unchanged
+  * -> recording: uses location as uploaded, uses updated staion
+  * -> device: location unchanged at elsewhere location
+  */
+  it("Move recording: after subsequent recordings located elsewhere, add past recordings in moved location after lastRecTime for that location", () => {
     const deviceName = "update-device-17";
     const manualStationName = "Josie-station-17";
 
@@ -544,19 +603,18 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
-  //TODO: FAILS - Issue 3.  Later deviceHistory changed by fix - updates to earlier entry
-  it("Move recording: after subsequent new location & recordings, add past recordings in same location before lastRecTime for that location", () => {
+ /* After subsequent new recordings located elsewhere, user adds a recording in 
+  * same location as moved recording before lastRecTime for that earlier location:
+  * -> existing moved station: unchanged
+  * -> existing later station: unchanged
+  * -> deviceHistory: unchanged
+  * -> recording: uses location as uploaded, uses existing updated station
+  * -> device: location unchanged at elsewhere loction
+  */
+  it("Move recording: after subsequent recordings located elsewhere, add past recordings in moved location before lastRecTime for that location", () => {
     const deviceName = "update-device-18";
     const manualStationName = "Josie-station-18";
 
-    cy.log(`Day Zero ${dayZero.toISOString()}`);
-    cy.log(`Day One ${dayOne.toISOString()}`);
-    cy.log(`Day Two ${dayTwo.toISOString()}`);
-    cy.log(`Day Three ${dayThree.toISOString()}`);
-    cy.log(`Day Four ${dayFour.toISOString()}`);
-
-    cy.log(`Old location ${JSON.stringify(oldLocation)}`);
-    cy.log(`New location ${JSON.stringify(newLocation)}`);
     //create device and station at dayZero, recording at dayTwo.
     //reassign recording from auto station to manual station
     cy.createDeviceStationRecordingAndFix(
@@ -646,4 +704,169 @@ describe("Fix location: subsequent recordings", () => {
         });
     });
   });
+
+  /* User adds a recording in same location as last moved recording location, between firstRec and lastRec:
+  * -> existing station: unchanged
+  * -> deviceHistory: unchanged
+  * -> recording: uses uploaded location, uses corrected station
+  * -> device location remains at updated location
+  */
+  it("Move recording: add new recording in same place, between first and lastRecordingTime", () => {
+    const deviceName = "update-device-19";
+    const manualStationName = "Josie-station-19";
+
+    //create device and station at dayOne, recordings at dayTwo and day4.
+    //reassign recording from auto station to manual station
+    cy.createDeviceStationRecordingAndFix(
+      Josie,
+      deviceName,
+      manualStationName,
+      secondName,
+      group,
+      oldLocation,
+      newLocation,
+      dayTwo.toISOString(),
+      dayOne.toISOString(),
+      true,
+      dayFour.toISOString()
+    ).then((expectedHistory: DeviceHistoryEntry[]) => {
+      cy.log(
+        "Add new recording in same place, day3 - in middle of existing recordings"
+      );
+      cy.log("and check recording uses existing station");
+      cy.testUploadRecording(
+        deviceName,
+        { ...newLocation, time: dayThree },
+        firstName
+      )
+        .thenCheckStationNameIs(Josie, getTestName(manualStationName))
+        .then(() => {
+          cy.log("Check manual station unchanged");
+          expectedManualStation.activeAt = dayOne.toISOString();
+          cy.apiStationCheck(
+            Josie,
+            getTestName(manualStationName),
+            expectedManualStation
+          );
+
+          cy.log(
+            "Check devicehistory unchanged"
+          );
+          cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
+
+          cy.log("check device location still at new location");
+          const expectedDevice = TestCreateExpectedDevice(
+            deviceName,
+            group,
+            true,
+            DeviceType.Thermal
+          );
+          expectedDevice.location = newLocation;
+          cy.apiDeviceInGroupCheck(
+            Josie,
+            deviceName,
+            group,
+            null,
+            expectedDevice
+          );
+        });
+    });
+  });
+
+ /* After subsequent new recordings located elsewhere, user adds a recording in 
+  * same location as moved recording between first & last RecTime for that 
+  * earlier location:
+  * -> existing moved station: unchanged
+  * -> existing later station: unchanged
+  * -> deviceHistory: unchanged
+  * -> recording: uses location as uploaded, uses existing updated station
+  * -> device: location unchanged at elsewhere loction
+  */
+  it("Move recording: after subsequent recordings located elsewhere, add past recordings in moved location between first and lastRecTime for that location", () => {
+    const deviceName = "update-device-20";
+    const manualStationName = "Josie-station-20";
+
+    //create device and station at dayZero, recordings at dayOne and dayThree.
+    //reassign recording from auto station to manual station
+    cy.createDeviceStationRecordingAndFix(
+      Josie,
+      deviceName,
+      manualStationName,
+      secondName,
+      group,
+      oldLocation,
+      newLocation,
+      dayOne.toISOString(),
+      dayZero.toISOString(),
+      true,
+      dayThree.toISOString()
+    ).then((expectedHistory: DeviceHistoryEntry[]) => {
+      cy.log(
+        "Add new recording located elsewhere, dayFour - after lastRecordingTime"
+      );
+      cy.log("and check recording created new station");
+      cy.log("Expected history length", expectedHistory.length);
+      cy.testUploadRecording(
+        deviceName,
+        { ...elsewhereLocation, time: dayFour },
+        fourthName
+      )
+        .thenCheckStationIsNew(Josie)
+        .then((newStation: TestNameAndId) => {
+          const elsewhereHistory = TestCreateExpectedHistoryEntry(
+            deviceName,
+            group,
+            dayFour.toISOString(),
+            elsewhereLocation,
+            "automatic",
+            newStation.name
+          );
+
+          cy.log(
+            "Add old recording at new location between first & last recording at old location (dayTwo)"
+          );
+          cy.log("and check recording assigned to re-assigned station");
+          cy.testUploadRecording(
+            deviceName,
+            { ...newLocation, time: dayTwo },
+            firstName
+          )
+            .thenCheckStationNameIs(Josie, getTestName(manualStationName))
+            .then(() => {
+              cy.log("Check old station unchanged");
+              cy.apiStationCheck(
+                Josie,
+                getTestName(manualStationName),
+                expectedManualStation
+              );
+
+              // User fixup time
+              expectedHistory[1].setBy= "user";
+              expectedHistory[1].location= newLocation;
+
+              // Later automatic recording in different location
+              expectedHistory.push(elsewhereHistory);
+
+              cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
+
+              cy.log("check device location still at elsewhere location");
+              const expectedDevice = TestCreateExpectedDevice(
+                deviceName,
+                group,
+                true,
+                DeviceType.Thermal
+              );
+              expectedDevice.location = elsewhereLocation;
+              cy.apiDeviceInGroupCheck(
+                Josie,
+                deviceName,
+                group,
+                null,
+                expectedDevice
+              );
+            });
+        });
+    });
+  });
+
 });
