@@ -146,7 +146,7 @@ describe("Fix location: subsequent recordings", () => {
  /* User adds a recording in same location as last moved recording location, before firstRec:
   * -> existing station: unchanged
   * -> deviceHistory: new entry for the new earlier recording
-  * -> recording: uses location as uploaded, creates new station
+  * -> recording: uses location as uploaded, uses moved station
   * -> device location remains at updated location
   */
   it("Move recording: add new recording in same place, before lastRecTime", () => {
