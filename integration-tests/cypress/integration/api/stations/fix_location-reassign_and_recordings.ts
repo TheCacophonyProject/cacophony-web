@@ -42,7 +42,7 @@ const templateExpectedStation = {
   groupName: NOT_NULL_STRING,
 };
 
-describe.only("Fix location: subsequent recordings", () => {
+describe("Fix location: subsequent recordings", () => {
   const Josie = "Josie_reassign_rec_stations";
 
   before(() => {
