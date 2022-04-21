@@ -198,9 +198,21 @@ describe("Fix location: subsequent recordings", () => {
 
     //create device and station at dayOne, recording at dayTwo.
     //reassign recording from auto station to manual station
-    cy.createDeviceStationRecordingAndFix(Josie, deviceName, manualStationName, secondName, group, oldLocation, newLocation, dayTwo.toISOString(), dayOne.toISOString(), true).then((expectedHistory:DeviceHistoryEntry[]) => {
-
-      cy.log("Add new recording in same place, day0 - before manual station creation time");
+    cy.createDeviceStationRecordingAndFix(
+      Josie,
+      deviceName,
+      manualStationName,
+      secondName,
+      group,
+      oldLocation,
+      newLocation,
+      dayTwo.toISOString(),
+      dayOne.toISOString(),
+      true
+    ).then((expectedHistory: DeviceHistoryEntry[]) => {
+      cy.log(
+        "Add new recording in same place, day0 - before manual station creation time"
+      );
       cy.log("and check recording creates a new station");
       cy.testUploadRecording(
         deviceName,

@@ -42,7 +42,7 @@ const templateExpectedStation = {
   groupName: NOT_NULL_STRING,
 };
 
-describe("Fix location: subsequent recordings", () => {
+describe.only("Fix location: subsequent recordings", () => {
   const Josie = "Josie_reassign_rec_stations";
 
   before(() => {
@@ -551,7 +551,7 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
-  it("Reassign recording: after subsequent new location & recorings, add past recordings in same location before lastRecTime for that location", () => {
+  it("Reassign recording: after subsequent new location & recordings, add past recordings in same location before lastRecTime for that location", () => {
     const deviceName = "update-device-18";
     const manualStationName = "Josie-station-18";
 
@@ -580,7 +580,7 @@ describe("Fix location: subsequent recordings", () => {
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
-          expectedHistory[2] = TestCreateExpectedHistoryEntry(
+          const elseWhereLocationEntry = TestCreateExpectedHistoryEntry(
             deviceName,
             group,
             dayFour.toISOString(),
@@ -598,8 +598,8 @@ describe("Fix location: subsequent recordings", () => {
             { ...oldLocation, time: dayOne },
             firstName
           )
-            .thenCheckStationNameIs(Josie, getTestName(manualStationName))
-            .then(() => {
+            .thenCheckStationIsNew(Josie)
+            .then((newerStation: TestNameAndId) => {
               cy.log("Check old station unchanged");
               cy.apiStationCheck(
                 Josie,
@@ -608,10 +608,21 @@ describe("Fix location: subsequent recordings", () => {
               );
 
               cy.log(
-                "Check deviceHistory backdated (automatically) to earlier recording time"
+                "Check deviceHistory added for earlier recording time prior to fixup"
               );
               expectedHistory[1].fromDateTime = dayOne.toISOString();
               expectedHistory[1].setBy = "automatic";
+
+              // User fixup time
+              expectedHistory.push({
+                ...expectedHistory[1],
+                fromDateTime: dayTwo.toISOString(),
+                setBy: "user",
+              });
+              expectedHistory[1].stationId = newerStation.id;
+
+              // Later recording elsewhere
+              expectedHistory.push(elseWhereLocationEntry);
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
               cy.log("check device location still at elsewhere location");
