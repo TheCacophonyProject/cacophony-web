@@ -6,7 +6,6 @@ import {
 import { TestGetLocation } from "@commands/api/station";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 import { TestCreateExpectedDevice } from "@commands/api/device";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { getCreds } from "@commands/server";
 import {
   EXCLUDE_IDS,
@@ -22,9 +21,9 @@ import {
 import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { DeviceType } from "@typedefs/api/consts";
-
-const templateExpectedCypressRecording: ApiThermalRecordingResponse =
-  JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
+let count = 0;
+let group: string;
+const baseGroup: string = "station_use_case_group";
 
 const templateExpectedStation = {
   location,
@@ -35,24 +34,24 @@ const templateExpectedStation = {
   updatedAt: NOT_NULL_STRING,
   activeAt: NOT_NULL_STRING,
   automatic: true,
-  needsRename: true,
   groupId: NOT_NULL,
   groupName: NOT_NULL_STRING,
 };
 
 describe("Stations: use cases", () => {
   const Josie = "Josie_stations";
-  const group = "use_cases_group";
-  const group2 = "use_cases_group2";
 
   before(() => {
-    cy.testCreateUserAndGroup(Josie, group).then(() => {
-      templateExpectedCypressRecording.groupId = getCreds(group).id;
-      templateExpectedCypressRecording.groupName = getTestName(group);
+    cy.apiUserAdd(Josie);
+  });
+
+  beforeEach(() => {
+    count = count + 1;
+    group = baseGroup + count.toString();
+    cy.apiGroupAdd(Josie, group).then(() => {
       templateExpectedStation.groupId = getCreds(group).id;
       templateExpectedStation.groupName = getTestName(group);
     });
-    cy.apiGroupAdd(Josie, group2);
   });
 
   it("Use case: camera deployed without setting location, create manual station and move recordings to it", () => {
@@ -121,20 +120,17 @@ describe("Stations: use cases", () => {
     expectedManualStation.activeAt = now.toISOString();
     expectedManualStation.lastUpdatedById = getCreds(Josie).id;
     expectedManualStation.automatic = false;
-    delete expectedManualStation.needsRename;
 
     cy.log("Create a device now");
     cy.apiDeviceAdd(deviceName, group).then(() => {
       cy.log("Check deviceHistory created as expected");
-      expectedHistory.push(
-        TestCreateExpectedHistoryEntry(
-          deviceName,
-          group,
-          NOT_NULL_STRING,
-          null,
-          "register",
-          null
-        )
+      expectedHistory[0] = TestCreateExpectedHistoryEntry(
+        deviceName,
+        group,
+        NOT_NULL_STRING,
+        null,
+        "register",
+        null
       );
       cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -179,15 +175,13 @@ describe("Stations: use cases", () => {
           );
 
           cy.log("Check device history is updated as expected");
-          expectedHistory.push(
-            TestCreateExpectedHistoryEntry(
-              deviceName,
-              group,
-              oneWeekFromNow.toISOString(),
-              location,
-              "automatic",
-              autoStation.name
-            )
+          expectedHistory[1] = TestCreateExpectedHistoryEntry(
+            deviceName,
+            group,
+            oneWeekFromNow.toISOString(),
+            location,
+            "automatic",
+            autoStation.name
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -311,15 +305,13 @@ describe("Stations: use cases", () => {
                     .thenCheckStationIsNew(Josie)
                     .then((station2: TestNameAndId) => {
                       cy.log("Check new device history entry added");
-                      expectedHistory.push(
-                        TestCreateExpectedHistoryEntry(
-                          deviceName,
-                          group,
-                          twoWeeksFromNow.toISOString(),
-                          movedLocation,
-                          "automatic",
-                          station2.name
-                        )
+                      expectedHistory[2] = TestCreateExpectedHistoryEntry(
+                        deviceName,
+                        group,
+                        twoWeeksFromNow.toISOString(),
+                        movedLocation,
+                        "automatic",
+                        station2.name
                       );
                       cy.apiDeviceHistoryCheck(
                         Josie,
@@ -407,15 +399,13 @@ describe("Stations: use cases", () => {
 
     cy.apiDeviceAdd(deviceName, group).then(() => {
       cy.log("Check deviceHistory created as expected");
-      expectedHistory.push(
-        TestCreateExpectedHistoryEntry(
-          deviceName,
-          group,
-          NOT_NULL_STRING,
-          null,
-          "register",
-          null
-        )
+      expectedHistory[0] = TestCreateExpectedHistoryEntry(
+        deviceName,
+        group,
+        NOT_NULL_STRING,
+        null,
+        "register",
+        null
       );
       cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -474,15 +464,13 @@ describe("Stations: use cases", () => {
           cy.apiStationCheck(Josie, oldStation.name, expectedOldStation);
 
           cy.log("Check deviceHistory updated as expected");
-          expectedHistory.push(
-            TestCreateExpectedHistoryEntry(
-              deviceName,
-              group,
-              firstRecordingTime.toISOString(),
-              oldLocation,
-              "automatic",
-              oldStation.name
-            )
+          expectedHistory[1] = TestCreateExpectedHistoryEntry(
+            deviceName,
+            group,
+            firstRecordingTime.toISOString(),
+            oldLocation,
+            "automatic",
+            oldStation.name
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -612,15 +600,13 @@ describe("Stations: use cases", () => {
                   );
 
                   cy.log("Check new deviceHistory entry created");
-                  expectedHistory.push(
-                    TestCreateExpectedHistoryEntry(
-                      deviceName,
-                      group,
-                      thirdRecordingTime.toISOString(),
-                      newLocation,
-                      "automatic",
-                      newStation.name
-                    )
+                  expectedHistory[2] = TestCreateExpectedHistoryEntry(
+                    deviceName,
+                    group,
+                    thirdRecordingTime.toISOString(),
+                    newLocation,
+                    "automatic",
+                    newStation.name
                   );
                   cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -700,7 +686,8 @@ describe("Stations: use cases", () => {
                     );
 
                     cy.log("Check device history updated correctly");
-                    expectedHistory[2] = TestCreateExpectedHistoryEntry(
+                    //TODO this creates a new entry rather than updating the existing one ... is this correct?
+                    expectedHistory[3] = TestCreateExpectedHistoryEntry(
                       deviceName,
                       group,
                       secondRecordingTime.toISOString(),
@@ -801,19 +788,16 @@ describe("Stations: use cases", () => {
     expectedManualStation.activeAt = createStationTime.toISOString();
     expectedManualStation.lastUpdatedById = getCreds(Josie).id;
     expectedManualStation.automatic = false;
-    delete expectedManualStation.needsRename;
 
     cy.apiDeviceAdd(deviceName, group).then(() => {
       cy.log("Check deviceHistory created as expected");
-      expectedHistory.push(
-        TestCreateExpectedHistoryEntry(
-          deviceName,
-          group,
-          NOT_NULL_STRING,
-          null,
-          "register",
-          null
-        )
+      expectedHistory[0] = TestCreateExpectedHistoryEntry(
+        deviceName,
+        group,
+        NOT_NULL_STRING,
+        null,
+        "register",
+        null
       );
       cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -840,7 +824,7 @@ describe("Stations: use cases", () => {
         createStationTime.toISOString()
       ).then((manualStationId: number) => {
         cy.log(
-          "Check station created correctly with no lastThermalRecordingTime"
+          "Check station created correctly with no lastThermalRecordigTime"
         );
         delete expectedManualStation.lastThermalRecordingTime;
         cy.apiStationCheck(
@@ -850,7 +834,7 @@ describe("Stations: use cases", () => {
         );
 
         cy.log(
-          "Add a recording too far from existing station and check new station created for it"
+          "Add a recording too far from exisiting station and check new station created for it"
         );
         cy.apiRecordingAdd(
           deviceName,
@@ -903,15 +887,13 @@ describe("Stations: use cases", () => {
             cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
 
             cy.log("Check device history entry created");
-            expectedHistory.push(
-              TestCreateExpectedHistoryEntry(
-                deviceName,
-                group,
-                firstRecordingTime.toISOString(),
-                firstRecordingLocation,
-                "automatic",
-                autoStation.name
-              )
+            expectedHistory[1] = TestCreateExpectedHistoryEntry(
+              deviceName,
+              group,
+              firstRecordingTime.toISOString(),
+              firstRecordingLocation,
+              "automatic",
+              autoStation.name
             );
             cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -1085,15 +1067,13 @@ describe("Stations: use cases", () => {
                     );
 
                     cy.log("Check new device history entry created");
-                    expectedHistory.push(
-                      TestCreateExpectedHistoryEntry(
-                        deviceName,
-                        group,
-                        thirdRecordingTime.toISOString(),
-                        thirdRecordingLocation,
-                        "automatic",
-                        movedStation.name
-                      )
+                    expectedHistory[2] = TestCreateExpectedHistoryEntry(
+                      deviceName,
+                      group,
+                      thirdRecordingTime.toISOString(),
+                      thirdRecordingLocation,
+                      "automatic",
+                      movedStation.name
                     );
                     cy.apiDeviceHistoryCheck(
                       Josie,

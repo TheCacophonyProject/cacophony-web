@@ -11,7 +11,8 @@ import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { DeviceType } from "@typedefs/api/consts";
 
-const dayZero = new Date();
+// NOTE: Make day zero a bit in the future still, or stations will be created before device registration time.
+const dayZero = new Date(new Date().setHours(new Date().getHours() + 1));
 const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
 const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
 const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
@@ -84,7 +85,7 @@ describe("Fix location: subsequent recordings", () => {
       true
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log(
-        "Add new recording in same place, after lastRecordingTime using fexed location"
+        "Add new recording in same place, after lastRecordingTime using fixed location"
       );
       cy.log("and check recording uses updated station");
       cy.testUploadRecording(
@@ -145,6 +146,7 @@ describe("Fix location: subsequent recordings", () => {
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log("Add new recording in same place, before lastRecordingTime");
       cy.log("and check recording uses updated station");
+
       cy.testUploadRecording(
         deviceName,
         { ...newLocation, time: dayOne },
@@ -159,11 +161,16 @@ describe("Fix location: subsequent recordings", () => {
             expectedManualStation
           );
 
-          cy.log(
-            "Check devicehistory backdated (automatically) by new recording"
-          );
+          cy.log("Check devicehistory entry created by new recording");
           expectedHistory[1].fromDateTime = dayOne.toISOString();
           expectedHistory[1].setBy = "automatic";
+
+          expectedHistory.push({
+            ...expectedHistory[1],
+            fromDateTime: dayTwo.toISOString(),
+            setBy: "user",
+          });
+
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
           cy.log("check device location still at new location");
@@ -185,8 +192,7 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
-  //TODO: fails - manual station backdated
-  it.only("Move recording: add new recording in same place, before station creation time", () => {
+  it("Move recording: add new recording in same place, before station creation time", () => {
     const deviceName = "update-device-12";
     const manualStationName = "Josie-station-12";
 
@@ -216,6 +222,7 @@ describe("Fix location: subsequent recordings", () => {
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
           cy.log("Check manual station NOT backdated by prior recording");
+          expectedManualStation.activeAt = dayOne.toISOString();
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
@@ -229,7 +236,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             dayZero.toISOString(),
-            oldLocation,
+            newLocation,
             "automatic",
             newStation.name
           );
@@ -538,10 +545,18 @@ describe("Fix location: subsequent recordings", () => {
   });
 
   //TODO: FAILS - Issue 3.  Later deviceHistory changed by fix - updates to earlier entry
-  it("Move recording: after subsequent new location & recorings, add past recordings in same location before lastRecTime for that location", () => {
+  it("Move recording: after subsequent new location & recordings, add past recordings in same location before lastRecTime for that location", () => {
     const deviceName = "update-device-18";
     const manualStationName = "Josie-station-18";
 
+    cy.log(`Day Zero ${dayZero.toISOString()}`);
+    cy.log(`Day One ${dayOne.toISOString()}`);
+    cy.log(`Day Two ${dayTwo.toISOString()}`);
+    cy.log(`Day Three ${dayThree.toISOString()}`);
+    cy.log(`Day Four ${dayFour.toISOString()}`);
+
+    cy.log(`Old location ${JSON.stringify(oldLocation)}`);
+    cy.log(`New location ${JSON.stringify(newLocation)}`);
     //create device and station at dayZero, recording at dayTwo.
     //reassign recording from auto station to manual station
     cy.createDeviceStationRecordingAndFix(
@@ -560,6 +575,7 @@ describe("Fix location: subsequent recordings", () => {
         "Add new recording located elsewhere, dayFour - after lastRecordingTime"
       );
       cy.log("and check recording created new station");
+      cy.log("Expected history length", expectedHistory.length);
       cy.testUploadRecording(
         deviceName,
         { ...elsewhereLocation, time: dayFour },
@@ -567,7 +583,7 @@ describe("Fix location: subsequent recordings", () => {
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
-          expectedHistory[2] = TestCreateExpectedHistoryEntry(
+          const elsewhereHistory = TestCreateExpectedHistoryEntry(
             deviceName,
             group,
             dayFour.toISOString(),
@@ -594,11 +610,21 @@ describe("Fix location: subsequent recordings", () => {
                 expectedManualStation
               );
 
-              cy.log(
-                "Check deviceHistory backdated (automatically) to earlier recording time"
-              );
+              cy.log("Check deviceHistory created for earlier recording time");
               expectedHistory[1].fromDateTime = dayOne.toISOString();
+              expectedHistory[1].location = newLocation;
               expectedHistory[1].setBy = "automatic";
+
+              // User fixup time
+              expectedHistory.push({
+                ...expectedHistory[1],
+                fromDateTime: dayTwo.toISOString(),
+                setBy: "user",
+              });
+
+              // Later automatic recording in different location
+              expectedHistory.push(elsewhereHistory);
+
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
               cy.log("check device location still at elsewhere location");

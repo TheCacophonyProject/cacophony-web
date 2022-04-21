@@ -550,21 +550,21 @@ Cypress.Commands.add(
     logTestDescription(
       `Create device, station, recording & fix '${deviceName}' in group '${group}' with recName '${recName}'`,
       {
-        userName: userName,
-        deviceName: deviceName,
-        stationName: stationName,
-        recName: recName,
-        group: group,
-        oldLocation: oldLocation,
-        newLocation: newLocation,
-        recTime: recTime,
-        stationTime: stationTime,
-        move: move,
+        userName,
+        deviceName,
+        stationName,
+        recName,
+        group,
+        oldLocation,
+        newLocation,
+        recTime,
+        stationTime,
+        move,
       },
       true
     );
     //set move=true to move the recording to new location
-    //set move=false to reassign recoridng to station, but keep old location
+    //set move=false to reassign recording to station, but keep old location
     if (move == true) {
       fixLocation = null;
       expectedLocation = newLocation;
@@ -593,6 +593,7 @@ Cypress.Commands.add(
         .thenCheckStationIsNew(userName)
         .then((autoStation: TestNameAndId) => {
           //Device history for firstTime, oldLocation, autoStation added
+          cy.log("Created automatic station", autoStation.name, autoStation.id);
           expectedHistory[1] = TestCreateExpectedHistoryEntry(
             deviceName,
             group,
@@ -612,7 +613,8 @@ Cypress.Commands.add(
             stationTime
           ).then((manualStationId: number) => {
             cy.log(
-              "Update first and subsequect recording's location to match manu  al station"
+              "Update first and subsequent recording's location to match manual station",
+              manualStationId
             );
             cy.apiDeviceFixLocation(
               userName,

@@ -11,7 +11,8 @@ import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { DeviceType } from "@typedefs/api/consts";
 
-const dayZero = new Date();
+// NOTE: Make day zero a bit in the future still, or stations will be created before device registration time.
+const dayZero = new Date(new Date().setHours(new Date().getHours() + 1));
 const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
 const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
 const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
@@ -143,6 +144,7 @@ describe("Fix location: subsequent recordings", () => {
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log("Add new recording in same place, before lastRecordingTime");
       cy.log("and check recording uses updated station");
+
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: dayOne },
@@ -183,7 +185,6 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
-  //TODO: fails - manual station backdated
   it("Reassign recording: add new recording in same place, before station creation time", () => {
     const deviceName = "update-device-12";
     const manualStationName = "Josie-station-12";
@@ -213,7 +214,12 @@ describe("Fix location: subsequent recordings", () => {
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
-          cy.log("Check manual station NOT backdated by prior recording");
+          cy.log(
+            "Check manual station NOT backdated by prior recording",
+            newStation.name,
+            newStation.id
+          );
+          expectedManualStation.activeAt = dayOne.toISOString();
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
@@ -223,13 +229,23 @@ describe("Fix location: subsequent recordings", () => {
           cy.log(
             "Check new devicehistory entry created (automatically) by new recording"
           );
-          expectedHistory[2] = TestCreateExpectedHistoryEntry(
+          expectedHistory[1] = TestCreateExpectedHistoryEntry(
             deviceName,
             group,
             dayZero.toISOString(),
             oldLocation,
             "automatic",
             newStation.name
+          );
+          expectedHistory.push(
+            TestCreateExpectedHistoryEntry(
+              deviceName,
+              group,
+              dayTwo.toISOString(), // Fixup date
+              oldLocation,
+              "user",
+              getTestName(manualStationName)
+            )
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -535,7 +551,6 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
-  //TODO: FAILS - Issue 3.  Later deviceHistory changed by fix - updates to earlier entry
   it("Reassign recording: after subsequent new location & recorings, add past recordings in same location before lastRecTime for that location", () => {
     const deviceName = "update-device-18";
     const manualStationName = "Josie-station-18";

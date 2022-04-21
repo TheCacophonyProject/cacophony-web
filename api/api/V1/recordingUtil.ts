@@ -77,6 +77,7 @@ import { ApiTrackPosition } from "@typedefs/api/track";
 import { locationsAreEqual } from "@models/Group";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
 import SendData = ManagedUpload.SendData;
+import logger from "@log";
 
 let CptvDecoder;
 (async () => {
@@ -472,12 +473,17 @@ export const maybeUpdateDeviceHistory = async (
           );
           if (!locationChanged && laterLocation.DeviceId !== device.id) {
             shouldInsertLocation = true;
-          } else if (!locationChanged) {
-            // Move later location back to this time.
-            existingDeviceHistoryEntry = await laterLocation.update({
-              fromDateTime: dateTime,
-              setBy,
-            });
+          } else if (!locationChanged) { // && laterLocation.setBy !== "user" && laterLocation.fromDateTime.toISOString() !== dateTime.toISOString()
+            if (laterLocation.setBy !== "user") {
+              // Move later location back to this time, if it was an automatically created location.
+              existingDeviceHistoryEntry = await laterLocation.update({
+                fromDateTime: dateTime,
+                setBy,
+              });
+            } else {
+              existingDeviceHistoryEntry = laterLocation;
+              shouldInsertLocation = true;
+            }
           } else if (locationChanged) {
             shouldInsertLocation = true;
           }
@@ -508,11 +514,16 @@ export const maybeUpdateDeviceHistory = async (
         if (!locationChanged && laterLocation.DeviceId !== device.id) {
           shouldInsertLocation = true;
         } else if (!locationChanged) {
-          // Move later location back to this time.
-          existingDeviceHistoryEntry = await laterLocation.update({
-            fromDateTime: dateTime,
-            setBy,
-          });
+          if (laterLocation.setBy !== "user") {
+            // Move later location back to this time if it was an automatically created location.
+            existingDeviceHistoryEntry = await laterLocation.update({
+              fromDateTime: dateTime,
+              setBy,
+            });
+          } else {
+            existingDeviceHistoryEntry = laterLocation;
+            shouldInsertLocation = true;
+          }
         } else if (locationChanged) {
           shouldInsertLocation = true;
         }
@@ -524,6 +535,7 @@ export const maybeUpdateDeviceHistory = async (
       }
     }
     if (shouldInsertLocation) {
+      logger.error("SHOULD INSERT NEW LOCATION");
       // If we are going to insert a location, then we need to match to existing stations, or create a new station
       // that is active from this point in time.
       const newDeviceHistoryEntry = {
@@ -541,6 +553,7 @@ export const maybeUpdateDeviceHistory = async (
         device.GroupId,
         dateTime
       );
+      logger.error("Assign to station %s", stationToAssign && stationToAssign.id);
       if (!stationToAssign) {
         // Create new automatic station
         stationToAssign = (await models.Station.create({
