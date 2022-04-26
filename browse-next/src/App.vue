@@ -2,9 +2,9 @@
 import { RouterView, RouterLink } from "vue-router";
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
+import {userIsLoggedIn} from "@/router";
 
 const userIsSuperAdmin = false;
-const userIsLoggedIn = true;
 const loggedInAsAnotherUser = false;
 const environmentIsProduction = false;
 
@@ -15,7 +15,7 @@ const currentSelectedGroup = { groupName: "foo", id: 1 };
 </script>
 <template>
   <git-release-info-bar />
-  <main id="main-wrapper">
+  <main id="main-wrapper" v-if="userIsLoggedIn">
     <nav id="global-side-nav" class="d-flex flex-column flex-shrink-0">
       <div class="nav-top">
         <router-link
@@ -231,6 +231,9 @@ const currentSelectedGroup = { groupName: "foo", id: 1 };
     <section id="main-content">
       <router-view />
     </section>
+  </main>
+  <main v-else>
+    <router-view />
   </main>
 </template>
 
