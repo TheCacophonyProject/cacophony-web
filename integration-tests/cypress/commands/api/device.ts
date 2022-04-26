@@ -9,11 +9,12 @@ import {
   makeAuthorizedRequestWithStatus,
   sortArrayOn,
   checkTreeStructuresAreEqualExcept,
+  checkMessages,
 } from "../server";
-import { logTestDescription } from "../descriptions";
-import { ApiDevicesDevice } from "../types";
+import { logTestDescription, prettyLog } from "../descriptions";
+import { ApiDevicesDevice, DeviceHistoryEntry, TestNameAndId } from "../types";
 import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
-
+import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
 import { DeviceType } from "@typedefs/api/consts";
@@ -64,6 +65,7 @@ Cypress.Commands.add(
     deviceIdOrName: string,
     stationFromDate: string,
     stationIdOrName: string,
+    recordingLocation: LatLng,
     statusCode: number = HTTP_OK200,
     additionalChecks: any = {}
   ) => {
@@ -92,6 +94,17 @@ Cypress.Commands.add(
       ...additionalChecks["additionalParams"],
     };
 
+    if (recordingLocation) {
+      body.setStationAtTime.location = recordingLocation;
+    }
+
+    logTestDescription(
+      `Fix device ${deviceId} (${deviceIdOrName})  to station '${stationId}' (${stationIdOrName}) ${prettyLog(
+        body
+      )}`,
+      { body: body }
+    );
+
     makeAuthorizedRequestWithStatus(
       {
         method: "PATCH",
@@ -102,12 +115,62 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["messages"]) {
-        const messages = response.body.messages;
-        const expectedMessages = additionalChecks["messages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+        checkMessages(response, additionalChecks["messages"]);
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiDeviceHistoryCheck",
+  (
+    userName: string,
+    deviceIdOrName: string,
+    expectedHistory: any[],
+    statusCode: number = HTTP_OK200,
+    additionalChecks: any = {}
+  ) => {
+    let deviceId: string;
+
+    //Get device ID from name (unless we're asked not to)
+    if (additionalChecks["useRawDeviceId"] === true) {
+      deviceId = deviceIdOrName;
+    } else {
+      deviceId = getCreds(deviceIdOrName).id.toString();
+    }
+
+    logTestDescription(
+      `Check device history for  device ${deviceId} (${deviceIdOrName})`,
+      { deviceId: deviceId }
+    );
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: v1ApiPath(`devices/history/${deviceId}`),
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["messages"]) {
+        checkMessages(response, additionalChecks["messages"]);
+      }
+      if (statusCode === null || statusCode == 200) {
+        const deviceHistory = response.body.history;
+        expect(deviceHistory.length).to.equal(expectedHistory.length);
+        let devCount: number;
+        const sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
+        const sortExpectedHistory = sortArrayOn(
+          expectedHistory,
+          "fromDateTime"
+        );
+        for (devCount = 0; devCount < expectedHistory.length; devCount++) {
+          checkTreeStructuresAreEqualExcept(
+            sortExpectedHistory[devCount],
+            sortHistory[devCount],
+            []
+          );
+        }
       }
     });
   }
@@ -458,11 +521,119 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
-        );
+        checkMessages(response, additionalChecks["messages"]);
       }
     });
+  }
+);
+
+// Custom test functions
+
+Cypress.Commands.add(
+  "createDeviceStationRecordingAndFix",
+  (
+    userName: string,
+    deviceName: string,
+    stationName: string,
+    recName: string,
+    group: string,
+    oldLocation: LatLng,
+    newLocation: LatLng,
+    recTime: string,
+    stationTime: string,
+    move = true
+  ) => {
+    let fixLocation: LatLng;
+    let expectedLocation: LatLng;
+    const expectedHistory: DeviceHistoryEntry[] = [];
+
+    logTestDescription(
+      `Create device, station, recording & fix '${deviceName}' in group '${group}' with recName '${recName}'`,
+      {
+        userName,
+        deviceName,
+        stationName,
+        recName,
+        group,
+        oldLocation,
+        newLocation,
+        recTime,
+        stationTime,
+        move,
+      },
+      true
+    );
+    //set move=true to move the recording to new location
+    //set move=false to reassign recording to station, but keep old location
+    if (move == true) {
+      fixLocation = null;
+      expectedLocation = newLocation;
+    } else {
+      fixLocation = oldLocation;
+      expectedLocation = oldLocation;
+    }
+
+    cy.log("Create a device now");
+    cy.apiDeviceAdd(deviceName, group).then(() => {
+      // Initial device history entry added
+      expectedHistory[0] = TestCreateExpectedHistoryEntry(
+        deviceName,
+        group,
+        NOT_NULL_STRING,
+        null,
+        "register",
+        null
+      );
+
+      cy.testUploadRecording(
+        deviceName,
+        { ...oldLocation, time: new Date(recTime) },
+        recName
+      )
+        .thenCheckStationIsNew(userName)
+        .then((autoStation: TestNameAndId) => {
+          //Device history for firstTime, oldLocation, autoStation added
+          cy.log("Created automatic station", autoStation.name, autoStation.id);
+          expectedHistory[1] = TestCreateExpectedHistoryEntry(
+            deviceName,
+            group,
+            recTime,
+            oldLocation,
+            "automatic",
+            autoStation.name
+          );
+
+          // USER ADDS STATION AND FIXES RECORDINGS
+
+          cy.log("Create a new station");
+          cy.apiGroupStationAdd(
+            userName,
+            group,
+            { name: stationName, ...newLocation },
+            stationTime
+          ).then((manualStationId: number) => {
+            cy.log(
+              "Update first and subsequent recording's location to match manual station",
+              manualStationId
+            );
+            cy.apiDeviceFixLocation(
+              userName,
+              deviceName,
+              recTime,
+              manualStationId.toString(),
+              fixLocation,
+              HTTP_OK200,
+              { messages: ["Updated 1 recording(s)"], useRawStationId: true }
+            ).then(() => {
+              expectedHistory[1].stationId = manualStationId;
+              expectedHistory[1].location = expectedLocation;
+              expectedHistory[1].setBy = "user";
+            });
+          });
+        });
+    });
+
+    cy.wrap(expectedHistory);
   }
 );
 
@@ -493,4 +664,27 @@ export function TestCreateExpectedDevice(
     };
   }
   return expectedDevice;
+}
+
+export function TestCreateExpectedHistoryEntry(
+  deviceName: string,
+  groupName: string,
+  fromDate: string,
+  location: LatLng,
+  setBy: string,
+  stationName: string
+): DeviceHistoryEntry {
+  const expectedHistory: DeviceHistoryEntry = {
+    DeviceId: getCreds(deviceName).id,
+    GroupId: getCreds(groupName).id,
+    deviceName: getTestName(deviceName),
+    fromDateTime: fromDate,
+    location: location,
+    saltId: NOT_NULL,
+    setBy: setBy,
+    stationId: getCreds(stationName).id,
+    uuid: NOT_NULL,
+  };
+
+  return expectedHistory;
 }

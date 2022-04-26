@@ -3,7 +3,11 @@ import { HTTP_Unprocessable, HTTP_OK200 } from "@commands/constants";
 
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 
-import { ApiRecordingColumns, ApiRecordingSet } from "@commands/types";
+import {
+  ApiRecordingColumns,
+  ApiRecordingSet,
+  TestNameAndId,
+} from "@commands/types";
 
 import { getCreds } from "@commands/server";
 
@@ -148,90 +152,97 @@ describe("Recordings report using where", () => {
     cy.intercept("POST", "recordings").as("addRecording");
 
     //add some recordings to query
-    cy.apiRecordingAdd(
-      "rreCamera1",
-      recording1,
-      undefined,
-      "rreRecording1"
-    ).then(() => {
-      expectedRecording1 = TestCreateExpectedRecordingColumns(
-        "rreRecording1",
-        "rreCamera1",
-        "rreGroup",
-        undefined,
-        recording1
-      );
-    });
-    cy.apiRecordingAdd(
-      "rreCamera1",
-      recording2,
-      undefined,
-      "rreRecording2"
-    ).then(() => {
-      expectedRecording2 = TestCreateExpectedRecordingColumns(
-        "rreRecording2",
-        "rreCamera1",
-        "rreGroup",
-        undefined,
-        recording2
-      );
-    });
-    cy.apiRecordingAdd(
-      "rreCamera1b",
-      recording3,
-      undefined,
-      "rreRecording3"
-    ).then(() => {
-      expectedRecording3 = TestCreateExpectedRecordingColumns(
-        "rreRecording3",
-        "rreCamera1b",
-        "rreGroup",
-        undefined,
-        recording3
-      );
-    });
-    //Recording 4 with a human tag
-    cy.apiRecordingAdd(
-      "rreCamera1b",
-      recording4,
-      undefined,
-      "rreRecording4"
-    ).then(() => {
-      expectedRecording4 = TestCreateExpectedRecordingColumns(
-        "rreRecording4",
-        "rreCamera1b",
-        "rreGroup",
-        undefined,
-        recording4
-      );
-      cy.testUserTagRecording(
-        getCreds("rreRecording4").id,
-        0,
-        "rreGroupAdmin",
-        "possum"
-      );
-      expectedRecording4["Human Track Tags"] = "possum";
-    });
-    for (let count = 0; count < 20; count++) {
-      const tempRecording = JSON.parse(JSON.stringify(recording1));
-      //recordingDateTime order different to id order to test sort on different parameters
-      tempRecording.recordingDateTime =
-        "2021-07-17T20:13:00." + (900 - count).toString() + "Z";
-      cy.apiRecordingAdd(
-        "rreCamera2",
-        tempRecording,
-        undefined,
-        "rreRecordingB" + count.toString()
-      ).then(() => {
-        expectedRecording[count] = TestCreateExpectedRecordingColumns(
-          "rreRecordingB" + count.toString(),
-          "rreCamera2",
-          "rreGroup2",
-          undefined,
-          tempRecording
+    cy.apiRecordingAdd("rreCamera1", recording1, undefined, "rreRecording1")
+      .thenCheckStationIsNew("rreGroupAdmin")
+      .then((station: TestNameAndId) => {
+        expectedRecording1 = TestCreateExpectedRecordingColumns(
+          "rreRecording1",
+          "rreCamera1",
+          "rreGroup",
+          station.name,
+          recording1
         );
       });
-    }
+    cy.apiRecordingAdd("rreCamera1", recording2, undefined, "rreRecording2")
+      .thenCheckStationIsNew("rreGroupAdmin")
+      .then((station: TestNameAndId) => {
+        expectedRecording2 = TestCreateExpectedRecordingColumns(
+          "rreRecording2",
+          "rreCamera1",
+          "rreGroup",
+          station.name,
+          recording2
+        );
+      });
+    cy.apiRecordingAdd("rreCamera1b", recording3, undefined, "rreRecording3")
+      .thenCheckStationIsNew("rreGroupAdmin")
+      .then((station: TestNameAndId) => {
+        expectedRecording3 = TestCreateExpectedRecordingColumns(
+          "rreRecording3",
+          "rreCamera1b",
+          "rreGroup",
+          station.name,
+          recording3
+        );
+      });
+    //Recording 4 with a human tag
+    cy.apiRecordingAdd("rreCamera1b", recording4, undefined, "rreRecording4")
+      .thenCheckStationIsNew("rreGroupAdmin")
+      .then((station: TestNameAndId) => {
+        expectedRecording4 = TestCreateExpectedRecordingColumns(
+          "rreRecording4",
+          "rreCamera1b",
+          "rreGroup",
+          station.name,
+          recording4
+        );
+        cy.testUserTagRecording(
+          getCreds("rreRecording4").id,
+          0,
+          "rreGroupAdmin",
+          "possum"
+        );
+        expectedRecording4["Human Track Tags"] = "possum";
+      });
+
+    //upload one and get station
+    const tempRecording = JSON.parse(JSON.stringify(recording1));
+    //recordingDateTime order different to id order to test sort on different parameters
+    tempRecording.recordingDateTime =
+      "2021-07-17T20:13:00." + (900 - 0).toString() + "Z";
+    cy.apiRecordingAdd("rreCamera2", tempRecording, undefined, "rreRecordingB0")
+      .thenCheckStationIsNew("rreGroup2Admin")
+      .then((station: TestNameAndId) => {
+        expectedRecording[0] = TestCreateExpectedRecordingColumns(
+          "rreRecordingB0",
+          "rreCamera2",
+          "rreGroup2",
+          station.name,
+          tempRecording
+        );
+
+        //then upload the rest
+        for (let count = 1; count < 20; count++) {
+          const tempRecording = JSON.parse(JSON.stringify(recording1));
+          //recordingDateTime order different to id order to test sort on different parameters
+          tempRecording.recordingDateTime =
+            "2021-07-17T20:13:00." + (900 - count).toString() + "Z";
+          cy.apiRecordingAdd(
+            "rreCamera2",
+            tempRecording,
+            undefined,
+            "rreRecordingB" + count.toString()
+          ).then(() => {
+            expectedRecording[count] = TestCreateExpectedRecordingColumns(
+              "rreRecordingB" + count.toString(),
+              "rreCamera2",
+              "rreGroup2",
+              station.name,
+              tempRecording
+            );
+          });
+        }
+      });
   });
 
   it("Group admin can view report on their device's recordings", () => {

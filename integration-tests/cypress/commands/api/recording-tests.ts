@@ -379,19 +379,16 @@ export function checkRecording(
   cy.log(`recording id is ${recordingId}`);
   makeAuthorizedRequest(
     {
-      url: v1ApiPath(`recordings`),
+      url: v1ApiPath(`recordings/${recordingId}`),
     },
     userName
   ).then((response) => {
     let rtrn: any = undefined;
-    let recordings = response.body.rows;
-    if (recordingId !== 0) {
-      recordings = recordings.filter((x: any) => x.id == recordingId);
-    }
-    if (recordings.length > 0) {
-      rtrn = checkFunction(recordings[0]);
+    const recording = response.body.recording;
+    if (recording !== undefined) {
+      rtrn = checkFunction(recording);
     } else {
-      expect(recordings.length).equal(1);
+      expect(recording, "Recording should be returned").to.exist;
     }
     cy.wrap(rtrn);
   });
@@ -470,7 +467,7 @@ export function TestCreateExpectedRecordingColumns(
   expected.Group = getTestName(groupName);
   expected.Device = getTestName(deviceName);
   if (stationName !== undefined) {
-    expected.Station = getTestName(stationName);
+    expected.Station = stationName;
   } else {
     expected.Station = "";
   }
@@ -518,7 +515,8 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   deviceName: string,
   groupName: string,
   stationName: string,
-  inputRecording: any
+  inputRecording: any,
+  includePositions: boolean = true
 ): T {
   const inputTrackData = inputRecording.metadata;
   const expected = JSON.parse(JSON.stringify(template));
@@ -541,7 +539,6 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   } else {
     //expected.StationId = null;
   }
-
   expected.id = getCreds(recordingName).id;
   expected.deviceId = device.id;
   expected.deviceName = device.deviceName;
@@ -604,7 +601,8 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputTrackData) {
     expected.tracks = trackResponseFromSet(
       inputTrackData.tracks,
-      inputTrackData.models
+      inputTrackData.models,
+      includePositions
     );
   }
 
@@ -614,7 +612,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   return removeUndefinedParams(expected);
 }
 
-function positionResponseFromSet(positions) {
+export function positionResponseFromSet(positions) {
   const tps = [];
   positions.forEach((tp) => {
     const newTp = {};
@@ -659,7 +657,8 @@ export function predictionResponseFromSet(
 
 export function trackResponseFromSet(
   tracks: ApiTrackSet[],
-  models: ApiRecordingModel[]
+  models: ApiRecordingModel[],
+  includePositions: boolean = true
 ) {
   const expected: ApiTrackResponse[] = [];
   if (tracks) {
@@ -673,10 +672,13 @@ export function trackResponseFromSet(
         tags: [],
         start: track.start_s,
         end: track.end_s,
-        positions: tpos,
         filtered: false,
         automatic: true,
       };
+      if (includePositions) {
+        newTrack.positions = tpos;
+      }
+
       if (
         track.predictions &&
         track.predictions.length &&

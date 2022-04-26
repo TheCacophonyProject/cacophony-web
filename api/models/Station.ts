@@ -43,6 +43,7 @@ export interface Station extends Sequelize.Model, ModelCommon<Station> {
   retiredAt: Date | null;
   GroupId: GroupId;
   automatic: boolean;
+  needsRename: boolean;
   settings?: ApiStationSettings;
 }
 
@@ -101,6 +102,11 @@ export default function (
       allowNull: true,
     },
     automatic: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    needsRename: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,

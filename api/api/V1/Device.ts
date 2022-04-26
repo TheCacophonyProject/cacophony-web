@@ -396,7 +396,19 @@ export default function (app: Application, baseUrl: string) {
       const { stationId, fromDateTime, location } =
         response.locals.setStationAtTime;
       const device = response.locals.device;
-      const station = await models.Station.findByPk(stationId);
+      let station = await models.Station.findByPk(stationId);
+      let fromDateTimeParsed;
+      try {
+        fromDateTimeParsed = new Date(Date.parse(fromDateTime));
+      } catch (e) {
+        return responseUtil.send(response, {
+          statusCode: 422,
+          messages: ["Supplied fromDateTime is not a valid timestamp"],
+        });
+      }
+      if (fromDateTimeParsed < station.activeAt) {
+        station = await station.update({ activeAt: fromDateTime });
+      }
 
       const setLocation = location || station.location;
 
@@ -404,14 +416,17 @@ export default function (app: Application, baseUrl: string) {
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
           uuid: device.uuid,
+          //fromDateTime: { [Op.gte]: fromDateTime },
           fromDateTime,
         },
+        //order: [["fromDateTime", "asc"]]
       });
       if (deviceHistoryEntry) {
         await deviceHistoryEntry.update({
           setBy: "user",
           location: setLocation,
           stationId: station.id,
+          fromDateTime,
         });
       } else {
         await models.DeviceHistory.create({
@@ -437,8 +452,10 @@ export default function (app: Application, baseUrl: string) {
         order: [["fromDateTime", "ASC"]],
       });
 
+      // FIXME - Do we need to exclude null recordingDateTime?
       const recordingTimeWindow = {
         DeviceId: device.id,
+        StationId: { [Op.ne]: stationId },
         recordingDateTime: { [Op.gte]: fromDateTime },
       };
       if (laterLocation) {
@@ -491,32 +508,42 @@ export default function (app: Application, baseUrl: string) {
 
         // Make sure we update the latest times for both kinds of recordings on the station,
         // and if removing the last recording from a station, null out the lastXXRecordingTime field
-        const [latestThermalRecording, latestAudioRecording] =
-          await Promise.all([
-            models.Recording.findOne({
-              where: {
-                DeviceId: device.id,
-                StationId: station.id,
-                type: RecordingType.ThermalRaw,
-              },
-              order: [["recordingDateTime", "DESC"]],
-            }),
+        const [
+          latestThermalRecording,
+          latestAudioRecording,
+          earliestRecording,
+        ] = await Promise.all([
+          models.Recording.findOne({
+            where: {
+              StationId: station.id,
+              type: RecordingType.ThermalRaw,
+              recordingDateTime: { [Op.ne]: null },
+            },
+            order: [["recordingDateTime", "DESC"]],
+          }),
+          models.Recording.findOne({
+            where: {
+              StationId: station.id,
+              type: RecordingType.Audio,
+              recordingDateTime: { [Op.ne]: null },
+            },
+            order: [["recordingDateTime", "DESC"]],
+          }),
 
-            models.Recording.findOne({
-              where: {
-                DeviceId: device.id,
-                StationId: station.id,
-                type: RecordingType.Audio,
-              },
-              order: [["recordingDateTime", "DESC"]],
-            }),
-          ]);
+          models.Recording.findOne({
+            where: {
+              StationId: station.id,
+              recordingDateTime: { [Op.ne]: null },
+            },
+            order: [["recordingDateTime", "ASC"]],
+          }),
+        ]);
+        let updates: any = {};
 
-        const updates: any = {};
         if (
           latestAudioRecording &&
           (!station.lastAudioRecordingTime ||
-            latestAudioRecording.recordingDateTime >
+            latestAudioRecording.recordingDateTime !==
               station.lastAudioRecordingTime)
         ) {
           updates.lastAudioRecordingTime = (
@@ -528,7 +555,7 @@ export default function (app: Application, baseUrl: string) {
         if (
           latestThermalRecording &&
           (!station.lastThermalRecordingTime ||
-            latestThermalRecording.recordingDateTime >
+            latestThermalRecording.recordingDateTime !==
               station.lastThermalRecordingTime)
         ) {
           updates.lastThermalRecordingTime = (
@@ -540,14 +567,32 @@ export default function (app: Application, baseUrl: string) {
         ) {
           updates.lastThermalRecordingTime = null;
         }
+        if (station.automatic && station.id !== stationId) {
+          if (
+            earliestRecording &&
+            earliestRecording.recordingDateTime < station.activeAt
+          ) {
+            updates.activeAt = (
+              earliestRecording as Recording
+            ).recordingDateTime;
+          } else if (!earliestRecording) {
+            await station.destroy();
+            updates = {};
+            await models.DeviceHistory.destroy({
+              where: {
+                stationId: station.id,
+              },
+            });
+          }
+        }
+
         if (Object.keys(updates).length !== 0) {
-          allStationRecordingTimeUpdates.push(updates);
+          allStationRecordingTimeUpdates.push(station.update(updates));
         }
       }
       if (allStationRecordingTimeUpdates.length) {
         await Promise.all(allStationRecordingTimeUpdates);
       }
-
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [
@@ -972,6 +1017,7 @@ export default function (app: Application, baseUrl: string) {
           where: {
             DeviceId: response.locals.device.id,
           },
+          order: [["fromDateTime", "ASC"]],
         });
 
         return responseUtil.send(response, {

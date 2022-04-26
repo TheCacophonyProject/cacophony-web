@@ -2,10 +2,9 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiStationResponseAlias =
-    import("@typedefs/api/station").ApiStationResponse;
-  type ApiUpdateStationData =
-    import("@typedefs/api/station").ApiUpdateStationData;
+  type ApiCreateStationData =
+    import("@typedefs/api/station").ApiCreateStationData;
+  type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
   interface Chainable {
     /**
      * GET to api/v1/stations to retrieve all stations for current user
@@ -17,7 +16,7 @@ declare namespace Cypress {
      */
     apiStationsCheck(
       userName: string,
-      expectedStations: ApiStationResponseAlias[],
+      expectedStations: ApiStationResponse[],
       excludeCheckOn?: any,
       statusCode?: number,
       additionalChecks?: any
@@ -35,7 +34,7 @@ declare namespace Cypress {
     apiStationCheck(
       userName: string,
       stationIdOrName: string,
-      expectedStation: ApiStationResponseAlias,
+      expectedStation: ApiStationResponse,
       excludeCheckOn?: any,
       statusCode?: number,
       additionalChecks?: any
@@ -52,7 +51,7 @@ declare namespace Cypress {
     apiStationUpdate(
       userName: string,
       stationIdOrName: string,
-      stationUpdates: ApiUpdateStationData,
+      stationUpdates: ApiStationData,
       fromDate?: string,
       untilDate?: string,
       retire?: boolean,

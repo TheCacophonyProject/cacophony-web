@@ -157,35 +157,6 @@ describe("Recordings - audio recording parameter tests", () => {
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording15");
     });
-
-    //can have blank recordingDateTime
-    const recording16 = TestCreateRecordingData(templateRecording);
-    let expectedRecording16: ApiAudioRecordingResponse;
-
-    recording16.recordingDateTime = null;
-    cy.apiRecordingAdd(
-      "rarDevice1",
-      recording16,
-      "60sec-audio.mp4",
-      "rarRecording16"
-    ).then(() => {
-      expectedRecording16 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "rarRecording16",
-        "rarDevice1",
-        "rarGroup",
-        null,
-        recording16
-      );
-      expectedRecording16.recordingDateTime = recording16.recordingDateTime;
-      cy.apiRecordingCheck(
-        "rarGroupAdmin",
-        "rarRecording16",
-        expectedRecording16,
-        EXCLUDE_IDS
-      );
-      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording16");
-    });
   });
 
   //TODO: Fails - issue 80

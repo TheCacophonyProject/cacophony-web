@@ -57,7 +57,7 @@ describe("Recordings - processing tests", () => {
   delete templateRecording.processingState;
   delete templateRecording.metadata.tracks;
 
-  //use standard audio recortding template - inject it at ToMp3 state
+  //use standard audio recording template - inject it at ToMp3 state
   const templateAudioRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );
@@ -692,7 +692,8 @@ describe("Recordings - processing tests", () => {
               start: 1,
               end: 4,
               id: 1,
-              positions: [],
+              //              positions: [],
+              // TODO enable after merge
               filtered: true,
               automatic: true,
             },
@@ -737,7 +738,8 @@ describe("Recordings - processing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
-                positions: [],
+                //              positions: [],
+                // TODO enable after merge
                 filtered: false,
                 automatic: true,
               },
@@ -828,7 +830,8 @@ describe("Recordings - processing tests", () => {
               start: 1,
               end: 4,
               id: 1,
-              positions: [],
+              //              positions: [],
+              // TODO enable after merge
               filtered: true,
               automatic: true,
             },
@@ -855,7 +858,8 @@ describe("Recordings - processing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
-                positions: [],
+                //              positions: [],
+                // TODO enable after merge
                 filtered: false,
                 automatic: true,
               },
@@ -935,9 +939,7 @@ describe("Recordings - processing tests", () => {
           RecordingProcessingState.Tracking;
         expectedProcessing20.hasAlert = true;
 
-        cy.log(
-          "Send for processing (Tracking) and check is flagged as hasAlert"
-        );
+        cy.log("Send for processing and check is flagges as hasAlert");
         cy.processingApiCheck(
           RecordingType.ThermalRaw,
           RecordingProcessingState.Tracking,
@@ -1037,8 +1039,9 @@ describe("Recordings - processing tests", () => {
           algorithm: 99999,
           previewSecs: null,
         },
-        location: [-46.29115, 170.30845],
       };
+      //NOTE: loction no longer supported
+
       //top level recording data
       const recording17 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(
@@ -1077,10 +1080,6 @@ describe("Recordings - processing tests", () => {
         expectedRecording17.airplaneModeOn = true;
         expectedRecording17.type = RecordingType.Audio;
         expectedRecording17.comment = "This is a new comment";
-        expectedRecording17.location = {
-          lat: -46.29115,
-          lng: 170.30845,
-        };
         expectedRecording17.cacophonyIndex = [
           { end_s: 21, begin_s: 1, index_percent: 81.8 },
           { end_s: 41, begin_s: 21, index_percent: 78.1 },
@@ -1090,7 +1089,7 @@ describe("Recordings - processing tests", () => {
           newField: "newValue",
           newField2: "newValue2",
           algorithm: 99999,
-          totalFrames: 141,
+          totalFrames: 5,
           previewSecs: null,
         } as any;
 

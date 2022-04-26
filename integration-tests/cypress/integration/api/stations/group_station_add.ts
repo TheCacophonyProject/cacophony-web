@@ -1,9 +1,4 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "@commands/api/recording-tests";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
@@ -16,29 +11,9 @@ import {
 import {
   TestCreateStationData,
   TestCreateExpectedStation,
-  TestGetLocation,
 } from "@commands/api/station";
 
-import {
-  TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
-} from "@commands/dataTemplate";
-import { ApiRecordingSet, ApiStationData } from "@commands/types";
-
-const templateRecording: ApiRecordingSet = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
-);
-
-const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
-);
-
 describe("Stations: adding", () => {
-  const TemplateStation: ApiStationData = {
-    name: "saStation1",
-    lat: -43.62367659982,
-    lng: 172.62646754804,
-  };
   const TemplateExpectedStation: ApiStationResponse = {
     id: NOT_NULL,
     name: "saStation1",
@@ -77,7 +52,11 @@ describe("Stations: adding", () => {
     cy.log("Adding station");
     cy.apiGroupStationAdd("staAdmin", "staGroup", station1).then(() => {
       cy.log("Check station exists");
-      cy.apiStationCheck("staAdmin", "staStation1", expectedStation1);
+      cy.apiStationCheck(
+        "staAdmin",
+        getTestName("staStation1"),
+        expectedStation1
+      );
     });
   });
 
@@ -190,7 +169,14 @@ describe("Stations: adding", () => {
       cy.apiGroupStationAdd("staAdmin", "staGroup", stationWithSameName);
 
       cy.log("Check station1 exists");
-      //TODO Issue 6 bug: cy.apiStationCheck("staAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
+      cy.apiStationCheck(
+        "staAdmin",
+        station1Id.toString(),
+        expectedStation1,
+        null,
+        null,
+        { useRawStationId: true, additionalParams: { "only-active": false } }
+      );
       cy.log("Check station2 exists");
       cy.apiGroupStationCheck(
         "staAdmin",
@@ -203,11 +189,6 @@ describe("Stations: adding", () => {
 
   it("No warning on add station with unique location", () => {
     const station1 = TestCreateStationData("staStation", 5);
-    const expectedStation1 = TestCreateExpectedStation(
-      TemplateExpectedStation,
-      "staStation",
-      5
-    );
 
     cy.log("Adding station and check no warnings returned");
     cy.apiGroupStationAdd(
@@ -228,7 +209,6 @@ describe("Stations: adding", () => {
       "staStation",
       6
     );
-    expectedStation1.name = getTestName(station1.name);
     const stationTooClose = TestCreateStationData("staStation", 6);
     stationTooClose.name = "stationTooClose6";
     const expectedStationTooClose = TestCreateExpectedStation(
@@ -240,8 +220,8 @@ describe("Stations: adding", () => {
 
     cy.log("Adding station");
     cy.apiGroupStationAdd("staAdmin", "staGroup", station1).then(
-      (stationId) => {
-        cy.log("Can add duplicate-located station but earning given");
+      (station1Id: number) => {
+        cy.log("Can add duplicate-located station but warning given");
         cy.apiGroupStationAdd(
           "staAdmin",
           "staGroup",
@@ -253,24 +233,24 @@ describe("Stations: adding", () => {
             warnings: [
               `New station is too close to ${getTestName(
                 station1.name
-              )} (#${stationId}) - recordings may be incorrectly matched`,
+              )} (#${station1Id}) - recordings may be incorrectly matched`,
             ],
           }
-        ).then(() => {
-          cy.log("Check stations both exist");
-          cy.apiGroupStationCheck(
-            "staAdmin",
-            "staGroup",
-            "staStation6",
-            expectedStation1
-          );
-          cy.apiGroupStationCheck(
-            "staAdmin",
-            "staGroup",
-            "stationTooClose6",
-            expectedStationTooClose
-          );
-        });
+        );
+
+        cy.log("Check stations both exist");
+        cy.apiGroupStationCheck(
+          "staAdmin",
+          "staGroup",
+          "staStation6",
+          expectedStation1
+        );
+        cy.apiGroupStationCheck(
+          "staAdmin",
+          "staGroup",
+          "stationTooClose6",
+          expectedStationTooClose
+        );
       }
     );
   });
@@ -315,13 +295,14 @@ describe("Stations: adding", () => {
       "staGroup",
       station1,
       "2020-01-01T00:00:00.000Z"
-    ).then(() => {
+    ).then((firstStationId: number) => {
       cy.log("Retire that station");
       cy.testStationRetire(
         "staAdmin",
         "staStation8",
         "2020-02-01T00:00:00.000Z"
       );
+      expectedStation1.retiredAt = "2020-02-01T00:00:00.000Z";
 
       cy.log("Can add duplicate-located station with no warning");
       cy.apiGroupStationAdd(
@@ -332,16 +313,31 @@ describe("Stations: adding", () => {
         undefined,
         undefined,
         { warnings: "none" }
-      );
-
-      cy.log("Check that both stations exist");
-      //TODO Issue 7: bug: cy.apiGroupStationCheck("staAdmin", "staGroup", "staStation8", expectedStation1);
-      cy.apiGroupStationCheck(
-        "staAdmin",
-        "staGroup",
-        "stationWithSameLocation8",
-        expectedStationWithSameLocation
-      );
+      ).then((secondStationId: number) => {
+        cy.log("Check that both stations exist");
+        cy.apiStationCheck(
+          "staAdmin",
+          firstStationId.toString(),
+          expectedStation1,
+          undefined,
+          undefined,
+          { useRawStationId: true }
+        );
+        cy.apiStationCheck(
+          "staAdmin",
+          secondStationId.toString(),
+          expectedStationWithSameLocation,
+          undefined,
+          undefined,
+          { useRawStationId: true }
+        );
+        cy.apiGroupStationCheck(
+          "staAdmin",
+          "staGroup",
+          "stationWithSameLocation8",
+          expectedStationWithSameLocation
+        );
+      });
     });
   });
 });

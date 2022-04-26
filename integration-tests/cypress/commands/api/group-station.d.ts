@@ -23,21 +23,6 @@ declare namespace Cypress {
     ): any;
 
     /**
-     * POST to api/v1/groups/<groupidorname>/stations to add, update or retire stations from the   group
-     * Optionally check for fail response (statusCode!=200)
-     * By default userName and groupName are converted into unique (for this test run) names.
-     * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
-     */
-    apiGroupStationsUpdate(
-      userName: string,
-      groupIdOrName: string,
-      stations: ApiStationData[],
-      updateFrom?: string,
-      statusCode?: number,
-      additionalChecks?: any
-    ): any;
-
-    /**
      * Call api/v1/groups/<groupidorname>/station and check that returned values match expectedS  tation
      * Optionally check for fail response (statusCode!=200)
      * By default stationName and groupName are converted into unique (for this test run) names.
@@ -62,7 +47,7 @@ declare namespace Cypress {
      * By default stations and expectedStations are sorted on userName before comparison
      * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true  )
      */
-    apiGroupsStationsCheck(
+    apiGroupStationsCheck(
       userName: string,
       groupIdOrName: any,
       expectedStations: ApiStationResponse[],

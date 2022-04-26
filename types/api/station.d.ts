@@ -36,6 +36,7 @@ export interface ApiStationResponse {
   lastAudioRecordingTime?: IsoFormattedDateString;
   automatic: boolean;
   settings?: ApiStationSettings;
+  needsRename?: true;
   updatedAt: IsoFormattedDateString;
   groupId: GroupId;
   groupName: string;

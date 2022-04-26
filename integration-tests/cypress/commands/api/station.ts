@@ -15,6 +15,8 @@ import {
   v1ApiPath,
   sortArrayOn,
   checkTreeStructuresAreEqualExcept,
+  checkMessages,
+  checkWarnings,
 } from "../server";
 
 Cypress.Commands.add(
@@ -69,12 +71,7 @@ Cypress.Commands.add(
         });
       }
       if (additionalChecks["messages"]) {
-        const messages = response.body.messages;
-        const expectedMessages = additionalChecks["messages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+        checkMessages(response, additionalChecks["messages"]);
       }
     });
   }
@@ -95,7 +92,7 @@ Cypress.Commands.add(
     if (additionalChecks["useRawStationId"] === true) {
       stationId = stationIdOrName;
     } else {
-      stationId = getCreds(getTestName(stationIdOrName)).id.toString();
+      stationId = getCreds(stationIdOrName).id.toString();
     }
 
     let params = {};
@@ -124,20 +121,10 @@ Cypress.Commands.add(
         cy.wrap(response.body.station.id);
       }
       if (additionalChecks["warnings"]) {
-        const warnings = response.body.warnings;
-        const expectedWarnings = additionalChecks["warnings"];
-        expect(warnings).to.exist;
-        expectedWarnings.forEach(function (warning: string) {
-          expect(warnings, "Expect warning to be present").to.contain(warning);
-        });
+        checkWarnings(response, additionalChecks["warnings"]);
       }
       if (additionalChecks["messages"]) {
-        const messages = response.body.messages;
-        const expectedMessages = additionalChecks["messages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+        checkMessages(response, additionalChecks["messages"]);
       }
     });
   }
@@ -204,26 +191,10 @@ Cypress.Commands.add(
         saveIdOnly(stationName, stationId);
       }
       if (additionalChecks["warnings"]) {
-        if (additionalChecks["warnings"] == "none") {
-          expect(response.body.warnings).to.be.undefined;
-        } else {
-          const warnings = response.body.warnings;
-          const expectedWarnings = additionalChecks["warnings"];
-          expect(warnings).to.exist;
-          expectedWarnings.forEach(function (warning: string) {
-            expect(warnings, "Expect warning to be present").to.contain(
-              warning
-            );
-          });
-        }
+        checkWarnings(response, additionalChecks["warnings"]);
       }
       if (additionalChecks["messages"]) {
-        const messages = response.body.messages;
-        const expectedMessages = additionalChecks["messages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+        checkMessages(response, additionalChecks["messages"]);
       }
     });
   }
@@ -270,12 +241,7 @@ Cypress.Commands.add(
         });
       }
       if (additionalChecks["messages"]) {
-        const messages = response.body.messages;
-        const expectedMessages = additionalChecks["messages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
+        checkMessages(response, additionalChecks["messages"]);
       }
     });
   }
@@ -291,7 +257,7 @@ Cypress.Commands.add(
   ): any => {
     let stationId: string;
     //Get station ID from name (unless we're asked not to)
-    if (additionalChecks["useRawStatonId"] === true) {
+    if (additionalChecks["useRawStationId"] === true) {
       stationId = stationIdOrName;
     } else {
       stationId = getCreds(getTestName(stationIdOrName)).id.toString();
@@ -356,6 +322,7 @@ export function TestCreateExpectedAutomaticStation(
   expectedStation.location.lat = thisLocation.lat;
   expectedStation.location.lng = thisLocation.lng;
   expectedStation.automatic = true;
+  expectedStation.needsRename = true;
   expectedStation.lastThermalRecordingTime = recTime;
   delete expectedStation.lastUpdatedById;
 
@@ -364,7 +331,7 @@ export function TestCreateExpectedAutomaticStation(
 
 export function TestGetLocation(identifier = 0, offsetDegrees = 0) {
   const thisLocation = {
-    lat: -45 - identifier / 10 + offsetDegrees,
+    lat: -45 - identifier / 10 - offsetDegrees,
     lng: 172 + identifier / 10 + offsetDegrees,
   };
 

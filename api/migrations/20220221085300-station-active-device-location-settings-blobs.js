@@ -19,7 +19,13 @@ module.exports = {
     });
     await queryInterface.addColumn("Stations", "automatic", {
       type: Sequelize.BOOLEAN,
-      comment: "Set if station is automatically created by recording upload in a new location - this is a flag to let the UI know it needs renaming",
+      comment: "Set if station is automatically created by recording upload in a new location",
+      defaultValue: false,
+      allowNull: false,
+    });
+    await queryInterface.addColumn("Stations", "needsRename", {
+      type: Sequelize.BOOLEAN,
+      comment: "Set if station has an automatically generated name - this is a flag to let the UI know it needs renaming",
       defaultValue: false,
       allowNull: false,
     });
@@ -130,6 +136,7 @@ module.exports = {
   down: async function (queryInterface, Sequelize) {
     await queryInterface.removeColumn("Stations", "activeAt");
     await queryInterface.removeColumn("Stations", "automatic");
+    await queryInterface.removeColumn("Stations", "needsRename");
     await queryInterface.removeColumn("Stations", "settings");
     await queryInterface.removeColumn("Stations", "lastThermalRecordingTime");
     await queryInterface.removeColumn("Stations", "lastAudioRecordingTime");

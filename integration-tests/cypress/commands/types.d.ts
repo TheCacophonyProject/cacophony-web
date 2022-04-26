@@ -1,6 +1,7 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { CacophonyIndex } from "@typedefs/api/recording";
+import { LatLng } from "@typedefs/api/common";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {
@@ -65,6 +66,19 @@ export interface ApiDeviceInGroupDevice {
   deviceName: string;
   groupName: string;
   admin: boolean;
+}
+
+// devices/history
+export interface DeviceHistoryEntry {
+  DeviceId: number;
+  GroupId: number;
+  deviceName: string;
+  fromDateTime: string;
+  location: LatLng;
+  saltId: number;
+  setBy: string;
+  stationId: number;
+  uuid: number;
 }
 
 /*******************************************************************
@@ -591,4 +605,10 @@ export interface TestComparablePowerEvent {
 export interface TestDeviceAndGroup {
   devicename: string;
   groupname: string;
+}
+
+// hash of name and ID - for wherever needed!
+export interface TestNameAndId {
+  name: string;
+  id: number;
 }

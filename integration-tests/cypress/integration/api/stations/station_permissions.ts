@@ -1,9 +1,4 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "@commands/api/recording-tests";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
@@ -13,30 +8,12 @@ import {
   TestCreateExpectedStation,
   TestGetLocation,
 } from "@commands/api/station";
-
-import {
-  TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
-} from "@commands/dataTemplate";
-import { ApiRecordingSet, ApiStationData } from "@commands/types";
-
-const templateRecording: ApiRecordingSet = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
-);
-
-const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
-);
+import { ApiStationData } from "@commands/types";
 
 describe("Stations: permissions", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
 
-  const TemplateStation: ApiStationData = {
-    name: "saStation1",
-    lat: -43.62367659982,
-    lng: 172.62646754804,
-  };
   const TemplateExpectedStation: ApiStationResponse = {
     id: NOT_NULL,
     name: "saStation1",
@@ -65,7 +42,6 @@ describe("Stations: permissions", () => {
 
   it("Permissions: Group admin can add, get, update, delete a station", () => {
     const saStation1 = TestCreateStationData("saStation", 1);
-    const saUpdatedStation1 = TestCreateStationData("saUpdatedStation", 1);
     const saExpectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "saStation",
@@ -81,7 +57,11 @@ describe("Stations: permissions", () => {
     cy.log("Adding station");
     cy.apiGroupStationAdd("saAdmin", "saGroup", saStation1).then(() => {
       cy.log("Can get station by id");
-      cy.apiStationCheck("saAdmin", "saStation1", saExpectedStation1);
+      cy.apiStationCheck(
+        "saAdmin",
+        getTestName("saStation1"),
+        saExpectedStation1
+      );
 
       const recordingTime = new Date();
       cy.testUploadRecording(
@@ -104,25 +84,21 @@ describe("Stations: permissions", () => {
             saExpectedStation1
           );
 
+          cy.log("Can get stations by group");
+          cy.apiGroupStationsCheck("saAdmin", "saGroup", [saExpectedStation1]);
+
           cy.log("Can get stations by user");
           cy.apiStationsCheck("saAdmin", [saExpectedStation1]);
 
           cy.log("Can update a station");
           cy.apiStationUpdate("saAdmin", "saStation1", {
             name: "newName",
-          }).then(() => {
+          } as unknown as ApiStationData).then(() => {
             saExpectedStation1.name = getTestName("newName");
-            cy.apiStationCheck("saAdmin", "saStation1", saExpectedStation1);
-          });
-
-          cy.log("Can update a group's stations");
-          cy.apiGroupStationsUpdate("saAdmin", "saGroup", [
-            saUpdatedStation1,
-          ]).then(() => {
             cy.apiStationCheck(
               "saAdmin",
-              "saStation1",
-              saUpdatedExpectedStation1
+              getTestName("saStation1"),
+              saExpectedStation1
             );
           });
 
@@ -131,7 +107,7 @@ describe("Stations: permissions", () => {
             cy.log("Station no longer exists");
             cy.apiStationCheck(
               "saAdmin",
-              "saStation1",
+              getTestName("saStation1"),
               undefined,
               [],
               HTTP_Forbidden
@@ -150,9 +126,8 @@ describe("Stations: permissions", () => {
     });
   });
 
-  it("Permissions: Member cannot add, get, update or delete a station", () => {
+  it("Permissions: Member cannot add, update or delete a station but can get", () => {
     const saStation = TestCreateStationData("saStation", 2);
-    const saUpdatedStation1 = TestCreateStationData("saUpdatedStation", 2);
     const saExpectedStation = TestCreateExpectedStation(
       TemplateExpectedStation,
       "saStation",
@@ -171,7 +146,11 @@ describe("Stations: permissions", () => {
     cy.log("Get admin to add a station to test with");
     cy.apiGroupStationAdd("saAdmin", "saGroup", saStation).then(() => {
       cy.log("Member can get station by id");
-      cy.apiStationCheck("saMember", "saStation2", saExpectedStation);
+      cy.apiStationCheck(
+        "saMember",
+        getTestName("saStation2"),
+        saExpectedStation
+      );
 
       cy.log("Member can get station by group");
       cy.apiGroupStationCheck(
@@ -181,26 +160,20 @@ describe("Stations: permissions", () => {
         saExpectedStation
       );
 
-      cy.log("Get stations by user does list this station");
+      cy.log("Can get stations by group");
+      cy.apiGroupStationsCheck("saMember", "saGroup", [saExpectedStation]);
+
+      cy.log("Get stations by user lists this station");
       cy.apiStationsCheck("saMember", [saExpectedStation]);
 
       cy.log("Cannot update station");
       cy.apiStationUpdate(
         "saMember",
         "saStation2",
-        { name: "newName" },
+        { name: "newName" } as unknown as ApiStationData,
         undefined,
         undefined,
         false,
-        HTTP_Forbidden
-      );
-
-      cy.log("Cannot update a group's stations");
-      cy.apiGroupStationsUpdate(
-        "saMember",
-        "saGroup",
-        [saUpdatedStation1],
-        undefined,
         HTTP_Forbidden
       );
 
@@ -208,13 +181,16 @@ describe("Stations: permissions", () => {
       cy.apiStationDelete("saMember", "saStation2", true, HTTP_Forbidden);
 
       cy.log("Station still exists");
-      cy.apiStationCheck("saAdmin", "saStation2", saExpectedStation);
+      cy.apiStationCheck(
+        "saAdmin",
+        getTestName("saStation2"),
+        saExpectedStation
+      );
     });
   });
 
   it("Permissions: Non-member cannot add, get, update or delete a station", () => {
     const saStation = TestCreateStationData("saStation", 3);
-    const saUpdatedStation1 = TestCreateStationData("saUpdatedStation", 3);
     const saExpectedStation = TestCreateExpectedStation(
       TemplateExpectedStation,
       "saStation",
@@ -235,7 +211,7 @@ describe("Stations: permissions", () => {
       cy.log("Non-Member cannot get station by id");
       cy.apiStationCheck(
         "saNonMember",
-        "saStation3",
+        getTestName("saStation3"),
         undefined,
         undefined,
         HTTP_Forbidden
@@ -251,6 +227,15 @@ describe("Stations: permissions", () => {
         HTTP_Forbidden
       );
 
+      cy.log("Cannot get stations by group");
+      cy.apiGroupStationsCheck(
+        "saNonMember",
+        "saGroup",
+        [],
+        undefined,
+        HTTP_Forbidden
+      );
+
       cy.log("Get stations by user does not list this station");
       cy.apiStationsCheck("saNonMember", []);
 
@@ -258,19 +243,10 @@ describe("Stations: permissions", () => {
       cy.apiStationUpdate(
         "saNonMember",
         "saStation3",
-        { name: "newName" },
+        { name: "newName" } as unknown as ApiStationData,
         undefined,
         undefined,
         false,
-        HTTP_Forbidden
-      );
-
-      cy.log("Cannot update a group's stations");
-      cy.apiGroupStationsUpdate(
-        "saNonMember",
-        "saGroup",
-        [saUpdatedStation1],
-        undefined,
         HTTP_Forbidden
       );
 
@@ -278,7 +254,11 @@ describe("Stations: permissions", () => {
       cy.apiStationDelete("saNonMember", "saStation3", true, HTTP_Forbidden);
 
       cy.log("Station still exists");
-      cy.apiStationCheck("saAdmin", "saStation3", saExpectedStation);
+      cy.apiStationCheck(
+        "saAdmin",
+        getTestName("saStation3"),
+        saExpectedStation
+      );
     });
   });
 
@@ -286,6 +266,8 @@ describe("Stations: permissions", () => {
     it("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
 
+      cy.apiGroupAdd("saAdmin", "saOnlyGroup");
+      cy.apiDeviceAdd("saOnlyCamera", "saOnlyGroup");
       cy.apiGroupAdd(superuser, "saSuGroup");
       cy.apiDeviceAdd("saSuCamera", "saSuGroup");
 
@@ -303,76 +285,117 @@ describe("Stations: permissions", () => {
       );
 
       cy.log("Adding station in another group");
-      cy.apiGroupStationAdd("saAdmin", "saGroup", saStation1);
-      cy.apiGroupStationAdd(superuser, "saSuGroup", saStation2).then(() => {
-        saExpectedStation2.groupId = getCreds("saSuGroup").id;
-        saExpectedStation2.groupName = getTestName("saSuGroup");
-        //Station by ID
-        cy.log("SU can get station in any group by id");
-        cy.apiStationCheck(superuser, "saStation4", saExpectedStation1);
+      cy.apiGroupStationAdd("saAdmin", "saOnlyGroup", saStation1).then(() => {
+        cy.apiGroupStationAdd(superuser, "saSuGroup", saStation2).then(() => {
+          saExpectedStation2.groupId = getCreds("saSuGroup").id;
+          saExpectedStation2.groupName = getTestName("saSuGroup");
+          saExpectedStation1.groupId = getCreds("saOnlyGroup").id;
+          saExpectedStation1.groupName = getTestName("saOnlyGroup");
+          //Station by ID
+          cy.log("SU can get station in any group by id");
+          cy.apiStationCheck(
+            superuser,
+            getTestName("saStation4"),
+            saExpectedStation1
+          );
 
-        cy.log("SU cannot get station in any group by id when in user-mode");
-        cy.apiStationCheck(
-          superuser,
-          "saStation4",
-          undefined,
-          undefined,
-          HTTP_Forbidden,
-          { additionalParams: { "view-mode": "user" } }
-        );
+          cy.log("SU cannot get station in any group by id when in user-mode");
+          cy.apiStationCheck(
+            superuser,
+            getTestName("saStation4"),
+            undefined,
+            undefined,
+            HTTP_Forbidden,
+            { additionalParams: { "view-mode": "user" } }
+          );
 
-        cy.log("SU can get station in own group by id when in user-mode");
-        cy.apiStationCheck(
-          superuser,
-          "saStation5",
-          saExpectedStation2,
-          undefined,
-          undefined,
-          { additionalParams: { "view-mode": "user" } }
-        );
+          cy.log("SU can get station in own group by id when in user-mode");
+          cy.apiStationCheck(
+            superuser,
+            getTestName("saStation5"),
+            saExpectedStation2,
+            undefined,
+            undefined,
+            { additionalParams: { "view-mode": "user" } }
+          );
 
-        //Station by group
-        cy.log("Can get station in any group by group, name");
-        cy.apiGroupStationCheck(
-          superuser,
-          "saGroup",
-          "saStation4",
-          saExpectedStation1
-        );
+          // all stations by group
+          cy.log("SU can get station by group");
+          cy.apiGroupStationsCheck(superuser, "saOnlyGroup", [
+            saExpectedStation1,
+          ]);
 
-        cy.log(
-          "Cannot get station in any group by group, name when in user mode"
-        );
-        cy.apiGroupStationCheck(
-          superuser,
-          "saGroup",
-          "saStation4",
-          undefined,
-          undefined,
-          HTTP_Forbidden,
-          { additionalParams: { "view-mode": "user" } }
-        );
+          cy.log(
+            "SU cannot get station in any group by group when in user-mode"
+          );
+          cy.apiGroupStationsCheck(
+            superuser,
+            "saOnlyGroup",
+            [saExpectedStation1],
+            undefined,
+            HTTP_Forbidden,
+            { additionalParams: { "view-mode": "user" } }
+          );
 
-        cy.log("Can get station in own group by group, name when in user-mode");
-        cy.apiGroupStationCheck(
-          superuser,
-          "saSuGroup",
-          "saStation5",
-          saExpectedStation2,
-          undefined,
-          undefined,
-          { additionalParams: { "view-mode": "user" } }
-        );
+          cy.log("SU can get stations in own group by group when in user-mode");
+          cy.apiGroupStationsCheck(
+            superuser,
+            "saSuGroup",
+            [saExpectedStation2],
+            undefined,
+            undefined,
+            { additionalParams: { "view-mode": "user" } }
+          );
 
-        //Stations by user
-        cy.log("Can get only own stations by user when in user-mode");
-        cy.apiStationsCheck(
-          superuser,
-          [saExpectedStation2],
-          undefined,
-          undefined,
-          { additionalParams: { "view-mode": "user" } }
-        );
+          //Station by group and name
+          cy.log("Can get station in any group by group, name");
+          cy.apiGroupStationCheck(
+            superuser,
+            "saOnlyGroup",
+            "saStation4",
+            saExpectedStation1
+          );
+
+          cy.log(
+            "Cannot get station in any group by group, name when in user mode"
+          );
+          cy.apiGroupStationCheck(
+            superuser,
+            "saOnlyGroup",
+            "saStation4",
+            undefined,
+            undefined,
+            HTTP_Forbidden,
+            { additionalParams: { "view-mode": "user" } }
+          );
+
+          cy.log(
+            "Can get station in own group by group, name when in user-mode"
+          );
+          cy.apiGroupStationCheck(
+            superuser,
+            "saSuGroup",
+            "saStation5",
+            saExpectedStation2,
+            undefined,
+            undefined,
+            { additionalParams: { "view-mode": "user" } }
+          );
+
+          //Stations by user
+          cy.log("Can get only own stations by user when in user-mode");
+          cy.apiStationsCheck(
+            superuser,
+            [saExpectedStation2],
+            undefined,
+            undefined,
+            { additionalParams: { "view-mode": "user" } }
+          );
+
+          //Tidy up
+          cy.apiStationDelete(superuser, "saStation5");
+          //;
+        });
       });
     });
   } else {

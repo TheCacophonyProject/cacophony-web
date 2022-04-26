@@ -1,9 +1,4 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  TestCreateExpectedRecordingData,
-  TestCreateRecordingData,
-} from "@commands/api/recording-tests";
-import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
@@ -21,26 +16,9 @@ import {
   TestGetLocation,
 } from "@commands/api/station";
 
-import {
-  TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
-} from "@commands/dataTemplate";
-import { ApiRecordingSet, ApiStationData } from "@commands/types";
-
-const templateRecording: ApiRecordingSet = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING)
-);
-
-const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-  JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
-);
+import { ApiStationData } from "@commands/types";
 
 describe("Stations: updating", () => {
-  const TemplateStation: ApiStationData = {
-    name: "saStation1",
-    lat: -43.62367659982,
-    lng: 172.62646754804,
-  };
   const TemplateExpectedStation: ApiStationResponse = {
     id: NOT_NULL,
     name: "saStation1",
@@ -70,13 +48,10 @@ describe("Stations: updating", () => {
 
   it("Can update a station with new unique name", () => {
     const station1 = TestCreateStationData("stuStation", 1);
-    const expectedStation1 = TestCreateExpectedStation(
-      TemplateExpectedStation,
-      "stuStation",
-      1
-    );
 
-    const station2 = { name: "stuUpdateStation1" };
+    const station2: ApiStationData = {
+      name: "stuUpdateStation1",
+    } as unknown as ApiStationData;
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuUpdateStation",
@@ -110,13 +85,8 @@ describe("Stations: updating", () => {
 
   it("Can update a station with new unique location", () => {
     const station1 = TestCreateStationData("stuStation", 2);
-    const expectedStation1 = TestCreateExpectedStation(
-      TemplateExpectedStation,
-      "stuStation",
-      2
-    );
 
-    const station2 = { lat: -47, lng: 177 };
+    const station2 = { lat: -47, lng: 177 } as unknown as ApiStationData;
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
@@ -141,11 +111,6 @@ describe("Stations: updating", () => {
 
   it("Can update a station with both name and new unique location", () => {
     const station1 = TestCreateStationData("stuStation", 3);
-    const expectedStation1 = TestCreateExpectedStation(
-      TemplateExpectedStation,
-      "stuStation",
-      3
-    );
 
     const station2 = TestCreateStationData("stuUpdateStation", 4);
     const expectedStation2 = TestCreateExpectedStation(
@@ -286,11 +251,18 @@ describe("Stations: updating", () => {
         "2020-02-01T00:00:00.000Z"
       );
 
-      cy.log("Can update station2 to have sane name as retired station1");
+      cy.log("Can update station2 to have same name as retired station1");
       cy.apiStationUpdate("stuAdmin", "stuStation10", stationWithSameName);
 
       cy.log("Check station1 exists");
-      //TODO Issue 6 bug: cy.apiStationCheck("stuAdmin", station1Id.toString(), expectedStation1, null, null, {useRawStationId: true, additionalParams: {"only-active": false}});
+      cy.apiStationCheck(
+        "stuAdmin",
+        station1Id.toString(),
+        expectedStation1,
+        null,
+        null,
+        { useRawStationId: true, additionalParams: { "only-active": false } }
+      );
       cy.log("Check station2 exists");
       cy.apiGroupStationCheck(
         "stuAdmin",
@@ -329,11 +301,6 @@ describe("Stations: updating", () => {
       13
     );
     const station2 = TestCreateStationData("stuStation", 14);
-    const expectedStation2 = TestCreateExpectedStation(
-      TemplateExpectedStation,
-      "stuStation",
-      14
-    );
     const stationTooClose = TestCreateStationData("stuStation", 13);
     stationTooClose.name = "stationTooClose14";
 
@@ -346,13 +313,11 @@ describe("Stations: updating", () => {
 
     cy.log("Adding station1");
     cy.apiGroupStationAdd("stuAdmin", "stuGroup", station1).then(
-      (station1Id) => {
+      (station1Id: number) => {
         cy.log("Adding station2");
         cy.apiGroupStationAdd("stuAdmin", "stuGroup", station2);
 
-        cy.log(
-          "Can update station to same position as station1 but warning given"
-        );
+        cy.log("Can update station to same posn as station1 but warning given");
         cy.apiStationUpdate(
           "stuAdmin",
           "stuStation14",
@@ -450,6 +415,7 @@ describe("Stations: updating", () => {
         "stuStation17",
         "2020-02-01T00:00:00.000Z"
       );
+      expectedStation1.retiredAt = "2020-02-01T00:00:00.000Z";
 
       cy.log("Can relocate station2 to position of station1 with no warning");
       cy.apiStationUpdate(
@@ -464,7 +430,14 @@ describe("Stations: updating", () => {
       );
 
       cy.log("Check that both stations exist");
-      //TODO Issue 6 bug: cy.apiGroupStationCheck("stuAdmin", "stuGroup", "stuStation17", expectedStation1);
+      cy.apiStationCheck(
+        "stuAdmin",
+        getTestName("stuStation17"),
+        expectedStation1,
+        undefined,
+        undefined,
+        { additionalParams: { "only-active": false } }
+      );
       cy.apiGroupStationCheck(
         "stuAdmin",
         "stuGroup",
@@ -476,7 +449,6 @@ describe("Stations: updating", () => {
 
   it("Automatic station becomes manual when updated", () => {
     const recordingTime = new Date();
-    const station1 = TestCreateStationData("stuStation", 19);
     const station2 = TestCreateStationData("stuStation", 20);
     const expectedStation1 = TestCreateExpectedAutomaticStation(
       TemplateExpectedStation,
@@ -484,6 +456,7 @@ describe("Stations: updating", () => {
       "stuCamera1",
       recordingTime.toISOString()
     );
+    expectedStation1.needsRename = true;
 
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
@@ -534,4 +507,12 @@ describe("Stations: updating", () => {
         });
       });
   });
+
+  //TODO write this
+  it.skip(
+    "fromDate and untilDate applied to station as activeAt and retiredAt"
+  );
+
+  //TODO write this
+  it.skip("setting retired=true sets retiredAt to Now()");
 });

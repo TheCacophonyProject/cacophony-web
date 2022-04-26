@@ -29,7 +29,7 @@ describe("Update recordings", () => {
 
   // Allowed update fields defined in
   // jsonSchemas/api/recording/ApiRecordingUpdateRequest.schema.json
-  // (location, comment and additionalMetadata)
+  // (comment and additionalMetadata)
   const fieldUpdates = {
     comment: "This is a new comment",
     // add newFields, change algorithm, set previewSecs to null, leave totalFrames unchanged
@@ -39,8 +39,8 @@ describe("Update recordings", () => {
       algorithm: 99999,
       previewSecs: null,
     },
-    location: [-46.29115, 170.30835],
   };
+  //NOTE location no longer supported
 
   before(() => {
     //Create group1, admin and 2 devices
@@ -218,10 +218,6 @@ describe("Update recordings", () => {
 function updateExpected(expectedRecording: any) {
   expectedRecording.processingState = RecordingProcessingState.Finished;
   expectedRecording.comment = "This is a new comment";
-  expectedRecording.location = {
-    lat: -46.29115,
-    lng: 170.30835,
-  };
   //expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};
   //TODO: Issue 99 behaviour here and in fileProcessing inconsistent.  fileProcessing merges additionalMetedata here we replace it
   expectedRecording.additionalMetadata = {

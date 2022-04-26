@@ -3,7 +3,11 @@
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
-import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
+import {
+  HTTP_OK200,
+  HTTP_Forbidden,
+  NOT_NULL_STRING,
+} from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import { DeviceType } from "@typedefs/api/consts";
 
@@ -129,7 +133,7 @@ describe("Groups - get devices for group", () => {
         active: true,
         admin: true,
         type: DeviceType.Unknown,
-        lastConnectionTime: new Date().toISOString(),
+        lastConnectionTime: NOT_NULL_STRING,
       };
       expectedDevice4b = {
         id: getCreds("gdCam4b").id,
@@ -140,6 +144,7 @@ describe("Groups - get devices for group", () => {
         active: true,
         admin: true,
         type: DeviceType.Unknown,
+        lastConnectionTime: NOT_NULL_STRING,
       };
 
       cy.log(
@@ -150,16 +155,11 @@ describe("Groups - get devices for group", () => {
       });
 
       cy.log("But verify groups query only shows active device");
-      cy.apiGroupDevicesCheck(
-        "gdUser4",
-        "gdGroup4",
-        [expectedGroupDevice4b],
-        ["[].lastConnectionTime"]
-      );
+      cy.apiGroupDevicesCheck("gdUser4", "gdGroup4", [expectedGroupDevice4b]);
     });
   });
 
-  it("Handles non-existent group correctly", () => {
+  it("Handles non-existant group correctly", () => {
     cy.apiGroupDevicesCheck("gdUser4", "IDoNotExist", [], [], HTTP_Forbidden, {
       useRawGroupName: true,
     });

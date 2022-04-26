@@ -444,6 +444,7 @@ order by hour;
                 location: this.location,
                 activeAt: now,
                 automatic: true,
+                needsRename: true,
                 GroupId: newGroup.id,
               },
               { transaction: t }

@@ -693,7 +693,7 @@ Cypress.Commands.add(
 
     logTestDescription(
       `Query recordings where '${JSON.stringify(params["where"])}'`,
-      { user: userName, params: params }
+      { user: userName, params: params, expected: expectedRecordings }
     );
 
     const url = v1ApiPath("recordings", params);
