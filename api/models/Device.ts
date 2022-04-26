@@ -18,20 +18,16 @@ import { format } from "util";
 import Sequelize, { FindOptions } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { User } from "./User";
-import { Group, GroupStatic } from "./Group";
-import { GroupUsersStatic } from "./GroupUsers";
-import { DeviceUsersStatic } from "./DeviceUsers";
+import { Group } from "./Group";
 import { Event } from "./Event";
-import { AccessLevel } from "./GroupUsers";
 import logger from "../logging";
 import { DeviceType } from "@typedefs/api/consts";
-import { DeviceId, GroupId, UserId, ScheduleId } from "@typedefs/api/common";
+import { DeviceId, GroupId, ScheduleId, UserId } from "@typedefs/api/common";
 
 const Op = Sequelize.Op;
 
 export interface Device extends Sequelize.Model, ModelCommon<Device> {
   id: DeviceId;
-  getAccessLevel: (user: User) => AccessLevel;
   addUser: (userId: UserId, options: any) => any;
   devicename: string;
   groupname: string;
@@ -56,28 +52,10 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   kind: DeviceType;
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;
-  users: (authUser: User, attrs?: string[]) => Promise<User[]>;
   updateHeartbeat: (nextHeartbeat: Date) => Promise<boolean>;
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
-  addUserToDevice: (
-    device: Device,
-    userToAdd: User,
-    admin: boolean
-  ) => Promise<string>;
-  allForUser: (
-    user: User,
-    onlyActive: boolean,
-    viewAsSuperAdmin: boolean
-  ) => Promise<{ rows: Device[]; count: number }>;
-  removeUserFromDevice: (device: Device, user: User) => Promise<boolean>;
-  onlyUsersDevicesMatching: (
-    user?: User,
-    conditions?: any,
-    ScheduleId?: ScheduleId,
-    includeData?: any
-  ) => Promise<{ rows: Device[]; count: number }>;
   freeDevicename: (name: string, id: GroupId) => Promise<boolean>;
   getFromId: (id: DeviceId) => Promise<Device>;
   findDevice: (
@@ -178,114 +156,8 @@ export default function (
     models.Device.hasMany(models.Recording);
     models.Device.hasMany(models.Event);
     models.Device.belongsTo(models.Group);
-    models.Device.belongsToMany(models.User, { through: models.DeviceUsers });
     models.Device.belongsTo(models.Schedule);
     models.Device.hasMany(models.Alert);
-  };
-
-  /**
-   * Adds/update a user to a Device
-   */
-  Device.addUserToDevice = async function (device, userToAdd, admin) {
-    // Get association if already there and update it.
-    const deviceUser = await models.DeviceUsers.findOne({
-      where: {
-        DeviceId: device.id,
-        UserId: userToAdd.id,
-      },
-    });
-    if (deviceUser !== null) {
-      if (deviceUser.admin !== admin) {
-        deviceUser.admin = admin; // Update admin value.
-        await deviceUser.save();
-        if (admin) {
-          return "Updated, user was made admin for device.";
-        } else {
-          return "Updated, user had admin rights removed for device.";
-        }
-      } else {
-        return "No change, user already added.";
-      }
-    }
-
-    await device.addUser(userToAdd.id, { through: { admin: admin } });
-    return "Added user to device.";
-  };
-
-  /**
-   * Removes a user from a Device
-   */
-  Device.removeUserFromDevice = async function (
-    device,
-    userToRemove
-  ): Promise<boolean> {
-    // Check that association is there to delete.
-    const deviceUser = await models.DeviceUsers.findOne({
-      where: {
-        DeviceId: device.id,
-        UserId: userToRemove.id,
-      },
-    });
-    if (deviceUser === null) {
-      return false;
-    }
-    await deviceUser.destroy();
-    return true;
-  };
-
-  Device.onlyUsersDevicesMatching = async function (
-    user,
-    conditions = null,
-    includeData = null,
-    viewAsSuperAdmin = true
-  ) {
-    // Return all devices if user has global write/read permission.
-    if (viewAsSuperAdmin && user.hasGlobalRead()) {
-      return this.findAndCountAll({
-        where: conditions,
-        attributes: ["devicename", "id", "GroupId", "active", "saltId"],
-        include: includeData,
-        order: ["devicename"],
-      });
-    }
-
-    const whereQuery = await addUserAccessQuery(
-      user,
-      conditions,
-      viewAsSuperAdmin
-    );
-
-    return this.findAndCountAll({
-      where: whereQuery,
-      attributes: ["devicename", "id", "active", "saltId"],
-      order: ["devicename"],
-      include: includeData,
-    });
-  };
-
-  Device.allForUser = async function (
-    user,
-    onlyActive: boolean,
-    viewAsSuperAdmin: boolean
-  ) {
-    const includeData = [
-      {
-        model: models.User,
-        attributes: ["id", "username"],
-      },
-      {
-        model: models.Group,
-        attributes: ["id", "groupname"],
-      },
-    ];
-    const includeOnlyActiveDevices = onlyActive ? { active: true } : null;
-
-    return this.onlyUsersDevicesMatching(
-      user,
-      includeOnlyActiveDevices,
-      includeData,
-      viewAsSuperAdmin
-    );
   };
 
   Device.freeDevicename = async function (devicename, groupId) {
@@ -410,17 +282,18 @@ export default function (
     //  lead to spurious values.  Need to standardize input time.
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [result, _] =
-      await sequelize.query(`select round((avg(cacophony_index.scores))::numeric, 2) as cacophony_index from
+    const [result, _] = await sequelize.query(
+      `select round((avg(cacophonyIndex.scores))::numeric, 2) as cacophonyIndex from
 (select
-	(jsonb_array_elements("additionalMetadata"->'analysis'->'cacophony_index')->>'index_percent')::float as scores
+	(jsonb_array_elements('cacophonyIndex')->>'index_percent')::float as scores
 from
 	"Recordings"
 where
 	"DeviceId" = ${device.id}
 	and "type" = 'audio'
-	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophony_index;`);
-    const index = result[0].cacophony_index;
+	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex;`
+    );
+    const index = result[0].cacophonyIndex;
     if (index !== null) {
       return Number(index);
     }
@@ -436,8 +309,6 @@ where
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    // Make sure the user can see the device:
-    await authUser.checkUserControlsDevices([deviceId]);
     // Get a spread of 24 results with each result falling into an hour bucket.
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -447,14 +318,14 @@ where
 from
 (select
 	date_part('hour', "recordingDateTime") as hour,
-	(jsonb_array_elements("additionalMetadata"->'analysis'->'cacophony_index')->>'index_percent')::float as scores
+	(jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
 from
 	"Recordings"
 where
 	"DeviceId" = ${deviceId}
 	and "type" = 'audio'
 	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
-) as cacophony_index
+) as cacophonyIndex
 group by hour
 order by hour;
 `);
@@ -472,20 +343,6 @@ order by hour;
   //------------------
   // INSTANCE METHODS
   //------------------
-
-  Device.prototype.getAccessLevel = async function (user) {
-    if (user.hasGlobalWrite()) {
-      return AccessLevel.Admin;
-    }
-
-    const groupAccessLevel = await (
-      models.GroupUsers as GroupUsersStatic
-    ).getAccessLevel(this.GroupId, user.id);
-    const deviceAccessLevel = await (
-      models.DeviceUsers as DeviceUsersStatic
-    ).getAccessLevel(this.id, user.id);
-    return Math.max(groupAccessLevel, deviceAccessLevel);
-  };
 
   Device.prototype.getJwtDataValues = function () {
     return {
@@ -505,33 +362,6 @@ order by hour;
         }
       });
     });
-  };
-
-  // Returns users that have access to this device either via group
-  // membership or direct assignment. By default, only "safe" user
-  // attributes are returned.
-  Device.prototype.users = async function (
-    authUser: User,
-    attrs = ["id", "username"]
-  ): Promise<User[]> {
-    const deviceUsers = await this.getUsers({ attributes: attrs });
-    const group: Group = await (models.Group as GroupStatic).getFromId(
-      this.GroupId
-    );
-    const groupUsers = await group.getUsers({ attributes: attrs });
-    // // De-dupe users, since some users can be a group member as well as a device member.
-    // const dedupedUsers = new Map();
-    // for (const user of groupUsers) {
-    //   dedupedUsers.set(user.id, user);
-    // }
-    // // Prefer group membership in the case where we have both?
-    // for (const user of deviceUsers) {
-    //   if (!dedupedUsers.has(user.id)) {
-    //     dedupedUsers.set(user.id, user);
-    //   }
-    // }
-    // return Array.from(dedupedUsers.values());
-    return [...groupUsers, ...deviceUsers];
   };
 
   // Will register as a new device
@@ -599,35 +429,6 @@ order by hour;
   };
 
   return Device;
-}
-
-/**
-*
-filters the supplied query by devices and groups authUser is authorized to access
-*/
-async function addUserAccessQuery(
-  authUser,
-  whereQuery,
-  viewAsSuperAdmin = true
-) {
-  if (viewAsSuperAdmin && authUser.hasGlobalRead()) {
-    return whereQuery;
-  }
-  const deviceIds = await authUser.getDeviceIds();
-  const userGroupIds = await authUser.getGroupsIds();
-  const accessQuery = {
-    [Op.and]: [
-      {
-        [Op.or]: [
-          { GroupId: { [Op.in]: userGroupIds } },
-          { id: { [Op.in]: deviceIds } },
-        ],
-      },
-      whereQuery,
-    ],
-  };
-
-  return accessQuery;
 }
 
 function parseExactInt(value) {

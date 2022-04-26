@@ -16,7 +16,6 @@ import {
 //
 
 describe("Events - query errors", () => {
-  const ADMIN = true;
   const NOT_ADMIN = false;
   const DEVICE_NOT_SPECIFIED = undefined;
   const DEFINED = []; // will verify that 'patterns' is present (undefined will verify that it is absent)
@@ -161,17 +160,6 @@ describe("Events - query errors", () => {
     cy.apiUserAdd("erGroupMember");
     cy.apiGroupUserAdd("erGroupAdmin", "erGroupMember", "erGroup", NOT_ADMIN);
     cy.apiDeviceAdd("erOtherCamera", "erGroup");
-
-    //admin and member for single device
-    cy.apiUserAdd("erDeviceAdmin");
-    cy.apiUserAdd("erDeviceMember");
-    cy.apiDeviceUserAdd("erGroupAdmin", "erDeviceAdmin", "erCamera", ADMIN);
-    cy.apiDeviceUserAdd(
-      "erGroupAdmin",
-      "erDeviceMember",
-      "erCamera",
-      NOT_ADMIN
-    );
 
     //another group and device
     cy.testCreateUserGroupAndDevice(
@@ -355,18 +343,6 @@ describe("Events - query errors", () => {
     ]);
   });
 
-  it("Device admin and member can view events only on their devices", () => {
-    //check errors as both device admin and device member users, see all errors on our device - 1,2,3,4
-    cy.apiEventsErrorsCheck("erDeviceAdmin", DEVICE_NOT_SPECIFIED, {}, [
-      expectedCategoryError1and2and4,
-      expectedCategoryError3,
-    ]);
-    cy.apiEventsErrorsCheck("erDeviceMember", DEVICE_NOT_SPECIFIED, {}, [
-      expectedCategoryError1and2and4,
-      expectedCategoryError3,
-    ]);
-  });
-
   it("Group admin can only request events by deviceId from within their group", () => {
     //Check error one device at a time - specifying device
     //erCamera has errors 1,2,3,4
@@ -382,34 +358,6 @@ describe("Events - query errors", () => {
     cy.log("Cannot check errors on camera not in our group");
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
-      "erOtherGroupCamera",
-      {},
-      [],
-      [],
-      HTTP_Forbidden
-    );
-  });
-
-  it("Device admin can only request events by deviceId from within their device", () => {
-    //check errors one device at a time, specifying device
-    //erCamera has errors 1,2,3,4
-    cy.log("Can check errors on cameras in our group");
-    cy.apiEventsErrorsCheck("erDeviceAdmin", "erCamera", {}, [
-      expectedCategoryError1and2and4,
-      expectedCategoryError3,
-    ]);
-
-    cy.log("Cannot check errors on camera not assigned to us");
-    cy.apiEventsErrorsCheck(
-      "erDeviceAdmin",
-      "erOtherCamera",
-      {},
-      [],
-      [],
-      HTTP_Forbidden
-    );
-    cy.apiEventsErrorsCheck(
-      "erDeviceAdmin",
       "erOtherGroupCamera",
       {},
       [],

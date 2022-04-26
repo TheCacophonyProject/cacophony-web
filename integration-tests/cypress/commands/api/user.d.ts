@@ -98,6 +98,29 @@ declare namespace Cypress {
     apiGroupAdd(userName: string, groupName: string, log?: boolean): any;
 
     /**
+     * Request password reset on user by name
+     * Optionally, check for non-200 return statusCode
+     * By default makes the userName unique.
+     * Optionally: Use the raw provided username additionalChecks["useRawUserName"]==true
+     */
+    apiResetPassword(
+      userName: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /**
+     * Change password using reset token
+     * Optionally, check for non-200 return statusCode
+     */
+    apiUserChangePassword(
+      token: string,
+      password: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /**
      * create user group and camera at the same time
      */
     testCreateUserGroupAndDevice(

@@ -35,14 +35,14 @@ interface CameraThresholdConfig {
 }
 
 export interface TrackFramePosition {
-  x: integer;
-  y: integer;
-  width: integer;
-  height: integer;
-  mass: integer;
-  frame_number: integer;
-  pixel_variance: float;
-  blank: boolean;
+  x: float;
+  y: float;
+  width: float;
+  height: float;
+  mass?: integer;
+  frame_number?: integer;
+  pixel_variance?: float;
+  blank?: boolean;
 }
 
 interface TrackClassification {

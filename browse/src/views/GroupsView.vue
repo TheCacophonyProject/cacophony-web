@@ -38,21 +38,11 @@
                   { 'no-devices': devices.length === 0 },
                 ]"
                 :key="groupName"
-                :to="
-                  deviceOnly
-                    ? {
-                        name: 'group',
-                        params: {
-                          groupName,
-                          tabName: 'limited-devices',
-                        },
-                      }
-                    : {
-                        name: 'group',
-                        params: { groupName, tabName: 'devices' },
-                      }
-                "
-                v-for="{ groupName, devices, deviceOnly } in filteredGroups"
+                :to="{
+                  name: 'group',
+                  params: { groupName, tabName: 'devices' },
+                }"
+                v-for="{ groupName, devices } in filteredGroups"
               >
                 <span>
                   <strong>{{ groupName }}</strong> -
@@ -90,7 +80,7 @@
             :navigate-to-point="
               (point) => ({
                 name: 'group',
-                params: { groupName: point.name, tabName: 'devices' },
+                params: { groupName: point.group, tabName: 'devices' },
               })
             "
           />
@@ -184,11 +174,9 @@ export default {
       this.locationsLoading = true;
       {
         // TODO(jon): Error handling.
-
         interface GroupInfo {
           devices: ApiDeviceResponse[];
           groupName: string;
-          deviceOnly: boolean;
         }
 
         const groups: Record<number, GroupInfo> = {};
@@ -206,7 +194,6 @@ export default {
                 groups[id] = {
                   devices: [],
                   groupName,
-                  deviceOnly: false,
                 };
               }
             } else {
@@ -244,7 +231,6 @@ export default {
                 groups[groupId] = groups[groupId] || {
                   devices: [],
                   groupName,
-                  deviceOnly: true,
                 };
                 groups[groupId].devices.push(device);
                 // Now we should be able to show the groups for those devices.

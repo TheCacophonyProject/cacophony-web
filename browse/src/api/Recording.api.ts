@@ -17,7 +17,7 @@ import {
   ApiTrackTagRequest,
 } from "@typedefs/api/trackTag";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
-import { ApiTrackResponse } from "@typedefs/api/track";
+import { ApiTrackRequest, ApiTrackResponse } from "@typedefs/api/track";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
 export type JwtToken<T> = string;
@@ -183,6 +183,8 @@ export interface RecordingQuery {
   device?: number[];
   station?: number[];
   type?: string;
+  hideFiltered?: boolean;
+  countAll?: boolean;
   order?: any; // TODO - It's not clear what order accepts (it's a sequelize thing), but nobody seems to use it right now.
 }
 
@@ -273,6 +275,12 @@ function makeApiQuery(query: RecordingQuery): any {
   if (query.deleted) {
     apiParams["deleted"] = query.deleted;
   }
+  if (query.hideFiltered) {
+    apiParams["hideFiltered"] = query.hideFiltered;
+  }
+  if (query.countAll != undefined && query.countAll != null) {
+    apiParams["countAll"] = query.countAll;
+  }
   if (query.tag && query.tag.length > 0) {
     if (typeof query.tag === "string") {
       query.tag = [query.tag];
@@ -334,20 +342,48 @@ function undelete(id: RecordingId): Promise<FetchResult<any>> {
   return CacophonyApi.patch(`${apiPath}/${id}/undelete`, {});
 }
 
+function getTrack(
+  trackId: TrackId,
+  recordingId: RecordingId
+): Promise<
+  FetchResult<{
+    trackId: TrackId;
+    track: ApiTrackResponse;
+    algorithmId: number;
+  }>
+> {
+  return CacophonyApi.get(`${apiPath}/${recordingId}/tracks/${trackId}`);
+}
+
 function tracks(
   recordingId: RecordingId
 ): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
   return CacophonyApi.get(`${apiPath}/${recordingId}/tracks`);
 }
 
+function addTrack(
+  body: ApiTrackRequest,
+  recordingId: RecordingId
+): Promise<FetchResult<{ trackId: number }>> {
+  return CacophonyApi.post(`${apiPath}/${recordingId}/tracks`, body);
+}
+
+function removeTrack(
+  trackId: TrackId,
+  recordingId: RecordingId
+): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
+  return CacophonyApi.delete(`${apiPath}/${recordingId}/tracks/${trackId}`);
+}
+
 function replaceTrackTag(
   tag: ApiTrackTagRequest,
   recordingId: RecordingId,
-  trackId: TrackId
+  trackId: TrackId,
+  automatic = false
 ): Promise<FetchResult<{ trackTagId?: number }>> {
   const body: ApiTrackTagRequest = {
     ...tag,
-    automatic: false,
+    automatic,
   };
   return CacophonyApi.post(
     `${apiPath}/${recordingId}/tracks/${trackId}/replaceTag`,
@@ -474,7 +510,10 @@ export default {
   comment,
   del,
   undelete,
+  getTrack,
   tracks,
+  addTrack,
+  removeTrack,
   reprocess,
   addTrackTag,
   deleteTrackTag,

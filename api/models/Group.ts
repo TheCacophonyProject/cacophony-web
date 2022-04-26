@@ -129,7 +129,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   // should be assigned to any of our stations.
 
   // Get recordings for group starting at date:
-  const builder = await new models.Recording.queryBuilder().init(authUserId, {
+  const builder = new models.Recording.queryBuilder().init(authUserId, {
     // Group id, and after date
     GroupId: group.id,
     recordingDateTime: {
@@ -181,10 +181,6 @@ export interface Group extends Sequelize.Model, ModelCommon<Group> {
     where?: any;
     attributes?: string[];
   }) => Promise<Device[]>;
-  userPermissions: (user: User) => Promise<{
-    canAddUsers: boolean;
-    canRemoveUsers: boolean;
-  }>;
 
   getStations: (options?: {
     where?: any;
@@ -198,11 +194,6 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
     admin: boolean
   ) => Promise<string>;
   removeUserFromGroup: (group: Group, userToRemove: User) => Promise<boolean>;
-  query: (
-    where: any,
-    user: User,
-    viewAsSuperAdmin: boolean
-  ) => Promise<Group[]>;
   getFromId: (id: GroupId) => Promise<Group>;
   getIdFromName: (groupname: string) => Promise<GroupId | null>;
 
@@ -421,87 +412,6 @@ export default function (sequelize, DataTypes): GroupStatic {
     return result;
   };
 
-  /**
-   * Return one or more groups matching the where condition. Only get groups
-   * that the user belongs if user does not have global read/write permission.
-   */
-  Group.query = async function (where, user: User, viewAsSuperAdmin: boolean) {
-    // FIXME - ideally move this permissions stuff up to the API layer
-    let userWhere = { id: user.id };
-    if (viewAsSuperAdmin && user.hasGlobalRead()) {
-      userWhere = null;
-    }
-    return await models.Group.findAll({
-      where,
-      attributes: ["id", "groupname"],
-      include: [
-        {
-          model: models.User,
-          // NOTE(jon): This adds GroupUsers to the group, which is currently required
-          // by the groups admin view to add new users to groups.  As per
-          // https://github.com/TheCacophonyProject/cacophony-api/issues/279
-          // we'd like to split this out into separate requests probably.
-          attributes: ["id", "username"],
-          where: userWhere,
-        },
-        {
-          model: models.Device,
-          // NOTE: It'd be nice not to pull in deviceIds to our return payload,
-          //  but they're currently used for the "Your groups" section on the
-          //  homepage, to query recordings for each device of each group the
-          //  user belongs to, just to get back a count of new recordings in the
-          //  past 24 hours.
-          // TODO(jon): Remove this once we have updated the front-end to use
-          //  QueryRecordingsCount for the devices home page.
-          attributes: ["id", "devicename"],
-        },
-      ],
-    }).then((groups) => {
-      // TODO: Review the following with a mind to combining with the groups.findAll query to improve efficiency
-      const augmentGroupData = new Promise((resolve, reject) => {
-        try {
-          const groupsPromises = groups.map((group) => {
-            return models.User.findAll({
-              attributes: ["username", "id"],
-              include: [
-                {
-                  model: models.Group,
-                  where: {
-                    id: group.id,
-                  },
-                  attributes: [],
-                },
-              ],
-            }).then(async (groupUsers) => {
-              const setAdminPromises = groupUsers.map((groupUser) => {
-                return models.GroupUsers.isAdmin(group.id, groupUser.id).then(
-                  (value) => {
-                    groupUser.setDataValue("isAdmin", value);
-                  }
-                );
-              });
-
-              await Promise.all(setAdminPromises);
-
-              group.setDataValue("GroupUsers", groupUsers);
-              return group;
-            });
-          });
-
-          Promise.all(groupsPromises).then((data) => {
-            resolve(data);
-          });
-        } catch (e) {
-          reject(e);
-        }
-      });
-
-      return augmentGroupData.then((groupData) => {
-        return groupData;
-      });
-    });
-  };
-
   Group.getFromId = async function (id) {
     return this.findByPk(id);
   };
@@ -519,22 +429,6 @@ export default function (sequelize, DataTypes): GroupStatic {
   //------------------
   // Instance methods
   //------------------
-
-  Group.prototype.userPermissions = async function (user) {
-    if (user.hasGlobalWrite()) {
-      return newUserPermissions(true);
-    }
-    return newUserPermissions(
-      await models.GroupUsers.isAdmin(this.id, user.id)
-    );
-  };
-
-  const newUserPermissions = function (enabled) {
-    return {
-      canAddUsers: enabled,
-      canRemoveUsers: enabled,
-    };
-  };
 
   return Group;
 }

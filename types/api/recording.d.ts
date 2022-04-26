@@ -48,16 +48,10 @@ export interface ApiThermalRecordingMetadataResponse {
 }
 
 export interface ApiAudioRecordingMetadataResponse {
-  analysis: {
-    cacophony_index: CacophonyIndex[];
-    species_identify: { begin_s: Seconds; end_s: Seconds; species: string }[];
-    processing_time_seconds: Seconds;
-    cacophony_index_version: string;
-    species_identify_version: string;
+  analysis?: {
     speech_detection?: boolean;
     speech_detection_version?: string;
   };
-
   normal: string;
   "SIM IMEI": string;
   "SIM state": string;
@@ -66,6 +60,9 @@ export interface ApiAudioRecordingMetadataResponse {
   "Phone model": string;
   amplification: number;
   SimOperatorName: string;
+  cacophony_index_version: string;
+  species_identify_version: string;
+  processing_time_seconds: Seconds;
   "Android API Level": number;
   "Phone manufacturer": string;
   "App has root access": boolean;
@@ -76,7 +73,7 @@ export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
   type: RecordingType.ThermalRaw;
 }
 
-interface CacophonyIndex {
+export interface CacophonyIndex {
   begin_s: Seconds;
   end_s: Seconds;
   index_percent: number;
@@ -89,6 +86,7 @@ export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
   airplaneModeOn?: boolean;
   relativeToDawn?: number;
   relativeToDusk?: number;
+  cacophonyIndex?: CacophonyIndex[];
   type: RecordingType.Audio;
   fileMimeType?: string;
   additionalMetadata?: ApiAudioRecordingMetadataResponse;

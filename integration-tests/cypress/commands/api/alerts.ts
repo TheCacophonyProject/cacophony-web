@@ -9,6 +9,7 @@ import {
 } from "../server";
 import { logTestDescription } from "../descriptions";
 import { getTestName } from "../names";
+import { testRunOnApi } from "../server";
 import { ApiAlert } from "../types";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 
@@ -180,4 +181,19 @@ function checkExpectedAlerts(
 
 export function getExpectedAlert(name: string): ApiAlert {
   return Cypress.env("testCreds")[name];
+}
+
+export function runReportStoppedDevicesScript() {
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    testRunOnApi(
+      '"cp /app/api/config/app_test_default.js /app/api/config/app.js"'
+    );
+    testRunOnApi(
+      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"'
+    );
+  } else {
+    testRunOnApi(
+      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"'
+    );
+  }
 }

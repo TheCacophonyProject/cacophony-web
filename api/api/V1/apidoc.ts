@@ -54,8 +54,7 @@
  *  "users": [{
  *    "userName": "bob",
  *    "userId": 10,
- *    "admin": false,
- *    "relation": "group"
+ *    "admin": false
  *  }]
  * }]
  */

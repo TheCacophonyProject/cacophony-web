@@ -6,7 +6,15 @@
 </template>
 
 <script lang="ts">
-import Chart, { ChartData } from "chart.js";
+import {
+  Chart,
+  ChartData,
+  ChartConfiguration,
+  ActiveElement,
+  ChartEvent,
+  registerables,
+} from "chart.js";
+import { log10 } from "chart.js/helpers";
 
 export default {
   name: "BarChart",
@@ -43,81 +51,60 @@ export default {
     };
   },
   computed: {
-    chartData: function (): Chart.ChartConfiguration {
+    chartData: function (): ChartConfiguration {
       return {
         type: "bar",
         data: this.data as ChartData,
         options: {
           responsive: true,
           scales: {
-            yAxes: [
-              {
-                type: this.log ? "logarithmic" : "linear",
-                ticks: {
-                  beginAtZero: true,
-                  callback: (tick: number) => {
-                    if (this.log) {
-                      var remain =
-                        tick /
-                        Math.pow(10, Math.floor(Chart.helpers.log10(tick)));
-                      if (remain === 1 || remain === 2 || remain === 5) {
-                        return tick;
-                      }
-                      return "";
-                    } else {
+            y: {
+              title: this.yAxisLabel,
+              type: this.log ? "logarithmic" : "linear",
+              beginAtZero: true,
+              min: 0,
+              ticks: {
+                callback: (tick: number) => {
+                  if (this.log) {
+                    var remain = tick / Math.pow(10, Math.floor(log10(tick)));
+                    if (remain === 1 || remain === 2 || remain === 5) {
                       return tick;
                     }
-                  },
-                  min: 0,
-                },
-                scaleLabel: {
-                  display: true,
-                  labelString: this.yAxisLabel,
+                    return "";
+                  } else {
+                    return tick;
+                  }
                 },
               },
-            ],
-            xAxes: [
-              {
-                scaleLabel: {
-                  display: true,
-                  labelString: this.xAxisLabel,
-                },
-              },
-            ],
+              display: true,
+            },
+            x: {
+              title: this.xAxisLabel,
+              display: true,
+            },
           },
-          title: {
-            text: this.title,
-            display: true,
-          },
-          legend: {
-            display: false,
+          plugins: {
+            title: {
+              text: this.title,
+              display: true,
+            },
+            legend: {
+              display: false,
+            },
           },
           maintainAspectRatio: false,
-          onClick: (
-            event: Event,
-            chartItems: {
-              _model: { label: string };
-            }[]
-          ) => {
-            if (chartItems.length > 0) {
-              // Send click event if a bar is clicked on
-              this.$emit(
-                "click",
-                chartItems.map((item) => item._model.label)
-              );
-            }
+          onClick: (event: ChartEvent, chartItems: ActiveElement[], chart) => {
+            // Send click event if a bar is clicked on
+            this.$emit("click", chart.tooltip.title);
           },
-          onHover: (
-            event: Event,
-            chartItems: {
-              _model: { label: string };
-            }[]
-          ) => {
+          onHover: (event: ChartEvent, chartItems: ActiveElement[]) => {
             if (chartItems.length > 0) {
               // Change pointer when hovering over a bar
-              (event.target as HTMLCanvasElement).style.cursor = "pointer";
+              (event.native.target as HTMLCanvasElement).style.cursor =
+                "pointer";
             } else {
-              (event.target as HTMLCanvasElement).style.cursor = "default";
+              (event.native.target as HTMLCanvasElement).style.cursor =
+                "default";
             }
           },
         },
@@ -125,6 +112,7 @@ export default {
     },
   },
   mounted() {
+    Chart.register(...registerables);
     const ctx = document.getElementById(this.id) as HTMLCanvasElement;
     this.chart = new Chart(ctx, this.chartData);
   },

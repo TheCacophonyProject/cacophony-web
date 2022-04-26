@@ -167,6 +167,7 @@ export default function (app: Application) {
 
       const prevState = recording.processingState;
       if (success) {
+        recording.set("currentStateStartTime", null);
         if (newProcessedFileKey) {
           recording.set("fileKey", newProcessedFileKey);
         }
@@ -422,6 +423,7 @@ export default function (app: Application) {
         data: response.locals.data,
         AlgorithmId: request.body.algorithmId,
       });
+      await track.updateIsFiltered();
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Track added."],

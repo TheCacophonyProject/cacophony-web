@@ -4,13 +4,13 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import { HTTP_OK200, HTTP_Forbidden } from "@commands/constants";
-import { ApiGroupUserRelationshipResponse } from "@typedefs/api/group";
+import { ApiGroupUserResponse } from "@typedefs/api/group";
 
 describe("Groups - add, check and remove users", () => {
   const ADMIN = true;
   const NOT_ADMIN = false;
-  let expectedGuAdminUser: ApiGroupUserRelationshipResponse;
-  let expectedGuAdminUser2: ApiGroupUserRelationshipResponse;
+  let expectedGuAdminUser: ApiGroupUserResponse;
+  let expectedGuAdminUser2: ApiGroupUserResponse;
 
   before(() => {
     cy.testCreateUserGroupAndDevice("guGroupAdmin", "guGroup", "guCamera").then(
@@ -34,15 +34,13 @@ describe("Groups - add, check and remove users", () => {
         admin: ADMIN,
       };
     });
-    cy.apiUserAdd("guDeviceAdmin");
-    cy.apiDeviceUserAdd("guGroupAdmin", "guDeviceAdmin", "guCamera", ADMIN);
 
     cy.apiUserAdd("guTestUser");
     cy.apiUserAdd("guTestUser2");
   });
 
   it("Group admin can add, view and remove a new user", () => {
-    const expectedTestUser: ApiGroupUserRelationshipResponse = {
+    const expectedTestUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: ADMIN,
@@ -65,7 +63,7 @@ describe("Groups - add, check and remove users", () => {
   });
 
   it("Group member cannot add, or remove a user but can view", () => {
-    const expectedTestUser: ApiGroupUserRelationshipResponse = {
+    const expectedTestUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: NOT_ADMIN,
@@ -129,29 +127,6 @@ describe("Groups - add, check and remove users", () => {
       "guGroupAdmin",
       "guGroup2Admin",
       "guGroup2",
-      HTTP_Forbidden
-    );
-  });
-
-  it("Device admin cannot add, view or remove group users", () => {
-    cy.log("check device admin cannot add a user to device's group");
-    cy.apiGroupUserAdd(
-      "guDeviceAdmin",
-      "guTestUser",
-      "guGroup",
-      NOT_ADMIN,
-      true,
-      HTTP_Forbidden
-    );
-
-    cy.log("check that device admin cannot view device's groups user list");
-    cy.apiGroupUsersCheck("guDeviceAdmin", "guGroup", [], [], HTTP_Forbidden);
-
-    cy.log("check that device admin cannot remove user from device's group");
-    cy.apiGroupUserRemove(
-      "guDeviceAdmin",
-      "guGroupAdmin",
-      "guGroup",
       HTTP_Forbidden
     );
   });
@@ -226,12 +201,12 @@ describe("Groups - add, check and remove users", () => {
   });
 
   it("Can update admin/member status of existing user", () => {
-    const expectedTestNonAdminUser: ApiGroupUserRelationshipResponse = {
+    const expectedTestNonAdminUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: NOT_ADMIN,
     };
-    const expectedTestAdminUser: ApiGroupUserRelationshipResponse = {
+    const expectedTestAdminUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: ADMIN,

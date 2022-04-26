@@ -2,7 +2,7 @@ import registerAliases from "../module-aliases";
 registerAliases();
 import config from "../config";
 import log from "../logging";
-import { Device } from "../models/Device";
+import { Device } from "@models/Device";
 
 import moment from "moment";
 import { sendEmail } from "./emailUtil";

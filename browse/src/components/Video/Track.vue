@@ -1,6 +1,6 @@
 <template>
   <div :class="['card', trackClass]">
-    <div class="card-header">
+    <div :class="['card-header', headerClass]">
       <button
         v-if="index !== 0"
         title="Previous track"
@@ -90,6 +90,7 @@ import {
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { shouldViewAsSuperUser } from "@/utils";
+import DefaultLabels from "../../const";
 
 interface TrackInternalData {
   localTags: ApiTrackTagResponse[];
@@ -188,6 +189,12 @@ export default {
       return (
         this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
       );
+    },
+    headerClass() {
+      if (this.track.filtered) {
+        return "filtered-track";
+      }
+      return "";
     },
   },
   created() {
@@ -310,7 +317,10 @@ export default {
   padding-left: 1em;
   padding-right: 1em;
 }
-
+.filtered-track {
+  opacity: 0.7;
+  background: #ddd;
+}
 .card-header {
   display: flex;
   padding-top: 0.5em;

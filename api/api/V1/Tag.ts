@@ -17,11 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware";
-import { body } from "express-validator";
+import { body, param } from "express-validator";
 import models from "@models";
 import recordingUtil from "./recordingUtil";
 import responseUtil from "./responseUtil";
-import { Application, Request, Response } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import {
   parseJSONField,
   extractJwtAuthorizedUser,
@@ -30,6 +30,7 @@ import {
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
+import { ClientError } from "@api/customErrors";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
@@ -103,25 +104,27 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([idOf(body("tagId"))]),
-
-    // FIXME - Get the recording, if the user has access to it then we're good.
-    async function (request: Request, response: Response) {
-      const user = await models.User.findByPk(response.locals.requestUser.id);
-      const tagDeleteResult = await models.Tag.deleteFromId(
-        request.body.tagId,
-        user
-      );
-      if (tagDeleteResult) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Deleted tag."],
-        });
+    async (request: Request, response: Response, next: NextFunction) => {
+      const tag = await models.Tag.findByPk(request.body.tagId);
+      if (tag) {
+        response.locals.tag = tag;
+        await fetchAuthorizedRequiredRecordingById(tag.recordingId)(
+          request,
+          response,
+          next
+        );
       } else {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to delete tag."],
-        });
+        next(new ClientError("Failed to delete tag.", 400));
       }
+    },
+    async function (request: Request, response: Response) {
+      // There is a matching tag, and the user has access to the corresponding recording.
+      await response.locals.tag.destroy();
+
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Deleted tag."],
+      });
     }
   );
 }

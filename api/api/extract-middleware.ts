@@ -15,7 +15,7 @@ import { ClientError } from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
-import { ScheduleId, UserId } from "@typedefs/api/common";
+import { RecordingId, ScheduleId, UserId } from "@typedefs/api/common";
 import { Group } from "models/Group";
 import { Recording } from "models/Recording";
 import { SuperUsers } from "@/Server";
@@ -170,10 +170,7 @@ const getDeviceInclude =
   (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
     where: {
       ...deviceWhere,
-      [Op.or]: [
-        { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
-        { "$Users.DeviceUsers.UserId$": { [Op.ne]: null } },
-      ],
+      [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
     },
     attributes: deviceAttributes,
     include: [
@@ -199,18 +196,6 @@ const getDeviceInclude =
           },
         ],
       },
-      {
-        model: models.User,
-        attributes: ["id"],
-        through: {
-          where: {
-            ...useAdminAccess,
-          },
-          attributes: ["admin", "UserId"],
-        },
-        required: false,
-        where: { id: requestUserId },
-      },
     ],
   });
 
@@ -218,7 +203,7 @@ const getStationInclude =
   (groupWhere: any) =>
   (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
     where: {
-      [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null },
     },
     include: [
       {
@@ -279,10 +264,7 @@ const getRecordingInclude =
   (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
     where: {
       ...recordingsWhere,
-      [Op.or]: [
-        { "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } },
-        { "$Device.Users.DeviceUsers.UserId$": { [Op.ne]: null } },
-      ],
+      [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
     },
     // TODO - RecordingAttributes
     //attributes: deviceAttributes,
@@ -312,20 +294,6 @@ const getRecordingInclude =
         attributes: ["id", "devicename"],
         required: false,
         where: deviceWhere,
-        include: [
-          {
-            model: models.User,
-            attributes: ["id"],
-            required: false,
-            through: {
-              where: {
-                ...useAdminAccess,
-              },
-              attributes: ["admin", "UserId"],
-            },
-            where: { id: requestUserId },
-          },
-        ],
       },
     ],
   });
@@ -841,6 +809,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     "duration",
     "recordingDateTime",
     "location",
+    "cacophonyIndex",
     "relativeToDawn",
     "airplaneModeOn",
     "relativeToDusk",
@@ -889,7 +858,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
   recordingQuery.include.push({
     model: models.Track,
     where: { archivedAt: null },
-    attributes: ["id", "data"],
+    attributes: ["id", "data", "filtered"],
     required: false,
     include: [
       {
@@ -1486,7 +1455,7 @@ export const fetchAdminAuthorizedRequiredRecordingById = (
   );
 
 export const fetchAuthorizedRequiredRecordingById = (
-  recordingId: ValidationChain
+  recordingId: ValidationChain | RecordingId
 ) =>
   fetchRequiredModel(
     models.Recording,

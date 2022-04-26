@@ -255,7 +255,7 @@
             </div>
           </div>
           <div
-            v-if="!queryPending && !noQueryYet && visits.length == 0"
+            v-if="!queryPending && !noQueryYet && visits.length === 0"
             class="no-results"
           >
             <h6 class="text-muted">No recordings found</h6>
@@ -366,19 +366,19 @@ export default {
       return this.capitalizeFirst(what);
     },
     whatToolTip(what: string): string {
-      if (what == "null") {
+      if (what === "null") {
         return this.nothingHelp;
-      } else if (what == DefaultLabels.unidentifiedLabel.value) {
+      } else if (!what) {
         return this.unidentifiedHelp;
-      } else if (what == DefaultLabels.unknownLabel.value) {
+      } else if (what === DefaultLabels.unknownLabel.value) {
         return this.unknownHelp;
       }
       return `Track has been tagged as ${what}`;
     },
     summaryWhat(what: string): string {
-      if (what == "null") {
+      if (what === "null") {
         return "Probably not an Animal";
-      } else if (what == DefaultLabels.unidentifiedLabel.value) {
+      } else if (!what) {
         return "( Unidentified ) Animal";
       }
       return this.capitalizeFirst(what);
@@ -513,7 +513,7 @@ export default {
       this.processVisits(result);
     },
     processVisits(result: VisitsQueryResult) {
-      if (result.numRecordings == 0) {
+      if (result.numRecordings === 0) {
         this.canLoadMore = false;
         return;
       }
@@ -562,7 +562,7 @@ export default {
       }
 
       this.visits = this.visits.sort(function (a, b) {
-        if (a.start == b.start) {
+        if (a.start === b.start) {
           return a.id - b.id;
         }
         return a.start < b.start ? 1 : -1;
