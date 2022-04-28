@@ -20,6 +20,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Op } from "sequelize";
 import { asyncLocalStorage } from "./Globals";
 
+export const CACOPHONY_WEB_VERSION = { version: "unknown" };
 export const SuperUsers: Map<number, any> = new Map();
 
 const asyncExec = promisify(exec);
@@ -32,6 +33,13 @@ const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
     log.info("Stdout: %s", stdout);
   }
   return;
+};
+
+const loadCacophonyWebVersion = async (): Promise<void> => {
+  const { stdout } = await asyncExec("dpkg -s cacophony-web | grep '^Version:'");
+  if (stdout.startsWith("Version: ")) {
+    CACOPHONY_WEB_VERSION.version = stdout.replace("Version: ", "");
+  }
 };
 
 const openHttpServer = (app): Promise<void> => {
@@ -71,6 +79,7 @@ const checkS3Connection = (): Promise<void> => {
   log.notice("Starting Full Noise.");
   config.loadConfigFromArgs(true);
 
+  await loadCacophonyWebVersion();
   // Check if any of the Cacophony type definitions have changed, and need recompiling?
   if (config.server.loggerLevel === "debug") {
     log.notice("Running in DEBUG mode");

@@ -23,6 +23,7 @@ import customErrors from "./customErrors";
 import models, { ModelCommon } from "../models";
 import { Request } from "express";
 import { User } from "@models/User";
+import {UserId} from "@typedefs/api/common";
 /*
  * Create a new JWT for a user or device.
  */
@@ -49,12 +50,21 @@ export interface ResetInfo {
   id: number;
 }
 
-export const getResetToken = (user: User, password: string): string => {
+export const getResetToken = (userId: UserId, password: string): string => {
   // expires in a day
   return jwt.sign(
-    { id: user.id, password: password },
+    { id: userId, password },
     config.server.passportSecret,
     { expiresIn: 60 * 60 * 24 }
+  );
+};
+
+export const getEmailConfirmationToken = (userId: UserId, email: string): string => {
+  // expires in a day
+  return jwt.sign(
+      { id: userId, email },
+      config.server.passportSecret,
+      { expiresIn: 60 * 60 * 24 }
   );
 };
 

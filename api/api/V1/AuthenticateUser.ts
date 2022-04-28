@@ -52,15 +52,93 @@ export interface ApiLoggedInUserResponseData {
   userData: ApiLoggedInUserResponse;
 }
 
-export default function (app: Application) {
+export default function (app: Application, baseUrl: string) {
+  const apiUrl = `${baseUrl}/users`;
+
+  const authenticateUserOptions = [
+      validateFields([
+          oneOf(
+              [
+                  deprecatedField(validNameOf(body("username"))),
+                  validNameOf(body("userName")),
+
+                  // FIXME - We are probably rejecting some valid email addresses here.
+                  validNameOf(body("nameOrEmail")),
+                  body("nameOrEmail").isEmail(),
+                  body("email").isEmail(),
+              ],
+              "could not find a user with the given username or email"
+          ),
+
+          // FIXME - How about not sending our passwords in the clear eh?
+          //  Ideally should generate hash on client side, and compare hashes with one
+          //  stored on the backend.  Salt on both sides with some timestamp
+          //  rounded to x minutes, so that if hash is compromised
+          //  it can't be reused for long.
+          validPasswordOf(body("password")),
+      ]),
+      fetchUnauthorizedOptionalUserByNameOrEmailOrId(
+          body(["username", "userName", "nameOrEmail", "email"])
+      ),
+      (request: Request, response: Response, next: NextFunction) => {
+          if (!response.locals.user) {
+              // NOTE: Don't give away the fact that the user may not exist - remain vague in the
+              //  error message as to whether the error is username or password related.
+              return responseUtil.send(response, {
+                  statusCode: 401,
+                  messages: ["Wrong password or username/email address."],
+              });
+          } else {
+              next();
+          }
+      },
+      async (request: Request, response: Response) => {
+          const passwordMatch = await response.locals.user.comparePassword(
+              request.body.password
+          );
+          if (passwordMatch) {
+              const token = auth.createEntityJWT(response.locals.user);
+              const {
+                  id,
+                  username,
+                  firstName,
+                  lastName,
+                  email,
+                  globalPermission,
+                  endUserAgreement,
+              } = response.locals.user;
+              responseUtil.send(response, {
+                  statusCode: 200,
+                  messages: ["Successful login."],
+                  token: `JWT ${token}`,
+                  userData: {
+                      id,
+                      userName: username,
+                      firstName,
+                      lastName,
+                      email,
+                      globalPermission,
+                      endUserAgreement,
+                  },
+              });
+          } else {
+              responseUtil.send(response, {
+                  statusCode: 401,
+                  messages: ["Wrong password or username/email address."],
+              });
+          }
+      }
+  ];
+
   /**
-   * @api {post} /authenticate_user/ Authenticate a user
+   * @api {post} /authenticate_user Authenticate a user
    *
    * @apiName AuthenticateUser
    * @apiGroup Authentication
    * @apiDescription Checks the username corresponds to an existing user account
    * and the password matches the account.
    * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
+   * @apiDeprecated Use /api/v1/users/authenticate-user
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
@@ -69,84 +147,67 @@ export default function (app: Application) {
    */
   app.post(
     "/authenticate_user",
-    validateFields([
-      oneOf(
-        [
-          deprecatedField(validNameOf(body("username"))),
-          validNameOf(body("userName")),
-          validNameOf(body("nameOrEmail")),
-          body("nameOrEmail").isEmail(),
-          body("email").isEmail(),
-        ],
-        "could not find a user with the given username or email"
-      ),
-
-      // FIXME - How about not sending our passwords in the clear eh?
-      //  Ideally should generate hash on client side, and compare hashes with one
-      //  stored on the backend.  Salt on both sides with some timestamp
-      //  rounded to x minutes, so that if hash is compromised
-      //  it can't be reused for long.
-      validPasswordOf(body("password")),
-    ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body(["username", "userName", "nameOrEmail", "email"])
-    ),
-    (request: Request, response: Response, next: NextFunction) => {
-      if (!response.locals.user) {
-        // NOTE: Don't give away the fact that the user may not exist - remain vague in the
-        //  error message as to whether the error is username or password related.
-        return responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Wrong password or username/email address."],
-        });
-      } else {
-        next();
-      }
-    },
-    async (request: Request, response: Response) => {
-      const passwordMatch = await response.locals.user.comparePassword(
-        request.body.password
-      );
-      if (passwordMatch) {
-        const token = auth.createEntityJWT(response.locals.user);
-        const {
-          id,
-          username,
-          firstName,
-          lastName,
-          email,
-          globalPermission,
-          endUserAgreement,
-        } = response.locals.user;
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Successful login."],
-          token: `JWT ${token}`,
-          userData: {
-            id,
-            userName: username,
-            firstName,
-            lastName,
-            email,
-            globalPermission,
-            endUserAgreement,
-          },
-        });
-      } else {
-        responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Wrong password or username/email address."],
-        });
-      }
-    }
+      ...authenticateUserOptions
   );
 
+    /**
+     * @api {post} /api/v1/users/authenticate-user Authenticate a user
+     *
+     * @apiName AuthenticateUser
+     * @apiGroup Authentication
+     * @apiDescription Checks the username corresponds to an existing user account
+     * and the password matches the account.
+     * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
+     *
+     * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
+     *
+     * @apiSuccess {String} token JWT string to provide to further API requests
+     * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+     */
+    app.post(
+        `${apiUrl}/authenticate-user`,
+        ...authenticateUserOptions
+    );
+
+  const authenticateAsOtherUserOptions = [
+      extractJwtAuthorisedSuperAdminUser,
+      validateFields([validNameOf(body("name"))]),
+      fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("name")),
+      async (request: Request, response: Response) => {
+          const token = auth.createEntityJWT(response.locals.user);
+          const {
+              id,
+              username,
+              firstName,
+              lastName,
+              email,
+              globalPermission,
+              endUserAgreement,
+          } = response.locals.user;
+          responseUtil.send(response, {
+              statusCode: 200,
+              messages: ["Got user token."],
+              token: `JWT ${token}`,
+              userData: {
+                  id,
+                  userName: username,
+                  firstName,
+                  lastName,
+                  email,
+                  globalPermission,
+                  endUserAgreement,
+              },
+          });
+      }
+  ];
+
   /**
-   * @api {post} /admin_authenticate_as_other_user/ Authenticate as any user if you are a super-user.
+   * @api {post} /admin_authenticate_as_other_user Authenticate as any user if you are a super-user.
    * @apiName AdminAuthenticateAsOtherUser
    * @apiGroup Authentication
    * @apiDescription Allows an authenticated super-user to obtain a user JWT token for any other user, so that they
    * can view the site as that user.
+   * @apiDeprecated Use /api/v1/users/admin-authenticate-as-other-user
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -157,36 +218,27 @@ export default function (app: Application) {
    */
   app.post(
     "/admin_authenticate_as_other_user",
-    extractJwtAuthorisedSuperAdminUser,
-    validateFields([validNameOf(body("name"))]),
-    fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("name")),
-    async (request: Request, response: Response) => {
-      const token = auth.createEntityJWT(response.locals.user);
-      const {
-        id,
-        username,
-        firstName,
-        lastName,
-        email,
-        globalPermission,
-        endUserAgreement,
-      } = response.locals.user;
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got user token."],
-        token: `JWT ${token}`,
-        userData: {
-          id,
-          userName: username,
-          firstName,
-          lastName,
-          email,
-          globalPermission,
-          endUserAgreement,
-        },
-      });
-    }
+      ...authenticateAsOtherUserOptions
   );
+
+    /**
+     * @api {post} /api/v1/users/admin-authenticate-as-other-user Authenticate as any user if you are a super-user.
+     * @apiName AdminAuthenticateAsOtherUser
+     * @apiGroup Authentication
+     * @apiDescription Allows an authenticated super-user to obtain a user JWT token for any other user, so that they
+     * can view the site as that user.
+     *
+     * @apiUse V1UserAuthorizationHeader
+     *
+     * @apiBody {String} name Username identifying a valid user account
+     *
+     * @apiSuccess {String} token JWT string to provide to further API requests
+     * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+     */
+    app.post(
+        `${apiUrl}/admin_authenticate_as_other_user`,
+        ...authenticateAsOtherUserOptions
+    );
 
   /**
    * @api {post} /token Generate temporary JWT
@@ -229,68 +281,116 @@ export default function (app: Application) {
     })
   );
 
-  // FIXME - change these endpoints to kebab-case for consistency
+  const resetPasswordOptions = [
+      validateFields([
+      oneOf(
+          [
+              deprecatedField(validNameOf(body("username"))),
+              validNameOf(body("userName")),
+              validNameOf(body("nameOrEmail")),
+              body("nameOrEmail").isEmail(),
+              body("email").isEmail(),
+          ],
+          "Missing user name in request"
+      ),
+      ]),
+      fetchUnauthorizedOptionalUserByNameOrEmailOrId(
+          body(["username", "userName", "nameOrEmail", "email"])
+      ),
+      async (request: Request, response: Response) => {
+          if (response.locals.user) {
+              await (response.locals.user as User).resetPassword();
+          }
+          return responseUtil.send(response, {
+              statusCode: 200,
+              messages: ["Email has been sent"],
+          });
+      }];
 
   /**
-   * @api {post} /api/v1/resetpassword Sends an email to a user for resetting password
+   * @api {post} /api/v1/reset-password Sends an email to a user for resetting password
    * @apiName ResetPassword
    * @apiGroup Authentication
-   * @apiParam {String} userName Username for new user.
+   * @apiBody {String} email Email of user.
    * @apiUse V1ResponseSuccess
    */
   app.post(
-    "/resetpassword",
-    validateFields([
-      oneOf(
-        [
-          deprecatedField(validNameOf(body("username"))),
-          validNameOf(body("userName")),
-          validNameOf(body("nameOrEmail")),
-          body("nameOrEmail").isEmail(),
-          body("email").isEmail(),
-        ],
-        "Missing user name in request"
-      ),
-    ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body(["username", "userName", "nameOrEmail", "email"])
-    ),
-    async (request: Request, response: Response) => {
-      if (response.locals.user) {
-        await (response.locals.user as User).resetPassword();
-      }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Email has been sent"],
-      });
-    }
+    `${apiUrl}/reset-password`,
+      ...resetPasswordOptions
   );
 
+    /**
+     * @api {post} /resetpassword Sends an email to a user for resetting password
+     * @apiName ResetPassword
+     * @apiGroup Authentication
+     * @apiDeprecated Use /api/v1/users/reset-password instead
+     * @apiBody {String} userName Username of user.
+     * @apiUse V1ResponseSuccess
+     */
+    app.post(
+        "/resetpassword",
+        ...resetPasswordOptions
+    );
+
+    const validateTokenOptions = [
+        validateFields([
+            body("token").exists()
+        ]),
+        fetchUnauthorizedRequiredUserByResetToken(body("token")),
+        async (request: Request, response: Response) => {
+            if (response.locals.user.password != response.locals.resetInfo.password) {
+                return responseUtil.send(response, {
+                    statusCode: 403,
+                    messages: ["Your password has already been changed"],
+                });
+            }
+            return responseUtil.send(response, {
+                statusCode: 200,
+                messages: [],
+                userData: mapUser(response.locals.user),
+            });
+        }
+    ];
+
   /**
-   * @api {post} /api/v1/validateToken Validates a reset token
+   * @api {post} /validateToken Validates a reset token
    * @apiName ValidateToken
    * @apiGroup Authentication
-   * @apiParam {String} [token] password reset token to validate
+   * @apiBody {String} token password reset token to validate
+   * @apiDeprecated Use /api/v1/users/validate-reset-token
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
   app.post(
     "/validateToken",
-    validateFields([body("token")]),
-    fetchUnauthorizedRequiredUserByResetToken(body("token")),
-    async (request: Request, response: Response) => {
-      if (response.locals.user.password != response.locals.resetInfo.password) {
-        return responseUtil.send(response, {
-          statusCode: 403,
-          messages: ["Your password has already been changed"],
-        });
-      }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
-        userData: mapUser(response.locals.user),
-      });
-    }
+      ...validateTokenOptions
   );
+
+    /**
+     * @api {post} /api/v1/users/validate-reset-token Validates a reset token
+     * @apiName ValidateToken
+     * @apiGroup Authentication
+     * @apiBody {String} token password reset token to validate
+     * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+     * @apiUse V1ResponseSuccess
+     * @apiUse V1ResponseError
+     */
+    app.post(
+        `${apiUrl}/validate-reset-token`,
+        ...validateTokenOptions
+    );
+
+    // TODO(browse-next): New apis:
+
+    // NOTE: This is really just for is the user has lost the email that was sent
+    // /api/v1/users/resend-email-confirmation-request (initial email confirmation request is sent as part of sign-up)
+
+    // /api/v1/users/validate-email-confirmation-request (also needs browse endpoint)
+    // /api/v1/users/invite-user-to-group
+    // /api/v1/users/accept-group-invite (user, group, admin) (also needs browse endpoint)
+    // /api/v1/users/refresh-session-token
+
+    // Not sure if we want this one:
+    // /api/v1/users/request-group-invite
 }

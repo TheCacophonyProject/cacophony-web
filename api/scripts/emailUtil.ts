@@ -8,7 +8,7 @@ import moment from "moment";
 import { SMTPClient, Message } from "emailjs";
 import { Readable } from "stream";
 import { User } from "@models/User";
-import { getResetToken } from "../api/auth";
+import {getEmailConfirmationToken, getResetToken} from "@api/auth";
 function alertBody(
   recording: Recording,
   tag: TrackTag,
@@ -31,15 +31,9 @@ function alertBody(
   text += "Thanks, Cacophony Team";
   return [html, text];
 }
-function resetBody(user: User, token: string): string[] {
-  const resetUrl = `${config.server.browse_url}/newpassword/?token=${token}`;
-  let name;
-  if (user.firstName) {
-    name = user.firstName;
-  } else {
-    name = user.username;
-  }
-  let html = `Hello ${name},<br><br>`;
+function resetBody(userTitle: string, token: string): string[] {
+  const resetUrl = `${config.server.browse_url}/new-password/?token=${token}`;
+  let html = `Hello ${userTitle},<br><br>`;
   html += `We received a request to reset your Cacophony password.<br>`;
   html += `Click the link below to set a new password<br><br>`;
   html += `<a href="${resetUrl}">Set New Password</a><br><br>`;
@@ -47,7 +41,7 @@ function resetBody(user: User, token: string): string[] {
   html += "Thanks,<br> Cacophony Team<br><br>";
   html += `<br>Having trouble with the link? Use this url to reset your password<br>${resetUrl}`;
 
-  let text = `Hello ${name},\r\n\r\n`;
+  let text = `Hello ${userTitle},\r\n\r\n`;
   text += `We received a request to reset your Cacophony password.\r\n`;
   text += `Visit ${resetUrl} to set a new password.\r\n\r\n`;
   text += `If this was not you, ignore this email.\r\n\r\n`;
@@ -56,13 +50,26 @@ function resetBody(user: User, token: string): string[] {
 }
 
 async function sendResetEmail(user: User, password: string): Promise<boolean> {
-  const token = getResetToken(user, password);
-  const [html, text] = resetBody(user, token);
+  const token = getResetToken(user.id, password);
+  const [html, text] = resetBody(user.firstName || user.username, token);
   return sendEmail(
     html,
     text,
     user.email,
-    "Your request to reset your Cacophony acccount password"
+    "Your request to reset your Cacophony account password"
+  );
+}
+
+export async function sendEmailConfirmationEmail(user: User, newEmailAddress: string): Promise<boolean> {
+  const token = getEmailConfirmationToken(user.id, newEmailAddress);
+  // FIXME - This needs to be a transactional email about confirming your email.
+  // TODO - Only send automated emails to users if they have confirmed their email address.
+  const [html, text] = resetBody(user.firstName || user.username, token);
+  return sendEmail(
+      html,
+      text,
+      newEmailAddress,
+      "Confirm your email associated with your Cacophony account"
   );
 }
 
@@ -77,10 +84,10 @@ async function sendEmail(
   log.info(`Sending email with subject ${subject} to ${to}`);
   try {
     const message = new Message({
-      text: text,
+      text,
+      to,
+      subject,
       from: config.smtpDetails.from_name,
-      to: to,
-      subject: subject,
       attachment: [{ data: html, alternative: true }],
     });
     if (thumbnail) {

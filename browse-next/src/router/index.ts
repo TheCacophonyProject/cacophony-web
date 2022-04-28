@@ -1,5 +1,25 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { ref } from "vue";
+import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
+import { userIsLoggedIn } from "@/models/LoggedInUser";
+import { delayMs } from "@/utils";
+
+// Allows us to abort all pending fetch requests when switching between major views.
+export const CurrentViewAbortController = {
+  newView() {
+    this.controller && this.controller.abort();
+    this.controller = new AbortController();
+  },
+  controller: new AbortController(),
+};
+
+const cancelPendingRequests = (
+  to: RouteLocationNormalized,
+  from: RouteLocationNormalized,
+  next: NavigationGuardNext
+) => {
+  CurrentViewAbortController.newView();
+  return next();
+};
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,11 +34,13 @@ const router = createRouter({
       //alias: "/",
       meta: { title: "Group :stationName :tabName" },
       component: () => import("../views/DashboardView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/groups",
       name: "select-active-group",
       component: () => import("../views/SelectActiveGroup.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/stations",
@@ -27,66 +49,83 @@ const router = createRouter({
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
       component: () => import("../views/StationsView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/search",
       name: "search",
       component: () => import("../views/SearchView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/devices",
       name: "devices",
       component: () => import("../views/DevicesView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/report",
       name: "report",
       component: () => import("../views/ReportingView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/my-settings",
       name: "user-group-settings",
       component: () => import("../views/UserGroupPreferencesView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/settings",
       name: "group-settings",
       component: () => import("../views/ManageGroupView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/my-settings",
       name: "user-settings",
       component: () => import("../views/UserPreferencesView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/sign-out",
       name: "sign-out",
       component: () => import("../views/UserPreferencesView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
 
     {
       path: "/sign-in",
       name: "sign-in",
       component: () => import("../views/SignInView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register",
       name: "register",
       component: () => import("../views/RegisterView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/add-email",
       name: "add-email",
       component: () => import("../views/AddEmailView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
     {
       path: "/end-user-agreement",
       name: "end-user-agreement",
       component: () => import("../views/UserPreferencesView.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
+    {
+      path: "/forgot-password",
+      name: "forgot-password",
+      component: () => import("../views/ForgotPasswordView.vue"),
+      beforeEnter: cancelPendingRequests,
     },
   ],
 });
-export const userIsLoggedIn = ref(false);
 
 let lastDestination: string | null = null;
 
@@ -96,7 +135,7 @@ router.beforeEach(async (to, from, next) => {
     debugger;
   }
   lastDestination = (to.name as string) || "";
-  await (async () => new Promise((resolve) => setTimeout(resolve, 500)));
+  //await delayMs(50);
   // NOTE: There are old, probably unused accounts that haven't accepted the current EUA, or added an email address.
   //  We'd like to force them to update their accounts should they ever decide to log in.  Or we could just delete these old
   //  stale accounts?
@@ -113,7 +152,16 @@ router.beforeEach(async (to, from, next) => {
   const acceptedEUA = false;
   const validatedEmail = false;
   const currentSelectedGroup = { groupName: "foo", id: 1 };
-  const intercepts = ["end-user-agreement", "add-email"];
+
+  // Urls that work without being logged in
+  const intercepts = [
+    "end-user-agreement",
+    "add-email",
+    "forgot-password",
+    "register",
+    "sign-in",
+    "sign-out",
+  ];
 
   // if (isLoggedIn && hasEmail && acceptedEUA) {
   //   if (
@@ -254,9 +302,9 @@ router.beforeEach(async (to, from, next) => {
    */
 
   // Finally, redirect to the sign-in page.
-  if (to.name !== "sign-in") {
+  if (!to.name) {
     return next({
-      path: "/sign-in",
+      name: "sign-in",
       query: {
         nextUrl: to.fullPath,
       },

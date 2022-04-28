@@ -20,6 +20,7 @@ import log from "@log";
 import jwt from "jsonwebtoken";
 import config from "@config";
 import { Response } from "express";
+import {CACOPHONY_WEB_VERSION} from "@/Server";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";
@@ -43,6 +44,10 @@ function send(response: Response, data: any) {
   }
   const statusCode = data.statusCode;
   data.success = 200 <= statusCode && statusCode <= 299;
+  if (CACOPHONY_WEB_VERSION.version !== "unknown") {
+    // In production, we add the cacophony-web version to each request
+    data.cwVersion = CACOPHONY_WEB_VERSION;
+  }
   delete data.statusCode;
   return response.status(statusCode).json(data);
 }

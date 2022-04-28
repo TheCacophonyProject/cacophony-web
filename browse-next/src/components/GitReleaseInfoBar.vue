@@ -1,10 +1,9 @@
 <template>
   <div id="releases">Releases info bar</div>
-  <div>{{ userIsLoggedIn }}</div>
 </template>
 
 <script setup>
-import { userIsLoggedIn } from "@/router";
+import { userIsLoggedIn } from "@/models/LoggedInUser";
 </script>
 
 <style lang="less">

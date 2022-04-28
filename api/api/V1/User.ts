@@ -42,6 +42,7 @@ import {
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
+import {sendEmail, sendEmailConfirmationEmail} from "@/scripts/emailUtil";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -199,6 +200,12 @@ export default function (app: Application, baseUrl: string) {
       const requestUser = await models.User.findByPk(
         response.locals.requestUser.id
       );
+      if (dataToUpdate.email) {
+        // If the user has changed their email, we'll need to send
+        // another confirmation email.
+        dataToUpdate.emailConfirmed = false;
+        await sendEmailConfirmationEmail(requestUser, dataToUpdate.email);
+      }
       await requestUser.update(dataToUpdate);
       responseUtil.send(response, {
         statusCode: 200,
@@ -252,8 +259,41 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  const listUsersOptions = [
+    extractJwtAuthorisedSuperAdminUser,
+    async (request, response) => {
+      const users = await models.User.getAll({});
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: [],
+        usersList: mapUsers(users),
+      });
+    }
+  ];
+
   /**
    * @api {get} api/v1/listUsers List usernames
+   * @apiName ListUsers
+   * @apiGroup User
+   * @apiDescription Given an authenticated super-user, we need to be able to get
+   * a list of all usernames on the system, so that we can switch to viewing
+   * as a given user.
+   * @apiDeprecated Use /api/v1/users/list-users
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${baseUrl}/listUsers`,
+      ...listUsersOptions
+  );
+
+  /**
+   * @api {get} api/v1/list-users List usernames
    * @apiName ListUsers
    * @apiGroup User
    * @apiDescription Given an authenticated super-user, we need to be able to get
@@ -268,20 +308,38 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${baseUrl}/listUsers`,
-    extractJwtAuthorisedSuperAdminUser,
+      `${baseUrl}/list-users`,
+      ...listUsersOptions
+  );
+
+  const endUserAgreementOptions = [
     async (request, response) => {
-      const users = await models.User.getAll({});
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        usersList: mapUsers(users),
+        euaVersion: config.euaVersion,
       });
     }
-  );
+  ];
 
   /**
    * @api {get} /api/v1/endUserAgreement/latest Get the latest end user agreement version
+   * @apiName EndUserAgreementVersion
+   * @apiGroup User
+   * @apiDeprecated Use /api/v1/end-user-agreement/latest
+   *
+   * @apiSuccess {Integer} euaVersion Version of the latest end user agreement.
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+      `${baseUrl}/endUserAgreement/latest`,
+      ...endUserAgreementOptions
+  );
+
+  /**
+   * @api {get} /api/v1/end-user-agreement/latest Get the latest end user agreement version
    * @apiName EndUserAgreementVersion
    * @apiGroup User
    *
@@ -290,25 +348,12 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-  app.get(`${baseUrl}/endUserAgreement/latest`, async (request, response) => {
-    return responseUtil.send(response, {
-      statusCode: 200,
-      messages: [],
-      euaVersion: config.euaVersion,
-    });
-  });
+  app.get(
+      `${baseUrl}/end-user-agreement/latest`,
+      ...endUserAgreementOptions
+  );
 
-  /**
-   * @api {patch} /api/v1/user/changePassword Updates a users password with reset token authentication
-   * @apiName ChangePassword
-   * @apiGroup User
-   * @apiInterface {apiBody::ApiChangePasswordRequestBody}
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.patch(
-    `${apiUrl}/changePassword`,
+  const changePasswordOptions = [
     validateFields([body("token"), validPasswordOf(body("password"))]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response) => {
@@ -319,7 +364,7 @@ export default function (app: Application, baseUrl: string) {
         });
       }
       const result = await response.locals.user.updatePassword(
-        request.body.password
+          request.body.password
       );
       if (!result) {
         return responseUtil.send(response, {
@@ -334,5 +379,34 @@ export default function (app: Application, baseUrl: string) {
         userData: mapUser(response.locals.user),
       });
     }
+  ];
+
+  /**
+   * @api {patch} /api/v1/user/change-password Updates a users password with reset token authentication
+   * @apiName ChangePassword
+   * @apiGroup User
+   * @apiInterface {apiBody::ApiChangePasswordRequestBody}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+      `${apiUrl}/change-password`,
+      ...changePasswordOptions
+  );
+
+  /**
+   * @api {patch} /api/v1/user/changePassword Updates a users password with reset token authentication
+   * @apiName ChangePassword
+   * @apiGroup User
+   * @apiInterface {apiBody::ApiChangePasswordRequestBody}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
+   * @apiDeprecated Use /api/v1/users/change-password
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/changePassword`,
+      ...changePasswordOptions
   );
 }

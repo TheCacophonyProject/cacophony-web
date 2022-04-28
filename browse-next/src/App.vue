@@ -2,7 +2,13 @@
 import { RouterView, RouterLink } from "vue-router";
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
-import {userIsLoggedIn} from "@/router";
+import {
+  userIsLoggedIn,
+  CurrentUser,
+  tryLoggingInRememberedUser,
+} from "@/models/LoggedInUser";
+import { onBeforeMount, ref } from "vue";
+import { BSpinner } from "bootstrap-vue-3";
 
 const userIsSuperAdmin = false;
 const loggedInAsAnotherUser = false;
@@ -12,10 +18,19 @@ const environmentIsProduction = false;
 // Once a user logs in, they have a last selected group.
 // When a user switches a group, it gets flagged and saved server-side as the last selected group (saved as group id *and name*, since groups can be renamed?)
 const currentSelectedGroup = { groupName: "foo", id: 1 };
+const isLoggingInAutomatically = ref(false);
+
+onBeforeMount(async () => {
+  // Try logging in,
+  await tryLoggingInRememberedUser(isLoggingInAutomatically);
+});
 </script>
 <template>
   <git-release-info-bar />
-  <main id="main-wrapper" v-if="userIsLoggedIn">
+  <main class="justify-content-center align-items-center d-flex" v-if="isLoggingInAutomatically">
+    <h1 class="h3"><b-spinner /> Signing in...</h1>
+  </main>
+  <main id="main-wrapper" class="d-flex logged-in" v-else-if="userIsLoggedIn">
     <nav id="global-side-nav" class="d-flex flex-column flex-shrink-0">
       <div class="nav-top">
         <router-link
@@ -216,7 +231,7 @@ const currentSelectedGroup = { groupName: "foo", id: 1 };
           <span class="nav-icon-wrapper">
             <font-awesome-icon icon="user" />
           </span>
-          <span>Username</span>
+          <span>{{ CurrentUser.userName }}</span>
         </router-link>
         <router-link
           to="sign-out"
@@ -232,7 +247,10 @@ const currentSelectedGroup = { groupName: "foo", id: 1 };
       <router-view />
     </section>
   </main>
-  <main v-else>
+  <main
+    v-else
+    class="logged-out justify-content-center align-items-center d-flex"
+  >
     <router-view />
   </main>
 </template>
@@ -387,7 +405,6 @@ const currentSelectedGroup = { groupName: "foo", id: 1 };
 }
 
 main {
-  display: flex;
   flex: auto;
   flex-wrap: nowrap;
   /*height: 100vh;*/
@@ -395,6 +412,14 @@ main {
   /*max-height: 100vh;*/
   /*overflow-x: auto;*/
   /*overflow-y: hidden;*/
+}
+
+.logged-in {
+}
+.logged-out {
+  @media (min-width: 768px) {
+    background: #95a5a6;
+  }
 }
 </style>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
