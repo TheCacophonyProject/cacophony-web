@@ -532,10 +532,11 @@ $recording-side-padding-small: 0.5rem;
     flex-direction: column;
     justify-content: space-between;
     padding: 0.7rem $recording-side-padding;
-    max-width: 15em;
+    max-width: 20em;
 
     @include media-breakpoint-down(xs) {
       padding: 0.25rem $recording-side-padding-small;
+      max-width: 15em;
     }
     .recording-station,
     .recording-group,

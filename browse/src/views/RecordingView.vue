@@ -333,6 +333,7 @@ export default {
 
 @include media-breakpoint-down(sm) {
   .recording-details {
+    max-width: 15rem;
     h4 {
       font-size: 110%;
     }

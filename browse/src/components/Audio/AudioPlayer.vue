@@ -266,6 +266,7 @@ export default defineComponent({
       const end = Math.min(playerBar.offsetWidth - progress.offsetWidth, half);
       const startDiff = Math.abs(start + half);
       const endDiff = Math.abs(end - half);
+
       overlay.value.style.transform = `scale(${zoomed.value.scale}, 1)`;
       const translateY = "translateY(-3px)";
       zoomIndicatorStart.style.transform = `translateX(${
@@ -511,7 +512,15 @@ export default defineComponent({
     const onDragTime = (e: MouseEvent | TouchEvent) => {
       if (dragTime.value) {
         const { time, percent } = calcDragTime(e);
-        player.value.seekTo(percent);
+        if (
+          props.selectedTrack &&
+          time < props.selectedTrack.end &&
+          time > props.selectedTrack.start
+        ) {
+          player.value.play(time, props.selectedTrack.end);
+        } else {
+          player.value.seekTo(percent);
+        }
         if (time > 0) {
           setPlayerTime(time);
           if (zoomed.value.enabled) {
@@ -531,7 +540,15 @@ export default defineComponent({
       }
       const { time, percent } = calcDragTime(e);
       setPlayerTime(time);
-      player.value.seekTo(percent);
+      if (
+        props.selectedTrack &&
+        time < props.selectedTrack.end &&
+        time > props.selectedTrack.start
+      ) {
+        player.value.play(time, props.selectedTrack.end);
+      } else {
+        player.value.seekTo(percent);
+      }
       if (zoomed.value.enabled) {
         updateZoom();
       }
@@ -689,8 +706,17 @@ export default defineComponent({
           const markedForDeletion = [...newTracks.values()]
             .filter((track) => track.deleted)
             .map((track) => track.id);
+          const markedForUndeletion = [...newTracks.values()]
+            .filter((track) => {
+              const oldTrack = oldTracks.get(track.id);
+              if (oldTrack) {
+                return oldTrack.deleted && !track.deleted;
+              }
+              return false;
+            })
+            .map((track) => track.id);
 
-          [...added].forEach((trackId) => {
+          [...added, ...markedForUndeletion].forEach((trackId) => {
             const track = newTracks.get(trackId);
             if (track) {
               const rect = createRectFromTrack(track);
