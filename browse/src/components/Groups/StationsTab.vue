@@ -155,7 +155,9 @@
       ok-title="Rename"
       v-model="renaming"
     >
-      <label>Enter new station name for <StationLink
+      <label
+        >Enter new station name for
+        <StationLink
           :station-name="stationToRename && stationToRename.name"
           :group-name="groupName"
           :use-link="false"
