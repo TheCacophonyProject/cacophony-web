@@ -1,10 +1,7 @@
 # Build:                   sudo docker build --no-cache . -t cacophony-api
 # Run interactive session: sudo docker run -it cacophony-api
 
-# FROM cacophonyproject/server-base:4
-
-# NOTE: Using locally for arm64
-FROM hardiesoft/server-base:latest
+FROM cacophonyproject/server-base:4
 
 WORKDIR /app
 
@@ -16,12 +13,6 @@ EXPOSE 2008
 
 # Minio
 EXPOSE 9001
-
-# Node Debugger
-EXPOSE 9228
-
-# Node Debugger
-EXPOSE 9229
 
 # PostgreSQL
 EXPOSE 5432
