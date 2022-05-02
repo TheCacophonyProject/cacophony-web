@@ -1,9 +1,7 @@
 import { CurrentViewAbortController } from "@/router";
-import {
-  CurrentUser,
-  userIsLoggedIn,
-  LoggedInUser,
-} from "@/models/LoggedInUser";
+import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
+import type { LoggedInUser } from "@/models/LoggedInUser";
+import type { ErrorResult } from "@api/types";
 
 let lastApiVersion: string | null = null;
 
@@ -26,12 +24,26 @@ export async function fetch(url: string, request: RequestInit = {}) {
     },
     signal: CurrentViewAbortController.controller.signal,
   };
-  if (userIsLoggedIn) {
+  if (userIsLoggedIn.value) {
     (request.headers as any).Authorization = (
       CurrentUser.value as LoggedInUser
     ).apiToken;
   }
-  const response = await window.fetch(url, request);
+  let response;
+  try {
+    response = await window.fetch(url, request);
+  } catch (e) {
+    // Network error?
+    return {
+      result: {
+        errors: ["Network connection refused"],
+        messages: ["Failed api request"],
+        errorType: "Client",
+      } as ErrorResult,
+      status: 500,
+      success: false,
+    };
+  }
   if (response.status === 401) {
     CurrentUser.value = null;
     return;

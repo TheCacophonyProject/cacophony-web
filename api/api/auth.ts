@@ -23,7 +23,7 @@ import customErrors from "./customErrors";
 import models, { ModelCommon } from "../models";
 import { Request } from "express";
 import { User } from "@models/User";
-import {UserId} from "@typedefs/api/common";
+import { UserId } from "@typedefs/api/common";
 /*
  * Create a new JWT for a user or device.
  */
@@ -52,25 +52,32 @@ export interface ResetInfo {
 
 export const getResetToken = (userId: UserId, password: string): string => {
   // expires in a day
-  return jwt.sign(
-    { id: userId, password },
-    config.server.passportSecret,
-    { expiresIn: 60 * 60 * 24 }
-  );
+  return jwt.sign({ id: userId, password }, config.server.passportSecret, {
+    expiresIn: 60 * 60 * 24,
+  });
 };
 
-export const getEmailConfirmationToken = (userId: UserId, email: string): string => {
+export const getEmailConfirmationToken = (
+  userId: UserId,
+  email: string
+): string => {
   // expires in a day
-  return jwt.sign(
-      { id: userId, email },
-      config.server.passportSecret,
-      { expiresIn: 60 * 60 * 24 }
-  );
+  return jwt.sign({ id: userId, email }, config.server.passportSecret, {
+    expiresIn: 60 * 60 * 24,
+  });
 };
 
 export const getDecodedResetToken = (token: string): ResetInfo => {
   try {
     return jwt.verify(token, config.server.passportSecret) as ResetInfo;
+  } catch (e) {
+    throw new customErrors.AuthenticationError("Failed to verify JWT.");
+  }
+};
+
+export const getDecodedToken = (token: string): any => {
+  try {
+    return jwt.verify(token, config.server.passportSecret);
   } catch (e) {
     throw new customErrors.AuthenticationError("Failed to verify JWT.");
   }

@@ -1,28 +1,45 @@
 import CacophonyApi from "./api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import type { UserId } from "@typedefs/api/common";
+import type { IsoFormattedDateString, UserId } from "@typedefs/api/common";
 import type { FetchResult, JwtToken } from "@api/types";
 
 export const login = (userEmail: string, password: string) =>
-  CacophonyApi.post("/v1/users/authenticate", {
+  CacophonyApi.post("/api/v1/users/authenticate", {
     nameOrEmail: userEmail,
     password, // Hashed password using some salt known to the client and the server (time-based?)
   }) as Promise<
-    FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
+    FetchResult<{
+      userData: ApiLoggedInUserResponse;
+      token: JwtToken<UserId>;
+      refreshToken: string;
+      expiry: IsoFormattedDateString;
+    }>
+  >;
+
+export const refreshLogin = (refreshToken: string) =>
+  CacophonyApi.post("/api/v1/users/refresh-session-token", {
+    refreshToken,
+  }) as Promise<
+    FetchResult<{
+      userData: ApiLoggedInUserResponse;
+      token: JwtToken<UserId>;
+      refreshToken: string;
+      expiry: IsoFormattedDateString;
+    }>
   >;
 
 export const loginOther = (userName: string) =>
-  CacophonyApi.post("/v1/users/admin-authenticate-as-other-user", {
+  CacophonyApi.post("/api/v1/users/admin-authenticate-as-other-user", {
     name: userName,
   });
 
 export const reset = (email: string) =>
-  CacophonyApi.post("/v1/users/reset-password", {
+  CacophonyApi.post("/api/v1/users/reset-password", {
     email,
   }) as Promise<FetchResult<any>>;
 
 export const validateToken = (token: string) =>
-  CacophonyApi.post("/v1/users/validate-reset-token", {
+  CacophonyApi.post("/api/v1/users/validate-reset-token", {
     token,
   }) as Promise<
     FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>

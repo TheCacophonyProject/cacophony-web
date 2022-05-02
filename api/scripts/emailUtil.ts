@@ -8,7 +8,7 @@ import moment from "moment";
 import { SMTPClient, Message } from "emailjs";
 import { Readable } from "stream";
 import { User } from "@models/User";
-import {getEmailConfirmationToken, getResetToken} from "@api/auth";
+import { getEmailConfirmationToken, getResetToken } from "@api/auth";
 function alertBody(
   recording: Recording,
   tag: TrackTag,
@@ -60,16 +60,19 @@ async function sendResetEmail(user: User, password: string): Promise<boolean> {
   );
 }
 
-export async function sendEmailConfirmationEmail(user: User, newEmailAddress: string): Promise<boolean> {
+export async function sendEmailConfirmationEmail(
+  user: User,
+  newEmailAddress: string
+): Promise<boolean> {
   const token = getEmailConfirmationToken(user.id, newEmailAddress);
   // FIXME - This needs to be a transactional email about confirming your email.
   // TODO - Only send automated emails to users if they have confirmed their email address.
   const [html, text] = resetBody(user.firstName || user.username, token);
   return sendEmail(
-      html,
-      text,
-      newEmailAddress,
-      "Confirm your email associated with your Cacophony account"
+    html,
+    text,
+    newEmailAddress,
+    "Confirm your email associated with your Cacophony account"
   );
 }
 

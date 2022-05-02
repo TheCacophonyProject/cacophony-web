@@ -42,7 +42,7 @@ import {
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
-import {sendEmail, sendEmailConfirmationEmail} from "@/scripts/emailUtil";
+import { sendEmail, sendEmailConfirmationEmail } from "@/scripts/emailUtil";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -268,7 +268,7 @@ export default function (app: Application, baseUrl: string) {
         messages: [],
         usersList: mapUsers(users),
       });
-    }
+    },
   ];
 
   /**
@@ -287,10 +287,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-  app.get(
-    `${baseUrl}/listUsers`,
-      ...listUsersOptions
-  );
+  app.get(`${baseUrl}/listUsers`, ...listUsersOptions);
 
   /**
    * @api {get} api/v1/list-users List usernames
@@ -307,10 +304,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-  app.get(
-      `${baseUrl}/list-users`,
-      ...listUsersOptions
-  );
+  app.get(`${baseUrl}/list-users`, ...listUsersOptions);
 
   const endUserAgreementOptions = [
     async (request, response) => {
@@ -319,7 +313,7 @@ export default function (app: Application, baseUrl: string) {
         messages: [],
         euaVersion: config.euaVersion,
       });
-    }
+    },
   ];
 
   /**
@@ -333,10 +327,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-  app.get(
-      `${baseUrl}/endUserAgreement/latest`,
-      ...endUserAgreementOptions
-  );
+  app.get(`${baseUrl}/endUserAgreement/latest`, ...endUserAgreementOptions);
 
   /**
    * @api {get} /api/v1/end-user-agreement/latest Get the latest end user agreement version
@@ -348,10 +339,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-  app.get(
-      `${baseUrl}/end-user-agreement/latest`,
-      ...endUserAgreementOptions
-  );
+  app.get(`${baseUrl}/end-user-agreement/latest`, ...endUserAgreementOptions);
 
   const changePasswordOptions = [
     validateFields([body("token"), validPasswordOf(body("password"))]),
@@ -364,7 +352,7 @@ export default function (app: Application, baseUrl: string) {
         });
       }
       const result = await response.locals.user.updatePassword(
-          request.body.password
+        request.body.password
       );
       if (!result) {
         return responseUtil.send(response, {
@@ -378,7 +366,7 @@ export default function (app: Application, baseUrl: string) {
         token: `JWT ${auth.createEntityJWT(response.locals.user)}`,
         userData: mapUser(response.locals.user),
       });
-    }
+    },
   ];
 
   /**
@@ -390,10 +378,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
-  app.patch(
-      `${apiUrl}/change-password`,
-      ...changePasswordOptions
-  );
+  app.patch(`${apiUrl}/change-password`, ...changePasswordOptions);
 
   /**
    * @api {patch} /api/v1/user/changePassword Updates a users password with reset token authentication
@@ -405,8 +390,5 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
-  app.patch(
-    `${apiUrl}/changePassword`,
-      ...changePasswordOptions
-  );
+  app.patch(`${apiUrl}/changePassword`, ...changePasswordOptions);
 }

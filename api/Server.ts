@@ -36,9 +36,12 @@ const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
 };
 
 const loadCacophonyWebVersion = async (): Promise<void> => {
-  const { stdout } = await asyncExec("dpkg -s cacophony-web | grep '^Version:'");
-  if (stdout.startsWith("Version: ")) {
-    CACOPHONY_WEB_VERSION.version = stdout.replace("Version: ", "");
+  const { stdout, stderr } = await asyncExec("dpkg -s cacophony-web | cat");
+  for (const line of [...stderr.split("\n"), ...stdout.split("\n")]) {
+    if (line.startsWith("Version: ")) {
+      CACOPHONY_WEB_VERSION.version = stdout.replace("Version: ", "");
+      break;
+    }
   }
 };
 

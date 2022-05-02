@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
-import { CurrentUser } from "@/models/LoggedInUser";
-import { isEmpty, delayMs, formFieldInputText } from "@/utils";
-import type { ApiLoggedInUserResponse as LoggedInUser } from "@typedefs/api/user";
+import { login } from "@/models/LoggedInUser";
+import { isEmpty, formFieldInputText } from "@/utils";
 
-// TODO Automatically trim form fields on submit?
 // TODO Can we parse e.g body.password in the messages into contextual error messages?
-// TODO Remember me preference checkbox?
 
 interface FormInputValue {
   value: string;
@@ -25,9 +22,10 @@ const togglePasswordVisibility = () => {
 
 const userEmailAddress: FormInputValue = formFieldInputText();
 const userPassword: FormInputValue = formFieldInputText();
-const rememberMe: FormInputValue = formFieldInputText(false);
 const signInErrorMessage = ref("");
-const signInInProgress = ref(false);
+const signInInProgress = reactive({
+  requestPending: false,
+});
 
 const hasError = computed({
   get: () => {
@@ -39,6 +37,10 @@ const hasError = computed({
     }
   },
 });
+
+const submitLogin = () => {
+  login(userEmailAddress.value, userPassword.value, signInInProgress);
+};
 
 const isValidEmailAddress = computed<boolean>(() => {
   const { value } = userEmailAddress;
@@ -62,23 +64,6 @@ const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
 const signInFormIsFilledAndValid = computed<boolean>(
   () => isValidEmailAddress.value && isValidPassword.value
 );
-
-const login = async () => {
-  const emailAddress = userEmailAddress.value.trim();
-  const password = userPassword.value.trim();
-  signInInProgress.value = true;
-  await delayMs(1000);
-  signInInProgress.value = false;
-
-  // Handle login response here, update the global loggedInUser object.
-  CurrentUser.value = reactive<LoggedInUser>({
-    email: "",
-    endUserAgreement: 1,
-    id: 1,
-    globalPermission: "off",
-    userName: "Test_user",
-  } as LoggedInUser);
-};
 </script>
 <template>
   <div class="sign-in-form px-4 pb-4 pt-5">
@@ -89,7 +74,11 @@ const login = async () => {
       class="mx-auto d-block mb-5"
     />
     <h1 class="h4 text-center mb-4">Sign in</h1>
-    <b-form class="d-flex flex-column" @submit.stop.prevent="login" novalidate>
+    <b-form
+      class="d-flex flex-column"
+      @submit.stop.prevent="submitLogin"
+      novalidate
+    >
       <b-alert
         v-model="hasError"
         variant="danger"
@@ -107,7 +96,7 @@ const login = async () => {
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="email address"
           placeholder="email address"
-          :disabled="signInInProgress"
+          :disabled="signInInProgress.requestPending"
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
@@ -123,7 +112,7 @@ const login = async () => {
             :state="needsValidationAndIsValidPassword"
             aria-label="password"
             placeholder="password"
-            :disabled="signInInProgress"
+            :disabled="signInInProgress.requestPending"
             required
           />
           <button
@@ -143,21 +132,14 @@ const login = async () => {
           </span>
         </b-form-invalid-feedback>
       </div>
-      <div class="input-group mb-3">
-        <b-form-checkbox
-          v-model="rememberMe.value"
-          @blur="rememberMe.touched = true"
-          :disabled="signInInProgress"
-        >
-          <span class="small"> Stay signed in on this device </span>
-        </b-form-checkbox>
-      </div>
       <button
         type="submit"
         class="btn btn-primary mb-3"
-        :disabled="!signInFormIsFilledAndValid || signInInProgress"
+        :disabled="
+          !signInFormIsFilledAndValid || signInInProgress.requestPending
+        "
       >
-        <span v-if="signInInProgress">
+        <span v-if="signInInProgress.requestPending">
           <span
             class="spinner-border spinner-border-sm"
             role="status"

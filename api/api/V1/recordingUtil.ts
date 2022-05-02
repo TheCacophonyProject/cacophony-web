@@ -473,7 +473,8 @@ export const maybeUpdateDeviceHistory = async (
           );
           if (!locationChanged && laterLocation.DeviceId !== device.id) {
             shouldInsertLocation = true;
-          } else if (!locationChanged) { // && laterLocation.setBy !== "user" && laterLocation.fromDateTime.toISOString() !== dateTime.toISOString()
+          } else if (!locationChanged) {
+            // && laterLocation.setBy !== "user" && laterLocation.fromDateTime.toISOString() !== dateTime.toISOString()
             if (laterLocation.setBy !== "user") {
               // Move later location back to this time, if it was an automatically created location.
               existingDeviceHistoryEntry = await laterLocation.update({
@@ -553,7 +554,10 @@ export const maybeUpdateDeviceHistory = async (
         device.GroupId,
         dateTime
       );
-      logger.error("Assign to station %s", stationToAssign && stationToAssign.id);
+      logger.error(
+        "Assign to station %s",
+        stationToAssign && stationToAssign.id
+      );
       if (!stationToAssign) {
         // Create new automatic station
         stationToAssign = (await models.Station.create({

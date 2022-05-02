@@ -58,6 +58,8 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   firstName: string;
   lastName: string;
   email: string;
+  emailConfirmed: boolean;
+  lastActiveAt: Date;
   groups: Group[];
   globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
@@ -94,6 +96,15 @@ export default function (
       type: DataTypes.STRING,
       validate: { isEmail: true },
       unique: true,
+    },
+    emailConfirmed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    lastActiveAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     password: {
       type: DataTypes.STRING,

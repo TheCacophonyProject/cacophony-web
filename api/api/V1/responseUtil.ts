@@ -20,7 +20,7 @@ import log from "@log";
 import jwt from "jsonwebtoken";
 import config from "@config";
 import { Response } from "express";
-import {CACOPHONY_WEB_VERSION} from "@/Server";
+import { CACOPHONY_WEB_VERSION } from "@/Server";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";

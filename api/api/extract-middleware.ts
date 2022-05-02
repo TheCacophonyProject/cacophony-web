@@ -5,6 +5,7 @@ import {
   getVerifiedJWT,
   lookupEntity,
   getDecodedResetToken,
+  getDecodedToken,
 } from "./auth";
 import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
@@ -1412,13 +1413,24 @@ export const fetchAdminAuthorizedRequiredGroupById = (
     groupNameOrId
   );
 
+export const extractJWTInfo =
+  (field: ValidationChain) =>
+  async (request: Request, response: Response, next: NextFunction) => {
+    const token = extractValFromRequest(request, field) as string;
+    let tokenInfo;
+    try {
+      tokenInfo = getDecodedToken(token);
+    } catch (e) {
+      return next(new ClientError(`JWT token expired`, 401));
+    }
+    response.locals.tokenInfo = tokenInfo;
+    next();
+  };
+
 export const fetchUnauthorizedRequiredUserByResetToken =
   (field: ValidationChain) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const token = extractValFromRequest(request, field) as string;
-    if (!token) {
-      return next(new ClientError(`Invalid reset token`, 401));
-    }
     let resetInfo;
     try {
       resetInfo = getDecodedResetToken(token);
@@ -1426,7 +1438,7 @@ export const fetchUnauthorizedRequiredUserByResetToken =
       return next(new ClientError(`Reset token expired`, 401));
     }
     response.locals.resetInfo = resetInfo;
-    const user = await getUser()(response.locals.resetInfo.id);
+    const user = await models.User.findByPk(response.locals.resetInfo.id);
     if (!user) {
       return next(
         new ClientError(

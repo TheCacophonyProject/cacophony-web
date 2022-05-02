@@ -1,17 +1,22 @@
-import type {
-  ApiLoggedInUserResponse,
-} from "@typedefs/api/user";
+import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { Ref } from "vue";
-import { computed, ref } from "vue";
-import { delayMs } from "@/utils";
+import { computed, reactive, ref } from "vue";
+import { refreshLogin, login as userLogin } from "@/api/User.api";
+import type { ErrorResult } from "@api/types";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
-  apiToken: string; // Should have token time.
+  apiToken: string;
+  expiry: Date;
+  refreshToken: string;
+}
+
+export interface PendingRequest {
+  requestPending: boolean;
+  errors?: ErrorResult;
 }
 
 export const CurrentUser: Ref<LoggedInUser | null> = ref(null);
 
-// TODO: Here we can set this to false if for instance the session has expired.
 export const userIsLoggedIn = computed<boolean>({
   get: () => CurrentUser.value !== null,
   set: (val: boolean) => {
@@ -21,30 +26,94 @@ export const userIsLoggedIn = computed<boolean>({
   },
 });
 
-export const rememberUserOnCurrentDevice = (
-  emailAddress: string,
-  password: string
-) => {
-  // NOTE: These credentials have already been validated.
-  window.localStorage.setItem(
-    "saved-login-credentials",
-    JSON.stringify({
-      emailAddress,
-      password,
-    })
+const setUserData = (user: LoggedInUser) => {
+  CurrentUser.value = reactive<LoggedInUser>(user);
+  persistUser(CurrentUser.value);
+  refreshCredentialsAtIn(
+    CurrentUser.value.expiry.getTime() - new Date().getTime()
   );
 };
 
-export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
+export const login = async (
+  userEmailAddress: string,
+  userPassword: string,
+  signInInProgress: PendingRequest
+) => {
+  const emailAddress = userEmailAddress.trim();
+  const password = userPassword.trim();
+  signInInProgress.requestPending = true;
+  const loggedInUserResponse = await userLogin(emailAddress, password);
+  if (loggedInUserResponse.success) {
+    const signedInUser = loggedInUserResponse.result;
+    setUserData({
+      ...signedInUser.userData,
+      apiToken: signedInUser.token,
+      refreshToken: signedInUser.refreshToken,
+      expiry: new Date(signedInUser.expiry),
+    });
+  } else {
+    signInInProgress.errors = loggedInUserResponse.result;
+  }
+  signInInProgress.requestPending = false;
+};
+
+export const persistUser = (currentUser: LoggedInUser) => {
+  // NOTE: These credentials have already been validated.
+  window.localStorage.setItem(
+    "saved-login-credentials",
+    JSON.stringify(currentUser)
+  );
+};
+
+const refreshCredentials = async () => {
+  // NOTE: Because this can be shared between browser windows/tabs,
+  //  always pull out the localStorage version before refreshing
   const rememberedCredentials = window.localStorage.getItem(
     "saved-login-credentials"
   );
   if (rememberedCredentials) {
-    isLoggingIn.value = true;
-    await delayMs(1000);
-    isLoggingIn.value = false;
+    let currentUser;
+    const now = new Date();
+    try {
+      currentUser = JSON.parse(rememberedCredentials);
+      currentUser.expiry = new Date(currentUser.expiry);
+      if (currentUser.expiry > now) {
+        // Use existing credentials, setup refresh timer.
+        refreshCredentialsAtIn(currentUser.expiry.getTime() - now.getTime());
+        CurrentUser.value = reactive<LoggedInUser>(currentUser);
+        return;
+      } else {
+        const refreshedUserResult = await refreshLogin(
+          currentUser.refreshToken
+        );
+        if (refreshedUserResult.success) {
+          const refreshedUser = refreshedUserResult.result;
+          setUserData({
+            ...refreshedUser.userData,
+            apiToken: refreshedUser.token,
+            refreshToken: refreshedUser.refreshToken,
+            expiry: new Date(refreshedUser.expiry),
+          });
+        } else {
+          // FIXME - Login again?
+        }
+      }
+    } catch (e) {
+      // TODO
+    }
   }
-  // FIXME - set current user.
+};
+
+let refreshTimeout = -1;
+const refreshCredentialsAtIn = (milliseconds: number) => {
+  clearTimeout(refreshTimeout);
+  refreshTimeout = setTimeout(refreshCredentials, milliseconds);
+};
+
+export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
+  isLoggingIn.value = true;
+  await refreshCredentials();
+  isLoggingIn.value = false;
 };
 
 export const forgetUserOnCurrentDevice = () => {
