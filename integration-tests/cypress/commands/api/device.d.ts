@@ -171,7 +171,7 @@ declare namespace Cypress {
       recTime: string,
       stationTime: string,
       move?: boolean,
-      additionalRecTime?: string,
+      additionalRecTime?: string
     ): any;
   }
 }

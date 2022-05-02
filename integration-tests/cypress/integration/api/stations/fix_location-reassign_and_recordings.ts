@@ -71,18 +71,17 @@ describe("Fix location: subsequent recordings", () => {
 
     cy.log(`Old location ${JSON.stringify(oldLocation)}`);
     cy.log(`New location ${JSON.stringify(newLocation)}`);
-
   });
 
   // Adding recordings after a REASSIGN
 
- /* User adds a recording in same location as last reassigned recording
-  * after lastRecTime:
-  * -> existing station: lastRec Time updated
-  * -> deviceHistory: unchanged
-  * -> recording: uses location as uploaded, uses reassigned station
-  * -> device location remains at original location
-  */
+  /* User adds a recording in same location as last reassigned recording
+   * after lastRecTime:
+   * -> existing station: lastRec Time updated
+   * -> deviceHistory: unchanged
+   * -> recording: uses location as uploaded, uses reassigned station
+   * -> device location remains at original location
+   */
   it("Reassign recording: add new recording on same place, after lastRecTime", () => {
     const deviceName = "update-device-10";
     const manualStationName = "Josie-station-10";
@@ -141,14 +140,14 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* User adds a recording in same location as last reassigned recording
-  * before firstRecTime:
-  * -> existing station: unchanged
-  * -> new auto station created for oldLocation
-  * -> deviceHistory: new earlier entry created
-  * -> recording: uses location as uploaded, creates new auto station
-  * -> device location remains at original location
-  */
+  /* User adds a recording in same location as last reassigned recording
+   * before firstRecTime:
+   * -> existing station: unchanged
+   * -> new auto station created for oldLocation
+   * -> deviceHistory: new earlier entry created
+   * -> recording: uses location as uploaded, creates new auto station
+   * -> device location remains at original location
+   */
   it("Reassign recording: add new recording in same place, before lastRecTime", () => {
     const deviceName = "update-device-11";
     const manualStationName = "Josie-station-11";
@@ -167,7 +166,9 @@ describe("Fix location: subsequent recordings", () => {
       dayZero.toISOString(),
       false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
-      cy.log("Add new recording in same place, before lastRecordingTime (dayOne)");
+      cy.log(
+        "Add new recording in same place, before lastRecordingTime (dayOne)"
+      );
       cy.log("and check recording uses updated station");
 
       cy.testUploadRecording(
@@ -176,7 +177,7 @@ describe("Fix location: subsequent recordings", () => {
         firstName
       )
         .thenCheckStationIsNew(Josie)
-        .then((newStation:TestNameAndId) => {
+        .then((newStation: TestNameAndId) => {
           cy.log("Check original station unchanged by prior recording");
           cy.apiStationCheck(
             Josie,
@@ -184,9 +185,7 @@ describe("Fix location: subsequent recordings", () => {
             expectedManualStation
           );
 
-          cy.log(
-            "Check new deviceHistory entry creted for earlier recording"
-          );
+          cy.log("Check new deviceHistory entry creted for earlier recording");
           expectedHistory[2] = TestCreateExpectedHistoryEntry(
             deviceName,
             group,
@@ -217,14 +216,14 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* User adds a recording in same location as last reassigned recording
-  * before stationCreationTime:
-  * -> existing station: unchanged
-  * -> new auto station created
-  * -> deviceHistory: new earlier record created
-  * -> recording: uses location as uploaded, creates new auto station
-  * -> device location remains at original location
-  */
+  /* User adds a recording in same location as last reassigned recording
+   * before stationCreationTime:
+   * -> existing station: unchanged
+   * -> new auto station created
+   * -> deviceHistory: new earlier record created
+   * -> recording: uses location as uploaded, creates new auto station
+   * -> device location remains at original location
+   */
   it("Reassign recording: add new recording in same place, before station creation time", () => {
     const deviceName = "update-device-12";
     const manualStationName = "Josie-station-12";
@@ -308,14 +307,14 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* User adds a recording in different location to last reassigned recording
-  * after lastRecTime:
-  * -> existing station: unchanged
-  * -> new station created
-  * -> deviceHistory: new entry for new location, time
-  * -> recording: uses location as uploaded, creates new auto station
-  * -> device location at the new different location
-  */
+  /* User adds a recording in different location to last reassigned recording
+   * after lastRecTime:
+   * -> existing station: unchanged
+   * -> new station created
+   * -> deviceHistory: new entry for new location, time
+   * -> recording: uses location as uploaded, creates new auto station
+   * -> device location at the new different location
+   */
   it("Reassign recording: add new recording on different place, after lastRecTime", () => {
     const deviceName = "update-device-13";
     const manualStationName = "Josie-station-13";
@@ -382,14 +381,14 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* User adds a recording in different location to last reassigned recording
-  * before firstRecTime:
-  * -> existing station: unchanged
-  * -> new station created
-  * -> deviceHistory: new entry for new location, time
-  * -> recording: uses location as uploaded, creates new auto station
-  * -> device location unchanged
-  */
+  /* User adds a recording in different location to last reassigned recording
+   * before firstRecTime:
+   * -> existing station: unchanged
+   * -> new station created
+   * -> deviceHistory: new entry for new location, time
+   * -> recording: uses location as uploaded, creates new auto station
+   * -> device location unchanged
+   */
   it("Reassign recording: add new recording in different place, before lastRecTime", () => {
     const deviceName = "update-device-15";
     const manualStationName = "Josie-station-15";
@@ -456,14 +455,14 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* User adds a recording in different location to last reassigned recording
-  * before stationCreationTime:
-  * -> existing station: unchanged
-  * -> new station created
-  * -> deviceHistory: new entry for new location, time
-  * -> recording: uses location as uploaded, creates new auto station
-  * -> device location unchanged
-  */
+  /* User adds a recording in different location to last reassigned recording
+   * before stationCreationTime:
+   * -> existing station: unchanged
+   * -> new station created
+   * -> deviceHistory: new entry for new location, time
+   * -> recording: uses location as uploaded, creates new auto station
+   * -> device location unchanged
+   */
   it("Reassign recording: add new recording in different place, before station creation time", () => {
     const deviceName = "update-device-16";
     const manualStationName = "Josie-station-16";
@@ -534,15 +533,15 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* After subsequent new recordings located elsewhere, user adds a recording in
-  * same location to reassigned recording after lastRecTime for that earlier 
-  * location:
-  * -> existing reassigned station: lastRecTime updated
-  * -> existing later station: unchanged
-  * -> deviceHistory: unchanged
-  * -> recording: uses location as uploaded, uses reassigned staion
-  * -> device: location unchanged at elsewhere location
-  */
+  /* After subsequent new recordings located elsewhere, user adds a recording in
+   * same location to reassigned recording after lastRecTime for that earlier
+   * location:
+   * -> existing reassigned station: lastRecTime updated
+   * -> existing later station: unchanged
+   * -> deviceHistory: unchanged
+   * -> recording: uses location as uploaded, uses reassigned staion
+   * -> device: location unchanged at elsewhere location
+   */
   it("Reassign recording: after subsequent new location & recordings, add past recordings in same location after lastRecTime for that location", () => {
     const deviceName = "update-device-17";
     const manualStationName = "Josie-station-17";
@@ -624,15 +623,15 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* After subsequent new recordings located elsewhere, user adds a recording in
-  * same location to reassigned recording before firstRecTime for that earlier 
-  * location:
-  * -> existing reassigned station: unchanged
-  * -> existing later station: unchanged
-  * -> deviceHistory: new earlier entry added for new early recording time
-  * -> recording: uses location as uploaded, uses reassigned staion
-  * -> device: location unchanged at elsewhere location
-  */
+  /* After subsequent new recordings located elsewhere, user adds a recording in
+   * same location to reassigned recording before firstRecTime for that earlier
+   * location:
+   * -> existing reassigned station: unchanged
+   * -> existing later station: unchanged
+   * -> deviceHistory: new earlier entry added for new early recording time
+   * -> recording: uses location as uploaded, uses reassigned staion
+   * -> device: location unchanged at elsewhere location
+   */
   it("Reassign recording: after subsequent new location & recordings, add past recordings in same location before lastRecTime for that location", () => {
     const deviceName = "update-device-18";
     const manualStationName = "Josie-station-18";
@@ -727,13 +726,13 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* User adds a recording in same location as last reassigned recording
-  * between first and lastRecTime:
-  * -> existing station: unchanged
-  * -> deviceHistory: unchanged
-  * -> recording: uses location as uploaded, uses reassigned station
-  * -> device location remains at original location
-  */
+  /* User adds a recording in same location as last reassigned recording
+   * between first and lastRecTime:
+   * -> existing station: unchanged
+   * -> deviceHistory: unchanged
+   * -> recording: uses location as uploaded, uses reassigned station
+   * -> device location remains at original location
+   */
   it("Reassign recording: add new recording in same place, between first and lastRecTime", () => {
     const deviceName = "update-device-19";
     const manualStationName = "Josie-station-19";
@@ -770,9 +769,7 @@ describe("Fix location: subsequent recordings", () => {
             expectedManualStation
           );
 
-          cy.log(
-            "Check deviceHistory unchanged"
-          );
+          cy.log("Check deviceHistory unchanged");
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
           cy.log("check device location still at old location");
@@ -794,15 +791,15 @@ describe("Fix location: subsequent recordings", () => {
     });
   });
 
- /* After subsequent new recordings located elsewhere, user adds a recording in
-  * same location to reassigned recording between first and lastRecTime for 
-  * that earlier location:
-  * -> existing reassigned station: unchanged
-  * -> existing later station: unchanged
-  * -> deviceHistory: unchanged
-  * -> recording: uses location as uploaded, uses reassigned staion
-  * -> device: location unchanged at elsewhere location
-  */
+  /* After subsequent new recordings located elsewhere, user adds a recording in
+   * same location to reassigned recording between first and lastRecTime for
+   * that earlier location:
+   * -> existing reassigned station: unchanged
+   * -> existing later station: unchanged
+   * -> deviceHistory: unchanged
+   * -> recording: uses location as uploaded, uses reassigned staion
+   * -> device: location unchanged at elsewhere location
+   */
   it("Reassign recording: after subsequent new location & recordings, add past recordings in same location between first and lastRecTime for that location", () => {
     const deviceName = "update-device-20";
     const manualStationName = "Josie-station-20";
@@ -851,7 +848,7 @@ describe("Fix location: subsequent recordings", () => {
             { ...oldLocation, time: dayTwo },
             firstName
           )
-            .thenCheckStationNameIs(Josie,getTestName(manualStationName))
+            .thenCheckStationNameIs(Josie, getTestName(manualStationName))
             .then(() => {
               cy.log("Check old station unchanged");
               cy.apiStationCheck(
@@ -860,15 +857,12 @@ describe("Fix location: subsequent recordings", () => {
                 expectedManualStation
               );
 
-              cy.log(
-                "Check deviceHistory uncganged"
-              );
+              cy.log("Check deviceHistory uncganged");
 
               // User fixup time
-              expectedHistory[1].setBy= "user",
-
-              // Later recording elsewhere
-              expectedHistory.push(elseWhereLocationEntry);
+              (expectedHistory[1].setBy = "user"),
+                // Later recording elsewhere
+                expectedHistory.push(elseWhereLocationEntry);
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
               cy.log("check device location still at elsewhere location");
@@ -890,5 +884,4 @@ describe("Fix location: subsequent recordings", () => {
         });
     });
   });
-
 });
