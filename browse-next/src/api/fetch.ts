@@ -28,6 +28,11 @@ export async function fetch(url: string, request: RequestInit = {}) {
     (request.headers as any).Authorization = (
       CurrentUser.value as LoggedInUser
     ).apiToken;
+  } else {
+    // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
+    (
+      request.headers as any
+    ).Viewport = `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio} - ${window.screen.orientation.type}`;
   }
   let response;
   try {

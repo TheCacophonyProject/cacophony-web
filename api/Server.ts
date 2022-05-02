@@ -141,7 +141,7 @@ const checkS3Connection = (): Promise<void> => {
     );
     response.header(
       "Access-Control-Allow-Headers",
-      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept"
+      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport"
     );
     next();
   });

@@ -67,7 +67,7 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
 
   // TODO - Give api users the option of asking for a long-lived token, so they don't have to deal with the complexity
-  //  of refresh tokens.
+  //  of refresh tokens?
 
   const authenticateUserOptions = [
     validateFields([
@@ -75,20 +75,12 @@ export default function (app: Application, baseUrl: string) {
         [
           deprecatedField(validNameOf(body("username"))),
           validNameOf(body("userName")),
-
-          // FIXME - We are probably rejecting some valid email addresses here.
           validNameOf(body("nameOrEmail")),
           body("nameOrEmail").isEmail(),
           body("email").isEmail(),
         ],
         "could not find a user with the given username or email"
       ),
-
-      // FIXME - How about not sending our passwords in the clear eh?
-      //  Ideally should generate hash on client side, and compare hashes with one
-      //  stored on the backend.  Salt on both sides with some timestamp
-      //  rounded to x minutes, so that if hash is compromised
-      //  it can't be reused for long.
       validPasswordOf(body("password")),
     ]),
     fetchUnauthorizedOptionalUserByNameOrEmailOrId(
@@ -124,11 +116,14 @@ export default function (app: Application, baseUrl: string) {
         const now = new Date().toISOString();
         await models.sequelize.query(
           `
-            insert into "UserSessions"
-              ("refreshToken", "userId", "userAgent", "createdAt", "updatedAt")
-            values (:refreshToken, :userId, :userAgent, :createdAt, :updatedAt)`,
+              insert into "UserSessions"
+              ("refreshToken", "userId", "userAgent", "createdAt", "updatedAt", "viewport")
+              values (:refreshToken, :userId, :userAgent, :createdAt, :updatedAt, :viewport)
+            `,
           {
             replacements: {
+              // Can we store screen resolution of clients here?  That would be handy.
+              viewport: request.headers["viewport"],
               userAgent: request.headers["user-agent"],
               refreshToken,
               userId: response.locals.user.id,
@@ -254,6 +249,19 @@ export default function (app: Application, baseUrl: string) {
         // if valid token, create new token to return, and update existing token.
         // create a new short-lived JWT token for user.
         const validToken = result[0];
+
+        // Best practices taken from auth0 say that we should revoke refresh tokens after 15 days of inactivity:
+        // https://auth0.com/blog/achieving-a-seamless-user-experience-with-refresh-token-inactivity-lifetimes/
+        const fifteenDaysAgo = new Date(
+          new Date().setDate(new Date().getDate() - 15)
+        );
+        if (new Date(validToken.updatedAt) < fifteenDaysAgo) {
+          return responseUtil.send(response, {
+            statusCode: 401,
+            messages: ["Inactive refresh token expired."],
+          });
+        }
+
         const refreshToken = randomUUID();
         const user = await models.User.findByPk(validToken.userId);
         await user.update({ lastActiveAt: new Date() });

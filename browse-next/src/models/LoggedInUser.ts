@@ -95,11 +95,13 @@ const refreshCredentials = async () => {
             expiry: new Date(refreshedUser.expiry),
           });
         } else {
-          // FIXME - Login again?
+          // Refresh token wasn't found, so prompt login again
+          forgetUserOnCurrentDevice();
         }
       }
     } catch (e) {
-      // TODO
+      // JSON user creds was malformed, so clear it, and prompt login again
+      forgetUserOnCurrentDevice();
     }
   }
 };

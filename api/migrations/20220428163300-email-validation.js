@@ -32,6 +32,11 @@ module.exports = {
         allowNull: false,
         comment: "User agent string for this session"
       },
+      viewport: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        comment: "Device screen metrics for analytics purposes"
+      },
       createdAt: { type: Sequelize.DATE, allowNull: false },
       updatedAt: { type: Sequelize.DATE, allowNull: false },
     });

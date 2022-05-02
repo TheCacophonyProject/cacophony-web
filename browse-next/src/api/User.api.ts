@@ -5,7 +5,7 @@ import type { FetchResult, JwtToken } from "@api/types";
 
 export const login = (userEmail: string, password: string) =>
   CacophonyApi.post("/api/v1/users/authenticate", {
-    nameOrEmail: userEmail,
+    email: userEmail,
     password, // Hashed password using some salt known to the client and the server (time-based?)
   }) as Promise<
     FetchResult<{
