@@ -24,26 +24,44 @@ import responseUtil from "./responseUtil";
 import modelsUtil from "@models/util/util";
 import crypto from "crypto";
 import { Request, Response } from "express";
-import { Recording } from "@models/Recording";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
-import { DeviceType, RecordingType } from "@typedefs/api/consts";
 import { User } from "@models/User";
+import stream, { Stream } from "stream";
+import { RecordingType } from "@typedefs/api/consts";
+
+interface MultiPartFormPart extends stream.Readable {
+  headers: Record<string, any>;
+  name: string;
+  filename?: string;
+  byteOffset: number;
+  byteCount: number;
+}
+
+const stream2Buffer = (stream: Stream): Promise<Buffer> => {
+  return new Promise((resolve, reject) => {
+    const _buf = [];
+    stream.on("data", (chunk) => _buf.push(chunk));
+    stream.on("end", () => resolve(Buffer.concat(_buf)));
+    stream.on("error", (err) => reject(err));
+  });
+};
 
 function multipartUpload(
   keyPrefix: string,
-  onSaved: <T>(
+  onFileUploadComplete: <T>(
     uploadingDeviceOrUser: Device | User | null,
     data: any,
-    key: string
+    key: string,
+    uploadedFileData: Uint8Array
   ) => Promise<ModelCommon<T> | string>
 ) {
   return async (request: Request, response: Response) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;
-    let upload;
-    let fileSize = 0;
+    let uploadPromise;
+    let fileDataPromise;
 
     let uploadingDevice =
       response.locals.device || response.locals.requestDevice;
@@ -69,13 +87,26 @@ function multipartUpload(
     const form = new multiparty.Form();
 
     // Handle the "data" field.
-    form.on("field", async (name, value) => {
-      if (name != "data") {
+    form.on("field", async (name: string, value: any) => {
+      if (name !== "data") {
         return;
       }
 
       try {
         data = JSON.parse(value);
+        if (keyPrefix === "raw") {
+          if (
+            (data.hasOwnProperty("recordingDateTime") ||
+              data.type === RecordingType.Audio) &&
+            isNaN(Date.parse(data.recordingDateTime))
+          ) {
+            responseUtil.send(response, {
+              statusCode: 422,
+              messages: ["Invalid recordingDateTime"],
+            });
+            return;
+          }
+        }
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
         // will fail the upload.
@@ -84,22 +115,29 @@ function multipartUpload(
     });
 
     // Handle the "file" part.
-    form.on("part", (part) => {
-      if (part.name != "file") {
+    form.on("part", (part: MultiPartFormPart) => {
+      if (part.name !== "file") {
         part.resume();
         return;
       }
       filename = part.filename;
-      upload = modelsUtil
-        .openS3()
-        .upload({
-          Key: key,
-          Body: part,
-        })
-        .promise()
-        .catch((err) => {
-          return err;
-        });
+      const uploadStream = (Key) => {
+        const pass = new stream.PassThrough();
+        return {
+          writeStream: pass,
+          promise: modelsUtil
+            .openS3()
+            .upload({ Key, Body: pass })
+            .promise()
+            .catch((err) => {
+              return err;
+            }),
+        };
+      };
+      const { writeStream, promise } = uploadStream(key);
+      uploadPromise = promise;
+      part.pipe(writeStream);
+      fileDataPromise = stream2Buffer(writeStream);
       log.debug("Started streaming upload to bucket...");
     });
 
@@ -119,7 +157,7 @@ function multipartUpload(
         );
         return;
       }
-      if (!upload) {
+      if (!uploadPromise) {
         log.error("Upload was never started.");
         responseUtil.invalidDatapointUpload(
           response,
@@ -156,7 +194,11 @@ function multipartUpload(
       let dbRecordOrFileKey: any;
       try {
         // Wait for the upload to complete.
-        const uploadResult = await upload;
+        const [uploadResult, fileData] = await Promise.all([
+          uploadPromise,
+          fileDataPromise,
+        ]);
+        const fileDataArray = new Uint8Array(fileData);
         if (uploadResult instanceof Error) {
           responseUtil.serverError(response, uploadResult);
           return;
@@ -167,21 +209,11 @@ function multipartUpload(
         if (data.fileHash && keyPrefix === "raw") {
           log.info("Checking file hash. Key: %s", key);
           // Read the full file back from s3 and hash it
-          const fileData = await modelsUtil
-            .openS3()
-            .getObject({
-              Key: key,
-            })
-            .promise()
-            .catch((err) => {
-              return err;
-            });
           const checkHash = crypto
             .createHash("sha1")
             // @ts-ignore
-            .update(new Uint8Array(fileData.Body), "binary")
+            .update(fileDataArray, "binary")
             .digest("hex");
-          fileSize = fileData.ContentLength;
           if (data.fileHash !== checkHash) {
             log.error("File hash check failed, deleting key: %s", key);
             // Hash check failed, delete the file from s3, and return an error which the client can respond to to decide
@@ -201,58 +233,16 @@ function multipartUpload(
             );
             return;
           }
-        } else {
-          // get the file size
-          fileSize = await getS3ObjectFileSize(key);
         }
 
         data.filename = filename;
-        data.fileSize = fileSize;
         // Store a record for the upload.
-        dbRecordOrFileKey = await onSaved(
+        dbRecordOrFileKey = await onFileUploadComplete(
           uploadingDevice || response.locals.requestUser || null,
           data,
-          key
+          key,
+          fileDataArray
         );
-        if (uploadingDevice) {
-          // Update the device location and lastRecordingTime from the recording data,
-          // if the recording time is *later* than the last recording time, or there
-          // is no last recording time
-
-          // FIXME - Does the recordingDateTime include a timezone?  If not, do
-          //  we need to set one here?
-          const thisRecordingTime = new Date(
-            (dbRecordOrFileKey as Recording).recordingDateTime
-          );
-          if (
-            !uploadingDevice.lastRecordingTime ||
-            uploadingDevice.lastRecordingTime < thisRecordingTime
-          ) {
-            await uploadingDevice.update({
-              location: (dbRecordOrFileKey as Recording).location,
-              lastRecordingTime: thisRecordingTime,
-            });
-
-            // Update the group lastRecordingTime too:
-            const group = await uploadingDevice.getGroup();
-            if (
-              !group.lastRecordingTime ||
-              group.lastRecordingTime < thisRecordingTime
-            ) {
-              await group.update({
-                lastRecordingTime: thisRecordingTime,
-              });
-            }
-          }
-          if (uploadingDevice.kind === DeviceType.Unknown) {
-            // If this is the first recording we've gotten from a device, we can set its type.
-            const deviceType =
-              (dbRecordOrFileKey as Recording).type === RecordingType.ThermalRaw
-                ? "thermal"
-                : "audio";
-            await uploadingDevice.update({ kind: deviceType });
-          }
-        }
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();
           if (dbRecordOrFileKey.type === "audioBait") {

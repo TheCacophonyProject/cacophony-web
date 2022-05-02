@@ -15,8 +15,8 @@ export interface ApiTrackTagAttributes {
 
 export interface TrackTagData extends ApiTrackTagAttributes {
   name: string;
-  all_class_confidences: null | Record<string, number>;
-  classify_time: number;
+  all_class_confidences?: null | Record<string, number>;
+  classify_time?: number;
   message?: string;
 }
 
@@ -26,7 +26,7 @@ export interface ApiTrackTagResponse {
   trackId: TrackId;
   confidence: number;
   automatic: boolean;
-  data?: TrackTagData;
+  data?: TrackTagData | string;
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;
   userId?: UserId;
@@ -35,6 +35,8 @@ export interface ApiTrackTagResponse {
 }
 
 export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
+  userId?: UserId;
+  userName?: string;
   automatic: false;
 }
 

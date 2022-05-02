@@ -18,8 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
+import { ApiGroupUserSettings } from "@typedefs/api/group";
 
-export interface GroupUsers extends Sequelize.Model, ModelCommon<GroupUsers> {}
+export interface GroupUsers extends Sequelize.Model, ModelCommon<GroupUsers> {
+  admin: boolean;
+  settings?: ApiGroupUserSettings;
+}
 export interface GroupUsersStatic extends ModelStaticCommon<GroupUsers> {}
 
 export default function (sequelize, DataTypes): GroupUsersStatic {
@@ -29,6 +33,10 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
     admin: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
     },
   };
 

@@ -458,6 +458,17 @@ export default defineComponent({
         modifyTrack(trackId, {
           confirming: true,
         });
+        if (tag) {
+          const capitalizedTag =
+            tag.what.charAt(0).toUpperCase() + tag.what.slice(1);
+          setSelectedLabel(capitalizedTag);
+          customTag.value = capitalizedTag;
+        } else {
+          setSelectedLabel("");
+        }
+      } else {
+        setSelectedLabel("");
+        customTag.value = "";
       }
       const tag: ApiTrackTagRequest = {
         what: what.toLowerCase(),
@@ -604,7 +615,8 @@ export default defineComponent({
       try {
         const response = await api.recording.deleteTrack(
           trackId,
-          props.recording.id
+          props.recording.id,
+          true
         );
         if (response.success) {
           if (permanent) {

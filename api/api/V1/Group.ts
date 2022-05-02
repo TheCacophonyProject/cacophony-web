@@ -32,9 +32,14 @@ import {
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
   fetchAuthorizedRequiredStationsForGroup,
+  fetchAdminAuthorizedRequiredStationByNameInGroup,
+  fetchAuthorizedRequiredStationByNameInGroup,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
+import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json";
+import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json";
+
 import {
   booleanOf,
   anyOf,
@@ -46,7 +51,11 @@ import {
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
-import { Group } from "models/Group";
+import {
+  checkThatStationsAreNotTooCloseTogether,
+  Group,
+  locationsAreEqual,
+} from "@/models/Group";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -56,8 +65,14 @@ import {
 } from "@typedefs/api/station";
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
-import { mapStations } from "./Station";
-import logger from "@log";
+import { mapStation, mapStations } from "./Station";
+import { Op } from "sequelize";
+import {
+  latLngApproxDistance,
+  MIN_STATION_SEPARATION_METERS,
+} from "@api/V1/recordingUtil";
+import { Station } from "@/models/Station";
+import { StationId } from "@typedefs/api/common";
 
 const mapGroup = (
   group: Group,
@@ -68,8 +83,23 @@ const mapGroup = (
     groupName: group.groupname,
     admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
   };
-  if (group.lastRecordingTime) {
-    groupData.lastRecordingTime = group.lastRecordingTime.toISOString();
+  if (group.settings) {
+    groupData.settings = group.settings;
+  }
+  if (
+    (group as any).Users &&
+    (group as any).Users.length &&
+    (group as any).Users[0].GroupUsers.settings
+  ) {
+    groupData.userSettings = (group as any).Users[0].GroupUsers.settings;
+  }
+  if (group.lastThermalRecordingTime) {
+    groupData.lastThermalRecordingTime =
+      group.lastThermalRecordingTime.toISOString();
+  }
+  if (group.lastAudioRecordingTime) {
+    groupData.lastAudioRecordingTime =
+      group.lastAudioRecordingTime.toISOString();
   }
   return groupData;
 };
@@ -110,6 +140,11 @@ interface ApiGroupDevicesResponseSuccess {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiCreateStationDataBody {
   stations: ApiCreateStationData[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiCreateSingleStationDataBody {
+  station: ApiCreateStationData;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -468,55 +503,128 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/groups/:groupIdOrName/stations Add, Update and retire current stations belonging to group
-   * @apiName PostStationsForGroup
-   * @apiGroup Group
-   * @apiDescription A group admin or an admin with globalWrite permissions can update stations for a group.
+   * @api {get} /api/v1/groups/:groupIdOrName/station Add a single station.
+   * @apiName CreateStation
+   * @apiGroup Station
+   * @apiDescription Create a single station
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Integer|String} groupNameOrId group name or group id
-   * @apiInterface {apiBody::ApiCreateStationDataBody} stations Json array of ApiStation[]
-   * @apiParam {Date} [fromDate] Start date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
-   * @apiParamExample {json} ApiStation:
-   * {
-   *   name: "Station Name",
-   *   lat: -45.1,
-   *   lng: 172.0
-   * }
+   * @apiInterface {apiBody::ApiCreateSingleStationDataBody} station ApiStation
+   * @apiParam {Date} [from-date] Start (active from) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParam {Date} [until-date] End (retirement) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Integer[]} stationIdsAddedOrUpdated Array of Identifiers of stations added or updated.
-   * @apiInterface {apiSuccess::ApiCreateStationsResponse}
-   * @apiSuccess {string} warnings Warnings showing data validation rule breaches for the applied stations.
+   * @apiSuccess {Integer} stationId StationId id of new station.
    * @apiUse V1ResponseError
    */
   app.post(
-    `${apiUrl}/:groupIdOrName/stations`,
+    `${apiUrl}/:groupIdOrName/station`,
     extractJwtAuthorizedUser,
     validateFields([
-      body("stations")
-        .exists()
-        .custom(jsonSchemaOf(arrayOf(ApiCreateStationDataSchema))),
-      body("fromDate").isISO8601().toDate().optional(),
       nameOrIdOf(param("groupIdOrName")),
+      body("station").exists().custom(jsonSchemaOf(ApiCreateStationDataSchema)),
+      body("from-date").isISO8601().toDate().optional(),
+      body("until-date").isISO8601().toDate().optional(),
     ]),
-    // Extract required resources
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    // Extract further non-dependent resources:
-    parseJSONField(body("stations")),
-    async (request, response) => {
-      const stationsUpdated = await models.Group.addStationsToGroup(
-        response.locals.requestUser.id,
-        response.locals.group,
-        response.locals.stations,
-        request.body.fromDate
+    parseJSONField(body("station")),
+    async (request: Request, response: Response) => {
+      const { name, lat, lng } = response.locals.station;
+      const groupId = response.locals.group.id;
+      const userId = response.locals.requestUser.id;
+      const location = { lat, lng };
+      const fromTime = request.body["from-date"] || new Date();
+      const untilTime = request.body["until-date"];
+      const proximityWarnings = [];
+      const activeStationsInTimeWindow =
+        await models.Station.activeInGroupDuringTimeRange(
+          groupId,
+          fromTime,
+          untilTime
+        );
+      for (const existingStation of activeStationsInTimeWindow) {
+        if (
+          latLngApproxDistance(existingStation.location, location) <
+          MIN_STATION_SEPARATION_METERS
+        ) {
+          proximityWarnings.push(
+            `New station is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`
+          );
+        }
+      }
+
+      const nameCollision = activeStationsInTimeWindow.find(
+        (existingStation) => existingStation.name === name
       );
-      // FIXME - validate/formalize return type.
+      if (nameCollision) {
+        return responseUtil.send(response, {
+          statusCode: 400,
+          messages: [
+            `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
+              (untilTime && untilTime.toISOString()) || "now"
+            }.`,
+          ],
+        });
+
+        // NOTE: Alternate behaviour: We rename any existing station in the active range that has the same name.
+        // await nameCollision.update({ name: `${nameCollision.name}_moved` });
+      }
+
+      const station = await models.Station.create({
+        name,
+        location,
+        activeAt: fromTime,
+        retiredAt: untilTime || null,
+        automatic: false,
+        lastUpdatedById: userId,
+        GroupId: groupId,
+      });
+
+      const responseData = {
+        statusCode: 200,
+        messages: ["Created station"],
+        stationId: station.id,
+      };
+      if (proximityWarnings.length) {
+        (responseData as any).warnings = proximityWarnings;
+      }
+      return responseUtil.send(response, responseData);
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/groups/:groupIdOrName/station/:stationName Get station by name in group
+   * @apiName GetStationInGroup
+   * @apiGroup Station
+   * @apiDescription Get an *active* station by name in a group.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiStationResponseSuccess} station Station.
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:groupIdOrName/station/:stationName`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      nameOrIdOf(param("stationName")),
+      query("view-mode").optional().equals("user"),
+      query("only-active").default(false).isBoolean().toBoolean(),
+    ]),
+    // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    fetchAuthorizedRequiredStationByNameInGroup(
+      param("groupIdOrName"),
+      param("stationName")
+    ),
+    async (request: Request, response: Response) => {
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Added stations to group."],
-        ...stationsUpdated,
+        messages: ["Got station"],
+        station: mapStation(response.locals.station),
       });
     }
   );
@@ -526,7 +634,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetStationsForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view stations that belong
-   * to a group.
+   * to a group.q
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -558,6 +666,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("only-active").default(false).isBoolean().toBoolean(),
     ]),
+    // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
@@ -566,6 +675,53 @@ export default function (app: Application, baseUrl: string) {
         statusCode: 200,
         messages: ["Got stations for group"],
         stations: mapStations(stations),
+      });
+    }
+  );
+
+  app.patch(
+    `${apiUrl}/:groupIdOrName/my-settings`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("settings")
+        .exists()
+        .custom(jsonSchemaOf(ApiGroupUserSettingsSchema)),
+    ]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    parseJSONField(body("settings")),
+    async (request: Request, response: Response) => {
+      await response.locals.group.GroupUsers.update(
+        {
+          settings: response.locals.settings,
+        },
+        {
+          where: {
+            UserId: response.locals.requestUser.id,
+          },
+        }
+      );
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Updated group settings for user"],
+      });
+    }
+  );
+
+  app.patch(
+    `${apiUrl}/:groupIdOrName/group-settings`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("settings").exists().custom(jsonSchemaOf(ApiGroupSettingsSchema)),
+    ]),
+    fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    parseJSONField(body("settings")),
+    async (request: Request, response: Response) => {
+      await response.locals.group.update({
+        settings: response.locals.settings,
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Updated group settings"],
       });
     }
   );

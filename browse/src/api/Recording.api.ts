@@ -45,11 +45,6 @@ interface FailureFetchResult<FAILURE = ErrorResult> {
 
 export type FetchResult<T> = SuccessFetchResult<T> | FailureFetchResult;
 
-export interface Location {
-  type: "Point" | string;
-  coordinates: [number, number];
-}
-
 export interface LimitedTrack {
   trackId: TrackId;
   data: {
@@ -121,22 +116,6 @@ export interface LimitedTrackTag {
   what: string;
 }
 
-export interface Tag {
-  confidence: number;
-  animal: null | string;
-  automatic: boolean;
-  createdAt: string;
-  detail: string;
-  event: string;
-  duration: null | number;
-  id: number;
-  startTime: null | string;
-  tagger: { username: string; id: number };
-  taggerId: number;
-  version: number;
-  what: null | string;
-}
-
 export interface QueryResultCount {
   count: number;
   success: boolean;
@@ -187,8 +166,8 @@ export interface RecordingQuery {
   station?: number[];
   type?: string;
   hideFiltered?: boolean;
-  order?: any; // TODO - It's not clear what order accepts (it's a sequelize
-  // thing), but nobody seems to use it right now.
+  countAll?: boolean;
+  order?: any; // TODO - It's not clear what order accepts (it's a sequelize thing), but nobody seems to use it right now.
 }
 
 const apiPath = "/api/v1/recordings";
@@ -281,6 +260,9 @@ function makeApiQuery(query: RecordingQuery): any {
   if (query.hideFiltered) {
     apiParams["hideFiltered"] = query.hideFiltered;
   }
+  if (query.countAll != undefined && query.countAll != null) {
+    apiParams["countAll"] = query.countAll;
+  }
   if (query.tag && query.tag.length > 0) {
     if (typeof query.tag === "string") {
       query.tag = [query.tag];
@@ -371,9 +353,14 @@ function addTrack(
 
 function deleteTrack(
   trackId: TrackId,
-  recordingId: RecordingId
+  recordingId: RecordingId,
+  softDelete = false
 ): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
-  return CacophonyApi.delete(`${apiPath}/${recordingId}/tracks/${trackId}`);
+  return CacophonyApi.delete(
+    `${apiPath}/${recordingId}/tracks/${trackId}${
+      softDelete && "?soft-delete=true"
+    }`
+  );
 }
 
 function undeleteTrack(

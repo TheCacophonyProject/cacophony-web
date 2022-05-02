@@ -30,15 +30,13 @@ import {
   fetchAuthorizedRequiredDeviceById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchAdminAuthorizedRequiredDeviceById,
-  fetchUnauthorizedOptionalUserById,
-  fetchUnauthorizedOptionalUserByNameOrId,
   fetchAuthorizedRequiredDevices,
   fetchUnauthorizedRequiredScheduleById,
   fetchAuthorizedRequiredGroupById,
-  fetchAdminAuthorizedRequiredGroupById,
+  parseJSONField,
+  fetchAuthorizedRequiredStationById,
 } from "../extract-middleware";
 import {
-  booleanOf,
   checkDeviceNameIsUniqueInGroup,
   anyOf,
   idOf,
@@ -50,9 +48,20 @@ import {
   integerOfWithDefault,
 } from "../validation-middleware";
 import { Device } from "models/Device";
-import { ApiDeviceResponse } from "@typedefs/api/device";
+import {
+  ApiDeviceLocationFixup,
+  ApiDeviceResponse,
+} from "@typedefs/api/device";
+import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json";
 import logging from "@log";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
+import { jsonSchemaOf } from "@api/schema-validation";
+import { Op } from "sequelize";
+import { DeviceHistory } from "@models/DeviceHistory";
+import { RecordingType } from "@typedefs/api/consts";
+import { Recording } from "@models/Recording";
+import config from "@config";
+import logger from "@log";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -82,11 +91,7 @@ export const mapDeviceResponse = (
       mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
     }
     if (device.location) {
-      const { coordinates } = device.location;
-      mapped.location = {
-        lat: coordinates[1],
-        lng: coordinates[0],
-      };
+      mapped.location = device.location;
     }
     if (device.public) {
       mapped.public = true;
@@ -120,6 +125,11 @@ interface ApiRegisterDeviceRequestBody {
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
   saltId?: number; // Salt ID of device. Will be set as device id if not given.
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceLocationFixupBody {
+  setStationAtTime: ApiDeviceLocationFixup;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -164,11 +174,12 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
     async (request: Request, response: Response) => {
-      const device = await models.Device.create({
+      const device: Device = await models.Device.create({
         devicename: request.body.devicename || request.body.deviceName,
         password: request.body.password,
         GroupId: response.locals.group.id,
       });
+      let saltId;
       if (request.body.saltId) {
         /*
         NOTE: We decided not to use this check, since damage caused by someone
@@ -187,10 +198,23 @@ export default function (app: Application, baseUrl: string) {
           );
         }
         */
-        await device.update({ saltId: request.body.saltId });
+        saltId = request.body.saltId;
       } else {
-        await device.update({ saltId: device.id });
+        saltId = device.id;
       }
+      await Promise.all([
+        device.update({ saltId, uuid: device.id }),
+        // Create the initial entry in the device history table.
+        models.DeviceHistory.create({
+          saltId,
+          setBy: "register",
+          GroupId: device.GroupId,
+          DeviceId: device.id,
+          fromDateTime: new Date(),
+          deviceName: device.devicename,
+          uuid: device.id,
+        }),
+      ]);
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new device."],
@@ -320,6 +344,261 @@ export default function (app: Application, baseUrl: string) {
         ),
         statusCode: 200,
         messages: ["Completed get device query."],
+      });
+    }
+  );
+
+  /**
+   * @api {patch} /api/v1/devices/fix-location/:deviceId Fix a device location at a given time
+   * @apiName FixupDeviceLocationAtTimeById
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiInterface {apiBody::ApiDeviceLocationFixupBody} recording The recording data.
+   *
+   * @apiDescription A group admin can fix a location of a device at a particular time.
+   * If needed, a new station will be created.
+   *
+   * Once a new station is selected for the device at that time - and until such a time as the device moves again,
+   * recordings from the device for that time interval will be re-assigned to that station, and have their location
+   * set to the location of the station.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/fix-location/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      body("setStationAtTime").custom(
+        jsonSchemaOf(ApiDeviceLocationFixupSchema)
+      ),
+    ]),
+    fetchAdminAuthorizedRequiredDeviceById(param("id")),
+    parseJSONField(body("setStationAtTime")),
+    async (request, response, next) => {
+      // Now make sure we have access to the station.
+      await fetchAuthorizedRequiredStationById(
+        response.locals.setStationAtTime.stationId
+      )(request, response, next);
+    },
+    async (request: Request, response: Response) => {
+      if (response.locals.device.GroupId !== response.locals.station.GroupId) {
+        return responseUtil.send(response, {
+          statusCode: 403,
+          messages: [
+            "Supplied station doesn't belong to the same group as supplied device",
+          ],
+        });
+      }
+      const { stationId, fromDateTime, location } =
+        response.locals.setStationAtTime;
+      const device = response.locals.device;
+      let station = await models.Station.findByPk(stationId);
+      let fromDateTimeParsed;
+      try {
+        fromDateTimeParsed = new Date(Date.parse(fromDateTime));
+      } catch (e) {
+        return responseUtil.send(response, {
+          statusCode: 422,
+          messages: ["Supplied fromDateTime is not a valid timestamp"],
+        });
+      }
+      if (fromDateTimeParsed < station.activeAt) {
+        station = await station.update({ activeAt: fromDateTime });
+      }
+
+      const setLocation = location || station.location;
+
+      // Check if there's already a device entry at that time:
+      const deviceHistoryEntry = await models.DeviceHistory.findOne({
+        where: {
+          uuid: device.uuid,
+          //fromDateTime: { [Op.gte]: fromDateTime },
+          fromDateTime,
+        },
+        //order: [["fromDateTime", "asc"]]
+      });
+      if (deviceHistoryEntry) {
+        await deviceHistoryEntry.update({
+          setBy: "user",
+          location: setLocation,
+          stationId: station.id,
+          fromDateTime,
+        });
+      } else {
+        await models.DeviceHistory.create({
+          uuid: device.uuid,
+          saltId: device.saltId,
+          DeviceId: device.id,
+          fromDateTime,
+          location: setLocation,
+          setBy: "user",
+          GroupId: device.GroupId,
+          deviceName: device.devicename,
+          stationId: station.id,
+        });
+      }
+      // Get the earliest history location that's later than our current fromDateTime, if any
+      const laterLocation: DeviceHistory = await models.DeviceHistory.findOne({
+        where: {
+          uuid: device.uuid,
+          GroupId: device.GroupId,
+          location: { [Op.ne]: null },
+          fromDateTime: { [Op.gt]: fromDateTime },
+        },
+        order: [["fromDateTime", "ASC"]],
+      });
+
+      // FIXME - Do we need to exclude null recordingDateTime?
+      const recordingTimeWindow = {
+        DeviceId: device.id,
+        StationId: { [Op.ne]: stationId },
+        recordingDateTime: { [Op.gte]: fromDateTime },
+      };
+      if (laterLocation) {
+        (recordingTimeWindow.recordingDateTime as any) = {
+          [Op.and]: [
+            { [Op.gte]: fromDateTime },
+            { [Op.lt]: laterLocation.fromDateTime },
+          ],
+        };
+      } else {
+        // Update the device known location if this is the latest device history entry.
+        await device.update({ location: setLocation });
+      }
+
+      const affectedRecordings = await models.Recording.findAll({
+        where: recordingTimeWindow,
+      });
+      const stationsIdsToUpdateLatestRecordingFor = Object.keys(
+        affectedRecordings.reduce((acc, recording) => {
+          if (recording.StationId) {
+            acc[recording.StationId] = true;
+          }
+          return acc;
+        }, {})
+      ).map(Number);
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const [affectedCount] = await models.Recording.update(
+        {
+          location: setLocation,
+          StationId: station.id,
+        },
+        {
+          where: recordingTimeWindow,
+        }
+      );
+      let stationsToUpdateLatestRecordingFor = [];
+      if (stationsIdsToUpdateLatestRecordingFor.length !== 0) {
+        stationsToUpdateLatestRecordingFor = await models.Station.findAll({
+          where: {
+            id: { [Op.in]: stationsIdsToUpdateLatestRecordingFor },
+          },
+        });
+      }
+      stationsToUpdateLatestRecordingFor.push(station);
+
+      const allStationRecordingTimeUpdates = [];
+      for (const station of stationsToUpdateLatestRecordingFor) {
+        // Get the latest thermal recording, and the latest audio recording, and update
+
+        // Make sure we update the latest times for both kinds of recordings on the station,
+        // and if removing the last recording from a station, null out the lastXXRecordingTime field
+        const [
+          latestThermalRecording,
+          latestAudioRecording,
+          earliestRecording,
+        ] = await Promise.all([
+          models.Recording.findOne({
+            where: {
+              StationId: station.id,
+              type: RecordingType.ThermalRaw,
+              recordingDateTime: { [Op.ne]: null },
+            },
+            order: [["recordingDateTime", "DESC"]],
+          }),
+          models.Recording.findOne({
+            where: {
+              StationId: station.id,
+              type: RecordingType.Audio,
+              recordingDateTime: { [Op.ne]: null },
+            },
+            order: [["recordingDateTime", "DESC"]],
+          }),
+
+          models.Recording.findOne({
+            where: {
+              StationId: station.id,
+              recordingDateTime: { [Op.ne]: null },
+            },
+            order: [["recordingDateTime", "ASC"]],
+          }),
+        ]);
+        let updates: any = {};
+
+        if (
+          latestAudioRecording &&
+          (!station.lastAudioRecordingTime ||
+            latestAudioRecording.recordingDateTime !==
+              station.lastAudioRecordingTime)
+        ) {
+          updates.lastAudioRecordingTime = (
+            latestAudioRecording as Recording
+          ).recordingDateTime;
+        } else if (!latestAudioRecording && station.lastAudioRecordingTime) {
+          updates.lastAudioRecordingTime = null;
+        }
+        if (
+          latestThermalRecording &&
+          (!station.lastThermalRecordingTime ||
+            latestThermalRecording.recordingDateTime !==
+              station.lastThermalRecordingTime)
+        ) {
+          updates.lastThermalRecordingTime = (
+            latestThermalRecording as Recording
+          ).recordingDateTime;
+        } else if (
+          !latestThermalRecording &&
+          station.lastThermalRecordingTime
+        ) {
+          updates.lastThermalRecordingTime = null;
+        }
+        if (station.automatic && station.id !== stationId) {
+          if (
+            earliestRecording &&
+            earliestRecording.recordingDateTime < station.activeAt
+          ) {
+            updates.activeAt = (
+              earliestRecording as Recording
+            ).recordingDateTime;
+          } else if (!earliestRecording) {
+            await station.destroy();
+            updates = {};
+            await models.DeviceHistory.destroy({
+              where: {
+                stationId: station.id,
+              },
+            });
+          }
+        }
+
+        if (Object.keys(updates).length !== 0) {
+          allStationRecordingTimeUpdates.push(station.update(updates));
+        }
+      }
+      if (allStationRecordingTimeUpdates.length) {
+        await Promise.all(allStationRecordingTimeUpdates);
+      }
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: [
+          "Updated device station at time.",
+          `Updated ${affectedCount} recording(s)`,
+        ],
       });
     }
   );
@@ -574,9 +853,10 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
-      const requestDevice = await models.Device.findByPk(
+      const requestDevice: Device = await models.Device.findByPk(
         response.locals.requestDevice.id
       );
+
       const device = await requestDevice.reRegister(
         request.body.newName,
         response.locals.group,
@@ -712,4 +992,40 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+  if (config.server.loggerLevel === "debug") {
+    // NOTE: This api is currently for facilitating testing only, and is
+    //  not available in production builds.
+
+    /**
+     * @api {post} /api/v1/devices/history/:deviceId Get device history
+     * @apiName history
+     * @apiGroup Device
+     *
+     * @apiUse V1UserAuthorizationHeader
+     *
+     * @apiUse V1ResponseSuccess
+     * @apiUse V1ResponseError
+     */
+    app.get(
+      `${apiUrl}/history/:deviceId`,
+      extractJwtAuthorizedUser,
+      validateFields([idOf(param("deviceId"))]),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      async function (request: Request, response: Response) {
+        const history = await models.DeviceHistory.findAll({
+          where: {
+            DeviceId: response.locals.device.id,
+          },
+          order: [["fromDateTime", "ASC"]],
+        });
+
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got device history"],
+          history,
+        });
+      }
+    );
+  }
 }

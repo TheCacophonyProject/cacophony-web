@@ -69,14 +69,17 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     extractJwtAuthorizedUser,
-    util.multipartUpload("f", async (uploader, data, key): Promise<File> => {
-      const dbRecord = models.File.buildSafely(data);
-      dbRecord.UserId = uploader.id;
-      dbRecord.fileKey = key;
-      dbRecord.fileSize = data.fileSize;
-      await dbRecord.save();
-      return dbRecord;
-    })
+    util.multipartUpload(
+      "f",
+      async (uploader, data, key, uploadedFileData): Promise<File> => {
+        const dbRecord = models.File.buildSafely(data);
+        dbRecord.UserId = uploader.id;
+        dbRecord.fileKey = key;
+        dbRecord.fileSize = uploadedFileData.length;
+        await dbRecord.save();
+        return dbRecord;
+      }
+    )
   );
 
   /**

@@ -99,10 +99,29 @@ function getStationsForGroup(
   );
 }
 
-function getStationById(
-  stationId: StationId
-): Promise<FetchResult<{ station: ApiStationResponse }>> {
-  return CacophonyApi.get(`/api/v1/stations/${stationId}`);
+function createStationInGroup(
+  groupNameOrId: string | GroupId,
+  station: { name: string; lat: number; lng: number },
+  applyFromDate?: Date,
+  applyUntilDate?: Date
+): Promise<FetchResult<{ stationId: StationId }>> {
+  const payload: {
+    station: string;
+    fromDate?: string;
+    untilDate?: string;
+  } = {
+    station: JSON.stringify(station),
+  };
+  if (applyFromDate) {
+    payload["from-date"] = applyFromDate.toISOString();
+    if (applyUntilDate) {
+      payload["until-date"] = applyUntilDate.toISOString();
+    }
+  }
+  return CacophonyApi.post(
+    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/station`,
+    payload
+  );
 }
 
 function getStationByNameInGroup(
@@ -110,23 +129,30 @@ function getStationByNameInGroup(
   stationName: string
 ): Promise<FetchResult<{ station: ApiStationResponse }>> {
   return CacophonyApi.get(
-    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/station/${stationName}`
+    `/api/v1/groups/${encodeURIComponent(
+      groupNameOrId
+    )}/station/${encodeURIComponent(stationName)}`
   );
 }
 
 function addStationsToGroup(
   groupName: string | number,
-  stations: { name: string; lat: number; lng: number },
-  applyFromDate?: Date
+  stations: { name: string; lat: number; lng: number }[],
+  applyFromDate?: Date,
+  applyUntilDate?: Date
 ) {
   const payload: {
     stations: string;
     fromDate?: string;
+    untilDate?: string;
   } = {
     stations: JSON.stringify(stations),
   };
   if (applyFromDate) {
-    payload.fromDate = applyFromDate.toISOString();
+    payload["from-date"] = applyFromDate.toISOString();
+    if (applyUntilDate) {
+      payload["until-date"] = applyUntilDate.toISOString();
+    }
   }
   return CacophonyApi.post(
     `/api/v1/groups/${encodeURIComponent(groupName)}/stations`,
@@ -139,11 +165,11 @@ export default {
   getGroups,
   getGroup,
   getGroupById,
-  getStationById,
   getUsersForGroup,
   getDevicesForGroup,
   getStationsForGroup,
   getStationByNameInGroup,
+  createStationInGroup,
   addStationsToGroup,
   addGroupUser,
   removeGroupUser,

@@ -17,21 +17,65 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 // Validate that input is a valid [longitude, latitude]
-function isLatLon(point: { coordinates: [number, number] }) {
-  const val = point.coordinates;
-  if (
-    val === null ||
-    typeof val !== "object" ||
-    !Array.isArray(val) ||
-    val.length !== 2 ||
-    typeof val[0] !== "number" ||
-    typeof val[1] !== "number" ||
-    val[1] < -90 ||
-    90 < val[1] ||
-    val[0] < -180 ||
-    180 <= val[0]
+import { canonicalLatLng } from "@models/Group";
+import { LatLng } from "@typedefs/api/common";
+import logger from "@log";
+
+function isLatLon(
+  point: { coordinates: [number, number] } | [number, number] | LatLng
+) {
+  let valid = true;
+  if (point === null) {
+    valid = false;
+    logger.warning("Invalid 5");
+  } else if (
+    Array.isArray(point) &&
+    (point.length !== 2 ||
+      typeof point[0] !== "number" ||
+      typeof point[1] !== "number")
   ) {
-    throw new Error("Location is not valid.");
+    valid = false;
+    logger.warning("Invalid 4");
+  } else if (typeof point === "object") {
+    if (point.hasOwnProperty("coordinates")) {
+      const coordinates = (point as any).coordinates;
+      if (!Array.isArray(coordinates)) {
+        logger.warning("Invalid 3");
+        valid = false;
+      }
+      if (
+        Array.isArray(coordinates) &&
+        (coordinates.length !== 2 ||
+          typeof coordinates[0] !== "number" ||
+          typeof coordinates[1] !== "number")
+      ) {
+        logger.warning("Invalid 2");
+        valid = false;
+      }
+    } else if (
+      !point.hasOwnProperty("lat") ||
+      !point.hasOwnProperty("lng") ||
+      typeof (point as any).lat !== "number" ||
+      typeof (point as any).lng !== "number"
+    ) {
+      logger.warning("Invalid 1");
+      valid = false;
+    } else {
+      // Okay
+    }
+  }
+  const location = canonicalLatLng(point);
+  if (
+    location.lat < -90 ||
+    90 < location.lat ||
+    location.lng < -180 ||
+    180 <= location.lng
+  ) {
+    logger.warning("Invalid 6 %s", location);
+    valid = false;
+  }
+  if (!valid) {
+    throw new Error("Location is not valid G.");
   }
 }
 

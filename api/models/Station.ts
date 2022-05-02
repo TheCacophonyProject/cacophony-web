@@ -16,11 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize, { BuildOptions, ModelAttributes } from "sequelize";
+import Sequelize, { BuildOptions, ModelAttributes, Op } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import util from "./util/util";
-import validation from "./util/validation";
-import { GroupId, StationId, UserId } from "@typedefs/api/common";
+import { GroupId, LatLng, StationId, UserId } from "@typedefs/api/common";
+import { ApiStationSettings } from "@typedefs/api/station";
+import models from "@models/index";
 
 // Station data as supplied to API on creation.
 export interface CreateStationData {
@@ -32,20 +33,33 @@ export interface CreateStationData {
 export interface Station extends Sequelize.Model, ModelCommon<Station> {
   id: StationId;
   name: string;
-  location: {
-    coordinates: [number, number];
-  };
-  lastUpdatedById: UserId;
+  location: LatLng;
+  lastUpdatedById: UserId | null;
+  lastThermalRecordingTime: Date | null;
+  lastAudioRecordingTime: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  activeAt: Date;
   retiredAt: Date | null;
   GroupId: GroupId;
+  automatic: boolean;
+  needsRename: boolean;
+  settings?: ApiStationSettings;
 }
 
 export interface StationStatic extends ModelStaticCommon<Station> {
   new (values?: object, options?: BuildOptions): Station;
   getAll: (where: any) => Promise<Station[]>;
   getFromId: (id: StationId) => Promise<Station | null>;
+  activeInGroupAtTime: (
+    groupId: GroupId,
+    atDateTime: Date
+  ) => Promise<Station[]>;
+  activeInGroupDuringTimeRange: (
+    groupId: GroupId,
+    fromTime?: Date,
+    untilTime?: Date
+  ) => Promise<Station[]>;
 }
 export default function (
   sequelize: Sequelize.Sequelize,
@@ -56,15 +70,10 @@ export default function (
     name: {
       type: DataTypes.STRING,
     },
-    location: {
-      type: DataTypes.GEOMETRY,
-      set: util.geometrySetter,
-      validate: {
-        isLatLon: validation.isLatLon,
-      },
-    },
+    location: util.locationField(),
     lastUpdatedById: {
       type: DataTypes.INTEGER,
+      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -75,6 +84,32 @@ export default function (
     retiredAt: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    lastThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    activeAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    automatic: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    needsRename: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
     },
   };
 
@@ -95,6 +130,46 @@ export default function (
 
   Station.getFromId = async function (id) {
     return this.findByPk(id);
+  };
+
+  Station.activeInGroupAtTime = async function (
+    groupId: GroupId,
+    atDateTime: Date
+  ): Promise<Station[]> {
+    return await models.Station.findAll({
+      where: {
+        GroupId: groupId,
+        activeAt: { [Op.lte]: atDateTime },
+        retiredAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: atDateTime }],
+        },
+      },
+    });
+  };
+
+  Station.activeInGroupDuringTimeRange = async function (
+    groupId: GroupId,
+    fromTime: Date = new Date(),
+    untilTime: Date = new Date()
+  ): Promise<Station[]> {
+    return await models.Station.findAll({
+      where: {
+        GroupId: groupId,
+        [Op.or]: [
+          {
+            [Op.and]: [
+              { retiredAt: { [Op.eq]: null } },
+              { activeAt: { [Op.lte]: untilTime } },
+            ],
+          },
+          {
+            retiredAt: {
+              [Op.and]: [{ [Op.gte]: fromTime }, { [Op.lt]: untilTime }],
+            },
+          },
+        ],
+      },
+    });
   };
 
   return Station;

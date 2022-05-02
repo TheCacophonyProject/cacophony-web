@@ -85,7 +85,7 @@ import {
 } from "../validation-middleware";
 
 import recordingUtil, {
-  mapPositions,
+  mapPosition,
   reportRecordings,
   reportVisits,
   signedToken,
@@ -130,20 +130,29 @@ const mapTrackTag = (
 
 const mapTrackTags = (
   trackTags: TrackTag[]
-): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] =>
-  trackTags.map(mapTrackTag);
+): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] => {
+  const t = trackTags.map(mapTrackTag);
+  // Make sure tags are always in some deterministic order for testing purposes.
+  t.sort((a, b) => a.id - b.id);
+  return t;
+};
 
-const mapTrack = (track: Track): ApiTrackResponse => ({
-  id: track.id,
-  start: track.data.start_s,
-  end: track.data.end_s,
-  tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
-  positions: mapPositions(track.data.positions),
-  automatic: track.data.automatic ?? true,
-  ...(track.data.minFreq && { minFreq: track.data.minFreq }),
-  ...(track.data.maxFreq && { maxFreq: track.data.maxFreq }),
-  filtered: track.filtered,
-});
+const mapTrack = (track: Track): ApiTrackResponse => {
+  const t: ApiTrackResponse = {
+    id: track.id,
+    start: track.data.start_s,
+    end: track.data.end_s,
+    tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
+    automatic: track.data.automatic ?? true,
+    ...(track.data.minFreq && { minFreq: track.data.minFreq }),
+    ...(track.data.maxFreq && { maxFreq: track.data.maxFreq }),
+    filtered: track.filtered,
+  };
+  if (track.data.positions && track.data.positions.length) {
+    t.positions = track.data.positions.map(mapPosition);
+  }
+  return t;
+};
 
 const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
   const t = tracks.map(mapTrack);
@@ -192,61 +201,52 @@ const ifNotNull = (val: any | null) => {
 const mapRecordingResponse = (
   recording: Recording
 ): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
-  const commonRecording: ApiRecordingResponse = {
-    id: recording.id,
-    deviceId: recording.DeviceId,
-    duration: recording.duration,
-    location: recording.location && {
-      lat: (
-        recording.location as {
-          coordinates: [number, number];
-        }
-      ).coordinates[1],
-      lng: (
-        recording.location as {
-          coordinates: [number, number];
-        }
-      ).coordinates[0],
-    },
-    rawMimeType: recording.rawMimeType,
-    comment: ifNotNull(recording.comment),
-    deviceName: recording.Device?.devicename,
-    groupId: recording.GroupId,
-    groupName: recording.Group?.groupname,
-    processing: recording.processing || false,
-    processingState: recording.processingState,
-    recordingDateTime: recording.recordingDateTime,
-    stationId: ifNotNull(recording.StationId),
-    stationName: recording.Station?.name,
-    type: recording.type,
-    fileHash: recording.rawFileHash,
-    tags: recording.Tags && mapTags(recording.Tags),
-    tracks: recording.Tracks && mapTracks(recording.Tracks),
-  };
-  if (recording.type === RecordingType.ThermalRaw) {
-    return {
-      ...commonRecording,
+  try {
+    const commonRecording: ApiRecordingResponse = {
+      id: recording.id,
+      deviceId: recording.DeviceId,
+      duration: recording.duration,
+      location: recording.location,
+      rawMimeType: recording.rawMimeType,
+      comment: ifNotNull(recording.comment),
+      deviceName: recording.Device?.devicename,
+      groupId: recording.GroupId,
+      groupName: recording.Group?.groupname,
+      processing: recording.processing || false,
+      processingState: recording.processingState,
+      recordingDateTime: recording.recordingDateTime?.toISOString(),
+      stationId: ifNotNull(recording.StationId),
+      stationName: recording.Station?.name,
       type: recording.type,
-      additionalMetadata:
-        recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map
-      // metadata?
+      fileHash: recording.rawFileHash,
+      tags: recording.Tags && mapTags(recording.Tags),
+      tracks: recording.Tracks && mapTracks(recording.Tracks),
     };
-  } else if (recording.type === RecordingType.Audio) {
-    return {
-      ...commonRecording,
-      fileMimeType: ifNotNull(recording.fileMimeType),
-      additionalMetadata:
-        recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map
-      // metadata?
-      airplaneModeOn: ifNotNull(recording.airplaneModeOn),
-      batteryCharging: ifNotNull(recording.batteryCharging),
-      batteryLevel: ifNotNull(recording.batteryLevel),
-      relativeToDawn: ifNotNull(recording.relativeToDawn),
-      relativeToDusk: ifNotNull(recording.relativeToDusk),
-      cacophonyIndex: ifNotNull(recording.cacophonyIndex),
-      type: recording.type,
-      version: recording.version,
-    };
+    if (recording.type === RecordingType.ThermalRaw) {
+      return {
+        ...commonRecording,
+        type: recording.type,
+        additionalMetadata:
+          recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
+      };
+    } else if (recording.type === RecordingType.Audio) {
+      return {
+        ...commonRecording,
+        fileMimeType: ifNotNull(recording.fileMimeType),
+        additionalMetadata:
+          recording.additionalMetadata as ApiAudioRecordingMetadataResponse, // TODO - strip and map metadata?
+        airplaneModeOn: ifNotNull(recording.airplaneModeOn),
+        batteryCharging: ifNotNull(recording.batteryCharging),
+        batteryLevel: ifNotNull(recording.batteryLevel),
+        relativeToDawn: ifNotNull(recording.relativeToDawn),
+        relativeToDusk: ifNotNull(recording.relativeToDusk),
+        cacophonyIndex: ifNotNull(recording.cacophonyIndex),
+        type: recording.type,
+        version: recording.version,
+      };
+    }
+  } catch (e) {
+    log.error("%s", e);
   }
 };
 
@@ -312,8 +312,7 @@ export default (app: Application, baseUrl: string) => {
    *      <li> id - id of model used for tracks to reference
    *      <li> name - friendly name given to the model
    *    </ul>
-   *  <li>  algorithm(OPTIONAL) - dictionary describing algorithm, model_name
-   * should be present
+   *  <li>  algorithm(OPTIONAL) - dictionary describing algorithm, model_name should be present
    * </ul>
    * @apiParamExample {JSON} Example recording track metadata:
    * {
@@ -354,9 +353,7 @@ export default (app: Application, baseUrl: string) => {
    * @api {post} /api/v1/recordings Add a new recording
    * @apiName PostRecording
    * @apiGroup Recordings
-   * @apiDescription Uploads a device's own raw thermal video to the server.  It
-   * currently supports raw thermal video but will eventually support all
-   * recording types.
+   * @apiDescription Uploads a device's own recording to the server.
    *
    * @apiUse V1DeviceAuthorizationHeader
    *
@@ -484,7 +481,7 @@ export default (app: Application, baseUrl: string) => {
           )
         );
       }
-      response.locals.device = devices[0];
+      response.locals.device = devices.pop();
       next();
     },
     uploadRawRecording
@@ -566,10 +563,9 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
    * regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
-   * @apiQuery {JSON} [order] Whether the recording should be ascending or
-   * descending in time
-   * @apiInterface {apiQuery::RecordingProcessingState} [processingState]
-   * Current processing state of recordings
+   * @apiQuery {Boolean} [countAll=true] Count all query matches rather than just number of results (as much as the limit parameter)
+   * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
+   * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiUse BaseQueryParams
    * @apiUse MoreQueryParams
@@ -597,6 +593,7 @@ export default (app: Application, baseUrl: string) => {
           return models.Recording.isValidTagMode(value);
         }),
       query("hideFiltered").default(false).isBoolean().toBoolean(),
+      query("countAll").default(true).isBoolean().toBoolean(),
     ]),
     parseJSONField(query("order")),
     parseJSONField(query("where")),
@@ -623,7 +620,8 @@ export default (app: Application, baseUrl: string) => {
         request.query.offset && parseInt(request.query.offset as string),
         response.locals.order,
         request.query.type as RecordingType,
-        request.query.hideFiltered ? true : false
+        request.query.hideFiltered ? true : false,
+        request.query.countAll ? true : false
       );
       responseUtil.send(response, {
         statusCode: 200,
@@ -721,7 +719,7 @@ export default (app: Application, baseUrl: string) => {
         ],
       };
       if (response.locals.viewAsSuperUser && user.hasGlobalRead()) {
-        // Dont' filter on user if the user has global read permissions.
+        // Don't filter on user if the user has global read permissions.
         delete countQuery.include[0].include;
       }
       const count = await models.Recording.count(countQuery);
@@ -755,10 +753,9 @@ export default (app: Application, baseUrl: string) => {
       // NOTE: We only return the minimum set of fields we need to play
       // back
       //  a recording, show tracks in the UI, and have the user add a tag.
-      //  Generate a short-lived JWT token for each recording we return,
-      //  keyed to that recording.  Only return a single recording at a
-      //  time.
-      //
+      //  Generate a short-lived JWT token for each recording we return, keyed
+      //  to that recording.  Only return a single recording at a time.
+
       let result;
       if (!request.query.deviceId) {
         result = await models.Recording.getRecordingWithUntaggedTracks();
@@ -1071,7 +1068,7 @@ export default (app: Application, baseUrl: string) => {
    * @api {patch} /api/v1/recordings/:id Update an existing recording
    * @apiName UpdateRecording
    * @apiGroup Recordings
-   * @apiDescription This call is used for updating fields of a previously
+   * @apiDescription This call is used for updating some selected fields of a previously
    * submitted recording.
    *
    * @apiUse V1UserAuthorizationHeader
@@ -1092,9 +1089,6 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     parseJSONField(body("updates")),
     async (request: Request, response: Response) => {
-      // FIXME - If update includes location, rematch stations.  Maybe this
-      // should
-      //  be part of the setter for location, but might be too magic?
       await response.locals.recording.update(
         response.locals.updates as ApiRecordingUpdateRequest
       );
@@ -1290,7 +1284,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
-      query("soft-delete").default(true).isBoolean().toBoolean(),
+      query("soft-delete").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
@@ -1697,7 +1691,10 @@ export default (app: Application, baseUrl: string) => {
   );
 
   // FIXME - This function doesn't belong here
-  async function loadTrackForTagJWT(request, response): Promise<Track> {
+  async function loadTrackForTagJWT(
+    request: Request,
+    response: Response
+  ): Promise<Track> {
     let jwtDecoded;
     const tagJWT = request.body.tagJWT || request.query.tagJWT;
     try {

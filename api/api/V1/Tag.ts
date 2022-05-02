@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware";
-import { body, param } from "express-validator";
+import { body } from "express-validator";
 import models from "@models";
 import recordingUtil from "./recordingUtil";
 import responseUtil from "./responseUtil";
@@ -108,6 +108,9 @@ export default function (app: Application, baseUrl: string) {
       const tag = await models.Tag.findByPk(request.body.tagId);
       if (tag) {
         response.locals.tag = tag;
+        // FIXME(ManageStations): This breaks undeleting tags in power-tagger.
+        //  Need to check with tagger JWT. - Actually, there seems to already be a dedicated API that uses tagJWT for this.
+        //  Is the front-end just using the wrong api here?  Oh wait, this is for *recording* tags, not track tags.
         await fetchAuthorizedRequiredRecordingById(tag.recordingId)(
           request,
           response,

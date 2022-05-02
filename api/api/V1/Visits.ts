@@ -22,9 +22,9 @@ let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;
 const conflictTag = "conflicting tags";
 
-const metaTags = ["part", "poor tracking"];
-export const unidentifiedTags = ["unidentified", "unknown"];
-const nonAnimalTags = [...metaTags, ...unidentifiedTags];
+const META_TAGS = ["part", "poor tracking"];
+export const UNIDENTIFIED_TAGS = ["unidentified", "unknown"];
+const NON_ANIMAL_TAGS = [...META_TAGS, ...UNIDENTIFIED_TAGS];
 
 const audioBaitInterval = 60 * 10;
 
@@ -49,33 +49,31 @@ function sortTracks(tracks: Track[]) {
   });
 }
 
-// getTrackTag from all tags return a single tag by precedence:
-// this users tag, or any other humans tag, else the original AI
-export function getTrackTag(trackTags: TrackTag[]): TrackTag | null {
+// From all tags return a single tag by precedence:
+// first, this users tag, or any other humans tag, else the original AI
+export function getCanonicalTrackTag(
+  trackTags: TrackTag[]
+): TrackTag | undefined {
   if (trackTags.length == 0) {
     return null;
   }
   const manualTags = trackTags.filter(
-    (tag) => tag.automatic == false && !metaTags.includes(tag.what)
+    (tag) => !tag.automatic && !META_TAGS.includes(tag.what)
   );
-  if (manualTags.length > 0) {
-    const animalTags = manualTags.filter(
-      (tag) => !nonAnimalTags.includes(tag.what)
-    );
-    const uniqueTags = new Set(animalTags.map((tag) => tag.what));
-    if (uniqueTags.size > 1) {
-      const conflict = {
-        what: conflictTag,
-        confidence: manualTags[0].confidence,
-        automatic: false,
-      };
-      return conflict as TrackTag;
-    }
-
-    return animalTags.length == 0 ? manualTags[0] : animalTags[0];
+  const animalTags = manualTags.filter(
+    (tag) => !NON_ANIMAL_TAGS.includes(tag.what)
+  );
+  const uniqueTags = new Set(animalTags.map((tag) => tag.what));
+  if (uniqueTags.size > 1) {
+    const conflict = {
+      what: conflictTag,
+      confidence: manualTags[0].confidence,
+      automatic: false,
+    };
+    return conflict as TrackTag;
   }
-  const masterTag = trackTags.filter((tag) => tag.data == AI_MASTER);
-  return masterTag.length == 0 ? null : masterTag[0];
+  const masterTag = trackTags.filter((tag) => tag.data === AI_MASTER);
+  return animalTags.shift() || manualTags.shift() || masterTag.shift();
 }
 
 class DeviceSummary {
@@ -387,9 +385,9 @@ class Visit {
           return 1;
         }
       }
-      if (unidentifiedTags.includes(count_a.tag.what)) {
+      if (UNIDENTIFIED_TAGS.includes(count_a.tag.what)) {
         return 1;
-      } else if (unidentifiedTags.includes(count_b.tag.what)) {
+      } else if (UNIDENTIFIED_TAGS.includes(count_b.tag.what)) {
         return -1;
       }
 
@@ -415,7 +413,7 @@ class Visit {
 
   addRecording(rec: any) {
     for (const track of rec.Tracks) {
-      const taggedAs = getTrackTag(track.TrackTags);
+      const taggedAs = getCanonicalTrackTag(track.TrackTags);
       const event = new VisitEvent(rec, track, null, taggedAs);
       this.addEvent(event);
     }

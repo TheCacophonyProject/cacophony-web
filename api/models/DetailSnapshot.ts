@@ -70,7 +70,6 @@ export default function (sequelize, DataTypes): DetailSnapshotStatic {
     searchType: string,
     searchDetails: any
   ): Promise<DetailSnapShot> {
-    // FIXME(jon): It's a little bit fuzzy if this should actually be an object, or just default to null
     if (!searchDetails) {
       searchDetails = {
         [Op.eq]: null,

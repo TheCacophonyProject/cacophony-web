@@ -137,6 +137,7 @@ const deviceAttributes = [
   "devicename",
   "location",
   "saltId",
+  "uuid",
   "GroupId",
   "lastConnectionTime",
   "lastRecordingTime",
@@ -200,22 +201,22 @@ const getDeviceInclude =
   });
 
 const getStationInclude =
-  (groupWhere: any) =>
+  (stationWhere: any, groupWhere: any) =>
   (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
     where: {
-      "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null },
+      ...stationWhere,
     },
     include: [
       {
         model: models.Group,
         attributes: ["id", "groupname"],
-        required: Object.keys(groupWhere).length !== 0,
+        required: true,
         where: groupWhere,
         include: [
           {
             model: models.User,
             attributes: ["id"],
-            required: false,
+            required: true,
             through: {
               where: {
                 ...useAdminAccess,
@@ -583,7 +584,6 @@ const getStations =
         groupWhere = { groupname: groupNameOrId };
       }
     }
-
     const allStationsOptions = {
       where: {},
       include: [
@@ -601,7 +601,7 @@ const getStations =
         // Insert request user constraints
         getStationsOptions = getIncludeForUser(
           context,
-          getStationInclude(groupWhere),
+          getStationInclude({}, groupWhere),
           asAdmin
         );
       } else {
@@ -622,6 +622,7 @@ const getStations =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
     }
+
     return models.Station.findAll({
       ...getStationsOptions,
       order: ["name"],
@@ -631,7 +632,7 @@ const getStations =
 const getStation =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
   (
-    stationId: string,
+    stationNameOrId: string,
     groupNameOrId?: string,
     context?: any
   ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
@@ -640,21 +641,36 @@ const getStation =
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
+    const stationIsId =
+      !isNaN(parseInt(stationNameOrId)) &&
+      parseInt(stationNameOrId).toString() === String(stationNameOrId);
+
     let stationWhere;
     let groupWhere = {};
-    if (groupIsId) {
+
+    if (groupIsId && stationIsId) {
       stationWhere = {
-        id: parseInt(stationId),
+        id: parseInt(stationNameOrId),
         GroupId: parseInt(groupNameOrId),
       };
-    } else if (groupNameOrId) {
+    } else if (stationIsId && groupNameOrId) {
       stationWhere = {
-        id: parseInt(stationId),
+        id: parseInt(stationNameOrId),
         "$Group.groupname$": groupNameOrId,
       };
-    } else if (!groupNameOrId) {
+    } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
-        id: parseInt(stationId),
+        id: parseInt(stationNameOrId),
+      };
+    } else if (groupIsId) {
+      stationWhere = {
+        name: stationNameOrId,
+        GroupId: parseInt(groupNameOrId),
+      };
+    } else {
+      stationWhere = {
+        name: stationNameOrId,
+        "$Group.groupname$": groupNameOrId,
       };
     }
     if (groupIsId) {
@@ -669,9 +685,10 @@ const getStation =
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
+
         getStationOptions = getIncludeForUser(
           context,
-          getStationInclude(groupWhere),
+          getStationInclude(stationWhere, groupWhere),
           asAdmin
         );
         if (!getStationOptions.where && stationWhere) {
@@ -706,10 +723,11 @@ const getStation =
       };
     }
 
-    if (context.onlyActive) {
+    if (context.onlyActive || !stationIsId) {
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
+
     return models.Station.findOne(getStationOptions);
   };
 
@@ -1100,7 +1118,7 @@ const getDevice =
         ],
       };
     }
-    // FIXME - When re-registering we can actually have two devices in the same group with the same name - but one
+    // FIXME(ManageStations) - When re-registering we can actually have two devices in the same group with the same name - but one
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
       (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
@@ -1317,7 +1335,6 @@ export const fetchAuthorizedOptionalDeviceById = (deviceId: ValidationChain) =>
     deviceId
   );
 
-// TODO Check this with the 2040 group...
 export const fetchUnauthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain
 ) =>
@@ -1517,8 +1534,8 @@ export const fetchAuthorizedRequiredStationsForGroup = (
 ) =>
   fetchRequiredModels(
     models.Station,
-    false,
-    false,
+    true,
+    true,
     getStations(true, false),
     groupNameOrId
   );
@@ -1532,6 +1549,43 @@ export const fetchAuthorizedRequiredStationById = (
     true,
     getStation(true, false),
     stationId
+  );
+
+export const fetchAdminAuthorizedRequiredStationById = (
+  stationId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Station,
+    false,
+    true,
+    getStation(true, true),
+    stationId
+  );
+
+export const fetchAdminAuthorizedRequiredStationByNameInGroup = (
+  groupNameOrId: ValidationChain,
+  stationNameOrId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Station,
+    true,
+    true,
+    getStation(true, true),
+    stationNameOrId,
+    groupNameOrId
+  );
+
+export const fetchAuthorizedRequiredStationByNameInGroup = (
+  groupNameOrId: ValidationChain,
+  stationNameOrId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Station,
+    true,
+    true,
+    getStation(true, false),
+    stationNameOrId,
+    groupNameOrId
   );
 
 export const fetchAuthorizedRequiredSchedulesForGroup = (

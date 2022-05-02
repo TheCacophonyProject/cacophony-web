@@ -24,10 +24,15 @@ import Sequelize, {
 } from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { Group } from "./Group";
-import { EndUserAgreementVersion, UserId } from "@typedefs/api/common";
+import {
+  DeviceId,
+  EndUserAgreementVersion,
+  UserId,
+} from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { sendResetEmail } from "@/scripts/emailUtil";
 import { Device } from "@models/Device";
+import { ApiUserSettings } from "@typedefs/api/user";
 
 const Op = Sequelize.Op;
 
@@ -54,6 +59,7 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   groups: Group[];
   globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
+  settings?: ApiUserSettings;
 }
 
 export interface UserStatic extends ModelStaticCommon<User> {
@@ -64,16 +70,6 @@ export interface UserStatic extends ModelStaticCommon<User> {
   getFromEmail: (email: string) => Promise<User | null>;
   freeEmail: (email: string) => Promise<boolean>;
   getFromId: (id: number) => Promise<User | null>;
-}
-
-interface UserData {
-  id: UserId;
-  username: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  groups: Group[];
-  globalPermission: UserGlobalPermission;
 }
 
 export default function (
@@ -116,9 +112,6 @@ export default function (
       beforeValidate: beforeValidate,
       beforeCreate: beforeModify,
       beforeUpdate: beforeModify,
-
-      // NOTE: Doesn't exist on publicly available typings, so ignore
-      // @ts-ignore
       beforeUpsert: beforeModify,
     },
   };
@@ -213,10 +206,8 @@ export default function (
     return groups.map((g) => g.id);
   };
 
-  User.prototype.getDeviceIds = async function () {
-    // FIXME(DeviceUsers) Could this just be this.getDevices()?
-
-    const devices = await models.Device.findAll({
+  User.prototype.getDeviceIds = async function (): Promise<DeviceId[]> {
+    const devices = (await models.Device.findAll({
       where: {},
       include: [
         {
@@ -237,7 +228,7 @@ export default function (
         },
       ],
       attributes: ["id"],
-    });
+    })) as Device[];
     if (devices !== null) {
       return devices.map((d) => d.id);
     }

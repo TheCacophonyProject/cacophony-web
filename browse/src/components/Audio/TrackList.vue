@@ -175,7 +175,7 @@
 import { PropType } from "vue";
 import { defineComponent, watch } from "@vue/composition-api";
 
-import { SetState, useState } from "@/utils";
+import { useState } from "@/utils";
 
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 
@@ -217,7 +217,7 @@ export default defineComponent({
       required: true,
     },
   },
-  setup(props, ctx) {
+  setup(props) {
     const confirmTrack = async (track: AudioTrack) => {
       const tag = track.tags.find((t) => t.automatic);
       if (!tag) {
@@ -225,6 +225,7 @@ export default defineComponent({
       }
       await props.addTagToTrack(track.id, tag.what);
     };
+    //TODO: Add filtering tracks
     const [filter, setFilter] = useState<TrackListFilter>(TrackListFilter.All);
     const filterTracks = (track: AudioTrack) => {
       switch (filter.value) {

@@ -561,7 +561,6 @@ $recording-side-padding-small: 0.5rem;
   .label {
     vertical-align: middle;
   }
-
   .sub-label {
     font-size: 0.8em;
   }

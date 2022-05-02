@@ -147,7 +147,7 @@ export default defineComponent({
                   intersect: false,
                   displayColors: false,
                   callbacks: {
-                    title: (tooltipItem) => {
+                    title: () => {
                       return "";
                     },
                     label: (tooltipItem) => {
