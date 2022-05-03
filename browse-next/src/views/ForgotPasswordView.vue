@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
-import {isEmpty, delayMs, formFieldInputText} from "@/utils";
-
-// TODO Automatically trim form fields on submit?
-// TODO Can we parse e.g body.password in the messages into contextual error messages?
-// TODO Remember me preference checkbox?
+import { formFieldInputText } from "@/utils";
+import { resetPassword as sendResetPasswordRequest } from "@api/User";
 
 interface FormInputValue {
   value: string;
@@ -15,17 +12,17 @@ interface FormInputValue {
 type FormInputValidationState = boolean | null;
 
 const userEmailAddress: FormInputValue = formFieldInputText();
-const resetErrorMessage = ref("");
+const resetErrorMessage = ref<string | false>(false);
 const resetInProgress = ref(false);
 const resetSubmitted = ref(false);
 
 const hasError = computed({
   get: () => {
-    return !isEmpty(resetErrorMessage.value);
+    return resetErrorMessage.value !== false;
   },
   set: (val: boolean) => {
     if (!val) {
-      resetErrorMessage.value = "";
+      resetErrorMessage.value = false;
     }
   },
 });
@@ -44,10 +41,16 @@ const needsValidationAndIsValidEmailAddress =
 const resetPassword = async () => {
   const emailAddress = userEmailAddress.value.trim();
   resetInProgress.value = true;
-  await delayMs(1000);
+  resetSubmitted.value = false;
+  const resetPasswordResponse = await sendResetPasswordRequest(emailAddress);
+  if (resetPasswordResponse.success) {
+    resetSubmitted.value = true;
+  } else {
+    // Do the thing with errors.
+    resetErrorMessage.value = resetPasswordResponse.result.messages.join(", ");
+    resetSubmitted.value = false;
+  }
   resetInProgress.value = false;
-  resetSubmitted.value = true;
-  // Form submitted, please check your email.  If you don't see an email within 5 minutes, make sure to check your spam folder.
 };
 </script>
 <template>

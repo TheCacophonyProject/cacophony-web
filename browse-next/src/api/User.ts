@@ -33,17 +33,15 @@ export const loginOther = (userName: string) =>
     name: userName,
   });
 
-export const reset = (email: string) =>
+export const resetPassword = (email: string) =>
   CacophonyApi.post("/api/v1/users/reset-password", {
     email,
-  }) as Promise<FetchResult<any>>;
+  }) as Promise<FetchResult<void>>;
 
-export const validateToken = (token: string) =>
+export const validatePasswordResetToken = (token: string) =>
   CacophonyApi.post("/api/v1/users/validate-reset-token", {
     token,
-  }) as Promise<
-    FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
-  >;
+  }) as Promise<FetchResult<{ userData: ApiLoggedInUserResponse }>>;
 
 export const changePassword = (token: string, newPassword: string) =>
   CacophonyApi.patch("/api/v1/users/change-password", {
@@ -62,18 +60,28 @@ export const register = (
   userName: string,
   password: string,
   email: string,
-  endUserAgreement: number
+  endUserAgreement: number | undefined
 ) =>
   CacophonyApi.post("/api/v1/users", {
     userName,
     password,
     endUserAgreement,
     email,
-  }) as Promise<FetchResult<ApiLoggedInUserResponse>>;
+  }) as Promise<
+    FetchResult<{
+      userData: ApiLoggedInUserResponse;
+      token: JwtToken<UserId>;
+      refreshToken: string;
+      expiry: IsoFormattedDateString;
+    }>
+  >;
+
 export const updateFields = (fields: ApiLoggedInUserResponse) =>
   CacophonyApi.patch("/api/v1/users", fields);
 export const getEUAVersion = () =>
-  CacophonyApi.get("/api/v1/end-user-agreement/latest");
+  CacophonyApi.get("/api/v1/end-user-agreement/latest") as Promise<
+    FetchResult<{ euaVersion: number }>
+  >;
 
 export const token = async () => {
   // Params must include where (stringified JSON), limit, offset

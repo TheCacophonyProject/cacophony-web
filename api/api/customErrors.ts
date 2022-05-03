@@ -94,8 +94,13 @@ class CustomError extends Error {
 export class ValidationError extends CustomError {
   errors: Record<string, any>;
   constructor(errors) {
-    const message = errors
-      .array()
+    let message;
+    if (errors.array) {
+      message = errors.array();
+    } else if (typeof errors === "object" && Array.isArray(errors)) {
+      message = errors;
+    }
+    message = message
       .filter((error) => typeof error.msg === "string")
       .map(({ msg, location, param }) => `${location}.${param}: ${msg}`)
       .join("; ");
@@ -107,9 +112,9 @@ export class ValidationError extends CustomError {
     return {
       errorType: this.getErrorType(),
       message: `${
-        this.errors.array().length
+        (this.errors.array && this.errors.array().length) || this.errors.length
       } request validation errors found. Request payload could not be processed.`,
-      errors: this.errors.array(),
+      errors: (this.errors.array && this.errors.array()) || this.errors,
     };
   }
 }

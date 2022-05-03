@@ -124,6 +124,12 @@ const router = createRouter({
       component: () => import("../views/ForgotPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
+    {
+      path: "/reset-password",
+      name: "reset-password",
+      component: () => import("../views/ResetPasswordView.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
   ],
 });
 

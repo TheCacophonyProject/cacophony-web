@@ -60,6 +60,22 @@ async function sendResetEmail(user: User, password: string): Promise<boolean> {
   );
 }
 
+export async function sendWelcomeEmailConfirmationEmail(
+  user: User
+): Promise<boolean> {
+  // TODO - This is like the email change confirmation email, but includes a bit more of a "welcome to cacophony" vibe.
+
+  const token = getEmailConfirmationToken(user.id, user.email);
+  // FIXME - This needs to be a transactional email about confirming your email.
+  // TODO - Only send automated emails to users if they have confirmed their email address.
+  const [html, text] = resetBody(user.firstName || user.username, token);
+  return sendEmail(
+    html,
+    text,
+    user.email,
+    "Confirm your email associated with your Cacophony account"
+  );
+}
 export async function sendEmailConfirmationEmail(
   user: User,
   newEmailAddress: string

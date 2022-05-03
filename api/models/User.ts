@@ -269,8 +269,7 @@ export default function (
   };
 
   User.prototype.resetPassword = async function (): Promise<boolean> {
-    console.log("resetting");
-    return await sendResetEmail(this, this.password);
+    return sendResetEmail(this, this.password);
   };
 
   return User;

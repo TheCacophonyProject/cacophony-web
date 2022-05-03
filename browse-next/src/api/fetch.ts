@@ -25,13 +25,13 @@ export async function fetch(url: string, request: RequestInit = {}) {
     signal: CurrentViewAbortController.controller.signal,
   };
   if (userIsLoggedIn.value) {
-    (request.headers as any).Authorization = (
+    (request.headers as Record<string, string>).Authorization = (
       CurrentUser.value as LoggedInUser
     ).apiToken;
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
     (
-      request.headers as any
+      request.headers as Record<string, string>
     ).Viewport = `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio} - ${window.screen.orientation.type}`;
   }
   let response;
@@ -42,7 +42,9 @@ export async function fetch(url: string, request: RequestInit = {}) {
     return {
       result: {
         errors: ["Network connection refused"],
-        messages: ["Failed api request"],
+        messages: [
+          "We couldn't connect to the server. Please make sure you have a network connection.",
+        ],
         errorType: "Client",
       } as ErrorResult,
       status: 500,

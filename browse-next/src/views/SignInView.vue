@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
-import { login } from "@/models/LoggedInUser";
+import { login } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
 
 // TODO Can we parse e.g body.password in the messages into contextual error messages?
@@ -116,6 +116,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
             required
           />
           <button
+            type="button"
             :title="showPassword ? 'hide password' : 'show password'"
             class="input-group-text toggle-password-visibility-btn justify-content-center"
             @click.stop.prevent="togglePasswordVisibility"

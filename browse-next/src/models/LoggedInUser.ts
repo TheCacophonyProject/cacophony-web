@@ -1,8 +1,8 @@
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { Ref } from "vue";
-import { computed, reactive, ref } from "vue";
-import { refreshLogin, login as userLogin } from "@/api/User.api";
 import type { ErrorResult } from "@api/types";
+import { computed, reactive, ref } from "vue";
+import { refreshLogin, login as userLogin } from "@api/User";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
   apiToken: string;
@@ -26,7 +26,7 @@ export const userIsLoggedIn = computed<boolean>({
   },
 });
 
-const setUserData = (user: LoggedInUser) => {
+export const setLoggedInUserData = (user: LoggedInUser) => {
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
   refreshCredentialsAtIn(
@@ -45,7 +45,7 @@ export const login = async (
   const loggedInUserResponse = await userLogin(emailAddress, password);
   if (loggedInUserResponse.success) {
     const signedInUser = loggedInUserResponse.result;
-    setUserData({
+    setLoggedInUserData({
       ...signedInUser.userData,
       apiToken: signedInUser.token,
       refreshToken: signedInUser.refreshToken,
@@ -88,7 +88,7 @@ const refreshCredentials = async () => {
         );
         if (refreshedUserResult.success) {
           const refreshedUser = refreshedUserResult.result;
-          setUserData({
+          setLoggedInUserData({
             ...refreshedUser.userData,
             apiToken: refreshedUser.token,
             refreshToken: refreshedUser.refreshToken,

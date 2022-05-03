@@ -1,5 +1,5 @@
-import { ClientError } from "./customErrors";
 import models from "../models";
+import { ClientError } from "./customErrors";
 import { Request, Response, NextFunction } from "express";
 import { oneOf, Result, ValidationChain } from "express-validator";
 import { expectedTypeOf } from "./middleware";

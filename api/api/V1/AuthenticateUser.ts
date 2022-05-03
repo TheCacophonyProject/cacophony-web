@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import middleware, { validateFields } from "../middleware";
-import auth from "../auth";
+import auth, { generateAuthTokensForUser, ttlTypes } from "../auth";
 import { body, oneOf } from "express-validator";
 import responseUtil from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
@@ -33,11 +33,8 @@ import {
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
-  fetchAuthorizedRequiredGroupById,
   fetchUnauthorizedRequiredUserByNameOrId,
 } from "../extract-middleware";
-
-const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
 
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { mapUser } from "@api/V1/User";
@@ -48,7 +45,6 @@ import jwt from "jsonwebtoken";
 import config from "@config";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
-import logger from "@log";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
@@ -107,38 +103,15 @@ export default function (app: Application, baseUrl: string) {
         //  tokens that never expire.  If called from the new end-point, timeout in 30mins, and
         //  require use of the token refresh.
         const isNewEndPoint = request.path.endsWith("authenticate");
-        const options = isNewEndPoint ? { expiresIn: ttlTypes.medium } : {};
-        const expiry = new Date(
-          new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
-        );
         await response.locals.user.update({ lastActiveAt: new Date() });
-        const refreshToken = randomUUID();
-        const now = new Date().toISOString();
-        await models.sequelize.query(
-          `
-              insert into "UserSessions"
-              ("refreshToken", "userId", "userAgent", "createdAt", "updatedAt", "viewport")
-              values (:refreshToken, :userId, :userAgent, :createdAt, :updatedAt, :viewport)
-            `,
-          {
-            replacements: {
-              // Can we store screen resolution of clients here?  That would be handy.
-              viewport: request.headers["viewport"],
-              userAgent: request.headers["user-agent"],
-              refreshToken,
-              userId: response.locals.user.id,
-              createdAt: now,
-              updatedAt: now,
-            },
-            type: QueryTypes.INSERT,
-          }
-        );
+        const { refreshToken, expiry, apiToken } =
+          await generateAuthTokensForUser(
+            response.locals.user,
+            request.headers["viewport"] as string,
+            request.headers["user-agent"],
+            isNewEndPoint
+          );
 
-        const refreshTokenSigned = jwt.sign(
-          { refreshToken },
-          config.server.passportSecret
-        );
-        const token = auth.createEntityJWT(response.locals.user, options);
         const {
           id,
           username,
@@ -151,9 +124,9 @@ export default function (app: Application, baseUrl: string) {
         responseUtil.send(response, {
           statusCode: 200,
           messages: ["Successful login."],
-          token: `JWT ${token}`,
+          token: apiToken,
           expiry,
-          refreshToken: refreshTokenSigned,
+          refreshToken,
           userData: {
             id,
             userName: username,
@@ -432,27 +405,34 @@ export default function (app: Application, baseUrl: string) {
 
   const resetPasswordOptions = [
     validateFields([
-      oneOf(
-        [
-          deprecatedField(validNameOf(body("username"))),
-          validNameOf(body("userName")),
-          validNameOf(body("nameOrEmail")),
-          body("nameOrEmail").isEmail(), // FIXME - This looks like an incorrect constraint.
-          body("email").isEmail(),
-        ],
-        "Missing user name in request"
-      ),
+        body("email").isEmail(),
     ]),
     fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body(["username", "userName", "nameOrEmail", "email"])
+      body("email")
     ),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
-        await (response.locals.user as User).resetPassword();
+        const user = response.locals.user as User;
+        // If we're using the new end-point, make sure the user has confirmed their email address.
+        const isNewEndpoint = request.path.endsWith("reset-password");
+        if (isNewEndpoint && !user.emailConfirmed) {
+          // Do nothing
+        } else {
+          const sendingSuccess = await user.resetPassword();
+          if (!sendingSuccess) {
+            return responseUtil.send(response, {
+              statusCode: 500,
+              messages: ["We failed to send your password recovery email, please check that you've entered your email correctly."],
+            });
+          }
+        }
+      } else {
+        // In the case where the user doesn't exist, we'll pretend it does so
+        // attackers can't use this api to confirm the existence of a given email address.
       }
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Email has been sent"],
+        messages: ["Your password recovery email has been sent"],
       });
     },
   ];
@@ -476,11 +456,12 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post("/resetpassword", ...resetPasswordOptions);
 
+
   const validateTokenOptions = [
     validateFields([body("token").exists()]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response) => {
-      if (response.locals.user.password != response.locals.resetInfo.password) {
+      if (response.locals.user.password !== response.locals.resetInfo.password) {
         return responseUtil.send(response, {
           statusCode: 403,
           messages: ["Your password has already been changed"],
@@ -488,7 +469,7 @@ export default function (app: Application, baseUrl: string) {
       }
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: [],
+        messages: ["Reset token is still valid"],
         userData: mapUser(response.locals.user),
       });
     },
@@ -510,6 +491,8 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/users/validate-reset-token Validates a reset token
    * @apiName ValidateToken
    * @apiGroup Authentication
+   * @apiDescription Used by the front-end when following a password reset link from an email to make sure
+   * the link has not already been used to reset a users' password.  Should be used on page load.
    * @apiBody {String} token password reset token to validate
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    * @apiUse V1ResponseSuccess

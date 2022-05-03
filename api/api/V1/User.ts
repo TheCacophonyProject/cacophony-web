@@ -17,11 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware";
-import auth from "../auth";
+import { generateAuthTokensForUser } from "../auth";
 import models from "@models";
 import responseUtil from "./responseUtil";
 import { body, param, matchedData, query } from "express-validator";
-import { ClientError } from "../customErrors";
+import { ClientError, ValidationError } from "../customErrors";
 import { Application, NextFunction, Request, Response } from "express";
 import config from "@config";
 import { User } from "@models/User";
@@ -42,7 +42,10 @@ import {
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
-import { sendEmail, sendEmailConfirmationEmail } from "@/scripts/emailUtil";
+import {
+  sendEmailConfirmationEmail,
+  sendWelcomeEmailConfirmationEmail,
+} from "@/scripts/emailUtil";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -106,34 +109,71 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
     (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
-        return next(new ClientError("Username in use"));
+        return next(
+          new ValidationError([
+            { msg: "Username in use", location: "body", param: "userName" },
+          ])
+        );
       } else {
         next();
       }
     },
     async (request: Request, Response: Response, next: NextFunction) => {
       if (!(await models.User.freeEmail(request.body.email))) {
-        return next(new ClientError("Email address in use"));
+        return next(
+          new ValidationError([
+            { msg: "Email address in use", location: "body", param: "email" },
+          ])
+        );
+      } else {
+        next();
+      }
+    },
+    async (request: Request, Response: Response, next: NextFunction) => {
+      if (
+        request.body.endUserAgreement &&
+        Number(request.body.endUserAgreement) !== config.euaVersion
+      ) {
+        return next(
+          new ValidationError([
+            {
+              msg: "Out of date end user agreement version specified",
+              location: "body",
+              param: "endUserAgreement",
+            },
+          ])
+        );
       } else {
         next();
       }
     },
     async (request: Request, response: Response) => {
-      // FIXME Send a welcome email, with a requirement to validate the email address.
-      //  We won't send transactional emails until the address has been validated.
-      //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
-      //  User alerts and group invitations would not be activated until the user has confirmed their email address.
-
+      const now = new Date().toISOString();
       const user: User = await models.User.create({
         username: request.body.username || request.body.userName,
         password: request.body.password,
         email: request.body.email,
         endUserAgreement: request.body.endUserAgreement,
+        lastActiveAt: now,
       });
+
+      // NOTE Send a welcome email, with a requirement to validate the email address.
+      //  We won't send transactional emails until the address has been validated.
+      //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
+      //  User alerts and group invitations would not be activated until the user has confirmed their email address.
+      await sendWelcomeEmailConfirmationEmail(user);
+      const { refreshToken, expiry, apiToken } =
+        await generateAuthTokensForUser(
+          user,
+          request.headers["viewport"] as string,
+          request.headers["user-agent"]
+        );
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Created new user."],
-        token: `JWT ${auth.createEntityJWT(user)}`,
+        token: apiToken,
+        refreshToken,
+        expiry,
         userData: mapUser(user),
       });
     }
@@ -175,7 +215,11 @@ export default function (app: Application, baseUrl: string) {
           request.body.username || request.body.userName
         ))
       ) {
-        return next(new ClientError("Username in use"));
+        return next(
+          new ValidationError([
+            { msg: "Email address in use", location: "body", param: "email" },
+          ])
+        );
       } else {
         next();
       }
@@ -185,7 +229,11 @@ export default function (app: Application, baseUrl: string) {
         request.body.email &&
         !(await models.User.freeEmail(request.body.email))
       ) {
-        return next(new ClientError("Email address in use"));
+        return next(
+          new ValidationError([
+            { msg: "Email address in use", location: "body", param: "email" },
+          ])
+        );
       } else {
         next();
       }
@@ -342,7 +390,10 @@ export default function (app: Application, baseUrl: string) {
   app.get(`${baseUrl}/end-user-agreement/latest`, ...endUserAgreementOptions);
 
   const changePasswordOptions = [
-    validateFields([body("token"), validPasswordOf(body("password"))]),
+    validateFields([
+      body("token").exists(),
+      validPasswordOf(body("password"))
+    ]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response) => {
       if (response.locals.user.password != response.locals.resetInfo.password) {
@@ -360,10 +411,19 @@ export default function (app: Application, baseUrl: string) {
           messages: ["Error changing password please contact sys admin"],
         });
       }
+      const { expiry, refreshToken, apiToken } =
+        await generateAuthTokensForUser(
+          response.locals.user,
+          request.headers["viewport"] as string,
+          request.headers["user-agent"]
+        );
+
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [],
-        token: `JWT ${auth.createEntityJWT(response.locals.user)}`,
+        token: apiToken,
+        refreshToken,
+        expiry,
         userData: mapUser(response.locals.user),
       });
     },

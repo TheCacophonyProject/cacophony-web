@@ -1,76 +1,89 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
-import { CurrentUser } from "@/models/LoggedInUser";
-import type { LoggedInUser } from "@/models/LoggedInUser";
-import { isEmpty, delayMs, formFieldInputText, isValidName } from "@/utils";
+import { setLoggedInUserData } from "@models/LoggedInUser";
+import { getEUAVersion, register as registerUser } from "@api/User";
+import { formFieldInputText, isValidName } from "@/utils";
+import type { ErrorResult, FieldValidationError } from "@api/types";
+import type { FormInputValue, FormInputValidationState } from "@/utils";
 
-// TODO Automatically trim form fields on submit?
-// TODO Can we parse e.g body.password in the messages into contextual error messages?
-
-interface FormInputValue {
-  value: string;
-  touched: boolean;
-}
-
-type FormInputValidationState = boolean | null;
-
-const showPassword = ref(false);
-const togglePasswordVisibility = () => {
-  showPassword.value = !showPassword.value;
-};
-
+// ---------- userName ------------
 const userName: FormInputValue = formFieldInputText();
-const userEmailAddress: FormInputValue = formFieldInputText();
-const userPassword: FormInputValue = formFieldInputText();
-const userPasswordConfirmation: FormInputValue = formFieldInputText();
-const acceptedEUA: FormInputValue = formFieldInputText(false);
-
-const registerErrorMessage = ref("");
-const registrationInProgress = ref(false);
-
-const hasError = computed({
-  get: () => {
-    return !isEmpty(registerErrorMessage.value);
-  },
-  set: (val: boolean) => {
-    if (!val) {
-      registerErrorMessage.value = "";
-    }
-  },
+const userNameFieldValidationError = computed<
+  undefined | false | FieldValidationError
+>(
+  () =>
+    registerErrorMessage.value &&
+    registerErrorMessage.value.errorType === "validation" &&
+    (registerErrorMessage.value.errors as FieldValidationError[])!.find(
+      ({ param }) => param === "userName"
+    )
+);
+const userNameIsTooShort = computed<boolean>(
+  () => userName.value.trim().length < 3
+);
+const userNameInUse = computed<boolean>(
+  () => !!userNameFieldValidationError.value
+);
+const isValidUserName = computed<boolean>(() => {
+  if (
+    submittedDetails.value !== null &&
+    userName.value.trim() === submittedDetails.value.name &&
+    userNameInUse.value
+  ) {
+    return false;
+  }
+  return isValidName(userName.value.trim());
 });
+const needsValidationAndIsValidUserName = computed<FormInputValidationState>(
+  () => (userName.touched ? isValidUserName.value : null)
+);
 
+// ---------- email ------------
+const userEmailAddress: FormInputValue = formFieldInputText();
+const emailInUse = computed<boolean>(() => !!emailFieldValidationError.value);
+const emailFieldValidationError = computed(() => {
+  return (
+    registerErrorMessage.value &&
+    registerErrorMessage.value.errorType === "validation" &&
+    (registerErrorMessage.value.errors as FieldValidationError[])!.find(
+      ({ param }) => param === "email"
+    )
+  );
+});
+const emailIsTooShort = computed<boolean>(
+  () => userEmailAddress.value.trim().length < 3
+);
 const isValidEmailAddress = computed<boolean>(() => {
+  if (
+    submittedDetails.value !== null &&
+    userEmailAddress.value.trim() === submittedDetails.value.emailAddress &&
+    emailInUse.value
+  ) {
+    return false;
+  }
   const { value } = userEmailAddress;
   const email = value.trim();
-  return email.length > 3 && email.includes("@");
+  return !emailIsTooShort.value && email.includes("@");
 });
-
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
     userEmailAddress.touched ? isValidEmailAddress.value : null
   );
 
-const needsValidationAndIsValidUserName = computed<FormInputValidationState>(
-  () => (userName.touched ? isValidUserName.value : null)
+// ---------- password ------------
+const userPassword: FormInputValue = formFieldInputText();
+const userPasswordConfirmation: FormInputValue = formFieldInputText();
+const isValidPassword = computed<boolean>(() => !passwordIsTooShort.value);
+const passwordIsTooShort = computed<boolean>(
+  () => userPassword.value.trim().length < 9
 );
-
-const isValidPassword = computed<boolean>(
-  () => userPassword.value.trim().length >= 8
-);
-
-const isValidUserName = computed<boolean>(() =>
-  isValidName(userName.value.trim())
-);
-
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
   () => (userPassword.touched ? isValidPassword.value : null)
 );
-
 const passwordConfirmationMatches = computed<boolean>(
   () => userPasswordConfirmation.value.trim() === userPassword.value.trim()
 );
-
 const needsValidationAndIsValidPasswordConfirmation =
   computed<FormInputValidationState>(() =>
     userPasswordConfirmation.touched
@@ -78,10 +91,44 @@ const needsValidationAndIsValidPasswordConfirmation =
       : null
   );
 
+// ---------- password visibility ------------
+const showPassword = ref(false);
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value;
+};
+
+// ---------- acceptedEUA ------------
+const acceptedEUA: FormInputValue = formFieldInputText(false);
 const needsValidationAndAcceptedEUA = computed<FormInputValidationState>(() =>
   acceptedEUA.touched ? Boolean(acceptedEUA.value) : null
 );
 
+// ---------- general ------------
+const registerErrorMessage = ref<ErrorResult | false>(false);
+const registrationInProgress = ref(false);
+
+const hasNonValidationError = computed({
+  get: () => {
+    // Validation error messages should be handled at the field level.
+    return (
+      registerErrorMessage.value !== false &&
+      registerErrorMessage.value.errorType !== "validation"
+    );
+  },
+  set: (val: boolean) => {
+    if (!val) {
+      registerErrorMessage.value = false;
+    }
+  },
+});
+
+const registerErrorMessagesDisplay = computed(() => {
+  if (registerErrorMessage.value) {
+    return registerErrorMessage.value.messages.join(", ");
+  } else {
+    return "";
+  }
+});
 const registrationFormIsFilledAndValid = computed<boolean>(
   () =>
     isValidEmailAddress.value &&
@@ -91,28 +138,51 @@ const registrationFormIsFilledAndValid = computed<boolean>(
     Boolean(acceptedEUA.value)
 );
 
+// Hold onto a snapshot of the submitted details so that we can see if the user
+// edits the fields to correct any validation errors
+const submittedDetails = ref<{
+  emailAddress: string;
+  password: string;
+  name: string;
+} | null>(null);
+
 const register = async () => {
   const emailAddress = userEmailAddress.value.trim();
   const password = userPassword.value.trim();
   const name = userName.value.trim();
+  // Clear any errors
+  registerErrorMessage.value = false;
+  submittedDetails.value = {
+    emailAddress,
+    password,
+    name,
+  };
+
   registrationInProgress.value = true;
-  await delayMs(1000);
-  registrationInProgress.value = false;
-
-  // FIXME - Remove remember me feature and move it to the sign-in page.
-
   // Register, then log the user in.
-  // TODO: Send an email confirmation email, and make sure we don't try to send transactional emails until we've validated the email address.
-
-  // Handle login response here, update the global loggedInUser object.
-  CurrentUser.value = reactive<LoggedInUser>({
-    email: "",
-    endUserAgreement: 1,
-    id: 1,
-    globalPermission: "off",
-    userName: "Test_user",
-    apiToken: "FOO",
-  } as LoggedInUser);
+  const latestEUAVersionResponse = await getEUAVersion();
+  let latestEUAVersion = undefined;
+  if (latestEUAVersionResponse.success) {
+    latestEUAVersion = latestEUAVersionResponse.result.euaVersion;
+  }
+  const newUserResponse = await registerUser(
+    name,
+    password,
+    emailAddress,
+    latestEUAVersion
+  );
+  if (newUserResponse.success) {
+    const newUser = newUserResponse.result;
+    setLoggedInUserData({
+      ...newUser.userData,
+      expiry: new Date(newUser.expiry),
+      refreshToken: newUser.refreshToken,
+      apiToken: newUser.token,
+    });
+  } else {
+    registerErrorMessage.value = newUserResponse.result;
+  }
+  registrationInProgress.value = false;
 };
 </script>
 <template>
@@ -130,13 +200,13 @@ const register = async () => {
       novalidate
     >
       <b-alert
-        v-model="hasError"
+        v-model="hasNonValidationError"
         variant="danger"
         dismissible
         class="text-center"
-        @dismissed="hasError = false"
+        @dismissed="hasNonValidationError = false"
       >
-        {{ registerErrorMessage }}
+        {{ registerErrorMessagesDisplay }}
       </b-alert>
       <div class="mb-3">
         <b-form-input
@@ -150,13 +220,16 @@ const register = async () => {
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidUserName">
-          <span v-if="userName.value.trim().length < 3">
+          <span v-if="userNameIsTooShort">
             Username must be at least 3 characters
           </span>
           <span v-else-if="!isValidName(userName.value.trim())">
             Username must contain at least one letter (either case). It can also
             contain numbers, underscores and hyphens, but must
             <em>begin</em> with a letter or number.
+          </span>
+          <span v-else-if="userNameInUse">
+            {{ userNameFieldValidationError.msg }}
           </span>
         </b-form-invalid-feedback>
       </div>
@@ -172,7 +245,8 @@ const register = async () => {
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
-          Enter a valid email address
+          <span v-if="emailInUse">{{ emailFieldValidationError.msg }}</span>
+          <span v-else>Enter a valid email address</span>
         </b-form-invalid-feedback>
       </div>
       <div class="mb-3">
@@ -188,6 +262,7 @@ const register = async () => {
             required
           />
           <button
+            type="button"
             :title="showPassword ? 'hide password' : 'show password'"
             class="input-group-text toggle-password-visibility-btn justify-content-center"
             @click.stop.prevent="togglePasswordVisibility"

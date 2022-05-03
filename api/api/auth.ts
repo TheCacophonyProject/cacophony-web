@@ -24,9 +24,18 @@ import models, { ModelCommon } from "../models";
 import { Request } from "express";
 import { User } from "@models/User";
 import { UserId } from "@typedefs/api/common";
+import { randomUUID } from "crypto";
+import { QueryTypes } from "sequelize";
 /*
  * Create a new JWT for a user or device.
  */
+
+export const ttlTypes = Object.freeze({
+  short: 60,
+  medium: 5 * 60,
+  long: 30 * 60,
+});
+
 function createEntityJWT<T>(
   entity: ModelCommon<T>,
   options?,
@@ -65,6 +74,48 @@ export const getEmailConfirmationToken = (
   return jwt.sign({ id: userId, email }, config.server.passportSecret, {
     expiresIn: 60 * 60 * 24,
   });
+};
+
+export const generateAuthTokensForUser = async (
+  user: User,
+  viewport: string,
+  userAgent: string,
+  expires: boolean = true
+): Promise<{ refreshToken: string; apiToken: string; expiry: Date }> => {
+  const now = new Date().toISOString();
+  const expiry = new Date(
+    new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
+  );
+  const refreshToken = randomUUID();
+  await models.sequelize.query(
+    `
+              insert into "UserSessions"
+              ("refreshToken", "userId", "userAgent", "createdAt", "updatedAt", "viewport")
+              values (:refreshToken, :userId, :userAgent, :createdAt, :updatedAt, :viewport)
+            `,
+    {
+      replacements: {
+        // Can we store screen resolution of clients here?  That would be handy.
+        viewport,
+        userAgent,
+        refreshToken,
+        userId: user.id,
+        createdAt: now,
+        updatedAt: now,
+      },
+      type: QueryTypes.INSERT,
+    }
+  );
+  const expiryOptions = expires ? { expiresIn: ttlTypes.medium } : {};
+  const refreshTokenSigned = jwt.sign(
+    { refreshToken },
+    config.server.passportSecret
+  );
+  return {
+    refreshToken: refreshTokenSigned,
+    expiry,
+    apiToken: `JWT ${createEntityJWT(user, expiryOptions)}`,
+  };
 };
 
 export const getDecodedResetToken = (token: string): ResetInfo => {

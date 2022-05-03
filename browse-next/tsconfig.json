@@ -1,13 +1,14 @@
 {
   "extends": "@vue/tsconfig/tsconfig.web.json",
-  "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
+  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "src/**/*.ts", "src/**/*.d.ts"],
   "compilerOptions": {
-    "baseUrl": ".",
+    "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
       "@api/*": ["./src/api/*"],
-      "@api": ["./src/api/index.ts"],
-      "@typedefs/*":  ["../types/*"]
+      "@views/*": ["./src/views/*"],
+      "@models/*": ["./src/models/*"],
+      "@typedefs/*":  ["../types/*"],
     },
   },
 

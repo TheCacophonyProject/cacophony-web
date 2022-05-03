@@ -13,3 +13,10 @@ export const formFieldInputText = (initialValue: string | boolean = "") =>
     value: initialValue.toString(),
     touched: false,
   });
+
+export interface FormInputValue {
+    value: string;
+    touched: boolean;
+}
+
+export type FormInputValidationState = boolean | null;
