@@ -2,7 +2,6 @@
 /// <reference types="cypress" />
 
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
-import { logTestDescription, prettyLog } from "./descriptions";
 
 import { format as urlFormat } from "url";
 
@@ -86,47 +85,7 @@ export function saveJWTByName(name: string, jwt: string) {
 }
 
 export function getCreds(userName: string): ApiCreds {
-  if (userName) {
-    const creds: ApiCreds = Cypress.env("testCreds")[userName];
-    if (creds == undefined) {
-      logTestDescription(
-        `ERROR: could not find credentials for '${userName}'`,
-        { name: userName }
-      );
-    }
-    return creds;
-  } else {
-    logTestDescription(
-      `NOTE: asked to retrieve credential for 'undefined'`,
-      {}
-    );
-
-    return {
-      name: null,
-      id: null,
-      password: undefined,
-      jwt: undefined,
-      headers: undefined,
-      jobKey: undefined,
-      location: undefined,
-    };
-  }
-}
-
-export function getCredsByIdAndNameLike(
-  id: number,
-  nameLike: string
-): ApiCreds {
-  const creds = Cypress.env("testCreds");
-  const values: ApiCreds[] = Object.values(creds);
-  logTestDescription(`${JSON.stringify(values)}`, {
-    values,
-  });
-  const cred: ApiCreds = values.find(
-    (cred) => cred.id === id && cred.name.includes(nameLike)
-  );
-
-  return cred;
+  return Cypress.env("testCreds")[userName];
 }
 
 export function renameCreds(oldName: string, newName: string) {
@@ -349,93 +308,88 @@ export function checkTreeStructuresAreEqualExcept(
 
       const keyDiff = (a, b) => {
         return {
-          missingKeys:
-            a && Object.keys(a).filter((key) => b && !b.hasOwnProperty(key)),
-          unknownKeys:
-            b && Object.keys(b).filter((key) => a && !a.hasOwnProperty(key)),
+          missingKeys: Object.keys(a).filter((key) => !b.hasOwnProperty(key)),
+          unknownKeys: Object.keys(b).filter((key) => !a.hasOwnProperty(key)),
         };
       };
 
-      if (containedStruct && containingStruct) {
-        expect(
-          Object.keys(containingStruct).length,
-          `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
-            containingStruct
-          ).toString()}] - Diff: ${JSON.stringify(
-            keyDiff(containedStruct, containingStruct)
-          )}`
-        ).to.equal(Object.keys(containedStruct).length);
+      expect(
+        Object.keys(containingStruct).length,
+        `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
+          containingStruct
+        ).toString()}] - Diff: ${JSON.stringify(
+          keyDiff(containedStruct, containingStruct)
+        )}`
+      ).to.equal(Object.keys(containedStruct).length);
 
-        //push two hashes in same order
-        const containedKeys: string[] = Object.keys(containedStruct).sort();
-        const containingKeys: string[] = Object.keys(containingStruct).sort();
+      //push two hashes in same order
+      const containedKeys: string[] = Object.keys(containedStruct).sort();
+      const containingKeys: string[] = Object.keys(containingStruct).sort();
 
-        //iterate over hash
-        for (let count = 0; count < containedKeys.length; count++) {
-          const elementName = treeSoFar + "." + containedKeys[count];
-          const prettyElementName =
-            prettyTreeSoFar + "." + containedKeys[count];
-          //check if we asked to ignore this parameter
-          if (!excludeKeys.includes(elementName)) {
-            expect(
-              containingKeys,
-              `Expect result includes parameter ${prettyElementName} :::`
-            ).includes(containedKeys[count]);
-            //if element is a nested object, recursively call this function again over the nested onject
-            if (isArrayOrHash(containingStruct[containedKeys[count]])) {
-              checkTreeStructuresAreEqualExcept(
-                containedStruct[containedKeys[count]],
+      //iterate over hash
+      for (let count = 0; count < containedKeys.length; count++) {
+        const elementName = treeSoFar + "." + containedKeys[count];
+        const prettyElementName = prettyTreeSoFar + "." + containedKeys[count];
+        //check if we asked to ignore this parameter
+        if (!excludeKeys.includes(elementName)) {
+          expect(
+            containingKeys,
+            `Expect result includes parameter ${prettyElementName} :::`
+          ).includes(containedKeys[count]);
+          //if element is a nested object, recursively call this function again over the nested onject
+          if (isArrayOrHash(containingStruct[containedKeys[count]])) {
+            checkTreeStructuresAreEqualExcept(
+              containedStruct[containedKeys[count]],
+              containingStruct[containedKeys[count]],
+              excludeKeys,
+              elementName,
+              prettyElementName,
+              approximateTimes
+            );
+          } else {
+            //check we were asked to validate, or validate NOT NULL
+            if (containedStruct[containedKeys[count]] == NOT_NULL_STRING) {
+              expect(
                 containingStruct[containedKeys[count]],
-                excludeKeys,
-                elementName,
-                prettyElementName,
-                approximateTimes
-              );
+                `Expected ${prettyElementName} should not be NULL`
+              ).to.not.be.null;
+            } else if (approximateTimes.includes(elementName)) {
+              const comparedTime = new Date(
+                containingStruct[containedKeys[count]]
+              ).getTime();
+              const expectedTime = new Date(
+                containedStruct[containedKeys[count]]
+              ).getTime();
+              expect(
+                new Date(comparedTime),
+                `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`
+              ).to.be.within(expectedTime - 60000, expectedTime + 60000);
             } else {
-              //check we were asked to validate, or validate NOT NULL
-              if (containedStruct[containedKeys[count]] == NOT_NULL_STRING) {
+              //otherwise, check the values are as expected
+              const testVal = containingStruct[containedKeys[count]];
+              if (typeof testVal === "number" && !(testVal % 1 === 0)) {
+                // This is a floating point value, and we might have some precision issues, so allow a small
+                // 'epsilon' value of fuzziness when testing equality:
+                const EPSILON = 0.000001;
+                expect(
+                  testVal,
+                  `Expected ${prettyElementName} should be more than ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.be.gt(containedStruct[containedKeys[count]] - EPSILON);
+                expect(
+                  testVal,
+                  `Expected ${prettyElementName} should be less than ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.be.lt(containedStruct[containedKeys[count]] + EPSILON);
+              } else {
                 expect(
                   containingStruct[containedKeys[count]],
-                  `Expected ${prettyElementName} should not be NULL`
-                ).to.not.be.null;
-              } else if (approximateTimes.includes(elementName)) {
-                const comparedTime = new Date(
-                  containingStruct[containedKeys[count]]
-                ).getTime();
-                const expectedTime = new Date(
-                  containedStruct[containedKeys[count]]
-                ).getTime();
-                expect(
-                  new Date(comparedTime),
-                  `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`
-                ).to.be.within(expectedTime - 60000, expectedTime + 60000);
-              } else {
-                //otherwise, check the values are as expected
-                const testVal = containingStruct[containedKeys[count]];
-                if (typeof testVal === "number" && !(testVal % 1 === 0)) {
-                  // This is a floating point value, and we might have some precision issues, so allow a small
-                  // 'epsilon' value of fuzziness when testing equality:
-                  const EPSILON = 0.000001;
-                  expect(
-                    testVal,
-                    `Expected ${prettyElementName} should be more than ${JSON.stringify(
-                      containedStruct[containedKeys[count]]
-                    )}`
-                  ).to.be.gt(containedStruct[containedKeys[count]] - EPSILON);
-                  expect(
-                    testVal,
-                    `Expected ${prettyElementName} should be less than ${JSON.stringify(
-                      containedStruct[containedKeys[count]]
-                    )}`
-                  ).to.be.lt(containedStruct[containedKeys[count]] + EPSILON);
-                } else {
-                  expect(
-                    containingStruct[containedKeys[count]],
-                    `Expected ${prettyElementName} should equal ${JSON.stringify(
-                      containedStruct[containedKeys[count]]
-                    )}`
-                  ).to.equal(containedStruct[containedKeys[count]]);
-                }
+                  `Expected ${prettyElementName} should equal ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.equal(containedStruct[containedKeys[count]]);
               }
             }
           }
@@ -489,31 +443,5 @@ export function testRunOnApi(command: string, options = {}) {
         "Asked to run command on API server but have no credentials to do so"
       );
     }
-  }
-}
-
-export function checkMessages(response: any, expectedMessages: string[]) {
-  const messages = response.body.messages;
-  expect(messages).to.exist;
-  expectedMessages.forEach(function (message: string) {
-    expect(
-      messages.find((el: string) => el.includes(message)),
-      `Messages should contain ${message}`
-    ).to.exist;
-  });
-}
-
-export function checkWarnings(response: any, expectedWarnings: any) {
-  const warnings = response.body.warnings;
-  if (expectedWarnings == "none") {
-    expect(response.body.warnings).to.be.undefined;
-  } else {
-    expect(warnings).to.exist;
-    expectedWarnings.forEach(function (warning: string) {
-      expect(
-        warnings.find((el: string) => el.includes(warning)),
-        `Messages should contain ${warning}`
-      ).to.exist;
-    });
   }
 }

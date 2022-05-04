@@ -3,7 +3,6 @@
 
 import "../commands/api/authenticate";
 import "../commands/api/group";
-import "../commands/api/group-station";
 import "../commands/api/user";
 import "../commands/api/device";
 import "../commands/api/alerts";
@@ -11,8 +10,8 @@ import "../commands/api/events";
 import "../commands/api/recording";
 import "../commands/api/recording-tag";
 import "../commands/api/recording-tests";
-import "../commands/api/station";
 import "../commands/api/monitoring";
+import "../commands/api/stations";
 import "../commands/api/track";
 import "../commands/api/visits";
 import "../commands/browsegui/user";

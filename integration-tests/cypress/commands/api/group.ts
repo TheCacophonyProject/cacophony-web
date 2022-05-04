@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 import { getTestName } from "../names";
-import { logTestDescription } from "../descriptions";
+import { logTestDescription, prettyLog } from "../descriptions";
 
 import {
   getCreds,
@@ -10,12 +10,17 @@ import {
   saveIdOnly,
   v1ApiPath,
   sortArrayOn,
+  sortArrayOnHash,
   checkTreeStructuresAreEqualExcept,
 } from "../server";
 
-import { ApiGroupReturned, ApiGroupsDevice } from "../types";
-
-import { ApiGroupUserResponse } from "@typedefs/api/group";
+import {
+  ApiGroupsUserReturned,
+  ApiGroupReturned,
+  ApiGroupsDevice,
+  ApiStationData,
+} from "../types";
+import { ApiStationResponse } from "@typedefs/api/station";
 
 Cypress.Commands.add(
   "apiGroupUserAdd",
@@ -113,14 +118,14 @@ Cypress.Commands.add(
   (
     userName: string,
     groupName: string,
-    expectedUsers: ApiGroupUserResponse[],
+    expectedUsers: ApiGroupsUserReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
     let fullGroupName: string;
-    let sortUsers: ApiGroupUserResponse[];
-    let sortExpectedUsers: ApiGroupUserResponse[];
+    let sortUsers: ApiGroupsUserReturned[];
+    let sortExpectedUsers: ApiGroupsUserReturned[];
 
     if (additionalChecks["useRawGroupName"] === true) {
       fullGroupName = groupName;
@@ -405,6 +410,119 @@ Cypress.Commands.add(
         checkTreeStructuresAreEqualExcept(
           sortExpectedDevices,
           sortDevices,
+          excludeCheckOn
+        );
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiGroupStationsUpdate",
+  (
+    userName: string,
+    groupIdOrName: string,
+    stations: ApiStationData[],
+    updateFrom?: string,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    let fullGroupName: string;
+
+    //Make group name unique unless we're asked not to
+    if (additionalChecks["useRawGroupName"] === true) {
+      fullGroupName = groupIdOrName;
+    } else {
+      fullGroupName = getTestName(groupIdOrName);
+    }
+
+    logTestDescription(
+      `Add stations ${prettyLog(stations)} to group '${groupIdOrName}' `,
+      { userName, groupIdOrName, stations, updateFrom }
+    );
+
+    const body: { [key: string]: string } = {
+      stations: JSON.stringify(stations),
+    };
+    if (updateFrom !== undefined) {
+      body["fromDate"] = updateFrom;
+    }
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(`groups/${fullGroupName}/stations`),
+        body,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["warnings"]) {
+        const warnings = response.body.warnings;
+        const expectedWarnings = additionalChecks["warnings"];
+        expect(warnings).to.exist;
+        expectedWarnings.forEach(function (warning: string) {
+          expect(warnings, "Expect warning to be present").to.contain(warning);
+        });
+      }
+      if (statusCode == 200) {
+        //store station Ids against names
+        for (let count = 0; count < stations.length; count++) {
+          const stationName = stations[count].name;
+          const stationId = response.body.stationIdsAddedOrUpdated[count];
+          saveIdOnly(stationName, stationId);
+        }
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiGroupsStationsCheck",
+  (
+    userName: string,
+    groupIdOrName: string,
+    expectedStations: ApiStationResponse[],
+    excludeCheckOn: any = [],
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(`Check stations for group ${groupIdOrName}`, {
+      userName,
+      groupIdOrName,
+    });
+    let fullGroupName: string;
+    let sortStations: ApiStationResponse[];
+    let sortExpectedStations: ApiStationResponse[];
+
+    //Make group name unique unless we're asked not to
+    if (additionalChecks["useRawGroupName"] === true) {
+      fullGroupName = groupIdOrName;
+    } else {
+      fullGroupName = getTestName(groupIdOrName);
+    }
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: v1ApiPath(`groups/${fullGroupName}/stations`),
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (statusCode === 200) {
+        //sort expected and actual events into same order (means groupName, devicename, username, userId is mandatory in   expectedGroup)
+        if (additionalChecks["doNotSort"] === true) {
+          sortStations = response.body.stations;
+          sortExpectedStations = expectedStations;
+        } else {
+          sortStations = sortArrayOnHash(response.body.stations, "location");
+          sortExpectedStations = sortArrayOnHash(expectedStations, "location");
+        }
+
+        checkTreeStructuresAreEqualExcept(
+          sortExpectedStations,
+          sortStations,
           excludeCheckOn
         );
       }
