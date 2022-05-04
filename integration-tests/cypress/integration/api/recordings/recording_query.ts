@@ -9,7 +9,6 @@ import {
   TEMPLATE_AUDIO_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
   TEMPLATE_TRACK,
-  TEMPLATE_AUDIO_TRACK,
   TEMPLATE_THERMAL_RECORDING,
 } from "@commands/dataTemplate";
 
@@ -29,8 +28,6 @@ import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];
   const suPassword = getCreds("superuser")["password"];
-  const queryHasPositions = false;
-  //TODO enable after merge
 
   //Do not validate IDs or additoonaMetadata
   //On test server, do not validate processingData, as recordings may be processed during test
@@ -72,11 +69,6 @@ describe("Recordings query using where", () => {
   track4.start_s = 2;
   track4.end_s = 5;
   track4.predictions = [];
-  const track5 = JSON.parse(JSON.stringify(TEMPLATE_AUDIO_TRACK));
-  track5.start_s = 10;
-  track5.end_s = 20;
-  track5.minFreq = 20;
-  track5.maxFreq = 10000;
 
   //Four recording templates for setting and their expected return values
   const recording1 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
@@ -131,8 +123,7 @@ describe("Recordings query using where", () => {
           "rqCamera1",
           "rqGroup",
           null,
-          recording1,
-          false
+          recording1
         );
         cy.apiRecordingAdd(
           "rqCamera1",
@@ -146,8 +137,7 @@ describe("Recordings query using where", () => {
             "rqCamera1",
             "rqGroup",
             null,
-            recording2,
-            false
+            recording2
           );
           expectedRecording2.processingState = RecordingProcessingState.Corrupt;
 
@@ -163,12 +153,10 @@ describe("Recordings query using where", () => {
               "rqCamera1b",
               "rqGroup",
               null,
-              recording3,
-              false
+              recording3
             );
-            // TODO Issue 103:These parameters missing from result. If we
-            // never return them, why do we have them?
-            // Workaround: remove parameters not returned by where
+            // TODO: Are these parameters deliberetely msssing from result???
+            // remove parameters not returned by where
             delete expectedRecording3.version;
             delete expectedRecording3.batteryCharging;
             delete expectedRecording3.airplaneModeOn;
@@ -189,8 +177,7 @@ describe("Recordings query using where", () => {
                 "rqCamera1b",
                 "rqGroup",
                 null,
-                recording4,
-                false
+                recording4
               );
 
               expectedRecording4.processingState =
@@ -216,13 +203,10 @@ describe("Recordings query using where", () => {
               ];
               expectedRecording4.tracks[0].filtered = false;
 
-              // TODO Issue 104:  positions returned as [] blank even
-              // where they exist.  If we don't support this parameter, do
-              // not return it at all
-              // TODO enable after merge
-              //expectedRecording1.tracks[0].positions = [];
-              //expectedRecording2.tracks[0].positions = [];
-              //expectedRecording4.tracks[0].positions = [];
+              // FIXME TODO: should positons really be blank in query but not in get recording?
+              expectedRecording1.tracks[0].positions = [];
+              expectedRecording2.tracks[0].positions = [];
+              expectedRecording4.tracks[0].positions = [];
 
               cy.apiRecordingsQueryCheck(
                 "rqGroupAdmin",
@@ -270,14 +254,10 @@ describe("Recordings query using where", () => {
           "rqCamera2",
           "rqGroup2",
           null,
-          tempRecording,
-          false
+          tempRecording
         );
-        // TODO Issue 104:  positions returned as [] blank even
-        // where they exist.  If we don't support this parameter, do
-        // not return it at all
-        // TODO enable after merge
-        //expectedRecording[count].tracks[0].positions = [];
+        // FIXME TODO: should positions really be blank in query but not in get recording?
+        expectedRecording[count].tracks[0].positions = [];
       });
     }
   });
@@ -609,7 +589,7 @@ describe("Recordings query using where", () => {
     );
   });
 
-  //TODO: Issue 91: /ap1/v1/recordings/count ignoring tags filter
+  //TODO: Issue 92: /ap1/v1/recordings/count ignoring tags filter
   it("Can limit query by tags and tagmode", () => {
     cy.log("Tagged as possum");
     cy.apiRecordingsQueryCheck(
@@ -739,7 +719,7 @@ describe("Recordings query using where", () => {
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, undefined, HTTP_Unprocessable);
   });
 
-  //TODO: Issue 91: /ap1/v1/recordings/count ignoring view-mode
+  //TODO: Issue 92: /ap1/v1/recordings/count ignoring view-mode
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user as user should see only their recordings", () => {
       cy.apiSignInAs(null, null, superuser, suPassword);
@@ -773,128 +753,9 @@ describe("Recordings query using where", () => {
     it.skip("Super-user as user should see only their recordings", () => {});
   }
 
-  it("Count shows all matches (not just current mage) if countAll=true specified", () => {
-    //note: .slice takes params (startPos, endPos+1) - how wierd is that?!
-    cy.log("Get first page, setting limit - expect count of ALL results");
-    cy.apiRecordingsQueryCheck(
-      "rqGroup2Admin",
-      {
-        where: {},
-        offset: 0,
-        limit: 3,
-        order: '[["id", "ASC"]]',
-        countAll: true,
-      },
-      expectedRecording.slice(0, 3),
-      EXCLUDE_PARAMS,
-      HTTP_OK200,
-      { count: 20 }
-    );
-
-    cy.log(
-      "Get intermediate page, setting limit - expect count of ALL results"
-    );
-    cy.apiRecordingsQueryCheck(
-      "rqGroup2Admin",
-      {
-        where: {},
-        offset: 3,
-        limit: 3,
-        order: '[["id", "ASC"]]',
-        countAll: true,
-      },
-      expectedRecording.slice(3, 6),
-      EXCLUDE_PARAMS,
-      HTTP_OK200,
-      { count: 20 }
-    );
-
-    cy.log(
-      "Get final (part) page, setting limit - expect count of ALL results"
-    );
-    cy.apiRecordingsQueryCheck(
-      "rqGroup2Admin",
-      {
-        where: {},
-        offset: 19,
-        limit: 3,
-        order: '[["id", "ASC"]]',
-        countAll: true,
-      },
-      expectedRecording.slice(19, 20),
-      EXCLUDE_PARAMS,
-      HTTP_OK200,
-      { count: 20 }
-    );
-  });
-
-  it("Count restricted to limit if countAll=false specified", () => {
-    //note: .slice takes params (startPos, endPos+1) - how wierd is that?!
-    cy.log("Get first page, setting limit - expect count of this page only");
-    cy.apiRecordingsQueryCheck(
-      "rqGroup2Admin",
-      {
-        where: {},
-        offset: 0,
-        limit: 3,
-        order: '[["id", "ASC"]]',
-        countAll: false,
-      },
-      expectedRecording.slice(0, 3),
-      EXCLUDE_PARAMS,
-      HTTP_OK200,
-      { count: 3 }
-    );
-
-    cy.log(
-      "Get intermediate page, setting limit - expect count of this page only"
-    );
-    cy.apiRecordingsQueryCheck(
-      "rqGroup2Admin",
-      {
-        where: {},
-        offset: 3,
-        limit: 3,
-        order: '[["id", "ASC"]]',
-        countAll: false,
-      },
-      expectedRecording.slice(3, 6),
-      EXCLUDE_PARAMS,
-      HTTP_OK200,
-      { count: 3 }
-    );
-
-    cy.log(
-      "Get final (part) page, setting limit - expect count of this page only"
-    );
-    cy.apiRecordingsQueryCheck(
-      "rqGroup2Admin",
-      {
-        where: {},
-        offset: 19,
-        limit: 3,
-        order: '[["id", "ASC"]]',
-        countAll: false,
-      },
-      expectedRecording.slice(19, 20),
-      EXCLUDE_PARAMS,
-      HTTP_OK200,
-      { count: 1 }
-    );
-  });
-
-  it("Default countAll is 'true' (all results counted)", () => {
-    cy.log("Get first page, setting limit - expect count to count ALL results");
-    cy.apiRecordingsQueryCheck(
-      "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
-      expectedRecording.slice(0, 3),
-      EXCLUDE_PARAMS,
-      HTTP_OK200,
-      { count: 20 }
-    );
-  });
-
   //TODO: wrapper would need to check results contain expected results ... not yet implemented in test wrapper
   it.skip("Super-user should see all recordings", () => {});
+
+  //TODO: This functionality needs to be reworked,  Issue 95
+  it.skip("Can specify location precision", () => {});
 });

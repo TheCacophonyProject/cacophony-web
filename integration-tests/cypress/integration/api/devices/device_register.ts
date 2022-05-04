@@ -2,15 +2,11 @@
 
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import { DeviceHistoryEntry } from "@commands/types";
-import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
-
 import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_OK200,
   HTTP_Unprocessable,
-  NOT_NULL_STRING,
 } from "@commands/constants";
 import { DeviceType } from "@typedefs/api/consts";
 
@@ -28,23 +24,6 @@ describe("Device register", () => {
     cy.testCreateUserGroupAndDevice("Anita", camsGroup, "gotya");
     cy.apiDeviceAdd("defaultcam", camsGroup);
     cy.apiGroupAdd("Anita", otherCams, true);
-  });
-
-  it("Adding device created valid deviceHistory entry", () => {
-    cy.apiDeviceAdd("aNewDevice", camsGroup, 1234567).then(() => {
-      const expectedHistory: DeviceHistoryEntry =
-        TestCreateExpectedHistoryEntry(
-          "aNewDevice",
-          camsGroup,
-          NOT_NULL_STRING,
-          null,
-          "register",
-          null
-        );
-      expectedHistory.saltId = 1234567;
-
-      cy.apiDeviceHistoryCheck("Anita", "aNewDevice", [expectedHistory]);
-    });
   });
 
   it("group can have multiple devices with a different names", () => {

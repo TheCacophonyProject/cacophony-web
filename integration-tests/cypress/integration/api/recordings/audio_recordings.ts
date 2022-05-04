@@ -113,7 +113,39 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Ussue 108: Invalid duration ignored
+  //TODO: confirm audio files do not have duration embedded?
+  it.skip("Can read duration from file if not supplied", () => {
+    cy.log("Takes duration from recording if not specified");
+    const recording13 = TestCreateRecordingData(templateRecording);
+    let expectedRecording13: ApiAudioRecordingResponse;
+
+    delete recording13.duration;
+    cy.apiRecordingAdd(
+      "rarDevice1",
+      recording13,
+      "60sec-audio.mp4",
+      "rarRecording13"
+    ).then(() => {
+      expectedRecording13 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rarRecording13",
+        "rarDevice1",
+        "rarGroup",
+        null,
+        recording13
+      );
+      expectedRecording13.duration = 60;
+      cy.apiRecordingCheck(
+        "rarGroupAdmin",
+        "rarRecording13",
+        expectedRecording13,
+        EXCLUDE_IDS
+      );
+      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording13");
+    });
+  });
+
+  //TODO: Invalid duration causes server error.  Should be caught with 4xx
   it.skip("Handles invalid duration correctly", () => {
     cy.log("Invalid duration rejected correctly");
     const recording14 = TestCreateRecordingData(templateRecording);
@@ -156,6 +188,66 @@ describe("Recordings - audio recording parameter tests", () => {
         EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording15");
+    });
+
+    //can have blank recordingDateTime
+    const recording16 = TestCreateRecordingData(templateRecording);
+    let expectedRecording16: ApiAudioRecordingResponse;
+
+    recording16.recordingDateTime = null;
+    cy.apiRecordingAdd(
+      "rarDevice1",
+      recording16,
+      "60sec-audio.mp4",
+      "rarRecording16"
+    ).then(() => {
+      expectedRecording16 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rarRecording16",
+        "rarDevice1",
+        "rarGroup",
+        null,
+        recording16
+      );
+      expectedRecording16.recordingDateTime = recording16.recordingDateTime;
+      cy.apiRecordingCheck(
+        "rarGroupAdmin",
+        "rarRecording16",
+        expectedRecording16,
+        EXCLUDE_IDS
+      );
+      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording16");
+    });
+  });
+
+  //TODO: confirm audio files do not have dateTime embedded?
+  it.skip("Can read recordingDateTime from file if not provided", () => {
+    const recording7 = TestCreateRecordingData(templateRecording);
+    let expectedRecording7: ApiAudioRecordingResponse;
+
+    delete recording7.recordingDateTime;
+    cy.apiRecordingAdd(
+      "rarDevice1",
+      recording7,
+      "60sec-audio.mp4",
+      "rarRecording7"
+    ).then(() => {
+      expectedRecording7 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rarRecording7",
+        "rarDevice1",
+        "rarGroup",
+        null,
+        recording7
+      );
+      expectedRecording7.recordingDateTime = "2021-03-18T17:36:46.555Z";
+      cy.apiRecordingCheck(
+        "rarGroupAdmin",
+        "rarRecording7",
+        expectedRecording7,
+        EXCLUDE_IDS
+      );
+      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording7");
     });
   });
 
@@ -943,7 +1035,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Issue 108 - No validation in API on battery status fields
+  //TODO: No validation in API on battery status fields
   it.skip("Invalid battery charging data rejected correctly", () => {
     cy.log("Invalid charge level");
     const recording43 = TestCreateRecordingData(templateRecording);
@@ -1085,7 +1177,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Issue 108 - Invalid airplane mode causes server error
+  //TODO: Invalid airplane mode causes server error
   it.skip("Invalid airplane mode data rejected correctly", () => {
     const recording45 = TestCreateRecordingData(templateRecording);
     recording45.airplaneModeOn = "NotAValidValue" as unknown as boolean;
@@ -1280,7 +1372,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Issue 109 - Invalid relativeToDawn/Dusk causes server error
+  //TODO: Invalid relativeToDawn/Dusk causes server error
   it.skip("Invalid relativeToDawn/dusk data rejected correctly", () => {
     cy.log("Invalid relativeToDawn");
     const recording52 = TestCreateRecordingData(templateRecording);
