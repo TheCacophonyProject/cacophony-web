@@ -390,10 +390,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(`${baseUrl}/end-user-agreement/latest`, ...endUserAgreementOptions);
 
   const changePasswordOptions = [
-    validateFields([
-      body("token").exists(),
-      validPasswordOf(body("password"))
-    ]),
+    validateFields([body("token").exists(), validPasswordOf(body("password"))]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response) => {
       if (response.locals.user.password != response.locals.resetInfo.password) {
@@ -402,9 +399,9 @@ export default function (app: Application, baseUrl: string) {
           messages: ["Your password has already been changed"],
         });
       }
-      const result = await response.locals.user.updatePassword(
-        request.body.password
-      );
+      const result = await response.locals.user.update({
+        password: request.body.password,
+      });
       if (!result) {
         return responseUtil.send(response, {
           statusCode: 403,

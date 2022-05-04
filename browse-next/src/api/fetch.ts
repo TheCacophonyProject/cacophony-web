@@ -2,9 +2,21 @@ import { CurrentViewAbortController } from "@/router";
 import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
 import type { LoggedInUser } from "@/models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
+import { reactive, ref } from "vue";
+import type {Ref} from "vue";
+import { delayMs, delayMsThen } from "@/utils";
 
 let lastApiVersion: string | null = null;
 
+export const INITIAL_RETRY_INTERVAL = 3000;
+export const MAX_RETRY_COUNT = 30;
+
+export const networkConnectionError = reactive({
+  hasConnectionError: false,
+  retryInterval: INITIAL_RETRY_INTERVAL,
+  retryCount: 0,
+  control: false,
+});
 /**
  * Makes a request to the given url with default handling for cors and authentication.
  * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.
@@ -37,7 +49,22 @@ export async function fetch(url: string, request: RequestInit = {}) {
   let response;
   try {
     response = await window.fetch(url, request);
+    networkConnectionError.retryInterval = INITIAL_RETRY_INTERVAL;
+    networkConnectionError.retryCount = 0;
+    networkConnectionError.hasConnectionError = false;
   } catch (e) {
+    networkConnectionError.hasConnectionError = true;
+    const delay = networkConnectionError.retryInterval;
+    if (networkConnectionError.retryCount < MAX_RETRY_COUNT) {
+      return delayMsThen(
+        delay,
+        () => {
+          return fetch(url, request);
+        },
+        networkConnectionError
+      );
+    }
+
     // Network error?
     return {
       result: {

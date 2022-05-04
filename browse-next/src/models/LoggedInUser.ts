@@ -17,6 +17,8 @@ export interface PendingRequest {
 
 export const CurrentUser: Ref<LoggedInUser | null> = ref(null);
 
+// TODO - Test opening a whole lot of tabs, print who wins the tokenRefresh race in the page title
+
 export const userIsLoggedIn = computed<boolean>({
   get: () => CurrentUser.value !== null,
   set: (val: boolean) => {

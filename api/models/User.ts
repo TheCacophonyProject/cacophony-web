@@ -39,7 +39,6 @@ const Op = Sequelize.Op;
 export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
   comparePassword: (password: string) => Promise<boolean>;
-  updatePassword: (password: string) => Promise<boolean>;
   resetPassword: () => Promise<boolean>;
 
   getDeviceIds: () => Promise<number[]>;
@@ -262,11 +261,6 @@ export default function (
       });
     });
   };
-  User.prototype.updatePassword = async function (
-    password: string
-  ): Promise<User> {
-    return this.update({ password: password });
-  };
 
   User.prototype.resetPassword = async function (): Promise<boolean> {
     return sendResetEmail(this, this.password);
@@ -285,9 +279,6 @@ async function beforeModify(user) {
   }
 }
 
-function beforeValidate(user): Promise<void> {
-  return new Promise((resolve) => {
-    user.setDataValue("email", user.getDataValue("email").toLowerCase());
-    resolve();
-  });
+function beforeValidate(user: User) {
+  user.setDataValue("email", user.getDataValue("email").toLowerCase());
 }

@@ -6,6 +6,7 @@ import { computed, onBeforeMount, ref } from "vue";
 import type { ErrorResult } from "@api/types";
 import { changePassword, validatePasswordResetToken } from "@api/User";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import { useRoute, useRouter } from "vue-router";
 
 const userPassword: FormInputValue = formFieldInputText();
 const userPasswordConfirmation: FormInputValue = formFieldInputText();
@@ -37,8 +38,10 @@ const registerErrorMessage = ref<ErrorResult | false>(false);
 const resetInProgress = ref(false);
 
 // This starts of true when the page loads
-const checkingResetToken = ref(true);
+const checkingResetToken = ref(false);
 const invalidResetToken = ref(false);
+const changedPassword = ref(false);
+const resetToken = ref("");
 const resetUser = ref<ApiLoggedInUserResponse | null>(null);
 const userName = computed(() => {
   if (resetUser.value === null) {
@@ -72,18 +75,39 @@ const registerErrorMessagesDisplay = computed(() => {
 const resetFormIsFilledAndValid = computed<boolean>(
   () => isValidPassword.value && passwordConfirmationMatches.value
 );
-
+const router = useRouter();
 onBeforeMount(async () => {
-  // TODO - Validate the reset token.  If used, show a message instead of the form.
-  const token = "FOO";
-  const validateTokenResponse = await validatePasswordResetToken(token);
-  if (!validateTokenResponse.success) {
-    // Grab the error.
-    invalidResetToken.value = true;
+  const { params } = useRoute();
+  if (params.token) {
+    checkingResetToken.value = true;
+    if (Array.isArray(params.token) && params.token.length) {
+      resetToken.value = params.token.shift() as string;
+    } else if (typeof params.token === "string") {
+      resetToken.value = params.token;
+    }
+    const validateTokenResponse = await validatePasswordResetToken(
+      params.token as string
+    );
+    if (!validateTokenResponse.success) {
+      // Grab the error.
+      debugger;
+      invalidResetToken.value = true;
+      await router.push({
+        name: "reset-password",
+      });
+    } else {
+      resetUser.value = validateTokenResponse.result.userData;
+      await router.push({
+        name: "reset-password",
+      });
+    }
+    checkingResetToken.value = false;
   } else {
-    resetUser.value = validateTokenResponse.result.userData;
+    // No token supplied, redirect to sign-in
+    await router.push({
+      path: "sign-in",
+    });
   }
-  checkingResetToken.value = false;
 });
 
 const resetPassword = async () => {
@@ -94,11 +118,14 @@ const resetPassword = async () => {
     userPassword.value
   );
   if (changePasswordResponse.success) {
-    // FIXME
+    // FIXME - sign in automatically now?
+    changedPassword.value = true;
+    // TODO, show success message, and sign-in button.
   } else {
-    // FIXME
-
+    // TODO What failures can we have.
     // FIXME - handle network connection refused.
+    // TODO - Should network connection failure be a global message? (Maybe similar to the rocket chat banner).
+    //  Once we get a network connection failure, we should poll to re-submit the request using an exponential back-off strategy.
   }
   resetInProgress.value = false;
 };
@@ -112,14 +139,30 @@ const resetPassword = async () => {
       class="mx-auto d-block mb-5"
     />
     <h1 class="h4 text-center mb-4">
-      <span v-if="checkingResetToken">Checking...</span>
+      <span v-if="checkingResetToken">Authorising...</span>
+      <span v-else-if="invalidResetToken" class="alert-danger p-2 rounded"
+        >Invalid reset token</span
+      >
       <span v-else>Reset your password</span>
     </h1>
+    <div v-if="invalidResetToken">
+      <p class="mb-4 text-center">
+        Reason the reset token was invalid (already used, validation failed etc)
+      </p>
+      <div class="alternate-action-links d-flex justify-content-between my-2">
+        <router-link to="register" class="small"
+          >Create a new account</router-link
+        >
+        <router-link to="sign-in" class="small"
+          >Sign in to your account</router-link
+        >
+      </div>
+    </div>
     <div v-if="checkingResetToken" class="text-center mb-5">
       <span class="spinner-border" />
     </div>
-    <div v-else>
-      <h2>{{ userName }}</h2>
+    <div v-else-if="!invalidResetToken">
+      <h2>{{ userName }}, {{ resetToken }}</h2>
       <b-form
         class="d-flex flex-column"
         @submit.stop.prevent="resetPassword"
@@ -211,5 +254,12 @@ const resetPassword = async () => {
 }
 .toggle-password-visibility-btn {
   min-width: 3rem;
+}
+.alternate-action-links a {
+  text-decoration: none;
+  text-align: center;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 </style>

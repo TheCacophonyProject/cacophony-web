@@ -404,12 +404,8 @@ export default function (app: Application, baseUrl: string) {
   );
 
   const resetPasswordOptions = [
-    validateFields([
-        body("email").isEmail(),
-    ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body("email")
-    ),
+    validateFields([body("email").isEmail()]),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body("email")),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
         const user = response.locals.user as User;
@@ -422,7 +418,9 @@ export default function (app: Application, baseUrl: string) {
           if (!sendingSuccess) {
             return responseUtil.send(response, {
               statusCode: 500,
-              messages: ["We failed to send your password recovery email, please check that you've entered your email correctly."],
+              messages: [
+                "We failed to send your password recovery email, please check that you've entered your email correctly.",
+              ],
             });
           }
         }
@@ -456,12 +454,13 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post("/resetpassword", ...resetPasswordOptions);
 
-
   const validateTokenOptions = [
     validateFields([body("token").exists()]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response) => {
-      if (response.locals.user.password !== response.locals.resetInfo.password) {
+      if (
+        response.locals.user.password !== response.locals.resetInfo.password
+      ) {
         return responseUtil.send(response, {
           statusCode: 403,
           messages: ["Your password has already been changed"],

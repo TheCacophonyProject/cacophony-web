@@ -13,8 +13,9 @@ import {
   faRetweet,
   faPlus,
   faRightFromBracket,
-    faEye,
-    faEyeSlash
+  faEye,
+  faEyeSlash,
+  faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -30,8 +31,9 @@ library.add(
   faRetweet,
   faPlus,
   faRightFromBracket,
-    faEye,
-        faEyeSlash
+  faEye,
+  faEyeSlash,
+  faTriangleExclamation
 );
 
 export default FontAwesomeIcon;

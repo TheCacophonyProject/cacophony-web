@@ -2,10 +2,10 @@ import { NextFunction, Request, Response } from "express";
 import {
   checkAccess,
   DecodedJWTToken,
-  getVerifiedJWT,
-  lookupEntity,
   getDecodedResetToken,
   getDecodedToken,
+  getVerifiedJWT,
+  lookupEntity,
 } from "./auth";
 import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
@@ -22,6 +22,7 @@ import { Recording } from "models/Recording";
 import { SuperUsers } from "@/Server";
 import { Station } from "@/models/Station";
 import { Schedule } from "@/models/Schedule";
+import { UserGlobalPermission } from "@typedefs/api/consts";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -67,13 +68,14 @@ const extractJwtAuthenticatedEntity =
               id: jwtDecoded.id,
               hasGlobalRead: () => false,
               hasGlobalWrite: () => false,
-              globalPermission: "off",
+              globalPermission: UserGlobalPermission.Off,
             };
           } else {
             response.locals.requestUser = {
               id: jwtDecoded.id,
               hasGlobalRead: () => true,
-              hasGlobalWrite: () => superUserPermissions === "write",
+              hasGlobalWrite: () =>
+                superUserPermissions === UserGlobalPermission.Write,
               globalPermission: superUserPermissions,
             };
           }
@@ -105,7 +107,8 @@ const extractJwtAuthenticatedEntity =
       ) {
         const globalPermissions = (response.locals.requestUser as User)
           .globalPermission;
-        response.locals.viewAsSuperUser = globalPermissions !== "off";
+        response.locals.viewAsSuperUser =
+          globalPermissions !== UserGlobalPermission.Off;
       }
 
       if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
@@ -114,7 +117,6 @@ const extractJwtAuthenticatedEntity =
 
       return next();
     } catch (e) {
-      logger.error("HERE %s", e);
       return next(e);
     }
   };
@@ -1211,7 +1213,7 @@ const getUser =
       userWhere = {
         [Op.or]: [
           { username: userNameOrEmailOrId },
-          { email: userNameOrEmailOrId },
+          { email: userNameOrEmailOrId.toLowerCase() },
         ],
       };
     }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterView, RouterLink } from "vue-router";
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
+import NetworkConnectionAlertModal from "@/components/NetworkConnectionAlertModal.vue";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 import {
   userIsLoggedIn,
@@ -26,8 +27,12 @@ onBeforeMount(async () => {
 });
 </script>
 <template>
+  <network-connection-alert-modal />
   <git-release-info-bar />
-  <main class="justify-content-center align-items-center d-flex" v-if="isLoggingInAutomatically">
+  <main
+    class="justify-content-center align-items-center d-flex"
+    v-if="isLoggingInAutomatically"
+  >
     <h1 class="h3"><b-spinner /> Signing in...</h1>
   </main>
   <main id="main-wrapper" class="d-flex logged-in" v-else-if="userIsLoggedIn">

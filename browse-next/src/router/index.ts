@@ -125,6 +125,12 @@ const router = createRouter({
       beforeEnter: cancelPendingRequests,
     },
     {
+      path: "/reset-password/:token",
+      name: "validate-reset-password",
+      component: () => import("../views/ResetPasswordView.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
+    {
       path: "/reset-password",
       name: "reset-password",
       component: () => import("../views/ResetPasswordView.vue"),
