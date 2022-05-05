@@ -65,7 +65,7 @@ export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   processingMeta: null,
   GroupId: NOT_NULL,
   DeviceId: NOT_NULL,
-  StationId: null,
+  StationId: NOT_NULL,
   recordingDateTime: "2021-01-01T01:01:01.018Z",
   duration: 60,
   location: null,
@@ -87,6 +87,8 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
   duration: 60,
   groupId: 389,
   groupName: "mattb-audio",
+  stationId: NOT_NULL,
+  stationName: NOT_NULL_STRING,
   id: 204771,
   location: {
     lat: -43.53345,
@@ -127,6 +129,53 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
 };
 
 //THERMAL RECORDINGS
+
+export const TEMPLATE_AUDIO_TRACK: ApiTrackSet = {
+  start_s: 0,
+  end_s: 3,
+  minFreq: 10,
+  maxFreq: 1000,
+  predictions: [
+    {
+      confidence: 1,
+      model_id: 1,
+      confident_tag: "morepork",
+    },
+  ],
+  //  positions: [],
+  //  TODO enable after merge
+  automatic: true,
+};
+
+export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
+  start: 0,
+  end: 3,
+  minFreq: 10,
+  maxFreq: 1000,
+  id: NOT_NULL,
+  filtered: false,
+  automatic: true,
+  //  positions: [
+  //    {
+  //      x: 111,
+  //      y: 17,
+  //      width: 48,
+  //      height: 75,
+  //      order: NOT_NULL,
+  //    },
+  //  ],
+  // TODO enable after merge
+  tags: [
+    {
+      what: "morepork",
+      data: { name: "Master" },
+      automatic: true,
+      confidence: 1,
+      trackId: NOT_NULL,
+      id: NOT_NULL,
+    },
+  ],
+};
 
 export const TEMPLATE_TRACK: ApiTrackSet = {
   id: 2,
@@ -180,16 +229,17 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
   id: NOT_NULL,
   filtered: false,
   automatic: true,
-  positions: [
-    {
-      x: 111,
-      y: 17,
-      width: 48,
-      height: 75,
-      //frameNumber: 44, FIXME: PATRICK: Remove once GPs changes integrated
-      order: NOT_NULL,
-    },
-  ],
+  // TODO enable after merge
+  //  positions: [
+  //    {
+  //      x: 111,
+  //      y: 17,
+  //      width: 48,
+  //      height: 75,
+  //      //frameNumber: 44, FIXME: PATRICK: Remove once GPs changes integrated
+  //      order: NOT_NULL,
+  //    },
+  //  ],
   tags: [
     {
       what: "cat",
@@ -214,8 +264,11 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: { lat: -45.29115, lng: 169.30845 },
     type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
+    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 5 },
+    //additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
+    stationId: NOT_NULL,
+    stationName: NOT_NULL_STRING,
     comment: "This is a comment",
     processing: false,
     tags: [],
@@ -231,7 +284,7 @@ export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {
   additionalMetadata: {
     algorithm: 31143,
     previewSecs: 5,
-    totalFrames: 141,
+    totalFrames: 5,
   },
   metadata: {
     tracks: [TEMPLATE_TRACK],
@@ -263,7 +316,7 @@ export const TEMPLATE_THERMAL_RECORDING_PROCESSING: ApiRecordingForProcessing =
     processingMeta: null,
     GroupId: NOT_NULL,
     DeviceId: NOT_NULL,
-    StationId: null,
+    StationId: NOT_NULL,
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
     location: null,
