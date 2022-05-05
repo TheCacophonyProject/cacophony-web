@@ -31,7 +31,7 @@ import {
 } from "@typedefs/api/common";
 import util from "./util/util";
 import { Station } from "@models/Station";
-//import { tryToMatchLocationToStationInGroup } from "@api/V1/recordingUtil";
+import { tryToMatchLocationToStationInGroup } from "@api/V1/recordingUtil";
 
 const Op = Sequelize.Op;
 
@@ -380,6 +380,14 @@ order by hour;
     const now = new Date();
     let stationToAssign;
 
+    if (this.location) {
+      // NOTE: This needs to happen outside the transaction to succeed.
+      stationToAssign = await tryToMatchLocationToStationInGroup(
+        this.location,
+        newGroup.id,
+        now
+      );
+    }
     try {
       await sequelize.transaction(
         {

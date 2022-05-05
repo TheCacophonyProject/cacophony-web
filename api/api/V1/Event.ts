@@ -44,7 +44,7 @@ import {
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { IsoFormattedDateString } from "@typedefs/api/common";
-//import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
+import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -75,6 +75,14 @@ const uploadEvent = async (
     if (description.type === "config") {
       try {
         const details = JSON.parse(description.details);
+        if (details.location !== null) {
+          await maybeUpdateDeviceHistory(
+            device,
+            { lat: details.location.latitude, lng: details.location.longitude },
+            new Date(details.location.updated),
+            "config"
+          );
+        }
       } catch (e) {
         //...
       }
