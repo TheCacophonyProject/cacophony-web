@@ -2,6 +2,11 @@ import CacophonyApi from "./api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { IsoFormattedDateString, UserId } from "@typedefs/api/common";
 import type { FetchResult, JwtToken } from "@api/types";
+import type { UserGlobalPermission } from "@typedefs/api/consts";
+import type { EndUserAgreementVersion } from "@typedefs/api/common";
+import type { ApiUserSettings } from "@typedefs/api/user";
+
+const NO_ABORT = false;
 
 export const login = (userEmail: string, password: string) =>
   CacophonyApi.post("/api/v1/users/authenticate", {
@@ -17,9 +22,13 @@ export const login = (userEmail: string, password: string) =>
   >;
 
 export const refreshLogin = (refreshToken: string) =>
-  CacophonyApi.post("/api/v1/users/refresh-session-token", {
-    refreshToken,
-  }) as Promise<
+  CacophonyApi.post(
+    "/api/v1/users/refresh-session-token",
+    {
+      refreshToken,
+    },
+    NO_ABORT
+  ) as Promise<
     FetchResult<{
       userData: ApiLoggedInUserResponse;
       token: JwtToken<UserId>;
@@ -76,10 +85,21 @@ export const register = (
     }>
   >;
 
-export const updateFields = (fields: ApiLoggedInUserResponse) =>
+interface ApiLoggedInUserUpdates {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  globalPermission?: UserGlobalPermission;
+  endUserAgreement?: EndUserAgreementVersion;
+  emailConfirmed?: boolean;
+  settings?: ApiUserSettings;
+}
+
+export const updateFields = (fields: ApiLoggedInUserUpdates) =>
   CacophonyApi.patch("/api/v1/users", fields);
+
 export const getEUAVersion = () =>
-  CacophonyApi.get("/api/v1/end-user-agreement/latest") as Promise<
+  CacophonyApi.get("/api/v1/end-user-agreement/latest", NO_ABORT) as Promise<
     FetchResult<{ euaVersion: number }>
   >;
 

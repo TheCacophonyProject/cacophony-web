@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import { RouterView, RouterLink } from "vue-router";
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
+//import BlockingUserActionRequiredModal from "@/components/BlockingUserActionRequiredModal.vue";
 import NetworkConnectionAlertModal from "@/components/NetworkConnectionAlertModal.vue";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 import {
   userIsLoggedIn,
   CurrentUser,
   tryLoggingInRememberedUser,
+  currentEUAVersion,
+  euaIsOutOfDate,
+  type LoggedInUser,
+  currentSelectedGroup,
+  UserGroups,
 } from "@/models/LoggedInUser";
-import { onBeforeMount, ref } from "vue";
+import { defineAsyncComponent, onBeforeMount, reactive, ref } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
+import { getEUAVersion } from "@api/User";
+import { getGroups } from "@api/Group";
+
+const BlockingUserActionRequiredModal = defineAsyncComponent(
+  () => import("@/components/BlockingUserActionRequiredModal.vue")
+);
 
 const userIsSuperAdmin = false;
 const loggedInAsAnotherUser = false;
@@ -18,15 +30,34 @@ const environmentIsProduction = false;
 // TODO: This should be an exported ref/reactive thingy.
 // Once a user logs in, they have a last selected group.
 // When a user switches a group, it gets flagged and saved server-side as the last selected group (saved as group id *and name*, since groups can be renamed?)
-const currentSelectedGroup = { groupName: "foo", id: 1 };
+//const currentSelectedGroup = { groupName: "foo", id: 1 };
 const isLoggingInAutomatically = ref(false);
 
 onBeforeMount(async () => {
   // Try logging in,
-  await tryLoggingInRememberedUser(isLoggingInAutomatically);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_, euaResponse] = await Promise.all([
+    tryLoggingInRememberedUser(isLoggingInAutomatically),
+    getEUAVersion(),
+  ]);
+  if (euaResponse.success) {
+    currentEUAVersion.value = euaResponse.result.euaVersion;
+  }
+
+  if (userIsLoggedIn.value && !currentSelectedGroup.value) {
+    // Grab the users' groups, and select the first one.
+    const NO_ABORT = false;
+    const groupsResponse = await getGroups(NO_ABORT);
+    if (groupsResponse.success) {
+      UserGroups.value = reactive(groupsResponse.result.groups);
+    }
+  }
 });
 </script>
 <template>
+  <blocking-user-action-required-modal
+    v-if="userIsLoggedIn && euaIsOutOfDate"
+  />
   <network-connection-alert-modal />
   <git-release-info-bar />
   <main
@@ -234,7 +265,21 @@ onBeforeMount(async () => {
           class="d-flex py-3 text-decoration-none flex-fill"
         >
           <span class="nav-icon-wrapper">
-            <font-awesome-icon icon="user" />
+            <span class="icon-alert-wrapper">
+              <font-awesome-icon icon="user" />
+              <svg
+                v-if="!CurrentUser.emailConfirmed"
+                class="alert-icon"
+                width="12"
+                height="12"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
+                  fill="#d9001b"
+                />
+              </svg>
+            </span>
           </span>
           <span>{{ CurrentUser.userName }}</span>
         </router-link>
@@ -403,8 +448,8 @@ onBeforeMount(async () => {
     position: relative;
     .alert-icon {
       position: absolute;
-      top: -35%;
-      right: -35%;
+      top: -25%;
+      right: -65%;
     }
   }
 }

@@ -1,4 +1,4 @@
-import { EndUserAgreementVersion, UserId } from "./common";
+import {EndUserAgreementVersion, GroupId, UserId} from "./common";
 import { UserGlobalPermission } from "./consts";
 
 export interface ApiUserResponse {
@@ -12,6 +12,7 @@ export interface ApiLoggedInUserResponse extends ApiUserResponse {
   lastName?: string;
   globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
+  emailConfirmed: boolean;
   settings?: ApiUserSettings;
 }
 
@@ -21,4 +22,9 @@ export interface ApiUserSettings {
   // recordings or visits for that group?
   savedSearchQueries: string[];
   displayMode: "audio" | "thermal";
+  viewAsSuperUser?: boolean;
+  currentSelectedGroup?: {
+    groupName: string;
+    id: GroupId
+  }
 }

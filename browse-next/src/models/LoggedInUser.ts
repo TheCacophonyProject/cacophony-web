@@ -1,8 +1,13 @@
-import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import type {
+  ApiLoggedInUserResponse,
+  ApiUserSettings,
+} from "@typedefs/api/user";
 import type { Ref } from "vue";
 import type { ErrorResult } from "@api/types";
 import { computed, reactive, ref } from "vue";
 import { refreshLogin, login as userLogin } from "@api/User";
+import type { GroupId } from "@typedefs/api/common";
+import type {ApiGroupResponse} from "@typedefs/api/group";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
   apiToken: string;
@@ -16,7 +21,7 @@ export interface PendingRequest {
 }
 
 export const CurrentUser: Ref<LoggedInUser | null> = ref(null);
-
+export const UserGroups: Ref<ApiGroupResponse[] | null> = ref(null);
 // TODO - Test opening a whole lot of tabs, print who wins the tokenRefresh race in the page title
 
 export const userIsLoggedIn = computed<boolean>({
@@ -85,13 +90,14 @@ const refreshCredentials = async () => {
         CurrentUser.value = reactive<LoggedInUser>(currentUser);
         return;
       } else {
+        console.log("Refresh login");
         const refreshedUserResult = await refreshLogin(
           currentUser.refreshToken
         );
         if (refreshedUserResult.success) {
           const refreshedUser = refreshedUserResult.result;
           setLoggedInUserData({
-            ...refreshedUser.userData,
+            ...currentUser,
             apiToken: refreshedUser.token,
             refreshToken: refreshedUser.refreshToken,
             expiry: new Date(refreshedUser.expiry),
@@ -123,3 +129,42 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 export const forgetUserOnCurrentDevice = () => {
   window.localStorage.clear();
 };
+
+// User blocking action checks
+export const currentEUAVersion = ref(0);
+
+export const hasAcceptedSomeEUA = computed<boolean>(() => {
+  return !!CurrentUser.value?.endUserAgreement;
+});
+
+export const euaIsOutOfDate = computed<boolean>(() => {
+  return (
+    (userIsLoggedIn.value && !hasAcceptedSomeEUA.value) ||
+    (currentEUAVersion.value !== 0 &&
+      currentEUAVersion.value >
+        (CurrentUser.value as LoggedInUser).endUserAgreement)
+  );
+});
+
+export const currentUserSettings = computed<ApiUserSettings | false>(() => {
+  if (userIsLoggedIn.value) {
+    return (CurrentUser.value as LoggedInUser).settings || false;
+  }
+  return false;
+});
+
+export const currentSelectedGroup = computed<
+  { groupName: string; id: GroupId } | false
+>(() => {
+  if (userIsLoggedIn.value && currentUserSettings.value) {
+    return currentUserSettings.value.currentSelectedGroup || false;
+  }
+  return false;
+});
+
+export const shouldViewAsSuperUser = computed<boolean>(() => {
+  if (userIsLoggedIn.value && currentUserSettings.value) {
+    return currentUserSettings.value.viewAsSuperUser || false;
+  }
+  return false;
+});

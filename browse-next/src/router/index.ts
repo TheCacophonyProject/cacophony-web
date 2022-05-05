@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
-import { userIsLoggedIn } from "@/models/LoggedInUser";
-import { delayMs } from "@/utils";
+import {
+  forgetUserOnCurrentDevice,
+  userIsLoggedIn,
+} from "@/models/LoggedInUser";
 
 // Allows us to abort all pending fetch requests when switching between major views.
 export const CurrentViewAbortController = {
@@ -28,6 +30,14 @@ const router = createRouter({
     //   path: "/",
     //   redirect: "dashboard",
     // },
+    {
+      path: "/setup",
+      name: "setup",
+      alias: "/",
+      meta: { title: "Group setup" },
+      component: () => import("../views/NoGroupsView.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
     {
       path: "/:groupName",
       name: "dashboard",
@@ -151,9 +161,8 @@ router.beforeEach(async (to, from, next) => {
   // NOTE: There are old, probably unused accounts that haven't accepted the current EUA, or added an email address.
   //  We'd like to force them to update their accounts should they ever decide to log in.  Or we could just delete these old
   //  stale accounts?
-  console.log(to, from);
   if (userIsLoggedIn.value && to.name === "sign-out") {
-    // TODO: Remove cookies etc
+    await forgetUserOnCurrentDevice();
     userIsLoggedIn.value = false;
     return next({
       name: "sign-in",
@@ -174,50 +183,6 @@ router.beforeEach(async (to, from, next) => {
     "sign-in",
     "sign-out",
   ];
-
-  // if (isLoggedIn && hasEmail && acceptedEUA) {
-  //   if (
-  //     ["login", "register", "add-email", "end-user-agreement"].includes(
-  //       to.name as string
-  //     )
-  //   ) {
-  //     return next({
-  //       name: "home",
-  //     });
-  //   } else {
-  //     return next();
-  //   }
-  // } else if (isLoggedIn && !hasEmail) {
-  //   if (to.name !== "add-email") {
-  //     return next({
-  //       name: "add-email",
-  //     });
-  //   } else {
-  //     return next();
-  //   }
-  // } else if (isLoggedIn && !acceptedEUA) {
-  //   // FIXME - nextUrl seems busted
-  //   if (to.name !== "end-user-agreement") {
-  //     return next({
-  //       name: "end-user-agreement",
-  //       query: {
-  //         nextUrl: from.path, // FIXME If to.query.nextUrl is !== name
-  //       },
-  //     });
-  //   } else {
-  //     return next();
-  //   }
-  // } else if (to.matched.some((record) => record.meta.noAuth)) {
-  //   return next();
-  // }
-
-  if (userIsLoggedIn.value) {
-    if (!hasEmail && to.name !== "add-email") {
-      return next({ name: "add-email", query: { nextUrl: to.path } });
-    }
-    return next();
-  }
-
   /*
   if (isLoggedIn) {
     if (

@@ -46,6 +46,7 @@ import {
   sendEmailConfirmationEmail,
   sendWelcomeEmailConfirmationEmail,
 } from "@/scripts/emailUtil";
+import logger from "@log";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -62,6 +63,7 @@ export const mapUser = (user: User): ApiLoggedInUserResponse => {
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
+    emailConfirmed: user.emailConfirmed,
     globalPermission: user.globalPermission,
     endUserAgreement: user.endUserAgreement,
   };
@@ -241,6 +243,7 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       // map matchedData to db fields.
       const dataToUpdate = matchedData(request);
+      logger.error("%s", dataToUpdate);
       if (dataToUpdate.userName) {
         dataToUpdate.username = dataToUpdate.userName;
         delete dataToUpdate.userName;
@@ -255,6 +258,7 @@ export default function (app: Application, baseUrl: string) {
         await sendEmailConfirmationEmail(requestUser, dataToUpdate.email);
       }
       await requestUser.update(dataToUpdate);
+      logger.error("EUA %s", requestUser.endUserAgreement);
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated user."],
