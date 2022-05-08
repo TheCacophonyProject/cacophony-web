@@ -25,5 +25,14 @@ module.exports = (on, config) => {
     !(process.env["IS_CI_ENV"] === undefined)
   );
   config.video = false; //process.env["IS_CI_ENV"] === undefined;
+
+
+  on('task', {
+    log (message) {
+      console.log(message);
+      return null;
+    }
+  });
+
   return config;
 };

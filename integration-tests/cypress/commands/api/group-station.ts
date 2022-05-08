@@ -14,7 +14,9 @@ import {
   checkTreeStructuresAreEqualExcept,
 } from "../server";
 import { RecordingId } from "@typedefs/api/common";
-
+Cypress.Commands.overwrite("log", (subject, message) =>
+  cy.task("log", message)
+);
 Cypress.Commands.add(
   "apiGroupStationAdd",
   (
