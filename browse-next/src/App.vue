@@ -6,11 +6,11 @@ import NetworkConnectionAlertModal from "@/components/NetworkConnectionAlertModa
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 import {
   userIsLoggedIn,
+  userHasGroups,
   CurrentUser,
   tryLoggingInRememberedUser,
   currentEUAVersion,
   euaIsOutOfDate,
-  type LoggedInUser,
   currentSelectedGroup,
   UserGroups,
 } from "@/models/LoggedInUser";
@@ -66,7 +66,11 @@ onBeforeMount(async () => {
   >
     <h1 class="h3"><b-spinner /> Signing in...</h1>
   </main>
-  <main id="main-wrapper" class="d-flex logged-in" v-else-if="userIsLoggedIn">
+  <main
+    id="main-wrapper"
+    class="d-flex logged-in"
+    v-else-if="userIsLoggedIn && userHasGroups"
+  >
     <nav id="global-side-nav" class="d-flex flex-column flex-shrink-0">
       <div class="nav-top">
         <router-link
@@ -296,6 +300,9 @@ onBeforeMount(async () => {
     <section id="main-content">
       <router-view />
     </section>
+  </main>
+  <main v-else-if="userIsLoggedIn && !userHasGroups">
+    <router-view />
   </main>
   <main
     v-else

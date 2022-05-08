@@ -7,7 +7,7 @@ import type { ErrorResult } from "@api/types";
 import { computed, reactive, ref } from "vue";
 import { refreshLogin, login as userLogin } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
-import type {ApiGroupResponse} from "@typedefs/api/group";
+import type { ApiGroupResponse } from "@typedefs/api/group";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
   apiToken: string;
@@ -33,6 +33,10 @@ export const userIsLoggedIn = computed<boolean>({
   },
 });
 
+export const userHasGroups = computed<boolean>(() => {
+  return UserGroups.value !== null && UserGroups.value.length !== 0;
+});
+
 export const setLoggedInUserData = (user: LoggedInUser) => {
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
@@ -40,7 +44,6 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
     CurrentUser.value.expiry.getTime() - new Date().getTime()
   );
 };
-
 export const login = async (
   userEmailAddress: string,
   userPassword: string,
@@ -167,4 +170,12 @@ export const shouldViewAsSuperUser = computed<boolean>(() => {
     return currentUserSettings.value.viewAsSuperUser || false;
   }
   return false;
+});
+
+// TODO - If viewing other user as super user, return appropriate naem
+export const userDisplayName = computed<string>(() => {
+  if (userIsLoggedIn.value) {
+    return CurrentUser.value?.firstName || CurrentUser.value?.userName || "";
+  }
+  return "";
 });

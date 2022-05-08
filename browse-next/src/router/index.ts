@@ -34,7 +34,7 @@ const router = createRouter({
       path: "/setup",
       name: "setup",
       alias: "/",
-      meta: { title: "Group setup" },
+      meta: { title: "Group setup", requiresLogin: true },
       component: () => import("../views/NoGroupsView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -42,13 +42,14 @@ const router = createRouter({
       path: "/:groupName",
       name: "dashboard",
       //alias: "/",
-      meta: { title: "Group :stationName :tabName" },
+      meta: { title: "Group :stationName :tabName", requiresLogin: true },
       component: () => import("../views/DashboardView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/groups",
       name: "select-active-group",
+      meta: { requiresLogin: true },
       component: () => import("../views/SelectActiveGroup.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -58,48 +59,56 @@ const router = createRouter({
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
+      meta: { requiresLogin: true },
       component: () => import("../views/StationsView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/search",
       name: "search",
+      meta: { requiresLogin: true },
       component: () => import("../views/SearchView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/devices",
       name: "devices",
+      meta: { requiresLogin: true },
       component: () => import("../views/DevicesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/report",
       name: "report",
+      meta: { requiresLogin: true },
       component: () => import("../views/ReportingView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/my-settings",
       name: "user-group-settings",
+      meta: { requiresLogin: true },
       component: () => import("../views/UserGroupPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/settings",
       name: "group-settings",
+      meta: { requiresLogin: true },
       component: () => import("../views/ManageGroupView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/my-settings",
       name: "user-settings",
+      meta: { requiresLogin: true },
       component: () => import("../views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/sign-out",
       name: "sign-out",
+      meta: { requiresLogin: true },
       component: () => import("../views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -107,42 +116,42 @@ const router = createRouter({
     {
       path: "/sign-in",
       name: "sign-in",
+      meta: { requiresLogin: false },
       component: () => import("../views/SignInView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register",
       name: "register",
+      meta: { requiresLogin: true },
       component: () => import("../views/RegisterView.vue"),
-      beforeEnter: cancelPendingRequests,
-    },
-    {
-      path: "/add-email",
-      name: "add-email",
-      component: () => import("../views/AddEmailView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/end-user-agreement",
       name: "end-user-agreement",
+      meta: { requiresLogin: true },
       component: () => import("../views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/forgot-password",
       name: "forgot-password",
+      meta: { requiresLogin: false },
       component: () => import("../views/ForgotPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password/:token",
       name: "validate-reset-password",
+      meta: { requiresLogin: false },
       component: () => import("../views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password",
       name: "reset-password",
+      meta: { requiresLogin: false },
       component: () => import("../views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -153,14 +162,15 @@ let lastDestination: string | null = null;
 
 router.beforeEach(async (to, from, next) => {
   // Slight wait so that we can break infinite navigation loops while developing.
+  if (to.meta.requiresLogin && !userIsLoggedIn.value) {
+    return next({ name: "sign-in" });
+  }
+
   if (lastDestination === to.name) {
     debugger;
   }
   lastDestination = (to.name as string) || "";
   //await delayMs(50);
-  // NOTE: There are old, probably unused accounts that haven't accepted the current EUA, or added an email address.
-  //  We'd like to force them to update their accounts should they ever decide to log in.  Or we could just delete these old
-  //  stale accounts?
   if (userIsLoggedIn.value && to.name === "sign-out") {
     await forgetUserOnCurrentDevice();
     userIsLoggedIn.value = false;

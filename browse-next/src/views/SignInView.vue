@@ -3,6 +3,7 @@ import { computed, reactive, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
 import { login } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
+import { useRouter } from "vue-router";
 
 // TODO Can we parse e.g body.password in the messages into contextual error messages?
 
@@ -38,8 +39,12 @@ const hasError = computed({
   },
 });
 
-const submitLogin = () => {
-  login(userEmailAddress.value, userPassword.value, signInInProgress);
+const router = useRouter();
+const submitLogin = async () => {
+  await login(userEmailAddress.value, userPassword.value, signInInProgress);
+  await router.push({
+    path: "/",
+  });
 };
 
 const isValidEmailAddress = computed<boolean>(() => {
