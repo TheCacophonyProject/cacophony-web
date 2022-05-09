@@ -78,9 +78,7 @@ export function uploadFile(
           if (xhr.status != 200) {
             expect(
               xhr.status,
-              `Check response from uploading file: ${JSON.stringify(
-                xhr.response
-              )}`
+              `Check response from uploading file: ${xhr.response}`
             ).to.eq(200);
           }
         } else {
