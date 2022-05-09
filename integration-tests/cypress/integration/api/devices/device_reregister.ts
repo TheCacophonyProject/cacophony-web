@@ -4,14 +4,11 @@ import {
   HTTP_BadRequest,
   HTTP_Forbidden,
   HTTP_Unprocessable,
-  NOT_NULL_STRING,
 } from "@commands/constants";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import { DeviceType } from "@typedefs/api/consts";
-import { DeviceHistoryEntry } from "@commands/types";
-import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 
 describe("Device reregister", () => {
   const KEEP_DEVICE_NAME = false;
@@ -63,52 +60,6 @@ describe("Device reregister", () => {
       //verify old device is listed as inactive
       cy.apiDevicesCheck("RR_user1", [expectedDevice1, expectedDevice1b], {
         onlyActive: false,
-      });
-    });
-  });
-
-  it("Reregistering device creates valid deviceHistory entry", () => {
-    cy.log("Register new device");
-    cy.apiDeviceAdd("RR_history_cam", "RR_group1", 1234567).then(() => {
-      cy.log("Check deviceHistory created correctly for new device");
-      const expectedHistory: DeviceHistoryEntry =
-        TestCreateExpectedHistoryEntry(
-          "RR_history_cam",
-          "RR_group1",
-          NOT_NULL_STRING,
-          null,
-          "register",
-          null
-        );
-      expectedHistory.saltId = 1234567;
-      cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [expectedHistory]);
-
-      cy.apiDeviceReregister(
-        "RR_history_cam",
-        "RR_history_cam2",
-        "RR_group1"
-      ).then(() => {
-        cy.log("Check deviceHistory created correctly for new device");
-        const expectedNewHistory: DeviceHistoryEntry =
-          TestCreateExpectedHistoryEntry(
-            "RR_history_cam2",
-            "RR_group1",
-            NOT_NULL_STRING,
-            null,
-            "re-register",
-            null
-          );
-        expectedNewHistory.saltId = 1234567;
-        cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [
-          expectedNewHistory,
-        ]);
-        cy.log("Check deviceHistory for old device no longer exists");
-        cy.apiDeviceHistoryCheck(
-          "RR_user1",
-          "RR_history_cam",
-          [],
-          HTTP_Forbidden
-        );
       });
     });
   });
@@ -220,7 +171,7 @@ describe("Device reregister", () => {
     cy.apiDeviceAdd("RR_cam5", "RR_group5");
 
     cy.log("attempt to rename camera with duplicate name rejected");
-    //TODO: Issue 110 - This should really return 422-Unprocessable.  It is not malformed - just  breaks our rules
+    //TODO: This should really return 422-Unprocessable.  It is not malformed - just  breaks our rules
     cy.apiDeviceReregister(
       "RR_cam5a",
       "RR_cam5",
@@ -228,7 +179,6 @@ describe("Device reregister", () => {
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
       HTTP_BadRequest
-      //HTTP_Unprocessable
     ).then(() => {
       cy.log("check old device unaltered");
       cy.apiDevicesCheckContains("RR_user5", [expectedDevice5a]);

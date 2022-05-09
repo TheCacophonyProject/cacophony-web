@@ -20,11 +20,7 @@ import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
-import {
-  TEMPLATE_AUDIO_TRACK,
-  TEMPLATE_EXPECTED_AUDIO_TRACK,
-  TEMPLATE_THERMAL_RECORDING,
-} from "@commands/dataTemplate";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 
 const EXCLUDE_TRACK_IDS = [
   "[].id",
@@ -69,6 +65,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     start_s: 1,
     end_s: 3,
     positions: positions1,
+    //TODO - do the remaining parameters _do_ anything?!
     label: "a label",
     clarity: 0.9,
     message: "a message",
@@ -76,49 +73,25 @@ describe("Track Tags: replaceTag, check, delete", () => {
     tracker_version: 2,
   };
 
-  const audioTrack: ApiTrackDataRequest = {
-    start_s: 0,
-    end_s: 3,
-    minFreq: 10,
-    maxFreq: 1000,
-    positions: [],
-    automatic: false,
-  };
-
-  const expectedAudioTrack: ApiTrackResponse = {
-    start: 0,
-    end: 3,
-    minFreq: 10,
-    maxFreq: 1000,
-    id: NOT_NULL,
-    filtered: true,
-    automatic: false,
-    //    positions: [],
-    //    TODO: enable after merge
-    tags: [],
-  };
-
   const tag1: ApiTrackTagRequest = {
     what: "possum",
     confidence: 0.95,
     automatic: false,
+    //data: {fieldName: "fieldValue"}
   };
 
   const tag2: ApiTrackTagRequest = {
     what: "cat",
     confidence: 0.54,
     automatic: false,
-  };
-
-  const audioTag: ApiTrackTagRequest = {
-    what: "morepork",
-    confidence: 1,
-    automatic: false,
+    //data: {fieldName: "fieldValue"}
   };
 
   const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
     createdAt: NOT_NULL_STRING,
+    //TODO: cannot set data above, returned as blank sting
+    //data: { "a parameter": "a value" },
     data: "",
     id: 99,
     automatic: false,
@@ -132,25 +105,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
   const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
     createdAt: NOT_NULL_STRING,
+    //TODO: cannot set data above, returned as blank sting
+    //data: { "a parameter": "a value" },
     data: "",
     id: 99,
     automatic: false,
     trackId: 99,
     updatedAt: NOT_NULL_STRING,
     what: "cat",
-    userName: "xxx",
-    userId: NOT_NULL,
-  };
-
-  const expectedAudioTag: ApiHumanTrackTagResponse = {
-    confidence: 1,
-    createdAt: NOT_NULL_STRING,
-    data: "",
-    id: 99,
-    automatic: false,
-    trackId: 99,
-    updatedAt: NOT_NULL_STRING,
-    what: "morepork",
     userName: "xxx",
     userId: NOT_NULL,
   };
@@ -248,7 +210,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupAdmin",
       "ttgRecording1",
       [expectedTrackWithTag],
@@ -264,7 +226,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check tag no longer exists");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupAdmin",
       "ttgRecording1",
       [expectedTrack],
@@ -302,7 +264,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupMember",
       "ttgRecording2",
       [expectedTrackWithTag],
@@ -318,62 +280,9 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check tag no longer exists");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupMember",
       "ttgRecording2",
-      [expectedTrack],
-      EXCLUDE_TRACK_IDS
-    );
-  });
-
-  it("Can add, view and delete audio tags", () => {
-    const recording3 = TestCreateRecordingData(templateRecording);
-    const expectedTrack = JSON.parse(JSON.stringify(expectedAudioTrack));
-    const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedAudioTrack));
-    expectedTrackWithTag.filtered = false;
-    expectedTrackWithTag.tags = [expectedAudioTag];
-    expectedTrackWithTag.tags[0].userName = getTestName("ttgGroupAdmin");
-
-    cy.log("Add recording and track");
-    cy.apiRecordingAdd("ttgCamera1", recording3, undefined, "ttgRecording3");
-    cy.apiTrackAdd(
-      "ttgGroupAdmin",
-      "ttgRecording3",
-      "ttgTrack3",
-      "ttgAlgorithm3",
-      audioTrack,
-      algorithm1
-    );
-
-    cy.log("Group admin can tag the track");
-    cy.apiTrackTagReplaceTag(
-      "ttgGroupAdmin",
-      "ttgRecording3",
-      "ttgTrack3",
-      "ttgTag3",
-      audioTag
-    );
-
-    cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTracksCheck(
-      "ttgGroupAdmin",
-      "ttgRecording3",
-      [expectedTrackWithTag],
-      EXCLUDE_TRACK_IDS
-    );
-
-    cy.log("Delete tag");
-    cy.apiTrackTagDelete(
-      "ttgGroupAdmin",
-      "ttgRecording3",
-      "ttgTrack3",
-      "ttgTag3"
-    );
-
-    cy.log("Check tag no longer exists");
-    cy.apiTracksCheck(
-      "ttgGroupAdmin",
-      "ttgRecording3",
       [expectedTrack],
       EXCLUDE_TRACK_IDS
     );
@@ -405,7 +314,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check tag does not exist");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupAdmin",
       "ttgRecording5",
       [expectedTrack],
@@ -449,7 +358,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check tag still exists");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupAdmin",
       "ttgRecording6",
       [expectedTrackWithTag],
@@ -488,7 +397,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check tag no longer exists");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrack],
@@ -528,7 +437,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrackWithTag1],
@@ -545,7 +454,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check new tag has replaced old one");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrackWithTag2],
@@ -580,7 +489,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroup1Member2",
       "ttgRecording8",
       [expectedTrackWithTag1],
@@ -597,7 +506,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check just one tag shown");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroup1Member2",
       "ttgRecording8",
       [expectedTrackWithTag1],
@@ -653,7 +562,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check both tags shown");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroup1Member2",
       "ttgRecording9",
       [expectedTrackWithTags],
@@ -702,7 +611,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check both tags shown");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroup1Member2",
       "ttgRecording10",
       [expectedTrackWithTags],
@@ -763,7 +672,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check all three tags shown");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroup1Member2",
       "ttgRecording11",
       [expectedTrackWithTags],
@@ -819,7 +728,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check only two tags shown");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroup1Member2",
       "ttgRecording12",
       [expectedTrackWithTags],
@@ -878,7 +787,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Check both duplicate supplementary tags shown (and primary tag)");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "ttgGroup1Member3",
       "ttgRecording13",
       [expectedTrackWithTags],

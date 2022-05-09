@@ -202,6 +202,8 @@ describe("Recordings: tag", () => {
       duration: 2.3,
       what: "morepork",
       automatic: true,
+      //TODO: version not returned
+      //  version: 1,
       createdAt: NOT_NULL_STRING,
       taggerId: getCreds("tagGroupAdmin").id,
       taggerName: getTestName("tagGroupAdmin"),
@@ -248,7 +250,7 @@ describe("Recordings: tag", () => {
     cy.log("Missing mandatory params");
     const ft1 = JSON.parse(JSON.stringify(fullTag));
     delete ft1.condifence;
-    //TODO Issue 105: accepted without confidence despite API saying 'mandatory'
+    //TODO: accepted without confidence despite API saying 'mandatory'
     //cy.apiRecordingTagAdd("tagGroupAdmin","tagRecording10","tagTag10",ft1, HTTP_Unprocessable);
 
     cy.log("additional params");

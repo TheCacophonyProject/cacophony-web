@@ -9,7 +9,6 @@ import { ApiRecordingSet } from "@commands/types";
 import {
   TestCreateRecordingData,
   predictionResponseFromSet,
-  positionResponseFromSet,
 } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
@@ -60,6 +59,7 @@ describe("Tracks: add, check, delete", () => {
     start_s: 1,
     end_s: 3,
     positions: positions1,
+    //TODO - do the remaining parameters _do_ anything?!
     label: "a label",
     clarity: 0.9,
     message: "a message",
@@ -105,19 +105,10 @@ describe("Tracks: add, check, delete", () => {
     );
 
     cy.log("Check recording tag can be viewed correctly");
-    cy.apiTracksCheck(
-      "trkGroupAdmin",
-      "trkRecording1",
-      [expectedTrack],
-      EXCLUDE_TRACK_IDS
-    );
-
-    cy.log("Check recording tag can be viewed correctly");
     cy.apiTrackCheck(
       "trkGroupAdmin",
       "trkRecording1",
-      "trkTrack1",
-      expectedTrack,
+      [expectedTrack],
       EXCLUDE_TRACK_IDS
     );
 
@@ -125,15 +116,7 @@ describe("Tracks: add, check, delete", () => {
     cy.apiTrackDelete("trkGroupAdmin", "trkRecording1", "trkTrack1");
 
     cy.log("Check track no longer exists");
-    cy.apiTracksCheck("trkGroupAdmin", "trkRecording1", []);
-    cy.apiTrackCheck(
-      "trkGroupAdmin",
-      "trkRecording1",
-      "trkTrack1",
-      undefined,
-      null,
-      HTTP_Forbidden
-    );
+    cy.apiTrackCheck("trkGroupAdmin", "trkRecording1", []);
   });
 
   it("Group member can add, view and delete device's tracks", () => {
@@ -153,20 +136,11 @@ describe("Tracks: add, check, delete", () => {
       algorithm1
     );
 
-    cy.log("Check recording tracks tag can be viewed correctly");
-    cy.apiTracksCheck(
-      "trkGroupMember",
-      "trkRecording2",
-      [expectedTrack],
-      EXCLUDE_TRACK_IDS
-    );
-
-    cy.log("Check recording track tag can be viewed correctly");
+    cy.log("Check recording tag can be viewed correctly");
     cy.apiTrackCheck(
       "trkGroupMember",
       "trkRecording2",
-      "trkTrack2",
-      expectedTrack,
+      [expectedTrack],
       EXCLUDE_TRACK_IDS
     );
 
@@ -174,15 +148,7 @@ describe("Tracks: add, check, delete", () => {
     cy.apiTrackDelete("trkGroupMember", "trkRecording2", "trkTrack2");
 
     cy.log("Check track no longer exists");
-    cy.apiTracksCheck("trkGroupMember", "trkRecording2", []);
-    cy.apiTrackCheck(
-      "trkGroupMember",
-      "trkRecording2",
-      "trkTrack2",
-      undefined,
-      null,
-      HTTP_Forbidden
-    );
+    cy.apiTrackCheck("trkGroupMember", "trkRecording2", []);
   });
 
   it("Cannot add, view or delete tracks from someone else's device", () => {
@@ -214,15 +180,7 @@ describe("Tracks: add, check, delete", () => {
     );
 
     cy.log("Check recording tag cannot be viewed by non- group2 member");
-    cy.apiTracksCheck("trkGroupAdmin", "trkRecording5", [], [], HTTP_Forbidden);
-    cy.apiTrackCheck(
-      "trkGroupAdmin",
-      "trkRecording5",
-      "trkTrack5",
-      undefined,
-      [],
-      HTTP_Forbidden
-    );
+    cy.apiTrackCheck("trkGroupAdmin", "trkRecording5", [], [], HTTP_Forbidden);
 
     cy.log("Check tag cannot be deleted by non group2 member");
     cy.apiTrackDelete(
@@ -233,7 +191,7 @@ describe("Tracks: add, check, delete", () => {
     );
 
     cy.log("Check track still exists");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "trkGroup2Admin",
       "trkRecording5",
       [expectedTrack],
@@ -248,8 +206,7 @@ describe("Tracks: add, check, delete", () => {
       id: -99,
       start: 4,
       end: 7,
-      //      positions: [],
-      //      TODO enable after merge
+      positions: [],
       tags: [],
       filtered: true,
       automatic: true,
@@ -280,25 +237,10 @@ describe("Tracks: add, check, delete", () => {
     );
 
     cy.log("Check both tracks added ok, ordered by start time");
-    cy.apiTracksCheck(
+    cy.apiTrackCheck(
       "trkGroup2Admin",
       "trkRecording6",
       [expectedTrack, expectedMinTrack],
-      EXCLUDE_TRACK_IDS
-    );
-    cy.log("Check both tracks can be viewed singley");
-    cy.apiTrackCheck(
-      "trkGroup2Admin",
-      "trkRecording6",
-      "trkTrack6",
-      expectedMinTrack,
-      EXCLUDE_TRACK_IDS
-    );
-    cy.apiTrackCheck(
-      "trkGroup2Admin",
-      "trkRecording6",
-      "trkTrack6b",
-      expectedTrack,
       EXCLUDE_TRACK_IDS
     );
   });
@@ -393,16 +335,12 @@ describe("Tracks: add, check, delete", () => {
       recording1.metadata.tracks[0].predictions,
       recording1.metadata.models
     )[0];
-    expectedTrack.positions = positionResponseFromSet(
-      recording1.metadata.tracks[0].positions
-    );
-    //TODO enable after merge
 
     cy.log("Add recording as device");
     cy.apiRecordingAdd("trkCamera1", recording1, undefined, "trkRecording9");
 
-    cy.log("Check recording tracks tag can be viewed correctly");
-    cy.apiTracksCheck(
+    cy.log("Check recording tag can be viewed correctly");
+    cy.apiTrackCheck(
       "trkGroupAdmin",
       "trkRecording9",
       [expectedTrack],

@@ -47,34 +47,7 @@ declare namespace Cypress {
     ): any;
 
     /**
-     * Retrieve and check a single track from a recording.
-     * Calls /recording/:id/tracks/:trackId (GET)
-     * Verfiy that the tracks data matched the expectedtracks
-     * Optionally: Exclude checks on specific values by specifying them in excludeChecksOn
-     * Optionally check for a non-200 return statusCode
-     * By default recording ID is looked up by name using recordingNameOrId
-     *   Optionally, use the ID provided in recordingNameOrId by specifying
-     *     additionalChecks["useRawRecordingId"]=true
-     * By default track ID is looked up by name using trackNameOrId
-     *   Optionally, use the ID provided in trackNameOrId by specifying
-     *     additionalChecks["useRawTrackId"]=true
-     * By default tags/expectedTags within each track are sorted by confidence,
-     * userName before comparison
-     *   Optionally, no not sort by specifying additionalChecks["doNotSort"]=true
-     * Optionally, check that returned messages[] contains additionalChecks["message"]
-     */
-    apiTrackCheck(
-      userName: string,
-      recordingNameOrId: string,
-      trackNameOrId: string,
-      expectedTrack: ApiTrackResponse,
-      excludeCheckOn?: string[],
-      statusCode?: number,
-      additionalChecks?: any
-    ): any;
-
-    /**
-     * Retrieve and check tracks from a recording.
+     * Retrieve and check a track from a recording.
      * Calls /recording/:id/tracks (GET)
      * Verfiy that the tracks data matched the expectedtracks
      * Optionally: Exclude checks on specific values by specifying them in excludeChecksOn
@@ -88,7 +61,7 @@ declare namespace Cypress {
      *   Optionally, no not sort by specifying additionalChecks["doNotSort"]=true
      * Optionally, check that returned messages[] contains additionalChecks["message"]
      */
-    apiTracksCheck(
+    apiTrackCheck(
       userName: string,
       recordingNameOrId: string,
       expectedTracks: ApiTrackResponse[],

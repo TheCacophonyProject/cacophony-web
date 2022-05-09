@@ -576,6 +576,8 @@ describe("Recordings (thermal): add, get, delete", () => {
       [],
       EXCLUDE_IDS
     );
+    cy.log("Check /recordings/id:/tracks ignores deleted recording");
+    //TODO: add check here where apiRecordingsTracksCheck has been written
 
     cy.log("Check /monitoring ignores deleted recording");
     cy.checkMonitoringWithFilter("raGroupAdmin", "raCamera1", filter, []);
