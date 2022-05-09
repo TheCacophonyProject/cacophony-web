@@ -25,17 +25,13 @@ describe("Monitoring : multiple cameras and stations", () => {
     // in test
     const group = "stations";
     const camera = "camera2";
-    cy.log("Create group and devices");
     cy.testCreateGroupAndDevices(Penny, group, camera);
 
     const station1 = { name: "forest", lat: -44.0, lng: 172.7 };
     const station2 = { name: "waterfall", lat: -43.6, lng: 172.8 };
 
-    cy.log("Add station 1");
     cy.apiGroupStationAdd(Penny, group, station1).then(() => {
-      cy.log("Add station 2");
       cy.apiGroupStationAdd(Penny, group, station2).then(() => {
-        cy.log("Upload recording for first station");
         cy.testUploadRecording(camera, {
           tags: ["possum"],
           lat: -44.0,
@@ -44,7 +40,6 @@ describe("Monitoring : multiple cameras and stations", () => {
         })
           .thenCheckStationNameIs(Penny, getTestName("forest"))
           .then(() => {
-            cy.log("Upload another recording for first station");
             cy.testUploadRecording(camera, {
               tags: ["cat"],
               lat: -44.0,
