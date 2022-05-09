@@ -1651,6 +1651,15 @@ export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>
     trackId
   );
 
+export const fetchUnauthorizedRequiredTrackTagById = (tagId: ValidationChain) =>
+  fetchRequiredModel(
+    models.TrackTag,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.TrackTag),
+    tagId
+  );
+
 export const fetchUnauthorizedRequiredFileById = (fileId: ValidationChain) =>
   fetchRequiredModel(
     models.File,

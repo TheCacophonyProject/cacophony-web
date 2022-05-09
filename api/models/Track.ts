@@ -21,6 +21,7 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { TrackTag, TrackTagId, additionalTags, filteredTags } from "./TrackTag";
 import { Recording } from "./Recording";
 import { RecordingId, TrackId } from "@typedefs/api/common";
+import { TrackTagData } from "@/../types/api/trackTag";
 
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
   filtered: boolean;
@@ -113,6 +114,28 @@ export default function (
     return trackTag;
   };
 
+  //add or replace a tag, such that this track only has 1 animal tag by this user
+  //and no duplicate tags
+  Track.prototype.updateTag = async function (
+    tagId: TrackTagId,
+    data: TrackTagData
+  ): Promise<TrackTag | void> {
+    const trackId = this.id;
+    const trackTag = await sequelize.transaction(async (t) => {
+      const tag = await this.getTrackTag(tagId);
+      if (!tag || tag.TrackId !== trackId) {
+        return null;
+      }
+      tag.data = {
+        ...(typeof tag.data !== "string" && tag.data),
+        ...data,
+      };
+      await tag.save({ transaction: t });
+      return tag;
+    });
+    return trackTag;
+  };
+
   // Adds a tag to a track and checks if any alerts need to be sent. All trackTags
   // should be added this way
   Track.prototype.addTag = async function (
@@ -182,6 +205,54 @@ export default function (
         transaction: t,
       });
       await track.update({ filtered: isFiltered(tags) }, { transaction: t });
+    });
+  };
+
+  // Archive Track for soft-delete
+  Track.prototype.archive = async function () {
+    const trackId = this.id;
+    return sequelize.transaction(async function (t) {
+      const track = await models.Track.findByPk(trackId, {
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      const tags = await models.TrackTag.findAll({
+        where: {
+          TrackId: trackId,
+          archivedAt: null,
+        },
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      await track.update({ archivedAt: Date.now() }, { transaction: t });
+      for (let i = 0; i < tags.length; i++) {
+        await tags[i].update({ archivedAt: Date.now() }, { transaction: t });
+      }
+    });
+  };
+
+  // Retrieve Track from Archive
+  Track.prototype.unarchive = async function () {
+    const trackId = this.id;
+    return sequelize.transaction(async function (t) {
+      const track = await models.Track.findByPk(trackId, {
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      const tags = await models.TrackTag.findAll({
+        where: {
+          TrackId: trackId,
+          archivedAt: {
+            [Sequelize.Op.ne]: null,
+          },
+        },
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      await track.update({ archivedAt: null }, { transaction: t });
+      for (let i = 0; i < tags.length; i++) {
+        await tags[i].update({ archivedAt: null }, { transaction: t });
+      }
     });
   };
 

@@ -58,7 +58,6 @@
         <div class="results-header">
           <div>
             <span> ID</span>
-            <span>Type</span>
             <span>Device</span>
             <span>Date</span>
             <span>Time</span>
@@ -145,6 +144,7 @@ import {
 } from "@typedefs/api/trackTag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import DefaultLabels, { FILTERED_TOOLTIP } from "../const";
+import api from "@/api";
 
 const parseLocation = (location: LatLng): string => {
   if (location && typeof location === "object") {
@@ -372,18 +372,18 @@ export default {
           time: thisDate.toLocaleTimeString(),
           duration: recording.duration,
           tracks: recording.tracks,
-          recTags: collateTags(recording.tags, []),
+          recTags: collateTags(recording.tags),
           batteryLevel: (recording as ApiAudioRecordingResponse).batteryLevel,
           trackCount: recording.tracks.length,
           processingState: parseProcessingState(recording.processingState),
           processing: recording.processing === true,
           stationName: recording.stationName,
           stationId: recording.stationId,
+          ...(recording.type === "thermalRaw" && {
+            filtered: recording.tracks.every((track) => track.filtered),
+          }),
         };
 
-        if (itemData.type == "thermalRaw") {
-          itemData.filtered = itemData.tracks.every((track) => track.filtered);
-        }
         items.push(itemData);
       }
       this.tableItems.push(...items);

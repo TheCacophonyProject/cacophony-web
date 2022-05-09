@@ -36,11 +36,11 @@ import { TrackTag } from "./TrackTag";
 import { Station } from "./Station";
 import { mapPosition } from "@api/V1/recordingUtil";
 import {
+  DeviceId,
   GroupId,
   RecordingId,
   TrackId,
   UserId,
-  DeviceId,
   StationId,
   LatLng,
   IsoFormattedDateString,

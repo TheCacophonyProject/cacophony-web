@@ -1,7 +1,3 @@
-import CacophonyApi from "./CacophonyApi";
-import * as querystring from "querystring";
-import { DeviceVisitMap } from "./visits";
-import * as moment from "moment";
 import { shouldViewAsSuperUser } from "@/utils";
 import {
   DeviceId,
@@ -11,13 +7,19 @@ import {
   TrackTagId,
 } from "@typedefs/api/common";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { ApiTrackRequest, ApiTrackResponse } from "@typedefs/api/track";
 import {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
+  ApiTrackTagAttributes,
   ApiTrackTagRequest,
 } from "@typedefs/api/trackTag";
-import { ApiRecordingTagRequest } from "@typedefs/api/tag";
-import { ApiTrackRequest, ApiTrackResponse } from "@typedefs/api/track";
+import * as moment from "moment";
+import * as querystring from "querystring";
+
+import CacophonyApi from "./CacophonyApi";
+import { DeviceVisitMap } from "./visits";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
 export type JwtToken<T> = string;
@@ -135,7 +137,8 @@ export interface VisitsQueryResult extends QueryResult<DeviceVisitMap> {
   numRecordings: number;
 }
 
-// TODO: Unify this with the TagMode type in the API, extract both into a third Types/Interfaces repo.
+// TODO: Unify this with the TagMode type in the API, extract both into a third
+// Types/Interfaces repo.
 export type TagMode =
   | "any"
   | "no-human"
@@ -267,7 +270,8 @@ function makeApiQuery(query: RecordingQuery): any {
     apiParams["tags"] = JSON.stringify(query.tag);
   }
 
-  // View mode for restricting global admin users to only see their own recordings.
+  // View mode for restricting global admin users to only see their own
+  // recordings.
   if (!shouldViewAsSuperUser()) {
     apiParams["view-mode"] = "user";
   }
@@ -347,11 +351,26 @@ function addTrack(
   return CacophonyApi.post(`${apiPath}/${recordingId}/tracks`, body);
 }
 
-function removeTrack(
+function deleteTrack(
+  trackId: TrackId,
+  recordingId: RecordingId,
+  softDelete = false
+): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
+  return CacophonyApi.delete(
+    `${apiPath}/${recordingId}/tracks/${trackId}${
+      softDelete && "?soft-delete=true"
+    }`
+  );
+}
+
+function undeleteTrack(
   trackId: TrackId,
   recordingId: RecordingId
 ): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
-  return CacophonyApi.delete(`${apiPath}/${recordingId}/tracks/${trackId}`);
+  return CacophonyApi.patch(
+    `${apiPath}/${recordingId}/tracks/${trackId}/undelete`,
+    {}
+  );
 }
 
 function replaceTrackTag(
@@ -367,6 +386,18 @@ function replaceTrackTag(
   return CacophonyApi.post(
     `${apiPath}/${recordingId}/tracks/${trackId}/replaceTag`,
     body
+  );
+}
+
+function updateTrackTag(
+  body: ApiTrackTagAttributes,
+  recordingId: RecordingId,
+  trackId: TrackId,
+  tagId: number
+): Promise<FetchResult<{ trackTagId?: number }>> {
+  return CacophonyApi.patch(
+    `${apiPath}/${recordingId}/tracks/${trackId}/tags/${tagId}`,
+    { updates: body }
   );
 }
 
@@ -457,8 +488,9 @@ export function calculateFromTime(query: RecordingQuery): string {
   }
 
   if (query.hasOwnProperty("days") && query.days && query.days !== "all") {
-    // For the previous x days we want to do it at the time the submit is pressed and not cache it.
-    // they could have had the window open for a few days.
+    // For the previous x days we want to do it at the time the submit is
+    // pressed and not cache it. they could have had the window open for a few
+    // days.
     const now = new Date();
     return moment(now)
       .add(-1 * query.days, "days")
@@ -492,11 +524,13 @@ export default {
   getTrack,
   tracks,
   addTrack,
-  removeTrack,
+  deleteTrack,
+  undeleteTrack,
   reprocess,
   addTrackTag,
   deleteTrackTag,
   replaceTrackTag,
+  updateTrackTag,
   addRecordingTag,
   deleteRecordingTag,
   makeApiQuery,

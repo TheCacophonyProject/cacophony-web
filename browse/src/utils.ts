@@ -34,6 +34,14 @@ export function debounce(func: (...args: any[]) => void, timeout = 100) {
   };
 }
 
+export function UUIDv4() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export type Updater<T> = (draft: Draft<T>) => void;
 
 export type SetState<T> = (updater: Updater<T> | T) => void;

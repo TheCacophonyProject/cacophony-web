@@ -16,28 +16,51 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { Application, NextFunction, Request, Response } from "express";
-import { expectedTypeOf, validateFields } from "../middleware";
-import recordingUtil, {
-  mapPosition,
-  reportRecordings,
-  reportVisits,
-  signedToken,
-  uploadRawRecording,
-} from "./recordingUtil";
-import responseUtil from "./responseUtil";
+import { jsonSchemaOf } from "@api/schema-validation";
+import util from "@api/V1/util";
+import config from "@config";
+import log from "@log";
 import models from "@models";
+import { Recording } from "@models/Recording";
+import { Tag } from "@models/Tag";
+import { Track } from "@models/Track";
+import { TrackTag } from "@models/TrackTag";
+import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
+import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
+import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
+import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json";
+import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json";
+import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  ApiAudioRecordingMetadataResponse,
+  ApiAudioRecordingResponse,
+  ApiGenericRecordingResponse,
+  ApiRecordingResponse,
+  ApiRecordingUpdateRequest,
+  ApiThermalRecordingMetadataResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import {
+  ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
+} from "@typedefs/api/tag";
+import { ApiTrackResponse } from "@typedefs/api/track";
+import {
+  ApiAutomaticTrackTagResponse,
+  ApiHumanTrackTagResponse,
+  ApiTrackTagAttributes,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
+import { Application, NextFunction, Request, Response } from "express";
+import { body, param, query } from "express-validator";
 // @ts-ignore
 import * as csv from "fast-csv";
-import { body, param, query } from "express-validator";
-import { Recording } from "@models/Recording";
-import { TrackTag } from "@models/TrackTag";
-import { Track } from "@models/Track";
-import { Op } from "sequelize";
+import { Validator } from "jsonschema";
 import jwt from "jsonwebtoken";
-import config from "@config";
+import { Op } from "sequelize";
+
 import { ClientError } from "../customErrors";
-import log from "@log";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -48,8 +71,10 @@ import {
   fetchUnauthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
+  fetchUnauthorizedRequiredTrackTagById,
   parseJSONField,
 } from "../extract-middleware";
+import { expectedTypeOf, validateFields } from "../middleware";
 import {
   anyOf,
   booleanOf,
@@ -58,35 +83,15 @@ import {
   stringOf,
   validNameOf,
 } from "../validation-middleware";
-import util from "@api/V1/util";
-import {
-  ApiAudioRecordingMetadataResponse,
-  ApiAudioRecordingResponse,
-  ApiGenericRecordingResponse,
-  ApiRecordingResponse,
-  ApiRecordingUpdateRequest,
-  ApiThermalRecordingMetadataResponse,
-  ApiThermalRecordingResponse,
-} from "@typedefs/api/recording";
-import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
-import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
-import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json";
-import { Validator } from "jsonschema";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { ApiTrackResponse } from "@typedefs/api/track";
-import { Tag } from "@models/Tag";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import {
-  ApiRecordingTagRequest,
-  ApiRecordingTagResponse,
-} from "@typedefs/api/tag";
-import {
-  ApiAutomaticTrackTagResponse,
-  ApiHumanTrackTagResponse,
-  ApiTrackTagResponse,
-} from "@typedefs/api/trackTag";
-import { jsonSchemaOf } from "@api/schema-validation";
-import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
+
+import recordingUtil, {
+  mapPosition,
+  reportRecordings,
+  reportVisits,
+  signedToken,
+  uploadRawRecording,
+} from "./recordingUtil";
+import responseUtil from "./responseUtil";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -103,7 +108,8 @@ const mapTrackTag = (
   const trackTagBase: ApiTrackTagResponse = {
     confidence: trackTag.confidence,
     createdAt: trackTag.createdAt?.toISOString(),
-    data: data as any, // FIXME - Probably returning a bit too much useless data to the front-end?
+    data: data as any, // FIXME - Probably returning a bit too much useless
+    // data to the front-end?
     id: trackTag.id,
     automatic: false, // Unset
     trackId: trackTag.TrackId,
@@ -280,9 +286,9 @@ export default (app: Application, baseUrl: string) => {
    *            <li> y - top coordinate
    *            <li> width - region width
    *            <li> height - region height
-   *            <li> mass - mass (count of non zero pixels in the filtered image of this track)
-   *            <li> frame_number
-   *            <li> blank - if this is a blank match i.e. from  kalman filter
+   *            <li> mass - mass (count of non zero pixels in the filtered image
+   * of this track) <li> frame_number <li> blank - if this is a blank match i.e.
+   * from  kalman filter
    *          </ul>
    *    <li> start_s - start time of track in seconds
    *    <li> end_s - end time of track in seconds
@@ -295,9 +301,10 @@ export default (app: Application, baseUrl: string) => {
    *      <li>(OPTIONAL) clarity - confidence between 0 - 1 of the prediction
    *      <li>(OPTIONAL) classify_time - time in seconds taken to classify
    *      <li>(OPTIONAL) prediction_frames - frames used in the predictions
-   *      <li>(OPTIONAL) predictions - array of prediction confidences for each prediction e.g. [[0,1,99,0,0,0]]
-   *      <li>(OPTIONAL) label - the classified label (this may be different to the confident_tag)
-   *      <li>(OPTIONAL) all_class_confidences - dictionary of confidence per class
+   *      <li>(OPTIONAL) predictions - array of prediction confidences for each
+   * prediction e.g. [[0,1,99,0,0,0]] <li>(OPTIONAL) label - the classified
+   * label (this may be different to the confident_tag) <li>(OPTIONAL)
+   * all_class_confidences - dictionary of confidence per class
    *  </ul>
    *  <li> models - array of models used
    *    a model object:
@@ -313,10 +320,12 @@ export default (app: Application, baseUrl: string) => {
    *     "model_name": "resnet-wallaby"
    *    },
    *   "tracks": [{
-   *     "positions":[{"x":1, "y":10, "frame_number":20, "mass": 25, "blank": false}],
-   *     "start_s": 10,
-   *     "end_s": 22.2,
-   *     "predictions":[{"model_id":1, "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3, "classify_time": 0.6, "prediction_frames": [[0,2,3,4,5,10,12]], "predictions": [[0.6,0.3,0.1]], "label":"cat", "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
+   *     "positions":[{"x":1, "y":10, "frame_number":20, "mass": 25, "blank":
+   * false}], "start_s": 10, "end_s": 22.2, "predictions":[{"model_id":1,
+   * "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3,
+   * "classify_time": 0.6, "prediction_frames": [[0,2,3,4,5,10,12]],
+   * "predictions": [[0.6,0.3,0.1]], "label":"cat",
+   * "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
    *    }],
    *    "models": [{ "id": 1, "name": "inc3" }]
    * }
@@ -328,11 +337,8 @@ export default (app: Application, baseUrl: string) => {
    * @apiBody {JSON} data Metadata about the recording.   Valid tags are:
    * <ul>
    * <li>(REQUIRED) type: 'thermalRaw', or 'audio'
-   * <li>fileHash - Optional sha1 hexadecimal formatted hash of the file to be uploaded
-   * <li>duration
-   * <li>recordingDateTime
-   * <li>location
-   * <li>version
+   * <li>fileHash - Optional sha1 hexadecimal formatted hash of the file to be
+   * uploaded <li>duration <li>recordingDateTime <li>location <li>version
    * <li>batteryCharging
    * <li>batteryLevel
    * <li>airplaneModeOn
@@ -362,12 +368,13 @@ export default (app: Application, baseUrl: string) => {
   app.post(apiUrl, extractJwtAuthorisedDevice, uploadRawRecording);
 
   /**
-   * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a new recording on behalf of device using group
+   * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a
+   * new recording on behalf of device using group
    * @apiName PostRecordingOnBehalfUsingGroup
    * @apiGroup Recordings
-   * @apiDescription Called by a user to upload raw thermal video on behalf of a device.
-   * The user must have permission to view videos from the device or the call will return an
-   * error.
+   * @apiDescription Called by a user to upload raw thermal video on behalf of a
+   * device. The user must have permission to view videos from the device or the
+   * call will return an error.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -389,7 +396,8 @@ export default (app: Application, baseUrl: string) => {
       validNameOf(param("groupName")),
       validNameOf(param("deviceName")),
 
-      // Default to also allowing inactive devices to have uploads on their behalf
+      // Default to also allowing inactive devices to have uploads on
+      // their behalf
       query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceInGroup(
@@ -400,14 +408,17 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/device/:deviceId Add a new recording on behalf of device
+   * @api {post} /api/v1/recordings/device/:deviceId Add a new recording on
+   * behalf of device
    * @apiName PostRecordingOnBehalf
    * @apiGroup Recordings
-   * @apiDescription Called by a user to upload raw thermal video on behalf of a device.
-   * The user must have permission to view videos from the device or the call will return an
-   * error.
+   * @apiDescription Called by a user to upload raw thermal video on behalf of a
+   * device. The user must have permission to view videos from the device or the
+   * call will return an error.
    *
-   * @apiParam {Integer} deviceId ID of the device to upload on behalf of. If you don't have access to the ID the devicename can be used instead in it's place.
+   * @apiParam {Integer} deviceId ID of the device to upload on behalf of. If
+   * you don't have access to the ID the devicename can be used instead in it's
+   * place.
    * @apiQuery {Boolean} [only-active=false] operate only on active devices
    * @apiUse V1UserAuthorizationHeader
    *
@@ -425,7 +436,8 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
-      // Default to also allowing inactive devices to have uploads on their behalf
+      // Default to also allowing inactive devices to have uploads on their
+      // behalf
       query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -477,7 +489,8 @@ export default (app: Application, baseUrl: string) => {
 
   // FIXME - Should we just delete this now?
   /**
-   * @api {get} /api/v1/recordings/visits Query available recordings and generate visits
+   * @api {get} /api/v1/recordings/visits Query available recordings and
+   * generate visits
    * @apiName QueryVisits
    * @apiGroup Recordings
    *
@@ -547,7 +560,8 @@ export default (app: Application, baseUrl: string) => {
    * @apiGroup Recordings
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
+   * regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
    * @apiQuery {Boolean} [countAll=true] Count all query matches rather than just number of results (as much as the limit parameter)
    * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
@@ -626,9 +640,11 @@ export default (app: Application, baseUrl: string) => {
    * @apiGroup Recordings
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
+   * regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
-   * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
+   * @apiInterface {apiQuery::RecordingProcessingState} [processingState]
+   * Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiUse BaseQueryParams
    * @apiUse MoreQueryParams
@@ -725,7 +741,8 @@ export default (app: Application, baseUrl: string) => {
    * formatted details of the selected recordings.
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Integer} [deviceId] Optional deviceId to bias returned recording to.
+   * @apiParam {Integer} [deviceId] Optional deviceId to bias returned recording
+   * to.
    * @apiUse V1ResponseError
    */
   app.get(
@@ -733,7 +750,8 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([idOf(query("deviceId")).optional()]),
     async (request: Request, response: Response) => {
-      // NOTE: We only return the minimum set of fields we need to play back
+      // NOTE: We only return the minimum set of fields we need to play
+      // back
       //  a recording, show tracks in the UI, and have the user add a tag.
       //  Generate a short-lived JWT token for each recording we return, keyed
       //  to that recording.  Only return a single recording at a time.
@@ -742,9 +760,11 @@ export default (app: Application, baseUrl: string) => {
       if (!request.query.deviceId) {
         result = await models.Recording.getRecordingWithUntaggedTracks();
       } else {
-        // NOTE: Optionally, the returned recordings can be biased to be from
-        //  a preferred deviceId, to handle the case where we'd like a series
-        //  of random recordings to tag constrained to a single device.
+        // NOTE: Optionally, the returned recordings can be biased to be
+        // from
+        //  a preferred deviceId, to handle the case where we'd like a
+        //  series of random recordings to tag constrained to a single
+        //  device.
         result = await models.Recording.getRecordingWithUntaggedTracks(
           Number(request.query.deviceId)
         );
@@ -759,7 +779,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/report Generate report for a set of recordings
+   * @api {get} /api/v1/recordings/report Generate report for a set of
+   * recordings
    * @apiName Report
    * @apiGroup Recordings
    * @apiDescription Parameters are as per GET /api/V1/recordings. On
@@ -767,12 +788,15 @@ export default (app: Application, baseUrl: string) => {
    * formatted details of the selected recordings.
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {String} [jwt] Signed JWT as produced by the [Token](#api-Authentication-Token) endpoint
-   * @apiParam {string} [type] Optional type of report either recordings or visits. Recordings is default.
+   * @apiParam {String} [jwt] Signed JWT as produced by the
+   * [Token](#api-Authentication-Token) endpoint
+   * @apiParam {string} [type] Optional type of report either recordings or
+   * visits. Recordings is default.
    * @apiUse BaseQueryParams
    * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
-   * @apiParam {boolean} [audiobait] To add audiobait to a recording query set this to true.
+   * @apiParam {boolean} [audiobait] To add audiobait to a recording query set
+   * this to true.
    * @apiUse V1ResponseError
    */
   app.get(
@@ -794,13 +818,14 @@ export default (app: Application, baseUrl: string) => {
         }),
       query("view-mode").optional().equals("user"),
       query("deleted").default(false).isBoolean().toBoolean(),
-      //middleware.parseJSON("filterOptions", query).optional(),
+      // middleware.parseJSON("filterOptions", query).optional(),
     ]),
     parseJSONField(query("order")),
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
     async (request: Request, response: Response) => {
-      // FIXME - deprecate and generate report client-side from other available API data.
+      // FIXME - deprecate and generate report client-side from other
+      // available API data.
       if (request.query.hasOwnProperty("deleted")) {
         if (request.query.deleted) {
           response.locals.where.deletedAt = { [Op.ne]: null };
@@ -854,14 +879,16 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseSuccess
    *
    * @apiParam {Integer} id Id of the recording to get.
-   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted recordings.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
+   * recordings.
    * @apiSuccess {int} fileSize the number of bytes in recording file.
    * @apiSuccess {int} rawSize the number of bytes in raw recording file.
    * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
    * recording file.
    * @apiSuccess {String} downloadRawJWT JSON Web Token to use to download
    * the raw recording data.
-   * @apiInterface {apiSuccess::ApiRecordingResponseSuccess} recording The recording data.
+   * @apiInterface {apiSuccess::ApiRecordingResponseSuccess} recording The
+   * recording data.
    *
    * @apiUse V1ResponseError
    */
@@ -921,13 +948,15 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id/thumbnail Gets a thumbnail png for this recording
+   * @api {get} /api/v1/recordings/:id/thumbnail Gets a thumbnail png for this
+   * recording
    * @apiName RecordingThumbnail
    * @apiGroup Recordings
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
    *
    * @apiParam {Integer} id Id of the recording to get the thumbnail for.
-   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted recordings.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
+   * recordings.
    *
    * @apiSuccess {file} file Raw data stream of the png.
    * @apiUse V1ResponseError
@@ -981,8 +1010,9 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiParam {Integer} id Id of the recording to delete.
-   * @apiQuery {Boolean} [soft-delete=true] Pass false to actually permanently delete this recording, otherwise by default
-   * it will just be marked as deleted and hidden from the UI.
+   * @apiQuery {Boolean} [soft-delete=true] Pass false to actually permanently
+   * delete this recording, otherwise by default it will just be marked as
+   * deleted and hidden from the UI.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -1044,7 +1074,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1UserAuthorizationHeader
 
    * @apiParam {Integer} id Id of the recording to update.
-   * @apiInterface {apiBody::ApiRecordingUpdateRequestBody} updates Object containing the fields to update and their new values.
+   * @apiBody {JSON} [updates] Data containg attributes for tag.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -1070,10 +1100,12 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id/undelete Undelete an existing soft-deleted recording
+   * @api {patch} /api/v1/recordings/:id/undelete Undelete an existing
+   soft-deleted recording
    * @apiName UndeleteRecording
    * @apiGroup Recordings
-   * @apiDescription This call is used for updating deletedAt and deletedBy fields of a previously
+   * @apiDescription This call is used for updating deletedAt and deletedBy
+   fields of a previously
    * soft-deleted recording.
    *
    * @apiUse V1UserAuthorizationHeader
@@ -1231,12 +1263,16 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {delete} /api/v1/recordings/:id/tracks/:trackId Remove track from recording
+   * @api {delete} /api/v1/recordings/:id/tracks/:trackId Remove track from
+   * recording
    * @apiName DeleteTrack
    * @apiGroup Tracks
    *
    * @apiParam {Integer} id Id of the recording
    * @apiParam {Integer} trackId id of the recording track to remove
+   * @apiQuery {Boolean} [soft-delete=true] Pass false to actually permanently
+   * delete this recording, otherwise by default it will just be marked as
+   * deleted and hidden from the UI.
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiUse V1ResponseSuccess
@@ -1245,16 +1281,25 @@ export default (app: Application, baseUrl: string) => {
   app.delete(
     `${apiUrl}/:id/tracks/:trackId`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("id")), idOf(param("trackId"))]),
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      query("soft-delete").default(false).isBoolean().toBoolean(),
+    ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request, response) => {
-      // Make sure the track belongs to the recording (this could probably be one query)
+      // Make sure the track belongs to the recording (this could
+      // probably be one query)
       if (
         (response.locals.track as Track).RecordingId ===
         response.locals.recording.id
       ) {
-        await response.locals.track.destroy();
+        if (request.query["soft-delete"]) {
+          await response.locals.track.archive();
+        } else {
+          await response.locals.track.destroy();
+        }
         responseUtil.send(response, {
           statusCode: 200,
           messages: ["Track deleted."],
@@ -1269,7 +1314,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replaceTag  Adds/Replaces  a Track Tag
+   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replaceTag Adds/Replaces
+   * a Track Tag
    * @apiDescription Adds or Replaces track tag based off:
    * if tag already exists for this user, ignore request
    * Add tag if it is an additional tag e.g. :Part"
@@ -1285,7 +1331,8 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiBody {String} what Object/event to tag.
    * @apiBody {Number} confidence Tag confidence score.
-   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false"
+   * otherwise.
    * @apiBody {JSON} [data] Data Additional tag data.
    *
    * @apiUse V1ResponseSuccess
@@ -1343,6 +1390,95 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/tags/:tagId Adds/Replaces  a
+   * Track Tag
+   * @apiDescription Adds or Replaces track tag based off:
+   * if tag already exists for this user, ignore request
+   * Add tag if it is an additional tag e.g. :Part"
+   * Add tag if this user hasn't already tagged this track
+   * Replace existing tag, if user has an existing animal tag
+   * @apiName PostTrackTag
+   * @apiGroup Tracks
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   * @apiParam {Integer} tagId id of the track tag
+   *
+   * @apiInterface {apiBody::ApiRecordingUpdateRequestBody} updates Object
+   * containing the fields to update and their new values.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/:id/tracks/:trackId/tags/:tagId`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      idOf(param("tagId")),
+      body("updates").custom(jsonSchemaOf(ApiTrackTagAttributesSchema)),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    parseJSONField(body("data")),
+    // FIXME - extract valid track for trackId on recording with id
+    async (request: Request, response: Response) => {
+      try {
+        const tag = await response.locals.track.updateTag(
+          request.params.tagId,
+          request.body.updates
+        );
+        responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Tag has been updated."],
+        });
+      } catch (e) {
+        log.warning("Failure replacing tag: %s", e);
+        responseUtil.send(response, {
+          statusCode: 500,
+          messages: ["Server error replacing tag."],
+        });
+      }
+    }
+  );
+
+  /**
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/undelete Undelete an existing
+   soft-deleted track
+   * @apiName UndeleteTrack
+   * @apiGroup Recordings
+   * @apiDescription This call is used for updating archived of a previously
+   * soft-deleted track.
+   *
+   * @apiUse V1UserAuthorizationHeader
+
+   * @apiParam {Integer} id Id of the recording.
+   * @apiParam {Integer} trackId id of the recording track to undelete.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/:id/tracks/:trackId/undelete`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id")), idOf(param("trackId"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request: Request, response: Response) => {
+      await response.locals.track.unarchive();
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Undeleted track."],
+      });
+    }
+  );
+
+  /**
    * @api {post} /api/v1/recordings/:id/tracks/:trackId/tags Add tag to track
    * @apiName PostTrackTag
    * @apiGroup Tracks
@@ -1354,8 +1490,10 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiBody {String} what Object/event to tag.
    * @apiBody {Number} confidence Tag confidence score.
-   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false" otherwise.
-   * @apiBody {String} [tagJWT] JWT token to tag a recording/track that the user would not otherwise have permission to view.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false"
+   * otherwise.
+   * @apiBody {String} [tagJWT] JWT token to tag a recording/track that the user
+   * would not otherwise have permission to view.
    * @apiBody {JSON} [data] Data Additional tag data.
    *
    * @apiUse V1ResponseSuccess
@@ -1378,7 +1516,8 @@ export default (app: Application, baseUrl: string) => {
         body("data").isObject().optional()
       ),
     ]),
-    // FIXME - JSON schema for allowed data? At least a limit to how many chars etc?
+    // FIXME - JSON schema for allowed data? At least a limit to how many
+    // chars etc?
     parseJSONField(body("data")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (request.body.tagJWT) {
@@ -1394,8 +1533,8 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       let track;
       if (request.body.tagJWT) {
-        // If there's a tagJWT, then we don't need to check the users' recording
-        // update permissions.
+        // If there's a tagJWT, then we don't need to check the users'
+        // recording update permissions.
         track = await loadTrackForTagJWT(request, response);
       } else {
         // Otherwise, just check that the user can update this track.
@@ -1426,7 +1565,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {delete} /api/v1/recordings/:id/tracks/:trackId/tags/:trackTagId Delete a track tag
+   * @api {delete} /api/v1/recordings/:id/tracks/:trackId/tags/:trackTagId
+   * Delete a track tag
    * @apiName DeleteTrackTag
    * @apiGroup Tracks
    *
@@ -1448,8 +1588,8 @@ export default (app: Application, baseUrl: string) => {
     async (request, response) => {
       let track;
       if (request.query.tagJWT) {
-        // If there's a tagJWT, then we don't need to check the users' recording
-        // update permissions.
+        // If there's a tagJWT, then we don't need to check the users'
+        // recording update permissions.
         track = await loadTrackForTagJWT(request, response);
       } else {
         // FIXME - fetch in middleware
@@ -1485,7 +1625,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {delete} /api/v1/recordings/:id/tags/:tagId Delete an existing recording tag
+   * @api {delete} /api/v1/recordings/:id/tags/:tagId Delete an existing
+   * recording tag
    * @apiName DeleteRecordingTag
    * @apiGroup Recordings
    *

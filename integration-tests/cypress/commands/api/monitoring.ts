@@ -151,7 +151,9 @@ function checkResponseMatches(
     if (expectedVisit.start) {
       if (expectedVisit.start instanceof Date) {
         // full date
-        simplifiedResponseVisit.start = completeResponseVisit.timeStart;
+        simplifiedResponseVisit.start = new Date(
+          completeResponseVisit.timeStart
+        );
       } else {
         // just time
         simplifiedResponseVisit.start = new Date(
@@ -163,7 +165,7 @@ function checkResponseMatches(
     }
 
     if (expectedVisit.end) {
-      simplifiedResponseVisit.end = completeResponseVisit.timeEnd;
+      simplifiedResponseVisit.end = new Date(completeResponseVisit.timeEnd);
     }
 
     if (expectedVisit.incomplete) {
@@ -173,7 +175,5 @@ function checkResponseMatches(
 
     responseVisitsToCompare.push(simplifiedResponseVisit);
   }
-  expect(JSON.stringify(responseVisitsToCompare)).to.eq(
-    JSON.stringify(expectedVisits)
-  );
+  expect(responseVisitsToCompare).to.deep.include.members(expectedVisits);
 }

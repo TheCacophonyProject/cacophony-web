@@ -1,11 +1,9 @@
 <template>
-  <b-form-group v-b-tooltip.hover="tooltipTitle">
-    <label>Video tags</label>
-
+  <b-form-group>
+    <label>Tag Type</label>
     <b-form-select
       :value="value"
       :options="options"
-      :disabled="disabled"
       placeholder="any"
       @input="$emit('input', $event)"
       data-cy="tag-select"
@@ -22,25 +20,11 @@ export default {
       type: String,
       required: true,
     },
-    disabled: {
-      type: Boolean,
-      default: false,
-    },
   },
   data() {
     return {
       options: DefaultLabels.searchRecordingLabels(),
     };
-  },
-
-  computed: {
-    tooltipTitle: function () {
-      if (this.disabled) {
-        return "Disabled when recording type includes audio";
-      } else {
-        return "";
-      }
-    },
   },
 };
 </script>

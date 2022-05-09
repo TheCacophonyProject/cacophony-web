@@ -94,6 +94,9 @@ export default {
   },
   watch: {
     $route() {
+      //if (this.$route.query.limit) {
+      //  this.perPage = parseInt(this.$route.query.limit);
+      //}
       if (this.$route.query.offset) {
         this.currentPage =
           Math.ceil(Number(this.$route.query.offset) / this.perPage) + 1;
@@ -104,9 +107,6 @@ export default {
   },
   mounted() {
     window.addEventListener("resize", this.onResize);
-    if (this.$route.query.limit) {
-      this.perPage = Number(this.$route.query.limit);
-    }
     if (this.$route.query.offset) {
       this.currentPage =
         Math.ceil(Number(this.$route.query.offset) / this.perPage) + 1;
@@ -178,9 +178,6 @@ export default {
         const { result } = queryResponse;
         this.recordings.push(...result.rows);
         this.queryPending = false;
-      } else {
-        // At end of search
-        // console.log("At end of search");
       }
       this.pagesQueued--;
       this.pagesQueued = Math.max(0, this.pagesQueued);

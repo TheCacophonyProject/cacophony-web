@@ -22,6 +22,7 @@ describe("Monitoring : multiple cameras and stations", () => {
   });
 
   it("Station name should be recorded, and reported", () => {
+    // in test
     const group = "stations";
     const camera = "camera2";
     cy.testCreateGroupAndDevices(Penny, group, camera);
@@ -36,14 +37,19 @@ describe("Monitoring : multiple cameras and stations", () => {
           lat: -44.0,
           lng: 172.7,
           time: new Date(),
-        }).thenCheckStationNameIs(Penny, getTestName("forest"));
-        cy.testUploadRecording(camera, {
-          tags: ["cat"],
-          lat: -44.0,
-          lng: 172.7,
-          time: new Date(),
-        }).thenCheckStationNameIs(Penny, getTestName("forest"));
-        cy.checkMonitoring(Penny, camera, [{ station: getTestName("forest") }]);
+        })
+          .thenCheckStationNameIs(Penny, getTestName("forest"))
+          .then(() => {
+            cy.testUploadRecording(camera, {
+              tags: ["cat"],
+              lat: -44.0,
+              lng: 172.7,
+              time: new Date(),
+            }).thenCheckStationNameIs(Penny, getTestName("forest"));
+            cy.checkMonitoring(Penny, camera, [
+              { station: getTestName("forest") },
+            ]);
+          });
       });
     });
   });
@@ -74,8 +80,8 @@ describe("Monitoring : multiple cameras and stations", () => {
             time: new Date(),
           }).thenCheckStationNameIs(Penny, getTestName("waterfall"));
           cy.checkMonitoring(Penny, camera, [
-            { station: getTestName("forest") },
             { station: getTestName("waterfall") },
+            { station: getTestName("forest") },
           ]);
         });
       }

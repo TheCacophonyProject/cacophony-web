@@ -14,7 +14,6 @@ import {
   checkTreeStructuresAreEqualExcept,
 } from "../server";
 import { RecordingId } from "@typedefs/api/common";
-
 Cypress.Commands.add(
   "apiGroupStationAdd",
   (

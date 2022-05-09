@@ -537,6 +537,7 @@ export default function (app: Application, baseUrl: string) {
       const fromTime = request.body["from-date"] || new Date();
       const untilTime = request.body["until-date"];
       const proximityWarnings = [];
+
       const activeStationsInTimeWindow =
         await models.Station.activeInGroupDuringTimeRange(
           groupId,

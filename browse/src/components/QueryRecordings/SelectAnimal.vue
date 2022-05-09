@@ -1,12 +1,11 @@
 <template>
-  <b-form-group v-b-tooltip.hover="tooltipTitle">
-    <label>Animals</label>
+  <b-form-group>
+    <label>Tagged as</label>
     <multiselect
       :value="value"
       :options="options"
       :multiple="true"
       :placeholder="placeholder"
-      :disabled="disabled"
       label="text"
       track-by="value"
       @input="$emit('input', $event)"
@@ -24,10 +23,6 @@ export default {
       type: Array,
       required: true,
     },
-    disabled: {
-      type: Boolean,
-      default: false,
-    },
     canHaveSubTags: {
       type: Boolean,
       default: false,
@@ -44,13 +39,6 @@ export default {
         return "add more animals";
       } else if (this.canHaveSubTags) {
         return "anything";
-      } else {
-        return "";
-      }
-    },
-    tooltipTitle: function () {
-      if (this.disabled) {
-        return "Disabled when recording type includes audio";
       } else {
         return "";
       }

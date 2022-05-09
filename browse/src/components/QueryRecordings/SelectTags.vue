@@ -1,11 +1,7 @@
 <template>
   <div>
-    <SelectTagTypes v-model="mode" :disabled="isDisabled" />
-    <SelectAnimal
-      v-model="animals"
-      :disabled="isDisabled"
-      :can-have-sub-tags="canHaveTags"
-    />
+    <SelectTagTypes v-model="mode" />
+    <SelectAnimal v-model="animals" :can-have-sub-tags="canHaveTags" />
   </div>
 </template>
 
@@ -18,10 +14,6 @@ export default {
   name: "SelectTags",
   components: { SelectTagTypes, SelectAnimal },
   props: {
-    isDisabled: {
-      type: Boolean,
-      required: true,
-    },
     value: {
       type: Object,
       required: true,
@@ -72,13 +64,6 @@ export default {
   methods: {
     updateValue: function () {
       let returnVal = {};
-      if (this.isDisabled) {
-        returnVal = {
-          tags: [],
-          tagMode: "any",
-          hasData: false,
-        };
-      }
 
       returnVal = {
         tags: this.makeTagList(this.animalData),
