@@ -114,7 +114,7 @@ function serverError(
 ) {
   log.error("SERVER ERROR: %s, %s", err.toString(), err.stack);
   return response.status(500).json({
-    messages: [message, err.toString()],
+    messages: [message],
   });
 }
 
