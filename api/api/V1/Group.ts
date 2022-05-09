@@ -537,39 +537,40 @@ export default function (app: Application, baseUrl: string) {
       const fromTime = request.body["from-date"] || new Date();
       const untilTime = request.body["until-date"];
       const proximityWarnings = [];
-      const activeStationsInTimeWindow =
-        await models.Station.activeInGroupDuringTimeRange(
-          groupId,
-          fromTime,
-          untilTime
-        );
-      for (const existingStation of activeStationsInTimeWindow) {
-        if (
-          latLngApproxDistance(existingStation.location, location) <
-          MIN_STATION_SEPARATION_METERS
-        ) {
-          proximityWarnings.push(
-            `New station is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`
-          );
-        }
-      }
 
-      const nameCollision = activeStationsInTimeWindow.find(
-        (existingStation) => existingStation.name === name
-      );
-      if (nameCollision) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: [
-            `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
-              (untilTime && untilTime.toISOString()) || "now"
-            }.`,
-          ],
-        });
-
-        // NOTE: Alternate behaviour: We rename any existing station in the active range that has the same name.
-        // await nameCollision.update({ name: `${nameCollision.name}_moved` });
-      }
+      // const activeStationsInTimeWindow =
+      //   await models.Station.activeInGroupDuringTimeRange(
+      //     groupId,
+      //     fromTime,
+      //     untilTime
+      //   );
+      // for (const existingStation of activeStationsInTimeWindow) {
+      //   if (
+      //     latLngApproxDistance(existingStation.location, location) <
+      //     MIN_STATION_SEPARATION_METERS
+      //   ) {
+      //     proximityWarnings.push(
+      //       `New station is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`
+      //     );
+      //   }
+      // }
+      //
+      // const nameCollision = activeStationsInTimeWindow.find(
+      //   (existingStation) => existingStation.name === name
+      // );
+      // if (nameCollision) {
+      //   return responseUtil.send(response, {
+      //     statusCode: 400,
+      //     messages: [
+      //       `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
+      //         (untilTime && untilTime.toISOString()) || "now"
+      //       }.`,
+      //     ],
+      //   });
+      //
+      //   // NOTE: Alternate behaviour: We rename any existing station in the active range that has the same name.
+      //   // await nameCollision.update({ name: `${nameCollision.name}_moved` });
+      // }
 
       const station = await models.Station.create({
         name,

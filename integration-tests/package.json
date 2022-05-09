@@ -7,7 +7,7 @@
     "dev": "node ./node_modules/.bin/cypress open",
     "performance": "node ./node_modules/.bin/cypress open --config-file cypress-performance.json",
     "browse": "node ./node_modules/.bin/cypress open --config-file cypress-browse.json",
-    "release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD",
+    "release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD --spec cypress/integration/api/monitoring/monitoring_cameras.ts",
     "performance:release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD --config-file cypress-performance.json",
     "lint": "eslint ./cypress --ext .ts && (npx prettier --check './**/*.ts' || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
     "lint:fix": "eslint ./cypress --fix --ext .ts && npx prettier --write './cypress/**/*.ts'",
