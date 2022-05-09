@@ -34,7 +34,7 @@ import { Tag } from "./Tag";
 import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
 import { Station } from "./Station";
-import { mapPositions } from "@api/V1/recordingUtil";
+import { mapPosition } from "@api/V1/recordingUtil";
 import {
   DeviceId,
   GroupId,
@@ -477,7 +477,7 @@ from (
             needsTagging: item.TaggedBy !== false,
           };
           if (item.TrackData.positions && item.TrackData.positions.length) {
-            t.positions = item.TrackData.positions.map(mapPositions);
+            t.positions = item.TrackData.positions.map(mapPosition);
           }
           acc.tracks.push(t);
         }

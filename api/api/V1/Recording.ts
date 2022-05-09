@@ -85,7 +85,7 @@ import {
 } from "../validation-middleware";
 
 import recordingUtil, {
-  mapPositions,
+  mapPosition,
   reportRecordings,
   reportVisits,
   signedToken,
@@ -149,7 +149,7 @@ const mapTrack = (track: Track): ApiTrackResponse => {
     filtered: track.filtered,
   };
   if (track.data.positions && track.data.positions.length) {
-    t.positions = track.data.positions.map(mapPositions);
+    t.positions = track.data.positions.map(mapPosition);
   }
   return t;
 };
