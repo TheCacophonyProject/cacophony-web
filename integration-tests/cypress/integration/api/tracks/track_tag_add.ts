@@ -82,7 +82,6 @@ describe("Track Tags: add, check, delete", () => {
     start_s: 1,
     end_s: 3,
     positions: positions1,
-    //TODO - do the remaining parameters _do_ anything?!
     label: "a label",
     clarity: 0.9,
     message: "a message",
@@ -105,7 +104,7 @@ describe("Track Tags: add, check, delete", () => {
   const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
     createdAt: NOT_NULL_STRING,
-    //TODO: cannot set data above, retuned as blank sting
+    //Note: data not set in a manual tag
     data: "",
     id: 99,
     automatic: false,
@@ -119,7 +118,7 @@ describe("Track Tags: add, check, delete", () => {
   const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
     createdAt: NOT_NULL_STRING,
-    //TODO: cannot set data above, retuned as blank sting
+    //Note: data not set in a manual tag
     data: "",
     id: 99,
     automatic: false,
@@ -217,7 +216,7 @@ describe("Track Tags: add, check, delete", () => {
       );
 
       cy.log("Check recording track & tag can be viewed correctly");
-      cy.apiTrackCheck(
+      cy.apiTracksCheck(
         "ttaGroupAdmin",
         "ttaRecording1",
         [expectedTrackWithTag],
@@ -233,7 +232,7 @@ describe("Track Tags: add, check, delete", () => {
       );
 
       cy.log("Check tag no longer exists");
-      cy.apiTrackCheck(
+      cy.apiTracksCheck(
         "ttaGroupAdmin",
         "ttaRecording1",
         [expectedTrack],
@@ -272,7 +271,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupMember",
       "ttaRecording2",
       [expectedTrackWithTag],
@@ -288,7 +287,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check tag no longer exists");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupMember",
       "ttaRecording2",
       [expectedTrack],
@@ -322,7 +321,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check tag does not exist");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupMember",
       "ttaRecording5",
       [expectedTrack],
@@ -366,7 +365,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check tag still exists");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupMember",
       "ttaRecording6",
       [expectedTrackWithTag],
@@ -405,7 +404,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check tag no longer exists");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupAdmin",
       "ttaRecording7",
       [expectedTrack],
@@ -444,7 +443,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTag1],
@@ -461,7 +460,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check both tags shown");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTags2],
@@ -503,7 +502,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTag1],
@@ -520,7 +519,7 @@ describe("Track Tags: add, check, delete", () => {
     );
 
     cy.log("Check both tags shown");
-    cy.apiTrackCheck(
+    cy.apiTracksCheck(
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTags2],
@@ -584,7 +583,7 @@ describe("Track Tags: add, check, delete", () => {
           );
 
           cy.log("Check recording track & tag can be viewed correctly");
-          cy.apiTrackCheck(
+          cy.apiTracksCheck(
             "ttaGroupAdmin",
             "ttaRecording8",
             [expectedTrackWithTag],
@@ -600,7 +599,7 @@ describe("Track Tags: add, check, delete", () => {
           );
 
           cy.log("Check tag no longer exists");
-          cy.apiTrackCheck(
+          cy.apiTracksCheck(
             "ttaGroupAdmin",
             "ttaRecording8",
             [expectedTrack],
@@ -700,7 +699,7 @@ describe("Track Tags: add, check, delete", () => {
           );
 
           cy.log("Check tag no longer exists");
-          cy.apiTrackCheck(
+          cy.apiTracksCheck(
             "ttaGroupAdmin",
             "ttaRecording10",
             [expectedTrack],
