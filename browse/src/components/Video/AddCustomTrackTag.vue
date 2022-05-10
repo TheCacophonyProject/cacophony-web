@@ -2,11 +2,21 @@
   <b-modal id="custom-track-tag" title="Add track tag" @ok="quickTag">
     <b-form>
       <b-form-group label="Tag:" horizontal>
-        <b-form-select v-model="whatTag" :options="whatOptions">
-          <template>
-            <option :value="null" disabled>Choose a tag..</option>
-          </template>
-        </b-form-select>
+        <div class="d-flex">
+          <b-form-select v-model="whatTag" :options="whatOptions">
+            <template>
+              <option :value="null" disabled>Choose a tag..</option>
+            </template>
+          </b-form-select>
+          <b-button
+            class="ml-2"
+            v-b-tooltip.hover
+            title="Pin tag to quick selection"
+            @click="togglePinTag"
+          >
+            <font-awesome-icon icon="thumbtack" size="1x" />
+          </b-button>
+        </div>
       </b-form-group>
 
       <b-form-group label="Confidence:" horizontal v-if="allowConfidence">
@@ -21,6 +31,7 @@
 </template>
 <script lang="ts">
 import { ApiTrackTagRequest } from "@typedefs/api/trackTag";
+import { circle } from "leaflet";
 import DefaultLabels from "../../const";
 
 export default {
@@ -65,6 +76,9 @@ export default {
         what: this.whatTag,
       };
       this.$emit("addTag", tag);
+    },
+    togglePinTag() {
+      this.$store.commit("Video/pinnedLabels", this.whatTag);
     },
   },
 };

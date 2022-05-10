@@ -20,6 +20,17 @@
           <span class="tag-name">{{ animal }}</span>
         </button>
       </div>
+      <div class="tag-btns-wrapper animals mt-1">
+        <button
+          v-for="label in pinnedLabels"
+          :key="label"
+          :class="['btn btn-light btn-tag equal-flex', getClass(label)]"
+          @click="quickTag(label)"
+          :disabled="taggingPending"
+        >
+          <span class="tag-name">{{ label }}</span>
+        </button>
+      </div>
     </div>
 
     <div class="tag-category">
@@ -82,6 +93,9 @@ export default {
         (tag) => tag.automatic && tag.data.name === "Master"
       );
     },
+    pinnedLabels() {
+      return this.$store.state.Video.pinnedLabels;
+    },
     animals() {
       return this.isWallabyProject
         ? DefaultLabels.wallabyQuickTagLabels()
@@ -105,6 +119,7 @@ export default {
         aiGuess &&
         aiGuess.what !== "unidentified" &&
         !this.animals.includes(aiGuess.what) &&
+        !this.pinnedLabels.includes(aiGuess.what) &&
         otherTags.find(({ value }) => value === aiGuess.what) === undefined
       ) {
         otherTags.unshift({ text: aiGuess.what, value: aiGuess.what });
@@ -115,6 +130,7 @@ export default {
         userTag !== undefined &&
         userTag.what !== "unknown" &&
         !this.animals.includes(userTag.what) &&
+        !this.pinnedLabels.includes(userTag.what) &&
         otherTags.find(({ value }) => value === userTag.what) === undefined
       ) {
         otherTags.unshift({ text: userTag.what, value: userTag.what });
