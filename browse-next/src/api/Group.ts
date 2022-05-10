@@ -11,7 +11,7 @@ import { shouldViewAsSuperUser } from "@models/LoggedInUser";
 
 // FIXME - Move all the super user view mode stuff into the fetch function?
 
-const addNewGroup = (groupName: string) =>
+export const addNewGroup = (groupName: string) =>
   CacophonyApi.post("/api/v1/groups", { groupName }) as Promise<
     FetchResult<{ groupId: GroupId }>
   >;

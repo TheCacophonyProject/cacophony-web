@@ -12,7 +12,7 @@ import logger from "../logging";
 import log from "../logging";
 import { modelTypeName, modelTypeNamePlural } from "./middleware";
 import { ValidationChain } from "express-validator";
-import { ClientError } from "./customErrors";
+import { AuthorizationError, ClientError } from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
@@ -28,7 +28,12 @@ const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
 
 const extractJwtAuthenticatedEntity =
-  (types: string[], reqAccess?: { devices?: any }, requireSuperAdmin = false) =>
+  (
+    types: string[],
+    reqAccess?: { devices?: any },
+    requireSuperAdmin = false,
+    requireActivatedUser = false
+  ) =>
   async (
     request: Request,
     response: Response,
@@ -45,6 +50,19 @@ const extractJwtAuthenticatedEntity =
             `Invalid JWT access type '${type}', must be ${
               types.length > 1 ? "one of " : ""
             }${types.map((t) => `'${t}'`).join(", ")}`,
+            401
+          )
+        );
+      }
+
+      if (
+        jwtDecoded._type === "user" &&
+        requireActivatedUser &&
+        jwtDecoded.activated === false
+      ) {
+        return next(
+          new ClientError(
+            "You must have confirmed your email address to activate your account in order to access this API.",
             401
           )
         );
@@ -122,6 +140,12 @@ const extractJwtAuthenticatedEntity =
   };
 
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
+export const extractJwtAuthorizedActivatedUser = extractJwtAuthenticatedEntity(
+  ["user"],
+  undefined,
+  false,
+  true
+);
 export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity([
   "user",
   "device",
@@ -1423,7 +1447,7 @@ export const extractJWTInfo =
     try {
       tokenInfo = getDecodedToken(token);
     } catch (e) {
-      return next(new ClientError(`JWT token expired`, 401));
+      return next(e);
     }
     response.locals.tokenInfo = tokenInfo;
     next();

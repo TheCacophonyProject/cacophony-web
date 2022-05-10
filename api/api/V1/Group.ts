@@ -34,6 +34,8 @@ import {
   fetchAuthorizedRequiredStationsForGroup,
   fetchAdminAuthorizedRequiredStationByNameInGroup,
   fetchAuthorizedRequiredStationByNameInGroup,
+  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
+  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -680,6 +682,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  // TODO (docs)
   app.patch(
     `${apiUrl}/:groupIdOrName/my-settings`,
     extractJwtAuthorizedUser,
@@ -708,6 +711,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  // TODO (docs)
   app.patch(
     `${apiUrl}/:groupIdOrName/group-settings`,
     extractJwtAuthorizedUser,
@@ -723,6 +727,35 @@ export default function (app: Application, baseUrl: string) {
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated group settings"],
+      });
+    }
+  );
+
+  // TODO (docs)
+  app.post(
+    `${apiUrl}/:groupIdOrName/invite-user`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("email").exists(),
+      booleanOf(body("admin")).default(false),
+    ]),
+    fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body("email")),
+    async (request: Request, response: Response) => {
+      const group = response.locals.group;
+      const user = response.locals.user;
+      const makeAdmin = request.body.admin;
+      const requestUser = response.locals.requestUser;
+      // TODO - send email to user with token to join group, expiring in 1 week.
+
+      if (!user) {
+        // If the user isn't a member, email them and invite them to create an account, with a special link to
+        // accept which will then add them to the group when the account is created.
+      }
+
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Invited user to group"],
       });
     }
   );

@@ -35,7 +35,12 @@ import {
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
+  extractJWTInfo,
+  fetchAdminAuthorizedRequiredGroupByNameOrId,
+  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedOptionalUserByNameOrId,
+  fetchUnauthorizedRequiredGroupById,
+  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrId,
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
@@ -243,7 +248,6 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       // map matchedData to db fields.
       const dataToUpdate = matchedData(request);
-      logger.error("%s", dataToUpdate);
       if (dataToUpdate.userName) {
         dataToUpdate.username = dataToUpdate.userName;
         delete dataToUpdate.userName;
@@ -258,7 +262,6 @@ export default function (app: Application, baseUrl: string) {
         await sendEmailConfirmationEmail(requestUser, dataToUpdate.email);
       }
       await requestUser.update(dataToUpdate);
-      logger.error("EUA %s", requestUser.endUserAgreement);
       responseUtil.send(response, {
         statusCode: 200,
         messages: ["Updated user."],
@@ -452,4 +455,97 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.patch(`${apiUrl}/changePassword`, ...changePasswordOptions);
+
+  // TODO (docs)
+  app.post(
+    `${apiUrl}/accept-group-invite`,
+    validateFields([body("inviteToken").exists()]),
+    extractJWTInfo(body("inviteToken")),
+    // Get a token with user, and group id to add to.
+    async (request: Request, response: Response) => {
+      const { id, groupId, admin, inviterId } = response.locals.tokenInfo;
+      const [user, group, inviter] = await Promise.all([
+        models.User.findByPk(id),
+        models.Group.findByPk(groupId),
+        models.User.findByPk(inviterId),
+      ]);
+      if (!inviter) {
+        return responseUtil.send(response, {
+          statusCode: 422,
+          messages: ["Inviting user no longer exists"],
+        });
+      }
+      if (!user) {
+        return responseUtil.send(response, {
+          statusCode: 422,
+          messages: ["User no longer exists"],
+        });
+      }
+      if (!group) {
+        return responseUtil.send(response, {
+          statusCode: 422,
+          messages: ["Group no longer exists"],
+        });
+      }
+
+      // TODO:
+      // Check if the user already belongs to the group.
+      // Check if the user giving permissions is still an admin member of the group in question.
+
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Added to invited group"],
+      });
+    }
+  );
+
+  app.post(
+    `${apiUrl}/request-group-membership`,
+    extractJwtAuthorizedUser,
+    validateFields([body("groupAdminEmail").exists()]),
+    fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("groupAdminEmail")),
+    async (request: Request, response: Response) => {
+      const groupOwner = response.locals.user;
+      // TODO: Check if the groupOwner is actually admin of any groups.
+      // Send group owner an email with a token which can grant access for the requesting user
+      // for any of their groups.
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Send membership request to user"],
+      });
+    }
+  );
+
+  app.post(
+    `${apiUrl}/validate-group-membership-request`,
+    // Get token from request email.
+    validateFields([body("membershipRequest").exists()]),
+    extractJWTInfo(body("membershipRequest")),
+    async (request: Request, response: Response) => {
+      // FIXME - make sure all of these JWT tokens have a 'type' field that we can check against,
+      // to make sure they can't be reused for other requests.
+      const { id, type } = response.locals.tokenInfo;
+      if (type !== "membership-request") {
+        return responseUtil.send(response, {
+          statusCode: 401,
+          userId: id,
+          messages: ["Invalid token type"],
+        });
+      }
+      const userToGrantMembershipFor = await models.User.findByPk(id);
+      if (!userToGrantMembershipFor) {
+        return responseUtil.send(response, {
+          statusCode: 422,
+          messages: ["User no longer exists"],
+        });
+      }
+
+      return responseUtil.send(response, {
+        statusCode: 200,
+        userId: id,
+        userName: userToGrantMembershipFor.username,
+        messages: ["Allowed to add user."],
+      });
+    }
+  );
 }

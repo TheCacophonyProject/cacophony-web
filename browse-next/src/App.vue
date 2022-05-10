@@ -8,16 +8,17 @@ import {
   userIsLoggedIn,
   userHasGroups,
   CurrentUser,
-  tryLoggingInRememberedUser,
-  currentEUAVersion,
   euaIsOutOfDate,
   currentSelectedGroup,
+  userHasMultipleGroups,
+  isLoggingInAutomatically,
+  isFetchingGroups,
+  isResumingSession,
   UserGroups,
 } from "@/models/LoggedInUser";
-import { defineAsyncComponent, onBeforeMount, reactive, ref } from "vue";
+import { defineAsyncComponent, ref } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
-import { getEUAVersion } from "@api/User";
-import { getGroups } from "@api/Group";
+import CreateGroupModal from "@/components/CreateGroupModal.vue";
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
@@ -27,48 +28,40 @@ const userIsSuperAdmin = false;
 const loggedInAsAnotherUser = false;
 const environmentIsProduction = false;
 
+const creatingNewGroup = ref(false);
+const createNewGroup = () => {
+  console.log("Create new group");
+  creatingNewGroup.value = true;
+};
+
+const clearCreateNewGroup = () => {
+  console.log("Clear create new group");
+  creatingNewGroup.value = false;
+};
 // TODO: This should be an exported ref/reactive thingy.
 // Once a user logs in, they have a last selected group.
 // When a user switches a group, it gets flagged and saved server-side as the last selected group (saved as group id *and name*, since groups can be renamed?)
 //const currentSelectedGroup = { groupName: "foo", id: 1 };
-const isLoggingInAutomatically = ref(false);
-
-onBeforeMount(async () => {
-  // Try logging in,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_, euaResponse] = await Promise.all([
-    tryLoggingInRememberedUser(isLoggingInAutomatically),
-    getEUAVersion(),
-  ]);
-  if (euaResponse.success) {
-    currentEUAVersion.value = euaResponse.result.euaVersion;
-  }
-
-  if (userIsLoggedIn.value && !currentSelectedGroup.value) {
-    // Grab the users' groups, and select the first one.
-    const NO_ABORT = false;
-    const groupsResponse = await getGroups(NO_ABORT);
-    if (groupsResponse.success) {
-      UserGroups.value = reactive(groupsResponse.result.groups);
-    }
-  }
-});
 </script>
 <template>
   <blocking-user-action-required-modal
     v-if="userIsLoggedIn && euaIsOutOfDate"
   />
   <network-connection-alert-modal />
+  <create-group-modal
+    :show="creatingNewGroup"
+    @finished="clearCreateNewGroup"
+  />
   <git-release-info-bar />
   <main
     class="justify-content-center align-items-center d-flex"
-    v-if="isLoggingInAutomatically"
+    v-if="isLoggingInAutomatically || isFetchingGroups"
   >
     <h1 class="h3"><b-spinner /> Signing in...</h1>
   </main>
   <main
     id="main-wrapper"
-    class="d-flex logged-in"
+    class="d-flex logged-in has-git-info-bar"
     v-else-if="userIsLoggedIn && userHasGroups"
   >
     <nav id="global-side-nav" class="d-flex flex-column flex-shrink-0">
@@ -94,14 +87,17 @@ onBeforeMount(async () => {
           class="d-flex flex-row group-switcher justify-content-between mt-5 mb-2"
         >
           <div class="d-flex">
-            <button class="btn current-group">
-              Living Springs
+            <button class="btn current-group" v-if="userHasMultipleGroups">
+              {{ currentSelectedGroup.groupName }}
               <span class="switch-label figure"
                 ><font-awesome-icon icon="retweet" class="switch-icon"
               /></span>
             </button>
+            <span v-else class="current-group">{{
+              currentSelectedGroup.groupName
+            }}</span>
           </div>
-          <button class="btn add-group">
+          <button class="btn add-group" @click.stop.prevent="createNewGroup">
             <font-awesome-icon icon="plus" />
           </button>
         </div>
@@ -116,7 +112,7 @@ onBeforeMount(async () => {
               },
             }"
             alt="dashboard"
-            class="nav-link active py-3 d-flex flex-row"
+            class="nav-link py-3 d-flex flex-row"
             aria-current="page"
             title=""
             data-bs-toggle="tooltip"
@@ -265,7 +261,7 @@ onBeforeMount(async () => {
       </ul>
       <div class="border-top d-flex">
         <router-link
-          to="user-settings"
+          :to="{ name: 'user-settings' }"
           class="d-flex py-3 text-decoration-none flex-fill"
         >
           <span class="nav-icon-wrapper">
@@ -288,7 +284,7 @@ onBeforeMount(async () => {
           <span>{{ CurrentUser.userName }}</span>
         </router-link>
         <router-link
-          to="sign-out"
+          :to="{ name: 'sign-out' }"
           class="d-block py-3 text-decoration-none border-start"
         >
           <span class="nav-icon-wrapper">
@@ -298,15 +294,17 @@ onBeforeMount(async () => {
       </div>
     </nav>
     <section id="main-content">
-      <router-view />
+      <div class="container pt-3">
+        <router-view />
+      </div>
     </section>
   </main>
-  <main v-else-if="userIsLoggedIn && !userHasGroups">
+  <main v-else-if="userIsLoggedIn && !userHasGroups" class="d-flex flex-column">
     <router-view />
   </main>
   <main
     v-else
-    class="logged-out justify-content-center align-items-center d-flex"
+    class="logged-out justify-content-center align-items-center d-flex flex-column flex-fill"
   >
     <router-view />
   </main>
@@ -341,11 +339,16 @@ onBeforeMount(async () => {
 #main-wrapper {
   position: relative;
   padding-left: 3.5rem;
+  max-height: 100vh;
+  &.has-git-info-bar {
+    max-height: calc(100vh - 24px);
+  }
 }
 
 #main-content {
   background: #f6f6f6;
   width: 100%;
+  overflow-y: auto;
 }
 
 #global-side-nav {
@@ -361,6 +364,8 @@ onBeforeMount(async () => {
   overflow: hidden;
   transition: width 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+
 
   .nav-icon-wrapper {
     // Keep the icons vertically aligned relative to one-another.
@@ -383,13 +388,13 @@ onBeforeMount(async () => {
       color: #808080;
     }
     &:active,
-    &.active {
+    &.router-link-active:not(.cacophony-logo-link) {
       svg {
         color: #4c4c4c;
       }
     }
 
-    &.active {
+    &.router-link-active:not(.cacophony-logo-link) {
       background: unset;
       position: relative;
       &::before {

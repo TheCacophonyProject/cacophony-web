@@ -76,8 +76,8 @@ const resetFormIsFilledAndValid = computed<boolean>(
   () => isValidPassword.value && passwordConfirmationMatches.value
 );
 const router = useRouter();
+const { params } = useRoute();
 onBeforeMount(async () => {
-  const { params } = useRoute();
   if (params.token) {
     checkingResetToken.value = true;
     if (Array.isArray(params.token) && params.token.length) {

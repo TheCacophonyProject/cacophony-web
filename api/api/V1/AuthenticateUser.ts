@@ -17,7 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import middleware, { validateFields } from "../middleware";
-import auth, { generateAuthTokensForUser, ttlTypes } from "../auth";
+import auth, {
+  generateAuthTokensForUser,
+  getEmailConfirmationToken,
+  ttlTypes,
+} from "../auth";
 import { body, oneOf } from "express-validator";
 import responseUtil from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
@@ -45,6 +49,7 @@ import jwt from "jsonwebtoken";
 import config from "@config";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
+import logger from "@log";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
@@ -112,30 +117,13 @@ export default function (app: Application, baseUrl: string) {
             isNewEndPoint
           );
 
-        const {
-          id,
-          username,
-          firstName,
-          lastName,
-          email,
-          globalPermission,
-          endUserAgreement,
-        } = response.locals.user;
         responseUtil.send(response, {
           statusCode: 200,
           messages: ["Successful login."],
           token: apiToken,
           expiry,
           refreshToken,
-          userData: {
-            id,
-            userName: username,
-            firstName,
-            lastName,
-            email,
-            globalPermission,
-            endUserAgreement,
-          },
+          userData: mapUser(response.locals.user),
         });
       } else {
         responseUtil.send(response, {
@@ -534,6 +522,25 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  if (config.server.loggerLevel === "debug") {
+    app.post(
+      `${apiUrl}/get-email-confirmation-token`,
+      extractJwtAuthorizedUser,
+      validateFields([body("email")]),
+      async (request: Request, response: Response) => {
+        const token = getEmailConfirmationToken(
+          response.locals.requestUser.id,
+          request.body.email
+        );
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got email confirmation token"],
+          token,
+        });
+      }
+    );
+  }
+
   /**
    * @api {post} /api/v1/users/validate-email-confirmation-request Validates token from email confirmation email
    * @apiName ConfirmValidateEmail
@@ -556,30 +563,39 @@ export default function (app: Application, baseUrl: string) {
         id: UserId;
         email: string;
       };
-      const user = response.locals.user;
-      if (!user.email) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Email not set"],
-        });
-      }
-      if (user.emailConfirmed) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Email already confirmed"],
-        });
-      }
+      let user = response.locals.user;
       if (tokenInfo.email !== user.email) {
         return responseUtil.send(response, {
           statusCode: 422,
           messages: ["User email address differs from email to confirm"],
         });
       }
-      if (user.email && !user.emailConfirmed) {
-        await user.update({ emailConfirmed: true });
+      if (user.email) {
+        // NOTE: It's okay if this link is used multiple times, we'll just say it's confirmed successfully each time.
+        const emailAlreadyConfirmed = user.emailConfirmed; // Email could be already confirmed if we're changing the email address.
+
+        // TODO: Do we return a logged in user here?
+        //  If it's a changed email address, then we should log the user out, and prompt the user to login with the
+        //  new email address.
+        //  If it's a first time email confirmation, then we can return the login details, and log the user in
+        //  again.  Either way we should return a new set of user keys.
+        // Generate a new set of tokens to be replaced.
+        const { expiry, refreshToken, apiToken } =
+          await generateAuthTokensForUser(
+            user,
+            request.headers["viewport"] as string,
+            request.headers["user-agent"]
+          );
+
+        user = await user.update({ emailConfirmed: true });
         return responseUtil.send(response, {
           statusCode: 200,
-          messages: ["Email confirmation request sent"],
+          signOutUser: emailAlreadyConfirmed, // UI should sign out user and make them sign in again with new email.
+          userData: mapUser(user),
+          token: apiToken,
+          refreshToken,
+          expiry,
+          messages: ["Email confirmed"],
         });
       }
     }

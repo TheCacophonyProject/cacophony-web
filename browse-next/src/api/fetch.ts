@@ -105,7 +105,15 @@ export async function fetch<T>(
   }
   if (response.status === 401) {
     CurrentUser.value = null;
-    return;
+    return {
+      result: {
+        errors: ["Unauthorized"],
+        messages: ["You must be logged in to access this API."],
+        errorType: "Client",
+      },
+      status: 401,
+      success: false,
+    };
   }
   const result = await response.json();
   if (result.cwVersion) {

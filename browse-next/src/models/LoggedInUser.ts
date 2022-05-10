@@ -75,6 +75,28 @@ export const persistUser = (currentUser: LoggedInUser) => {
   );
 };
 
+export const refreshLocallyStoredUserActivation = (): boolean => {
+  const rememberedCredentials = window.localStorage.getItem(
+    "saved-login-credentials"
+  );
+  if (rememberedCredentials) {
+    let currentUser;
+    try {
+      currentUser = JSON.parse(rememberedCredentials);
+      if (currentUser.emailConfirmed) {
+        currentUser.expiry = new Date(currentUser.expiry);
+        setLoggedInUserData({
+          ...currentUser,
+        });
+        return true;
+      }
+    } catch (e) {
+      forgetUserOnCurrentDevice();
+    }
+  }
+  return false;
+};
+
 const refreshCredentials = async () => {
   // NOTE: Because this can be shared between browser windows/tabs,
   //  always pull out the localStorage version before refreshing
@@ -107,11 +129,13 @@ const refreshCredentials = async () => {
           });
         } else {
           // Refresh token wasn't found, so prompt login again
+          debugger;
           forgetUserOnCurrentDevice();
         }
       }
     } catch (e) {
       // JSON user creds was malformed, so clear it, and prompt login again
+      debugger;
       forgetUserOnCurrentDevice();
     }
   }
@@ -160,9 +184,26 @@ export const currentSelectedGroup = computed<
   { groupName: string; id: GroupId } | false
 >(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
-    return currentUserSettings.value.currentSelectedGroup || false;
+    return (
+      currentUserSettings.value.currentSelectedGroup ||
+      (UserGroups.value && {
+        id: UserGroups.value[0].id,
+        groupName: UserGroups.value[0].groupName,
+      }) ||
+      false
+    );
   }
-  return false;
+  return (
+    (UserGroups.value && {
+      id: UserGroups.value[0].id,
+      groupName: UserGroups.value[0].groupName,
+    }) ||
+    false
+  );
+});
+
+export const userHasMultipleGroups = computed<boolean>(() => {
+  return (UserGroups.value && UserGroups.value?.length > 1) || false;
 });
 
 export const shouldViewAsSuperUser = computed<boolean>(() => {
@@ -179,3 +220,15 @@ export const userDisplayName = computed<string>(() => {
   }
   return "";
 });
+
+export const userHasConfirmedEmailAddress = computed<boolean>(() => {
+  if (userIsLoggedIn.value) {
+    return CurrentUser.value?.emailConfirmed || false;
+  }
+  return false;
+});
+
+export const isResumingSession = ref(false);
+
+export const isLoggingInAutomatically = ref(false);
+export const isFetchingGroups = ref(false);

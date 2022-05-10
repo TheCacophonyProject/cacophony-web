@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import config from "../config";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
 import customErrors from "./customErrors";
 import models, { ModelCommon } from "../models";
@@ -26,6 +26,7 @@ import { User } from "@models/User";
 import { UserId } from "@typedefs/api/common";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
+import logger from "@log";
 /*
  * Create a new JWT for a user or device.
  */
@@ -78,8 +79,8 @@ export const getEmailConfirmationToken = (
 
 export const generateAuthTokensForUser = async (
   user: User,
-  viewport: string,
-  userAgent: string,
+  viewport: string = "",
+  userAgent: string = "unknown user agent",
   expires: boolean = true
 ): Promise<{ refreshToken: string; apiToken: string; expiry: Date }> => {
   const now = new Date().toISOString();
@@ -127,10 +128,21 @@ export const getDecodedResetToken = (token: string): ResetInfo => {
 };
 
 export const getDecodedToken = (token: string): any => {
+  const decodedToken = jwt.decode(
+    token,
+    config.server.passportSecret
+  ) as JwtPayload | null;
+  if (decodedToken && decodedToken.exp * 1000 < new Date().getTime()) {
+    throw new customErrors.AuthenticationError("JWT token expired.");
+  }
   try {
     return jwt.verify(token, config.server.passportSecret);
   } catch (e) {
-    throw new customErrors.AuthenticationError("Failed to verify JWT.");
+    throw new customErrors.AuthenticationError(
+      `Failed to verify JWT for token ${token} - (${
+        decodedToken && JSON.stringify(decodedToken)
+      })`
+    );
   }
 };
 
@@ -148,7 +160,11 @@ export const getVerifiedJWT = (
   try {
     return jwt.verify(token, config.server.passportSecret);
   } catch (e) {
-    throw new customErrors.AuthenticationError("Failed to verify JWT.");
+    throw new customErrors.AuthenticationError(
+      `Failed to verify JWT. (${JSON.stringify(
+        jwt.decode(token, config.server.passportSecret)
+      )})`
+    );
   }
 };
 

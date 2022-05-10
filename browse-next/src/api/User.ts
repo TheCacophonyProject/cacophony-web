@@ -30,7 +30,6 @@ export const refreshLogin = (refreshToken: string) =>
     NO_ABORT
   ) as Promise<
     FetchResult<{
-      userData: ApiLoggedInUserResponse;
       token: JwtToken<UserId>;
       refreshToken: string;
       expiry: IsoFormattedDateString;
@@ -50,7 +49,24 @@ export const resetPassword = (email: string) =>
 export const validatePasswordResetToken = (token: string) =>
   CacophonyApi.post("/api/v1/users/validate-reset-token", {
     token,
-  }) as Promise<FetchResult<{ userData: ApiLoggedInUserResponse }>>;
+  }) as Promise<
+    FetchResult<{
+      userData: ApiLoggedInUserResponse;
+    }>
+  >;
+
+export const validateEmailConfirmationToken = (token: string) =>
+  CacophonyApi.post("/api/v1/users/validate-email-confirmation-request", {
+    emailConfirmationJWT: token,
+  }) as Promise<
+    FetchResult<{
+      userData: ApiLoggedInUserResponse;
+      token: JwtToken<UserId>;
+      signOutUser: boolean;
+      refreshToken: string;
+      expiry: IsoFormattedDateString;
+    }>
+  >;
 
 export const changePassword = (token: string, newPassword: string) =>
   CacophonyApi.patch("/api/v1/users/change-password", {
@@ -59,6 +75,16 @@ export const changePassword = (token: string, newPassword: string) =>
   }) as Promise<
     FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
   >;
+
+export const resendAccountActivationEmail = () =>
+  CacophonyApi.post(
+    "/api/v1/users/resend-email-confirmation-request"
+  ) as Promise<FetchResult<void>>;
+
+export const debugGetEmailConfirmationToken = (email: string) =>
+  CacophonyApi.post("/api/v1/users/get-email-confirmation-token", {
+    email,
+  }) as Promise<FetchResult<{ token: string }>>;
 
 export const list = () =>
   CacophonyApi.get("/api/v1/list-users") as Promise<

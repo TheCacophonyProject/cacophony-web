@@ -33,6 +33,7 @@ import { UserGlobalPermission } from "@typedefs/api/consts";
 import { sendResetEmail } from "@/scripts/emailUtil";
 import { Device } from "@models/Device";
 import { ApiUserSettings } from "@typedefs/api/user";
+import jwt from "jsonwebtoken";
 
 const Op = Sequelize.Op;
 
@@ -205,10 +206,14 @@ export default function (
   };
 
   User.prototype.getJwtDataValues = function () {
-    return {
+    const jwtPayload = {
       id: this.getDataValue("id"),
       _type: "user",
     };
+    if (!this.emailConfirmed) {
+      (jwtPayload as any).activated = false;
+    }
+    return jwtPayload;
   };
 
   // Returns the groups that are associated with this user (via
