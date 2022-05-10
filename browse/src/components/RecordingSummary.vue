@@ -532,7 +532,7 @@ $recording-side-padding-small: 0.5rem;
     flex-direction: column;
     justify-content: space-between;
     padding: 0.7rem $recording-side-padding;
-    width: 79%;
+    width: 65%;
 
     @include media-breakpoint-down(xs) {
       padding: 0.25rem $recording-side-padding-small;
@@ -586,7 +586,7 @@ $recording-side-padding-small: 0.5rem;
 }
 
 .recording-tags {
-  max-width: 15em;
+  width: 75%;
 }
 
 .recording-summary > .recording-location {

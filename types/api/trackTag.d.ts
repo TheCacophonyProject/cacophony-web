@@ -26,7 +26,7 @@ export interface ApiTrackTagResponse {
   trackId: TrackId;
   confidence: number;
   automatic: boolean;
-  data?: TrackTagData | string;
+  data?: TrackTagData;
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;
   userId?: UserId;

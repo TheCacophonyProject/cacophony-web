@@ -122,7 +122,9 @@ export default function (
   ): Promise<TrackTag | void> {
     const trackId = this.id;
     const trackTag = await sequelize.transaction(async (t) => {
-      const tag = await this.getTrackTag(tagId);
+      const tag = (await models.TrackTag.findByPk(tagId, {
+        transaction: t,
+      })) as TrackTag;
       if (!tag || tag.TrackId !== trackId) {
         return null;
       }

@@ -45,7 +45,7 @@
             />
             <div class="button-selectors d-flex">
               <b-button
-                class="ml-2 tag-pin"
+                class="ml-2 tag-pin text-primary"
                 :disabled="!usersTag"
                 @click="togglePinTag(usersTag.what)"
               >
@@ -57,7 +57,7 @@
                 />
               </b-button>
               <b-button
-                class="ml-2 tag-cross"
+                class="ml-2 tag-cross text-danger"
                 :disabled="!usersTag"
                 @click="deleteTagFromSelectedTrack()"
               >
@@ -178,6 +178,14 @@
         :cacophony-index="cacophonyIndex"
         :id="recording.id"
       />
+      <div v-if="recording.location" class="mt-2">
+        <MapWithPoints
+          :height="200"
+          :points="[
+            { name: recording.deviceName, location: recording.location },
+          ]"
+        />
+      </div>
       <RecordingProperties :recording="recording" />
     </b-col>
   </b-row>
@@ -200,6 +208,7 @@ import Playlist from "../Audio/Playlist.vue";
 import LabelButtonGroup from "../Audio/LabelButtonGroup.vue";
 import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
 import RecordingProperties from "../Video/RecordingProperties.vue";
+import MapWithPoints from "@/components/MapWithPoints.vue";
 
 import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
 import { ApiTrackTagAttributes } from "@typedefs/api/trackTag";
@@ -209,6 +218,7 @@ import {
 } from "@typedefs/api/trackTag";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { TrackId } from "@typedefs/api/common";
+import { TrackTagData } from "@typedefs/api/trackTag";
 
 export enum TagClass {
   Automatic = "automatic",
@@ -247,6 +257,7 @@ export default defineComponent({
     },
   },
   components: {
+    MapWithPoints,
     AudioPlayer,
     Playlist,
     TrackList,
@@ -450,13 +461,19 @@ export default defineComponent({
       what: string,
       automatic = false,
       confidence = 1,
-      data: any = null,
+      data: any = {},
       username = userName
     ): Promise<AudioTrack> => {
       const track = tracks.value.get(trackId);
       if (track) {
         modifyTrack(trackId, {
           confirming: true,
+        });
+        const tag = selectedTrack.value.tags.find((tag) => {
+          if (tag.userId === userId) {
+            return true;
+          }
+          return false;
         });
         if (tag) {
           const capitalizedTag =
