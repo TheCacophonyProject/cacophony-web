@@ -17,7 +17,6 @@ export const login = (userEmail: string, password: string) =>
       userData: ApiLoggedInUserResponse;
       token: JwtToken<UserId>;
       refreshToken: string;
-      expiry: IsoFormattedDateString;
     }>
   >;
 
@@ -32,7 +31,6 @@ export const refreshLogin = (refreshToken: string) =>
     FetchResult<{
       token: JwtToken<UserId>;
       refreshToken: string;
-      expiry: IsoFormattedDateString;
     }>
   >;
 
@@ -64,7 +62,6 @@ export const validateEmailConfirmationToken = (token: string) =>
       token: JwtToken<UserId>;
       signOutUser: boolean;
       refreshToken: string;
-      expiry: IsoFormattedDateString;
     }>
   >;
 
@@ -107,7 +104,6 @@ export const register = (
       userData: ApiLoggedInUserResponse;
       token: JwtToken<UserId>;
       refreshToken: string;
-      expiry: IsoFormattedDateString;
     }>
   >;
 
@@ -120,6 +116,8 @@ interface ApiLoggedInUserUpdates {
   emailConfirmed?: boolean;
   settings?: ApiUserSettings;
 }
+
+export const saveUserSettings = (settings: ApiUserSettings) => updateFields({ settings });
 
 export const updateFields = (fields: ApiLoggedInUserUpdates) =>
   CacophonyApi.patch("/api/v1/users", fields);

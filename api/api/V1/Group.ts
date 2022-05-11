@@ -445,12 +445,19 @@ export default function (app: Application, baseUrl: string) {
         response.locals.user,
         request.body.admin
       );
+
+      // TODO(ui-next): send email to user telling them that they've been added to the group, and providing a link to
+      //  go to that groups dashboard after logging in.  Should the user have to accept being added?
+      //  Adding a user should really be done by email address, not username. Perhaps we need an "invited" state in GroupUsers,
+      //  where the user is not quite a real member of the group until they accept.
+
       return responseUtil.send(response, {
         statusCode: 200,
         messages: [action],
       });
     }
   );
+
   /**
    * @api {delete} /api/v1/groups/users Removes a user from a group.
    * @apiName RemoveUserFromGroup
@@ -502,6 +509,47 @@ export default function (app: Application, baseUrl: string) {
         });
       }
     }
+  );
+
+  /**
+   * @api {delete} /api/v1/groups/:groupIdOrName/leave-group Removes the calling user from the group, if they are not the last admin user.
+   * @apiName UserLeaveGroup
+   * @apiGroup Group
+   * @apiDescription This call can remove a user from a group. The user must be a member of the group, and not the last admin user.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {String} groupIdOrName name or id of the group to leave.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+      `${apiUrl}/:groupIdOrName/leave-group`,
+      extractJwtAuthorizedUser,
+      fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+      async (request: Request, response: Response) => {
+        const group = response.locals.group;
+        const user = response.locals.requestUser;
+        const groupUsers = await models.GroupUsers.findAll({
+          where: {
+            GroupId: group.id,
+          },
+        });
+        const otherAdmins = groupUsers.filter(({UserId, admin}) => UserId !== user.id && admin);
+        if (otherAdmins.length === 0) {
+          return responseUtil.send(response, {
+            statusCode: 400,
+            messages: ["Can't remove last admin from group."],
+          });
+        }
+        const thisGroupUser = groupUsers.find(({UserId}) => UserId === user.id);
+        await thisGroupUser.destroy();
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["User left the group."],
+        });
+      }
   );
 
   /**

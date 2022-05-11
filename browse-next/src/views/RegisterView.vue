@@ -175,9 +175,9 @@ const register = async () => {
     const newUser = newUserResponse.result;
     setLoggedInUserData({
       ...newUser.userData,
-      expiry: new Date(newUser.expiry),
       refreshToken: newUser.refreshToken,
       apiToken: newUser.token,
+      refreshingToken: false,
     });
   } else {
     registerErrorMessage.value = newUserResponse.result;

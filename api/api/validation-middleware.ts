@@ -60,10 +60,12 @@ export const nameOf = (field: ValidationChain): ValidationChain =>
 
 export const stringOf = nameOf;
 
+
+// TODO String normalisation for unicode names?
 export const validNameOf = (field: ValidationChain): ValidationChain =>
   nameOf(field)
     .isLength({ min: 3 })
-    .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
+    .matches(/(?=.*[A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō])^[A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō0-9]+([_ \-A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō0-9])*$/)
     .withMessage(
       (val, { path }) =>
         `'${path}' must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`

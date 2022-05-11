@@ -1,3 +1,5 @@
+import type { UserId } from "@typedefs/api/common";
+
 export type JwtToken<T> = string;
 
 export interface FieldValidationError {
@@ -28,6 +30,20 @@ interface FailureFetchResult<FAILURE = ErrorResult> {
   result: FAILURE;
   success: false;
   status: number;
+}
+
+export interface JwtTokenPayload<
+  T = "user" | "device" | "reset-password" | "confirm-email"
+> {
+  exp: number;
+  iat: number;
+  _type: T;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
+export interface JwtUserAuthTokenPayload extends JwtTokenPayload<"user"> {
+  id: UserId;
 }
 
 export type FetchResult<T> = SuccessFetchResult<T> | FailureFetchResult;

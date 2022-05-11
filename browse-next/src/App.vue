@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { RouterView, RouterLink } from "vue-router";
+
+// TODO only in dev mode, otherwise we need an info button somewhere for production
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
-//import BlockingUserActionRequiredModal from "@/components/BlockingUserActionRequiredModal.vue";
 import NetworkConnectionAlertModal from "@/components/NetworkConnectionAlertModal.vue";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 import {
@@ -13,15 +14,21 @@ import {
   userHasMultipleGroups,
   isLoggingInAutomatically,
   isFetchingGroups,
+  userIsAdminForCurrentSelectedGroup,
   isResumingSession,
   UserGroups,
 } from "@/models/LoggedInUser";
-import { defineAsyncComponent, ref } from "vue";
+import { computed, defineAsyncComponent, ref } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
-import CreateGroupModal from "@/components/CreateGroupModal.vue";
+import { urlNormaliseGroupName } from "@/utils";
+import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
+);
+
+const CreateGroupModal = defineAsyncComponent(
+  () => import("@/components/CreateGroupModal.vue")
 );
 
 const userIsSuperAdmin = false;
@@ -38,21 +45,29 @@ const clearCreateNewGroup = () => {
   console.log("Clear create new group");
   creatingNewGroup.value = false;
 };
+
+const urlNormalisedCurrentGroupName = computed<string>(() => {
+  return (
+    (currentSelectedGroup.value &&
+      urlNormaliseGroupName(currentSelectedGroup.value.groupName)) ||
+    ""
+  );
+});
 // TODO: This should be an exported ref/reactive thingy.
 // Once a user logs in, they have a last selected group.
 // When a user switches a group, it gets flagged and saved server-side as the last selected group (saved as group id *and name*, since groups can be renamed?)
 //const currentSelectedGroup = { groupName: "foo", id: 1 };
 </script>
 <template>
-  <blocking-user-action-required-modal
-    v-if="userIsLoggedIn && euaIsOutOfDate"
-  />
+  <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal />
+  <switch-groups-modal />
   <create-group-modal
     :show="creatingNewGroup"
     @finished="clearCreateNewGroup"
   />
   <git-release-info-bar />
+
   <main
     class="justify-content-center align-items-center d-flex"
     v-if="isLoggingInAutomatically || isFetchingGroups"
@@ -70,7 +85,7 @@ const clearCreateNewGroup = () => {
           :to="{
             name: 'dashboard',
             params: {
-              groupName: currentSelectedGroup.groupName,
+              groupName: urlNormalisedCurrentGroupName,
             },
           }"
           alt="home"
@@ -108,7 +123,7 @@ const clearCreateNewGroup = () => {
             :to="{
               name: 'dashboard',
               params: {
-                groupName: currentSelectedGroup.groupName,
+                groupName: urlNormalisedCurrentGroupName,
               },
             }"
             alt="dashboard"
@@ -130,7 +145,7 @@ const clearCreateNewGroup = () => {
             :to="{
               name: 'stations',
               params: {
-                groupName: currentSelectedGroup.groupName,
+                groupName: urlNormalisedCurrentGroupName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -150,7 +165,7 @@ const clearCreateNewGroup = () => {
             :to="{
               name: 'search',
               params: {
-                groupName: currentSelectedGroup.groupName,
+                groupName: urlNormalisedCurrentGroupName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -170,7 +185,7 @@ const clearCreateNewGroup = () => {
             :to="{
               name: 'devices',
               params: {
-                groupName: currentSelectedGroup.groupName,
+                groupName: urlNormalisedCurrentGroupName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -203,7 +218,7 @@ const clearCreateNewGroup = () => {
             :to="{
               name: 'report',
               params: {
-                groupName: currentSelectedGroup.groupName,
+                groupName: urlNormalisedCurrentGroupName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -223,7 +238,7 @@ const clearCreateNewGroup = () => {
             :to="{
               name: 'user-group-settings',
               params: {
-                groupName: currentSelectedGroup.groupName,
+                groupName: urlNormalisedCurrentGroupName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -238,12 +253,12 @@ const clearCreateNewGroup = () => {
             <span>My&nbsp;preferences</span>
           </router-link>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" v-if="userIsAdminForCurrentSelectedGroup">
           <router-link
             :to="{
               name: 'group-settings',
               params: {
-                groupName: currentSelectedGroup.groupName,
+                groupName: urlNormalisedCurrentGroupName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -295,17 +310,20 @@ const clearCreateNewGroup = () => {
     </nav>
     <section id="main-content">
       <div class="container pt-3">
+        <!--  The group-scoped views.  -->
         <router-view />
       </div>
     </section>
   </main>
   <main v-else-if="userIsLoggedIn && !userHasGroups" class="d-flex flex-column">
+    <!--  This will always be the setup view  -->
     <router-view />
   </main>
   <main
     v-else
     class="logged-out justify-content-center align-items-center d-flex flex-column flex-fill"
   >
+    <!--  This will always be the sign-in screen, right?  -->
     <router-view />
   </main>
 </template>
@@ -365,7 +383,6 @@ const clearCreateNewGroup = () => {
   transition: width 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
   z-index: 1;
-
 
   .nav-icon-wrapper {
     // Keep the icons vertically aligned relative to one-another.

@@ -3,16 +3,18 @@ import type {
   ApiUserSettings,
 } from "@typedefs/api/user";
 import type { Ref } from "vue";
-import type { ErrorResult } from "@api/types";
+import type { ErrorResult, JwtTokenPayload } from "@api/types";
 import { computed, reactive, ref } from "vue";
-import { refreshLogin, login as userLogin } from "@api/User";
+import { refreshLogin, login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupResponse } from "@typedefs/api/group";
+import { decodeJWT } from "@/utils";
+import { useRoute, useRouter } from "vue-router";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
   apiToken: string;
-  expiry: Date;
   refreshToken: string;
+  refreshingToken: boolean;
 }
 
 export interface PendingRequest {
@@ -38,10 +40,34 @@ export const userHasGroups = computed<boolean>(() => {
 });
 
 export const setLoggedInUserData = (user: LoggedInUser) => {
+  let prevUserData = CurrentUser.value;
+  if (prevUserData) {
+    try {
+      prevUserData = JSON.parse(JSON.stringify(prevUserData)) as LoggedInUser;
+      if (prevUserData.settings && user.settings) {
+        if (
+          prevUserData.settings.currentSelectedGroup?.id !==
+          user.settings.currentSelectedGroup?.id
+        ) {
+          // Update settings on server?
+          saveUserSettings(user.settings).then((response) => {
+            console.log("User settings updated", response);
+          });
+        }
+        // Check to see if new user values have settings changed.
+        // If so, persist to the server.
+      }
+    } catch (e) {
+      // Shouldn't get malformed json errors here.
+      debugger;
+    }
+  }
+
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
+  const apiToken = decodeJWT(CurrentUser.value?.apiToken) as JwtTokenPayload;
   refreshCredentialsAtIn(
-    CurrentUser.value.expiry.getTime() - new Date().getTime()
+    apiToken?.expiresAt.getTime() - new Date().getTime() - 5000
   );
 };
 export const login = async (
@@ -59,7 +85,7 @@ export const login = async (
       ...signedInUser.userData,
       apiToken: signedInUser.token,
       refreshToken: signedInUser.refreshToken,
-      expiry: new Date(signedInUser.expiry),
+      refreshingToken: false,
     });
   } else {
     signInInProgress.errors = loggedInUserResponse.result;
@@ -107,35 +133,41 @@ const refreshCredentials = async () => {
     let currentUser;
     const now = new Date();
     try {
-      currentUser = JSON.parse(rememberedCredentials);
-      currentUser.expiry = new Date(currentUser.expiry);
-      if (currentUser.expiry > now) {
-        // Use existing credentials, setup refresh timer.
-        refreshCredentialsAtIn(currentUser.expiry.getTime() - now.getTime());
+      currentUser = JSON.parse(rememberedCredentials) as LoggedInUser;
+      const currentToken = currentUser.apiToken;
+      const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
+      if (apiToken.expiresAt.getTime() > now.getTime() + 5000) {
+        // Use existing credentials, setup refresh timer to refresh just before the token expires, so there's
+        // no noticeable interruption to service.
+        refreshCredentialsAtIn(
+          apiToken.expiresAt.getTime() - now.getTime() - 5000
+        );
         CurrentUser.value = reactive<LoggedInUser>(currentUser);
         return;
       } else {
-        console.log("Refresh login");
-        const refreshedUserResult = await refreshLogin(
-          currentUser.refreshToken
-        );
-        if (refreshedUserResult.success) {
-          const refreshedUser = refreshedUserResult.result;
-          setLoggedInUserData({
-            ...currentUser,
-            apiToken: refreshedUser.token,
-            refreshToken: refreshedUser.refreshToken,
-            expiry: new Date(refreshedUser.expiry),
-          });
+        if (!currentUser.refreshingToken) {
+          setLoggedInUserData({ ...currentUser, refreshingToken: true });
+          const refreshedUserResult = await refreshLogin(
+            currentUser.refreshToken
+          );
+          if (refreshedUserResult.success) {
+            const refreshedUser = refreshedUserResult.result;
+            setLoggedInUserData({
+              ...currentUser,
+              apiToken: refreshedUser.token,
+              refreshToken: refreshedUser.refreshToken,
+              refreshingToken: false,
+            });
+          } else {
+            // Refresh token wasn't found, so prompt login again
+            forgetUserOnCurrentDevice();
+          }
         } else {
-          // Refresh token wasn't found, so prompt login again
-          debugger;
-          forgetUserOnCurrentDevice();
+          refreshCredentialsAtIn(10);
         }
       }
     } catch (e) {
       // JSON user creds was malformed, so clear it, and prompt login again
-      debugger;
       forgetUserOnCurrentDevice();
     }
   }
@@ -143,6 +175,7 @@ const refreshCredentials = async () => {
 
 let refreshTimeout = -1;
 const refreshCredentialsAtIn = (milliseconds: number) => {
+  milliseconds = Math.max(1000, milliseconds);
   clearTimeout(refreshTimeout);
   refreshTimeout = setTimeout(refreshCredentials, milliseconds);
 };
@@ -154,7 +187,25 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 };
 
 export const forgetUserOnCurrentDevice = () => {
+  console.log("Signing out");
   window.localStorage.clear();
+};
+
+export const switchCurrentGroup = (newGroup: {
+  groupName: string;
+  id: GroupId;
+}) => {
+  // Save the current (new) group to the local user settings, and persist it to the server.
+  const loggedInUser = CurrentUser.value as LoggedInUser;
+  if (newGroup.id !== loggedInUser.settings?.currentSelectedGroup?.id) {
+    setLoggedInUserData({
+      ...loggedInUser,
+      settings: {
+        ...(loggedInUser.settings as ApiUserSettings),
+        currentSelectedGroup: newGroup,
+      },
+    });
+  }
 };
 
 // User blocking action checks
@@ -167,7 +218,8 @@ export const hasAcceptedSomeEUA = computed<boolean>(() => {
 export const euaIsOutOfDate = computed<boolean>(() => {
   return (
     (userIsLoggedIn.value && !hasAcceptedSomeEUA.value) ||
-    (currentEUAVersion.value !== 0 &&
+    (userIsLoggedIn.value &&
+      currentEUAVersion.value !== 0 &&
       currentEUAVersion.value >
         (CurrentUser.value as LoggedInUser).endUserAgreement)
   );
@@ -181,7 +233,7 @@ export const currentUserSettings = computed<ApiUserSettings | false>(() => {
 });
 
 export const currentSelectedGroup = computed<
-  { groupName: string; id: GroupId } | false
+  { groupName: string; id: GroupId; admin?: boolean } | false
 >(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
     return (
@@ -200,6 +252,18 @@ export const currentSelectedGroup = computed<
     }) ||
     false
   );
+});
+
+export const userIsAdminForCurrentSelectedGroup = computed<boolean>(() => {
+  if (currentSelectedGroup.value && UserGroups.value) {
+    const currentGroup = UserGroups.value.find(
+      ({ id }) =>
+        id ===
+        (currentSelectedGroup.value as { groupName: string; id: GroupId }).id
+    );
+    return (currentGroup && !!currentGroup.admin) || false;
+  }
+  return false;
 });
 
 export const userHasMultipleGroups = computed<boolean>(() => {

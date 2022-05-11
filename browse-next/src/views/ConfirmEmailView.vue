@@ -32,6 +32,9 @@ onBeforeMount(async () => {
     } else if (typeof params.token === "string") {
       validateToken.value = params.token.replace(/:/g, ".");
     }
+
+    // FIXME - check it's a valid token payload locally.
+
     const validateTokenResponse = await validateEmailConfirmationToken(
       validateToken.value
     );
@@ -47,7 +50,7 @@ onBeforeMount(async () => {
       }
     } else {
       isValidValidateToken.value = true;
-      const { userData, token, refreshToken, expiry, signOutUser } =
+      const { userData, token, refreshToken, signOutUser } =
         validateTokenResponse.result;
       if (signOutUser) {
         await router.push({ name: "sign-out" });
@@ -57,7 +60,6 @@ onBeforeMount(async () => {
         ...userData,
         apiToken: token,
         refreshToken,
-        expiry: new Date(expiry),
       });
 
       await router.push({

@@ -4,12 +4,18 @@ import {
   userHasConfirmedEmailAddress,
   CurrentUser,
   refreshLocallyStoredUserActivation,
+  setLoggedInUserData,
 } from "@models/LoggedInUser";
-import { resendAccountActivationEmail as resendEmail } from "@api/User";
+import {
+  debugGetEmailConfirmationToken,
+  resendAccountActivationEmail as resendEmail,
+  validateEmailConfirmationToken,
+} from "@api/User";
 import { ref, onUnmounted, computed } from "vue";
 import { BForm, BFormInput, BModal } from "bootstrap-vue-3";
 import { formFieldInputText, type FormInputValidationState } from "@/utils";
 import CreateGroupModal from "@/components/CreateGroupModal.vue";
+import { useRouter } from "vue-router";
 
 // TODO: Stop admins adding users without confirmed email addresses.
 //  Maybe the list users api should only return "active/verified" users.
@@ -52,6 +58,35 @@ const resendAccountActivationEmail = async () => {
       "We were unable to re-send your account activation email.";
   }
   submittingResendActivationRequest.value = false;
+};
+
+const router = useRouter();
+const debugConfirmEmail = async () => {
+  const tokenResponse = await debugGetEmailConfirmationToken(
+    CurrentUser.value?.email as string
+  );
+  if (tokenResponse.success) {
+    const token = tokenResponse.result.token;
+    const validateTokenResponse = await validateEmailConfirmationToken(token);
+    if (validateTokenResponse.success) {
+      const { userData, token, refreshToken, signOutUser } =
+        validateTokenResponse.result;
+      if (signOutUser) {
+        await router.push({ name: "sign-out" });
+        return;
+      }
+      setLoggedInUserData({
+        ...userData,
+        apiToken: token,
+        refreshToken,
+        refreshingToken: false
+      });
+
+      await router.push({
+        path: "/",
+      });
+    }
+  }
 };
 
 const groupAdminEmailAddress = formFieldInputText();
@@ -136,6 +171,10 @@ const joinExistingGroup = () => {
             <span class="spinner-border spinner-border-sm"></span> Re-sending...
           </span>
           <span v-else> Re-send my confirmation email. </span>
+        </button>
+
+        <button class="btn btn-primary" @click="debugConfirmEmail">
+          DEBUG validate email.
         </button>
       </p>
     </div>

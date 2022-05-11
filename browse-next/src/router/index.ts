@@ -7,13 +7,18 @@ import {
   isFetchingGroups,
   isLoggingInAutomatically,
   isResumingSession,
+  switchCurrentGroup,
   tryLoggingInRememberedUser,
   UserGroups,
+  userHasConfirmedEmailAddress,
+  userHasGroups,
   userIsLoggedIn,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
 import { getGroups } from "@api/Group";
 import { reactive } from "vue";
+import { urlNormaliseGroupName } from "@/utils";
+import type { ApiGroupResponse } from "@typedefs/api/group";
 
 // Allows us to abort all pending fetch requests when switching between major views.
 export const CurrentViewAbortController = {
@@ -109,6 +114,7 @@ const router = createRouter({
       component: () => import("../views/ManageGroupView.vue"),
       beforeEnter: cancelPendingRequests,
     },
+    // FIXME - add "user-settings", "sign-in" etc to list of forbidden group names.
     {
       path: "/my-settings",
       name: "user-settings",
@@ -172,9 +178,11 @@ const router = createRouter({
 let lastDestination: string | null = null;
 
 router.beforeEach(async (to, from, next) => {
+  // TODO: Match groupName, and set currentSelectedGroup.
   // NOTE: Check for a logged in user here.
   if (!userIsLoggedIn.value) {
     isResumingSession.value = true;
+    console.log("Trying to resume saved session");
     const [_, euaResponse] = await Promise.all([
       tryLoggingInRememberedUser(isLoggingInAutomatically),
       getEUAVersion(),
@@ -192,14 +200,107 @@ router.beforeEach(async (to, from, next) => {
     ) {
       // Grab the users' groups, and select the first one.
       isFetchingGroups.value = true;
+      console.log("Fetching user groups");
       const NO_ABORT = false;
       const groupsResponse = await getGroups(NO_ABORT);
       if (groupsResponse.success) {
         UserGroups.value = reactive(groupsResponse.result.groups);
+        console.log("Fetched user groups", currentSelectedGroup.value);
+      }
+      isFetchingGroups.value = false;
+      if (groupsResponse.status === 401) {
+        return next({ name: "sign-in" });
+      } else if (UserGroups.value?.length === 0) {
+        return next({ name: "setup" });
+      }
+    }
+    if (userIsLoggedIn.value) {
+      console.log("Resumed session");
+    } else {
+      console.log("Failed to resume session");
+      if (to.name !== "sign-in") {
+        console.log("Redirect to sign-in");
+        return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
+      } else {
+        return next();
+      }
+    }
+    isResumingSession.value = false;
+  }
+  debugger;
+  if (to.path === "/") {
+    if (!userIsLoggedIn.value) {
+      return next({ name: "sign-in" });
+    } else {
+      if (!userHasConfirmedEmailAddress.value || !userHasGroups.value) {
+        return next({ name: "setup" });
+      } else {
+        return next({
+          name: "dashboard",
+          params: {
+            groupName: (currentSelectedGroup.value as { groupName: string })
+              .groupName,
+          },
+        });
+      }
+    }
+  } else {
+    if (!userIsLoggedIn.value && to.meta.requiresLogin) {
+      return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
+    }
+    // Check to see if we match the first part of the path to any of our group names:
+    let potentialGroupName = to.path
+      .split("/")
+      .filter((item) => item !== "")
+      .shift();
+    if (!UserGroups.value) {
+      // Grab the users' groups, and select the first one.
+      isFetchingGroups.value = true;
+      console.log("Fetching user groups");
+      const NO_ABORT = false;
+      const groupsResponse = await getGroups(NO_ABORT);
+      if (groupsResponse.success) {
+        UserGroups.value = reactive(groupsResponse.result.groups);
+        console.log("Fetched user groups", currentSelectedGroup.value);
+      }
+      if (groupsResponse.status === 401) {
+        return next({ name: "sign-out" });
+      } else if (UserGroups.value?.length === 0) {
+        return next({ name: "setup" });
       }
       isFetchingGroups.value = false;
     }
-    isResumingSession.value = false;
+    if (potentialGroupName) {
+      // FIXME - we need to check for group name uniqueness on the url-normalised version of the group name,
+      potentialGroupName = urlNormaliseGroupName(potentialGroupName);
+      const groupNames = (UserGroups.value as ApiGroupResponse[]).map(
+        ({ groupName }) => urlNormaliseGroupName(groupName)
+      );
+      console.log("looking for group name", potentialGroupName);
+      console.log("Potential group names", groupNames);
+      const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
+        ({ groupName }) =>
+          urlNormaliseGroupName(groupName) === potentialGroupName
+      );
+      console.log("Found match", matchedGroup);
+      if (matchedGroup) {
+        // Don't persist the admin property in user settings, since that could change
+        switchCurrentGroup({
+          groupName: matchedGroup.groupName,
+          id: matchedGroup.id,
+        });
+      }
+    }
+  }
+
+  if (to.name === "setup" && userIsLoggedIn.value && userHasGroups.value) {
+    return next({
+      name: "dashboard",
+      params: {
+        groupName: (currentSelectedGroup.value as { groupName: string })
+          .groupName,
+      },
+    });
   }
 
   // Slight wait so that we can break infinite navigation loops while developing.
@@ -207,9 +308,9 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: "sign-in" });
   }
 
-  if (lastDestination === to.name) {
-    debugger;
-  }
+  // if (lastDestination === to.name) {
+  //   debugger;
+  // }
   lastDestination = (to.name as string) || "";
   //await delayMs(50);
   if (userIsLoggedIn.value && to.name === "sign-out") {
@@ -220,7 +321,7 @@ router.beforeEach(async (to, from, next) => {
     });
   }
   // Finally, redirect to the sign-in page.
-  if (!to.name) {
+  if (!to.name && !userIsLoggedIn) {
     return next({
       name: "sign-in",
       query: {

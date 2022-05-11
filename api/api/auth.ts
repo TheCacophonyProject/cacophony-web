@@ -82,11 +82,8 @@ export const generateAuthTokensForUser = async (
   viewport: string = "",
   userAgent: string = "unknown user agent",
   expires: boolean = true
-): Promise<{ refreshToken: string; apiToken: string; expiry: Date }> => {
+): Promise<{ refreshToken: string; apiToken: string }> => {
   const now = new Date().toISOString();
-  const expiry = new Date(
-    new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
-  );
   const refreshToken = randomUUID();
   await models.sequelize.query(
     `
@@ -114,7 +111,6 @@ export const generateAuthTokensForUser = async (
   );
   return {
     refreshToken: refreshTokenSigned,
-    expiry,
     apiToken: `JWT ${createEntityJWT(user, expiryOptions)}`,
   };
 };
@@ -129,8 +125,7 @@ export const getDecodedResetToken = (token: string): ResetInfo => {
 
 export const getDecodedToken = (token: string): any => {
   const decodedToken = jwt.decode(
-    token,
-    config.server.passportSecret
+    token
   ) as JwtPayload | null;
   if (decodedToken && decodedToken.exp * 1000 < new Date().getTime()) {
     throw new customErrors.AuthenticationError("JWT token expired.");
@@ -162,7 +157,7 @@ export const getVerifiedJWT = (
   } catch (e) {
     throw new customErrors.AuthenticationError(
       `Failed to verify JWT. (${JSON.stringify(
-        jwt.decode(token, config.server.passportSecret)
+        jwt.decode(token)
       )})`
     );
   }

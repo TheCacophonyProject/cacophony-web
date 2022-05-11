@@ -169,7 +169,7 @@ export default function (app: Application, baseUrl: string) {
       //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
       //  User alerts and group invitations would not be activated until the user has confirmed their email address.
       await sendWelcomeEmailConfirmationEmail(user);
-      const { refreshToken, expiry, apiToken } =
+      const { refreshToken, apiToken } =
         await generateAuthTokensForUser(
           user,
           request.headers["viewport"] as string,
@@ -180,7 +180,6 @@ export default function (app: Application, baseUrl: string) {
         messages: ["Created new user."],
         token: apiToken,
         refreshToken,
-        expiry,
         userData: mapUser(user),
       });
     }
@@ -415,7 +414,7 @@ export default function (app: Application, baseUrl: string) {
           messages: ["Error changing password please contact sys admin"],
         });
       }
-      const { expiry, refreshToken, apiToken } =
+      const { refreshToken, apiToken } =
         await generateAuthTokensForUser(
           response.locals.user,
           request.headers["viewport"] as string,
@@ -427,7 +426,6 @@ export default function (app: Application, baseUrl: string) {
         messages: [],
         token: apiToken,
         refreshToken,
-        expiry,
         userData: mapUser(response.locals.user),
       });
     },

@@ -29,7 +29,7 @@ const acceptEndUserAgreement = async () => {
 </script>
 <template>
   <b-modal
-    v-model="userIsLoggedIn"
+    :show="euaIsOutOfDate"
     dialog-class="accept-eua-form-wrapper"
     title="End User Agreement"
     centered

@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { addNewGroup } from "@api/Group";
-import { UserGroups } from "@models/LoggedInUser";
-import { computed, ref, defineEmits, defineProps, watch } from "vue";
+import {
+  CurrentUser,
+  setLoggedInUserData,
+  UserGroups,
+  type LoggedInUser, switchCurrentGroup,
+} from "@models/LoggedInUser";
+import { computed, nextTick, ref, watch } from "vue";
 import type { ErrorResult } from "@api/types";
 import { BModal } from "bootstrap-vue-3";
 import { formFieldInputText, type FormInputValidationState } from "@/utils";
+import type { ApiUserSettings } from "@typedefs/api/user";
 
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits(["finished"]);
@@ -20,8 +26,10 @@ watch(props, (next) => {
   showModal.value = next.show;
 });
 
-const emitClear = () => {
-  console.log("Clearing");
+const onHidden = () => {
+  console.log("Hidden");
+  newGroupName.value = "";
+  newGroupName.touched = false;
   emit("finished");
 };
 
@@ -32,20 +40,24 @@ const createNewGroup = async () => {
   const createGroupResponse = await addNewGroup(groupName);
   if (createGroupResponse.success) {
     if (Array.isArray(UserGroups.value)) {
+      const newGroupId = createGroupResponse.result.groupId;
       UserGroups.value.push({
         groupName,
         id: createGroupResponse.result.groupId,
         admin: true,
       });
-
-      // TODO: Save the current (new) group to the local user settings, and persist it to the server.
+      emit("finished");
+      switchCurrentGroup({ groupName, id: newGroupId });
+    } else {
+      // User groups doesn't exist?
+      debugger;
     }
   } else {
+    // Allow latin unicode characters with accents in names, normalise them to ascii for urls.
     createNewGroupError.value = createGroupResponse.result;
+    console.log(createNewGroupError.value);
   }
   submittingCreateRequest.value = false;
-  emitClear();
-  newGroupName.value = "";
 };
 </script>
 <template>
@@ -53,9 +65,9 @@ const createNewGroup = async () => {
     v-model="showModal"
     title="Create a new group"
     centered
-    @hidden="emitClear"
+    @hidden="onHidden"
   >
-    <b-form>
+    <b-form @submit.stop.prevent="createNewGroup">
       <b-form-input
         type="text"
         placeholder="group name"
@@ -73,19 +85,19 @@ const createNewGroup = async () => {
           (include macrons)
         </span>
       </b-form-invalid-feedback>
+      <template #footer>
+        <button
+          class="btn btn-primary"
+          type="submit"
+          :disabled="submittingCreateRequest"
+        >
+          <span
+            v-if="submittingCreateRequest"
+            class="spinner-border spinner-border-sm"
+          ></span>
+          {{ submittingCreateRequest ? "Creating group" : "Create group" }}
+        </button>
+      </template>
     </b-form>
-    <template #footer>
-      <button
-        class="btn btn-primary"
-        @click.prevent.stop="createNewGroup"
-        :disabled="submittingCreateRequest"
-      >
-        <span
-          v-if="submittingCreateRequest"
-          class="spinner-border spinner-border-sm"
-        ></span>
-        {{ submittingCreateRequest ? "Creating group" : "Create group" }}
-      </button>
-    </template>
   </b-modal>
 </template>

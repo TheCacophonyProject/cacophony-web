@@ -1,7 +1,8 @@
-import { reactive, watch } from "vue";
 import type { WatchStopHandle } from "vue";
-import { INITIAL_RETRY_INTERVAL } from "@api/fetch";
+import { reactive, watch } from "vue";
 import type { NetworkConnectionErrorSignal } from "@api/fetch";
+import { INITIAL_RETRY_INTERVAL } from "@api/fetch";
+import type { JwtTokenPayload } from "@api/types";
 
 export const isEmpty = (str: string): boolean => str.trim().length === 0;
 
@@ -55,5 +56,26 @@ export interface FormInputValue {
   value: string;
   touched: boolean;
 }
+
+export const decodeJWT = (jwtString: string): JwtTokenPayload | null => {
+  const parts = jwtString.split(".");
+  if (parts.length !== 3) {
+    return null;
+  }
+  try {
+    const decodedToken = JSON.parse(atob(parts[1]));
+    return {
+      ...decodedToken,
+      expiresAt: new Date(decodedToken.exp * 1000),
+      createdAt: new Date(decodedToken.iat * 1000),
+    };
+  } catch (e) {
+    return null;
+  }
+};
+
+export const urlNormaliseGroupName = (name: string): string => {
+  return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();
+};
 
 export type FormInputValidationState = boolean | null;

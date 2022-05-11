@@ -109,7 +109,7 @@ export default function (app: Application, baseUrl: string) {
         //  require use of the token refresh.
         const isNewEndPoint = request.path.endsWith("authenticate");
         await response.locals.user.update({ lastActiveAt: new Date() });
-        const { refreshToken, expiry, apiToken } =
+        const { refreshToken, apiToken } =
           await generateAuthTokensForUser(
             response.locals.user,
             request.headers["viewport"] as string,
@@ -121,7 +121,6 @@ export default function (app: Application, baseUrl: string) {
           statusCode: 200,
           messages: ["Successful login."],
           token: apiToken,
-          expiry,
           refreshToken,
           userData: mapUser(response.locals.user),
         });
@@ -580,7 +579,7 @@ export default function (app: Application, baseUrl: string) {
         //  If it's a first time email confirmation, then we can return the login details, and log the user in
         //  again.  Either way we should return a new set of user keys.
         // Generate a new set of tokens to be replaced.
-        const { expiry, refreshToken, apiToken } =
+        const { refreshToken, apiToken } =
           await generateAuthTokensForUser(
             user,
             request.headers["viewport"] as string,
@@ -594,7 +593,6 @@ export default function (app: Application, baseUrl: string) {
           userData: mapUser(user),
           token: apiToken,
           refreshToken,
-          expiry,
           messages: ["Email confirmed"],
         });
       }
