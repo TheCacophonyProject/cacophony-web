@@ -180,7 +180,7 @@ export default {
       } else {
         slug = `commit/${info.commit}`;
       }
-      return `https://github.com/TheCacophonyProject/cacophony-browse/${slug}`;
+      return `https://github.com/TheCacophonyProject/cacophony-web/${slug}`;
     },
     commitMessage() {
       if (this.config.revisionInfo.travis) {
