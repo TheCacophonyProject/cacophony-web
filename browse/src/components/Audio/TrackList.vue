@@ -43,7 +43,7 @@
                         "
                         variant="outline-success"
                         size="sm"
-                        @click="() => confirmTrack(track)"
+                        @click.stop.prevent="() => confirmTrack(track)"
                       >
                         <b-spinner
                           v-if="track.confirming"
@@ -117,7 +117,9 @@
                 <template #button-content>
                   <font-awesome-icon icon="cog" />
                 </template>
-                <b-dropdown-item @click="() => deleteTrack(track.id)">
+                <b-dropdown-item
+                  @click.stop.prevent="() => deleteTrack(track.id)"
+                >
                   <div class="text-danger">
                     <font-awesome-icon icon="trash" />
                     delete

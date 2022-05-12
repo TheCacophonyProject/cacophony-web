@@ -20,7 +20,7 @@
           <span class="tag-name">{{ animal }}</span>
         </button>
       </div>
-      <div class="tag-btns-wrapper animals mt-1">
+      <div v-if="pinnedLabels" class="tag-btns-wrapper animals mt-1">
         <button
           v-for="label in pinnedLabels"
           :key="label"

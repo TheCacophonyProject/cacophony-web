@@ -1160,6 +1160,7 @@ spectrogram > svg {
   background: linear-gradient(#c1f951, #9acd32);
 }
 .player-bar-indicator {
+  cursor: grab;
   visibility: hidden;
   transform: translate(8px, -4px);
   z-index: 200;
