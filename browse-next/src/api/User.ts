@@ -117,10 +117,13 @@ interface ApiLoggedInUserUpdates {
   settings?: ApiUserSettings;
 }
 
-export const saveUserSettings = (settings: ApiUserSettings) => updateFields({ settings });
+export const saveUserSettings = (settings: ApiUserSettings) =>
+  updateFields({ settings }, false);
 
-export const updateFields = (fields: ApiLoggedInUserUpdates) =>
-  CacophonyApi.patch("/api/v1/users", fields);
+export const updateFields = (
+  fields: ApiLoggedInUserUpdates,
+  abortable?: boolean
+) => CacophonyApi.patch("/api/v1/users", fields, abortable);
 
 export const getEUAVersion = () =>
   CacophonyApi.get("/api/v1/end-user-agreement/latest", NO_ABORT) as Promise<

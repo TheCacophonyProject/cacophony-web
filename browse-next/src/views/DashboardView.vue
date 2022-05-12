@@ -1,9 +1,8 @@
-<script setup>
-import { currentSelectedGroup } from "../models/LoggedInUser";
+<script setup lang="ts">
+import SectionHeader from "@/components/SectionHeader.vue";
 </script>
 <template>
-  <h4 class="group-name mb-2">{{ currentSelectedGroup.groupName }}</h4>
-  <h1 class="mb-4">Dashboard</h1>
+  <section-header>Dashboard</section-header>
 
   <h2>Species summary</h2>
   <div style="background: #ccc; height: 93px" class="mb-5"></div>

@@ -7,11 +7,14 @@ import {
   isFetchingGroups,
   isLoggingInAutomatically,
   isResumingSession,
+  pinSideNav,
   switchCurrentGroup,
   tryLoggingInRememberedUser,
+  urlNormalisedCurrentGroupName,
   UserGroups,
   userHasConfirmedEmailAddress,
   userHasGroups,
+  userIsAdminForCurrentSelectedGroup,
   userIsLoggedIn,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
@@ -80,10 +83,10 @@ const router = createRouter({
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName/search",
-      name: "search",
+      path: "/:groupName/activity",
+      name: "activity",
       meta: { requiresLogin: true },
-      component: () => import("../views/SearchView.vue"),
+      component: () => import("../views/ActivitySearchView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
@@ -110,7 +113,7 @@ const router = createRouter({
     {
       path: "/:groupName/settings",
       name: "group-settings",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, requiresGroupAdmin: true },
       component: () => import("../views/ManageGroupView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -182,7 +185,7 @@ router.beforeEach(async (to, from, next) => {
   // NOTE: Check for a logged in user here.
   if (!userIsLoggedIn.value) {
     isResumingSession.value = true;
-    console.log("Trying to resume saved session");
+    //console.log("--- Trying to resume saved session");
     const [_, euaResponse] = await Promise.all([
       tryLoggingInRememberedUser(isLoggingInAutomatically),
       getEUAVersion(),
@@ -227,7 +230,6 @@ router.beforeEach(async (to, from, next) => {
     }
     isResumingSession.value = false;
   }
-  debugger;
   if (to.path === "/") {
     if (!userIsLoggedIn.value) {
       return next({ name: "sign-in" });
@@ -238,8 +240,7 @@ router.beforeEach(async (to, from, next) => {
         return next({
           name: "dashboard",
           params: {
-            groupName: (currentSelectedGroup.value as { groupName: string })
-              .groupName,
+            groupName: urlNormalisedCurrentGroupName.value,
           },
         });
       }
@@ -261,14 +262,22 @@ router.beforeEach(async (to, from, next) => {
       const groupsResponse = await getGroups(NO_ABORT);
       if (groupsResponse.success) {
         UserGroups.value = reactive(groupsResponse.result.groups);
-        console.log("Fetched user groups", currentSelectedGroup.value);
+        console.log(
+          "Fetched user groups",
+          currentSelectedGroup.value,
+          UserGroups.value?.length
+        );
       }
+      isFetchingGroups.value = false;
       if (groupsResponse.status === 401) {
         return next({ name: "sign-out" });
       } else if (UserGroups.value?.length === 0) {
-        return next({ name: "setup" });
+        if (to.name !== "setup") {
+          return next({ name: "setup" });
+        } else {
+          return next();
+        }
       }
-      isFetchingGroups.value = false;
     }
     if (potentialGroupName) {
       // FIXME - we need to check for group name uniqueness on the url-normalised version of the group name,
@@ -289,16 +298,35 @@ router.beforeEach(async (to, from, next) => {
           groupName: matchedGroup.groupName,
           id: matchedGroup.id,
         });
+      } else {
+        if (to.matched.length === 1 && to.matched[0].name === "dashboard") {
+          // Group in url not found, redirect to our last selected group.
+          return next({
+            name: "dashboard",
+            params: {
+              groupName: urlNormalisedCurrentGroupName.value,
+            },
+          });
+        }
       }
     }
+  }
+
+  if (to.meta.requiresGroupAdmin && !userIsAdminForCurrentSelectedGroup.value) {
+    console.log("Trying to access admin only route");
+    return next({
+      name: "dashboard",
+      params: {
+        groupName: urlNormalisedCurrentGroupName.value,
+      },
+    });
   }
 
   if (to.name === "setup" && userIsLoggedIn.value && userHasGroups.value) {
     return next({
       name: "dashboard",
       params: {
-        groupName: (currentSelectedGroup.value as { groupName: string })
-          .groupName,
+        groupName: urlNormalisedCurrentGroupName.value,
       },
     });
   }
@@ -329,6 +357,7 @@ router.beforeEach(async (to, from, next) => {
       },
     });
   } else {
+    pinSideNav.value = false;
     return next();
   }
 });

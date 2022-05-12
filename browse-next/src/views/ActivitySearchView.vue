@@ -2,5 +2,5 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 </script>
 <template>
-  <section-header>Stations</section-header>
+  <section-header>Activity</section-header>
 </template>

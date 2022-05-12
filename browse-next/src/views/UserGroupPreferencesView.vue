@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import SectionHeader from "@/components/SectionHeader.vue";
 
 const selectedLeaveGroup = ref(false);
 
@@ -9,7 +10,7 @@ const leaveGroup = () => {
 };
 </script>
 <template>
-  <h1>My group preferences</h1>
+  <section-header>My group preferences</section-header>
 
   <div>
     My alert settings. My preferred tags for video, audio. Show audio or video

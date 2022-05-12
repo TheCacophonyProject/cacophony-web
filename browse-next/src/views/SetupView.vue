@@ -2,6 +2,8 @@
 import {
   userDisplayName,
   userHasConfirmedEmailAddress,
+  creatingNewGroup,
+  joiningNewGroup,
   CurrentUser,
   refreshLocallyStoredUserActivation,
   setLoggedInUserData,
@@ -11,10 +13,7 @@ import {
   resendAccountActivationEmail as resendEmail,
   validateEmailConfirmationToken,
 } from "@api/User";
-import { ref, onUnmounted, computed } from "vue";
-import { BForm, BFormInput, BModal } from "bootstrap-vue-3";
-import { formFieldInputText, type FormInputValidationState } from "@/utils";
-import CreateGroupModal from "@/components/CreateGroupModal.vue";
+import { ref, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 
 // TODO: Stop admins adding users without confirmed email addresses.
@@ -24,9 +23,6 @@ import { useRouter } from "vue-router";
 const submittingResendActivationRequest = ref(false);
 const resendRequestSent = ref(false);
 const resendError = ref<null | string>(null);
-
-const selectedCreateNewGroup = ref(false);
-const selectedJoinExistingGroup = ref(false);
 
 const checkForActivatedUser = () => {
   // NOTE: The user can click the email confirmation link, which opens up in another window, and should
@@ -79,7 +75,7 @@ const debugConfirmEmail = async () => {
         ...userData,
         apiToken: token,
         refreshToken,
-        refreshingToken: false
+        refreshingToken: false,
       });
 
       await router.push({
@@ -88,61 +84,8 @@ const debugConfirmEmail = async () => {
     }
   }
 };
-
-const groupAdminEmailAddress = formFieldInputText();
-const submittingJoinRequest = ref(false);
-const emailIsTooShort = computed<boolean>(
-  () => groupAdminEmailAddress.value.trim().length < 3
-);
-const isValidEmailAddress = computed<boolean>(() => {
-  const { value } = groupAdminEmailAddress;
-  const email = value.trim();
-  return !emailIsTooShort.value && email.includes("@");
-});
-const needsValidationAndIsValidEmailAddress =
-  computed<FormInputValidationState>(() =>
-    groupAdminEmailAddress.touched ? isValidEmailAddress.value : null
-  );
-
-const joinExistingGroup = () => {
-  console.log("Join a group");
-};
 </script>
 <template>
-  <!--  TODO: Use the version of this that's already in the App.vue parent layer  -->
-  <create-group-modal
-    :show="selectedCreateNewGroup"
-    @finished="selectedCreateNewGroup = false"
-  />
-  <b-modal
-    v-model="selectedJoinExistingGroup"
-    title="Join a group"
-    ok-title="Send join request"
-    @ok="joinExistingGroup"
-    :ok-disabled="!isValidEmailAddress || submittingJoinRequest"
-    :cancel-disabled="submittingJoinRequest"
-    centered
-  >
-    <b-form>
-      <p>
-        To join an existing group, you need to know the email address of a group
-        administrator.
-      </p>
-      <b-form-input
-        type="email"
-        v-model="groupAdminEmailAddress.value"
-        @blur="groupAdminEmailAddress.touched = true"
-        :state="needsValidationAndIsValidEmailAddress"
-        aria-label="group admin email address"
-        placeholder="group admin email address"
-        :disabled="submittingJoinRequest"
-        required
-      />
-      <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
-        <span>Enter a valid email address</span>
-      </b-form-invalid-feedback>
-    </b-form>
-  </b-modal>
   <div class="container-md d-flex flex-column flex-fill">
     <h1>Finish setting up your account</h1>
     <div>
@@ -198,7 +141,7 @@ const joinExistingGroup = () => {
             <button
               class="btn btn-primary"
               type="button"
-              @click="selectedCreateNewGroup = true"
+              @click="creatingNewGroup = true"
             >
               <font-awesome-icon icon="plus" /> Create a new group
             </button>
@@ -215,7 +158,7 @@ const joinExistingGroup = () => {
             <button
               class="btn btn-secondary"
               type="button"
-              @click="selectedJoinExistingGroup = true"
+              @click="joiningNewGroup = true"
             >
               <font-awesome-icon icon="question" /> Ask to join an existing
               group

@@ -15,13 +15,16 @@ import {
   isLoggingInAutomatically,
   isFetchingGroups,
   userIsAdminForCurrentSelectedGroup,
-  isResumingSession,
-  UserGroups,
+  showSwitchGroup,
+  creatingNewGroup,
+  joiningNewGroup,
+  urlNormalisedCurrentGroupName,
+    pinSideNav
 } from "@/models/LoggedInUser";
-import { computed, defineAsyncComponent, ref } from "vue";
+import { defineAsyncComponent, onBeforeMount, onMounted, ref } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
-import { urlNormaliseGroupName } from "@/utils";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
+import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
@@ -34,40 +37,23 @@ const CreateGroupModal = defineAsyncComponent(
 const userIsSuperAdmin = false;
 const loggedInAsAnotherUser = false;
 const environmentIsProduction = false;
+const hasGitReleaseInfoBar = ref(false);
 
-const creatingNewGroup = ref(false);
-const createNewGroup = () => {
-  console.log("Create new group");
-  creatingNewGroup.value = true;
-};
-
-const clearCreateNewGroup = () => {
-  console.log("Clear create new group");
-  creatingNewGroup.value = false;
-};
-
-const urlNormalisedCurrentGroupName = computed<string>(() => {
-  return (
-    (currentSelectedGroup.value &&
-      urlNormaliseGroupName(currentSelectedGroup.value.groupName)) ||
-    ""
-  );
+onBeforeMount(() => {
+  // Override bootstrap CSS variables.
+  // This has to appear after the original bootstrap CSS variable declarations in the DOM to take effect.
+  const styleOverrides = document.createElement("style");
+  styleOverrides.innerText = `:root { --bs-body-font-family: "Roboto", sans-serif; } body { font-family: var(--bs-body-font-family); }`;
+  document.body.insertBefore(styleOverrides, document.body.firstChild);
 });
-// TODO: This should be an exported ref/reactive thingy.
-// Once a user logs in, they have a last selected group.
-// When a user switches a group, it gets flagged and saved server-side as the last selected group (saved as group id *and name*, since groups can be renamed?)
-//const currentSelectedGroup = { groupName: "foo", id: 1 };
 </script>
 <template>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal />
   <switch-groups-modal />
-  <create-group-modal
-    :show="creatingNewGroup"
-    @finished="clearCreateNewGroup"
-  />
-  <git-release-info-bar />
-
+  <create-group-modal />
+  <join-existing-group-modal />
+  <git-release-info-bar v-if="hasGitReleaseInfoBar" />
   <main
     class="justify-content-center align-items-center d-flex"
     v-if="isLoggingInAutomatically || isFetchingGroups"
@@ -76,10 +62,22 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
   </main>
   <main
     id="main-wrapper"
-    class="d-flex logged-in has-git-info-bar"
+    :class="[
+      'd-flex',
+      'logged-in',
+      { 'has-git-info-bar': hasGitReleaseInfoBar },
+    ]"
     v-else-if="userIsLoggedIn && userHasGroups"
   >
-    <nav id="global-side-nav" class="d-flex flex-column flex-shrink-0">
+    <nav
+      id="global-side-nav"
+      :class="[
+        'd-flex',
+        'flex-column',
+        'flex-shrink-0',
+        { pinned: pinSideNav },
+      ]"
+    >
       <div class="nav-top">
         <router-link
           :to="{
@@ -101,20 +99,55 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
         <div
           class="d-flex flex-row group-switcher justify-content-between mt-5 mb-2"
         >
-          <div class="d-flex">
-            <button class="btn current-group" v-if="userHasMultipleGroups">
-              {{ currentSelectedGroup.groupName }}
-              <span class="switch-label figure"
-                ><font-awesome-icon icon="retweet" class="switch-icon"
-              /></span>
-            </button>
-            <span v-else class="current-group">{{
-              currentSelectedGroup.groupName
-            }}</span>
-          </div>
-          <button class="btn add-group" @click.stop.prevent="createNewGroup">
-            <font-awesome-icon icon="plus" />
+          <button
+            class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
+            v-if="userHasMultipleGroups"
+            @click="showSwitchGroup = true"
+          >
+            {{ currentSelectedGroup.groupName }}
+            <span class="switch-label figure ms-1"
+              ><font-awesome-icon icon="retweet" class="switch-icon"
+            /></span>
           </button>
+          <span v-else class="current-group">{{
+            currentSelectedGroup.groupName
+          }}</span>
+
+          <div class="dropdown">
+            <button
+              class="btn btn-light add-group"
+              type="button"
+              id="switch-or-join-group-button"
+              data-bs-toggle="dropdown"
+              @click="pinSideNav = true"
+              @blur="pinSideNav = false"
+            >
+              <font-awesome-icon icon="plus" />
+            </button>
+            <ul
+              class="dropdown-menu"
+              aria-labelledby="switch-or-join-group-button"
+            >
+              <li>
+                <button
+                  class="dropdown-item"
+                  type="button"
+                  @click.stop.prevent="creatingNewGroup = true"
+                >
+                  Create a new group
+                </button>
+              </li>
+              <li>
+                <button
+                  class="dropdown-item"
+                  type="button"
+                  @click.stop.prevent="joiningNewGroup = true"
+                >
+                  Join an existing group
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
       <ul class="nav nav-pills nav-flush flex-column mb-auto pt-3">
@@ -163,7 +196,7 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
         <li class="nav-item">
           <router-link
             :to="{
-              name: 'search',
+              name: 'activity',
               params: {
                 groupName: urlNormalisedCurrentGroupName,
               },
@@ -177,7 +210,7 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="magnifying-glass" />
             </span>
-            <span>Search</span>
+            <span>Activity</span>
           </router-link>
         </li>
         <li class="nav-item">
@@ -309,7 +342,8 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
       </div>
     </nav>
     <section id="main-content">
-      <div class="container pt-3">
+      <div class="container pt-md-3">
+        <div class="section-top-padding pt-5 pb-4 d-md-none"></div>
         <!--  The group-scoped views.  -->
         <router-view />
       </div>
@@ -345,7 +379,8 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
       opacity: 0;
     }
   }
-  &:hover {
+  &:hover,
+  &.pinned {
     #cacophony-logo-full .text {
       opacity: 1;
     }
@@ -356,7 +391,9 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
 <style lang="less" scoped>
 #main-wrapper {
   position: relative;
-  padding-left: 3.5rem;
+  @media (min-width: 768px) {
+    padding-left: 3.5rem;
+  }
   max-height: 100vh;
   &.has-git-info-bar {
     max-height: calc(100vh - 24px);
@@ -372,6 +409,10 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
 #global-side-nav {
   @collapsed-width: 3.5rem;
   @expanded-width: 20rem;
+  transform: translateX(-@expanded-width);
+  @media (min-width: 768px) {
+    transform: unset;
+  }
 
   background: white;
   position: absolute;
@@ -444,6 +485,7 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
       width: @expanded-width;
       .current-group {
         text-transform: uppercase;
+        font-weight: 500;
       }
       .switch-label {
         font-variant: small-caps;
@@ -454,6 +496,7 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
         }
       }
       .add-group {
+        color: #999;
       }
     }
   }
@@ -463,7 +506,9 @@ const urlNormalisedCurrentGroupName = computed<string>(() => {
   }
 
   // Expanded menu state
-  &:hover {
+  &:hover,
+  &.pinned {
+    transform: translateX(0);
     width: @expanded-width;
     .nav-top {
       background-color: #fafafa;

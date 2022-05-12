@@ -1,19 +1,35 @@
 <script setup lang="ts">
 import { BModal } from "bootstrap-vue-3";
-import { UserGroups, currentSelectedGroup } from "@models/LoggedInUser";
-import { computed, ref } from "vue";
+import {
+  UserGroups,
+  currentSelectedGroup,
+  showSwitchGroup, switchCurrentGroup,
+} from "@models/LoggedInUser";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
+import { urlNormaliseGroupName } from "@/utils";
 
-const showSwitchGroups = ref(true);
 const nextRoute = (groupName: string) => {
   const currentRoute = useRoute();
-  return {
-    ...currentRoute,
-    params: {
-      ...currentRoute.params,
-      groupName,
-    },
-  };
+  if (currentRoute.params.groupName) {
+    return {
+      ...currentRoute,
+      params: {
+        ...currentRoute.params,
+        groupName: urlNormaliseGroupName(groupName),
+      },
+    };
+  } else {
+    // On a non-group scoped route, so reset to dashboard view
+    return {
+      ...currentRoute,
+      name: "dashboard",
+      params: {
+        ...currentRoute.params,
+        groupName: urlNormaliseGroupName(groupName),
+      },
+    };
+  }
 };
 const currentGroupName = computed<string>(() => {
   return (
@@ -22,19 +38,20 @@ const currentGroupName = computed<string>(() => {
 });
 </script>
 <template>
-  <b-modal title="Switch group" v-model="showSwitchGroups" centered hide-footer>
+  <b-modal title="Switch group" v-model="showSwitchGroup" centered hide-footer>
     <div class="list-group">
       <router-link
         :class="[
           'list-group-item',
           { 'list-group-item-action': groupName !== currentGroupName },
-          { disabled: groupName === currentGroupName }
+          { disabled: groupName === currentGroupName },
         ]"
         v-for="({ groupName, id }, index) in UserGroups"
         :key="id"
         :to="nextRoute(groupName)"
         :aria-disabled="groupName === currentGroupName"
         :tabindex="groupName === currentGroupName ? -1 : index"
+        @click="showSwitchGroup = false"
       >
         {{ groupName }}
         <span v-if="groupName === currentGroupName">(selected)</span>

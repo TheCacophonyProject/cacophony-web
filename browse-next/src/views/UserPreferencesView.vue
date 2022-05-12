@@ -1,3 +1,6 @@
+<script setup lang="ts">
+import SectionHeader from "@/components/SectionHeader.vue";
+</script>
 <template>
-  <h1>User preferences</h1>
+  <section-header>User preferences</section-header>
 </template>

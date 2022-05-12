@@ -1,3 +1,6 @@
+<script setup lang="ts">
+import SectionHeader from "@/components/SectionHeader.vue";
+</script>
 <template>
-  <h1>Devices</h1>
+  <section-header>Devices</section-header>
 </template>

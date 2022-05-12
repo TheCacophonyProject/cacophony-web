@@ -8,8 +8,7 @@ import { computed, reactive, ref } from "vue";
 import { refreshLogin, login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupResponse } from "@typedefs/api/group";
-import { decodeJWT } from "@/utils";
-import { useRoute, useRouter } from "vue-router";
+import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
   apiToken: string;
@@ -130,6 +129,7 @@ const refreshCredentials = async () => {
     "saved-login-credentials"
   );
   if (rememberedCredentials) {
+    console.log("-- Resuming from saved credentials");
     let currentUser;
     const now = new Date();
     try {
@@ -236,20 +236,40 @@ export const currentSelectedGroup = computed<
   { groupName: string; id: GroupId; admin?: boolean } | false
 >(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
+    if (UserGroups.value && UserGroups.value?.length === 0) {
+      return false;
+    }
+    if (
+      UserGroups.value &&
+      UserGroups.value?.length !== 0 &&
+      currentUserSettings.value.currentSelectedGroup
+    ) {
+      const potentialGroupId =
+        currentUserSettings.value.currentSelectedGroup.id;
+      const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
+        ({ id }) => id === potentialGroupId
+      );
+      if (!matchedGroup) {
+        return false;
+      }
+    }
+
     return (
       currentUserSettings.value.currentSelectedGroup ||
-      (UserGroups.value && {
-        id: UserGroups.value[0].id,
-        groupName: UserGroups.value[0].groupName,
-      }) ||
+      (UserGroups.value &&
+        UserGroups.value.length !== 0 && {
+          id: UserGroups.value[0].id,
+          groupName: UserGroups.value[0].groupName,
+        }) ||
       false
     );
   }
   return (
-    (UserGroups.value && {
-      id: UserGroups.value[0].id,
-      groupName: UserGroups.value[0].groupName,
-    }) ||
+    (UserGroups.value &&
+      UserGroups.value?.length !== 0 && {
+        id: UserGroups.value[0].id,
+        groupName: UserGroups.value[0].groupName,
+      }) ||
     false
   );
 });
@@ -292,7 +312,18 @@ export const userHasConfirmedEmailAddress = computed<boolean>(() => {
   return false;
 });
 
+export const urlNormalisedCurrentGroupName = computed<string>(
+  () =>
+    (currentSelectedGroup.value &&
+      urlNormaliseGroupName(currentSelectedGroup.value.groupName)) ||
+    ""
+);
+
 export const isResumingSession = ref(false);
 
 export const isLoggingInAutomatically = ref(false);
 export const isFetchingGroups = ref(false);
+export const creatingNewGroup = ref(false);
+export const joiningNewGroup = ref(false);
+export const showSwitchGroup = ref(false);
+export const pinSideNav = ref(false);

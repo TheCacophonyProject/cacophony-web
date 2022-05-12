@@ -1,3 +1,6 @@
+<script setup lang="ts">
+import SectionHeader from "@/components/SectionHeader.vue";
+</script>
 <template>
-  <h1>Exports and long-term trend analysis</h1>
+  <section-header>Exports and long-term trend analysis</section-header>
 </template>

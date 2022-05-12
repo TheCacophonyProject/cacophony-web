@@ -1,38 +1,31 @@
 <script setup lang="ts">
 import { addNewGroup } from "@api/Group";
 import {
-  CurrentUser,
-  setLoggedInUserData,
   UserGroups,
-  type LoggedInUser, switchCurrentGroup,
+  switchCurrentGroup,
+  creatingNewGroup,
+  urlNormalisedCurrentGroupName,
 } from "@models/LoggedInUser";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import type { ErrorResult } from "@api/types";
 import { BModal } from "bootstrap-vue-3";
-import { formFieldInputText, type FormInputValidationState } from "@/utils";
-import type { ApiUserSettings } from "@typedefs/api/user";
+import { formFieldInputText } from "@/utils";
+import type { FormInputValidationState } from "@/utils";
+import { useRouter } from "vue-router";
 
-const props = defineProps<{ show: boolean }>();
-const emit = defineEmits(["finished"]);
 const newGroupName = formFieldInputText();
 const isValidGroupName = computed<boolean>(() => newGroupName.value !== "");
 const needsValidationAndIsValidGroupName = computed<FormInputValidationState>(
   () => (newGroupName.touched ? isValidGroupName.value : null)
 );
 
-const showModal = ref(false);
 const submittingCreateRequest = ref(false);
-watch(props, (next) => {
-  showModal.value = next.show;
-});
-
-const onHidden = () => {
-  console.log("Hidden");
+const resetFormValues = () => {
   newGroupName.value = "";
   newGroupName.touched = false;
-  emit("finished");
 };
 
+const router = useRouter();
 const createNewGroupError = ref<ErrorResult | null>(null);
 const createNewGroup = async () => {
   submittingCreateRequest.value = true;
@@ -46,8 +39,13 @@ const createNewGroup = async () => {
         id: createGroupResponse.result.groupId,
         admin: true,
       });
-      emit("finished");
+      UserGroups.value.sort((a, b) => a.groupName.localeCompare(b.groupName));
       switchCurrentGroup({ groupName, id: newGroupId });
+      await router.push({
+        name: "group-settings",
+        params: { groupName: urlNormalisedCurrentGroupName.value },
+      });
+      creatingNewGroup.value = false;
     } else {
       // User groups doesn't exist?
       debugger;
@@ -62,10 +60,10 @@ const createNewGroup = async () => {
 </script>
 <template>
   <b-modal
-    v-model="showModal"
+    v-model="creatingNewGroup"
     title="Create a new group"
     centered
-    @hidden="onHidden"
+    @hidden="resetFormValues"
   >
     <b-form @submit.stop.prevent="createNewGroup">
       <b-form-input
