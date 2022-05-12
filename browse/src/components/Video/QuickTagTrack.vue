@@ -21,7 +21,7 @@
         </button>
       </div>
       <div v-if="pinnedLabels" class="pinned-labels mt-1">
-        <div v-for="label in pinnedLabels">
+        <div v-for="label in pinnedLabels" :key="label">
           <div
             @mouseover="
               () => {
