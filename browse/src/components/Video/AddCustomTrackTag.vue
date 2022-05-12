@@ -10,6 +10,7 @@
           </b-form-select>
           <b-button
             class="ml-2"
+            :variant="pinnedTag ? 'success' : 'primary'"
             v-b-tooltip.hover
             title="Pin tag to quick selection"
             @click="togglePinTag"
@@ -67,6 +68,9 @@ export default {
       return Array.from(options.values()).sort((a, b) =>
         a.text.localeCompare(b.text)
       );
+    },
+    pinnedTag() {
+      return this.$store.state.Video.pinnedLabels.includes(this.whatTag);
     },
   },
   methods: {

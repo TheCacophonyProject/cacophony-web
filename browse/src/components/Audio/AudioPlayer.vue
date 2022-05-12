@@ -262,18 +262,18 @@ export default defineComponent({
       ) as HTMLDivElement;
       const totalShown = playerBar.offsetWidth / zoomed.value.scale;
       const half = totalShown / 2;
-      const start = -Math.min(progress.offsetWidth, half);
-      const end = Math.min(playerBar.offsetWidth - progress.offsetWidth, half);
-      const startDiff = Math.abs(start + half);
-      const endDiff = Math.abs(end - half);
+      const startPos = progress.offsetWidth - half;
+      const endPos = progress.offsetWidth + half;
+      const overEnd = Math.abs(Math.min(playerBar.offsetWidth - endPos, 0));
+      const overStart = Math.abs(Math.min(startPos, 0));
 
       overlay.value.style.transform = `scale(${zoomed.value.scale}, 1)`;
       const translateY = "translateY(-3px)";
       zoomIndicatorStart.style.transform = `translateX(${
-        start - endDiff
+        -half - overEnd + overStart
       }px) ${translateY}`;
       zoomIndicatorEnd.style.transform = `translateX(${
-        end + startDiff + 10
+        half + overStart - overEnd + 8
       }px) ${translateY}`;
     };
 
@@ -629,7 +629,12 @@ export default defineComponent({
     onMounted(async () => {
       const audioBuffer = await fetchAudioBuffer(props.url);
       let { sampleRate } = getSampleRate(audioBuffer);
-      sampleRate = sampleRate < 10000 ? sampleRate + 8000 : sampleRate;
+      sampleRate =
+        sampleRate === 0
+          ? 48000
+          : sampleRate < 10000
+          ? sampleRate + 8000
+          : sampleRate;
       const audioContext = new AudioContext({
         sampleRate,
       });
@@ -788,20 +793,8 @@ export default defineComponent({
         spectrogram.value = canvas;
         const spectrogramWidth = spectrogram.value.width;
         const spectrogramHeight = spectrogram.value.height;
-        const overlayAttr = {
-          style: {
-            ["z-index"]: 10,
-            cursor: "crosshair",
-            width: "100%",
-            height: "100%",
-            "transform-origin": "0 center",
-          },
-          attributes: {
-            viewBox: `0 0 ${spectrogramWidth} ${spectrogramHeight}`,
-            xmlns: "http://www.w3.org/2000/svg",
-          },
-        };
         const container = document.querySelector("#spectrogram") as HTMLElement;
+        // check
         const svgImage = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "image"
@@ -817,6 +810,25 @@ export default defineComponent({
         svgImage.setAttribute("y", "0");
         svgImage.setAttribute("preserveAspectRatio", "none");
 
+        // check if newOverlay is already there
+        const oldOverlay = container.querySelector("svg");
+        if (oldOverlay) {
+          container.removeChild(oldOverlay);
+        }
+
+        const overlayAttr = {
+          style: {
+            ["z-index"]: 10,
+            cursor: "crosshair",
+            width: "100%",
+            height: "100%",
+            "transform-origin": "0 center",
+          },
+          attributes: {
+            viewBox: `0 0 ${spectrogramWidth} ${spectrogramHeight}`,
+            xmlns: "http://www.w3.org/2000/svg",
+          },
+        };
         const newOverlay = createSVGElement(overlayAttr, "svg");
         newOverlay.appendChild(svgImage);
         // hide container made by waveform

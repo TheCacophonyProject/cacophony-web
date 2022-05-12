@@ -20,16 +20,50 @@
           <span class="tag-name">{{ animal }}</span>
         </button>
       </div>
-      <div v-if="pinnedLabels" class="tag-btns-wrapper animals mt-1">
-        <button
-          v-for="label in pinnedLabels"
-          :key="label"
-          :class="['btn btn-light btn-tag equal-flex', getClass(label)]"
-          @click="quickTag(label)"
-          :disabled="taggingPending"
-        >
-          <span class="tag-name">{{ label }}</span>
-        </button>
+      <div v-if="pinnedLabels" class="pinned-labels mt-1">
+        <div v-for="label in pinnedLabels">
+          <div
+            @mouseover="
+              () => {
+                hoveredPinned = label;
+              }
+            "
+            @mouseout="
+              () => {
+                hoveredPinned = null;
+              }
+            "
+            @click="
+              () => {
+                $store.commit('Video/pinnedLabels', label);
+              }
+            "
+            role="button"
+          >
+            <font-awesome-icon
+              v-if="label === hoveredPinned"
+              class="pinned-button pinned-button-cross"
+              icon="times"
+              size="1x"
+              v-b-tooltip.hover
+            />
+            <font-awesome-icon
+              v-else
+              class="pinned-button"
+              icon="thumbtack"
+              size="1x"
+              v-b-tooltip.hover
+            />
+          </div>
+          <button
+            :key="label"
+            :class="['btn btn-light btn-tag equal-flex', getClass(label)]"
+            @click="quickTag(label)"
+            :disabled="taggingPending"
+          >
+            <span class="tag-name">{{ label }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -141,6 +175,7 @@ export default {
   data() {
     return {
       message: "",
+      hoveredPinned: null,
     };
   },
   methods: {
@@ -249,6 +284,27 @@ export default {
       border: 2px solid $aihuman !important;
     }
   }
+}
+
+.pinned-labels {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-gap: 4px;
+  div {
+    button {
+      padding-top: 0.5em;
+      padding-bottom: 0.5em;
+      width: 100%;
+    }
+  }
+}
+.pinned-button {
+  position: absolute;
+  z-index: 1;
+  color: #3498db;
+}
+.pinned-button-cross {
+  color: #e74c3c;
 }
 @media only screen and (max-width: 359px) {
   .tag-buttons {

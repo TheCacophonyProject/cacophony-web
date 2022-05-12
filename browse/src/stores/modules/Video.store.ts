@@ -7,7 +7,7 @@ const state = {
   fileSize: null,
   rawSize: null,
   recording: null,
-  pinnedLabels: JSON.parse(localStorage.getItem("pinnedLabels")),
+  pinnedLabels: JSON.parse(localStorage.getItem("pinnedLabels")) ?? [],
   tracks: [],
 };
 
