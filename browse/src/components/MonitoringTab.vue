@@ -37,6 +37,7 @@ import { startOfEvening } from "@/helpers/datetime";
 import SunCalc from "suncalc";
 import ExportVisits from "@/components/Monitoring/ExportVisits.vue";
 import { LatLng } from "@typedefs/api/common";
+import { DeviceEventType } from "@api/Device.api";
 const LOAD_PER_PAGE_CARDS = 10;
 
 // TODO(jon): A histogram of activity by hour of the night.  Total visits, and by species.
@@ -186,7 +187,11 @@ const getPowerEventsAndLocationForDevice = async (
     );
 
     const eventParams = {
-      type: ["daytime-power-off", "rpi-power-on", "powered-off"],
+      type: [
+        "daytime-power-off",
+        "rpi-power-on",
+        "powered-off",
+      ] as DeviceEventType[],
       endTime: endOfCurrentDay.toISOString(),
       startTime: beginningOfDayOfEarliestDay.toISOString(),
     };

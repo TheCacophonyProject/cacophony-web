@@ -3,8 +3,11 @@
 
 declare namespace Cypress {
   type ApiDeviceResponse = import("@typedefs/api/device").ApiDeviceResponse;
+  type LatLng = import("@typedefs/api/common").LatLng;
   type ApiGroupsUserRelationshipResponse =
-    import("@typedefs/api/group").ApiGroupUserRelationshipResponse;
+    import("@typedefs/api/group").ApiGroupUserResponse;
+  type DeviceType = import("@typedefs/api/consts").DeviceType;
+  type DeviceHistoryEntry = import("@commands/types").DeviceHistoryEntry;
 
   interface Chainable {
     /**
@@ -19,6 +22,41 @@ declare namespace Cypress {
       generateUniqueName?: boolean,
       log?: boolean,
       statusCode?: number
+    ): any;
+
+    /**
+     * Upate a device's station (deviceHistory) at a given time
+     * optionally check for non-200 statusCode
+     * By default deviceId and stationId are looked up from
+     * names in deviceIdOrName and stationIdOrName
+     * Optionally supply raw ids by specifying
+     *   additonalParams: {useRawDeviceId: true}
+     *   additonalParams: {useRawStationId: true}
+     */
+    apiDeviceFixLocation(
+      userName: string,
+      deviceIdOrName: string,
+      stationFromDate: string,
+      stationIdOrName: string,
+      location?: LatLng,
+      statusCode?: number,
+      additionalParams?: any
+    ): any;
+
+    /**
+     * Get history for a device
+     * compare with expected history
+     * by default DeviceId is looked up using name.  Set additionalChecks["useRawDeviceId"]=true to use Id provided
+     * By default history and expectedHistory are sorted before comparison
+     * Set additionalChecks["doNotSort"]=true to skip sorting
+     * optionally check for a non-200 status code
+     */
+    apiDeviceHistoryCheck(
+      userName: string,
+      deviceIdOrName: string,
+      expectedHistory: any[],
+      statusCode?: number,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -114,6 +152,26 @@ declare namespace Cypress {
       nextHeartbeat: string,
       statusCode?: number,
       additionalChecks?: any
+    ): any;
+
+    /**
+     * Retrieve list of users  who can access a device from /devices/users
+     * compare with expected list of users
+     * takes deviceName and looks up the device Id to pass tot he API.  Hence deviceName must be unique within test environment
+     * optionally check for a non-200 status code
+     */
+    createDeviceStationRecordingAndFix(
+      userName: string,
+      deviceName: string,
+      stationName: string,
+      recName: string,
+      group: string,
+      oldLocation: LatLng,
+      newLocation: LatLng,
+      recTime: string,
+      stationTime: string,
+      move?: boolean,
+      additionalRecTime?: string
     ): any;
   }
 }

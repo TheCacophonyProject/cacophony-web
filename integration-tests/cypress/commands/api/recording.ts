@@ -693,7 +693,7 @@ Cypress.Commands.add(
 
     logTestDescription(
       `Query recordings where '${JSON.stringify(params["where"])}'`,
-      { user: userName, params: params }
+      { user: userName, params: params, expected: expectedRecordings }
     );
 
     const url = v1ApiPath("recordings", params);
@@ -711,12 +711,16 @@ Cypress.Commands.add(
           response.body.rows,
           excludeCheckOn
         );
-      } else {
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"]
-          );
-        }
+      }
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
+      if (additionalChecks["count"] !== undefined) {
+        expect(response.body.count, "Count should be: ").to.equal(
+          additionalChecks["count"]
+        );
       }
     });
   }

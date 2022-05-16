@@ -7,6 +7,7 @@ import middleware, {
 import log from "@log";
 import { body, param, query, oneOf } from "express-validator";
 import models from "@models";
+import _ from "lodash";
 import recordingUtil, {
   finishedProcessingRecording,
 } from "../V1/recordingUtil";
@@ -68,7 +69,7 @@ export default function (app: Application) {
       const type = request.query.type as RecordingType;
       const state = request.query.state as RecordingProcessingState;
       const recording = await models.Recording.getOneForProcessing(type, state);
-      if (recording == null) {
+      if (recording === null) {
         log.debug(
           "No file to be processed for '%s' in state '%s.",
           type,
@@ -81,8 +82,13 @@ export default function (app: Application) {
           recording.getRawFileName(),
           recording.rawMimeType
         );
+        const rec = (recording as any).dataValues;
+        if (rec.location) {
+          // Some versions of postgres seem to put this in.
+          delete rec.location.crs;
+        }
         return response.status(200).json({
-          recording: (recording as any).dataValues,
+          recording: rec,
           rawJWT,
         });
       }
@@ -144,7 +150,7 @@ export default function (app: Application) {
         .exists()
         .withMessage(expectedTypeOf("ClassifierRawResult"))
         .bail()
-        .custom(jsonSchemaOf(ClassifierRawResultSchema)), // TODO: Can we compile the schema for this on demand?
+        .custom(jsonSchemaOf(ClassifierRawResultSchema)),
       body("newProcessedFileKey").optional(),
     ],
     middleware.requestWrapper(async (request: Request, response: Response) => {
@@ -169,22 +175,19 @@ export default function (app: Application) {
       if (success) {
         recording.set("currentStateStartTime", null);
         if (newProcessedFileKey) {
-          recording.set("fileKey", newProcessedFileKey);
+          recording.fileKey = newProcessedFileKey;
         }
         if (complete) {
-          recording.set({
-            jobKey: null,
-            processing: false,
-            processingEndTime: new Date().toISOString(),
-          });
+          recording.jobKey = null;
+          recording.processing = false;
+          recording.processingEndTime = new Date().toISOString();
         }
-        const nextJob = recording.getNextState();
-        recording.set("processingState", nextJob);
+        recording.processingState = recording.getNextState();
         // Process extra data from file processing
 
         // FIXME Is fieldUpdates ever set by current processing?
         // if (result && result.fieldUpdates) {
-        //   await recording.mergeUpdate(result.fieldUpdates);
+        // _.merge(recording, result.fieldUpdates);
         // }
         await recording.save();
         if (
@@ -198,13 +201,11 @@ export default function (app: Application) {
           .json({ messages: [`Processing finished for #${id}`] });
       } else {
         // The current stage failed
-        recording.set({
-          processingState:
-            `${recording.processingState}.failed` as RecordingProcessingState,
-          jobKey: null,
-          processing: false,
-          processingEndTime: new Date().toISOString(), // Still set processingEndTime, since we might want to know how long it took to fail.
-        });
+        recording.processingState =
+          `${recording.processingState}.failed` as RecordingProcessingState;
+        recording.jobKey = null;
+        recording.processing = false;
+        recording.processingEndTime = new Date().toISOString(); // Still set processingEndTime, since we might want to know how long it took to fail.
         await recording.save();
         return response.status(200).json({
           messages: [`Processing failed for #${id}`],
@@ -260,25 +261,32 @@ export default function (app: Application) {
       const { newProcessedFileKey, success } = request.body;
       const result = response.locals.result;
       const recording = response.locals.recording;
+      recording.jobKey = null;
+      recording.processing = false;
+
       const prevState = recording.processingState;
       if (success) {
         if (newProcessedFileKey) {
-          recording.set("fileKey", newProcessedFileKey);
+          recording.fileKey = newProcessedFileKey;
         }
         const nextJob = recording.getNextState();
         const complete =
           nextJob == models.Recording.finishedState(recording.type);
-        recording.set({
-          jobKey: null,
-          processing: false,
-          processingState: nextJob,
-          processingEndTime: new Date().toISOString(),
-        });
-
+        recording.processingState = nextJob;
+        recording.processingEndTime = new Date().toISOString();
         // Process extra data from file processing
         if (result && result.fieldUpdates) {
-          // FIXME - station matching happens in here, move it out.
-          await recording.mergeUpdate(result.fieldUpdates);
+          // NOTE: We used to re-match stations here if location changed, but really there's no good reason
+          //  why file processing should update the location.
+          delete result.fieldUpdates.location;
+          _.merge(recording, result.fieldUpdates);
+          for (const [key, value] of Object.entries(recording.dataValues)) {
+            if (typeof value === "object" && key in result.fieldUpdates) {
+              // We need to let sequelize know that deep json values have changed, since it doesn't
+              // check for deep equality.
+              recording.changed(key, true);
+            }
+          }
         }
         await recording.save();
         if (recording.type === RecordingType.ThermalRaw) {
@@ -304,16 +312,12 @@ export default function (app: Application) {
             await recordingUtil.sendAlerts(recording.id);
           }
         }
-        return response
-          .status(200)
-          .json({ messages: ["Processing finished."] });
-      } else {
-        recording.set({
-          processingState:
-            `${recording.processingState}.failed` as RecordingProcessingState,
-          jobKey: null,
-          processing: false,
+        return response.status(200).json({
+          messages: ["Processing finished."],
         });
+      } else {
+        recording.processingState =
+          `${recording.processingState}.failed` as RecordingProcessingState;
         await recording.save();
         return response.status(200).json({
           messages: ["Processing failed."],
@@ -411,7 +415,7 @@ export default function (app: Application) {
     validateFields([
       idOf(param("id")),
 
-      // FIXME - We don't currently have tracks for audio recordings, but when we do we need to widen this check.
+      // FIXME - We don't currently have ML generated tracks for audio recordings, but when we do we need to widen this check.
       body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
       idOf(body("algorithmId")),
     ]),

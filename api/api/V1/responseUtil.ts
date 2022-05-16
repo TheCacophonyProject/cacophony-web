@@ -112,7 +112,7 @@ function serverError(
   err,
   message = "Server error. Sorry!"
 ) {
-  log.error("%s, %s", err.toString(), err.stack);
+  log.error("SERVER ERROR: %s, %s", err.toString(), err.stack);
   return response.status(500).json({
     messages: [message],
   });

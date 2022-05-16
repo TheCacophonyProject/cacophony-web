@@ -21,6 +21,7 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { TrackTag, TrackTagId, additionalTags, filteredTags } from "./TrackTag";
 import { Recording } from "./Recording";
 import { RecordingId, TrackId } from "@typedefs/api/common";
+import { TrackTagData } from "@/../types/api/trackTag";
 
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
   filtered: boolean;
@@ -85,14 +86,14 @@ export default function (
   ): Promise<TrackTag | void> {
     const trackId = this.id;
     const trackTag = await sequelize.transaction(async function (t) {
-      const trackTags = await models.TrackTag.findAll({
+      const trackTags = (await models.TrackTag.findAll({
         where: {
           UserId: tag.UserId,
           automatic: tag.automatic,
           TrackId: trackId,
         },
         transaction: t,
-      });
+      })) as TrackTag[];
       const existingTag = trackTags.find(
         (uTag: TrackTag) => uTag.what === tag.what
       );
@@ -113,6 +114,30 @@ export default function (
     return trackTag;
   };
 
+  //add or replace a tag, such that this track only has 1 animal tag by this user
+  //and no duplicate tags
+  Track.prototype.updateTag = async function (
+    tagId: TrackTagId,
+    data: TrackTagData
+  ): Promise<TrackTag | void> {
+    const trackId = this.id;
+    const trackTag = await sequelize.transaction(async (t) => {
+      const tag = (await models.TrackTag.findByPk(tagId, {
+        transaction: t,
+      })) as TrackTag;
+      if (!tag || tag.TrackId !== trackId) {
+        return null;
+      }
+      tag.data = {
+        ...(typeof tag.data !== "string" && tag.data),
+        ...data,
+      };
+      await tag.save({ transaction: t });
+      return tag;
+    });
+    return trackTag;
+  };
+
   // Adds a tag to a track and checks if any alerts need to be sent. All trackTags
   // should be added this way
   Track.prototype.addTag = async function (
@@ -121,14 +146,14 @@ export default function (
     automatic,
     data,
     userId = null
-  ) {
-    const tag = await this.createTrackTag({
+  ): Promise<TrackTag> {
+    const tag = (await this.createTrackTag({
       what,
       confidence,
       automatic,
       data,
       UserId: userId,
-    });
+    })) as TrackTag;
     await this.updateIsFiltered();
     return tag;
   };
@@ -140,11 +165,11 @@ export default function (
     }
 
     // Ensure track tag belongs to this track.
-    if (trackTag.TrackId !== this.id) {
+    if ((trackTag as TrackTag).TrackId !== this.id) {
       return null;
     }
 
-    return trackTag;
+    return trackTag as TrackTag;
   };
 
   Track.prototype.updateIsFiltered = async function () {
@@ -163,6 +188,73 @@ export default function (
         transaction: t,
       });
       await track.update({ filtered: isFiltered(tags) }, { transaction: t });
+    });
+  };
+
+  Track.prototype.updateIsFiltered = async function () {
+    const trackId = this.id;
+    return sequelize.transaction(async function (t) {
+      const track = await models.Track.findByPk(trackId, {
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      const tags = await models.TrackTag.findAll({
+        where: {
+          TrackId: trackId,
+          archivedAt: null,
+        },
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      await track.update({ filtered: isFiltered(tags) }, { transaction: t });
+    });
+  };
+
+  // Archive Track for soft-delete
+  Track.prototype.archive = async function () {
+    const trackId = this.id;
+    return sequelize.transaction(async function (t) {
+      const track = await models.Track.findByPk(trackId, {
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      const tags = await models.TrackTag.findAll({
+        where: {
+          TrackId: trackId,
+          archivedAt: null,
+        },
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      await track.update({ archivedAt: Date.now() }, { transaction: t });
+      for (let i = 0; i < tags.length; i++) {
+        await tags[i].update({ archivedAt: Date.now() }, { transaction: t });
+      }
+    });
+  };
+
+  // Retrieve Track from Archive
+  Track.prototype.unarchive = async function () {
+    const trackId = this.id;
+    return sequelize.transaction(async function (t) {
+      const track = await models.Track.findByPk(trackId, {
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      const tags = await models.TrackTag.findAll({
+        where: {
+          TrackId: trackId,
+          archivedAt: {
+            [Sequelize.Op.ne]: null,
+          },
+        },
+        lock: (t as any).LOCK.UPDATE,
+        transaction: t,
+      });
+      await track.update({ archivedAt: null }, { transaction: t });
+      for (let i = 0; i < tags.length; i++) {
+        await tags[i].update({ archivedAt: null }, { transaction: t });
+      }
     });
   };
 
@@ -185,11 +277,11 @@ export default function (
 }
 
 function isFiltered(tags): boolean {
-  // any human tag that isn't filted 2
-  //  or any ai mastre tag that isn't filtered
+  // any human tag that isn't filtered 2
+  //  or any ai master tag that isn't filtered
 
   // filtered if
-  // any huyman tag that is filtered
+  // any human tag that is filtered
   // no animal human tags
   const userTags = tags.filter((tag) => !tag.automatic);
 
@@ -222,11 +314,7 @@ function isFiltered(tags): boolean {
         (tag.data && tag.data == "Master"))
   );
   if (masterTag) {
-    if (filteredTags.some((filteredTag) => filteredTag == masterTag.what)) {
-      return true;
-    } else {
-      return false;
-    }
+    return !!filteredTags.some((filteredTag) => filteredTag == masterTag.what);
   }
   return true;
 }

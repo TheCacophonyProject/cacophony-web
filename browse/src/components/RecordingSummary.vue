@@ -89,6 +89,7 @@
         title="Cacophony Index: Measures Richness of Audio"
         class="cacophony-container"
         :style="{
+          maxHeight: '50px',
           marginRight:
             item.location !== '(unknown)' ? '0.5em' : 'calc(109px + 0.5em)',
         }"
@@ -517,6 +518,7 @@ $recording-side-padding-small: 0.5rem;
   flex: 1 1 auto;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
   min-height: 110px;
   @include media-breakpoint-up(xs) {
@@ -530,6 +532,7 @@ $recording-side-padding-small: 0.5rem;
     flex-direction: column;
     justify-content: space-between;
     padding: 0.7rem $recording-side-padding;
+    width: 65%;
 
     @include media-breakpoint-down(xs) {
       padding: 0.25rem $recording-side-padding-small;
@@ -557,7 +560,6 @@ $recording-side-padding-small: 0.5rem;
   .label {
     vertical-align: middle;
   }
-
   .sub-label {
     font-size: 0.8em;
   }
@@ -584,7 +586,7 @@ $recording-side-padding-small: 0.5rem;
 }
 
 .recording-tags {
-  max-width: 23em;
+  width: 75%;
 }
 
 .recording-summary > .recording-location {
@@ -624,11 +626,11 @@ $recording-side-padding-small: 0.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 50px;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
+  width: 18%;
+  margin-top: 0.2em;
+  margin-bottom: 0.2em;
   border-radius: 0.5em;
-  padding: 0.1em;
+  padding: 0.3em;
   border: 2px solid $gray-300;
   @include media-breakpoint-up(sm) {
     width: 90px;

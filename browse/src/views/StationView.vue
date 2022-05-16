@@ -241,7 +241,7 @@ export default {
             }
           }
         } else {
-          const stationResponse = await api.groups.getStationById(
+          const stationResponse = await api.station.getStationById(
             this.stationId
           );
           if (stationResponse.success) {

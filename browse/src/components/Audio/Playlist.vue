@@ -1,40 +1,29 @@
 <template>
-  <b-container fluid class="playlist-container p-2">
-    <b-row>
-      <b-col>
-        <h3 class="mb-0 ml-2 my-1">Playlist</h3>
-      </b-col>
-      <b-col class="d-flex w-100 align-items-center p-0">
-        <b-row class="justify-content-between w-100">
-          <div>
-            <font-awesome-icon
-              @click="navigateToNextRecording(QueryDirection.Previous)"
-              :disable="nextRecordings.prev === null"
-              :class="{ disabled: nextRecordings.prev === null }"
-              role="button"
-              icon="step-backward"
-              size="lg"
-              class="mr-1"
-            />
-            <font-awesome-icon
-              @click="navigateToNextRecording(QueryDirection.Next)"
-              :disable="nextRecordings.next === null"
-              :class="{ disabled: nextRecordings.next === null }"
-              role="button"
-              icon="step-forward"
-              size="lg"
-            />
-          </div>
-          <a download="audio_recording.mp3" :href="url">
-            <font-awesome-icon icon="download" size="lg" />
-          </a>
-          <div @click="deleteRecording" class="text-danger pr-4" role="button">
-            <font-awesome-icon icon="trash" />
-          </div>
-        </b-row>
-      </b-col>
-    </b-row>
-  </b-container>
+  <aside class="playlist-container">
+    <font-awesome-icon
+      @click="navigateToNextRecording(QueryDirection.Previous)"
+      :disable="nextRecordings.prev === null"
+      :class="{ disabled: nextRecordings.prev === null }"
+      role="button"
+      icon="step-backward"
+      size="lg"
+      class="mr-1"
+    />
+    <a download="audio_recording.mp3" :href="url">
+      <font-awesome-icon icon="download" size="lg" />
+    </a>
+    <div @click="deleteRecording" class="text-danger pl-4" role="button">
+      <font-awesome-icon icon="trash" />
+    </div>
+    <font-awesome-icon
+      @click="navigateToNextRecording(QueryDirection.Next)"
+      :disable="nextRecordings.next === null"
+      :class="{ disabled: nextRecordings.next === null }"
+      role="button"
+      icon="step-forward"
+      size="lg"
+    />
+  </aside>
 </template>
 <script lang="ts">
 import { PropType } from "vue";
@@ -173,7 +162,17 @@ export default defineComponent({
 });
 </script>
 <style lang="scss" scoped>
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+@import "~bootstrap/scss/mixins";
+
 .playlist-container {
+  display: flex;
+  width: 100%;
+  padding: 0.5em 1em 0.5em 1em;
+
+  justify-content: space-between;
+  background: white;
   border: solid #e8e8e8 1px;
   border-radius: 6px;
   box-shadow: 0px 0px 4px 0px rgba(190, 189, 189, 0.25);
@@ -182,5 +181,13 @@ export default defineComponent({
 .disabled {
   cursor: not-allowed;
   color: #d0d0d0;
+}
+@include media-breakpoint-down(md) {
+  .playlist-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+  }
 }
 </style>

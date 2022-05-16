@@ -19,12 +19,9 @@ import log from "../logging";
 import mime from "mime";
 import moment from "moment-timezone";
 import Sequelize, { FindOptions, Includeable } from "sequelize";
-import assert from "assert";
 import { v4 as uuidv4 } from "uuid";
 import config from "../config";
 import util from "./util/util";
-import validation from "./util/validation";
-import { AuthorizationError } from "@api/customErrors";
 import _ from "lodash";
 import { User } from "./User";
 import { ModelCommon, ModelStaticCommon } from "./index";
@@ -37,26 +34,29 @@ import { Tag } from "./Tag";
 import jsonwebtoken from "jsonwebtoken";
 import { TrackTag } from "./TrackTag";
 import { Station } from "./Station";
-import {
-  mapPositions,
-  tryToMatchRecordingToStation,
-} from "@api/V1/recordingUtil";
+import { mapPosition } from "@api/V1/recordingUtil";
 import {
   DeviceId,
   GroupId,
   RecordingId,
-  StationId,
   TrackId,
   UserId,
+  StationId,
+  LatLng,
+  IsoFormattedDateString,
 } from "@typedefs/api/common";
 import {
   AcceptableTag,
-  RecordingPermission,
   RecordingProcessingState,
   RecordingType,
   TagMode,
 } from "@typedefs/api/consts";
 import { DeviceBatteryChargeState } from "@typedefs/api/device";
+import {
+  ApiAudioRecordingMetadataResponse,
+  ApiThermalRecordingMetadataResponse,
+  CacophonyIndex,
+} from "@typedefs/api/recording";
 
 type SqlString = string;
 
@@ -104,82 +104,23 @@ interface RecordingQueryBuilderInstance {
   query: any;
 }
 
-export interface SpeciesClassification {
-  end_s: number;
-  begin_s: number;
-  species: string;
-}
-
-export interface CacophonyIndex {
-  end_s: number;
-  begin_s: number;
-  index_percent: number;
-}
-
-export interface AudioRecordingMetadata {
-  ["SIM IMEI"]: string;
-  ["SIM state"]: string;
-  ["Phone model"]: string;
-  amplification: number;
-  SimOperatorName: string;
-  ["Android API Level"]: number;
-  ["Phone manufacturer"]: string;
-  ["App has root access"]: boolean;
-  cacophony_index_version: string;
-  processing_time_seconds: number;
-  species_identify_version: string;
-  analysis: {
-    speech_detection: boolean;
-    speech_detection_version: string;
-  };
-}
-
-export interface VideoRecordingMetadata {
-  previewSecs: number;
-  algorithm?: number;
-  totalFrames?: number;
-  oldTags?: {
-    id: number;
-    what: string;
-    detail: string;
-    version: number;
-    duration: null | number;
-    taggerId: null | number;
-    automatic: boolean;
-    createdAt: string;
-    startTime: string | null;
-    updatedAt: string;
-    confidence: number;
-    RecordingId: number;
-  }[];
-  tracks?: {
-    start_s: number;
-    end_s: number;
-    label: string;
-    clarity: number;
-    confidence: number;
-    max_novelty: number;
-    average_novelty: number;
-    all_class_confidences: Record<string, number>;
-  };
-}
-
 export interface RecordingProcessingMetadata {
   // Only set during recording processing?
 }
 
-// TODO(jon): Express audio and video recordings differently.  Recording<Audio>, Recording<Video>
 export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   // Recording columns.
   id: RecordingId;
   type: RecordingType;
   duration: number;
-  recordingDateTime: string;
-  location?: { coordinates: [number, number] } | [number, number]; // [number, number] is the format coordinates are set in, but they are returned as { coordinates: [number, number] }
+  recordingDateTime: Date;
+  location?: LatLng;
   relativeToDawn: number;
   relativeToDusk: number;
   version: string;
-  additionalMetadata: AudioRecordingMetadata | VideoRecordingMetadata;
+  additionalMetadata:
+    | ApiThermalRecordingMetadataResponse
+    | ApiAudioRecordingMetadataResponse;
   cacophonyIndex: CacophonyIndex[];
   comment: string;
   public: boolean;
@@ -215,13 +156,11 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getFileName: () => string;
   getRawFileExt: () => string;
   getFileExt: () => string;
-  getActiveTracks: () => Promise<Track[]>;
   getDevice: () => Promise<Device>;
 
   getActiveTracksTagsAndTagger: () => Promise<any>;
 
   reprocess: () => Promise<Recording>;
-  mergeUpdate: (updates: any) => Promise<void>;
   filterData: (options: any) => void;
   // NOTE: Implicitly created by sequelize associations (along with other
   //  potentially undocumented extension methods).
@@ -238,6 +177,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   Tracks?: Track[];
   Device?: Device;
 }
+
 type CptvFile = "string";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -262,12 +202,9 @@ interface TagLimitedRecording {
   tracks: LimitedTrack[];
   recordingJWT: JwtToken<CptvFile>;
   tagJWT: JwtToken<TrackTag>;
+  fileSize: number;
 }
 
-type getOptions = {
-  type?: RecordingType;
-  filterOptions?: { latLongPrec?: number };
-};
 export interface RecordingStatic extends ModelStaticCommon<Recording> {
   buildSafely: (fields: Record<string, any>) => Recording;
   isValidTagMode: (mode: TagMode) => boolean;
@@ -305,13 +242,7 @@ export default function (
     type: DataTypes.STRING,
     duration: DataTypes.FLOAT,
     recordingDateTime: DataTypes.DATE,
-    location: {
-      type: DataTypes.GEOMETRY,
-      set: util.geometrySetter,
-      validate: {
-        isLatLon: validation.isLatLon,
-      },
-    },
+    location: util.locationField(),
     relativeToDawn: DataTypes.INTEGER,
     relativeToDusk: DataTypes.INTEGER,
     version: DataTypes.STRING,
@@ -384,8 +315,8 @@ export default function (
    */
   Recording.getOneForProcessing = async function (type, state) {
     return sequelize
-      .transaction(function (transaction) {
-        return Recording.findOne({
+      .transaction(async (transaction) => {
+        const recording = await Recording.findOne({
           where: {
             type: type,
             deletedAt: { [Op.eq]: null },
@@ -429,38 +360,28 @@ export default function (
           skipLocked: true,
           lock: (transaction as any).LOCK.UPDATE,
           transaction,
-        }).then(async function (recording) {
-          if (!recording) {
-            return recording;
-          }
-          const date = new Date();
-          if (!recording.processingStartTime) {
-            recording.set("processingStartTime", date.toISOString());
-          }
-
-          if (recording.processing) {
-            recording.processingFailedCount += 1;
-          }
-          recording.set(
-            {
-              currentStateStartTime: date.toISOString(),
-              processingEndTime: null,
-              jobKey: uuidv4(),
-              processing: true,
-            },
-            {
-              transaction,
-            }
-          );
-          recording.save({
-            transaction,
-          });
-          return recording;
         });
+        if (!recording) {
+          return recording;
+        }
+        const now = new Date();
+        if (!recording.processingStartTime) {
+          recording.processingStartTime = now.toISOString();
+        }
+        if (recording.processing) {
+          recording.processingFailedCount += 1;
+        }
+        recording.currentStateStartTime = now.toISOString();
+        recording.processingEndTime = null;
+        recording.processingEndTime = null;
+        recording.jobKey = uuidv4();
+        recording.processing = true;
+        await recording.save({
+          transaction,
+        });
+        return recording;
       })
-      .then(function (result) {
-        return result;
-      })
+      .then((result) => result)
       .catch(() => {
         return null;
       });
@@ -486,7 +407,7 @@ export default function (
     // If the requested device has no more recordings, pick another random recording.
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [result, _] = await sequelize.query(`
+    const [result, _] = (await sequelize.query(`
 select
   g."RId" as "RecordingId",
   g."DeviceId",
@@ -521,7 +442,20 @@ from (
     } and "Recordings"."deletedAt" is null order by RANDOM() limit 1)
   as f left outer join "Tracks" on f."RId" = "Tracks"."RecordingId" and "Tracks"."archivedAt" is null
   left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" is null
-) as g;`);
+) as g;`)) as [
+      {
+        RecordingId: RecordingId;
+        DeviceId: DeviceId;
+        TrackData: any;
+        TrackId: TrackId;
+        TaggedBy: UserId | false;
+        rawFileKey: string;
+        rawMimeType: string;
+        duration: number;
+        recordingDateTime: IsoFormattedDateString;
+      }[],
+      unknown
+    ];
     // NOTE: We bundle everything we need into this one specialised request.
     const flattenedResult = result.reduce(
       (acc, item) => {
@@ -532,15 +466,20 @@ from (
           acc.fileMimeType = item.rawMimeType;
           acc.recordingDateTime = item.recordingDateTime;
           acc.duration = item.duration;
-          acc.tracks.push({
+
+          const t: any = {
             trackId: item.TrackId,
             id: item.TrackId,
             start: item.TrackData.start_s,
             end: item.TrackData.end_s,
-            positions: mapPositions(item.TrackData.positions),
+
             numFrames: item.TrackData?.num_frames,
             needsTagging: item.TaggedBy !== false,
-          });
+          };
+          if (item.TrackData.positions && item.TrackData.positions.length) {
+            t.positions = item.TrackData.positions.map(mapPosition);
+          }
+          acc.tracks.push(t);
         }
         return acc;
       },
@@ -691,33 +630,6 @@ from (
         ],
       });
     };
-  /* eslint-enable indent */
-
-  // Bulk update recording values. Any new additionalMetadata fields
-  // will be merged.
-  Recording.prototype.mergeUpdate = async function (
-    newValues: any
-  ): Promise<void> {
-    for (const [name, newValue] of Object.entries(newValues)) {
-      if (name == "additionalMetadata") {
-        this.mergeAdditionalMetadata(newValue);
-      } else {
-        this.set(name, newValue);
-        if (name === "location") {
-          // NOTE: When location gets updated, we need to update any matching stations for this recordings' group.
-          const matchingStation = await tryToMatchRecordingToStation(this);
-          if (matchingStation) {
-            this.set("StationId", matchingStation.id);
-          }
-        }
-      }
-    }
-  };
-
-  // Update additionalMetadata fields with new values supplied.
-  Recording.prototype.mergeAdditionalMetadata = function (newValues: any) {
-    this.additionalMetadata = { ...this.additionalMetadata, ...newValues };
-  };
 
   Recording.prototype.getFileExt = function () {
     if (this.fileMimeType == "application/x-cptv") {
@@ -733,17 +645,16 @@ from (
   Recording.prototype.filterData = function (options: { latLongPrec: any }) {
     if (this.location) {
       this.location.coordinates = reduceLatLonPrecision(
-        this.location.coordinates,
+        this.location,
         options.latLongPrec
       );
     }
   };
 
-  function reduceLatLonPrecision(latLon, prec) {
-    assert(latLon.length == 2);
-    const resolution = (prec * 360) / 40000000;
+  function reduceLatLonPrecision(latLng: LatLng, precision: number): LatLng {
+    const resolution = (precision * 360) / 40000000;
     const half_resolution = resolution / 2;
-    return latLon.map((val) => {
+    const reducePrecision = (val) => {
       val = val - (val % resolution);
       if (val > 0) {
         val += half_resolution;
@@ -751,22 +662,12 @@ from (
         val -= half_resolution;
       }
       return val;
-    });
+    };
+    return {
+      lat: reducePrecision(latLng.lat),
+      lng: reducePrecision(latLng.lng),
+    };
   }
-
-  // Returns all active tracks for the recording which are not archived.
-  Recording.prototype.getActiveTracks = async function () {
-    return await this.getTracks({
-      where: {
-        archivedAt: null,
-      },
-      include: [
-        {
-          model: models.TrackTag,
-        },
-      ],
-    });
-  };
 
   // reprocess a recording and set all active tracks to archived
   Recording.prototype.reprocess = async function () {
@@ -809,10 +710,10 @@ from (
     }
 
     // Ensure track belongs to this recording.
-    if (track.RecordingId !== this.id) {
+    if ((track as Track).RecordingId !== this.id) {
       return null;
     }
-    return track;
+    return track as Track;
   };
 
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;

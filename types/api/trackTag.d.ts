@@ -8,13 +8,25 @@ export interface ApiTrackTagRequest {
   data?: any; // FIXME - validation?
 }
 
+export interface ApiTrackTagAttributes {
+  gender?: "male" | "female" | null;
+  maturity?: "juvenile" | "adult" | null;
+}
+
+export interface TrackTagData extends ApiTrackTagAttributes {
+  name: string;
+  all_class_confidences?: null | Record<string, number>;
+  classify_time?: number;
+  message?: string;
+}
+
 export interface ApiTrackTagResponse {
   what: string;
   id: TrackTagId;
   trackId: TrackId;
   confidence: number;
   automatic: boolean;
-  data: any; // FIXME - validation?
+  data?: TrackTagData;
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;
   userId?: UserId;
@@ -23,6 +35,8 @@ export interface ApiTrackTagResponse {
 }
 
 export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
+  userId?: UserId;
+  userName?: string;
   automatic: false;
 }
 

@@ -105,7 +105,6 @@ export interface ApiRecordingProcessingJob {
 export interface ApiRecordingUpdateRequest {
   comment?: string;
   additionalMetadata?: Record<string, any>;
-  location?: [number, number];
 }
 
 export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &

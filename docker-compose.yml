@@ -14,6 +14,7 @@ services:
       - "2008:2008"
       - "5432:5432"
       - "9001:9001"
+      - "9229:9229"
     volumes:
       - ./api:/app/api
       - ./types:/app/types

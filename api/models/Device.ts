@@ -22,7 +22,16 @@ import { Group } from "./Group";
 import { Event } from "./Event";
 import logger from "../logging";
 import { DeviceType } from "@typedefs/api/consts";
-import { DeviceId, GroupId, ScheduleId, UserId } from "@typedefs/api/common";
+import {
+  DeviceId,
+  GroupId,
+  LatLng,
+  ScheduleId,
+  UserId,
+} from "@typedefs/api/common";
+import util from "./util/util";
+import { Station } from "@models/Station";
+import { tryToMatchLocationToStationInGroup } from "@api/V1/recordingUtil";
 
 const Op = Sequelize.Op;
 
@@ -32,12 +41,13 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   devicename: string;
   groupname: string;
   saltId: number;
+  uuid: number;
   active: boolean;
   public: boolean;
   lastConnectionTime: Date | null;
   lastRecordingTime: Date | null;
   password?: string;
-  location?: { type: "Point"; coordinates: [number, number] };
+  location?: LatLng;
   heartbeat: Date | null;
   nextHeartbeat: Date | null;
   comparePassword: (password: string) => Promise<boolean>;
@@ -82,7 +92,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     deviceId: DeviceId,
     from: Date,
     windowSize: number
-  ) => Promise<{ hour: number; index: number }>;
+  ) => Promise<{ hour: number; index: number }[]>;
   stoppedDevices: () => Promise<Device[]>;
 }
 
@@ -101,9 +111,7 @@ export default function (
       type: DataTypes.STRING,
       allowNull: false,
     },
-    location: {
-      type: DataTypes.GEOMETRY,
-    },
+    location: util.locationField(),
     lastConnectionTime: {
       type: DataTypes.DATE,
     },
@@ -115,6 +123,9 @@ export default function (
       defaultValue: false,
     },
     saltId: {
+      type: DataTypes.INTEGER,
+    },
+    uuid: {
       type: DataTypes.INTEGER,
     },
     active: {
@@ -158,6 +169,7 @@ export default function (
     models.Device.belongsTo(models.Group);
     models.Device.belongsTo(models.Schedule);
     models.Device.hasMany(models.Alert);
+    models.Device.hasMany(models.DeviceHistory);
   };
 
   Device.freeDevicename = async function (devicename, groupId) {
@@ -275,14 +287,8 @@ export default function (
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-
-    // FIXME(jon): So the problem is that we're inserting recordings into the databases without
-    //  saying how to interpret the timestamps, so they are interpreted as being NZ time when they come in.
-    //  This happens to work when both the inserter and the DB are in the same timezone, but otherwise will
-    //  lead to spurious values.  Need to standardize input time.
-
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [result, _] = await sequelize.query(
+    const [result, _] = (await sequelize.query(
       `select round((avg(cacophonyIndex.scores))::numeric, 2) as cacophonyIndex from
 (select
 	(jsonb_array_elements('cacophonyIndex')->>'index_percent')::float as scores
@@ -292,7 +298,7 @@ where
 	"DeviceId" = ${device.id}
 	and "type" = 'audio'
 	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex;`
-    );
+    )) as [{ cacophonyIndex: number }[], unknown];
     const index = result[0].cacophonyIndex;
     if (index !== null) {
       return Number(index);
@@ -305,14 +311,14 @@ where
     deviceId,
     from,
     windowSizeInHours
-  ) {
+  ): Promise<{ hour: number; index: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
     // Get a spread of 24 results with each result falling into an hour bucket.
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [results, _] = await sequelize.query(`select
+    const [results, _] = (await sequelize.query(`select
 	hour,
 	round((avg(scores))::numeric, 2) as index
 from
@@ -328,7 +334,7 @@ where
 ) as cacophonyIndex
 group by hour
 order by hour;
-`);
+`)) as [{ hour: number; index: number }[], unknown];
     // TODO(jon): Do we want to validate that there is enough data in a given hour
     //  to get a reasonable index histogram?
     return results.map((item) => ({
@@ -370,14 +376,24 @@ order by hour;
     newGroup: Group,
     newPassword: string
   ): Promise<Device | false> {
-    let newDevice;
+    let newDevice: Device;
+    const now = new Date();
+    let stationToAssign;
+
+    if (this.location) {
+      // NOTE: This needs to happen outside the transaction to succeed.
+      stationToAssign = await tryToMatchLocationToStationInGroup(
+        this.location,
+        newGroup.id,
+        now
+      );
+    }
     try {
       await sequelize.transaction(
         {
           isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE,
         },
         async (t) => {
-          // FIXME - Move clientError to API layer
           const conflictingDevice = await Device.findOne({
             where: {
               devicename: newName,
@@ -390,28 +406,57 @@ order by hour;
             logger.warning("Got conflicting device %s", conflictingDevice);
             throw new Error();
           }
-
-          await Device.update(
-            {
-              active: false,
-            },
-            {
-              where: { saltId: this.saltId },
-              transaction: t,
-            }
-          );
-
-          newDevice = await models.Device.create(
+          await this.update({ active: false }, { transaction: t });
+          // We need to either find an existing station for this DeviceHistory entry, or create a new one:
+          // NOTE: When a device is re-registered it keeps the last known location.
+          newDevice = (await models.Device.create(
             {
               devicename: newName,
               GroupId: newGroup.id,
               password: newPassword,
               saltId: this.saltId,
+              uuid: this.uuid,
+              lastConnectionTime: now,
+              location: this.location,
+              kind: this.kind,
             },
             {
               transaction: t,
             }
-          );
+          )) as Device;
+
+          const newDeviceHistoryEntry = {
+            GroupId: newGroup.id,
+            DeviceId: newDevice.id,
+            location: this.location,
+            fromDateTime: now,
+            setBy: "re-register",
+            deviceName: newName,
+            uuid: newDevice.uuid,
+            saltId: newDevice.saltId,
+          };
+
+          if (this.location && !stationToAssign) {
+            // Create new automatic station
+            stationToAssign = (await models.Station.create(
+              {
+                name: `New station for ${newName}_${now.toISOString()}`,
+                location: this.location,
+                activeAt: now,
+                automatic: true,
+                needsRename: true,
+                GroupId: newGroup.id,
+              },
+              { transaction: t }
+            )) as Station;
+          }
+          if (stationToAssign) {
+            (newDeviceHistoryEntry as any).stationId = stationToAssign.id;
+          }
+
+          await models.DeviceHistory.create(newDeviceHistoryEntry, {
+            transaction: t,
+          });
         }
       );
     } catch (e) {

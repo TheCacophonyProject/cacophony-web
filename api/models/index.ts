@@ -34,7 +34,8 @@ import { GroupStatic } from "./Group";
 import { GroupUsersStatic } from "./GroupUsers";
 import { ScheduleStatic } from "./Schedule";
 import { StationStatic } from "./Station";
-import { asyncLocalStorage } from "../Globals";
+import { asyncLocalStorage } from "@/Globals";
+import { DeviceHistoryStatic } from "./DeviceHistory";
 
 const basename = path.basename(module.filename);
 const dbConfig = config.database;
@@ -138,7 +139,10 @@ fs.readdirSync(__dirname)
     return file.indexOf(".") !== 0 && file !== basename && file.endsWith(".js");
   })
   .forEach((file) => {
-    const model = sequelize.import(path.join(__dirname, file));
+    const model = require(path.join(__dirname, file)).default(
+      sequelize,
+      Sequelize.DataTypes
+    );
     db[model.name] = model;
   });
 
@@ -159,7 +163,6 @@ export interface ModelStaticCommon<T> extends Sequelize.ModelCtor<any> {
   addAssociations: (models: Record<string, ModelStaticCommon<any>>) => void;
   userGetAttributes: readonly string[];
   getDataValue: (fieldName: string) => any;
-  findByPk: (id: number | string) => Promise<T | null>;
 }
 
 const AllModels = {
@@ -174,6 +177,7 @@ const AllModels = {
   Event: db.Event as EventStatic,
   Device: db.Device as DeviceStatic,
   Group: db.Group as GroupStatic,
+  DeviceHistory: db.DeviceHistory as DeviceHistoryStatic,
   Station: db.Station as StationStatic,
   GroupUsers: db.GroupUsers as GroupUsersStatic,
   Schedule: db.Schedule as ScheduleStatic,

@@ -40,6 +40,8 @@ import {
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import { jsonSchemaOf } from "@api/schema-validation";
+import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -49,15 +51,21 @@ interface ApiLoggedInUsersResponseSuccess {
 interface ApiLoggedInUserResponseSuccess {
   userData: ApiLoggedInUserResponse;
 }
-export const mapUser = (user: User): ApiLoggedInUserResponse => ({
-  id: user.id,
-  userName: user.username,
-  firstName: user.firstName,
-  lastName: user.lastName,
-  email: user.email,
-  globalPermission: user.globalPermission,
-  endUserAgreement: user.endUserAgreement,
-});
+export const mapUser = (user: User): ApiLoggedInUserResponse => {
+  const userData: ApiLoggedInUserResponse = {
+    id: user.id,
+    userName: user.username,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    globalPermission: user.globalPermission,
+    endUserAgreement: user.endUserAgreement,
+  };
+  if (user.settings) {
+    userData.settings = user.settings;
+  }
+  return userData;
+};
 
 export const mapUsers = (users: User[]) => users.map(mapUser);
 
@@ -150,7 +158,8 @@ export default function (app: Application, baseUrl: string) {
         validNameOf(body("userName")),
         body("email").isEmail(),
         validPasswordOf(body("password")),
-        integerOf(body("endUserAgreement"))
+        integerOf(body("endUserAgreement")),
+        body("settings").custom(jsonSchemaOf(ApiUserSettingsSchema))
       ),
     ]),
     async (request: Request, Response: Response, next: NextFunction) => {

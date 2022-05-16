@@ -46,6 +46,8 @@ import {
   faQuestionCircle,
   faRedoAlt,
   faSearch,
+  faSearchPlus,
+  faSearchMinus,
   faStar,
   faStream,
   faStepForward,
@@ -68,6 +70,7 @@ import {
   faUserPlus,
   faChevronRight,
   faUndo,
+  faThumbtack,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   faCalendar,
@@ -138,6 +141,8 @@ library.add(
   faReply,
   faRedoAlt,
   faSearch,
+  faSearchPlus,
+  faSearchMinus,
   faStar,
   faStepForward,
   faStepBackward,
@@ -162,7 +167,8 @@ library.add(
   faVolumeUp,
   faVolumeMute,
   faMapMarkerAlt,
-  faUndo
+  faUndo,
+  faThumbtack
 );
 
 export default FontAwesomeIcon;

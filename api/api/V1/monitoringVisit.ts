@@ -1,7 +1,7 @@
 import moment, { Moment } from "moment";
 import models from "@models";
 import { Recording } from "@models/Recording";
-import { getTrackTag, unidentifiedTags } from "./Visits";
+import { getCanonicalTrackTag, UNIDENTIFIED_TAGS } from "./Visits";
 import { ClientError } from "../customErrors";
 import { UserId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@api/V1/monitoringPage";
@@ -107,7 +107,7 @@ class Visit {
       tracks: [],
     };
     for (const track of (recording as any).Tracks) {
-      const bestTag = getTrackTag(track.TrackTags);
+      const bestTag = getCanonicalTrackTag(track.TrackTags);
       let aiTag = [];
       if (track.TrackTags) {
         aiTag = track.TrackTags.filter((tag) => tag.data == aiModel);
@@ -171,7 +171,7 @@ function getBestGuessOverall(allTracks: VisitTrack[], isAi: boolean): string[] {
 
 function getBestGuess(counts: [TagName, Count][]): TagName[] {
   const animalOnlyCounts = counts.filter(
-    (tc) => !unidentifiedTags.includes(tc[TAG])
+    (tc) => !UNIDENTIFIED_TAGS.includes(tc[TAG])
   );
   if (animalOnlyCounts.length > 0) {
     // there are animal tags
