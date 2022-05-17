@@ -270,17 +270,13 @@ export default defineComponent({
     const userName = store.state.User.userData.userName;
     const userId = store.state.User.userData.id;
     const [url, setUrl] = useState(
-      //props.audioRawUrl ? props.audioRawUrl : props.audioUrl
       props.audioUrl ? props.audioUrl : props.audioRawUrl
     );
     const [deleted, setDeleted] = useState(false);
     watch(
       () => [props.audioUrl, props.audioRawUrl],
       () => {
-        setUrl(
-          //props.audioRawUrl ? props.audioRawUrl : props.audioUrl
-          props.audioUrl ? props.audioUrl : props.audioRawUrl
-        );
+        setUrl(props.audioUrl ? props.audioUrl : props.audioRawUrl);
         setDeleted(false);
       }
     );
@@ -555,9 +551,6 @@ export default defineComponent({
               }
             });
           });
-          const newTag = tracks.value
-            .get(trackId)
-            .tags.find((tag) => tag.id === tagId);
         }
       } catch (error) {
         // console.error(error);

@@ -191,12 +191,12 @@ import api from "@/api";
 import DeviceLink from "@/components/DeviceLink.vue";
 import StationLink from "@/components/StationLink.vue";
 import GroupLink from "@/components/GroupLink.vue";
-import DefaultLabels from "../const";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
+import { DisplayTag, IntermediateDisplayTag } from "./RecordingsList.vue";
 
 const addToListOfTags = (
   allTags: Record<string, IntermediateDisplayTag>,

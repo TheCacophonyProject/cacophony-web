@@ -32,10 +32,9 @@ import {
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
   fetchAuthorizedRequiredStationsForGroup,
-  fetchAdminAuthorizedRequiredStationByNameInGroup,
   fetchAuthorizedRequiredStationByNameInGroup,
 } from "../extract-middleware";
-import { arrayOf, jsonSchemaOf } from "../schema-validation";
+import { jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
 import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json";
 import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json";
@@ -51,11 +50,7 @@ import {
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
-import {
-  checkThatStationsAreNotTooCloseTogether,
-  Group,
-  locationsAreEqual,
-} from "@/models/Group";
+import { Group } from "@/models/Group";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -66,13 +61,10 @@ import {
 import { ScheduleConfig } from "@typedefs/api/schedule";
 import { mapSchedule } from "@api/V1/Schedule";
 import { mapStation, mapStations } from "./Station";
-import { Op } from "sequelize";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@api/V1/recordingUtil";
-import { Station } from "@/models/Station";
-import { StationId } from "@typedefs/api/common";
 
 const mapGroup = (
   group: Group,

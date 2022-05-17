@@ -8,6 +8,7 @@
     <div id="player-bar" class="flex flex-col">
       <div
         @mousedown="onClickSeek"
+        d
         @touch="onClickSeek"
         role="slider"
         id="progress-bar"
@@ -48,11 +49,12 @@
               @click="toggleMute"
             />
             <input
+              :disabled="volume.muted"
               id="volume-slider"
               class="volume-slider"
               type="range"
               min="0"
-              max="20"
+              max="1"
               step="0.01"
               @input="changeVolume"
             />
@@ -611,21 +613,6 @@ export default defineComponent({
         format: "float",
       }),
     };
-    setVolumeSlider(
-      document.querySelector("#volume-slider") as HTMLInputElement
-    );
-    const storedVolume = localStorage.getItem("volume");
-    if (storedVolume) {
-      try {
-        const parsed = JSON.parse(storedVolume);
-        if (parsed.volume) {
-          setVolume(parsed);
-        }
-      } catch (e) {
-        // do nothing
-      }
-    }
-
     onMounted(async () => {
       const audioBuffer = await fetchAudioBuffer(props.url);
       let { sampleRate } = getSampleRate(audioBuffer);
@@ -659,7 +646,7 @@ export default defineComponent({
         const pos = track.positions[0];
         const y = track.maxFreq ? track.maxFreq / (sampleRate / 2) : pos.y;
         const height = track.minFreq
-          ? (track.maxFreq - track.minFreq) / (sampleRate / 2)
+          ? Math.abs(track.maxFreq - track.minFreq) / (sampleRate / 2)
           : pos.height;
         const rect = createSVGElement(
           {
@@ -741,7 +728,6 @@ export default defineComponent({
           });
         }
       );
-
       watch(volume, (v) => {
         if (!volumeSlider.value) {
           return;
@@ -749,18 +735,35 @@ export default defineComponent({
         if (v.muted) {
           gainNode.gain.value = 0;
           volumeSlider.value.value = "0";
+          player.value.setVolume(0);
         } else {
-          if (v.volume < 1) {
-            player.value.setVolume(v.volume);
-            gainNode.gain.value = 0;
+          const volume = v.volume * 2;
+          if (volume < 1) {
+            player.value.setVolume(volume);
+            gainNode.gain.value = 1;
           } else {
             player.value.setVolume(1);
-            gainNode.gain.value = v.volume;
+            gainNode.gain.value = volume;
           }
           volumeSlider.value.value = v.volume.toString();
         }
         storeVolume(volume.value);
       });
+
+      setVolumeSlider(
+        document.querySelector("#volume-slider") as HTMLInputElement
+      );
+      const storedVolume = localStorage.getItem("volume");
+      if (storedVolume) {
+        try {
+          const parsed = JSON.parse(storedVolume);
+          if (parsed.volume) {
+            setVolume(parsed);
+          }
+        } catch (e) {
+          // do nothing
+        }
+      }
 
       player.value = WaveSurfer.create({
         ...waveSurferOptions,
@@ -1087,15 +1090,35 @@ spectrogram {
   margin: 0 0.35em 0 0.35em;
   cursor: pointer;
 }
-.volume-slider {
-  position: absolute;
-  bottom: 110px;
-  left: 10px;
-  transform: rotate(270deg);
-  opacity: 0;
-  z-index: 20;
-  transition: opacity 0.2s;
+@keyframes fade_in_show {
+  0% {
+    opacity: 0;
+    transform: translate(10%, -35%) rotate(270deg) scaleX(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(10%, -35%) rotate(270deg) scaleX(1);
+  }
 }
+.volume-slider {
+  display: none;
+  position: absolute;
+  transform-origin: left;
+  transform: translate(10%, -35%) rotate(270deg);
+  z-index: 300;
+  :hover {
+    display: block;
+  }
+}
+.volume-selection:hover {
+  .volume-slider {
+    display: block;
+    animation: fade_in_show 0.2s;
+    transition-delay: 2s;
+  }
+}
+
 .volume-button {
   width: 24px;
   margin-right: 0.2em;
@@ -1125,12 +1148,7 @@ spectrogram > svg {
     transform: translateY(0);
   }
 }
-.volume-selection:hover {
-  .volume-slider {
-    visibility: visible;
-    opacity: 1;
-  }
-}
+
 .player-time {
   white-space: nowrap;
 }

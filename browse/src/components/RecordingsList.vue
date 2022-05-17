@@ -108,8 +108,7 @@
     </div>
     <div v-else-if="loadButton" class="all-loaded">
       <div>
-        All {{ this.recordings.length }} recording<span
-          v-if="this.recordings.length > 1"
+        All {{ recordings.length }} recording<span v-if="recordings.length > 1"
           >s</span
         >
         are filtered
@@ -138,13 +137,7 @@ import {
 } from "@typedefs/api/recording";
 import { LatLng } from "@typedefs/api/common";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import {
-  ApiAutomaticTrackTagResponse,
-  ApiHumanTrackTagResponse,
-} from "@typedefs/api/trackTag";
-import { ApiTrackResponse } from "@typedefs/api/track";
-import DefaultLabels, { FILTERED_TOOLTIP } from "../const";
-import api from "@/api";
+import { FILTERED_TOOLTIP } from "../const";
 
 const parseLocation = (location: LatLng): string => {
   if (location && typeof location === "object") {
@@ -164,13 +157,13 @@ const parseProcessingState = (result: string): string => {
   return string.charAt(0).toUpperCase() + string.slice(1);
 };
 
-interface IntermediateDisplayTag {
+export interface IntermediateDisplayTag {
   taggerIds: number[];
   automatic: boolean;
   human: boolean;
 }
 
-interface DisplayTag {
+export interface DisplayTag {
   taggerIds: number[];
   automatic: boolean;
   class: "human" | "automatic" | "automatic human";

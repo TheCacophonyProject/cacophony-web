@@ -72,9 +72,9 @@
                       "
                       :class="{
                         ['bg-warning']: tag.class === 'automatic',
-                        ['bg-danger']: tag.class === 'denied',
-                        ['bg-success']: tag.class === 'confirmed',
-                        ['bg-info']: tag.class === 'human',
+                        ['ai-tag']: tag.class === 'denied',
+                        ['aihuman-tag']: tag.class === 'confirmed',
+                        ['human-tag']: tag.class === 'human',
                       }"
                       v-b-tooltip.hover
                       :title="`${
@@ -228,6 +228,7 @@ export default defineComponent({
       await props.addTagToTrack(track.id, tag.what);
     };
     //TODO: Add filtering tracks
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [filter, setFilter] = useState<TrackListFilter>(TrackListFilter.All);
     const filterTracks = (track: AudioTrack) => {
       switch (filter.value) {
@@ -268,6 +269,7 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+@import "src/styles/tag-colours";
 .collapsed > .when-open,
 .not-collapsed > .when-closed {
   display: none;
@@ -324,10 +326,19 @@ export default defineComponent({
 .confirmed-text {
   display: flex;
   align-items: center;
-  color: #28a745;
+  color: $ai;
   font-size: 0.875rem;
 }
 .capitalize {
   text-transform: capitalize;
+}
+.human-tag {
+  background-color: $human !important;
+}
+.ai-tag {
+  background-color: $ai !important;
+}
+.aihuman-tag {
+  background-color: $aihuman !important;
 }
 </style>
