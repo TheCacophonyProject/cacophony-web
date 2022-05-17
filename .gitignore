@@ -9,3 +9,4 @@
 /types/api/consts.js
 /types/schema-cache.json
 /types/api/*.js
+.vscode
