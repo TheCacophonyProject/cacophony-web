@@ -49,7 +49,7 @@ const getGroupById = (groupId: GroupId) =>
     }`
   ) as Promise<FetchResult<{ group: ApiGroupResponse }>>;
 
-const getUsersForGroup = (groupNameOrId: string | number) =>
+export const getUsersForGroup = (groupNameOrId: string | number) =>
   CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/users`
   ) as Promise<FetchResult<{ users: ApiGroupUserResponse[] }>>;

@@ -3,11 +3,15 @@ import { BModal } from "bootstrap-vue-3";
 import {
   UserGroups,
   currentSelectedGroup,
-  showSwitchGroup, switchCurrentGroup,
+  showSwitchGroup,
 } from "@models/LoggedInUser";
-import { computed } from "vue";
+import { computed, onBeforeMount } from "vue";
 import { useRoute } from "vue-router";
 import { urlNormaliseGroupName } from "@/utils";
+
+onBeforeMount(() => {
+  showSwitchGroup.enabled = true;
+});
 
 const nextRoute = (groupName: string) => {
   const currentRoute = useRoute();
@@ -38,7 +42,13 @@ const currentGroupName = computed<string>(() => {
 });
 </script>
 <template>
-  <b-modal title="Switch group" v-model="showSwitchGroup" centered hide-footer>
+  <b-modal
+    title="Switch group"
+    v-model="showSwitchGroup.enabled"
+    centered
+    hide-footer
+    @hidden="showSwitchGroup.visible = false"
+  >
     <div class="list-group">
       <router-link
         :class="[
@@ -51,7 +61,7 @@ const currentGroupName = computed<string>(() => {
         :to="nextRoute(groupName)"
         :aria-disabled="groupName === currentGroupName"
         :tabindex="groupName === currentGroupName ? -1 : index"
-        @click="showSwitchGroup = false"
+        @click="showSwitchGroup.enabled = false"
       >
         {{ groupName }}
         <span v-if="groupName === currentGroupName">(selected)</span>

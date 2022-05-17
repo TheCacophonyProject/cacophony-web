@@ -323,7 +323,12 @@ export const isResumingSession = ref(false);
 
 export const isLoggingInAutomatically = ref(false);
 export const isFetchingGroups = ref(false);
-export const creatingNewGroup = ref(false);
-export const joiningNewGroup = ref(false);
-export const showSwitchGroup = ref(false);
+
+// Global modal control
+export const creatingNewGroup = reactive({
+  enabled: false,
+  visible: false,
+});
+export const joiningNewGroup = reactive({ enabled: false, visible: false });
+export const showSwitchGroup = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);

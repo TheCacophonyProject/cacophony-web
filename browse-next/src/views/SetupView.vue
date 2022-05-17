@@ -86,7 +86,7 @@ const debugConfirmEmail = async () => {
 };
 </script>
 <template>
-  <div class="container-md d-flex flex-column flex-fill">
+  <div class="container-md d-flex flex-column flex-fill" v-if="CurrentUser">
     <h1>Finish setting up your account</h1>
     <div>
       <span class="h3">
@@ -141,7 +141,7 @@ const debugConfirmEmail = async () => {
             <button
               class="btn btn-primary"
               type="button"
-              @click="creatingNewGroup = true"
+              @click="creatingNewGroup.visible = true"
             >
               <font-awesome-icon icon="plus" /> Create a new group
             </button>
@@ -158,7 +158,7 @@ const debugConfirmEmail = async () => {
             <button
               class="btn btn-secondary"
               type="button"
-              @click="joiningNewGroup = true"
+              @click="joiningNewGroup.visible = true"
             >
               <font-awesome-icon icon="question" /> Ask to join an existing
               group

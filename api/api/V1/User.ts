@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
+import {expectedTypeOf, validateFields} from "../middleware";
 import { generateAuthTokensForUser } from "../auth";
 import models from "@models";
 import responseUtil from "./responseUtil";
@@ -36,7 +36,7 @@ import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
   extractJWTInfo,
-  fetchAdminAuthorizedRequiredGroupByNameOrId,
+  fetchAdminAuthorizedRequiredGroupByNameOrId, fetchAdminAuthorizedRequiredGroups,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedOptionalUserByNameOrId,
   fetchUnauthorizedRequiredGroupById,
@@ -45,13 +45,16 @@ import {
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import { jsonSchemaOf } from "@api/schema-validation";
+import {arrayOf, jsonSchemaOf} from "@api/schema-validation";
 import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
 import {
   sendEmailConfirmationEmail,
   sendWelcomeEmailConfirmationEmail,
 } from "@/scripts/emailUtil";
 import logger from "@log";
+import {CACOPHONY_WEB_VERSION} from "@/Server";
+import {ApiGroupResponse} from "@typedefs/api/group";
+import GroupIdSchema from "@schemas/api/common/GroupId.schema.json";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -168,7 +171,15 @@ export default function (app: Application, baseUrl: string) {
       //  We won't send transactional emails until the address has been validated.
       //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
       //  User alerts and group invitations would not be activated until the user has confirmed their email address.
-      await sendWelcomeEmailConfirmationEmail(user);
+      const sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(user);
+      if (!sendEmailSuccess && config.productionEnv) {
+        // In this case, we don't want to create the user.
+        await user.destroy();
+        return responseUtil.send(response, {
+          statusCode: 500,
+          messages: ["Failed to send welcome/email confirmation email."]
+        });
+      }
       const { refreshToken, apiToken } =
         await generateAuthTokensForUser(
           user,
@@ -258,7 +269,13 @@ export default function (app: Application, baseUrl: string) {
         // If the user has changed their email, we'll need to send
         // another confirmation email.
         dataToUpdate.emailConfirmed = false;
-        await sendEmailConfirmationEmail(requestUser, dataToUpdate.email);
+        const emailSuccess = await sendEmailConfirmationEmail(requestUser, dataToUpdate.email);
+        if (!emailSuccess && config.productionEnv) {
+          responseUtil.send(response, {
+            statusCode: 500,
+            messages: ["Failed to send email confirmation email."],
+          });
+        }
       }
       await requestUser.update(dataToUpdate);
       responseUtil.send(response, {
@@ -344,7 +361,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(`${baseUrl}/listUsers`, ...listUsersOptions);
 
   /**
-   * @api {get} api/v1/list-users List usernames
+   * @api {get} api/v1/users/list-users List usernames
    * @apiName ListUsers
    * @apiGroup User
    * @apiDescription Given an authenticated super-user, we need to be able to get
@@ -358,7 +375,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseError
    */
-  app.get(`${baseUrl}/list-users`, ...listUsersOptions);
+  app.get(`${apiUrl}/list-users`, ...listUsersOptions);
 
   const endUserAgreementOptions = [
     async (request, response) => {
@@ -394,6 +411,27 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(`${baseUrl}/end-user-agreement/latest`, ...endUserAgreementOptions);
+
+  if (!config.productionEnv) {
+    // TODO(docs) - This is just for test/debug purposes to increment the EUA version and test that the UI prompts.
+    app.post(`${baseUrl}/end-user-agreement/debug-increment`, async (request: Request, response: Response) => {
+      config.euaVersion++;
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Incremented EUA version"],
+        euaVersion: config.euaVersion,
+      });
+    });
+
+  // TODO(docs) - This is just for test/debug purposes to increment the CW version and test that the UI prompts to refresh.
+    app.post(`${baseUrl}/cacophony-web/debug-increment`, async (request: Request, response: Response) => {
+      CACOPHONY_WEB_VERSION.version += ".1";
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Incremented Cacophony web version"],
+      });
+    });
+  }
 
   const changePasswordOptions = [
     validateFields([body("token").exists(), validPasswordOf(body("password"))]),
@@ -497,16 +535,66 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  // TODO(docs) - This returns limited info about groups that a user with this email address is admin of.
+  app.get(
+      `${apiUrl}/groups-for-admin-user/:emailAddress`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        param("emailAddress").isEmail()
+      ]),
+      fetchUnauthorizedRequiredUserByNameOrEmailOrId(param("emailAddress")),
+      (request: Request, response: Response, next: NextFunction) => {
+        // This is a little bit hacky, but is safe in this context.
+        response.locals.requestUser = response.locals.user;
+        return next();
+      },
+      fetchAdminAuthorizedRequiredGroups,
+      async (request: Request, response: Response) => {
+        const groups: ApiGroupResponse[] = response.locals.groups.map(({ id, groupname }) => ({id, groupName: groupname, admin: false }));
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got groups for admin user"],
+          groups,
+        });
+      }
+  );
+
   app.post(
     `${apiUrl}/request-group-membership`,
     extractJwtAuthorizedUser,
-    validateFields([body("groupAdminEmail").exists()]),
+    validateFields([
+        body("groupAdminEmail").isEmail(),
+      body("groups")
+          .exists()
+          .withMessage(expectedTypeOf("GroupId[]"))
+          .bail()
+          .custom(jsonSchemaOf(arrayOf(GroupIdSchema))),
+    ]),
     fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("groupAdminEmail")),
+    (request: Request, response: Response, next: NextFunction) => {
+      // This is a little bit hacky, but is safe in this context.
+      response.locals.originalUser = response.locals.requestUser;
+      response.locals.requestUser = response.locals.user;
+      return next();
+    },
+    fetchAdminAuthorizedRequiredGroups,
     async (request: Request, response: Response) => {
-      const groupOwner = response.locals.user;
-      // TODO: Check if the groupOwner is actually admin of any groups.
-      // Send group owner an email with a token which can grant access for the requesting user
-      // for any of their groups.
+
+      // Make sure each of the groups requested is found in the group admin users groups that
+      // they are admin of:
+      for (const groupId of request.body.groupIds) {
+        if (!response.locals.groups.find(({id}) => id === groupId)) {
+          return responseUtil.send(response, {
+            statusCode: 403,
+            messages: ["User is not a group admin"]
+          });
+        }
+      }
+
+      // TODO:
+      // Now we can generate the appropriate tokens, send the request email,
+      // and *maybe* stick a "pending" GroupUser entry for the requesting user?
+
       return responseUtil.send(response, {
         statusCode: 200,
         messages: ["Send membership request to user"],

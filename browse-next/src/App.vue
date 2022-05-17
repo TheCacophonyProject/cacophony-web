@@ -19,9 +19,9 @@ import {
   creatingNewGroup,
   joiningNewGroup,
   urlNormalisedCurrentGroupName,
-    pinSideNav
+  pinSideNav,
 } from "@/models/LoggedInUser";
-import { defineAsyncComponent, onBeforeMount, onMounted, ref } from "vue";
+import { defineAsyncComponent, onBeforeMount, ref } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
 import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
@@ -49,11 +49,17 @@ onBeforeMount(() => {
 </script>
 <template>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
-  <network-connection-alert-modal />
-  <switch-groups-modal />
-  <create-group-modal />
-  <join-existing-group-modal />
-  <git-release-info-bar v-if="hasGitReleaseInfoBar" />
+  <network-connection-alert-modal id="network-issue-modal" />
+  <switch-groups-modal
+    v-if="showSwitchGroup.visible"
+    id="switch-groups-modal"
+  />
+  <create-group-modal v-if="creatingNewGroup.visible" id="create-group-modal" />
+  <join-existing-group-modal
+    v-if="joiningNewGroup.visible"
+    id="join-group-modal"
+  />
+  <git-release-info-bar v-if="hasGitReleaseInfoBar" id="release-info-modal" />
   <main
     class="justify-content-center align-items-center d-flex"
     v-if="isLoggingInAutomatically || isFetchingGroups"
@@ -102,16 +108,18 @@ onBeforeMount(() => {
           <button
             class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
             v-if="userHasMultipleGroups"
-            @click="showSwitchGroup = true"
+            @click="showSwitchGroup.visible = true"
           >
             {{ currentSelectedGroup.groupName }}
             <span class="switch-label figure ms-1"
               ><font-awesome-icon icon="retweet" class="switch-icon"
             /></span>
           </button>
-          <span v-else class="current-group">{{
-            currentSelectedGroup.groupName
-          }}</span>
+          <span
+            v-else
+            class="btn current-group d-flex flex-fill me-1 align-items-center"
+            >{{ currentSelectedGroup.groupName }}</span
+          >
 
           <div class="dropdown">
             <button
@@ -132,7 +140,7 @@ onBeforeMount(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  @click.stop.prevent="creatingNewGroup = true"
+                  @click.stop.prevent="creatingNewGroup.visible = true"
                 >
                   Create a new group
                 </button>
@@ -141,7 +149,7 @@ onBeforeMount(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  @click.stop.prevent="joiningNewGroup = true"
+                  @click.stop.prevent="joiningNewGroup.visible = true"
                 >
                   Join an existing group
                 </button>
@@ -342,7 +350,7 @@ onBeforeMount(() => {
       </div>
     </nav>
     <section id="main-content">
-      <div class="container pt-md-3">
+      <div class="container p-0 pt-md-3">
         <div class="section-top-padding pt-5 pb-4 d-md-none"></div>
         <!--  The group-scoped views.  -->
         <router-view />

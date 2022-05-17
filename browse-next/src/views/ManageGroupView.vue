@@ -1,8 +1,59 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+const activeTabName = computed(() => {
+  return route.name;
+});
+
+const navLinkClasses = ["nav-item", "nav-link", "border-0"];
 </script>
 <template>
   <section-header>Manage group</section-header>
+  <div class="px-3 p-md-0">
+    <p>
+      If I'm the only user, and there are no devices, and no recordings, then we
+      should show the setup screen
+    </p>
+    <p>TODO: Would be nice to have the option of renaming the group here?</p>
+  </div>
+  <ul class="nav nav-tabs justify-content-md-center justify-content-evenly">
+    <router-link
+      :class="[...navLinkClasses, { active: activeTabName === 'group-users' }]"
+      title="Users"
+      :to="{
+        name: 'group-users',
+      }"
+      >Users</router-link
+    >
+    <router-link
+      :class="[
+        ...navLinkClasses,
+        { active: activeTabName === 'group-tag-settings' },
+      ]"
+      title="Tag settings"
+      :to="{
+        name: 'group-tag-settings',
+      }"
+      >Tag settings</router-link
+    >
+    <router-link
+      :class="[
+        ...navLinkClasses,
+        { active: activeTabName === 'fix-station-locations' },
+      ]"
+      title="Fix locations"
+      :to="{
+        name: 'fix-station-locations',
+      }"
+      >Fix locations</router-link
+    >
+  </ul>
+  <div class="p-3 px-md-0">
+    <router-view />
+  </div>
 </template>
 <style lang="less" scoped>
 .group-name {
@@ -25,5 +76,10 @@ h2 {
   font-weight: 500;
   color: #444;
   font-size: 17px;
+}
+
+.nav-item.active {
+  background: unset;
+  border-bottom: 3px solid #6dbd4b !important;
 }
 </style>

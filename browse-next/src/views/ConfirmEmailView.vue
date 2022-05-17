@@ -60,17 +60,19 @@ onBeforeMount(async () => {
         ...userData,
         apiToken: token,
         refreshToken,
+        refreshingToken: false
       });
 
+      // NOTE: Should redirect to "setup" if user has no groups
       await router.push({
-        path: "/",
+        name: "dashboard",
       });
     }
     checkingValidateEmailToken.value = false;
   } else {
     // No token supplied, redirect to sign-in
     await router.push({
-      path: "sign-in",
+      name: "sign-in",
     });
   }
 });

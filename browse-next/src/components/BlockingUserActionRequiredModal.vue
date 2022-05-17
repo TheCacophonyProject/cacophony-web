@@ -2,14 +2,13 @@
 import { BModal } from "bootstrap-vue-3";
 import { ref } from "vue";
 import {
-  userIsLoggedIn,
   hasAcceptedSomeEUA,
   euaIsOutOfDate,
   currentEUAVersion,
   CurrentUser,
   setLoggedInUserData,
-  type LoggedInUser,
 } from "@models/LoggedInUser";
+import type { LoggedInUser } from "@models/LoggedInUser";
 import { updateFields } from "@api/User";
 
 const acceptedEUA = ref(false);

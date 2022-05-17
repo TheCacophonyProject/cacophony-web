@@ -1644,6 +1644,13 @@ export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
   getGroups(true, false)
 );
 
+export const fetchAdminAuthorizedRequiredGroups = fetchRequiredModels(
+    models.Group,
+    false,
+    false,
+    getGroups(true, true)
+);
+
 export const fetchUnAuthorizedOptionalEventDetailSnapshotById = (
   detailId: ValidationChain
 ) =>

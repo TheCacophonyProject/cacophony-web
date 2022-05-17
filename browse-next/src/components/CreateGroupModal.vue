@@ -6,7 +6,7 @@ import {
   creatingNewGroup,
   urlNormalisedCurrentGroupName,
 } from "@models/LoggedInUser";
-import { computed, ref } from "vue";
+import { computed, onBeforeMount, ref } from "vue";
 import type { ErrorResult } from "@api/types";
 import { BModal } from "bootstrap-vue-3";
 import { formFieldInputText } from "@/utils";
@@ -23,7 +23,12 @@ const submittingCreateRequest = ref(false);
 const resetFormValues = () => {
   newGroupName.value = "";
   newGroupName.touched = false;
+  creatingNewGroup.visible = false;
 };
+
+onBeforeMount(() => {
+  creatingNewGroup.enabled = true;
+});
 
 const router = useRouter();
 const createNewGroupError = ref<ErrorResult | null>(null);
@@ -45,7 +50,7 @@ const createNewGroup = async () => {
         name: "group-settings",
         params: { groupName: urlNormalisedCurrentGroupName.value },
       });
-      creatingNewGroup.value = false;
+      creatingNewGroup.enabled = false;
     } else {
       // User groups doesn't exist?
       debugger;
@@ -60,7 +65,7 @@ const createNewGroup = async () => {
 </script>
 <template>
   <b-modal
-    v-model="creatingNewGroup"
+    v-model="creatingNewGroup.enabled"
     title="Create a new group"
     centered
     @hidden="resetFormValues"

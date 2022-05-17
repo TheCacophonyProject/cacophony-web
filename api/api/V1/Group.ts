@@ -35,7 +35,7 @@ import {
   fetchAdminAuthorizedRequiredStationByNameInGroup,
   fetchAuthorizedRequiredStationByNameInGroup,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
+  fetchUnauthorizedRequiredUserByNameOrEmailOrId, fetchAdminAuthorizedRequiredGroups,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -248,6 +248,8 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+
 
   /**
    * @api {get} /api/v1/groups/:groupNameOrId Get a group by name or id

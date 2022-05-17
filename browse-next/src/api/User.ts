@@ -1,10 +1,11 @@
 import CacophonyApi from "./api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import type { IsoFormattedDateString, UserId } from "@typedefs/api/common";
+import type { GroupId, UserId } from "@typedefs/api/common";
 import type { FetchResult, JwtToken } from "@api/types";
 import type { UserGlobalPermission } from "@typedefs/api/consts";
 import type { EndUserAgreementVersion } from "@typedefs/api/common";
 import type { ApiUserSettings } from "@typedefs/api/user";
+import type { ApiGroupResponse } from "@typedefs/api/group";
 
 const NO_ABORT = false;
 
@@ -142,3 +143,28 @@ export const token = async () => {
   }
   return result.token;
 };
+
+export const getGroupsForGroupAdminByEmail = (
+  groupAdminEmail: string,
+  abortable = false
+) =>
+  CacophonyApi.get(
+    `/api/v1/users/groups-for-admin-user/${encodeURIComponent(
+      groupAdminEmail
+    )}`,
+    abortable
+  ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>;
+
+export const requestToJoinGroups = (
+  groupAdminEmail: string,
+  groupIds: GroupId[],
+  abortable = false
+) =>
+  CacophonyApi.post(
+    `/api/v1/users/request-group-membership`,
+    {
+      groupAdminEmail,
+      groupIds,
+    },
+    abortable
+  ) as Promise<FetchResult<void>>;

@@ -114,8 +114,29 @@ const router = createRouter({
       path: "/:groupName/settings",
       name: "group-settings",
       meta: { requiresLogin: true, requiresGroupAdmin: true },
+      redirect: { name: "group-users" },
       component: () => import("../views/ManageGroupView.vue"),
       beforeEnter: cancelPendingRequests,
+      children: [
+        {
+          // ManageGroupUsersSubView will be rendered inside ManageGroupViews's <router-view>
+          // when /:groupName/settings/users is matched
+          name: "group-users",
+          path: "users",
+          component: () => import("../views/ManageGroupUsersSubView.vue"),
+        },
+        {
+          name: "group-tag-settings",
+          path: "tag-settings",
+          component: () => import("../views/ManageGroupTagSettingsSubView.vue"),
+        },
+        {
+          name: "fix-station-locations",
+          path: "fix-station-locations",
+          component: () =>
+            import("../views/ManageGroupFixStationLocationsSubView.vue"),
+        },
+      ],
     },
     // FIXME - add "user-settings", "sign-in" etc to list of forbidden group names.
     {
@@ -143,7 +164,7 @@ const router = createRouter({
     {
       path: "/register",
       name: "register",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: false },
       component: () => import("../views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -178,8 +199,6 @@ const router = createRouter({
   ],
 });
 
-let lastDestination: string | null = null;
-
 router.beforeEach(async (to, from, next) => {
   // TODO: Match groupName, and set currentSelectedGroup.
   // NOTE: Check for a logged in user here.
@@ -212,7 +231,7 @@ router.beforeEach(async (to, from, next) => {
       }
       isFetchingGroups.value = false;
       if (groupsResponse.status === 401) {
-        return next({ name: "sign-in" });
+        return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else if (UserGroups.value?.length === 0) {
         return next({ name: "setup" });
       }
@@ -220,8 +239,8 @@ router.beforeEach(async (to, from, next) => {
     if (userIsLoggedIn.value) {
       console.log("Resumed session");
     } else {
-      console.log("Failed to resume session");
-      if (to.name !== "sign-in") {
+      console.log("Failed to resume session or no session to resume");
+      if (to.meta.requiresLogin) {
         console.log("Redirect to sign-in");
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else {
@@ -333,14 +352,8 @@ router.beforeEach(async (to, from, next) => {
 
   // Slight wait so that we can break infinite navigation loops while developing.
   if (to.meta.requiresLogin && !userIsLoggedIn.value) {
-    return next({ name: "sign-in" });
+    return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
   }
-
-  // if (lastDestination === to.name) {
-  //   debugger;
-  // }
-  lastDestination = (to.name as string) || "";
-  //await delayMs(50);
   if (userIsLoggedIn.value && to.name === "sign-out") {
     await forgetUserOnCurrentDevice();
     userIsLoggedIn.value = false;
@@ -348,8 +361,16 @@ router.beforeEach(async (to, from, next) => {
       name: "sign-in",
     });
   }
+
+  if (!from.meta.requiresLogin && to.query.nextUrl) {
+    // We just logged in.
+    return next({
+      path: to.query.nextUrl as string,
+    });
+  }
+
   // Finally, redirect to the sign-in page.
-  if (!to.name && !userIsLoggedIn) {
+  if (!to.name && !userIsLoggedIn.value) {
     return next({
       name: "sign-in",
       query: {
@@ -357,6 +378,7 @@ router.beforeEach(async (to, from, next) => {
       },
     });
   } else {
+    console.log("here", to);
     pinSideNav.value = false;
     return next();
   }

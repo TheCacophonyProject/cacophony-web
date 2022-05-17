@@ -6,6 +6,7 @@ import { getEUAVersion, register as registerUser } from "@api/User";
 import { formFieldInputText, isValidName } from "@/utils";
 import type { ErrorResult, FieldValidationError } from "@api/types";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
+import { useRouter } from "vue-router";
 
 // ---------- userName ------------
 const userName: FormInputValue = formFieldInputText();
@@ -76,7 +77,7 @@ const userPassword: FormInputValue = formFieldInputText();
 const userPasswordConfirmation: FormInputValue = formFieldInputText();
 const isValidPassword = computed<boolean>(() => !passwordIsTooShort.value);
 const passwordIsTooShort = computed<boolean>(
-  () => userPassword.value.trim().length < 9
+  () => userPassword.value.trim().length < 8
 );
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
   () => (userPassword.touched ? isValidPassword.value : null)
@@ -146,6 +147,7 @@ const submittedDetails = ref<{
   name: string;
 } | null>(null);
 
+const router = useRouter();
 const register = async () => {
   const emailAddress = userEmailAddress.value.trim();
   const password = userPassword.value.trim();
@@ -178,6 +180,9 @@ const register = async () => {
       refreshToken: newUser.refreshToken,
       apiToken: newUser.token,
       refreshingToken: false,
+    });
+    await router.push({
+      name: "setup",
     });
   } else {
     registerErrorMessage.value = newUserResponse.result;
@@ -274,7 +279,7 @@ const register = async () => {
           <span v-if="userPassword.value.trim().length === 0">
             Password cannot be blank
           </span>
-          <span v-else-if="userPassword.value.trim().length <= 8">
+          <span v-else-if="userPassword.value.trim().length < 8">
             Password must be at least 8 characters
           </span>
         </b-form-invalid-feedback>

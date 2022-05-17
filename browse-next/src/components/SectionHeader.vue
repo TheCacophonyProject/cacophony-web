@@ -14,10 +14,14 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
     </h4>
     <span v-else></span>
     <div class="d-flex align-items-center ms-2 m-md-0">
-      <button type="button" class="btn toggle-nav d-md-none" @click.stop.prevent="pinSideNav = true">
+      <button
+        type="button"
+        class="btn toggle-nav d-md-none"
+        @click.stop.prevent="pinSideNav = true"
+      >
         <font-awesome-icon icon="bars" />
       </button>
-      <h1 class="m-0 ms-1 mb-md-4 ms-md-0"><slot></slot></h1>
+      <h2 class="m-0 ms-1 mb-md-4 ms-md-0"><slot></slot></h2>
     </div>
   </div>
 </template>
@@ -30,7 +34,7 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
   left: 0;
   right: 0;
   top: 0;
-  h1 {
+  h2 {
     font-size: 18px;
   }
   .group-name {
@@ -41,7 +45,7 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
     background: none;
     box-shadow: none;
     height: unset;
-    h1 {
+    h2 {
       font-size: 22px;
     }
     .group-name {
@@ -56,7 +60,7 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
   font-family: "Roboto Medium", "Roboto Regular", var(--bs-body-font-family);
   font-weight: 500;
 }
-h1 {
+h2 {
   font-family: "Roboto Bold", "Roboto Regular", var(--bs-body-font-family);
   font-weight: 700;
   color: #444;

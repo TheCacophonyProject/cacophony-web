@@ -64,5 +64,5 @@ export default {
   server,
   euaVersion: 3,
   ...loadConfigFromArgs(),
-  productionEnv: server.isLocalDev === true,
+  productionEnv: !server.isLocalDev,
 };

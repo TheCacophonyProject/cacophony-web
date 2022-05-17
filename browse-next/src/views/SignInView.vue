@@ -133,7 +133,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
           <span v-if="userPassword.value.trim().length === 0">
             Password cannot be blank
           </span>
-          <span v-else-if="userPassword.value.trim().length <= 8">
+          <span v-else-if="userPassword.value.trim().length < 8">
             Password must be at least 8 characters
           </span>
         </b-form-invalid-feedback>
