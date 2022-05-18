@@ -479,6 +479,8 @@ export const BirdLabels = [
   "noddy",
   "norfolk morepork",
   "norfolk parrot",
+  "norfolk robin",
+  "norfolk golden whistler",
   "north island brown kiwi",
   "north island kokako",
   "north island robin",
