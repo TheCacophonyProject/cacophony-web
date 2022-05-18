@@ -95,7 +95,7 @@
                 :class="{
                   highlight:
                     usersTag &&
-                    usersTag.data &&
+                    typeof usersTag.data === 'object' &&
                     usersTag.data.gender === 'male',
                 }"
                 @click="
@@ -112,7 +112,7 @@
                 :class="{
                   highlight:
                     usersTag &&
-                    usersTag.data &&
+                    typeof usersTag.data === 'object' &&
                     usersTag.data.gender === 'female',
                 }"
                 @click="
@@ -131,7 +131,7 @@
                 :class="{
                   highlight:
                     usersTag &&
-                    usersTag.data &&
+                    typeof usersTag.data === 'object' &&
                     usersTag.data.maturity === 'adult',
                 }"
                 @click="
@@ -148,7 +148,7 @@
                 :class="{
                   highlight:
                     usersTag &&
-                    usersTag.data &&
+                    typeof usersTag.data === 'object' &&
                     usersTag.data.maturity === 'juvenile',
                 }"
                 @click="
@@ -503,6 +503,8 @@ export default defineComponent({
         if (selectedTrack.value && selectedTrack.value.id === trackId) {
           setSelectedTrack(() => currTrack);
         }
+        storeCommonTag(what);
+        setButtonLabels(createButtonLabels());
         return currTrack;
       } else {
         return modifyTrack(trackId, {
@@ -543,7 +545,7 @@ export default defineComponent({
         if (response.success) {
           setTracks((tracks) => {
             tracks.get(trackId).tags.forEach((tag) => {
-              if (tag.id === tagId) {
+              if (tag.id === tagId && typeof tag.data === "object") {
                 tag.data = {
                   ...tag.data,
                   ...newAttrs,
@@ -694,8 +696,8 @@ export default defineComponent({
 
     const createButtonLabels = () => {
       const maxBirdButtons = 6;
-      const storedCommonBirds: { label: string; pinned: boolean }[] =
-        Object.values(JSON.parse(localStorage.getItem("commonBirds")) ?? {})
+      const storedCommonTags: { label: string; pinned: boolean }[] =
+        Object.values(JSON.parse(localStorage.getItem("commonTags")) ?? {})
           .sort((a: { freq: number }, b: { freq: number }) => b.freq - a.freq)
           // sort those that are pinned first
           .sort((a: { pinned: boolean }, b: { pinned: boolean }) => {
@@ -722,14 +724,14 @@ export default defineComponent({
       ]
         .filter(
           (val: string) =>
-            !storedCommonBirds.find((bird) => bird.label === val.toLowerCase())
+            !storedCommonTags.find((bird) => bird.label === val.toLowerCase())
         )
         .map((label: string) => ({ label, pinned: false }));
 
-      const amountToRemove = Math.min(maxBirdButtons, storedCommonBirds.length);
+      const amountToRemove = Math.min(maxBirdButtons, storedCommonTags.length);
       const diffToMax = maxBirdButtons - amountToRemove;
-      const commonBirds = [
-        ...storedCommonBirds.slice(0, amountToRemove),
+      const commonTags = [
+        ...storedCommonTags.slice(0, amountToRemove),
         ...commonBirdLabels.splice(0, diffToMax),
       ];
 
@@ -737,7 +739,7 @@ export default defineComponent({
         (label: string) => ({ label, pinned: false })
       );
 
-      const labels = [...commonBirds, ...otherLabels];
+      const labels = [...commonTags, ...otherLabels];
       return labels;
     };
     const [buttonLabels, setButtonLabels] = useState(createButtonLabels());
@@ -769,30 +771,23 @@ export default defineComponent({
       }
     });
 
-    const storeCommonBird = (bird: string, togglePin = false, freq = 1) => {
-      const commonBirds = JSON.parse(localStorage.getItem("commonBirds")) ?? {};
-      const newBird = commonBirds[bird]
-        ? commonBirds[bird]
+    const storeCommonTag = (bird: string, togglePin = false, freq = 1) => {
+      const commonTags = JSON.parse(localStorage.getItem("commonTags")) ?? {};
+      const newBird = commonTags[bird]
+        ? commonTags[bird]
         : { what: bird, freq: 0, pinned: false };
       newBird.freq += freq;
       if (togglePin) {
         newBird.pinned = !newBird.pinned;
       }
-      commonBirds[bird] = newBird;
-      localStorage.setItem("commonBirds", JSON.stringify(commonBirds));
-    };
-    const togglePinTag = (label: string) => {
-      storeCommonBird(label, true, 0);
-      setButtonLabels(createButtonLabels());
+      commonTags[bird] = newBird;
+      localStorage.setItem("commonTags", JSON.stringify(commonTags));
     };
 
-    watch(selectedLabel, (value) => {
-      if (value && value !== selectedLabel.value) {
-        addTagToSelectedTrack(value);
-        storeCommonBird(value);
-        setButtonLabels(createButtonLabels());
-      }
-    });
+    const togglePinTag = (label: string) => {
+      storeCommonTag(label, true, 0);
+      setButtonLabels(createButtonLabels());
+    };
 
     return {
       url,
