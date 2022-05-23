@@ -3,12 +3,17 @@ registerAliases();
 import config from "../config";
 import { Recording } from "@models/Recording";
 import { TrackTag } from "@models/TrackTag";
-import log from "../logging";
 import moment from "moment";
-import { SMTPClient, Message } from "emailjs";
-import { Readable } from "stream";
 import { User } from "@models/User";
 import { getEmailConfirmationToken, getResetToken } from "@api/auth";
+import { sendEmail } from "@/emails/sendEmail";
+
+export interface EmailImageAttachment {
+  buffer: Buffer;
+  cid: string;
+  mimeType: "image/png" | "image/jpeg"
+}
+
 function alertBody(
   recording: Recording,
   tag: TrackTag,
@@ -92,36 +97,5 @@ export async function sendEmailConfirmationEmail(
   );
 }
 
-async function sendEmail(
-  html: string,
-  text: string,
-  to: string,
-  subject: string,
-  thumbnail?: Buffer
-): Promise<boolean> {
-  const client = new SMTPClient(config.smtpDetails);
-  log.info(`Sending email with subject ${subject} to ${to}`);
-  try {
-    const message = new Message({
-      text,
-      to,
-      subject,
-      from: config.smtpDetails.from_name,
-      attachment: [{ data: html, alternative: true }],
-    });
-    if (thumbnail) {
-      message.attach({
-        stream: Readable.from(thumbnail),
-        type: "image/png",
-        headers: { "Content-ID": "<thumbnail>" },
-      });
-    }
-    await client.sendAsync(message);
-  } catch (err) {
-    log.error(err.toString());
-    return false;
-  }
-  return true;
-}
 
-export { sendEmail, alertBody, sendResetEmail };
+export { alertBody, sendResetEmail };

@@ -21,9 +21,10 @@ import { User } from "./User";
 import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
-import { alertBody, sendEmail } from "@/scripts/emailUtil";
+import {alertBody, EmailImageAttachment} from "@/scripts/emailUtil";
 import { DeviceId, UserId } from "@typedefs/api/common";
 import logger from "../logging";
+import {sendEmail} from "@/emails/sendEmail";
 
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -44,7 +45,7 @@ export interface Alert extends Sequelize.Model, ModelCommon<Alert> {
     recording: Recording,
     track: Track,
     tag: TrackTag,
-    thumbnail?: Buffer
+    thumbnail?: EmailImageAttachment
   ) => Promise<null>;
 }
 
@@ -188,14 +189,14 @@ export default function (sequelize, DataTypes): AlertStatic {
     recording: Recording,
     track: Track,
     tag: TrackTag,
-    thumbnail?: Buffer
+    thumbnail?: EmailImageAttachment
   ) {
     const subject = `${this.name}  - ${tag.what} Detected`;
     const [html, text] = alertBody(
       recording,
       tag,
       this.Device.devicename,
-      thumbnail ? true : false
+      !!thumbnail
     );
     const alertTime = new Date().toISOString();
     const result = await sendEmail(
@@ -203,7 +204,7 @@ export default function (sequelize, DataTypes): AlertStatic {
       text,
       this.User.email,
       subject,
-      thumbnail
+        (thumbnail && [thumbnail])
     );
     const detail = await models.DetailSnapshot.getOrCreateMatching("alert", {
       alertId: this.id,

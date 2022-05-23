@@ -5,8 +5,8 @@ import log from "../logging";
 import { Device } from "@models/Device";
 
 import moment from "moment";
-import { sendEmail } from "./emailUtil";
 import models from "../models";
+import { sendEmail } from "@/emails/sendEmail";
 
 async function getUserEvents(devices: Device[]) {
   const groupAdmins = {};
