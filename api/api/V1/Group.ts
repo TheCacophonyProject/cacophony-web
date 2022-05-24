@@ -35,7 +35,8 @@ import {
   fetchAdminAuthorizedRequiredStationByNameInGroup,
   fetchAuthorizedRequiredStationByNameInGroup,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrEmailOrId, fetchAdminAuthorizedRequiredGroups,
+  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
+  fetchAdminAuthorizedRequiredGroups,
 } from "../extract-middleware";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -248,8 +249,6 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
-
-
 
   /**
    * @api {get} /api/v1/groups/:groupNameOrId Get a group by name or id
@@ -527,31 +526,33 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.delete(
-      `${apiUrl}/:groupIdOrName/leave-group`,
-      extractJwtAuthorizedUser,
-      fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-      async (request: Request, response: Response) => {
-        const group = response.locals.group;
-        const user = response.locals.requestUser;
-        const groupUsers = await models.GroupUsers.findAll({
-          where: {
-            GroupId: group.id,
-          },
-        });
-        const otherAdmins = groupUsers.filter(({UserId, admin}) => UserId !== user.id && admin);
-        if (otherAdmins.length === 0) {
-          return responseUtil.send(response, {
-            statusCode: 400,
-            messages: ["Can't remove last admin from group."],
-          });
-        }
-        const thisGroupUser = groupUsers.find(({UserId}) => UserId === user.id);
-        await thisGroupUser.destroy();
+    `${apiUrl}/:groupIdOrName/leave-group`,
+    extractJwtAuthorizedUser,
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
+      const group = response.locals.group;
+      const user = response.locals.requestUser;
+      const groupUsers = await models.GroupUsers.findAll({
+        where: {
+          GroupId: group.id,
+        },
+      });
+      const otherAdmins = groupUsers.filter(
+        ({ UserId, admin }) => UserId !== user.id && admin
+      );
+      if (otherAdmins.length === 0) {
         return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["User left the group."],
+          statusCode: 400,
+          messages: ["Can't remove last admin from group."],
         });
       }
+      const thisGroupUser = groupUsers.find(({ UserId }) => UserId === user.id);
+      await thisGroupUser.destroy();
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["User left the group."],
+      });
+    }
   );
 
   /**

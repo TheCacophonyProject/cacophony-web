@@ -50,6 +50,11 @@ import config from "@config";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
 import logger from "@log";
+import {
+  sendChangedEmailConfirmationEmail,
+  sendWelcomeEmailConfirmationEmail,
+} from "@/emails/transactionalEmails";
+import { sendEmailConfirmationEmail } from "@/scripts/emailUtil";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
@@ -109,13 +114,12 @@ export default function (app: Application, baseUrl: string) {
         //  require use of the token refresh.
         const isNewEndPoint = request.path.endsWith("authenticate");
         await response.locals.user.update({ lastActiveAt: new Date() });
-        const { refreshToken, apiToken } =
-          await generateAuthTokensForUser(
-            response.locals.user,
-            request.headers["viewport"] as string,
-            request.headers["user-agent"],
-            isNewEndPoint
-          );
+        const { refreshToken, apiToken } = await generateAuthTokensForUser(
+          response.locals.user,
+          request.headers["viewport"] as string,
+          request.headers["user-agent"],
+          isNewEndPoint
+        );
 
         responseUtil.send(response, {
           statusCode: 200,
@@ -501,16 +505,35 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       const user = await models.User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
-        // TODO Resend email confirmation email
-
+        const emailConfirmationToken = getEmailConfirmationToken(
+          user.id,
+          user.email
+        );
+        //
+        const groups = await user.getGroups();
+        let sendSuccess;
+        if (!groups.length) {
+          // If the user has no groups, re-send the welcome email,
+          sendSuccess = await sendWelcomeEmailConfirmationEmail(
+            emailConfirmationToken,
+            user.email
+          );
+        } else {
+          // otherwise resend the email change confirmation email.
+          sendSuccess = await sendChangedEmailConfirmationEmail(
+            emailConfirmationToken,
+            user.email
+          );
+        }
+        if (!sendSuccess) {
+          return responseUtil.send(response, {
+            statusCode: 500,
+            messages: [`Failed to send email to ${user.email}`],
+          });
+        }
         return responseUtil.send(response, {
           statusCode: 200,
           messages: ["Email confirmation request sent"],
-        });
-      } else if (!user.email) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Email not set"],
         });
       } else if (user.emailConfirmed) {
         return responseUtil.send(response, {
@@ -579,12 +602,11 @@ export default function (app: Application, baseUrl: string) {
         //  If it's a first time email confirmation, then we can return the login details, and log the user in
         //  again.  Either way we should return a new set of user keys.
         // Generate a new set of tokens to be replaced.
-        const { refreshToken, apiToken } =
-          await generateAuthTokensForUser(
-            user,
-            request.headers["viewport"] as string,
-            request.headers["user-agent"]
-          );
+        const { refreshToken, apiToken } = await generateAuthTokensForUser(
+          user,
+          request.headers["viewport"] as string,
+          request.headers["user-agent"]
+        );
 
         user = await user.update({ emailConfirmed: true });
         return responseUtil.send(response, {

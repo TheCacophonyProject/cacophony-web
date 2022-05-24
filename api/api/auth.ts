@@ -23,7 +23,7 @@ import customErrors from "./customErrors";
 import models, { ModelCommon } from "../models";
 import { Request } from "express";
 import { User } from "@models/User";
-import { UserId } from "@typedefs/api/common";
+import { GroupId, UserId } from "@typedefs/api/common";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
 import logger from "@log";
@@ -72,9 +72,42 @@ export const getEmailConfirmationToken = (
   email: string
 ): string => {
   // expires in a day
-  return jwt.sign({ id: userId, email }, config.server.passportSecret, {
-    expiresIn: 60 * 60 * 24,
-  });
+  return jwt.sign(
+    { id: userId, email, _type: "confirm-email" },
+    config.server.passportSecret,
+    {
+      expiresIn: 60 * 60 * 24,
+    }
+  );
+};
+
+export const getJoinGroupRequestToken = (
+  userId: UserId,
+  groupIds: GroupId[]
+): string => {
+  // expires in a week
+  return jwt.sign(
+    { id: userId, groups: groupIds, _type: "join-groups" },
+    config.server.passportSecret,
+    {
+      expiresIn: 60 * 60 * 24 * 7,
+    }
+  );
+};
+
+export const getInviteToGroupsToken = (
+  userId: UserId,
+  groupIds: GroupId[],
+  perms: boolean[]
+): string => {
+  // expires in a week
+  return jwt.sign(
+    { id: userId, groups: groupIds, perms, _type: "groups-invite" },
+    config.server.passportSecret,
+    {
+      expiresIn: 60 * 60 * 24 * 7,
+    }
+  );
 };
 
 export const generateAuthTokensForUser = async (
@@ -106,7 +139,7 @@ export const generateAuthTokensForUser = async (
   );
   const expiryOptions = expires ? { expiresIn: ttlTypes.medium } : {};
   const refreshTokenSigned = jwt.sign(
-    { refreshToken },
+    { refreshToken, _type: "refresh" },
     config.server.passportSecret
   );
   return {
@@ -124,9 +157,7 @@ export const getDecodedResetToken = (token: string): ResetInfo => {
 };
 
 export const getDecodedToken = (token: string): any => {
-  const decodedToken = jwt.decode(
-    token
-  ) as JwtPayload | null;
+  const decodedToken = jwt.decode(token) as JwtPayload | null;
   if (decodedToken && decodedToken.exp * 1000 < new Date().getTime()) {
     throw new customErrors.AuthenticationError("JWT token expired.");
   }
@@ -156,9 +187,7 @@ export const getVerifiedJWT = (
     return jwt.verify(token, config.server.passportSecret);
   } catch (e) {
     throw new customErrors.AuthenticationError(
-      `Failed to verify JWT. (${JSON.stringify(
-        jwt.decode(token)
-      )})`
+      `Failed to verify JWT. (${JSON.stringify(jwt.decode(token))})`
     );
   }
 };

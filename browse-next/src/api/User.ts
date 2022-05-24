@@ -164,7 +164,7 @@ export const requestToJoinGroups = (
     `/api/v1/users/request-group-membership`,
     {
       groupAdminEmail,
-      groupIds,
+      groups: groupIds,
     },
     abortable
   ) as Promise<FetchResult<void>>;

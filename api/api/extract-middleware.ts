@@ -1645,10 +1645,10 @@ export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
 );
 
 export const fetchAdminAuthorizedRequiredGroups = fetchRequiredModels(
-    models.Group,
-    false,
-    false,
-    getGroups(true, true)
+  models.Group,
+  false,
+  false,
+  getGroups(true, true)
 );
 
 export const fetchUnAuthorizedOptionalEventDetailSnapshotById = (

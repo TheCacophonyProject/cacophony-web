@@ -21,10 +21,10 @@ import { User } from "./User";
 import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
-import {alertBody, EmailImageAttachment} from "@/scripts/emailUtil";
+import { alertBody, EmailImageAttachment } from "@/scripts/emailUtil";
 import { DeviceId, UserId } from "@typedefs/api/common";
 import logger from "../logging";
-import {sendEmail} from "@/emails/sendEmail";
+import { sendEmail } from "@/emails/sendEmail";
 
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -204,7 +204,7 @@ export default function (sequelize, DataTypes): AlertStatic {
       text,
       this.User.email,
       subject,
-        (thumbnail && [thumbnail])
+      thumbnail && [thumbnail]
     );
     const detail = await models.DetailSnapshot.getOrCreateMatching("alert", {
       alertId: this.id,

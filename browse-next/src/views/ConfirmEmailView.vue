@@ -5,7 +5,7 @@ import {
   debugGetEmailConfirmationToken,
   validateEmailConfirmationToken,
 } from "@api/User";
-import { setLoggedInUserData } from "@models/LoggedInUser";
+import {setLoggedInUserData, UserGroups} from "@models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
 
 const checkingValidateEmailToken = ref(false);
@@ -60,13 +60,20 @@ onBeforeMount(async () => {
         ...userData,
         apiToken: token,
         refreshToken,
-        refreshingToken: false
+        refreshingToken: false,
       });
 
+      console.log("Redirecting to dashboard");
       // NOTE: Should redirect to "setup" if user has no groups
-      await router.push({
-        name: "dashboard",
-      });
+      if (UserGroups.value?.length) {
+        await router.push({
+          name: "dashboard",
+        });
+      } else {
+        await router.push({
+          name: "setup",
+        });
+      }
     }
     checkingValidateEmailToken.value = false;
   } else {

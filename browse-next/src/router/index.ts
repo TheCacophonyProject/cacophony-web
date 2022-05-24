@@ -20,7 +20,7 @@ import {
 import { getEUAVersion } from "@api/User";
 import { getGroups } from "@api/Group";
 import { reactive } from "vue";
-import { urlNormaliseGroupName } from "@/utils";
+import {decodeJWT, urlNormaliseGroupName} from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 
 // Allows us to abort all pending fetch requests when switching between major views.
@@ -54,8 +54,23 @@ const router = createRouter({
     {
       path: "/confirm-account-email/:token",
       name: "confirm-email",
-      meta: { title: "Confirm email address", requiresLogin: false },
+      meta: { title: "Confirm email address", requiresLogin: true },
       component: () => import("../views/ConfirmEmailView.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
+
+    {
+      path: "/accept-invite/:token",
+      name: "accept-group-invite",
+      meta: { title: "Accept group invitation", requiresLogin: true },
+      component: () => import("../views/AcceptGroupInvite.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
+    {
+      path: "/confirm-group-membership-request/:token",
+      name: "confirm-group-membership-request",
+      meta: { title: "Confirm group membership request", requiresLogin: true },
+      component: () => import("../views/ConfirmAddToGroupRequest.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
@@ -63,13 +78,6 @@ const router = createRouter({
       name: "dashboard",
       meta: { title: "Group :stationName :tabName", requiresLogin: true },
       component: () => import("../views/DashboardView.vue"),
-      beforeEnter: cancelPendingRequests,
-    },
-    {
-      path: "/groups",
-      name: "select-active-group",
-      meta: { requiresLogin: true },
-      component: () => import("../views/SelectActiveGroup.vue"), // FIXME - Not sure if this is needed.
       beforeEnter: cancelPendingRequests,
     },
     {
@@ -169,6 +177,13 @@ const router = createRouter({
       beforeEnter: cancelPendingRequests,
     },
     {
+      path: "/register/accept-invite/:token",
+      name: "register-with-token",
+      meta: { requiresLogin: false },
+      component: () => import("../views/RegisterView.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
+    {
       path: "/end-user-agreement",
       name: "end-user-agreement",
       meta: { requiresLogin: true },
@@ -200,6 +215,19 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+  if (to.name === "dashboard") {
+    debugger;
+  }
+  let jwtToken;
+  if (to.params.token) {
+    // Process a JWT token
+    const token = (to.params.token as string).replace(/:/g, ".");
+    jwtToken = decodeJWT(token);
+    // If we're logged in, redirect to the appropriate place for the token type.
+
+    // If we're not logged in, we need to
+  }
+
   // TODO: Match groupName, and set currentSelectedGroup.
   // NOTE: Check for a logged in user here.
   if (!userIsLoggedIn.value) {
@@ -233,6 +261,12 @@ router.beforeEach(async (to, from, next) => {
       if (groupsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else if (UserGroups.value?.length === 0) {
+        if (to.query.nextUrl) {
+          return next({ path: to.query.nextUrl as string });
+        } else if (jwtToken) {
+          // Follow the path to process the token.
+          return next();
+        }
         return next({ name: "setup" });
       }
     }
@@ -240,7 +274,7 @@ router.beforeEach(async (to, from, next) => {
       console.log("Resumed session");
     } else {
       console.log("Failed to resume session or no session to resume");
-      if (to.meta.requiresLogin) {
+      if (to.meta.requiresLogin || to.path === "/") {
         console.log("Redirect to sign-in");
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else {

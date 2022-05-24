@@ -65,9 +65,11 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
   const apiToken = decodeJWT(CurrentUser.value?.apiToken) as JwtTokenPayload;
-  refreshCredentialsAtIn(
-    apiToken?.expiresAt.getTime() - new Date().getTime() - 5000
-  );
+  if (!CurrentUser.value?.refreshingToken) {
+    refreshCredentialsAtIn(
+      apiToken?.expiresAt.getTime() - new Date().getTime() - 5000
+    );
+  }
 };
 export const login = async (
   userEmailAddress: string,
@@ -145,7 +147,9 @@ const refreshCredentials = async () => {
         CurrentUser.value = reactive<LoggedInUser>(currentUser);
         return;
       } else {
+        ///setLoggedInUserData({ ...currentUser, refreshingToken: false });
         if (!currentUser.refreshingToken) {
+          //clearTimeout(refreshTimeout);
           setLoggedInUserData({ ...currentUser, refreshingToken: true });
           const refreshedUserResult = await refreshLogin(
             currentUser.refreshToken
@@ -162,8 +166,6 @@ const refreshCredentials = async () => {
             // Refresh token wasn't found, so prompt login again
             forgetUserOnCurrentDevice();
           }
-        } else {
-          refreshCredentialsAtIn(10);
         }
       }
     } catch (e) {
@@ -176,6 +178,7 @@ const refreshCredentials = async () => {
 let refreshTimeout = -1;
 const refreshCredentialsAtIn = (milliseconds: number) => {
   milliseconds = Math.max(1000, milliseconds);
+  console.log("Setting refresh in", milliseconds);
   clearTimeout(refreshTimeout);
   refreshTimeout = setTimeout(refreshCredentials, milliseconds);
 };
@@ -189,6 +192,7 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 export const forgetUserOnCurrentDevice = () => {
   console.log("Signing out");
   window.localStorage.clear();
+  CurrentUser.value = null;
 };
 
 export const switchCurrentGroup = (newGroup: {
@@ -332,3 +336,22 @@ export const creatingNewGroup = reactive({
 export const joiningNewGroup = reactive({ enabled: false, visible: false });
 export const showSwitchGroup = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);
+
+// On load:
+{
+  const rememberedCredentials = window.localStorage.getItem(
+    "saved-login-credentials"
+  );
+  if (rememberedCredentials) {
+    let currentUser;
+    try {
+      currentUser = JSON.parse(rememberedCredentials) as LoggedInUser;
+      window.localStorage.setItem(
+        "saved-login-credentials",
+        JSON.stringify({ ...currentUser, refreshingToken: false })
+      );
+    } catch (e) {
+      forgetUserOnCurrentDevice();
+    }
+  }
+}
