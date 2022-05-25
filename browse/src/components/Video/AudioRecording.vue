@@ -4,16 +4,22 @@
       <b-row class="mb-4">
         <b-col>
           <AudioPlayer
-            :key="url"
-            v-if="!deleted"
+            :key="`${url}-${
+              sampleRate === null ? 44100 : sampleRate
+            }-${colour}`"
+            v-if="buffer !== null"
+            :colour="colour"
+            :setColour="setColour"
             :tracks="tracks"
-            :url="url"
+            :buffer="buffer"
+            :sampleRate="sampleRate"
+            :setSampleRate="setSampleRate"
             :duration="recording.duration"
             :selectedTrack="selectedTrack"
             :setSelectedTrack="playTrack"
           />
           <b-row
-            v-else
+            v-else-if="deleted"
             class="undo-delete w-100 justify-content-center align-items-center"
             @click="undoDeleteRecording"
             role="button"
@@ -195,7 +201,13 @@
 <script lang="ts">
 import { PropType } from "vue";
 import { produce } from "immer";
-import { defineComponent, watch, computed } from "@vue/composition-api";
+import {
+  defineComponent,
+  watch,
+  computed,
+  ref,
+  onMounted,
+} from "@vue/composition-api";
 import Multiselect from "vue-multiselect";
 
 import api from "@api";
@@ -240,6 +252,12 @@ export interface AudioTrack extends ApiTrackResponse {
 }
 export type AudioTracks = Map<TrackId, AudioTrack>;
 
+const fetchAudioBuffer = async (url: string) => {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  return arrayBuffer;
+};
+
 export default defineComponent({
   name: "AudioRecording",
   props: {
@@ -270,14 +288,29 @@ export default defineComponent({
     const userName = store.state.User.userData.userName;
     const userId = store.state.User.userData.id;
     const [url, setUrl] = useState(
-      props.audioUrl ? props.audioUrl : props.audioRawUrl
+      // props.audioUrl ? props.audioUrl : props.audioRawUrl
+      props.audioRawUrl ? props.audioRawUrl : props.audioUrl
     );
+    const buffer = ref<ArrayBuffer>(null);
+    const [sampleRate, setSampleRate] = useState<number>(null);
+
+    const savedColour = localStorage.getItem("audio-colour");
+    const [colour, setColour] = useState(savedColour ? savedColour : "cool");
+    watch(colour, () => {
+      // store the colour in local storage
+      localStorage.setItem("audio-colour", colour.value);
+    });
+
     const [deleted, setDeleted] = useState(false);
     watch(
       () => [props.audioUrl, props.audioRawUrl],
-      () => {
-        setUrl(props.audioUrl ? props.audioUrl : props.audioRawUrl);
+      async ([newUrl, newRawUrl]) => {
         setDeleted(false);
+        // const url = newUrl ? newUrl : newRawUrl;
+        const url = newRawUrl ? newRawUrl : newUrl;
+        setSampleRate(null);
+        buffer.value = await fetchAudioBuffer(url);
+        setUrl(url);
       }
     );
 
@@ -402,7 +435,7 @@ export default defineComponent({
             end_s: track.end,
             maxFreq: track.maxFreq,
             minFreq: track.minFreq,
-            positions: track.positions,
+            positions: [track.positions[1]],
             userId: userId,
             automatic: false,
           },
@@ -431,7 +464,6 @@ export default defineComponent({
               produce(track, () => newTrack)
             );
           });
-          //if track is selected, update selected track
           return newTrack;
         } else {
           throw response.result;
@@ -696,8 +728,19 @@ export default defineComponent({
 
     const createButtonLabels = () => {
       const maxBirdButtons = 6;
+      const fixedLabels = ["Bird", "Human", "Unidentified"];
+      const otherLabels = fixedLabels.map((label: string) => ({
+        label,
+        pinned: false,
+      }));
       const storedCommonTags: { label: string; pinned: boolean }[] =
         Object.values(JSON.parse(localStorage.getItem("commonTags")) ?? {})
+          .filter(
+            (tag: { what: string }) =>
+              !fixedLabels.some((label) => {
+                return label.toLowerCase() === tag.what.toLowerCase();
+              })
+          )
           .sort((a: { freq: number }, b: { freq: number }) => b.freq - a.freq)
           // sort those that are pinned first
           .sort((a: { pinned: boolean }, b: { pinned: boolean }) => {
@@ -713,7 +756,6 @@ export default defineComponent({
             label: bird.what.toLowerCase(),
             pinned: bird.pinned,
           }));
-
       const commonBirdLabels = [
         "Morepork",
         "Kiwi",
@@ -724,7 +766,9 @@ export default defineComponent({
       ]
         .filter(
           (val: string) =>
-            !storedCommonTags.find((bird) => bird.label === val.toLowerCase())
+            !storedCommonTags.find(
+              (bird) => bird.label.toLowerCase() === val.toLowerCase()
+            )
         )
         .map((label: string) => ({ label, pinned: false }));
 
@@ -734,10 +778,6 @@ export default defineComponent({
         ...storedCommonTags.slice(0, amountToRemove),
         ...commonBirdLabels.splice(0, diffToMax),
       ];
-
-      const otherLabels = ["Bird", "Human", "Unidentified"].map(
-        (label: string) => ({ label, pinned: false })
-      );
 
       const labels = [...commonTags, ...otherLabels];
       return labels;
@@ -772,6 +812,7 @@ export default defineComponent({
     });
 
     const storeCommonTag = (bird: string, togglePin = false, freq = 1) => {
+      bird = bird.toLowerCase();
       const commonTags = JSON.parse(localStorage.getItem("commonTags")) ?? {};
       const newBird = commonTags[bird]
         ? commonTags[bird]
@@ -789,27 +830,36 @@ export default defineComponent({
       setButtonLabels(createButtonLabels());
     };
 
+    onMounted(async () => {
+      buffer.value = await fetchAudioBuffer(url.value);
+    });
+
     return {
       url,
-      tracks,
+      buffer,
+      BirdLabels: BirdLabels.sort(),
+      labels: buttonLabels,
+      cacophonyIndex,
       deleted,
-      deleteRecording,
-      undoDeleteRecording,
+      tracks,
       selectedTrack,
       selectedLabel,
       usersTag,
-      togglePinTag,
+      sampleRate,
+      setSampleRate,
+      colour,
+      setColour,
       playTrack,
-      cacophonyIndex,
-      labels: buttonLabels,
-      BirdLabels: BirdLabels.sort(),
+      togglePinTag,
+      toggleAttributeToTrackTag,
       addTagToSelectedTrack,
       addTagToTrack,
-      toggleAttributeToTrackTag,
       addTrack,
       deleteTrack,
       deleteTrackTag,
       deleteTagFromSelectedTrack,
+      deleteRecording,
+      undoDeleteRecording,
       undoDeleteTrack,
     };
   },

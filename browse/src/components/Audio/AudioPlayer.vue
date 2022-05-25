@@ -104,7 +104,7 @@
           />
         </div>
 
-        <div class="player-bar-zoom">
+        <div class="player-bar-settings">
           <font-awesome-icon
             :icon="['fa', zoomed.enabled ? 'search-minus' : 'search-plus']"
             :class="{ highlighted: zoomed.enabled }"
@@ -116,6 +116,75 @@
               })
             "
           />
+          <svg
+            class="player-bar-samplerate-button"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            role="button"
+            @click="
+              () => {
+                toggleSampleRate = !toggleSampleRate;
+              }
+            "
+          >
+            <path
+              stroke="white"
+              :class="{ highlighted: toggleSampleRate }"
+              stroke-width="1.4"
+              d="M18.6 10c-1.5 0-1.4 2.9-2 4.2-.2.2-.5.1-.5 0-.8-2.5-.5-8.2-2.6-8.2S12 13.4 11 16.5c0 .2-.3.2-.4 0-1-2.2-.8-6.9-2.5-6.9-1.8 0-1.6 4-2.3 5.6-.1.2-.4.2-.5 0-.5-1-.7-3.2-2.6-3.2H.5a.5.5 0 0 0 0 1h2.2c1.6 0 1 3.5 2.9 3.5 1.6 0 1.5-3.8 2.2-5.5 0-.2.4-.2.5 0 .8 2 .7 7 2.6 7 2 0 1.3-7.9 2.4-10.6.1-.2.4-.2.5 0 1 2.2.5 8 2.4 8 1.6 0 1.7-2.6 2.2-4 0-.2.4-.2.5 0 .5 1 .8 2.6 2.4 2.6h2.2a.5.5 0 0 0 0-1h-2.2c-1.4 0-1.2-3-2.7-3z"
+            />
+          </svg>
+          <div v-if="toggleSampleRate" class="player-bar-samplerate">
+            <b>Sample Rate:</b> {{ newSampleRate }} Hz
+            <div>
+              <input
+                type="range"
+                min="8000"
+                max="44100"
+                step="100"
+                v-model="newSampleRate"
+              />
+              <font-awesome-icon
+                @click="
+                  () => {
+                    setSampleRate(Number(newSampleRate));
+                  }
+                "
+                role="button"
+                :icon="['fa', 'check']"
+                size="lg"
+              />
+              <font-awesome-icon
+                @click="
+                  () => {
+                    newSampleRate = sampleRate;
+                    toggleSampleRate = false;
+                  }
+                "
+                role="button"
+                :icon="['fa', 'times']"
+                size="lg"
+              />
+            </div>
+          </div>
+          <b-dropdown class="player-bar-color-dropdown" variant="link"
+            ><template v-slot:button-content>
+              <font-awesome-icon :icon="['fa', 'palette']" />
+            </template>
+            <b-dropdown-item
+              v-for="(val, index) in colours"
+              :key="index"
+              z-index="1001"
+              :class="{
+                'dropdown-item': true,
+                ['dropdown-highlighted']:
+                  colour.toLowerCase() === val.toLowerCase(),
+              }"
+              @click="setColour(val)"
+            >
+              {{ val }}
+            </b-dropdown-item>
+          </b-dropdown>
         </div>
       </div>
     </div>
@@ -145,14 +214,6 @@ import {
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 
 import { ApiTrackPosition } from "@typedefs/api/track";
-import WebAudio from "wavesurfer.js/src/webaudio";
-
-const fetchAudioBuffer = async (url: string) => {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  return arrayBuffer;
-};
-
 const getSampleRate = (
   arrayBuffer: ArrayBuffer
 ): { sampleRate: number; bitsPerSample: number } => {
@@ -199,8 +260,16 @@ export default defineComponent({
       type: Map as PropType<AudioTracks>,
       required: true,
     },
-    url: {
-      type: String,
+    buffer: {
+      type: ArrayBuffer as PropType<ArrayBuffer>,
+      default: null,
+    },
+    sampleRate: {
+      type: Number,
+      default: null,
+    },
+    setSampleRate: {
+      type: Function as PropType<SetState<number>>,
       required: true,
     },
     duration: {
@@ -215,6 +284,14 @@ export default defineComponent({
       type: Function as PropType<SetState<AudioTrack>>,
       required: true,
     },
+    colour: {
+      type: String,
+      required: true,
+    },
+    setColour: {
+      type: Function as PropType<SetState<string>>,
+      required: true,
+    },
   },
   setup(props) {
     // Player
@@ -222,6 +299,26 @@ export default defineComponent({
     const spectrogram = ref<HTMLCanvasElement>(null);
     const isLoading = ref(true);
     const player = ref<WaveSurfer>(null);
+
+    const newSampleRate = ref(props.sampleRate);
+    const toggleSampleRate = ref(false);
+    const defaultSampleRate = ref(props.sampleRate);
+
+    const colours = [
+      "jet",
+      "hsv",
+      "hot",
+      "magma",
+      "earth",
+      "plasma",
+      "cool",
+      "bone",
+      "YIGnBu",
+      "YIOrRd",
+      "inferno",
+      "cdom",
+    ];
+
     const [isFinished, setIsFinished] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
 
@@ -244,13 +341,16 @@ export default defineComponent({
       enabled: false,
       scale: 3,
     });
+
     const updateZoom = () => {
+      if (!overlay.value) {
+        return;
+      }
       const loader = document.getElementById(
         "loader-progress"
       ) as HTMLDivElement;
       const x = loader.offsetWidth;
 
-      overlay.value.style.transformOrigin = `${x}px center`;
       const zoomIndicatorStart = document.getElementById(
         "zoom-indicator-start"
       ) as HTMLDivElement;
@@ -269,7 +369,10 @@ export default defineComponent({
       const overEnd = Math.abs(Math.min(playerBar.offsetWidth - endPos, 0));
       const overStart = Math.abs(Math.min(startPos, 0));
 
-      overlay.value.style.transform = `scale(${zoomed.value.scale}, 1)`;
+      overlay.value.style.transformOrigin = `${x}px bottom`;
+      overlay.value.style.transform = `scaleX(${
+        zoomed.value.enabled ? zoomed.value.scale : 1
+      }) scaleY(${props.sampleRate / newSampleRate.value})`;
       const translateY = "translateY(-3px)";
       zoomIndicatorStart.style.transform = `translateX(${
         -half - overEnd + overStart
@@ -278,6 +381,9 @@ export default defineComponent({
         half + overStart - overEnd + 8
       }px) ${translateY}`;
     };
+    watch(newSampleRate, () => {
+      updateZoom();
+    });
 
     watch(zoomed, (zoom) => {
       const zoomIndicatorStart = document.getElementById(
@@ -340,8 +446,8 @@ export default defineComponent({
         const width = Math.abs(draft.pos.startX - x);
         const height = Math.abs(draft.pos.startY - y);
 
-        draft.pos.x = currX;
-        draft.pos.y = currY;
+        draft.pos.x = Math.max(currX, 0);
+        draft.pos.y = Math.max(currY, 0);
         draft.pos.width = width;
         draft.pos.height = height;
       });
@@ -398,7 +504,7 @@ export default defineComponent({
                   width: (width * spectrogram.value.width).toString(),
                   height: (height * spectrogram.value.height).toString(),
                   stroke: "#c8d6e5",
-                  "stroke-width": "3",
+                  "stroke-width": "2",
                   fill: "none",
                 },
               },
@@ -457,14 +563,19 @@ export default defineComponent({
       50
     );
 
+    const [time, setTime] = useState({ curr: "0:00", total: "0:00" });
+    const actualTime = ref<number>(0);
     const secondsToTimeString = (seconds: number) => {
       const minutes = Math.floor(seconds / 60);
       const secondsLeft = Math.floor(seconds % 60);
       return `${minutes}:${secondsLeft < 10 ? "0" : ""}${secondsLeft}`;
     };
-    const [time, setTime] = useState({ curr: "0:00", total: "0:00" });
     const setPlayerTime = (currTime: number) => {
       const curr = secondsToTimeString(currTime);
+      if (currTime === actualTime.value) {
+        return;
+      }
+      actualTime.value = currTime;
       const total = secondsToTimeString(player.value.getDuration());
       const percent = (currTime / player.value.getDuration()) * 100;
       setTime({ curr, total });
@@ -506,6 +617,7 @@ export default defineComponent({
       const time = Math.min(Math.max(duration * percent, 0), duration);
       return { time, percent };
     };
+
     const [dragTime, setDragTime] = useState(false);
     const onDragStartTime = () => {
       setDragTime(true);
@@ -608,20 +720,22 @@ export default defineComponent({
       container: "#spectrogram",
       fftSamples: 512,
       colorMap: ColorMap({
-        colormap: "Cool",
+        colormap: props.colour,
         nshades: 256,
         format: "float",
       }),
     };
+
     onMounted(async () => {
-      const audioBuffer = await fetchAudioBuffer(props.url);
-      let { sampleRate } = getSampleRate(audioBuffer);
-      sampleRate =
-        sampleRate === 0
-          ? 48000
-          : sampleRate < 10000
-          ? sampleRate + 8000
-          : sampleRate;
+      const audioBuffer = props.buffer.slice(0);
+      const realSampleRate = getSampleRate(audioBuffer).sampleRate;
+      defaultSampleRate.value = realSampleRate === 0 ? 44100 : realSampleRate;
+      let sampleRate = props.sampleRate;
+      if (sampleRate === null) {
+        sampleRate = defaultSampleRate.value;
+        props.setSampleRate(sampleRate);
+        newSampleRate.value = sampleRate;
+      }
       const audioContext = new AudioContext({
         sampleRate,
       });
@@ -643,18 +757,26 @@ export default defineComponent({
       };
 
       const createRectFromTrack = (track: AudioTrack) => {
-        const pos = track.positions[0];
-        const y = track.maxFreq ? track.maxFreq / (sampleRate / 2) : pos.y;
-        const height = track.minFreq
-          ? Math.abs(track.maxFreq - track.minFreq) / (sampleRate / 2)
-          : pos.height;
+        const pos =
+          track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
+        let { x, y, width, height } = pos;
+        // y needs to inverted due to canvas positioning
+        y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        y = 1 - y;
+
+        if (track.start && track.end) {
+          const { start, end } = track;
+          x = start / player.value.getDuration();
+          width = (end - start) / player.value.getDuration();
+        }
         const rect = createSVGElement(
           {
             attributes: {
               id: `track_${track.id.toString()}`,
-              x: (pos.x * spectrogram.value.width).toString(),
+              x: (x * spectrogram.value.width).toString(),
               y: (y * spectrogram.value.height).toString(),
-              width: (pos.width * spectrogram.value.width).toString(),
+              width: (width * spectrogram.value.width).toString(),
               height: (height * spectrogram.value.height).toString(),
               stroke: track.colour,
               "stroke-width": "2",
@@ -686,7 +808,9 @@ export default defineComponent({
         tracks
           .filter((track) => !track.deleted)
           .map(createRectFromTrack)
-          .map((trackRect) => overlay.value.appendChild(trackRect));
+          .forEach((trackRect) => {
+            overlay.value.appendChild(trackRect);
+          });
 
       // Modify the overlay tracks when props tracks change
       watch(
@@ -797,7 +921,6 @@ export default defineComponent({
         const spectrogramWidth = spectrogram.value.width;
         const spectrogramHeight = spectrogram.value.height;
         const container = document.querySelector("#spectrogram") as HTMLElement;
-        // check
         const svgImage = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "image"
@@ -825,7 +948,7 @@ export default defineComponent({
             cursor: "crosshair",
             width: "100%",
             height: "100%",
-            "transform-origin": "0 center",
+            "transform-origin": "0 center bottom",
           },
           attributes: {
             viewBox: `0 0 ${spectrogramWidth} ${spectrogramHeight}`,
@@ -888,12 +1011,16 @@ export default defineComponent({
         };
 
         const confirmTrack = debounce(() => {
-          const maxSample = (player.value.backend as WebAudio).ac.sampleRate;
-          const maxFreq = Math.floor((maxSample / 2) * tempTrack.value.pos.y);
+          const top = sampleRate / 2;
+          const flippedY = 1 - tempTrack.value.pos.y;
+          const maxFreq = Math.floor(flippedY * top);
           const minFreq = Math.floor(
-            (maxSample / 2) *
-              (tempTrack.value.pos.y - tempTrack.value.pos.height)
+            (flippedY - tempTrack.value.pos.height) * top
           );
+          const pos = Object.assign({}, tempTrack.value.pos);
+          pos.y = maxFreq / (defaultSampleRate.value / 2);
+          pos.y = 1 - pos.y;
+          pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
 
           const track: AudioTrack = {
             id: -1,
@@ -906,7 +1033,7 @@ export default defineComponent({
             colour: "#c8d6e5",
             automatic: false,
             filtered: false,
-            positions: [tempTrack.value.pos],
+            positions: [tempTrack.value.pos, pos],
             tags: [],
             displayTags: [],
             confirming: false,
@@ -983,7 +1110,9 @@ export default defineComponent({
         attachSpectrogramOverlay();
         // Move canvas image to SVG & clean up
         overlay.value.appendChild(tempTrack.value.rect);
-        addTracksToOverlay([...props.tracks.values()]);
+        requestAnimationFrame(() =>
+          addTracksToOverlay([...props.tracks.values()])
+        );
         if (isPlaying.value) {
           playAt(0);
         }
@@ -1011,10 +1140,12 @@ export default defineComponent({
       player.value.on("audioprocess", () => {
         // don't up time if we are scrubbing
         if (zoomed.value.enabled) {
-          updateZoom();
+          requestAnimationFrame(updateZoom);
         }
         if (!dragTime.value) {
-          setPlayerTime(player.value.getCurrentTime());
+          requestAnimationFrame(() =>
+            setPlayerTime(player.value.getCurrentTime())
+          );
         }
       });
       player.value.on("ready", initPlayer);
@@ -1037,10 +1168,13 @@ export default defineComponent({
       isPlaying,
       isFinished,
       volume,
-      changeVolume,
-      zoomed,
-      setZoomed,
       time,
+      zoomed,
+      newSampleRate,
+      changeVolume,
+      toggleSampleRate,
+      colours,
+      setZoomed,
       play,
       onDragTime,
       onDragStartTime,
@@ -1072,7 +1206,7 @@ spectrogram {
 }
 .player-bar {
   display: grid;
-  grid-template-columns: 1fr 7fr 2fr;
+  grid-template-columns: 1fr 7fr 141px;
   justify-content: start;
   justify-content: space-between;
   justify-items: center;
@@ -1082,6 +1216,10 @@ spectrogram {
   color: #fff;
   width: 100%;
   min-height: 67px;
+  // create two rows on mobile
+  @media (max-width: 576px) {
+    grid-template-rows: 1fr 1fr;
+  }
 }
 .spec-labels {
   background-color: #152338;
@@ -1158,6 +1296,11 @@ spectrogram > svg {
   align-items: center;
   justify-content: space-between;
   justify-self: center;
+
+  @media (max-width: 576px) {
+    grid-row-start: 2;
+    grid-column: 1 / -1;
+  }
 }
 .capitalize {
   text-transform: capitalize;
@@ -1201,16 +1344,51 @@ spectrogram > svg {
   border-radius: 100%;
   background: white;
 }
-.player-bar-zoom {
+.player-bar-settings {
+  // put items in a row
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  gap: 1em;
+  align-items: center;
+  fill: white;
   user-select: none;
   grid-column-start: 3;
 }
 .highlighted {
-  color: #c1f951;
+  color: #c1f951 !important;
+  stroke: #c1f951 !important;
+}
+
+.dropdown-highlighted {
+  background: #dbff91 !important;
 }
 .zoom-indicator {
   display: none;
   width: 8px;
   border-radius: 3px;
+}
+.player-bar-samplerate-button {
+  width: 32px;
+}
+.player-bar-samplerate {
+  position: absolute;
+  transform: translate(-80px, -85px);
+  background-color: rgba(59, 69, 84, 0.8);
+  padding: 0.7em;
+  border-radius: 0.5em;
+  div {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+}
+.player-bar-color-dropdown {
+  z-index: 1001;
+}
+
+.player-bar-color-dropdown * {
+  color: #fff !important;
+  max-width: 8em;
 }
 </style>

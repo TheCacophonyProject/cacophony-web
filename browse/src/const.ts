@@ -481,6 +481,8 @@ export const BirdLabels = [
   "norfolk parrot",
   "norfolk robin",
   "norfolk golden whistler",
+  "norfolk gerygone",
+  "norfolk silkeye",
   "north island brown kiwi",
   "north island kokako",
   "north island robin",
@@ -772,14 +774,14 @@ const DefaultLabels = {
 };
 
 export const TagColours = [
-  "#575fcf",
+  "#32ff7e",
   "#4bcffa",
-  "#f7b731",
+  "#cd84f1",
   "#ffdd59",
   "#0be881",
   "#00d8d6",
   "#a55eea",
-  "#0fb9b1",
+  "#ffcccc",
 ];
 
 function imgSrc(what) {

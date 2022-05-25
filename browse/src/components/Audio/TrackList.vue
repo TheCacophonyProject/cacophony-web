@@ -1,5 +1,5 @@
 <template>
-  <b-container>
+  <b-container class="tracklist-container">
     <b-row>
       <h2 class="classification-header">Classification</h2>
     </b-row>
@@ -38,7 +38,12 @@
                       <b-button
                         v-if="
                           track.displayTags.some(
-                            (tag) => tag.class === 'automatic'
+                            (tag) =>
+                              tag.class === 'automatic' ||
+                              (tag.class === 'confirmed' &&
+                                !track.tags.some(
+                                  (t) => t.userName === userName
+                                ))
                           )
                         "
                         variant="outline-success"
@@ -109,6 +114,7 @@
               class="track-container-side d-flex justify-content-end"
             >
               <b-dropdown
+                lazy
                 class="track-settings-button"
                 right
                 toggle-class="text-decoration-none"
@@ -130,27 +136,58 @@
           </b-row>
           <b-row>
             <b-col>
-              <b-container
+              <div
                 v-b-toggle="`tag-history-${track.id}`"
                 class="tag-history-toggle"
+                @click="
+                  () => {
+                    if (toggledTrackHistory.includes(track.id)) {
+                      toggledTrackHistory = toggledTrackHistory.filter(
+                        (id) => id !== track.id
+                      );
+                    } else {
+                      toggledTrackHistory.push(track.id);
+                    }
+                  }
+                "
               >
                 <h4>Tag History</h4>
-                <font-awesome-icon icon="angle-up" class="when-open" />
-                <font-awesome-icon icon="angle-down" class="when-closed" />
-              </b-container>
-              <b-collapse :id="`tag-history-${track.id}`">
-                <b-table
-                  class="text-center"
-                  :items="track.tags"
-                  :fields="['what', 'who', 'confidence']"
-                >
-                  <template #cell(who)="data">{{
-                    data.item.data && data.item.data.name
-                      ? data.item.data.name
-                      : data.item.userName
-                  }}</template>
-                </b-table>
-              </b-collapse>
+                <font-awesome-icon
+                  icon="angle-up"
+                  v-if="toggledTrackHistory.includes(track.id)"
+                />
+                <font-awesome-icon
+                  icon="angle-down"
+                  class="when-closed"
+                  v-else
+                />
+              </div>
+              <!-- Table using html -->
+              <table
+                v-if="toggledTrackHistory.includes(track.id)"
+                class="tag-history-table"
+              >
+                <thead>
+                  <tr>
+                    <th>Label</th>
+                    <th>Who</th>
+                    <th>Confidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="tag in track.tags" :key="tag.id">
+                    <td>{{ tag.what }}</td>
+                    <td>
+                      {{
+                        tag.userName
+                          ? tag.userName
+                          : typeof tag.data === "object" && "AI"
+                      }}
+                    </td>
+                    <td>{{ tag.confidence }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </b-col>
           </b-row>
         </b-col>
@@ -175,13 +212,15 @@
 
 <script lang="ts">
 import { PropType } from "vue";
-import { defineComponent, watch } from "@vue/composition-api";
+import { defineComponent, ref, watch } from "@vue/composition-api";
 
 import { useState } from "@/utils";
 
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 
 import { TrackId } from "@typedefs/api/common";
+
+import store from "@/stores";
 
 enum TrackListFilter {
   All = "all",
@@ -227,6 +266,7 @@ export default defineComponent({
       }
       await props.addTagToTrack(track.id, tag.what);
     };
+    const toggledTrackHistory = ref<TrackId[]>([]);
     //TODO: Add filtering tracks
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [filter, setFilter] = useState<TrackListFilter>(TrackListFilter.All);
@@ -258,7 +298,9 @@ export default defineComponent({
     );
 
     return {
+      userName: store.state.User.userData.userName,
       tracks,
+      toggledTrackHistory,
       confirmTrack,
       filter,
       filterTracks,
@@ -270,6 +312,7 @@ export default defineComponent({
 
 <style lang="scss">
 @import "src/styles/tag-colours";
+
 .collapsed > .when-open,
 .not-collapsed > .when-closed {
   display: none;
@@ -340,5 +383,14 @@ export default defineComponent({
 }
 .aihuman-tag {
   background-color: $aihuman !important;
+}
+.tag-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #f1f1f1;
+  margin-bottom: 1em;
 }
 </style>
