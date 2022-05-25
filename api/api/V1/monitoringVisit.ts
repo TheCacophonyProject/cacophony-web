@@ -3,10 +3,12 @@ import models from "@models";
 import { Recording } from "@models/Recording";
 import { getCanonicalTrackTag, UNIDENTIFIED_TAGS } from "./Visits";
 import { ClientError } from "../customErrors";
-import { UserId } from "@typedefs/api/common";
+import {StationId, UserId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@api/V1/monitoringPage";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
+import { Device } from "@/models/Device";
+import {Station} from "@models/Station";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -22,23 +24,19 @@ class Visit {
   classification?: string;
   classificationAi?: string;
   classFromUserTag?: boolean;
-  deviceId: number;
-  device: string;
   incomplete?: boolean;
   timeStart?: Moment;
   timeEnd?: Moment;
   recordings: VisitRecording[];
   stationId: number;
-  station: string;
+  stationName: string;
   tracks: number;
 
-  constructor(device, stationId: number, station, recording: Recording) {
-    this.device = device.devicename;
-    this.deviceId = device.id;
+  constructor(stationId: StationId, stationName: Station, recording: Recording) {
     this.recordings = [];
     this.rawRecordings = [];
     this.tracks = 0;
-    this.station = station ? station.name : "";
+    this.stationName = stationName ? stationName.name : "";
     this.stationId = stationId || 0;
 
     this.rawRecordings.push(recording);
@@ -46,7 +44,7 @@ class Visit {
     this.timeEnd = moment(this.timeStart).add(recording.duration, "seconds");
   }
 
-  stationsMatch(stationId: number) {
+  stationsMatch(stationId: StationId) {
     return this.stationId == stationId;
   }
 
@@ -265,8 +263,8 @@ async function getRecordings(
     deletedAt: { [Op.eq]: null },
     recordingDateTime: { [Op.gt]: from, [Op.lt]: until }, // FIXME - Used to be gte: from
   };
-  if (params.devices) {
-    where.DeviceId = params.devices;
+  if (params.stations) {
+    where.StationId = params.stations;
   }
   if (params.groups) {
     where.GroupId = params.groups;
@@ -292,14 +290,14 @@ function groupRecordingsIntoVisits(
   end: Moment,
   isLastPage: boolean
 ): Visit[] {
-  const currentVisitForDevice: { [key: number]: Visit } = {};
+  const currentVisitForStation: { [key: number]: Visit } = {};
   const visitsStartingInPeriod: Visit[] = [];
   const earlierVisits: Visit[] = [];
 
   recordings.forEach((rec) => {
     const recording = rec as any;
     const stationId = recording.StationId || 0;
-    const currentVisit: Visit = currentVisitForDevice[rec.DeviceId];
+    const currentVisit: Visit = currentVisitForStation[rec.StationId];
     const matchingVisit =
       currentVisit && currentVisit.stationsMatch(stationId)
         ? currentVisit
@@ -308,14 +306,13 @@ function groupRecordingsIntoVisits(
       if (end.isSameOrAfter(rec.recordingDateTime)) {
         // start a new visit
         const newVisit = new Visit(
-          recording.Device,
           stationId,
           recording.Station,
           rec
         );
         // we want to keep adding recordings to this visit even if first recording is
         // before the search period
-        currentVisitForDevice[rec.DeviceId] = newVisit;
+        currentVisitForStation[rec.StationId] = newVisit;
 
         if (newVisit.timeStart.isAfter(start)) {
           visitsStartingInPeriod.push(newVisit);

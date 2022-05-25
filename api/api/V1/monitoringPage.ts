@@ -19,10 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { User } from "@models/User";
 import { QueryTypes } from "sequelize";
 import models from "@models";
+import {GroupId, StationId} from "@typedefs/api/common";
 
 export interface MonitoringParams {
-  groups: number[];
-  devices: number[];
+  groups: GroupId[];
+  stations: StationId[];
   from?: Date;
   until?: Date;
   page: number;
@@ -31,8 +32,8 @@ export interface MonitoringParams {
 
 export interface MonitoringPageCriteria {
   compareAi: string;
-  devices?: number[];
-  groups?: number[];
+  stations?: StationId[];
+  groups?: GroupId[];
   page: number;
   pagesEstimate: number;
   pageFrom?: Date;
@@ -48,9 +49,9 @@ const PAGING = "PAGING";
 const BEFORE_CACOPHONY = new Date(2017, 1, 1);
 
 const LAST_TIMES_TABLE = `with lasttimes as                                    
-(select "recordingDateTime", "DeviceId", "GroupId",
-   LAG("recordingDateTime", 1) OVER (PARTITION BY "DeviceId" ORDER BY "recordingDateTime") lasttime,
-   LAG("duration", 1) OVER (PARTITION BY "DeviceId" ORDER BY "recordingDateTime") lastduration
+(select "recordingDateTime", "StationId", "GroupId",
+   LAG("recordingDateTime", 1) OVER (PARTITION BY "StationId" ORDER BY "recordingDateTime") lasttime,
+   LAG("duration", 1) OVER (PARTITION BY "StationId" ORDER BY "recordingDateTime") lastduration
      from "Recordings" 
      where "recordingDateTime" is not NULL
        and "deletedAt" is null 
@@ -86,8 +87,8 @@ async function getDatesForSearch(
   viewAsSuperAdmin: boolean
 ): Promise<MonitoringPageCriteria> {
   const replacements = {
-    GROUPS_AND_DEVICES: makeGroupsAndDevicesCriteria(
-      params.devices,
+    GROUPS_AND_STATIONS: makeGroupsAndStationsCriteria(
+      params.stations,
       params.groups
     ),
     USER_PERMISSIONS: await makeGroupsAndDevicesPermissions(
@@ -142,8 +143,8 @@ function createPageCriteria(
     compareAi: "Master",
   };
 
-  if (params.devices.length !== 0) {
-    criteria.devices = params.devices;
+  if (params.stations.length !== 0) {
+    criteria.stations = params.stations;
   }
 
   if (params.groups.length !== 0) {
@@ -163,19 +164,19 @@ function replaceInSQL(
   return sql;
 }
 
-function makeGroupsAndDevicesCriteria(
-  deviceIds: number[],
-  groupIds: number[]
+function makeGroupsAndStationsCriteria(
+  stationIds: StationId[],
+  groupIds: GroupId[]
 ): string {
-  const devString =
-    deviceIds.length > 0 ? `"DeviceId" IN (${deviceIds.join(",")})` : null;
+  const stationString =
+    stationIds.length > 0 ? `"StationId" IN (${stationIds.join(",")})` : null;
   const grpString =
     groupIds.length > 0 ? `"GroupId" IN (${groupIds.join(",")})` : null;
 
-  if (devString && grpString) {
-    return ` and (${devString} or ${grpString})`;
-  } else if (devString) {
-    return ` and ${devString}`;
+  if (stationString && grpString) {
+    return ` and (${stationString} or ${grpString})`;
+  } else if (stationString) {
+    return ` and ${stationString}`;
   } else if (grpString) {
     return ` and ${grpString}`;
   }
@@ -205,9 +206,9 @@ async function makeGroupsAndDevicesPermissions(
     return "";
   }
 
-  const [deviceIds, groupIds] = await Promise.all([
-    user.getDeviceIds(),
+  const [stationIds, groupIds] = await Promise.all([
+    user.getStationIds(),
     user.getGroupsIds(),
   ]);
-  return makeGroupsAndDevicesCriteria(deviceIds, groupIds);
+  return makeGroupsAndStationsCriteria(stationIds, groupIds);
 }

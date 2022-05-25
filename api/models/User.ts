@@ -26,7 +26,7 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { Group } from "./Group";
 import {
   DeviceId,
-  EndUserAgreementVersion,
+  EndUserAgreementVersion, GroupId, StationId,
   UserId,
 } from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
@@ -34,6 +34,7 @@ import { sendResetEmail } from "@/scripts/emailUtil";
 import { Device } from "@models/Device";
 import { ApiUserSettings } from "@typedefs/api/user";
 import jwt from "jsonwebtoken";
+import { Station } from "./Station";
 
 const Op = Sequelize.Op;
 
@@ -42,8 +43,9 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   comparePassword: (password: string) => Promise<boolean>;
   resetPassword: () => Promise<boolean>;
 
-  getDeviceIds: () => Promise<number[]>;
-  getGroupsIds: () => Promise<number[]>;
+  getDeviceIds: () => Promise<DeviceId[]>;
+  getGroupsIds: () => Promise<GroupId[]>;
+  getStationIds: () => Promise<StationId[]>;
   getGroups: (options?: {
     where: any;
     attributes: string[];
@@ -218,7 +220,7 @@ export default function (
 
   // Returns the groups that are associated with this user (via
   // GroupUsers).
-  User.prototype.getGroupsIds = async function () {
+  User.prototype.getGroupsIds = async function (): Promise<GroupId[]> {
     const groups = await this.getGroups();
     return groups.map((g) => g.id);
   };
@@ -248,6 +250,35 @@ export default function (
     })) as Device[];
     if (devices !== null) {
       return devices.map((d) => d.id);
+    }
+    return [];
+  };
+
+  User.prototype.getStationIds = async function (): Promise<StationId[]> {
+    const stations = (await models.Station.findAll({
+      where: {},
+      include: [
+        {
+          model: models.Group,
+          required: true,
+          attributes: [],
+          include: [
+            {
+              model: models.User,
+              attributes: [],
+              through: {
+                attributes: [],
+              },
+              required: true,
+              where: { id: this.id },
+            },
+          ],
+        },
+      ],
+      attributes: ["id"],
+    })) as Station[];
+    if (stations !== null) {
+      return stations.map((d) => d.id);
     }
     return [];
   };

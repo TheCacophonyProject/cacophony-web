@@ -23,6 +23,7 @@ import { SuperUsers } from "@/Server";
 import { Station } from "@/models/Station";
 import { Schedule } from "@/models/Schedule";
 import { UserGlobalPermission } from "@typedefs/api/consts";
+import {urlNormaliseGroupName} from "@/emails/htmlEmailUtils";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -413,6 +414,7 @@ export const fetchModel =
   ) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
+
     let id;
     if (typeof primary === "number") {
       id = primary;
@@ -683,7 +685,7 @@ const getStation =
     } else if (stationIsId && groupNameOrId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
-        "$Group.groupname$": groupNameOrId,
+        "$Group.groupname$": {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]},
       };
     } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
@@ -696,8 +698,8 @@ const getStation =
       };
     } else {
       stationWhere = {
-        name: stationNameOrId,
-        "$Group.groupname$": groupNameOrId,
+        name: {[Op.in]: [stationNameOrId, urlNormaliseGroupName(stationNameOrId)]},
+        "$Group.groupname$": {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]},
       };
     }
     if (groupIsId) {
@@ -705,7 +707,7 @@ const getStation =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: groupNameOrId };
+      groupWhere = {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]};
     }
 
     let getStationOptions;
@@ -1080,7 +1082,7 @@ const getDevice =
     } else if (deviceIsId && groupNameOrId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
-        "$Group.groupname$": groupNameOrId,
+        "$Group.groupname$": {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]}
       };
     } else if (deviceIsId && !groupNameOrId) {
       deviceWhere = {
@@ -1088,13 +1090,13 @@ const getDevice =
       };
     } else if (groupIsId) {
       deviceWhere = {
-        devicename: deviceNameOrId,
+        devicename: {[Op.in]: [deviceNameOrId, urlNormaliseGroupName(deviceNameOrId)]},
         GroupId: parseInt(groupNameOrId),
       };
     } else {
       deviceWhere = {
-        devicename: deviceNameOrId,
-        "$Group.groupname$": groupNameOrId,
+        devicename: {[Op.in]: [deviceNameOrId, urlNormaliseGroupName(deviceNameOrId)]},
+        "$Group.groupname$": {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]}
       };
     }
     if (groupIsId) {
@@ -1102,7 +1104,7 @@ const getDevice =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: groupNameOrId };
+      groupWhere = { groupname: {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]} };
     }
 
     let getDeviceOptions;
@@ -1198,7 +1200,7 @@ const getGroup =
         id: parseInt(groupNameOrId),
       };
     } else {
-      groupWhere = { groupname: groupNameOrId };
+      groupWhere = { groupname: {[Op.in]: [ groupNameOrId, urlNormaliseGroupName(groupNameOrId) ]} };
     }
     let getGroupOptions;
     if (forRequestUser) {

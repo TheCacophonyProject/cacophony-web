@@ -289,7 +289,7 @@ export const sendAnimalAlertEmail = async (
     html,
     text,
     userEmailAddress,
-    `⚠️ ${targetSpecies} alert at '${stationName}'`,
+    `🎯 ${targetSpecies} alert at '${stationName}'`,
     [
       ...(await commonAttachments()),
       {
