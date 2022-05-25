@@ -9,8 +9,8 @@ export interface ApiTrackTagRequest {
 }
 
 export interface ApiTrackTagAttributes {
-  gender?: "male" | "female";
-  maturity?: "juvenile" | "adult";
+  gender?: "male" | "female" | null;
+  maturity?: "juvenile" | "adult" | null;
 }
 
 export interface TrackTagData extends ApiTrackTagAttributes {
@@ -26,7 +26,7 @@ export interface ApiTrackTagResponse {
   trackId: TrackId;
   confidence: number;
   automatic: boolean;
-  data?: TrackTagData | string;
+  data?: TrackTagData;
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;
   userId?: UserId;

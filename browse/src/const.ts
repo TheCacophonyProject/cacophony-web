@@ -92,6 +92,7 @@ new TrackLabel(things, "dog");
 new TrackLabel(things, "leporidae", "hare or rabbit (leporidae)", "rabbit");
 const wallaby = new TrackLabel(things, "wallaby");
 new TrackLabel(things, "pig");
+new TrackLabel(things, "sheep");
 new TrackLabel(things, "human");
 new TrackLabel(things, "insect", "spider or insect (on camera lens or flying)");
 new TrackLabel(things, "penguin");

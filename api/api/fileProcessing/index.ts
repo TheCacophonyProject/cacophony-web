@@ -204,6 +204,7 @@ export default function (app: Application) {
         recording.processingState =
           `${recording.processingState}.failed` as RecordingProcessingState;
         recording.jobKey = null;
+        recording.processing = false;
         recording.processingEndTime = new Date().toISOString(); // Still set processingEndTime, since we might want to know how long it took to fail.
         await recording.save();
         return response.status(200).json({

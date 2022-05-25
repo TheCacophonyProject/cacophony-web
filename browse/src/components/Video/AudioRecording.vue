@@ -37,7 +37,8 @@
         <b-col>
           <div class="mt-2 mb-2 d-flex align-items-center">
             <multiselect
-              v-model="customTag"
+              v-model="selectedLabel"
+              @input="() => addTagToSelectedTrack(selectedLabel)"
               :options="BirdLabels"
               :disabled="!selectedTrack"
               :value="selectedLabel"
@@ -45,7 +46,7 @@
             />
             <div class="button-selectors d-flex">
               <b-button
-                class="ml-2 tag-pin"
+                class="ml-2 tag-pin text-primary"
                 :disabled="!usersTag"
                 @click="togglePinTag(usersTag.what)"
               >
@@ -57,7 +58,7 @@
                 />
               </b-button>
               <b-button
-                class="ml-2 tag-cross"
+                class="ml-2 tag-cross text-danger"
                 :disabled="!usersTag"
                 @click="deleteTagFromSelectedTrack()"
               >
@@ -98,7 +99,7 @@
                     usersTag.data.gender === 'male',
                 }"
                 @click="
-                  addAttributeToTrackTag(
+                  toggleAttributeToTrackTag(
                     { gender: 'male' },
                     selectedTrack.id,
                     usersTag.id
@@ -115,7 +116,7 @@
                     usersTag.data.gender === 'female',
                 }"
                 @click="
-                  addAttributeToTrackTag(
+                  toggleAttributeToTrackTag(
                     { gender: 'female' },
                     selectedTrack.id,
                     usersTag.id
@@ -134,7 +135,7 @@
                     usersTag.data.maturity === 'adult',
                 }"
                 @click="
-                  addAttributeToTrackTag(
+                  toggleAttributeToTrackTag(
                     { maturity: 'adult' },
                     selectedTrack.id,
                     usersTag.id
@@ -151,7 +152,7 @@
                     usersTag.data.maturity === 'juvenile',
                 }"
                 @click="
-                  addAttributeToTrackTag(
+                  toggleAttributeToTrackTag(
                     { maturity: 'juvenile' },
                     selectedTrack.id,
                     usersTag.id
@@ -178,6 +179,14 @@
         :cacophony-index="cacophonyIndex"
         :id="recording.id"
       />
+      <div v-if="recording.location" class="mt-2">
+        <MapWithPoints
+          :height="200"
+          :points="[
+            { name: recording.deviceName, location: recording.location },
+          ]"
+        />
+      </div>
       <RecordingProperties :recording="recording" />
     </b-col>
   </b-row>
@@ -186,7 +195,7 @@
 <script lang="ts">
 import { PropType } from "vue";
 import { produce } from "immer";
-import { defineComponent, ref, watch } from "@vue/composition-api";
+import { defineComponent, watch, computed } from "@vue/composition-api";
 import Multiselect from "vue-multiselect";
 
 import api from "@api";
@@ -200,6 +209,7 @@ import Playlist from "../Audio/Playlist.vue";
 import LabelButtonGroup from "../Audio/LabelButtonGroup.vue";
 import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
 import RecordingProperties from "../Video/RecordingProperties.vue";
+import MapWithPoints from "@/components/MapWithPoints.vue";
 
 import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
 import { ApiTrackTagAttributes } from "@typedefs/api/trackTag";
@@ -247,6 +257,7 @@ export default defineComponent({
     },
   },
   components: {
+    MapWithPoints,
     AudioPlayer,
     Playlist,
     TrackList,
@@ -259,13 +270,17 @@ export default defineComponent({
     const userName = store.state.User.userData.userName;
     const userId = store.state.User.userData.id;
     const [url, setUrl] = useState(
+      //props.audioRawUrl ? props.audioRawUrl : props.audioUrl
       props.audioUrl ? props.audioUrl : props.audioRawUrl
     );
     const [deleted, setDeleted] = useState(false);
     watch(
       () => [props.audioUrl, props.audioRawUrl],
       () => {
-        setUrl(props.audioUrl ? props.audioUrl : props.audioRawUrl);
+        setUrl(
+          //props.audioRawUrl ? props.audioRawUrl : props.audioUrl
+          props.audioUrl ? props.audioUrl : props.audioRawUrl
+        );
         setDeleted(false);
       }
     );
@@ -373,8 +388,9 @@ export default defineComponent({
 
     const playTrack = (track?: AudioTrack) => {
       if (track) {
+        const currTrack = tracks.value.get(track.id);
         setSelectedTrack(() => ({
-          ...track,
+          ...(currTrack ?? track),
           playEventId: UUIDv4(),
         }));
       } else {
@@ -419,12 +435,13 @@ export default defineComponent({
               produce(track, () => newTrack)
             );
           });
+          //if track is selected, update selected track
           return newTrack;
         } else {
           throw response.result;
         }
       } catch (error) {
-        console.error(error);
+        // console.error(error);
       }
     };
 
@@ -450,26 +467,10 @@ export default defineComponent({
       what: string,
       automatic = false,
       confidence = 1,
-      data: any = null,
+      data: any = {},
       username = userName
     ): Promise<AudioTrack> => {
       const track = tracks.value.get(trackId);
-      if (track) {
-        modifyTrack(trackId, {
-          confirming: true,
-        });
-        if (tag) {
-          const capitalizedTag =
-            tag.what.charAt(0).toUpperCase() + tag.what.slice(1);
-          setSelectedLabel(capitalizedTag);
-          customTag.value = capitalizedTag;
-        } else {
-          setSelectedLabel("");
-        }
-      } else {
-        setSelectedLabel("");
-        customTag.value = "";
-      }
       const tag: ApiTrackTagRequest = {
         what: what.toLowerCase(),
         automatic,
@@ -494,7 +495,6 @@ export default defineComponent({
         };
         const currTags = track.tags.filter((tag) => tag.userId !== userId);
         const newTags = [...currTags, newTag];
-        setUsersTag(newTag);
         const taggedTrack = modifyTrack(trackId, {
           confirming: false,
           tags: newTags,
@@ -504,7 +504,9 @@ export default defineComponent({
           displayTags,
           confirming: false,
         });
-
+        if (selectedTrack.value && selectedTrack.value.id === trackId) {
+          setSelectedTrack(() => currTrack);
+        }
         return currTrack;
       } else {
         return modifyTrack(trackId, {
@@ -513,14 +515,31 @@ export default defineComponent({
       }
     };
 
-    const addAttributeToTrackTag = async (
-      attr: Partial<ApiTrackTagAttributes>,
+    const toggleAttributeToTrackTag = async (
+      newAttr: Partial<ApiTrackTagAttributes>,
       trackId: TrackId,
       tagId: number
     ) => {
       try {
+        const tag = tracks.value.get(trackId).tags.find((tag) => {
+          if (tag.id === tagId) {
+            return true;
+          }
+          return false;
+        });
+        if (!tag) {
+          return;
+        }
+        const newAttrKeys = Object.keys(newAttr);
+        const newAttrs = newAttrKeys.reduce((acc, key) => {
+          if (tag.data[key] === newAttr[key]) {
+            acc[key] = null;
+          }
+          return acc;
+        }, newAttr);
+
         const response = await api.recording.updateTrackTag(
-          attr,
+          newAttrs,
           props.recording.id,
           trackId,
           tagId
@@ -531,7 +550,7 @@ export default defineComponent({
               if (tag.id === tagId) {
                 tag.data = {
                   ...tag.data,
-                  ...attr,
+                  ...newAttrs,
                 };
               }
             });
@@ -539,10 +558,9 @@ export default defineComponent({
           const newTag = tracks.value
             .get(trackId)
             .tags.find((tag) => tag.id === tagId);
-          setUsersTag(newTag);
         }
       } catch (error) {
-        console.error(error);
+        // console.error(error);
       }
     };
 
@@ -638,7 +656,7 @@ export default defineComponent({
           throw response.result;
         }
       } catch (error) {
-        console.error(error);
+        // console.error(error);
       }
     };
 
@@ -656,7 +674,7 @@ export default defineComponent({
           throw response.result;
         }
       } catch (error) {
-        console.error(error);
+        // console.error(error);
       }
     };
 
@@ -670,8 +688,16 @@ export default defineComponent({
         setTracks(mappedTracks(props.recording.tracks));
         setSelectedTrack(null);
         setCacophonyIndex(props.recording.cacophonyIndex);
+      },
+      {
+        deep: true,
       }
     );
+    watch(tracks, () => {
+      if (selectedTrack.value) {
+        setSelectedTrack(tracks.value.get(selectedTrack.value.id));
+      }
+    });
 
     const createButtonLabels = () => {
       const maxBirdButtons = 6;
@@ -723,39 +749,32 @@ export default defineComponent({
     };
     const [buttonLabels, setButtonLabels] = useState(createButtonLabels());
     const [selectedLabel, setSelectedLabel] = useState<string>("");
-    const [usersTag, setUsersTag] = useState<ApiTrackTagResponse>(null);
-    const customTag = ref<string>(selectedLabel.value);
-    watch(
-      selectedTrack,
-      () => {
-        if (selectedTrack.value) {
-          const tag = selectedTrack.value.tags.find((tag) => {
-            if (tag.userId === userId) {
-              return true;
-            }
-            return false;
-          });
-          if (tag) {
-            const capitalizedTag =
-              tag.what.charAt(0).toUpperCase() + tag.what.slice(1);
-            setSelectedLabel(capitalizedTag);
-            customTag.value = capitalizedTag;
-            setUsersTag(tag);
-          } else {
-            setSelectedLabel("");
-            setUsersTag(null);
-            customTag.value = "";
+    const usersTag = computed(() => {
+      if (selectedTrack.value) {
+        return selectedTrack.value.tags.find((tag) => tag.userId === userId);
+      } else {
+        return null;
+      }
+    });
+    watch(selectedTrack, () => {
+      if (selectedTrack.value) {
+        const tag = selectedTrack.value.tags.find((tag) => {
+          if (tag.userId === userId) {
+            return true;
           }
+          return false;
+        });
+        if (tag) {
+          const capitalizedTag =
+            tag.what.charAt(0).toUpperCase() + tag.what.slice(1);
+          setSelectedLabel(capitalizedTag);
         } else {
           setSelectedLabel("");
-          setUsersTag(null);
-          customTag.value = "";
         }
-      },
-      {
-        deep: true,
+      } else {
+        setSelectedLabel("");
       }
-    );
+    });
 
     const storeCommonBird = (bird: string, togglePin = false, freq = 1) => {
       const commonBirds = JSON.parse(localStorage.getItem("commonBirds")) ?? {};
@@ -774,13 +793,14 @@ export default defineComponent({
       setButtonLabels(createButtonLabels());
     };
 
-    watch(customTag, (value) => {
+    watch(selectedLabel, (value) => {
       if (value && value !== selectedLabel.value) {
         addTagToSelectedTrack(value);
         storeCommonBird(value);
         setButtonLabels(createButtonLabels());
       }
     });
+
     return {
       url,
       tracks,
@@ -792,13 +812,12 @@ export default defineComponent({
       usersTag,
       togglePinTag,
       playTrack,
-      customTag,
       cacophonyIndex,
       labels: buttonLabels,
       BirdLabels: BirdLabels.sort(),
       addTagToSelectedTrack,
       addTagToTrack,
-      addAttributeToTrackTag,
+      toggleAttributeToTrackTag,
       addTrack,
       deleteTrack,
       deleteTrackTag,

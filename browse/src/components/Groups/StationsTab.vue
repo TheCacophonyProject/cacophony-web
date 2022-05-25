@@ -34,30 +34,7 @@
             })
           "
         />
-        <b-table
-          :items="stations"
-          :fields="[
-            {
-              key: 'name',
-              label: 'Name',
-              sortable: true,
-            },
-            {
-              key: 'latitude',
-              label: 'Latitude',
-            },
-            {
-              key: 'longitude',
-              label: 'Longitude',
-            },
-            {
-              key: 'id',
-              label: 'Rename',
-            },
-          ]"
-          striped
-          hover
-        >
+        <b-table :items="stations" :fields="stationsTableFields" striped hover>
           <template #cell(name)="data">
             <StationLink
               :group-name="groupName"
@@ -77,7 +54,7 @@
         </b-table>
         <div class="bottom-buttons">
           <b-btn
-            v-if="!enableEditingStations && isGroupAdmin"
+            v-if="false && !enableEditingStations && isGroupAdmin"
             @click="enableEditingStations = true"
           >
             Edit stations
@@ -88,7 +65,9 @@
         You currently have no stations associated with this group.
       </p>
       <div
-        v-if="isGroupAdmin && canEditStations && !pendingStations.length"
+        v-if="
+          false && isGroupAdmin && canEditStations && !pendingStations.length
+        "
         class="upload-region"
         :class="{ 'dragging-over': draggingCsvOver }"
         @drop.prevent="(e) => droppedStationsCsvFile(e)"
@@ -230,8 +209,31 @@ export default {
     };
   },
   computed: {
+    stationsTableFields() {
+      const fields = [
+        {
+          key: "name",
+          label: "Name",
+          sortable: true,
+        },
+        {
+          key: "latitude",
+          label: "Latitude",
+        },
+        {
+          key: "longitude",
+          label: "Longitude",
+        },
+      ];
+      if (this.isGroupAdmin) {
+        fields.push({
+          key: "id",
+          label: "Rename",
+        });
+      }
+      return fields;
+    },
     stations() {
-      debugger;
       return this.items
         .map(({ name, location, id }) => ({
           id,
@@ -350,6 +352,7 @@ export default {
         this.stationToRename.id,
         this.newStationName
       );
+      this.$emit("change");
       this.renaming = false;
       this.newStationName = "";
       this.stationToRename = null;

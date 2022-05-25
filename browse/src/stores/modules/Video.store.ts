@@ -7,6 +7,7 @@ const state = {
   fileSize: null,
   rawSize: null,
   recording: null,
+  pinnedLabels: JSON.parse(localStorage.getItem("pinnedLabels")) ?? [],
   tracks: [],
 };
 
@@ -41,6 +42,14 @@ const getters = {
 
 // mutations https://vuex.vuejs.org/guide/mutations.html
 const mutations = {
+  pinnedLabels(state, label) {
+    const pinnedLabels: string[] =
+      JSON.parse(localStorage.getItem("pinnedLabels")) ?? [];
+    state.pinnedLabels = pinnedLabels.includes(label)
+      ? pinnedLabels.filter((tag) => tag && tag !== label)
+      : [...pinnedLabels, label];
+    localStorage.setItem("pinnedLabels", JSON.stringify(state.pinnedLabels));
+  },
   receiveRecording(
     state,
     { recording, downloadFileJWT, downloadRawJWT, fileSize, rawSize }
