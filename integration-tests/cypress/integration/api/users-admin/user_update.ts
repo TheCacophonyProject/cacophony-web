@@ -106,13 +106,13 @@ describe("User: update", () => {
       cy.apiUserUpdate(
         "uupUser4b",
         { userName: "uupUser4a" },
-        HTTP_BadRequest,
+        HTTP_Unprocessable,
         { message: "Username in use" }
       );
       cy.apiUserUpdate(
         "uupUser4b",
         { userName: "UUPUSER4A" },
-        HTTP_BadRequest,
+        HTTP_Unprocessable,
         { message: "Username in use" }
       );
     });
@@ -125,13 +125,13 @@ describe("User: update", () => {
       cy.apiUserUpdate(
         "uupUser5b",
         { email: getTestName("uupUser5a") + "@api.created.com" },
-        HTTP_BadRequest,
+        HTTP_Unprocessable,
         { message: "Email address in use" }
       );
       cy.apiUserUpdate(
         "uupUser5b",
         { email: getTestName("UUPUSER5A") + "@api.created.com" },
-        HTTP_BadRequest,
+        HTTP_Unprocessable,
         { message: "Email address in use" }
       );
     });

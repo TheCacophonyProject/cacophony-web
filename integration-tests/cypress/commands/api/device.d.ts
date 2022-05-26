@@ -8,6 +8,7 @@ declare namespace Cypress {
     import("@typedefs/api/group").ApiGroupUserResponse;
   type DeviceType = import("@typedefs/api/consts").DeviceType;
   type DeviceHistoryEntry = import("@commands/types").DeviceHistoryEntry;
+  type DeviceId = import("@typedefs/api/common").DeviceId;
 
   interface Chainable {
     /**
@@ -22,7 +23,7 @@ declare namespace Cypress {
       generateUniqueName?: boolean,
       log?: boolean,
       statusCode?: number
-    ): any;
+    ): Cypress.Chainable<DeviceId>;
 
     /**
      * Upate a device's station (deviceHistory) at a given time

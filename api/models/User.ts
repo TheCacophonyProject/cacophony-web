@@ -26,15 +26,17 @@ import { ModelCommon, ModelStaticCommon } from "./index";
 import { Group } from "./Group";
 import {
   DeviceId,
-  EndUserAgreementVersion, GroupId, StationId,
+  EndUserAgreementVersion,
+  GroupId,
+  StationId,
   UserId,
 } from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { sendResetEmail } from "@/scripts/emailUtil";
 import { Device } from "@models/Device";
 import { ApiUserSettings } from "@typedefs/api/user";
-import jwt from "jsonwebtoken";
 import { Station } from "./Station";
+import logger from "@/logging";
 
 const Op = Sequelize.Op;
 
@@ -255,32 +257,37 @@ export default function (
   };
 
   User.prototype.getStationIds = async function (): Promise<StationId[]> {
-    const stations = (await models.Station.findAll({
-      where: {},
-      include: [
-        {
-          model: models.Group,
-          required: true,
-          attributes: [],
-          include: [
-            {
-              model: models.User,
-              attributes: [],
-              through: {
+    try {
+      const stations = (await models.Station.findAll({
+        where: {},
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            attributes: [],
+            include: [
+              {
+                model: models.User,
                 attributes: [],
+                through: {
+                  attributes: [],
+                },
+                required: true,
+                where: { id: this.id },
               },
-              required: true,
-              where: { id: this.id },
-            },
-          ],
-        },
-      ],
-      attributes: ["id"],
-    })) as Station[];
-    if (stations !== null) {
-      return stations.map((d) => d.id);
+            ],
+          },
+        ],
+        attributes: ["id"],
+      })) as Station[];
+      if (stations !== null) {
+        return stations.map((d) => d.id);
+      }
+      return [];
+    } catch (e) {
+      logger.error("%s", e);
+      logger.error("%s", e.sql);
     }
-    return [];
   };
 
   User.prototype.comparePassword = function (

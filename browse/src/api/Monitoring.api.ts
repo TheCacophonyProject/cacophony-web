@@ -126,7 +126,7 @@ function makeApiQuery(query: MonitoringRequest) {
   addValueIfSet(apiParams, query.to, "until");
   addValueIfSet(apiParams, query.aiModel, "ai");
   addArrayValueIfSet(apiParams, query.group, "groups");
-  addArrayValueIfSet(apiParams, query.device, "devices");
+  addArrayValueIfSet(apiParams, query.station, "stations");
   apiParams["page-size"] = query.perPage || 10;
   apiParams.page = query.page || 1;
 

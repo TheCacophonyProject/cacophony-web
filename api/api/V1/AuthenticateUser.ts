@@ -395,8 +395,13 @@ export default function (app: Application, baseUrl: string) {
   );
 
   const resetPasswordOptions = [
-    validateFields([body("email").isEmail()]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body("email")),
+    validateFields([
+      oneOf([
+        validNameOf(body("userName")), // TODO - Remove userName from this once browse-next is live
+        body("email").isEmail(),
+      ]),
+    ]),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body(["email", "userName"])),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
         const user = response.locals.user as User;
@@ -405,6 +410,8 @@ export default function (app: Application, baseUrl: string) {
         if (isNewEndpoint && !user.emailConfirmed) {
           // Do nothing
         } else {
+          // FIXME - use correct resetPassword emailer
+
           const sendingSuccess = await user.resetPassword();
           if (!sendingSuccess) {
             return responseUtil.send(response, {

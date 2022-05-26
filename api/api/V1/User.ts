@@ -243,7 +243,7 @@ export default function (app: Application, baseUrl: string) {
       ) {
         return next(
           new ValidationError([
-            { msg: "Email address in use", location: "body", param: "email" },
+            { msg: "Username in use", location: "body", param: "userName" },
           ])
         );
       } else {

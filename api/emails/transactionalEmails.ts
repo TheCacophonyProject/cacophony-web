@@ -1,7 +1,7 @@
 import {
   createEmailWithTemplate,
   StoppedDevice,
-  urlNormaliseGroupName,
+  urlNormaliseName,
 } from "@/emails/htmlEmailUtils";
 import { EmailImageAttachment } from "@/scripts/emailUtil";
 import fs from "fs/promises";
@@ -87,7 +87,7 @@ export const sendGroupInviteExistingMemberEmail = async (
   const common = commonInterpolants();
   const existingAccountJoinGroupUrl = `${
     common.cacophonyBrowseUrl
-  }/${urlNormaliseGroupName(
+  }/${urlNormaliseName(
     requestGroupName
   )}/accept-invite/${existingAccountJoinGroupToken.replace(
     /\./g,
@@ -123,7 +123,7 @@ export const sendGroupInviteNewMemberEmail = async (
   }/register/accept-invite/${newMemberJoinGroupToken.replace(/\./g, ":")}`;
   const existingAccountJoinGroupUrl = `${
     common.cacophonyBrowseUrl
-  }/${urlNormaliseGroupName(
+  }/${urlNormaliseName(
     requestGroupName
   )}/accept-invite/${newMemberJoinGroupToken.replace(
     /\./g,
@@ -233,9 +233,9 @@ export const sendStoppedDevicesReportEmail = async (
 ) => {
   const common = commonInterpolants();
   // TODO User group settings
-  const emailSettingsUrl = `${
-    common.cacophonyBrowseUrl
-  }/${urlNormaliseGroupName(groupName)}/my-settings`;
+  const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName
+  )}/my-settings`;
   const { text, html } = await createEmailWithTemplate(
     "stopped-devices-report.html",
     { emailSettingsUrl, groupName, stoppedDevices, ...commonInterpolants() }
@@ -260,18 +260,18 @@ export const sendAnimalAlertEmail = async (
   recipientTimeZoneOffset: number
 ) => {
   const common = commonInterpolants();
-  const emailSettingsUrl = `${
-    common.cacophonyBrowseUrl
-  }/${urlNormaliseGroupName(groupName)}/my-settings`;
+  const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName
+  )}/my-settings`;
   const targetSpecies =
     classification.charAt(0).toUpperCase() + classification.slice(1);
   const cacophonyBrowseUrl = config.server.browse_url;
-  const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(
+  const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
     groupName
-  )}/station/${urlNormaliseGroupName(stationName)}`;
-  const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(
+  )}/station/${urlNormaliseName(stationName)}`;
+  const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
     groupName
-  )}/station/${urlNormaliseGroupName(
+  )}/station/${urlNormaliseName(
     stationName
   )}/recording/${recordingId}/track/${trackId}`;
 

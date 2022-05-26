@@ -5,13 +5,13 @@
         All visits
         <help>
           All visits ever recorded for this
-          {{ `${deviceName ? "device" : stationName ? "station" : "group"}` }}
+          {{ `${stationName ? "station" : "group"}` }}
         </help>
       </span>
       <ExportVisits
         v-if="visits.length !== 0"
         :groups="visitsQuery.group"
-        :devices="visitsQuery.device"
+        :stations="visitsQuery.station"
       />
     </h2>
     <VisitsList
@@ -24,7 +24,7 @@
     />
     <div v-if="!loading && visits.length === 0">
       No visits found for this
-      {{ `${deviceName ? "device" : stationName ? "station" : "group"}` }}
+      {{ `${stationName ? "station" : "group"}` }}
     </div>
   </div>
 </template>
@@ -227,7 +227,7 @@ export default {
   },
   props: {
     groupName: { type: String, required: true },
-    deviceName: { type: String, required: false, default: null },
+    // deviceName: { type: String, required: false, default: null },
     stationName: { type: String, required: false, default: null },
     visitsQuery: { type: Object, required: true },
   },

@@ -7,6 +7,7 @@ import moment from "moment";
 import { User } from "@models/User";
 import { getEmailConfirmationToken, getResetToken } from "@api/auth";
 import { sendEmail } from "@/emails/sendEmail";
+import logger from "@/logging";
 
 export interface EmailImageAttachment {
   buffer: Buffer;

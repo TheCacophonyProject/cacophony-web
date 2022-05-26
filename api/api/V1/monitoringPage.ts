@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { User } from "@models/User";
 import { QueryTypes } from "sequelize";
 import models from "@models";
-import {GroupId, StationId} from "@typedefs/api/common";
+import { GroupId, StationId } from "@typedefs/api/common";
 
 export interface MonitoringParams {
   groups: GroupId[];
@@ -42,7 +42,7 @@ export interface MonitoringPageCriteria {
   searchUntil?: Date;
 }
 
-const GROUPS_AND_DEVICES = "GROUPS_AND_DEVICES";
+const GROUPS_AND_STATIONS = "GROUPS_AND_STATIONS";
 const USER_PERMISSIONS = "USER_PERMISSIONS";
 const DATE_SELECTION = "DATE_SELECTION";
 const PAGING = "PAGING";
@@ -57,7 +57,7 @@ const LAST_TIMES_TABLE = `with lasttimes as
        and "deletedAt" is null 
        and type = 'thermalRaw' 
        and duration > 0
-       {${GROUPS_AND_DEVICES}}
+       {${GROUPS_AND_STATIONS}}
        {${USER_PERMISSIONS}}
        {${DATE_SELECTION}}
 )`;
@@ -98,7 +98,6 @@ async function getDatesForSearch(
     DATE_SELECTION: makeDatesCriteria(params),
     PAGING: null,
   };
-
   const countRet = await models.sequelize.query(
     replaceInSQL(VISITS_COUNT_SQL, replacements),
     { type: QueryTypes.SELECT }

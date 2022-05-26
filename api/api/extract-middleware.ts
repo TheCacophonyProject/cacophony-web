@@ -23,7 +23,7 @@ import { SuperUsers } from "@/Server";
 import { Station } from "@/models/Station";
 import { Schedule } from "@/models/Schedule";
 import { UserGlobalPermission } from "@typedefs/api/consts";
-import {urlNormaliseGroupName} from "@/emails/htmlEmailUtils";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -442,6 +442,7 @@ export const fetchModel =
     try {
       model = await modelGetter(id, id2, response.locals);
     } catch (e) {
+      logger.error("%s", e.sql);
       return next(e);
     }
     if (model instanceof ClientError) {
@@ -585,7 +586,7 @@ const getDevices =
       (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
       (getDeviceOptions as any).where.active = true;
     }
-    //console.dir(getDeviceOptions, {depth: 5});
+    getDeviceOptions.subQuery = false;
     return models.Device.findAll({
       ...getDeviceOptions,
       order: ["devicename"],
@@ -651,10 +652,10 @@ const getStations =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
     }
-
     return models.Station.findAll({
       ...getStationsOptions,
       order: ["name"],
+      subQuery: false,
     });
   };
 
@@ -677,6 +678,19 @@ const getStation =
     let stationWhere;
     let groupWhere = {};
 
+    let groupNameMatch: any = groupNameOrId;
+    if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+      groupNameMatch = {
+        [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+      };
+    }
+    let stationNameMatch: any = stationNameOrId;
+    if (!stationIsId && stationNameOrId !== urlNormaliseName(stationNameOrId)) {
+      stationNameMatch = {
+        [Op.in]: [stationNameOrId, urlNormaliseName(stationNameOrId)],
+      };
+    }
+
     if (groupIsId && stationIsId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
@@ -685,7 +699,7 @@ const getStation =
     } else if (stationIsId && groupNameOrId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
-        "$Group.groupname$": {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]},
+        "$Group.groupname$": groupNameMatch,
       };
     } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
@@ -698,8 +712,8 @@ const getStation =
       };
     } else {
       stationWhere = {
-        name: {[Op.in]: [stationNameOrId, urlNormaliseGroupName(stationNameOrId)]},
-        "$Group.groupname$": {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]},
+        name: stationNameMatch,
+        "$Group.groupname$": groupNameMatch,
       };
     }
     if (groupIsId) {
@@ -707,7 +721,7 @@ const getStation =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]};
+      groupWhere = { groupname: groupNameMatch };
     }
 
     let getStationOptions;
@@ -756,7 +770,7 @@ const getStation =
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
-
+    getStationOptions.subQuery = false;
     return models.Station.findOne(getStationOptions);
   };
 
@@ -845,7 +859,11 @@ const getGroups =
         // ],
       };
     }
-    return models.Group.findAll({ ...getGroupOptions, order: ["groupname"] });
+    return models.Group.findAll({
+      ...getGroupOptions,
+      order: ["groupname"],
+      subQuery: false,
+    });
   };
 
 const getRecordingRelationships = (recordingQuery: any): any => {
@@ -1074,6 +1092,20 @@ const getDevice =
 
     let deviceWhere;
     let groupWhere = {};
+
+    let groupNameMatch: any = groupNameOrId;
+    if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+      groupNameMatch = {
+        [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+      };
+    }
+    let deviceNameMatch: any = deviceNameOrId;
+    if (!deviceIsId && deviceNameOrId !== urlNormaliseName(deviceNameOrId)) {
+      deviceNameMatch = {
+        [Op.in]: [deviceNameOrId, urlNormaliseName(deviceNameOrId)],
+      };
+    }
+
     if (deviceIsId && groupIsId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
@@ -1082,7 +1114,7 @@ const getDevice =
     } else if (deviceIsId && groupNameOrId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
-        "$Group.groupname$": {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]}
+        "$Group.groupname$": groupNameMatch,
       };
     } else if (deviceIsId && !groupNameOrId) {
       deviceWhere = {
@@ -1090,13 +1122,13 @@ const getDevice =
       };
     } else if (groupIsId) {
       deviceWhere = {
-        devicename: {[Op.in]: [deviceNameOrId, urlNormaliseGroupName(deviceNameOrId)]},
+        devicename: deviceNameMatch,
         GroupId: parseInt(groupNameOrId),
       };
     } else {
       deviceWhere = {
-        devicename: {[Op.in]: [deviceNameOrId, urlNormaliseGroupName(deviceNameOrId)]},
-        "$Group.groupname$": {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]}
+        devicename: deviceNameMatch,
+        "$Group.groupname$": groupNameMatch,
       };
     }
     if (groupIsId) {
@@ -1104,7 +1136,7 @@ const getDevice =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: {[Op.in]: [groupNameOrId, urlNormaliseGroupName(groupNameOrId)]} };
+      groupWhere = { groupname: groupNameMatch };
     }
 
     let getDeviceOptions;
@@ -1153,7 +1185,7 @@ const getDevice =
       (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
       (getDeviceOptions as any).where.active = true;
     }
-    //console.dir(getDeviceOptions, {depth: 5});
+    getDeviceOptions.subQuery = false;
     return models.Device.findOne(getDeviceOptions);
   };
 
@@ -1200,7 +1232,13 @@ const getGroup =
         id: parseInt(groupNameOrId),
       };
     } else {
-      groupWhere = { groupname: {[Op.in]: [ groupNameOrId, urlNormaliseGroupName(groupNameOrId) ]} };
+      let groupNameMatch: any = groupNameOrId;
+      if (groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+        groupNameMatch = {
+          [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+        };
+      }
+      groupWhere = { groupname: groupNameMatch };
     }
     let getGroupOptions;
     if (forRequestUser) {
@@ -1218,6 +1256,7 @@ const getGroup =
         where: groupWhere,
       };
     }
+    getGroupOptions.subQuery = false;
     return models.Group.findOne(getGroupOptions);
   };
 

@@ -42,7 +42,7 @@ const depthFirstTraversal = (emailRootElement) => {
   return rawText;
 };
 
-export const urlNormaliseGroupName = (name: string): string => {
+export const urlNormaliseName = (name: string): string => {
   return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();
 };
 

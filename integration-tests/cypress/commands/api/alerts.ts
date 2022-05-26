@@ -183,17 +183,23 @@ export function getExpectedAlert(name: string): ApiAlert {
   return Cypress.env("testCreds")[name];
 }
 
-export function runReportStoppedDevicesScript() {
+export function runReportStoppedDevicesScript(callback) {
   if (Cypress.env("running_in_a_dev_environment") == true) {
+    cy.log("runReportStoppedDevicesScript");
     testRunOnApi(
-      '"cp /app/api/config/app_test_default.js /app/api/config/app.js"'
-    );
-    testRunOnApi(
-      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"'
+      '"cp /app/api/config/app_test_default.js /app/api/config/app.js"',
+      null,
+      testRunOnApi(
+        '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"',
+        null,
+        callback
+      )
     );
   } else {
     testRunOnApi(
-      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"'
+      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"',
+      null,
+      callback
     );
   }
 }

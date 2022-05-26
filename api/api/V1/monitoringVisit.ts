@@ -3,12 +3,12 @@ import models from "@models";
 import { Recording } from "@models/Recording";
 import { getCanonicalTrackTag, UNIDENTIFIED_TAGS } from "./Visits";
 import { ClientError } from "../customErrors";
-import {StationId, UserId } from "@typedefs/api/common";
+import { StationId, UserId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@api/V1/monitoringPage";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
 import { Device } from "@/models/Device";
-import {Station} from "@models/Station";
+import { Station } from "@models/Station";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -32,7 +32,11 @@ class Visit {
   stationName: string;
   tracks: number;
 
-  constructor(stationId: StationId, stationName: Station, recording: Recording) {
+  constructor(
+    stationId: StationId,
+    stationName: Station,
+    recording: Recording
+  ) {
     this.recordings = [];
     this.rawRecordings = [];
     this.tracks = 0;
@@ -305,11 +309,7 @@ function groupRecordingsIntoVisits(
     if (!matchingVisit || !matchingVisit.addRecordingIfWithinTimeLimits(rec)) {
       if (end.isSameOrAfter(rec.recordingDateTime)) {
         // start a new visit
-        const newVisit = new Visit(
-          stationId,
-          recording.Station,
-          rec
-        );
+        const newVisit = new Visit(stationId, recording.Station, rec);
         // we want to keep adding recordings to this visit even if first recording is
         // before the search period
         currentVisitForStation[rec.StationId] = newVisit;

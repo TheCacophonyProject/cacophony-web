@@ -29,6 +29,7 @@ import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import models from "@models";
 import { ClientError } from "@api/customErrors";
+import logger from "@/logging";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -202,6 +203,7 @@ export default function (app: Application, baseUrl: string) {
         params.until = request.query.until as unknown as Date;
       }
       const viewAsSuperAdmin = response.locals.viewAsSuperUser;
+
       const searchDetails = await calculateMonitoringPageCriteria(
         requestUser,
         params,

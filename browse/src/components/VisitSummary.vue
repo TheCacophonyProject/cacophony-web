@@ -96,17 +96,10 @@
           <font-awesome-icon :icon="['far', 'clock']" size="xs" />
           {{ visitLength }}
         </span>
-        <DeviceLink
-          v-if="isAtGroupLevel"
-          :group-name="item.groupName"
-          type="thermalRaw"
-          :device-name="item.item.device"
-          context="visits"
-        />
         <StationLink
-          v-if="isAtGroupLevel && item.item.station"
+          v-if="isAtGroupLevel && item.item.stationName"
           :group-name="item.groupName"
-          :station-name="item.item.station"
+          :station-name="item.item.stationName"
           :station-id="item.item.stationId"
           context="visits"
         />
@@ -158,7 +151,7 @@ const timeFormat = (fromDate: Date): string => {
 
 export default {
   name: "VisitSummary",
-  components: { StationLink, DeviceLink },
+  components: { StationLink },
   props: {
     item: {
       type: Object,

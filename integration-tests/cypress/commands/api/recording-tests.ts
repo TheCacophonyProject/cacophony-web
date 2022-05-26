@@ -33,7 +33,7 @@ import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
-import { RecordingId } from "@typedefs/api/common";
+import { LatLng, RecordingId } from "@typedefs/api/common";
 
 const BASE_URL = Cypress.env("base-url-returned-in-links");
 
@@ -148,15 +148,19 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "testAddRecordingsAtTimes",
-  (deviceName: string, times: string[]) => {
+  (deviceName: string, times: string[], latLng: LatLng) => {
     logTestDescription(
       `Upload recordings   at ${prettyLog(times)}  to '${deviceName}'`,
       { camera: deviceName, times }
     );
 
+    const ids = [];
     times.forEach((time) => {
-      cy.testUploadRecording(deviceName, { time });
+      cy.testUploadRecording(deviceName, { time, ...latLng }).then((id) =>
+        ids.push(id)
+      );
     });
+    cy.wrap(ids);
   }
 );
 

@@ -80,11 +80,11 @@ export default {
       type: Array,
       required: false,
     },
-    devices: {
+    stations: {
       type: Array,
       required: false,
     },
-    deviceId: {
+    stationId: {
       type: Number,
       required: false,
     },
@@ -112,11 +112,11 @@ export default {
       }
       return [];
     },
-    deviceIds(): number[] {
-      if (this.devices && this.devices.length !== 0) {
-        return this.devices;
-      } else if (this.deviceId) {
-        return [this.deviceId];
+    stationIds(): number[] {
+      if (this.stations && this.stations.length !== 0) {
+        return this.stations;
+      } else if (this.stationId) {
+        return [this.stationId];
       }
       return [];
     },
@@ -141,7 +141,7 @@ export default {
       if (this.groupIds && this.groupIds.length !== 0) {
         visitQuery.group = this.groupIds;
       } else {
-        visitQuery.device = this.deviceIds;
+        visitQuery.station = this.stationIds;
       }
 
       const results = await api.monitoring.getAllVisits(

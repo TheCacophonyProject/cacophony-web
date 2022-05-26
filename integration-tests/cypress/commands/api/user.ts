@@ -16,6 +16,7 @@ import {
 import { logTestDescription, prettyLog } from "../descriptions";
 import { LATEST_END_USER_AGREEMENT } from "../constants";
 import { ApiLoggedInUserResponse, ApiUserResponse } from "@typedefs/api/user";
+import { GroupId, UserId } from "@typedefs/api/common";
 
 Cypress.Commands.add(
   "apiUserAdd",
@@ -66,6 +67,7 @@ Cypress.Commands.add(
         if (statusCode == 200) {
           const id = response.body.userData.id;
           saveCreds(response, userName, id);
+          cy.wrap(id);
         }
       });
     }
@@ -353,8 +355,11 @@ Cypress.Commands.add("testCreateUserAndGroup", (userName, group) => {
     user: userName,
     group: group,
   });
-  cy.apiUserAdd(userName);
-  cy.apiGroupAdd(userName, group, false);
+  cy.apiUserAdd(userName).then((userId: UserId) => {
+    cy.apiGroupAdd(userName, group, false).then((groupId: GroupId) => {
+      cy.wrap({ userId, groupId });
+    });
+  });
 });
 
 Cypress.Commands.add(
@@ -368,9 +373,14 @@ Cypress.Commands.add(
         cameras,
       }
     );
-    cy.apiGroupAdd(userName, group, false);
-    cameras.forEach((camera) => {
-      cy.apiDeviceAdd(camera, group);
+    const deviceIds = [];
+    cy.apiGroupAdd(userName, group, false).then((groupId) => {
+      cameras.forEach((camera) => {
+        cy.apiDeviceAdd(camera, group).then((deviceId) => {
+          deviceIds.push(deviceId);
+        });
+      });
+      cy.wrap({ groupId, deviceIds });
     });
   }
 );
@@ -383,6 +393,7 @@ export function TestCreateExpectedUser(
     email:
       params["email"] ||
       (getTestName(userName) + "@api.created.com").toLowerCase(),
+    emailConfirmed: false,
     userName: getTestName(userName),
     globalPermission: params["globalPermission"] || "off",
     endUserAgreement: params["endUserAgreement"] || LATEST_END_USER_AGREEMENT,

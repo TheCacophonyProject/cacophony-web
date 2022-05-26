@@ -1,4 +1,4 @@
-import {EndUserAgreementVersion, GroupId, UserId} from "./common";
+import { EndUserAgreementVersion, GroupId, UserId } from "./common";
 import { UserGlobalPermission } from "./consts";
 
 export interface ApiUserResponse {
@@ -27,5 +27,5 @@ export interface ApiUserSettings {
   currentSelectedGroup?: {
     groupName: string;
     id: GroupId;
-  }
+  };
 }
