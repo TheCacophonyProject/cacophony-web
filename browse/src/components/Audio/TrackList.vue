@@ -76,15 +76,21 @@
                         rounded
                       "
                       :class="{
-                        ['bg-warning']: tag.class === 'automatic',
-                        ['ai-tag']: tag.class === 'denied',
+                        ['ai-tag']:
+                          tag.class === 'denied' || tag.class === 'automatic',
                         ['aihuman-tag']: tag.class === 'confirmed',
                         ['human-tag']: tag.class === 'human',
                       }"
                       v-b-tooltip.hover
                       :title="`${
-                        tag.class === 'human' ? 'Human' : 'AI'
-                      } classified`"
+                        tag.class === 'human'
+                          ? 'Tagged by human'
+                          : tag.class === 'automatic' || tag.class === 'denied'
+                          ? 'Tagged by Cacophony AI'
+                          : tag.class === 'confirmed'
+                          ? 'Tagged by Cacophony AI and human'
+                          : ''
+                      }`"
                     >
                       <font-awesome-icon
                         v-if="['denied', 'automatic'].includes(tag.class)"

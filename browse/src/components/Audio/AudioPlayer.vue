@@ -590,21 +590,22 @@ export default defineComponent({
       context = overlay.value as Element
     ) => {
       const rect = context.getBoundingClientRect();
+      let x = 0;
+      let y = 0;
       if (window.TouchEvent && "targetTouches" in e) {
-        const x = (e.targetTouches[0].clientX - rect.left) / rect.width;
-        const y = (e.targetTouches[0].clientY - rect.top) / rect.height;
-        return {
-          x,
-          y,
-        };
+        x = (e.targetTouches[0].clientX - rect.left) / rect.width;
+        y = (e.targetTouches[0].clientY - rect.top) / rect.height;
       } else if ("clientX" in e) {
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = (e.clientY - rect.top) / rect.height;
-        return {
-          x,
-          y,
-        };
+        e.preventDefault();
+        x = (e.clientX - rect.left) / rect.width;
+        y = (e.clientY - rect.top) / rect.height;
       }
+      x = Math.min(Math.max(x, 0), 1);
+      y = Math.min(Math.max(y, 0), 1);
+      return {
+        x,
+        y,
+      };
     };
 
     const calcDragTime = (e: MouseEvent | TouchEvent) => {
@@ -978,7 +979,6 @@ export default defineComponent({
         container.appendChild(overlay.value);
         const startEvent = (e: TouchEvent | MouseEvent) => {
           e.stopPropagation();
-          e.preventDefault();
           const { x, y } = getDragCoords(e);
           setTempTrack((track) => {
             track.pos = {
@@ -1000,7 +1000,6 @@ export default defineComponent({
 
         const moveEvent = (e: TouchEvent | MouseEvent) => {
           e.stopPropagation();
-          e.preventDefault();
           if (
             tempTrack.value.active &&
             Date.now() > tempTrack.value.startDragTime + 100
@@ -1047,7 +1046,6 @@ export default defineComponent({
 
         const endEvent = (e: TouchEvent | MouseEvent) => {
           e.stopPropagation();
-          e.preventDefault();
           if (
             tempTrack.value.active &&
             Date.now() - tempTrack.value.startDragTime > 100 &&
@@ -1064,10 +1062,10 @@ export default defineComponent({
         // Add Track Functionality
         overlay.value.addEventListener("mousedown", startEvent);
         overlay.value.addEventListener("touchstart", startEvent);
-        overlay.value.addEventListener("mousemove", moveEvent);
-        overlay.value.addEventListener("touchmove", moveEvent);
-        overlay.value.addEventListener("mouseup", endEvent);
-        overlay.value.addEventListener("touchend", endEvent);
+        window.addEventListener("mousemove", moveEvent);
+        window.addEventListener("touchmove", moveEvent);
+        window.addEventListener("mouseup", endEvent);
+        window.addEventListener("touchend", endEvent);
 
         // Add Player Bar Functionality
         const playerBarLoader = document.getElementById(

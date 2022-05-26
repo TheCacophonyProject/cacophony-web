@@ -7,7 +7,7 @@
             :key="`${url}-${
               sampleRate === null ? 44100 : sampleRate
             }-${colour}`"
-            v-if="buffer !== null"
+            v-if="buffer !== null && !deleted"
             :colour="colour"
             :setColour="setColour"
             :tracks="tracks"
