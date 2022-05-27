@@ -24,7 +24,7 @@
             @click="undoDeleteRecording"
             role="button"
           >
-            <h1 class="pr-2">Undo Delete Recording</h1>
+            <h1>Undo Delete Recording</h1>
             <font-awesome-icon class="mb-2" icon="undo" size="2x" />
           </b-row>
         </b-col>
@@ -904,6 +904,11 @@ export default defineComponent({
 
   .undo-delete {
     height: 373px;
+    color: #2565c5;
+    h1 {
+      font-size: calc(1em + 0.5vw);
+      padding-right: min(5vw, 1.5em);
+    }
   }
 
   h2 {

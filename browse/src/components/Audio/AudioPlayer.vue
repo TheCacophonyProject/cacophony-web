@@ -8,7 +8,6 @@
     <div id="player-bar" class="flex flex-col">
       <div
         @mousedown="onClickSeek"
-        d
         @touch="onClickSeek"
         role="slider"
         id="progress-bar"
@@ -167,7 +166,7 @@
               />
             </div>
           </div>
-          <b-dropdown class="player-bar-color-dropdown" variant="link"
+          <b-dropdown class="player-bar-color-dropdown" variant="link" right
             ><template v-slot:button-content>
               <font-awesome-icon :icon="['fa', 'palette']" />
             </template>
@@ -369,20 +368,25 @@ export default defineComponent({
       const overEnd = Math.abs(Math.min(playerBar.offsetWidth - endPos, 0));
       const overStart = Math.abs(Math.min(startPos, 0));
 
-      overlay.value.style.transformOrigin = `${x}px bottom`;
+      overlay.value.style.transformOrigin = `${x.toFixed(1)}px bottom`;
       overlay.value.style.transform = `scaleX(${
-        zoomed.value.enabled ? zoomed.value.scale : 1
+        zoomed.value.enabled ? zoomed.value.scale.toFixed(1) : 1
       }) scaleY(${props.sampleRate / newSampleRate.value})`;
       const translateY = "translateY(-3px)";
-      zoomIndicatorStart.style.transform = `translateX(${
-        -half - overEnd + overStart
-      }px) ${translateY}`;
-      zoomIndicatorEnd.style.transform = `translateX(${
-        half + overStart - overEnd + 8
-      }px) ${translateY}`;
+      zoomIndicatorStart.style.transform = `translateX(${(
+        -half -
+        overEnd +
+        overStart
+      ).toFixed(1)}px) ${translateY}`;
+      zoomIndicatorEnd.style.transform = `translateX(${(
+        half +
+        overStart -
+        overEnd +
+        8
+      ).toFixed(1)}px) ${translateY}`;
     };
     watch(newSampleRate, () => {
-      updateZoom();
+      requestAnimationFrame(updateZoom);
     });
 
     watch(zoomed, (zoom) => {
@@ -396,7 +400,7 @@ export default defineComponent({
         // make indicators visible
         zoomIndicatorStart.style.display = "block";
         zoomIndicatorEnd.style.display = "block";
-        updateZoom();
+        requestAnimationFrame(updateZoom);
       } else {
         overlay.value.style.transform = ``;
         zoomIndicatorStart.style.transform = ``;
@@ -572,17 +576,19 @@ export default defineComponent({
     };
     const setPlayerTime = (currTime: number) => {
       const curr = secondsToTimeString(currTime);
-      if (currTime === actualTime.value) {
+      if (currTime.toFixed(1) === actualTime.value.toFixed(1)) {
         return;
       }
       actualTime.value = currTime;
       const total = secondsToTimeString(player.value.getDuration());
       const percent = (currTime / player.value.getDuration()) * 100;
+      // round to nearest 25%, 0.25, 0.5, 0.75, 1, 1.25
+      const roundedPercent = Math.round(percent / 0.1) * 0.1;
       setTime({ curr, total });
       const progressBar = document.getElementById(
         "loader-progress"
       ) as HTMLProgressElement;
-      progressBar.style.width = `${percent}%`;
+      progressBar.style.width = `${roundedPercent}%`;
     };
 
     const getDragCoords = (
@@ -596,7 +602,6 @@ export default defineComponent({
         x = (e.targetTouches[0].clientX - rect.left) / rect.width;
         y = (e.targetTouches[0].clientY - rect.top) / rect.height;
       } else if ("clientX" in e) {
-        e.preventDefault();
         x = (e.clientX - rect.left) / rect.width;
         y = (e.clientY - rect.top) / rect.height;
       }
@@ -626,6 +631,7 @@ export default defineComponent({
 
     const onDragTime = (e: MouseEvent | TouchEvent) => {
       if (dragTime.value) {
+        e.preventDefault();
         const { time, percent } = calcDragTime(e);
         if (
           props.selectedTrack &&
@@ -637,10 +643,12 @@ export default defineComponent({
           player.value.seekTo(percent);
         }
         if (time > 0) {
-          setPlayerTime(time);
-          if (zoomed.value.enabled) {
-            updateZoom();
-          }
+          requestAnimationFrame(() => {
+            setPlayerTime(time);
+            if (zoomed.value.enabled) {
+              updateZoom();
+            }
+          });
         }
       }
     };
@@ -689,9 +697,11 @@ export default defineComponent({
       }
     };
     const onDragEndZoom = () => {
-      setDragZoom((zoom) => {
-        zoom.started = false;
-      });
+      if (dragZoom.value.started) {
+        setDragZoom((zoom) => {
+          zoom.started = false;
+        });
+      }
     };
 
     const [volume, setVolume] = useState({
@@ -978,8 +988,16 @@ export default defineComponent({
 
         container.appendChild(overlay.value);
         const startEvent = (e: TouchEvent | MouseEvent) => {
+          e.preventDefault();
           e.stopPropagation();
           const { x, y } = getDragCoords(e);
+          //check track.value.rect is in overlay
+          const rect = overlay.value.querySelector(
+            `#new_track`
+          ) as SVGRectElement;
+          if (!rect) {
+            overlay.value.appendChild(tempTrack.value.rect);
+          }
           setTempTrack((track) => {
             track.pos = {
               startX: x,
@@ -999,13 +1017,31 @@ export default defineComponent({
         };
 
         const moveEvent = (e: TouchEvent | MouseEvent) => {
+          if (!tempTrack.value.active) {
+            return;
+          }
+          e.preventDefault();
           e.stopPropagation();
-          if (
-            tempTrack.value.active &&
-            Date.now() > tempTrack.value.startDragTime + 100
-          ) {
+          if (Date.now() > tempTrack.value.startDragTime + 100) {
             const { x, y } = getDragCoords(e);
             moveTempTrack(x, y);
+          }
+        };
+        const endEvent = (e: TouchEvent | MouseEvent) => {
+          if (!tempTrack.value.active) {
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          if (
+            Date.now() - tempTrack.value.startDragTime > 100 &&
+            tempTrack.value.pos.width > 0.01
+          ) {
+            confirmTrack();
+          } else {
+            setTempTrack((tempTrack) => {
+              tempTrack.active = false;
+            });
           }
         };
 
@@ -1044,28 +1080,13 @@ export default defineComponent({
           });
         });
 
-        const endEvent = (e: TouchEvent | MouseEvent) => {
-          e.stopPropagation();
-          if (
-            tempTrack.value.active &&
-            Date.now() - tempTrack.value.startDragTime > 100 &&
-            tempTrack.value.pos.width > 0.01
-          ) {
-            confirmTrack();
-          } else {
-            setTempTrack((tempTrack) => {
-              tempTrack.active = false;
-            });
-          }
-        };
-
         // Add Track Functionality
         overlay.value.addEventListener("mousedown", startEvent);
         overlay.value.addEventListener("touchstart", startEvent);
-        window.addEventListener("mousemove", moveEvent);
-        window.addEventListener("touchmove", moveEvent);
-        window.addEventListener("mouseup", endEvent);
-        window.addEventListener("touchend", endEvent);
+        document.addEventListener("mousemove", moveEvent);
+        document.addEventListener("touchmove", moveEvent);
+        document.addEventListener("mouseup", endEvent);
+        document.addEventListener("touchend", endEvent);
 
         // Add Player Bar Functionality
         const playerBarLoader = document.getElementById(
@@ -1073,10 +1094,10 @@ export default defineComponent({
         ) as HTMLDivElement;
         playerBarLoader.addEventListener("mousedown", onDragStartTime);
         playerBarLoader.addEventListener("touchstart", onDragStartTime);
-        window.addEventListener("mousemove", onDragTime);
-        window.addEventListener("touchmove", onDragTime);
-        window.addEventListener("mouseup", onDragEndTime);
-        window.addEventListener("touchend", onDragEndTime);
+        document.addEventListener("mousemove", onDragTime);
+        document.addEventListener("touchmove", onDragTime);
+        document.addEventListener("mouseup", onDragEndTime);
+        document.addEventListener("touchend", onDragEndTime);
 
         const zoomIndicatorStart = document.getElementById(
           "zoom-indicator-start"
@@ -1096,10 +1117,10 @@ export default defineComponent({
         zoomIndicatorEnd.addEventListener("touchstart", () => {
           onDragStartZoom("end");
         });
-        window.addEventListener("mousemove", onDragZoom);
-        window.addEventListener("touchmove", onDragZoom);
-        window.addEventListener("mouseup", onDragEndZoom);
-        window.addEventListener("touchend", onDragEndZoom);
+        document.addEventListener("mousemove", onDragZoom);
+        document.addEventListener("touchmove", onDragZoom);
+        document.addEventListener("mouseup", onDragEndZoom);
+        document.addEventListener("touchend", onDragEndZoom);
       };
 
       const initPlayer = () => {
@@ -1323,12 +1344,14 @@ spectrogram > svg {
   height: 10px;
   background-color: #515152;
 }
+
 .player-bar-loader-progress {
   display: flex;
   flex-direction: row-reverse;
   height: 100%;
   width: 0px;
   background: linear-gradient(#c1f951, #9acd32);
+  transition: width 0.1s ease-in-out;
 }
 .player-bar-indicator {
   cursor: grab;

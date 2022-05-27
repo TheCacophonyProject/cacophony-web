@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-undef
 module.exports = {
   plugins: ["@typescript-eslint", "vue"],
   root: true,
@@ -28,7 +27,7 @@ module.exports = {
     "no-console": ["warn"],
     "no-debugger": ["warn"],
     "no-undef": ["warn"],
-    "no-unused-vars": "off",
+    "no-unused-vars": ["warn"],
     "@typescript-eslint/no-unused-vars": ["warn"],
     "brace-style": ["warn"],
     "prefer-const": ["warn"],
