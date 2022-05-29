@@ -19,11 +19,11 @@ import { Device } from "models/Device";
 import { RecordingId, ScheduleId, UserId } from "@typedefs/api/common";
 import { Group } from "models/Group";
 import { Recording } from "models/Recording";
-import { SuperUsers } from "@/Server";
 import { Station } from "@/models/Station";
 import { Schedule } from "@/models/Schedule";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils";
+import { SuperUsers } from "@/Globals";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);

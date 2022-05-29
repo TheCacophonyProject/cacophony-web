@@ -54,7 +54,6 @@ import { arrayOf, jsonSchemaOf } from "@api/schema-validation";
 import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
 import { sendEmailConfirmationEmail } from "@/scripts/emailUtil";
 import logger from "@log";
-import { CACOPHONY_WEB_VERSION } from "@/Server";
 import { ApiGroupResponse } from "@typedefs/api/group";
 import GroupIdSchema from "@schemas/api/common/GroupId.schema.json";
 import {
@@ -62,6 +61,7 @@ import {
   sendGroupMembershipRequestEmail,
   sendWelcomeEmailConfirmationEmail,
 } from "@/emails/transactionalEmails";
+import { CACOPHONY_WEB_VERSION } from "@/Globals";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
