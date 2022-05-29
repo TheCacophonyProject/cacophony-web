@@ -2,7 +2,7 @@
   <aside class="playlist-container">
     <font-awesome-icon
       @click="navigateToNextRecording(QueryDirection.Previous)"
-      :disable="nextRecordings.prev === null"
+      :disable="nextRecordings.prev === null && isLoading"
       :class="{ disabled: nextRecordings.prev === null }"
       role="button"
       icon="step-backward"
@@ -17,7 +17,7 @@
     </div>
     <font-awesome-icon
       @click="navigateToNextRecording(QueryDirection.Next)"
-      :disable="nextRecordings.next === null"
+      :disable="nextRecordings.next === null && isLoading"
       :class="{ disabled: nextRecordings.next === null }"
       role="button"
       icon="step-forward"
@@ -27,7 +27,7 @@
 </template>
 <script lang="ts">
 import { PropType } from "vue";
-import { defineComponent, onMounted, watch } from "@vue/composition-api";
+import { defineComponent, onMounted, ref, watch } from "@vue/composition-api";
 
 import api from "@/api";
 import { useRoute, useRouter, useState } from "@/utils";
@@ -91,7 +91,7 @@ export default defineComponent({
           throw response.result.messages;
         }
       } catch (error) {
-        console.error(error);
+        // console.error(error);
         return null;
       }
     };
@@ -110,6 +110,7 @@ export default defineComponent({
         to,
         from,
         order,
+        countAll: "false",
         limit: limit.toString(),
         type: RecordingType.Audio,
       };
@@ -135,7 +136,9 @@ export default defineComponent({
         pushNextRecording(recording.id, recording.query);
       }
     };
+    const isLoading = ref(true);
     const initNextRecordings = async () => {
+      isLoading.value = true;
       const prevQuery = getNextRecordingQuery(QueryDirection.Previous);
       const nextQuery = getNextRecordingQuery(QueryDirection.Next);
       const prevRecs = await queryNextRecording(prevQuery);
@@ -147,6 +150,7 @@ export default defineComponent({
         prev:
           prevRecs.length > 0 ? { id: prevRecs[0].id, query: prevQuery } : null,
       });
+      isLoading.value = false;
     };
     onMounted(() => {
       initNextRecordings();
@@ -155,6 +159,7 @@ export default defineComponent({
 
     return {
       navigateToNextRecording,
+      isLoading,
       QueryDirection,
       nextRecordings,
     };
@@ -187,7 +192,7 @@ export default defineComponent({
     position: fixed;
     bottom: 0;
     left: 0;
-    z-index: 100;
+    z-index: 1001;
   }
 }
 </style>

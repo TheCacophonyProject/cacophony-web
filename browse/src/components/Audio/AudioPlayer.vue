@@ -48,11 +48,12 @@
               @click="toggleMute"
             />
             <input
+              :disabled="volume.muted"
               id="volume-slider"
               class="volume-slider"
               type="range"
               min="0"
-              max="20"
+              max="1"
               step="0.01"
               @input="changeVolume"
             />
@@ -102,7 +103,7 @@
           />
         </div>
 
-        <div class="player-bar-zoom">
+        <div class="player-bar-settings">
           <font-awesome-icon
             :icon="['fa', zoomed.enabled ? 'search-minus' : 'search-plus']"
             :class="{ highlighted: zoomed.enabled }"
@@ -114,6 +115,75 @@
               })
             "
           />
+          <svg
+            class="player-bar-samplerate-button"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            role="button"
+            @click="
+              () => {
+                toggleSampleRate = !toggleSampleRate;
+              }
+            "
+          >
+            <path
+              stroke="white"
+              :class="{ highlighted: toggleSampleRate }"
+              stroke-width="1.4"
+              d="M18.6 10c-1.5 0-1.4 2.9-2 4.2-.2.2-.5.1-.5 0-.8-2.5-.5-8.2-2.6-8.2S12 13.4 11 16.5c0 .2-.3.2-.4 0-1-2.2-.8-6.9-2.5-6.9-1.8 0-1.6 4-2.3 5.6-.1.2-.4.2-.5 0-.5-1-.7-3.2-2.6-3.2H.5a.5.5 0 0 0 0 1h2.2c1.6 0 1 3.5 2.9 3.5 1.6 0 1.5-3.8 2.2-5.5 0-.2.4-.2.5 0 .8 2 .7 7 2.6 7 2 0 1.3-7.9 2.4-10.6.1-.2.4-.2.5 0 1 2.2.5 8 2.4 8 1.6 0 1.7-2.6 2.2-4 0-.2.4-.2.5 0 .5 1 .8 2.6 2.4 2.6h2.2a.5.5 0 0 0 0-1h-2.2c-1.4 0-1.2-3-2.7-3z"
+            />
+          </svg>
+          <div v-if="toggleSampleRate" class="player-bar-samplerate">
+            <b>Sample Rate:</b> {{ newSampleRate }} Hz
+            <div>
+              <input
+                type="range"
+                min="8000"
+                max="44100"
+                step="100"
+                v-model="newSampleRate"
+              />
+              <font-awesome-icon
+                @click="
+                  () => {
+                    setSampleRate(Number(newSampleRate));
+                  }
+                "
+                role="button"
+                :icon="['fa', 'check']"
+                size="lg"
+              />
+              <font-awesome-icon
+                @click="
+                  () => {
+                    newSampleRate = sampleRate;
+                    toggleSampleRate = false;
+                  }
+                "
+                role="button"
+                :icon="['fa', 'times']"
+                size="lg"
+              />
+            </div>
+          </div>
+          <b-dropdown class="player-bar-color-dropdown" variant="link" right
+            ><template v-slot:button-content>
+              <font-awesome-icon :icon="['fa', 'palette']" />
+            </template>
+            <b-dropdown-item
+              v-for="(val, index) in colours"
+              :key="index"
+              z-index="1001"
+              :class="{
+                'dropdown-item': true,
+                ['dropdown-highlighted']:
+                  colour.toLowerCase() === val.toLowerCase(),
+              }"
+              @click="setColour(val)"
+            >
+              {{ val }}
+            </b-dropdown-item>
+          </b-dropdown>
         </div>
       </div>
     </div>
@@ -143,14 +213,6 @@ import {
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 
 import { ApiTrackPosition } from "@typedefs/api/track";
-import WebAudio from "wavesurfer.js/src/webaudio";
-
-const fetchAudioBuffer = async (url: string) => {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  return arrayBuffer;
-};
-
 const getSampleRate = (
   arrayBuffer: ArrayBuffer
 ): { sampleRate: number; bitsPerSample: number } => {
@@ -197,8 +259,16 @@ export default defineComponent({
       type: Map as PropType<AudioTracks>,
       required: true,
     },
-    url: {
-      type: String,
+    buffer: {
+      type: ArrayBuffer as PropType<ArrayBuffer>,
+      default: null,
+    },
+    sampleRate: {
+      type: Number,
+      default: null,
+    },
+    setSampleRate: {
+      type: Function as PropType<SetState<number>>,
       required: true,
     },
     duration: {
@@ -213,6 +283,14 @@ export default defineComponent({
       type: Function as PropType<SetState<AudioTrack>>,
       required: true,
     },
+    colour: {
+      type: String,
+      required: true,
+    },
+    setColour: {
+      type: Function as PropType<SetState<string>>,
+      required: true,
+    },
   },
   setup(props) {
     // Player
@@ -220,6 +298,26 @@ export default defineComponent({
     const spectrogram = ref<HTMLCanvasElement>(null);
     const isLoading = ref(true);
     const player = ref<WaveSurfer>(null);
+
+    const newSampleRate = ref(props.sampleRate);
+    const toggleSampleRate = ref(false);
+    const defaultSampleRate = ref(props.sampleRate);
+
+    const colours = [
+      "jet",
+      "hsv",
+      "hot",
+      "magma",
+      "earth",
+      "plasma",
+      "cool",
+      "bone",
+      "YIGnBu",
+      "YIOrRd",
+      "inferno",
+      "cdom",
+    ];
+
     const [isFinished, setIsFinished] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
 
@@ -242,13 +340,16 @@ export default defineComponent({
       enabled: false,
       scale: 3,
     });
+
     const updateZoom = () => {
+      if (!overlay.value) {
+        return;
+      }
       const loader = document.getElementById(
         "loader-progress"
       ) as HTMLDivElement;
       const x = loader.offsetWidth;
 
-      overlay.value.style.transformOrigin = `${x}px center`;
       const zoomIndicatorStart = document.getElementById(
         "zoom-indicator-start"
       ) as HTMLDivElement;
@@ -267,15 +368,26 @@ export default defineComponent({
       const overEnd = Math.abs(Math.min(playerBar.offsetWidth - endPos, 0));
       const overStart = Math.abs(Math.min(startPos, 0));
 
-      overlay.value.style.transform = `scale(${zoomed.value.scale}, 1)`;
+      overlay.value.style.transformOrigin = `${x.toFixed(1)}px bottom`;
+      overlay.value.style.transform = `scaleX(${
+        zoomed.value.enabled ? zoomed.value.scale.toFixed(1) : 1
+      }) scaleY(${props.sampleRate / newSampleRate.value})`;
       const translateY = "translateY(-3px)";
-      zoomIndicatorStart.style.transform = `translateX(${
-        -half - overEnd + overStart
-      }px) ${translateY}`;
-      zoomIndicatorEnd.style.transform = `translateX(${
-        half + overStart - overEnd + 8
-      }px) ${translateY}`;
+      zoomIndicatorStart.style.transform = `translateX(${(
+        -half -
+        overEnd +
+        overStart
+      ).toFixed(1)}px) ${translateY}`;
+      zoomIndicatorEnd.style.transform = `translateX(${(
+        half +
+        overStart -
+        overEnd +
+        8
+      ).toFixed(1)}px) ${translateY}`;
     };
+    watch(newSampleRate, () => {
+      requestAnimationFrame(updateZoom);
+    });
 
     watch(zoomed, (zoom) => {
       const zoomIndicatorStart = document.getElementById(
@@ -288,7 +400,7 @@ export default defineComponent({
         // make indicators visible
         zoomIndicatorStart.style.display = "block";
         zoomIndicatorEnd.style.display = "block";
-        updateZoom();
+        requestAnimationFrame(updateZoom);
       } else {
         overlay.value.style.transform = ``;
         zoomIndicatorStart.style.transform = ``;
@@ -338,8 +450,8 @@ export default defineComponent({
         const width = Math.abs(draft.pos.startX - x);
         const height = Math.abs(draft.pos.startY - y);
 
-        draft.pos.x = currX;
-        draft.pos.y = currY;
+        draft.pos.x = Math.max(currX, 0);
+        draft.pos.y = Math.max(currY, 0);
         draft.pos.width = width;
         draft.pos.height = height;
       });
@@ -396,7 +508,7 @@ export default defineComponent({
                   width: (width * spectrogram.value.width).toString(),
                   height: (height * spectrogram.value.height).toString(),
                   stroke: "#c8d6e5",
-                  "stroke-width": "3",
+                  "stroke-width": "2",
                   fill: "none",
                 },
               },
@@ -455,21 +567,28 @@ export default defineComponent({
       50
     );
 
+    const [time, setTime] = useState({ curr: "0:00", total: "0:00" });
+    const actualTime = ref<number>(0);
     const secondsToTimeString = (seconds: number) => {
       const minutes = Math.floor(seconds / 60);
       const secondsLeft = Math.floor(seconds % 60);
       return `${minutes}:${secondsLeft < 10 ? "0" : ""}${secondsLeft}`;
     };
-    const [time, setTime] = useState({ curr: "0:00", total: "0:00" });
     const setPlayerTime = (currTime: number) => {
       const curr = secondsToTimeString(currTime);
+      if (currTime.toFixed(1) === actualTime.value.toFixed(1)) {
+        return;
+      }
+      actualTime.value = currTime;
       const total = secondsToTimeString(player.value.getDuration());
       const percent = (currTime / player.value.getDuration()) * 100;
+      // round to nearest 25%, 0.25, 0.5, 0.75, 1, 1.25
+      const roundedPercent = Math.round(percent / 0.1) * 0.1;
       setTime({ curr, total });
       const progressBar = document.getElementById(
         "loader-progress"
       ) as HTMLProgressElement;
-      progressBar.style.width = `${percent}%`;
+      progressBar.style.width = `${roundedPercent}%`;
     };
 
     const getDragCoords = (
@@ -477,21 +596,21 @@ export default defineComponent({
       context = overlay.value as Element
     ) => {
       const rect = context.getBoundingClientRect();
+      let x = 0;
+      let y = 0;
       if (window.TouchEvent && "targetTouches" in e) {
-        const x = (e.targetTouches[0].clientX - rect.left) / rect.width;
-        const y = (e.targetTouches[0].clientY - rect.top) / rect.height;
-        return {
-          x,
-          y,
-        };
+        x = (e.targetTouches[0].clientX - rect.left) / rect.width;
+        y = (e.targetTouches[0].clientY - rect.top) / rect.height;
       } else if ("clientX" in e) {
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = (e.clientY - rect.top) / rect.height;
-        return {
-          x,
-          y,
-        };
+        x = (e.clientX - rect.left) / rect.width;
+        y = (e.clientY - rect.top) / rect.height;
       }
+      x = Math.min(Math.max(x, 0), 1);
+      y = Math.min(Math.max(y, 0), 1);
+      return {
+        x,
+        y,
+      };
     };
 
     const calcDragTime = (e: MouseEvent | TouchEvent) => {
@@ -504,6 +623,7 @@ export default defineComponent({
       const time = Math.min(Math.max(duration * percent, 0), duration);
       return { time, percent };
     };
+
     const [dragTime, setDragTime] = useState(false);
     const onDragStartTime = () => {
       setDragTime(true);
@@ -511,6 +631,7 @@ export default defineComponent({
 
     const onDragTime = (e: MouseEvent | TouchEvent) => {
       if (dragTime.value) {
+        e.preventDefault();
         const { time, percent } = calcDragTime(e);
         if (
           props.selectedTrack &&
@@ -522,10 +643,12 @@ export default defineComponent({
           player.value.seekTo(percent);
         }
         if (time > 0) {
-          setPlayerTime(time);
-          if (zoomed.value.enabled) {
-            updateZoom();
-          }
+          requestAnimationFrame(() => {
+            setPlayerTime(time);
+            if (zoomed.value.enabled) {
+              updateZoom();
+            }
+          });
         }
       }
     };
@@ -574,9 +697,11 @@ export default defineComponent({
       }
     };
     const onDragEndZoom = () => {
-      setDragZoom((zoom) => {
-        zoom.started = false;
-      });
+      if (dragZoom.value.started) {
+        setDragZoom((zoom) => {
+          zoom.started = false;
+        });
+      }
     };
 
     const [volume, setVolume] = useState({
@@ -606,35 +731,22 @@ export default defineComponent({
       container: "#spectrogram",
       fftSamples: 512,
       colorMap: ColorMap({
-        colormap: "Cool",
+        colormap: props.colour,
         nshades: 256,
         format: "float",
       }),
     };
-    setVolumeSlider(
-      document.querySelector("#volume-slider") as HTMLInputElement
-    );
-    const storedVolume = localStorage.getItem("volume");
-    if (storedVolume) {
-      try {
-        const parsed = JSON.parse(storedVolume);
-        if (parsed.volume) {
-          setVolume(parsed);
-        }
-      } catch (e) {
-        // do nothing
-      }
-    }
 
     onMounted(async () => {
-      const audioBuffer = await fetchAudioBuffer(props.url);
-      let { sampleRate } = getSampleRate(audioBuffer);
-      sampleRate =
-        sampleRate === 0
-          ? 48000
-          : sampleRate < 10000
-          ? sampleRate + 8000
-          : sampleRate;
+      const audioBuffer = props.buffer.slice(0);
+      const realSampleRate = getSampleRate(audioBuffer).sampleRate;
+      defaultSampleRate.value = realSampleRate === 0 ? 44100 : realSampleRate;
+      let sampleRate = props.sampleRate;
+      if (sampleRate === null) {
+        sampleRate = defaultSampleRate.value;
+        props.setSampleRate(sampleRate);
+        newSampleRate.value = sampleRate;
+      }
       const audioContext = new AudioContext({
         sampleRate,
       });
@@ -656,18 +768,26 @@ export default defineComponent({
       };
 
       const createRectFromTrack = (track: AudioTrack) => {
-        const pos = track.positions[0];
-        const y = track.maxFreq ? track.maxFreq / (sampleRate / 2) : pos.y;
-        const height = track.minFreq
-          ? (track.maxFreq - track.minFreq) / (sampleRate / 2)
-          : pos.height;
+        const pos =
+          track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
+        let { x, y, width, height } = pos;
+        // y needs to inverted due to canvas positioning
+        y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        y = 1 - y;
+
+        if (track.start && track.end) {
+          const { start, end } = track;
+          x = start / player.value.getDuration();
+          width = (end - start) / player.value.getDuration();
+        }
         const rect = createSVGElement(
           {
             attributes: {
               id: `track_${track.id.toString()}`,
-              x: (pos.x * spectrogram.value.width).toString(),
+              x: (x * spectrogram.value.width).toString(),
               y: (y * spectrogram.value.height).toString(),
-              width: (pos.width * spectrogram.value.width).toString(),
+              width: (width * spectrogram.value.width).toString(),
               height: (height * spectrogram.value.height).toString(),
               stroke: track.colour,
               "stroke-width": "2",
@@ -699,7 +819,9 @@ export default defineComponent({
         tracks
           .filter((track) => !track.deleted)
           .map(createRectFromTrack)
-          .map((trackRect) => overlay.value.appendChild(trackRect));
+          .forEach((trackRect) => {
+            overlay.value.appendChild(trackRect);
+          });
 
       // Modify the overlay tracks when props tracks change
       watch(
@@ -741,7 +863,6 @@ export default defineComponent({
           });
         }
       );
-
       watch(volume, (v) => {
         if (!volumeSlider.value) {
           return;
@@ -749,18 +870,35 @@ export default defineComponent({
         if (v.muted) {
           gainNode.gain.value = 0;
           volumeSlider.value.value = "0";
+          player.value.setVolume(0);
         } else {
-          if (v.volume < 1) {
-            player.value.setVolume(v.volume);
-            gainNode.gain.value = 0;
+          const volume = v.volume * 2;
+          if (volume < 1) {
+            player.value.setVolume(volume);
+            gainNode.gain.value = 1;
           } else {
             player.value.setVolume(1);
-            gainNode.gain.value = v.volume;
+            gainNode.gain.value = volume;
           }
           volumeSlider.value.value = v.volume.toString();
         }
         storeVolume(volume.value);
       });
+
+      setVolumeSlider(
+        document.querySelector("#volume-slider") as HTMLInputElement
+      );
+      const storedVolume = localStorage.getItem("volume");
+      if (storedVolume) {
+        try {
+          const parsed = JSON.parse(storedVolume);
+          if (parsed.volume) {
+            setVolume(parsed);
+          }
+        } catch (e) {
+          // do nothing
+        }
+      }
 
       player.value = WaveSurfer.create({
         ...waveSurferOptions,
@@ -794,7 +932,6 @@ export default defineComponent({
         const spectrogramWidth = spectrogram.value.width;
         const spectrogramHeight = spectrogram.value.height;
         const container = document.querySelector("#spectrogram") as HTMLElement;
-        // check
         const svgImage = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "image"
@@ -822,7 +959,7 @@ export default defineComponent({
             cursor: "crosshair",
             width: "100%",
             height: "100%",
-            "transform-origin": "0 center",
+            "transform-origin": "0 center bottom",
           },
           attributes: {
             viewBox: `0 0 ${spectrogramWidth} ${spectrogramHeight}`,
@@ -851,9 +988,16 @@ export default defineComponent({
 
         container.appendChild(overlay.value);
         const startEvent = (e: TouchEvent | MouseEvent) => {
-          e.stopPropagation();
           e.preventDefault();
+          e.stopPropagation();
           const { x, y } = getDragCoords(e);
+          //check track.value.rect is in overlay
+          const rect = overlay.value.querySelector(
+            `#new_track`
+          ) as SVGRectElement;
+          if (!rect) {
+            overlay.value.appendChild(tempTrack.value.rect);
+          }
           setTempTrack((track) => {
             track.pos = {
               startX: x,
@@ -873,24 +1017,45 @@ export default defineComponent({
         };
 
         const moveEvent = (e: TouchEvent | MouseEvent) => {
-          e.stopPropagation();
+          if (!tempTrack.value.active) {
+            return;
+          }
           e.preventDefault();
-          if (
-            tempTrack.value.active &&
-            Date.now() > tempTrack.value.startDragTime + 100
-          ) {
+          e.stopPropagation();
+          if (Date.now() > tempTrack.value.startDragTime + 100) {
             const { x, y } = getDragCoords(e);
             moveTempTrack(x, y);
           }
         };
+        const endEvent = (e: TouchEvent | MouseEvent) => {
+          if (!tempTrack.value.active) {
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          if (
+            Date.now() - tempTrack.value.startDragTime > 100 &&
+            tempTrack.value.pos.width > 0.01
+          ) {
+            confirmTrack();
+          } else {
+            setTempTrack((tempTrack) => {
+              tempTrack.active = false;
+            });
+          }
+        };
 
         const confirmTrack = debounce(() => {
-          const maxSample = (player.value.backend as WebAudio).ac.sampleRate;
-          const maxFreq = Math.floor((maxSample / 2) * tempTrack.value.pos.y);
+          const top = sampleRate / 2;
+          const flippedY = 1 - tempTrack.value.pos.y;
+          const maxFreq = Math.floor(flippedY * top);
           const minFreq = Math.floor(
-            (maxSample / 2) *
-              (tempTrack.value.pos.y - tempTrack.value.pos.height)
+            (flippedY - tempTrack.value.pos.height) * top
           );
+          const pos = Object.assign({}, tempTrack.value.pos);
+          pos.y = maxFreq / (defaultSampleRate.value / 2);
+          pos.y = 1 - pos.y;
+          pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
 
           const track: AudioTrack = {
             id: -1,
@@ -903,7 +1068,7 @@ export default defineComponent({
             colour: "#c8d6e5",
             automatic: false,
             filtered: false,
-            positions: [tempTrack.value.pos],
+            positions: [tempTrack.value.pos, pos],
             tags: [],
             displayTags: [],
             confirming: false,
@@ -915,29 +1080,13 @@ export default defineComponent({
           });
         });
 
-        const endEvent = (e: TouchEvent | MouseEvent) => {
-          e.stopPropagation();
-          e.preventDefault();
-          if (
-            tempTrack.value.active &&
-            Date.now() - tempTrack.value.startDragTime > 100 &&
-            tempTrack.value.pos.width > 0.01
-          ) {
-            confirmTrack();
-          } else {
-            setTempTrack((tempTrack) => {
-              tempTrack.active = false;
-            });
-          }
-        };
-
         // Add Track Functionality
         overlay.value.addEventListener("mousedown", startEvent);
         overlay.value.addEventListener("touchstart", startEvent);
-        overlay.value.addEventListener("mousemove", moveEvent);
-        overlay.value.addEventListener("touchmove", moveEvent);
-        overlay.value.addEventListener("mouseup", endEvent);
-        overlay.value.addEventListener("touchend", endEvent);
+        document.addEventListener("mousemove", moveEvent);
+        document.addEventListener("touchmove", moveEvent);
+        document.addEventListener("mouseup", endEvent);
+        document.addEventListener("touchend", endEvent);
 
         // Add Player Bar Functionality
         const playerBarLoader = document.getElementById(
@@ -945,10 +1094,10 @@ export default defineComponent({
         ) as HTMLDivElement;
         playerBarLoader.addEventListener("mousedown", onDragStartTime);
         playerBarLoader.addEventListener("touchstart", onDragStartTime);
-        window.addEventListener("mousemove", onDragTime);
-        window.addEventListener("touchmove", onDragTime);
-        window.addEventListener("mouseup", onDragEndTime);
-        window.addEventListener("touchend", onDragEndTime);
+        document.addEventListener("mousemove", onDragTime);
+        document.addEventListener("touchmove", onDragTime);
+        document.addEventListener("mouseup", onDragEndTime);
+        document.addEventListener("touchend", onDragEndTime);
 
         const zoomIndicatorStart = document.getElementById(
           "zoom-indicator-start"
@@ -968,10 +1117,10 @@ export default defineComponent({
         zoomIndicatorEnd.addEventListener("touchstart", () => {
           onDragStartZoom("end");
         });
-        window.addEventListener("mousemove", onDragZoom);
-        window.addEventListener("touchmove", onDragZoom);
-        window.addEventListener("mouseup", onDragEndZoom);
-        window.addEventListener("touchend", onDragEndZoom);
+        document.addEventListener("mousemove", onDragZoom);
+        document.addEventListener("touchmove", onDragZoom);
+        document.addEventListener("mouseup", onDragEndZoom);
+        document.addEventListener("touchend", onDragEndZoom);
       };
 
       const initPlayer = () => {
@@ -980,7 +1129,9 @@ export default defineComponent({
         attachSpectrogramOverlay();
         // Move canvas image to SVG & clean up
         overlay.value.appendChild(tempTrack.value.rect);
-        addTracksToOverlay([...props.tracks.values()]);
+        requestAnimationFrame(() =>
+          addTracksToOverlay([...props.tracks.values()])
+        );
         if (isPlaying.value) {
           playAt(0);
         }
@@ -1008,10 +1159,12 @@ export default defineComponent({
       player.value.on("audioprocess", () => {
         // don't up time if we are scrubbing
         if (zoomed.value.enabled) {
-          updateZoom();
+          requestAnimationFrame(updateZoom);
         }
         if (!dragTime.value) {
-          setPlayerTime(player.value.getCurrentTime());
+          requestAnimationFrame(() =>
+            setPlayerTime(player.value.getCurrentTime())
+          );
         }
       });
       player.value.on("ready", initPlayer);
@@ -1034,10 +1187,13 @@ export default defineComponent({
       isPlaying,
       isFinished,
       volume,
-      changeVolume,
-      zoomed,
-      setZoomed,
       time,
+      zoomed,
+      newSampleRate,
+      changeVolume,
+      toggleSampleRate,
+      colours,
+      setZoomed,
       play,
       onDragTime,
       onDragStartTime,
@@ -1069,7 +1225,7 @@ spectrogram {
 }
 .player-bar {
   display: grid;
-  grid-template-columns: 1fr 7fr 2fr;
+  grid-template-columns: 1fr 7fr 141px;
   justify-content: start;
   justify-content: space-between;
   justify-items: center;
@@ -1079,6 +1235,10 @@ spectrogram {
   color: #fff;
   width: 100%;
   min-height: 67px;
+  // create two rows on mobile
+  @media (max-width: 576px) {
+    grid-template-rows: 1fr 1fr;
+  }
 }
 .spec-labels {
   background-color: #152338;
@@ -1087,15 +1247,35 @@ spectrogram {
   margin: 0 0.35em 0 0.35em;
   cursor: pointer;
 }
-.volume-slider {
-  position: absolute;
-  bottom: 110px;
-  left: 10px;
-  transform: rotate(270deg);
-  opacity: 0;
-  z-index: 20;
-  transition: opacity 0.2s;
+@keyframes fade_in_show {
+  0% {
+    opacity: 0;
+    transform: translate(10%, -35%) rotate(270deg) scaleX(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(10%, -35%) rotate(270deg) scaleX(1);
+  }
 }
+.volume-slider {
+  display: none;
+  position: absolute;
+  transform-origin: left;
+  transform: translate(10%, -35%) rotate(270deg);
+  z-index: 300;
+  :hover {
+    display: block;
+  }
+}
+.volume-selection:hover {
+  .volume-slider {
+    display: block;
+    animation: fade_in_show 0.2s;
+    transition-delay: 2s;
+  }
+}
+
 .volume-button {
   width: 24px;
   margin-right: 0.2em;
@@ -1125,12 +1305,7 @@ spectrogram > svg {
     transform: translateY(0);
   }
 }
-.volume-selection:hover {
-  .volume-slider {
-    visibility: visible;
-    opacity: 1;
-  }
-}
+
 .player-time {
   white-space: nowrap;
 }
@@ -1140,6 +1315,11 @@ spectrogram > svg {
   align-items: center;
   justify-content: space-between;
   justify-self: center;
+
+  @media (max-width: 576px) {
+    grid-row-start: 2;
+    grid-column: 1 / -1;
+  }
 }
 .capitalize {
   text-transform: capitalize;
@@ -1164,12 +1344,14 @@ spectrogram > svg {
   height: 10px;
   background-color: #515152;
 }
+
 .player-bar-loader-progress {
   display: flex;
   flex-direction: row-reverse;
   height: 100%;
   width: 0px;
   background: linear-gradient(#c1f951, #9acd32);
+  transition: width 0.1s ease-in-out;
 }
 .player-bar-indicator {
   cursor: grab;
@@ -1183,16 +1365,51 @@ spectrogram > svg {
   border-radius: 100%;
   background: white;
 }
-.player-bar-zoom {
+.player-bar-settings {
+  // put items in a row
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  gap: 1em;
+  align-items: center;
+  fill: white;
   user-select: none;
   grid-column-start: 3;
 }
 .highlighted {
-  color: #c1f951;
+  color: #c1f951 !important;
+  stroke: #c1f951 !important;
+}
+
+.dropdown-highlighted {
+  background: #dbff91 !important;
 }
 .zoom-indicator {
   display: none;
   width: 8px;
   border-radius: 3px;
+}
+.player-bar-samplerate-button {
+  width: 32px;
+}
+.player-bar-samplerate {
+  position: absolute;
+  transform: translate(-80px, -85px);
+  background-color: rgba(59, 69, 84, 0.8);
+  padding: 0.7em;
+  border-radius: 0.5em;
+  div {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+}
+.player-bar-color-dropdown {
+  z-index: 1001;
+}
+
+.player-bar-color-dropdown * {
+  color: #fff !important;
+  max-width: 8em;
 }
 </style>

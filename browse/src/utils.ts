@@ -1,7 +1,6 @@
 import { Draft, produce, Immutable } from "immer";
 import {
   Ref,
-  reactive,
   shallowRef,
   DeepReadonly,
   getCurrentInstance,
@@ -64,7 +63,7 @@ export function useRouter(): VueRouter {
   if (instance) {
     return instance.proxy.$router;
   }
-  console.error("Outside Scope: cannot access Vue instance for router");
+  //console.error("Outside Scope: cannot access Vue instance for router");
   return undefined as any;
 }
 
@@ -75,7 +74,7 @@ export function useRoute(): Ref<Route> {
     watchEffect(() => setRoute(instance.proxy.$route));
     return route;
   }
-  console.error("Outside Scope: cannot access Vue instance for route");
+  // console.error("Outside Scope: cannot access Vue instance for route");
   return undefined as any;
 }
 

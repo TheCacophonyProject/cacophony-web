@@ -6,7 +6,9 @@
 </template>
 
 <script>
-export default {
+import { defineComponent } from "@vue/composition-api";
+
+export default defineComponent({
   name: "BatteryLevel",
   props: {
     batteryLevel: {
@@ -31,7 +33,7 @@ export default {
       }
     },
   },
-};
+});
 </script>
 
 <style scoped>

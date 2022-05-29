@@ -61,7 +61,6 @@ import { DeviceHistory } from "@models/DeviceHistory";
 import { RecordingType } from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
 import config from "@config";
-import logger from "@log";
 
 export const mapDeviceResponse = (
   device: Device,
