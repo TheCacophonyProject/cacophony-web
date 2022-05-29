@@ -133,7 +133,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TagId } from "@typedefs/api/common";
-import DefaultLabels, { FILTERED_TOOLTIP } from "../../const";
+import { FILTERED_TOOLTIP } from "../../const";
 
 export default {
   name: "VideoRecording",

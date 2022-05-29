@@ -32,7 +32,6 @@
 </template>
 <script lang="ts">
 import { ApiTrackTagRequest } from "@typedefs/api/trackTag";
-import { circle } from "leaflet";
 import DefaultLabels from "../../const";
 
 export default {

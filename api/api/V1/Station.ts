@@ -1,10 +1,9 @@
-import { Application, NextFunction, Request, Response } from "express";
+import { Application, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAdminAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStations,
-  fetchAuthorizedRequiredStationsForGroup,
   parseJSONField,
 } from "@api/extract-middleware";
 import responseUtil from "@api/V1/responseUtil";

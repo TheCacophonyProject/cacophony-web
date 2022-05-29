@@ -41,15 +41,11 @@ import {
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import {
-  ApiRecordingTagRequest,
-  ApiRecordingTagResponse,
-} from "@typedefs/api/tag";
+import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
 import {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
-  ApiTrackTagAttributes,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { Application, NextFunction, Request, Response } from "express";
@@ -71,7 +67,6 @@ import {
   fetchUnauthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
-  fetchUnauthorizedRequiredTrackTagById,
   parseJSONField,
 } from "../extract-middleware";
 import { expectedTypeOf, validateFields } from "../middleware";
@@ -1429,7 +1424,7 @@ export default (app: Application, baseUrl: string) => {
     // FIXME - extract valid track for trackId on recording with id
     async (request: Request, response: Response) => {
       try {
-        const tag = await response.locals.track.updateTag(
+        await response.locals.track.updateTag(
           request.params.tagId,
           request.body.updates
         );

@@ -124,6 +124,7 @@ export const checkThatStationsAreNotTooCloseTogether = (
   return null;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   authUserId: UserId,
   group: Group,

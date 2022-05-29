@@ -90,7 +90,6 @@ import {
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { shouldViewAsSuperUser } from "@/utils";
-import DefaultLabels from "../../const";
 
 interface TrackInternalData {
   localTags: ApiTrackTagResponse[];

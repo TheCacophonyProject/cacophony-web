@@ -87,8 +87,9 @@
 <script lang="ts">
 import BatteryLevel from "../BatteryLevel.vue";
 import { shouldViewAsSuperUser } from "@/utils";
+import { defineComponent } from "@vue/composition-api";
 
-export default {
+export default defineComponent({
   name: "RecordingProperties",
   components: {
     BatteryLevel,
@@ -172,7 +173,7 @@ export default {
       );
     },
   },
-};
+});
 </script>
 
 <style scoped>
