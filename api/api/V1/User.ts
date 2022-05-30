@@ -174,21 +174,24 @@ export default function (app: Application, baseUrl: string) {
         lastActiveAt: now,
       });
 
-      // NOTE Send a welcome email, with a requirement to validate the email address.
-      //  We won't send transactional emails until the address has been validated.
-      //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
-      //  User alerts and group invitations would not be activated until the user has confirmed their email address.
-      const sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
-        getEmailConfirmationToken(user.id, user.email),
-        user.email
-      );
-      if (!sendEmailSuccess && config.productionEnv) {
-        // In this case, we don't want to create the user.
-        await user.destroy();
-        return responseUtil.send(response, {
-          statusCode: 500,
-          messages: ["Failed to send welcome/email confirmation email."],
-        });
+      // For now, we don't want to send welcome emails on browse, just browse-next
+      if (config.server.browse_url !== "https://browse.cacophony.org.nz") {
+        // NOTE Send a welcome email, with a requirement to validate the email address.
+        //  We won't send transactional emails until the address has been validated.
+        //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
+        //  User alerts and group invitations would not be activated until the user has confirmed their email address.
+        const sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
+          getEmailConfirmationToken(user.id, user.email),
+          user.email
+        );
+        if (!sendEmailSuccess && config.productionEnv) {
+          // In this case, we don't want to create the user.
+          await user.destroy();
+          return responseUtil.send(response, {
+            statusCode: 500,
+            messages: ["Failed to send welcome/email confirmation email."],
+          });
+        }
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
         user,
@@ -278,15 +281,17 @@ export default function (app: Application, baseUrl: string) {
         // If the user has changed their email, we'll need to send
         // another confirmation email.
         dataToUpdate.emailConfirmed = false;
-        const emailSuccess = await sendEmailConfirmationEmail(
-          requestUser,
-          dataToUpdate.email
-        );
-        if (!emailSuccess && config.productionEnv) {
-          responseUtil.send(response, {
-            statusCode: 500,
-            messages: ["Failed to send email confirmation email."],
-          });
+        if (config.server.browse_url !== "https://browse.cacophony.org.nz") {
+          const emailSuccess = await sendEmailConfirmationEmail(
+            requestUser,
+            dataToUpdate.email
+          );
+          if (!emailSuccess && config.productionEnv) {
+            responseUtil.send(response, {
+              statusCode: 500,
+              messages: ["Failed to send email confirmation email."],
+            });
+          }
         }
       }
       await requestUser.update(dataToUpdate);

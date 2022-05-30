@@ -120,7 +120,6 @@
 import { imgSrc } from "@/const";
 import { formatName } from "./VisitsListDayItem.vue";
 import { MonitoringRequest } from "@typedefs/api/monitoring";
-import DeviceLink from "@/components/DeviceLink.vue";
 import StationLink from "@/components/StationLink.vue";
 
 const timeElapsed = (start: Date, end: Date): string => {

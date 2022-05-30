@@ -53,7 +53,8 @@ function multipartUpload(
     uploadingDeviceOrUser: Device | User | null,
     data: any,
     key: string,
-    uploadedFileData: Uint8Array
+    uploadedFileData: Uint8Array,
+    locals: Record<string, any>
   ) => Promise<ModelCommon<T> | string>
 ) {
   return async (request: Request, response: Response) => {
@@ -241,7 +242,8 @@ function multipartUpload(
           uploadingDevice || response.locals.requestUser || null,
           data,
           key,
-          fileDataArray
+          fileDataArray,
+          response.locals
         );
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();

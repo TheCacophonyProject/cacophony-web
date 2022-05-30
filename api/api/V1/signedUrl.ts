@@ -23,7 +23,60 @@ import log from "@log";
 import modelsUtil from "@models/util/util";
 import responseUtil from "./responseUtil";
 import { ClientError } from "../customErrors";
-import { Application } from "express";
+import { Application, Request, Response } from "express";
+
+export const streamS3Object = async (
+  request: Request,
+  response: Response,
+  key: string,
+  filename: string,
+  mimeType: string
+) => {
+  const s3 = modelsUtil.openS3();
+  const params = {
+    Key: key,
+  };
+
+  s3.getObject(params, function (err, data) {
+    if (err) {
+      log.error("Error with s3 getObject.");
+      log.error(err.stack);
+      return responseUtil.serverError(response, err);
+    }
+
+    if (!request.headers.range) {
+      response.setHeader(
+        "Content-disposition",
+        "attachment; filename=" + filename
+      );
+      response.setHeader("Content-type", mimeType);
+      response.setHeader("Content-Length", data.ContentLength);
+      response.write(data.Body, "binary");
+      return response.end(null, "binary");
+    }
+
+    const range = request.headers.range;
+    const positions = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(positions[0], 10);
+    const total = (data.Body as Buffer).length;
+    const end = positions[1] ? parseInt(positions[1], 10) : total - 1;
+    const chunksize = end - start + 1;
+
+    const headers = {
+      "Content-Range": "bytes " + start + "-" + end + "/" + total,
+      "Content-Length": chunksize,
+      "Accept-Ranges": "bytes",
+      "Content-type": mimeType,
+    };
+
+    response.writeHead(206, headers);
+
+    const bufStream = new stream.PassThrough();
+    const b2 = (data.Body as Buffer).slice(start, end + 1);
+    bufStream.end(b2);
+    bufStream.pipe(response);
+  });
+};
 
 export default function (app: Application, baseUrl: string) {
   /**
@@ -56,51 +109,7 @@ export default function (app: Application, baseUrl: string) {
       if (!key) {
         throw new ClientError("No key provided.");
       }
-
-      const s3 = modelsUtil.openS3();
-      const params = {
-        Key: key,
-      };
-
-      s3.getObject(params, function (err, data) {
-        if (err) {
-          log.error("Error with s3 getObject.");
-          log.error(err.stack);
-          return responseUtil.serverError(response, err);
-        }
-
-        if (!request.headers.range) {
-          response.setHeader(
-            "Content-disposition",
-            "attachment; filename=" + filename
-          );
-          response.setHeader("Content-type", mimeType);
-          response.setHeader("Content-Length", data.ContentLength);
-          response.write(data.Body, "binary");
-          return response.end(null, "binary");
-        }
-
-        const range = request.headers.range;
-        const positions = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(positions[0], 10);
-        const total = (data.Body as Buffer).length;
-        const end = positions[1] ? parseInt(positions[1], 10) : total - 1;
-        const chunksize = end - start + 1;
-
-        const headers = {
-          "Content-Range": "bytes " + start + "-" + end + "/" + total,
-          "Content-Length": chunksize,
-          "Accept-Ranges": "bytes",
-          "Content-type": mimeType,
-        };
-
-        response.writeHead(206, headers);
-
-        const bufStream = new stream.PassThrough();
-        const b2 = (data.Body as Buffer).slice(start, end + 1);
-        bufStream.end(b2);
-        bufStream.pipe(response);
-      });
+      await streamS3Object(request, response, key, filename, mimeType);
     })
   );
 }

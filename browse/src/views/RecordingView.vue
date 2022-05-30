@@ -11,9 +11,9 @@
               style="color: #666; font-size: 16px"
             />
           </span>
-          <DeviceLink
+          <StationLink
             :group-name="groupName"
-            :device-name="deviceName"
+            :station-name="stationName"
             context="recordings"
             :type="recording && recording.type"
           />
@@ -78,13 +78,13 @@ import { RecordingType } from "@typedefs/api/consts";
 import api from "@api";
 import { RecordingId, TagId, TrackId } from "@typedefs/api/common";
 import GroupLink from "@/components/GroupLink.vue";
-import DeviceLink from "@/components/DeviceLink.vue";
+import StationLink from "@/components/StationLink.vue";
 
 export default {
   name: "RecordingView",
   components: {
+    StationLink,
     GroupLink,
-    DeviceLink,
     // We only ever want one of these at a time, so lazy load the required component
     VideoRecording: () => import("@/components/Video/VideoRecording.vue"),
     AudioRecording: () => import("@/components/Video/AudioRecording.vue"),
@@ -178,6 +178,9 @@ export default {
     },
     deviceName(): string {
       return (this.recording as ApiRecordingResponse).deviceName;
+    },
+    stationName(): string {
+      return (this.recording as ApiRecordingResponse).stationName;
     },
     groupName(): string {
       return (this.recording as ApiRecordingResponse).groupName;

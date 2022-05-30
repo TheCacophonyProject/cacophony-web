@@ -22,11 +22,15 @@
             size="xs"
             style="color: #666; font-size: 16px"
           />
-          <StationLink :group-name="groupName" :station-name="stationName" />
+          <StationLink
+            :group-name="groupName"
+            :station-name="stationName"
+            context="visits"
+          />
           <span v-if="stationIsRetired">(retired)</span>
         </h1>
       </div>
-      <div>
+      <div v-if="userIsGroupAdmin">
         <p class="lead d-sm-none d-md-inline-block">Manage this station.</p>
       </div>
     </b-jumbotron>
@@ -36,6 +40,20 @@
     </div>
     <div v-else-if="station" class="tabs-container">
       <tab-list v-model="currentTabIndex">
+        <b-tab lazy>
+          <template #title>
+            <TabTemplate
+              title="Visits"
+              :isLoading="visitsCountLoading"
+              :value="visitsCount"
+            />
+          </template>
+          <MonitoringTab
+            :group-name="groupName"
+            :station-name="stationName"
+            :visits-query="visitsQuery()"
+          />
+        </b-tab>
         <tab-list-item lazy>
           <template #title>
             <TabTemplate
@@ -51,20 +69,20 @@
             :recordings-query="recordingsQueryFinal"
           />
         </tab-list-item>
-        <!--        <b-tab lazy>-->
-        <!--          <template #title>-->
-        <!--            <TabTemplate-->
-        <!--              title="Visits"-->
-        <!--              :isLoading="visitsCountLoading"-->
-        <!--              :value="visitsCount"-->
-        <!--            />-->
-        <!--          </template>-->
-        <!--          <MonitoringTab-->
-        <!--            :group-name="groupName"-->
-        <!--            :station-name="stationName"-->
-        <!--            :visits-query="visitsQuery()"-->
-        <!--          />-->
-        <!--        </b-tab>-->
+        <b-tab lazy title="Manual uploads" v-if="userIsGroupAdmin">
+          <div class="container" style="padding: 0">
+            <h2>Manually upload recordings</h2>
+            TODO
+          </div>
+        </b-tab>
+        <b-tab lazy title="Reference photos">
+          <div class="container" style="padding: 0">
+            <h2>Station reference photos</h2>
+            <div v-if="userIsGroupAdmin">Upload more reference photos</div>
+            TODO Table of reference photos. Ability to delete or add or view
+            them.
+          </div>
+        </b-tab>
       </tab-list>
     </div>
     <div v-else class="container no-tabs">
@@ -81,7 +99,7 @@ import Spinner from "../components/Spinner.vue";
 import api from "../api";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
-// import MonitoringTab from "@/components/MonitoringTab.vue";
+import MonitoringTab from "@/components/MonitoringTab.vue";
 import { latLng } from "leaflet";
 import { isViewingAsOtherUser } from "@/components/NavBar.vue";
 import { shouldViewAsSuperUser } from "@/utils";
@@ -104,7 +122,7 @@ export default {
     RecordingsTab,
     TabList,
     TabListItem,
-    // MonitoringTab,
+    MonitoringTab,
   },
   computed: {
     ...mapState({
@@ -116,13 +134,13 @@ export default {
         (isViewingAsOtherUser() || shouldViewAsSuperUser())
       );
     },
-    userIsMemberOfGroup() {
+    userIsMemberOfGroup(): boolean {
+      return this.userIsSuperUserAndViewingAsSuperUser || !!this.group;
+    },
+    userIsGroupAdmin() {
       return (
         this.userIsSuperUserAndViewingAsSuperUser ||
-        (this.group.GroupUsers &&
-          this.group.GroupUsers.find(
-            ({ username }) => username === this.currentUser.username
-          ) !== undefined)
+        this.group & this.group.admin
       );
     },
     stationName() {
@@ -180,7 +198,7 @@ export default {
       station: null,
       stationIsRetired: false,
       group: {},
-      tabNames: ["recordings", "visits"],
+      tabNames: ["visits", "manual-uploads", "reference-photos", "recordings"],
     };
   },
   async mounted() {

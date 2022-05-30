@@ -475,16 +475,18 @@ export function removeUndefinedParams(jsStruct: any): any {
   }
 }
 
-export function testRunOnApi(command: string, options = {}, callback) {
+export function testRunOnApi(
+  command: string,
+  options = {},
+  callback = undefined
+) {
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    cy.log(`cd ../api && docker-compose exec -T server bash -lic ${command}`);
     cy.exec(
       `cd ../api && docker-compose exec -T server bash -lic ${command}`,
       options
     ).then((val) => callback && callback(val));
   } else {
     if (Cypress.env("API-ssh-server") != null) {
-      cy.log(`ssh ${Cypress.env("API-ssh-server")} ${command}`);
       cy.exec(`ssh ${Cypress.env("API-ssh-server")} ${command}`, options).then(
         () => callback && callback()
       );
