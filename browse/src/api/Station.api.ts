@@ -66,6 +66,36 @@ function renameStationById(
   });
 }
 
+function uploadReferenceImage(
+  stationId: StationId,
+  imageData: Blob
+): Promise<FetchResult<{ fileKey: string }>> {
+  const data = new FormData();
+  data.set("data", JSON.stringify({}));
+  data.set("file", imageData);
+  return CacophonyApi.postMultipartFormData(
+    `/api/v1/stations/${stationId}/reference-photo`,
+    data
+  );
+}
+
+function getReferenceImage(
+  stationId: StationId,
+  key: string
+): Promise<FetchResult<any>> {
+  return CacophonyApi.getBinary(
+    `/api/v1/stations/${stationId}/reference-photo/${key.replace(/\//g, "_")}`
+  );
+}
+function deleteReferenceImage(
+  stationId: StationId,
+  key: string
+): Promise<FetchResult<any>> {
+  return CacophonyApi.delete(
+    `/api/v1/stations/${stationId}/reference-photo/${key.replace(/\//g, "_")}`
+  );
+}
+
 export default {
   getStations,
   updateStationWithId,
@@ -73,4 +103,7 @@ export default {
   deleteStationById,
   retireStationById,
   renameStationById,
+  uploadReferenceImage,
+  getReferenceImage,
+  deleteReferenceImage,
 };

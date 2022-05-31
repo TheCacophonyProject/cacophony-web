@@ -10,13 +10,19 @@
       <h1>
         <GroupLink :group-name="groupName" />
       </h1>
-      <p class="lead">
+      <p class="lead" v-if="group && isGroupAdmin">
         Manage the users associated with this group and view the devices
         associated with it.
       </p>
+      <p v-else-if="group">
+        View stations, recordings, and devices associated with this group.
+      </p>
     </b-jumbotron>
-    <tab-list v-model="currentTabIndex">
-      <tab-list-item lazy v-if="!limitedView">
+    <tab-list v-model="currentTabIndex" v-if="group">
+      <tab-list-item lazy title="Manual uploads" v-if="isGroupAdmin">
+        <ManualRecordingUploads :devices="devices" />
+      </tab-list-item>
+      <tab-list-item lazy v-if="isGroupAdmin">
         <template #title>
           <TabTemplate
             title="Users"
@@ -33,7 +39,7 @@
           @user-removed="(userName) => removedUser(userName)"
         />
       </tab-list-item>
-      <tab-list-item lazy v-if="!limitedView">
+      <tab-list-item lazy>
         <template #title>
           <TabTemplate
             title="Visits"
@@ -62,7 +68,7 @@
           :group-name="groupName"
         />
       </tab-list-item>
-      <tab-list-item lazy v-if="!limitedView">
+      <tab-list-item lazy>
         <template #title>
           <TabTemplate
             title="Stations"
@@ -125,6 +131,7 @@ import MonitoringTab from "@/components/MonitoringTab.vue";
 import GroupLink from "@/components/GroupLink.vue";
 import TabListItem from "@/components/TabListItem.vue";
 import TabList from "@/components/TabList.vue";
+import ManualRecordingUploads from "@/components/ManualRecordingUploads.vue";
 
 interface GroupViewData {
   group: ApiGroupResponse | null;
@@ -143,6 +150,7 @@ export default {
     TabTemplate,
     MonitoringTab,
     TabList,
+    ManualRecordingUploads,
   },
   data(): Record<string, any> & GroupViewData {
     return {
@@ -164,7 +172,6 @@ export default {
       devices: [],
       stations: [],
       visits: [],
-      limitedView: false,
     };
   },
   computed: {
@@ -178,14 +185,17 @@ export default {
       return this.group && (this.group as ApiGroupResponse).admin;
     },
     tabNames() {
-      return [
-        "users",
-        "visits",
-        "devices",
-        "stations",
-        "recordings",
-        "deleted-recordings",
-      ];
+      if (this.isGroupAdmin) {
+        return [
+          "manual-uploads",
+          "users",
+          "visits",
+          "devices",
+          "stations",
+          "recordings",
+        ];
+      }
+      return ["visits", "devices", "stations", "recordings"];
     },
     nonRetiredStationsCount(): number {
       return (
@@ -222,6 +232,22 @@ export default {
     },
   },
   async created() {
+    const groupRequest = await api.groups.getGroup(this.groupName);
+    if (groupRequest.success) {
+      const {
+        result: { group },
+      } = groupRequest;
+      this.group = group;
+      this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
+      await Promise.all([
+        this.fetchUsers(),
+        this.fetchStations(),
+        this.fetchVisitsCount(),
+        this.fetchDevices(),
+        this.fetchRecordingCount(),
+        this.fetchDeletedRecordingCount(),
+      ]);
+    }
     const nextTabName = this.tabNames[this.currentTabIndex];
     if (nextTabName !== this.currentTabName) {
       await this.$router.replace({
@@ -231,31 +257,6 @@ export default {
           tabName: nextTabName,
         },
       });
-    }
-    if (!this.limitedView) {
-      const groupRequest = await api.groups.getGroup(this.groupName);
-      if (groupRequest.success) {
-        const {
-          result: { group },
-        } = groupRequest;
-        this.group = group;
-        this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
-        await Promise.all([
-          this.fetchUsers(),
-          this.fetchStations(),
-          this.fetchVisitsCount(),
-          this.fetchDevices(),
-          this.fetchRecordingCount(),
-          this.fetchDeletedRecordingCount(),
-        ]);
-      } else if (groupRequest.status === 403) {
-        this.limitedView = true;
-        await this.fetchDevices();
-        await this.fetchRecordingCount();
-      }
-    } else {
-      await this.fetchDevices();
-      await this.fetchRecordingCount();
     }
   },
   methods: {
@@ -282,13 +283,9 @@ export default {
     },
     async fetchUsers() {
       this.usersLoading = true;
-      if (!this.limitedView) {
-        const usersResponse = await api.groups.getUsersForGroup(this.groupName);
-        if (!usersResponse.success && usersResponse.status === 403) {
-          this.limitedView = true;
-        } else if (usersResponse.success) {
-          this.users = usersResponse.result.users;
-        }
+      const usersResponse = await api.groups.getUsersForGroup(this.groupName);
+      if (usersResponse.success) {
+        this.users = usersResponse.result.users;
       }
       this.usersLoading = false;
     },
@@ -314,51 +311,21 @@ export default {
     },
     async fetchRecordingCount() {
       this.recordingsCountLoading = true;
-      if (!this.limitedView) {
-        this.groupId = this.group.id;
-        this.recordingQueryFinal = this.recordingQuery();
 
-        const countResponse = await api.recording.queryCount(
-          this.recordingQuery()
-        );
-        if (countResponse.success) {
-          const {
-            result: { count },
-          } = countResponse;
-          if (count !== 0) {
-            this.recordingsCount = count;
-          }
-        }
+      this.groupId = this.group.id;
+      this.recordingQueryFinal = this.recordingQuery();
 
-        this.recordingsCountLoading = false;
-      } else {
-        try {
-          await this.fetchDevices();
-          this.recordingQueryFinal = this.recordingQuery();
-          this.$delete(this.recordingQueryFinal, "group");
-
-          this.$set(
-            this.recordingQueryFinal,
-            "device",
-            this.devices.map((device) => device.id)
-          );
-          {
-            const recordingResponse = await api.recording.query({
-              ...this.recordingQueryFinal,
-              limit: 1,
-            });
-            if (recordingResponse.success) {
-              const { result } = recordingResponse;
-              if (result.count !== 0) {
-                this.recordingsCount = result.count;
-              }
-            }
-          }
-        } catch (e) {
-          this.recordingsCountLoading = false;
+      const countResponse = await api.recording.queryCount(
+        this.recordingQuery()
+      );
+      if (countResponse.success) {
+        const {
+          result: { count },
+        } = countResponse;
+        if (count !== 0) {
+          this.recordingsCount = count;
         }
       }
-
       this.recordingsCountLoading = false;
     },
     async fetchVisitsCount() {
@@ -385,25 +352,12 @@ export default {
       {
         const now = new Date();
         now.setDate(now.getDate() - 1);
-        if (!this.limitedView) {
-          const getDevicesResponse = await api.groups.getDevicesForGroup(
-            this.groupName
-          );
-          if (getDevicesResponse.success) {
-            this.devices = getDevicesResponse.result.devices;
-          } else {
-            this.limitedView = true;
-            await this.fetchDevices();
-          }
-        } else {
-          // FIXME: Do we still need this branch?  I feel like maybe not.
-          const devicesResponse = await api.device.getDevices();
-          if (devicesResponse.success) {
-            const { result } = devicesResponse;
-            this.devices = result.devices.filter(
-              (device) => device.groupName === this.groupName
-            );
-          }
+
+        const getDevicesResponse = await api.groups.getDevicesForGroup(
+          this.groupName
+        );
+        if (getDevicesResponse.success) {
+          this.devices = getDevicesResponse.result.devices;
         }
       }
       this.devicesLoading = false;
@@ -416,8 +370,6 @@ export default {
         );
         if (stationsResponse.success) {
           this.stations = stationsResponse.result.stations;
-        } else {
-          this.limitedView = true;
         }
       }
       this.stationsLoading = false;

@@ -293,7 +293,7 @@ export default {
         }
         let location: LatLng | undefined;
         let devicePowerEvents;
-        if (this.visitsQuery.device.length !== 0) {
+        if (this.visitsQuery.device && this.visitsQuery.device.length !== 0) {
           // eslint-disable-next-line no-console
           console.assert(
             this.visitsQuery.device.length === 1,

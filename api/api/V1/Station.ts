@@ -27,6 +27,7 @@ import {
 import util from "@api/V1/util";
 import { openS3 } from "@models/util/util";
 import { streamS3Object } from "@api/V1/signedUrl";
+import logger from "@/logging";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -151,7 +152,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
-  app.get(
+  app.delete(
     `${apiUrl}/:id/reference-photo/:fileKey`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), param("fileKey").isString()]),
@@ -160,7 +161,7 @@ export default function (app: Application, baseUrl: string) {
       // Make sure the fileKey exists in the station settings.
       let referenceImages =
         (response.locals.station as Station).settings.referenceImages || [];
-      const fileKey = request.params.fileKey;
+      const fileKey = request.params.fileKey.replace(/_/g, "/");
       if (!referenceImages.includes(fileKey)) {
         return responseUtil.send(response, {
           statusCode: 400,
@@ -205,7 +206,7 @@ export default function (app: Application, baseUrl: string) {
       // Make sure the fileKey exists in the station settings.
       const referenceImages =
         (response.locals.station as Station).settings.referenceImages || [];
-      const fileKey = request.params.fileKey;
+      const fileKey = request.params.fileKey.replace(/_/g, "/");
       if (!referenceImages.includes(fileKey)) {
         return responseUtil.send(response, {
           statusCode: 400,
@@ -248,9 +249,9 @@ export default function (app: Application, baseUrl: string) {
         locals
       ): Promise<string> => {
         const station = locals.station;
-        const stationSettings: ApiStationSettings = station.settings || {};
+        const stationSettings: ApiStationSettings = { ...station.settings };
         stationSettings.referenceImages = [
-          ...stationSettings.referenceImages,
+          ...(stationSettings.referenceImages || []),
           key,
         ];
         await station.update({

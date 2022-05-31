@@ -40,7 +40,7 @@
     </div>
     <div v-else-if="station" class="tabs-container">
       <tab-list v-model="currentTabIndex">
-        <b-tab lazy>
+        <tab-list-item lazy>
           <template #title>
             <TabTemplate
               title="Visits"
@@ -53,7 +53,17 @@
             :station-name="stationName"
             :visits-query="visitsQuery()"
           />
-        </b-tab>
+        </tab-list-item>
+        <tab-list-item lazy>
+          <template #title>
+            <TabTemplate
+              title="Reference photos"
+              :isLoading="!loadedStation"
+              :value="referencePhotos.length"
+            />
+          </template>
+          <StationReferencePhotosTab :station="station" />
+        </tab-list-item>
         <tab-list-item lazy>
           <template #title>
             <TabTemplate
@@ -69,20 +79,6 @@
             :recordings-query="recordingsQueryFinal"
           />
         </tab-list-item>
-        <b-tab lazy title="Manual uploads" v-if="userIsGroupAdmin">
-          <div class="container" style="padding: 0">
-            <h2>Manually upload recordings</h2>
-            TODO
-          </div>
-        </b-tab>
-        <b-tab lazy title="Reference photos">
-          <div class="container" style="padding: 0">
-            <h2>Station reference photos</h2>
-            <div v-if="userIsGroupAdmin">Upload more reference photos</div>
-            TODO Table of reference photos. Ability to delete or add or view
-            them.
-          </div>
-        </b-tab>
       </tab-list>
     </div>
     <div v-else class="container no-tabs">
@@ -108,12 +104,14 @@ import GroupLink from "@/components/GroupLink.vue";
 import StationLink from "@/components/StationLink.vue";
 import TabList from "@/components/TabList.vue";
 import TabListItem from "@/components/TabListItem.vue";
+import StationReferencePhotosTab from "@/components/StationReferencePhotosTab.vue";
 
 // TODO(jon): Implement visits/monitoring page for stations - this will require API changes.
 
 export default {
   name: "StationView",
   components: {
+    StationReferencePhotosTab,
     StationLink,
     GroupLink,
     MapWithPoints,
@@ -140,7 +138,7 @@ export default {
     userIsGroupAdmin() {
       return (
         this.userIsSuperUserAndViewingAsSuperUser ||
-        this.group & this.group.admin
+        (this.group && this.group.admin)
       );
     },
     stationName() {
@@ -160,6 +158,11 @@ export default {
         return latLng(this.station.location.lat, this.station.location.lng);
       }
       return null;
+    },
+    referencePhotos(): string[] {
+      return (
+        (this.station.settings && this.station.settings.referenceImages) || []
+      );
     },
     currentTabIndex: {
       get() {
@@ -198,7 +201,7 @@ export default {
       station: null,
       stationIsRetired: false,
       group: {},
-      tabNames: ["visits", "manual-uploads", "reference-photos", "recordings"],
+      tabNames: ["visits", "reference-photos", "recordings"],
     };
   },
   async mounted() {
@@ -222,8 +225,28 @@ export default {
 
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
     await this.fetchStation();
+    await this.fetchVisitsCount();
   },
   methods: {
+    async fetchVisitsCount() {
+      this.visitsCountLoading = true;
+
+      this.groupId = this.group.id;
+      this.visitsQueryFinal = this.visitsQuery();
+
+      const visitsResponse = await api.monitoring.queryVisitPage({
+        ...this.visitsQuery(),
+        days: "all",
+        perPage: 1,
+        page: 1,
+      });
+      if (visitsResponse.success) {
+        const { result } = visitsResponse;
+        this.visitsCount = `${result.params.pagesEstimate}`;
+      }
+
+      this.visitsCountLoading = false;
+    },
     async fetchStation() {
       try {
         if (!this.stationId) {
@@ -307,7 +330,7 @@ export default {
         days: "all",
         // TODO(jon): This should really be chunked into a per-day type thing.
 
-        stationId: [this.station.id],
+        station: [this.station.id],
       };
     },
   },
