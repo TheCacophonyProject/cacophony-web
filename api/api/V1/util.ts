@@ -29,6 +29,7 @@ import models, { ModelCommon } from "@models";
 import { User } from "@models/User";
 import stream, { Stream } from "stream";
 import { RecordingType } from "@typedefs/api/consts";
+import config from "@config";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -234,7 +235,8 @@ function multipartUpload(
             );
             return;
           }
-        } else if (keyPrefix === "raw") {
+        } else if (keyPrefix === "raw" && config.productionEnv) {
+          // NOTE: We need to allow duplicate uploads on test currently.
           // Create a fileHash if we didn't get one from the device upload, and check for
           // duplicates.
           data.fileHash = crypto
