@@ -247,6 +247,7 @@ export default {
       this.playerOptions.width = this.canvasWidth + "px";
       this.playerOptions.height = this.canvasHeight + "px";
       this.playerIsReady = true;
+      this.$emit("player-ready");
     },
     videoError() {
       this.requestNextVideo();
@@ -356,11 +357,14 @@ export default {
     videoJsPlayer(): Player {
       return this.$refs.player && this.$refs.player.player;
     },
-    drawRectWithText(context, { trackIndex, rectWidth, rectHeight, x, y }) {
-      const hitIndex = this.tracks[trackIndex];
-      context.strokeStyle = this.colours[hitIndex % this.colours.length];
+    drawRectWithText(
+      context,
+      { trackIndex, trackId, rectWidth, rectHeight, x, y }
+    ) {
+      context.strokeStyle = this.colours[trackIndex % this.colours.length];
       const selected =
-        this.currentTrack && this.currentTrack.trackIndex === hitIndex;
+        this.currentTrack && this.currentTrack.trackId === trackId;
+
       const lineWidth = selected ? 3 : 1;
       const halfLineWidth = lineWidth / 2;
       context.lineWidth = lineWidth;
@@ -374,7 +378,7 @@ export default {
       if (selected) {
         context.font = "12px Verdana";
         context.fillStyle = "white";
-        const text = `Track ${hitIndex + 1}`;
+        const text = `Track ${trackIndex + 1}`;
         const textHeight = 12;
         const textWidth = context.measureText(text).width;
 
@@ -387,14 +391,6 @@ export default {
       }
     },
     getVideoFrameDataForAllTracksAtTime(currentTime, currentTrackOnly) {
-      const search = (positions, currentFrame) => {
-        let i = positions.length - 1;
-        while (positions[i] && positions[i].frameNumber > currentFrame) {
-          i--;
-        }
-        i = Math.max(0, i);
-        return positions[i];
-      };
       // First check if the last position we got is still the current position?
       // See if tracks are in range.
       let tracks;
@@ -413,14 +409,15 @@ export default {
         .filter(
           (track) => track.start <= currentTime && track.end >= currentTime
         )
-        .map((track, trackIndex) => {
-          const item = search(track.positions, currentFrame);
+        .map((track) => {
+          const item = track.positions[currentFrame];
           return {
             rectWidth: item.width * this.scale,
             rectHeight: item.height * this.scale,
             x: item.x * this.scale,
             y: item.y * this.scale,
-            trackIndex,
+            trackIndex: track.trackIndex,
+            trackId: track.id,
           };
         });
       return data;

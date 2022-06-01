@@ -11,6 +11,7 @@
           @trackSelected="trackSelected"
           :current-track="selectedTrack"
           @request-next-recording="nextRecording"
+          @player-ready="playerReady"
         />
       </b-col>
       <b-col cols="12" lg="4">
@@ -243,12 +244,18 @@ export default {
       return (
         this.recording &&
         (this.recording as ApiThermalRecordingResponse).tracks
-          .map((track) => ({
+          .map((track, index) => ({
             ...track,
-            positions: track.positions.map((position) => ({
-              ...position,
-              frameNumber: position.order,
-            })),
+            trackIndex: index,
+            positions: track.positions
+              .map((position) => ({
+                ...position,
+                frameNumber: position.order,
+              }))
+              .reduce(
+                (dict, el, index) => ((dict[el.frameNumber] = el), dict),
+                {}
+              ),
           }))
           .filter((track) => this.showFiltered || !track.filtered)
       );
@@ -300,17 +307,6 @@ export default {
   methods: {
     orderTracks() {
       return ([...this.tracks] || []).sort((a, b) => a.start - b.end);
-    },
-    getSelectedTrack() {
-      if (this.$route.params.trackid) {
-        const index = this.orderTracks().findIndex(
-          (track) => track.id == this.$route.params.trackid
-        );
-        if (index > -1) {
-          return index;
-        }
-      }
-      return 0;
     },
     async reprocess() {
       const { success } = await api.recording.reprocess(this.recordingId);
