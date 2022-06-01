@@ -290,7 +290,7 @@ async function saveThumbnailInfo(
     if (!frame) {
       throw new Error(`Failed to extract frame ${thumbnail.frame_number}`);
     }
-    thumb = await createIRThumbnail(frame, thumbnail, palette);
+    thumb = await createIRThumbnail(frame, thumbnail);
   } else {
     frame = await getCPTVFrame(recording, thumbnail.frame_number);
     if (!frame) {
@@ -318,8 +318,7 @@ async function saveThumbnailInfo(
 //returns {data: buffer, meta: metadata about image}
 async function createIRThumbnail(
   frame,
-  thumbnail: TrackFramePosition,
-  colourPalette: string = THUMBNAIL_PALETTE
+  thumbnail: TrackFramePosition
 ): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
   const frameMeta = frame.meta.imageData;
   const resX = frameMeta.width;
