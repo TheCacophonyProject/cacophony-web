@@ -260,7 +260,7 @@ export default {
             // NOTE - We only need to get groups because there can be groups with
             //  no devices - otherwise all groups would be listed in devices
             api.groups.getGroups(),
-            api.device.getDevices(),
+            api.device.getDevices(), // This should become stations
           ]);
           {
             if (userGroups.success) {

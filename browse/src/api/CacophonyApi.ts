@@ -61,8 +61,16 @@ export default {
    * @param {string} endpoint - The cacophony API endpoint to target, for example `/api/v1/users`.
    * @param {*} [body] - An object to go in the request body that will be sent as JSON.
    * @returns {Promise<{result: *, success: boolean, status: number}>} */
-  postMultipartFormData: async (endpoint: string, body: FormData) =>
-    fetch(`${config.api}${endpoint}`, { method: "POST", body }),
+  postMultipartFormData: async (
+    endpoint: string,
+    body: FormData,
+    suppressGlobalMessaging = false
+  ) =>
+    fetch(
+      `${config.api}${endpoint}`,
+      { method: "POST", body },
+      suppressGlobalMessaging
+    ),
 
   /**
    * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.

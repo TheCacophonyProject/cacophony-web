@@ -460,12 +460,17 @@ function thumbnail(id: RecordingId): string {
 
 function addRecording(
   file: Blob,
-  data: any
-): Promise<FetchResult<{ id: RecordingId }>> {
+  data: any,
+  deviceId: DeviceId
+): Promise<FetchResult<{ id: RecordingId; messages: string[] }>> {
   const formData = new FormData();
   formData.set("data", JSON.stringify(data));
   formData.set("file", file);
-  return CacophonyApi.postMultipartFormData(`/api/v1/recordings`, formData);
+  return CacophonyApi.postMultipartFormData(
+    `/api/v1/recordings/device/${deviceId}`,
+    formData,
+    true
+  );
 }
 
 interface RecordingToTag {

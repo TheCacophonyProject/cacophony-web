@@ -209,7 +209,7 @@ function multipartUpload(
         // Optional file integrity check, opt-in to be backward compatible with existing clients.
         if (data.fileHash && keyPrefix === "raw") {
           log.info("Checking file hash. Key: %s", key);
-          // Read the full file back from s3 and hash it
+          // Hash the full file
           const checkHash = crypto
             .createHash("sha1")
             // @ts-ignore
@@ -231,6 +231,45 @@ function multipartUpload(
             responseUtil.invalidDatapointUpload(
               response,
               "Uploaded file integrity check failed, please retry."
+            );
+            return;
+          }
+        } else if (keyPrefix === "raw") {
+          // Create a fileHash if we didn't get one from the device upload, and check for
+          // duplicates.
+          data.fileHash = crypto
+            .createHash("sha1")
+            // @ts-ignore
+            .update(fileDataArray, "binary")
+            .digest("hex");
+
+          const existingRecordingWithHashForDevice =
+            await models.Recording.findOne({
+              where: {
+                DeviceId: uploadingDevice.id,
+                rawFileHash: data.fileHash,
+              },
+            });
+          if (existingRecordingWithHashForDevice !== null) {
+            log.error(
+              "Recording with hash %s for device %s already exists, discarding duplicate",
+              data.fileHash,
+              uploadingDevice.id
+            );
+            // Remove from s3
+            await modelsUtil
+              .openS3()
+              .deleteObject({
+                Key: key,
+              })
+              .promise()
+              .catch((err) => {
+                return err;
+              });
+            responseUtil.validRecordingUpload(
+              response,
+              existingRecordingWithHashForDevice.id,
+              "Duplicate recording found for device"
             );
             return;
           }

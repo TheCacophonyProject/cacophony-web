@@ -18,7 +18,7 @@
         View stations, recordings, and devices associated with this group.
       </p>
     </b-jumbotron>
-    <tab-list v-model="currentTabIndex" v-if="group">
+    <tab-list v-model="currentTabIndex" v-if="group && devices.length">
       <tab-list-item lazy title="Manual uploads" v-if="isGroupAdmin">
         <ManualRecordingUploads :devices="devices" />
       </tab-list-item>

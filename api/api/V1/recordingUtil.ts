@@ -715,6 +715,8 @@ export const uploadRawRecording = util.multipartUpload(
       recording.rawFileHash = data.fileHash;
     }
 
+    // TODO - if a fileHash isn't supplied, lets create one anyway.
+
     recording.rawFileSize = uploadedFileData.length;
     recording.rawFileKey = key;
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
