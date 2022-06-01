@@ -24,6 +24,7 @@ import recordingUtil, {
   reportVisits,
   signedToken,
   uploadRawRecording,
+  getIRFrame,
 } from "./recordingUtil";
 import responseUtil from "./responseUtil";
 import models from "@models";
@@ -897,7 +898,6 @@ export default (app: Application, baseUrl: string) => {
           JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
         );
       }
-
       responseUtil.send(response, {
         statusCode: 200,
         messages: [],
@@ -933,7 +933,6 @@ export default (app: Application, baseUrl: string) => {
       const rec = response.locals.recording;
       const mimeType = "image/png";
       const filename = `${rec.id}-thumb.png`;
-
       if (!rec.rawFileKey) {
         throw new ClientError("Rec has no raw file key.");
       }

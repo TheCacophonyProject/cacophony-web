@@ -76,7 +76,14 @@ let CptvDecoder;
 (async () => {
   CptvDecoder = (await dynamicImportESM("cptv-decoder")).CptvDecoder;
 })();
+const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
+const ffmpeg = require("fluent-ffmpeg");
+ffmpeg.setFfmpegPath(ffmpegPath);
+import extractFrames from "ffmpeg-extract-frames";
+import { Readable, Writable } from "stream";
+const stream = require("stream");
 
+const fs = require("fs");
 // How close is a station allowed to be to another station?
 export const MIN_STATION_SEPARATION_METERS = 60;
 // The radius of the station is half the max distance between stations: any recording inside the radius can
@@ -166,6 +173,58 @@ async function getThumbnail(rec: Recording) {
   return s3.getObject(params).promise();
 }
 
+export async function getIRFrame(
+  recording: any,
+  frameNumber: number
+): Promise<any | undefined> {
+  const fileData = await modelsUtil
+    .openS3()
+    .getObject({
+      // Key: "raw/2022/06/01/4be8bf37-3b2a-4e47-a4c3-556d231fdb5f",
+      Key: recording.rawFileKey,
+    })
+    .promise()
+    .catch((err) => {
+      return err;
+    });
+
+  const bodyBuffer = fileData.Body as Buffer;
+  fs.writeFileSync("./temp.mp4", bodyBuffer);
+
+  const screenData = new Uint8Array(640 * 480);
+  let index = 0;
+  const wStream = new Writable({
+    write(chunk) {
+      screenData.set(chunk, index);
+      index += chunk.length;
+    },
+  });
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input("./temp.mp4")
+      .noAudio()
+      .outputOptions(["-frames:v 1", "-f image2"])
+      .output(wStream)
+      .seek(frameNumber / 10)
+      .on("start", function (commandLine) {
+        console.log("Spawned Ffmpeg with command: " + commandLine);
+      })
+      .on("end", function () {
+        const frame = {
+          data: screenData,
+          meta: { imageData: { width: 640, height: 480 } },
+        }; //should figure this out from mp4
+        return resolve(frame);
+      })
+      .on("error", (err) => {
+        return reject(new Error(err));
+      })
+      .run();
+  });
+
+  return null;
+}
+
 const THUMBNAIL_MIN_SIZE = 64;
 const THUMBNAIL_PALETTE = "Viridis";
 // Gets a raw cptv frame from a recording
@@ -224,11 +283,22 @@ async function saveThumbnailInfo(
   recording: Recording,
   thumbnail: TrackFramePosition
 ): Promise<SendData | Error> {
-  const frame = await getCPTVFrame(recording, thumbnail.frame_number);
-  if (!frame) {
-    throw new Error(`Failed to extract CPTV frame ${thumbnail.frame_number}`);
+  let thumb;
+  let frame;
+  if (recording.rawMimeType == "video/mp4") {
+    frame = await getIRFrame(recording, thumbnail.frame_number);
+    if (!frame) {
+      throw new Error(`Failed to extract frame ${thumbnail.frame_number}`);
+    }
+    thumb = await createIRThumbnail(frame, thumbnail, palette);
+  } else {
+    frame = await getCPTVFrame(recording, thumbnail.frame_number);
+    if (!frame) {
+      throw new Error(`Failed to extract frame ${thumbnail.frame_number}`);
+    }
+    thumb = await createThumbnail(frame, thumbnail);
   }
-  const thumb = await createThumbnail(frame, thumbnail);
+
   return await modelsUtil
     .openS3()
     .upload({
@@ -241,6 +311,36 @@ async function saveThumbnailInfo(
       return err;
     });
 }
+// Create a png thumbnail image  from this frame with thumbnail info
+// Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
+// width and height
+//render the png in THUMBNAIL_PALETTE
+//returns {data: buffer, meta: metadata about image}
+async function createIRThumbnail(
+  frame,
+  thumbnail: TrackFramePosition,
+  colourPalette: string = THUMBNAIL_PALETTE
+): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
+  const frameMeta = frame.meta.imageData;
+  const resX = frameMeta.width;
+  const resY = frameMeta.height;
+  try {
+    const thumbMeta = {
+      region: JSON.stringify(thumbnail),
+      palette: "original",
+    };
+    const img = await sharp(frame.data)
+      .png({
+        palette: true,
+        compressionLevel: 9,
+      })
+      .toBuffer();
+    return { data: img, meta: thumbMeta };
+  } catch (e) {
+    console.log("couldnt do png because", e);
+  }
+  return null;
+}
 
 // Create a png thumbnail image  from this frame with thumbnail info
 // Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
@@ -249,7 +349,8 @@ async function saveThumbnailInfo(
 //returns {data: buffer, meta: metadata about image}
 async function createThumbnail(
   frame,
-  thumbnail: TrackFramePosition
+  thumbnail: TrackFramePosition,
+  colourPalette: string = THUMBNAIL_PALETTE
 ): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
   const frameMeta = frame.meta.imageData;
   const resX = frameMeta.width;
@@ -329,7 +430,7 @@ async function createThumbnail(
   );
   let palette = ColourMaps[0];
   for (const colourMap of ColourMaps) {
-    if (colourMap[0] == THUMBNAIL_PALETTE) {
+    if (colourMap[0] == colourPalette) {
       palette = colourMap;
     }
   }

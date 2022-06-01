@@ -49,7 +49,7 @@ export const additionalTags = Object.freeze([
   "part",
   "interesting",
 ]);
-export const filteredTags = Object.freeze(["false-positive"]);
+export const filteredTags = Object.freeze(["false-positive", "insect"]);
 
 export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
 export default function (

@@ -93,7 +93,11 @@ new TrackLabel(things, "leporidae", "hare or rabbit (leporidae)", "rabbit");
 const wallaby = new TrackLabel(things, "wallaby");
 new TrackLabel(things, "pig");
 new TrackLabel(things, "human");
-new TrackLabel(things, "insect", "spider or insect (on camera lens or flying)");
+const insect = new TrackLabel(
+  things,
+  "insect",
+  "spider or insect (on camera lens or flying)"
+);
 new TrackLabel(things, "penguin");
 new TrackLabel(things, "sealion");
 new TrackLabel(things, "deer");
@@ -212,7 +216,7 @@ const DefaultLabels = {
   ],
   tagTypes: [...taggingFilters],
   otherTagLabels: function () {
-    return [unknown, falsePositive];
+    return [unknown, falsePositive, insect];
   },
   quickTagLabels: function () {
     return [possum.value, rodent.value, hedgehog.value, cat.value, bird.value];
