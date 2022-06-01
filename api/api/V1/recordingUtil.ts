@@ -82,6 +82,8 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 import extractFrames from "ffmpeg-extract-frames";
 import { Readable, Writable } from "stream";
 const stream = require("stream");
+const temp = require("temp");
+temp.track();
 
 const fs = require("fs");
 // How close is a station allowed to be to another station?
@@ -189,7 +191,11 @@ export async function getIRFrame(
     });
 
   const bodyBuffer = fileData.Body as Buffer;
-  fs.writeFileSync("./temp.mp4", bodyBuffer);
+  const tempName = temp.path({ suffix: ".mp4" });
+  // GP
+  // getting the screenshot seems to only work from a file, rather than a stream
+  // probably can get around this by uploading the mp4 in a different format
+  fs.writeFileSync(tempName, bodyBuffer);
 
   const screenData = new Uint8Array(640 * 480);
   let index = 0;
@@ -201,7 +207,7 @@ export async function getIRFrame(
   });
   return new Promise((resolve, reject) => {
     ffmpeg()
-      .input("./temp.mp4")
+      .input(tempName)
       .noAudio()
       .outputOptions(["-frames:v 1", "-f image2"])
       .output(wStream)
