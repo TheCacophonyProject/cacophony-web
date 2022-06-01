@@ -4,7 +4,8 @@
     <div>
       <p>
         Upload audio recordings from a bird monitor, or thermal recordings from
-        a camera.
+        a camera. For thermal recordings, the cameras that made the recordings
+        must belong to this group.
       </p>
       <b-form-file
         multiple
@@ -14,6 +15,7 @@
         v-model="files"
       />
       <div
+        class="my-3"
         v-if="
           someFilesAreAudio &&
           groupHasAudioDevices &&

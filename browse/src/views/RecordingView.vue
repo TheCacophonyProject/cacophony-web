@@ -1,5 +1,21 @@
 <template>
   <b-container v-if="recording">
+    <b-modal
+      v-model="showModal"
+      hide-footer
+      hide-header
+      body-class="p-0 d-flex justify-content-center align-items-center"
+      centered
+      size="xl"
+    >
+      <b-spinner v-if="modalImage && modalImage.loading" class="my-5" />
+      <img
+        v-else-if="modalImage"
+        :src="modalImage.image"
+        width="100%"
+        height="auto"
+      />
+    </b-modal>
     <b-row>
       <b-col cols="12" lg="8" class="recording-details">
         <h4 class="recording-title">
@@ -20,7 +36,19 @@
         </h4>
 
         <h5 class="text-muted" v-if="loadingNext">Loading recording...</h5>
-        <h5 class="text-muted" v-else>{{ dateString }}, {{ timeString }}</h5>
+        <h5
+          class="text-muted d-flex justify-content-between align-items-center"
+          v-else
+        >
+          <span>{{ dateString }}, {{ timeString }}</span>
+          <b-btn
+            v-if="stationHasReferencePhoto"
+            class="btn btn-link bg-transparent"
+            @click="openReferenceImageInModal()"
+          >
+            <font-awesome-icon icon="images" class="images-icon" />
+          </b-btn>
+        </h5>
 
         <b-alert
           :show="showAlert"
@@ -103,6 +131,9 @@ export default {
       group: null,
       loadingNext: false,
       deletedRecordings: [],
+      station: null,
+      modalImage: null,
+      showModal: false,
     };
   },
   computed: {
@@ -131,6 +162,21 @@ export default {
         }
       }
       return undefined;
+    },
+    stationHasReferencePhoto(): boolean {
+      return (
+        (this.station &&
+          this.station.settings &&
+          this.station.settings.referenceImages &&
+          this.station.settings.referenceImages.length !== 0) ||
+        false
+      );
+    },
+    stationReferencePhoto(): string {
+      if (this.stationHasReferencePhoto) {
+        return this.station.settings.referenceImages[0];
+      }
+      return "";
     },
     timeString(): string {
       if (this.date) {
@@ -195,6 +241,25 @@ export default {
     },
   },
   methods: {
+    async openReferenceImageInModal() {
+      if (!this.modalImage) {
+        const imageItem = {
+          loading: true,
+          key: this.stationReferencePhoto,
+          image: null,
+        };
+        this.modalImage = imageItem;
+        this.showModal = true;
+        api.station
+          .getReferenceImage(this.station.id, this.stationReferencePhoto)
+          .then((image) => {
+            imageItem.image = window.URL.createObjectURL(image.result as Blob);
+            imageItem.loading = false;
+          });
+      } else {
+        this.showModal = true;
+      }
+    },
     async fetchRecording({
       id,
       action,
@@ -243,15 +308,27 @@ export default {
             this.downloadRawJWT = downloadRawJWT;
             this.rawSize = rawSize;
             this.fileSize = fileSize;
+
+            const stationResponse = await api.station.getStationById(
+              this.recordingInternal.stationId
+            );
+            if (stationResponse.success) {
+              this.station = stationResponse.result.station;
+            }
+            this.modalImage = null;
           } else {
             this.errorMessage =
               "We couldn't find the recording you're looking for.";
             this.recordingInternal = null;
+            this.station = null;
+            this.modalImage = null;
           }
         } catch (err) {
           this.errorMessage =
             "We couldn't find the recording you're looking for.";
           this.recordingInternal = null;
+          this.station = null;
+          this.modalImage = null;
         }
       }
     },
@@ -336,7 +413,7 @@ export default {
 
 @include media-breakpoint-down(sm) {
   .recording-details {
-    max-width: 15rem;
+    //max-width: 15rem;
     h4 {
       font-size: 110%;
     }
@@ -390,5 +467,13 @@ export default {
     justify-content: center;
     text-align: center;
   }
+}
+
+.images-icon.svg-inline--fa {
+  color: $gray-600;
+  min-width: 1rem;
+}
+.recording-time {
+  outline: 1px solid red;
 }
 </style>

@@ -57,7 +57,7 @@
         <tab-list-item lazy>
           <template #title>
             <TabTemplate
-              title="Reference photos"
+              title="Reference photo"
               :isLoading="!loadedStation"
               :value="referencePhotos.length"
             />
@@ -201,7 +201,7 @@ export default {
       station: null,
       stationIsRetired: false,
       group: {},
-      tabNames: ["visits", "reference-photos", "recordings"],
+      tabNames: ["visits", "reference-photo", "recordings"],
     };
   },
   async mounted() {

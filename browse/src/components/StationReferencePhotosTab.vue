@@ -1,6 +1,6 @@
 <template>
   <div class="container" style="padding: 0">
-    <h2>Station reference photos</h2>
+    <h2>Station reference photo</h2>
     <b-modal
       v-model="showModal"
       hide-footer
@@ -40,7 +40,7 @@
           v-else
           class="image-thumb"
           :src="image"
-          width="100"
+          width="100%"
           height="auto"
           @click="openImageInModal(image)"
         />
@@ -52,15 +52,18 @@
         >
       </div>
     </div>
-    <div>
-      <p class="h6">Add reference photos for this station</p>
+    <div v-if="images.length === 0">
+      <p class="h6">
+        Add a reference photo for this station. A reference photo should be
+        taken from the point of view of your camera, ideally in landscape
+        orientation.
+      </p>
       <b-form-file
         v-if="userIsGroupAdmin"
         placeholder="Choose an image file or drop it here..."
         drop-placeholder="Drop image file here..."
-        multiple
         accept="image/*"
-        v-model="selectedUploads"
+        v-model="selectedUpload"
         @input="uploadSelectedFiles"
       />
     </div>
@@ -84,7 +87,7 @@ export default {
     return {
       images: [],
       referenceImageKeys: [],
-      selectedUploads: [],
+      selectedUpload: null,
       modalImage: null,
       showModal: false,
     };
@@ -121,55 +124,54 @@ export default {
       await api.station.deleteReferenceImage(this.station.id, fileKey);
     },
     async uploadSelectedFiles() {
-      // FIXME - Wait for each upload to conclude before allowing another.
-
       // First, resize images using canvas.
       // Then, append them to a FormData, then upload each form data as a separate API request.
-      for (const file of this.selectedUploads as File[]) {
-        const reader = new FileReader();
-        const image = document.createElement("img");
-        const readerEnd = new Promise<void>((resolve) => {
-          reader.onloadend = (data) => {
-            image.src = data.target.result as string;
-            resolve();
-          };
-        });
-        await reader.readAsDataURL(file);
-        await readerEnd;
-        await new Promise((resolve) => {
-          image.onload = resolve;
-        });
-        const ratio = image.width / image.height;
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        if (ratio > 1) {
-          // landscape
-          canvas.width = 1600;
-          canvas.height = Math.floor(canvas.width / ratio);
-        } else {
-          // portrait
-          canvas.height = 1600;
-          canvas.width = Math.floor(canvas.height / ratio);
-        }
-        // This will scale up some smaller images, but we're expecting that most of these come from camera phones
-        // and are reasonably high res.
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-        const blob: Blob = await new Promise((resolve) =>
-          canvas.toBlob(resolve, "image/jpeg", 80)
-        );
-        const response = await api.station.uploadReferenceImage(
-          this.station.id,
-          blob
-        );
-        if (response.success) {
-          this.referenceImageKeys.push(response.result.fileKey);
-          this.images.push({
-            key: response.result.fileKey,
-            image: window.URL.createObjectURL(blob),
-          });
-        }
+      //for (const file of this.selectedUploads as File[]) {
+      const file = this.selectedUpload as File;
+      const reader = new FileReader();
+      const image = document.createElement("img");
+      const readerEnd = new Promise<void>((resolve) => {
+        reader.onloadend = (data) => {
+          image.src = data.target.result as string;
+          resolve();
+        };
+      });
+      await reader.readAsDataURL(file);
+      await readerEnd;
+      await new Promise((resolve) => {
+        image.onload = resolve;
+      });
+      const ratio = image.width / image.height;
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      if (ratio > 1) {
+        // landscape
+        canvas.width = 1600;
+        canvas.height = Math.floor(canvas.width / ratio);
+      } else {
+        // portrait
+        canvas.height = 1600;
+        canvas.width = Math.floor(canvas.height / ratio);
       }
+      // This will scale up some smaller images, but we're expecting that most of these come from camera phones
+      // and are reasonably high res.
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      const blob: Blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 80)
+      );
+      const response = await api.station.uploadReferenceImage(
+        this.station.id,
+        blob
+      );
+      if (response.success) {
+        this.referenceImageKeys.push(response.result.fileKey);
+        this.images.push({
+          key: response.result.fileKey,
+          image: window.URL.createObjectURL(blob),
+        });
+      }
+      //}
     },
   },
   computed: {
