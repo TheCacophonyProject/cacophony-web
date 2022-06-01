@@ -476,6 +476,7 @@ export default {
       params.limit = 1;
       params.type = RecordingType.ThermalRaw;
       params.hideFiltered = !this.$store.state.User.userData.showFiltered;
+      params.countAll = false;
       delete params.offset;
       try {
         if (!noNavigate) {
