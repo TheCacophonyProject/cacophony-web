@@ -161,7 +161,7 @@ export default {
           //  which we'll assume is the same timezone as the uploader
           time.setFullYear(
             Number(parts[0]),
-            Number(parts[1]),
+            Number(parts[1]) - 1,
             Number(parts[2])
           );
           time.setHours(Number(parts[3]), Number(parts[4]), Number(parts[5]));
