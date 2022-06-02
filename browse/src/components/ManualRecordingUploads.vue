@@ -157,16 +157,14 @@ export default {
           stems.pop();
           const parts = stems.join(".").split(" ");
           const time = new Date();
-          time.setUTCFullYear(
+          // NOTE: Bird monitor recording times are relative to the device local time,
+          //  which we'll assume is the same timezone as the uploader
+          time.setFullYear(
             Number(parts[0]),
             Number(parts[1]),
             Number(parts[2])
           );
-          time.setUTCHours(
-            Number(parts[3]),
-            Number(parts[4]),
-            Number(parts[5])
-          );
+          time.setHours(Number(parts[3]), Number(parts[4]), Number(parts[5]));
           data.recordingDateTime = time.toISOString();
           data.location = { lat: Number(parts[12]), lng: Number(parts[13]) };
 
