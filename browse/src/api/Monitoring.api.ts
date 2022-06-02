@@ -34,7 +34,7 @@ export class NewVisit {
   device: string;
   deviceId: number;
   stationId: number;
-  station: string;
+  stationName: string;
   tracks: number; // track count
   timeStart: string; // date for start of visit
   timeEnd: string; // date for start of visit

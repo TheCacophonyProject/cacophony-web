@@ -150,7 +150,7 @@ export default {
         (val) => (this.exportProgress = val)
       );
       const rows = results.filteredVisits.map((visit) => [
-        visit.stationId ? visit.station : visit.device,
+        visit.stationId ? visit.stationName : visit.device,
         formatDate(visit.timeStart),
         formatDate(visit.timeEnd),
         visit.classification,
@@ -170,7 +170,7 @@ export default {
       if (this.groupName) {
         exportType = this.groupName;
       } else {
-        exportType = `device-${this.deviceIds[0]}`;
+        exportType = `station-${this.stationIds[0]}`;
       }
 
       this.createExport(

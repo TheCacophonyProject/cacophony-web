@@ -64,6 +64,6 @@ export default {
   timeZone,
   server,
   euaVersion: 3,
-  loadedConfig,
+  ...loadedConfig,
   productionEnv: !loadedConfig.server.isLocalDev,
 };

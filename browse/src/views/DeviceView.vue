@@ -94,7 +94,7 @@ export default {
     userIsGroupAdmin() {
       return (
         this.userIsSuperUserAndViewingAsSuperUser ||
-        this.group & this.group.admin
+        (this.group && this.group.admin)
       );
     },
   },
