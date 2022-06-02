@@ -4,7 +4,6 @@ import process from "process";
 // Set some default configuration
 const server = {
   loggerLevel: "info",
-  isLocalDev: true,
 };
 
 const timeZone = "Pacific/Auckland";
@@ -56,6 +55,8 @@ function checkDatabaseConfigAvailable(config) {
   }
 }
 
+const loadedConfig = loadConfigFromArgs();
+
 export default {
   getConfigPathFromArgs,
   loadConfigFromArgs,
@@ -63,6 +64,6 @@ export default {
   timeZone,
   server,
   euaVersion: 3,
-  ...loadConfigFromArgs(),
-  productionEnv: !server.isLocalDev,
+  loadedConfig,
+  productionEnv: !loadedConfig.server.isLocalDev,
 };

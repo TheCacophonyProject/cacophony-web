@@ -53,10 +53,15 @@
       </div>
     </div>
     <div v-if="images.length === 0">
-      <p class="h6">
+      <p class="h6" v-if="userIsGroupAdmin">
         Add a reference photo for this station. A reference photo should be
         taken from the point of view of your camera, ideally in landscape
         orientation.
+      </p>
+      <p v-else>
+        Your group administrator(s) can add a reference photo for this station,
+        which can be used to understand the environment that a thermal camera in
+        that location is seeing.
       </p>
       <b-form-file
         v-if="userIsGroupAdmin"
@@ -80,6 +85,9 @@ export default {
   name: "StationReferencePhotosTab",
   props: {
     station: {
+      required: true,
+    },
+    group: {
       required: true,
     },
   },

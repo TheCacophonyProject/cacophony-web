@@ -62,7 +62,7 @@
               :value="referencePhotos.length"
             />
           </template>
-          <StationReferencePhotosTab :station="station" />
+          <StationReferencePhotosTab :station="station" :group="group" />
         </tab-list-item>
         <tab-list-item lazy>
           <template #title>
