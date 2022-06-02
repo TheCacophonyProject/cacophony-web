@@ -30,6 +30,7 @@ import { User } from "@models/User";
 import stream, { Stream } from "stream";
 import { RecordingType } from "@typedefs/api/consts";
 import config from "@config";
+import { Op } from "sequelize";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -176,6 +177,7 @@ function multipartUpload(
             where: {
               DeviceId: uploadingDevice.id,
               rawFileHash: data.fileHash,
+              deletedAt: { [Op.eq]: null },
             },
           });
         if (existingRecordingWithHashForDevice !== null) {
@@ -250,6 +252,7 @@ function multipartUpload(
               where: {
                 DeviceId: uploadingDevice.id,
                 rawFileHash: data.fileHash,
+                deletedAt: { [Op.eq]: null },
               },
             });
           if (existingRecordingWithHashForDevice !== null) {
