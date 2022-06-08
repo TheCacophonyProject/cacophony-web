@@ -195,38 +195,54 @@ export async function getIRFrame(
   // GP
   // getting the screenshot seems to only work from a file, rather than a stream
   // probably can get around this by uploading the mp4 in a different format
-  fs.writeFileSync(tempName, bodyBuffer);
+  try {
+    fs.writeFileSync(tempName, bodyBuffer);
 
-  const screenData = new Uint8Array(640 * 480);
-  let index = 0;
-  const wStream = new Writable({
-    write(chunk) {
-      screenData.set(chunk, index);
-      index += chunk.length;
-    },
-  });
-  return new Promise((resolve, reject) => {
-    ffmpeg()
-      .input(tempName)
-      .noAudio()
-      .outputOptions(["-frames:v 1", "-f image2"])
-      .output(wStream)
-      .seek(frameNumber / 10)
-      .on("start", function (commandLine) {
-        console.log("Spawned Ffmpeg with command: " + commandLine);
-      })
-      .on("end", function () {
-        const frame = {
-          data: screenData,
-          meta: { imageData: { width: 640, height: 480 } },
-        }; //should figure this out from mp4
-        return resolve(frame);
-      })
-      .on("error", (err) => {
-        return reject(new Error(err));
-      })
-      .run();
-  });
+    const screenData = new Uint8Array(640 * 480);
+    let index = 0;
+    const wStream = new Writable({
+      write(chunk) {
+        screenData.set(chunk, index);
+        index += chunk.length;
+      },
+    });
+    return new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(tempName)
+        .noAudio()
+        .outputOptions(["-frames:v 1", "-f image2"])
+        .output(wStream)
+        .seek(frameNumber / 10)
+        .on("start", function (commandLine) {
+          console.log("Spawned Ffmpeg with command: " + commandLine);
+        })
+        .on("end", function () {
+          const frame = {
+            data: screenData,
+            meta: { imageData: { width: 640, height: 480 } },
+          }; //should figure this out from mp4
+          fs.unlink(tempName, (err) => {
+            if(err){
+              log.error("error unlinking",err);
+            }
+          });
+          return resolve(frame);
+        })
+        .on("error", (err) => {
+          fs.unlink(tempName, (err) => {
+            if(err){
+              log.error("error unlinking",err);
+            }
+          });
+
+          return reject(new Error(err));
+        })
+        .run();
+    });
+  } catch(e) {
+    fs.unlink(tempName, (err) => {
+    });
+  }
 
   return null;
 }
