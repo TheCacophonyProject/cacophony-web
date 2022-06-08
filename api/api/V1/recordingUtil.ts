@@ -222,16 +222,16 @@ export async function getIRFrame(
             meta: { imageData: { width: 640, height: 480 } },
           }; //should figure this out from mp4
           fs.unlink(tempName, (err) => {
-            if(err){
-              log.error("error unlinking",err);
+            if (err) {
+              log.error("error unlinking", err);
             }
           });
           return resolve(frame);
         })
         .on("error", (err) => {
           fs.unlink(tempName, (err) => {
-            if(err){
-              log.error("error unlinking",err);
+            if (err) {
+              log.error("error unlinking", err);
             }
           });
 
@@ -239,9 +239,8 @@ export async function getIRFrame(
         })
         .run();
     });
-  } catch(e) {
-    fs.unlink(tempName, (err) => {
-    });
+  } catch (e) {
+    fs.unlink(tempName, (err) => {});
   }
 
   return null;
