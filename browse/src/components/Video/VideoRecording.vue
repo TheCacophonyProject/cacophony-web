@@ -36,6 +36,10 @@
             @change-tag="changedTrackTag"
           />
         </div>
+        <div style="padding: 10px">
+          <b-btn @click="allFP">All FP?</b-btn>
+          <span>Mark all as false positive</span><br />
+        </div>
         <div class="filtered-tracks" v-b-tooltip.hover :title="filteredToolTip">
           <input type="checkbox" id="cbFiltered" v-model="showFiltered" />
           <label for="cbFiltered">
@@ -116,7 +120,10 @@ import api from "@/api";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { ApiTrackResponse } from "@typedefs/api/track";
-import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import {
+  ApiTrackTagRequest,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
 import {
   ApiRecordingTagRequest,
   ApiRecordingTagResponse,
@@ -186,7 +193,7 @@ export default {
       set: function (val) {
         localStorage.setItem("showFiltered", val);
         this.$store.state.User.userData.showFiltered = val;
-        this.$refs["player"].renderCurrentFrame(true);
+        // this.$refs["player"].renderCurrentFrame(true);
         this.checkPreviousAndNextRecordings();
       },
       get: function () {
@@ -305,6 +312,54 @@ export default {
     },
   },
   methods: {
+    allFP() {
+      const tag = {
+        what: DefaultLabels.falsePositiveLabel.value,
+        confidence: 0.8,
+      } as ApiTrackTagRequest;
+      const tracks = (this.recording as ApiThermalRecordingResponse).tracks;
+
+      for (const track of tracks) {
+        this.addTrackTag(track, tag);
+      }
+    },
+    async addTrackTag(track, tag: ApiTrackTagRequest) {
+      const recordingId = this.recordingId;
+      const trackId = track.id;
+      // Replace any tag by the current user:
+      const trackTags = track.tags;
+      const tagByUser = trackTags.find(
+        (tag) => tag.userName === this.$store.state.User.userData.userName
+      );
+      if (tagByUser) {
+        track.tags = track.tags.filter((tag) => tag !== tagByUser);
+      }
+      // Add to local tags for fast UI update while we wait for the API
+      track.tags.push({
+        ...tag,
+        userName: this.$store.state.User.userData.userName,
+        trackId,
+        id: -1,
+        createdAt: new Date().toISOString(),
+      });
+      track.filtered = true;
+      const replaceTrackTagResponse = await api.recording.replaceTrackTag(
+        tag,
+        recordingId,
+        trackId
+      );
+      if (replaceTrackTagResponse.success) {
+        const trackTagId = replaceTrackTagResponse.result.trackTagId;
+        const newTag: ApiTrackTagResponse = {
+          ...tag,
+          id: trackTagId,
+          trackId,
+          automatic: false,
+          createdAt: new Date().toDateString(),
+          data: "",
+        };
+      }
+    },
     orderTracks() {
       return ([...this.tracks] || []).sort((a, b) => a.start - b.end);
     },
