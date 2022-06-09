@@ -622,6 +622,7 @@ export function positionResponseFromSet(positions) {
     newTp["height"] = tp.height;
     //newTp["frameNumber"] = tp.frame_number; FIXME PATRICK - remove once GPs code merged
     newTp["order"] = tp.frame_number; // FIXME PATRICK - remove once GPs code merged
+    newTp["blank"] = tp.blank;
     tps.push(newTp);
   });
 
