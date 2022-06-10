@@ -578,13 +578,13 @@ export interface TestComparableVisit {
   incomplete?: string;
   aiTag?: string;
   camera?: string;
-  station?: string;
+  stationName?: string;
 }
 
 export interface TestVisitSearchParams {
   from?: Date | string;
   until?: Date | string;
-  devices?: number | number[];
+  stations?: number | number[];
   page?: number;
   "page-size"?: number;
   ai?: string;

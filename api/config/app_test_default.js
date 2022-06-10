@@ -9,6 +9,7 @@ exports.server = {
   },
   recording_url_base: "http://test.site/recording",
   browse_url: "http://test.site",
+  isLocalDev: true
 };
 exports.s3Local = {
   publicKey: "minio",

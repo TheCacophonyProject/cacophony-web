@@ -30,6 +30,11 @@
             <b-checkbox class="filter-option" v-model="showGroupsWithNoDevices"
               >Include groups with no devices</b-checkbox
             >
+            <b-checkbox
+              class="filter-option"
+              v-model="showGroupsWithNoRecordings"
+              >Include groups with no recordings</b-checkbox
+            >
             <b-list-group data-cy="groups-list">
               <b-list-group-item
                 :class="[
@@ -40,14 +45,37 @@
                 :key="groupName"
                 :to="{
                   name: 'group',
-                  params: { groupName, tabName: 'devices' },
+                  params: { groupName, tabName: 'visits' },
                 }"
-                v-for="{ groupName, devices } in filteredGroups"
+                v-for="{
+                  groupName,
+                  devices,
+                  lastThermalRecordingTime,
+                  lastAudioRecordingTime,
+                } in orderedGroups"
               >
                 <span>
-                  <strong>{{ groupName }}</strong> -
-                  <span v-if="devices.length !== 0"
-                    >{{ devices.length || "No" }} device<span
+                  <font-awesome-icon
+                    v-if="lastThermalRecordingTime"
+                    icon="video"
+                    class="icon"
+                    size="xs"
+                  />
+                  <font-awesome-icon
+                    v-if="lastAudioRecordingTime"
+                    icon="music"
+                    class="icon"
+                    size="xs"
+                  />
+                  <font-awesome-icon
+                    v-if="!lastAudioRecordingTime && !lastThermalRecordingTime"
+                    icon="question"
+                    class="icon"
+                    size="xs"
+                  />
+                  <strong>{{ groupName }}</strong>
+                  <span v-if="devices.length !== 0">
+                    - {{ devices.length || "No" }} device<span
                       v-if="devices.length !== 1"
                       >s</span
                     >
@@ -80,7 +108,7 @@
             :navigate-to-point="
               (point) => ({
                 name: 'group',
-                params: { groupName: point.group, tabName: 'devices' },
+                params: { groupName: point.group, tabName: 'visits' },
               })
             "
           />
@@ -111,11 +139,19 @@ interface GroupsForLocation {
   name: string;
 }
 
+interface GroupInfo {
+  devices: ApiDeviceResponse[];
+  groupName: string;
+  lastThermalRecordingTime?: Date;
+  lastAudioRecordingTime?: Date;
+}
+
 interface GroupsViewData {
   groups: ApiGroupResponse[];
   isLoading: boolean;
   locationsLoading: boolean;
   showGroupsWithNoDevices: boolean;
+  showGroupsWithNoRecordings: boolean;
   locations: Record<string, GroupsForLocation>;
   requestController: AbortController;
 }
@@ -142,6 +178,7 @@ export default {
       groups: [],
       isLoading: false,
       showGroupsWithNoDevices: false,
+      showGroupsWithNoRecordings: false,
       locationsLoading: false,
       locations: {},
       requestController: null,
@@ -158,11 +195,53 @@ export default {
     groupsByLocation(): GroupsForLocation[] {
       return Object.values(this.locations);
     },
-    filteredGroups(): any[] {
-      if (this.showGroupsWithNoDevices) {
-        return this.groups;
-      }
-      return this.groups.filter((group) => group.devices.length !== 0);
+    filteredGroups(): GroupInfo[] {
+      return this.groups.filter((group) => {
+        let pass = true;
+        if (!this.showGroupsWithNoDevices) {
+          pass = group.devices.length !== 0;
+        }
+        if (!this.showGroupsWithNoRecordings) {
+          pass =
+            !!group.lastAudioRecordingTime || !!group.lastThermalRecordingTime;
+        }
+        return pass;
+      });
+    },
+
+    orderedGroups(): ApiGroupResponse[] {
+      return [...this.filteredGroups].sort(
+        (a: ApiGroupResponse, b: ApiGroupResponse) => {
+          const aDateThermal =
+            a.lastThermalRecordingTime && new Date(a.lastThermalRecordingTime);
+          const aDateAudio =
+            a.lastAudioRecordingTime && new Date(a.lastAudioRecordingTime);
+          const bDateThermal =
+            b.lastThermalRecordingTime && new Date(b.lastThermalRecordingTime);
+          const bDateAudio =
+            b.lastAudioRecordingTime && new Date(b.lastAudioRecordingTime);
+          let aDate;
+          if (aDateAudio && aDateThermal) {
+            aDate = aDateAudio > aDateThermal ? aDateAudio : aDateThermal;
+          } else {
+            aDate = aDateThermal || aDateAudio;
+          }
+          let bDate;
+          if (bDateAudio && bDateThermal) {
+            bDate = bDateAudio > bDateThermal ? bDateAudio : bDateThermal;
+          } else {
+            bDate = bDateThermal || bDateAudio;
+          }
+          if (aDate && bDate) {
+            return bDate.getTime() - aDate.getTime();
+          } else if (aDate) {
+            return -1;
+          } else if (bDate) {
+            return 1;
+          }
+          return a.groupName.localeCompare(b.groupName);
+        }
+      );
     },
   },
   created: function () {
@@ -174,10 +253,6 @@ export default {
       this.locationsLoading = true;
       {
         // TODO(jon): Error handling.
-        interface GroupInfo {
-          devices: ApiDeviceResponse[];
-          groupName: string;
-        }
 
         const groups: Record<number, GroupInfo> = {};
         try {
@@ -185,16 +260,31 @@ export default {
             // NOTE - We only need to get groups because there can be groups with
             //  no devices - otherwise all groups would be listed in devices
             api.groups.getGroups(),
-            api.device.getDevices(),
+            api.device.getDevices(), // This should become stations
           ]);
           {
             if (userGroups.success) {
               const { result } = userGroups;
-              for (const { id, groupName } of result.groups) {
+              for (const {
+                id,
+                groupName,
+                lastThermalRecordingTime,
+                lastAudioRecordingTime,
+              } of result.groups) {
                 groups[id] = {
                   devices: [],
                   groupName,
                 };
+                if (lastAudioRecordingTime) {
+                  groups[id].lastAudioRecordingTime = new Date(
+                    lastAudioRecordingTime
+                  );
+                }
+                if (lastThermalRecordingTime) {
+                  groups[id].lastThermalRecordingTime = new Date(
+                    lastThermalRecordingTime
+                  );
+                }
               }
             } else {
               // FIXME?

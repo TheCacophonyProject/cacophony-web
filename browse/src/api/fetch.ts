@@ -17,9 +17,15 @@ const defaults = {
  * @param {RequestInfo} url The full url to send the request to
  * @param {RequestInit} init: The RequestInit info for things such as headers and body
  * @param {boolean} suppressGlobalMessaging: ability to suppress the global messaging and handle it at a component level. Ideally the option might be passed down from the component but for now we're setting the preference in the API layer. Not ideal, could be improved.
+ * @param {boolean} binary: Whether the response from the server is JSON or binary
  * @returns {Promise<{result: any, success: boolean, status: number}>}
  */
-export async function fetch(url, init, suppressGlobalMessaging = false) {
+export async function fetch(
+  url,
+  init,
+  suppressGlobalMessaging = false,
+  binary = false
+) {
   init = {
     ...defaults,
     ...init,
@@ -33,7 +39,7 @@ export async function fetch(url, init, suppressGlobalMessaging = false) {
   const response = await crossFetch(url, init);
   const status = response.status;
 
-  const result = await response.json();
+  const result = binary ? await response.blob() : await response.json();
   if (status === 401) {
     store.dispatch("User/LOGOUT");
     store.dispatch(

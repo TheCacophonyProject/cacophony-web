@@ -34,7 +34,7 @@
     <l-circle-marker
       v-for="point in mapLocations"
       :lat-lng="point.location"
-      :key="point.name"
+      :key="`${point.group}_${point.name}`"
       :radius="5"
       color="black"
       :weight="0.5"
@@ -63,6 +63,7 @@ import {
 
 interface Point {
   name: string;
+  group: string;
   location: LatLng;
 }
 

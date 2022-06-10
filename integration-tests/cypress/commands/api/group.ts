@@ -195,6 +195,7 @@ Cypress.Commands.add(
     ).then((response) => {
       if (statusCode === 200) {
         saveIdOnly(groupName, response.body.groupId);
+        cy.wrap(response.body.groupId);
       }
     });
   }

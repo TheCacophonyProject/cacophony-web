@@ -21,24 +21,6 @@
           :recordings-query="recordingQuery()"
         />
       </tab-list-item>
-      <tab-list-item
-        title="Visits"
-        lazy
-        v-if="!deviceType || deviceType === 'thermal'"
-      >
-        <template #title>
-          <TabTemplate
-            title="Visits"
-            :isLoading="visitsCountLoading"
-            :value="visitsCount"
-          />
-        </template>
-        <MonitoringTab
-          :group-name="groupName"
-          :device-name="deviceName"
-          :visits-query="staticVisitsQuery"
-        />
-      </tab-list-item>
     </tab-list>
   </b-container>
 </template>
@@ -48,7 +30,6 @@ import DeviceSoftware from "./DeviceSoftware.vue";
 import DeviceEvents from "./DeviceEvents.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
-import MonitoringTab from "@/components/MonitoringTab.vue";
 import api from "@/api";
 import TabList from "@/components/TabList.vue";
 import TabListItem from "@/components/TabListItem.vue";
@@ -62,7 +43,6 @@ export default {
     DeviceSoftware,
     DeviceEvents,
     TabTemplate,
-    MonitoringTab,
   },
   props: {
     device: {

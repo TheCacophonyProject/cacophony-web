@@ -15,7 +15,7 @@
       :value="value"
       :show-tabs="showTabs"
       :collapsed="collapsed"
-      @selected="toggleOpen"
+      @selected="(e) => toggleOpen(e)"
     >
       <slot></slot>
     </select-tab-list>
@@ -45,8 +45,37 @@ export default {
     }
   },
   methods: {
-    toggleOpen() {
-      this.collapsed = !this.collapsed;
+    toggleOpen(e) {
+      if (!this.showTabs) {
+        if (this.collapsed) {
+          // Only open if a child of tab-list
+          if (e.path) {
+            if (
+              e.path.find(
+                (el) => el.classList && el.classList.contains("tab-list")
+              )
+            ) {
+              this.collapsed = !this.collapsed;
+            }
+          } else {
+            let el = e.target;
+            let foundParent = false;
+            while (el) {
+              if (el.classList && el.classList.contains("tab-list")) {
+                foundParent = true;
+                break;
+              }
+              el = el.parentNode;
+            }
+
+            if (foundParent) {
+              this.collapsed = !this.collapsed;
+            }
+          }
+        } else {
+          this.collapsed = true;
+        }
+      }
     },
     setShowTabs(e) {
       this.showTabs = e.matches;

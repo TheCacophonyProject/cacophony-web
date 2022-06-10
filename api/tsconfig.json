@@ -42,10 +42,18 @@
             "/app/node_modules",
             "/app/node_modules/**",
             "/app/types/jsonSchemas",
+            "/app/types/jsonSchemas/",
             "/app/types/jsonSchemas/**",
             "/app/types/node_modules",
             "/app/types/node_modules/**"
         ],
-        "excludeFiles": ["*.schema.json", "/app/types/build-schemas.js"]
+        "excludeFiles": [
+            "*.schema.json",
+            "/app/types/jsonSchemas/**/*.json",
+            "/app/types/build-schemas.js",
+            "/app/types/build-schemas.ts",
+            "/app/types/schema-cache.json",
+            "schema-cache.json"
+        ]
     }
 }

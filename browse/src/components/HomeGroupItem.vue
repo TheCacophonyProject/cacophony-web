@@ -3,9 +3,42 @@
     :to="{ path: 'recordings', query: recordingsPageQuery }"
     class="d-flex justify-content-between align-items-center"
   >
-    {{ group.groupName }}
-    <b-badge v-if="count > 0" pill variant="primary" class="ml-auto">
-      {{ count }}
+    <span>
+      <font-awesome-icon
+        v-if="group.lastThermalRecordingTime"
+        icon="video"
+        class="icon"
+        size="xs"
+      />
+      <font-awesome-icon
+        v-if="group.lastAudioRecordingTime"
+        icon="music"
+        class="icon"
+        size="xs"
+      />
+      <font-awesome-icon
+        v-if="!group.lastAudioRecordingTime && !group.lastThermalRecordingTime"
+        icon="question"
+        class="icon"
+        size="xs"
+      />
+      {{ group.groupName }}
+    </span>
+    <b-badge
+      v-if="thermalCount > 0 || audioCount > 0"
+      pill
+      variant="primary"
+      class="ml-auto"
+    >
+      <span v-if="audioCount > 0">
+        <font-awesome-icon icon="music" class="icon" size="xs" />
+        {{ audioCount }}
+      </span>
+      <span v-if="audioCount > 0 && thermalCount > 0"> / </span>
+      <span v-if="thermalCount > 0">
+        <font-awesome-icon icon="video" class="icon" size="xs" />
+        {{ thermalCount }}
+      </span>
     </b-badge>
   </b-list-group-item>
 </template>
@@ -24,7 +57,8 @@ export default {
   },
   data: function () {
     return {
-      count: 0,
+      audioCount: 0,
+      thermalCount: 0,
     };
   },
   computed: {
@@ -40,34 +74,56 @@ export default {
     const now = new Date();
     now.setDate(now.getDate() - 1);
     const oneDayAgo = new Date(now);
-    if (
-      group.lastRecordingTime &&
-      new Date(group.lastRecordingTime) > oneDayAgo
-    ) {
+
+    const latestThermal =
+      group.lastThermalRecordingTime &&
+      new Date(group.lastThermalRecordingTime);
+    const latestAudio =
+      group.lastAudioRecordingTime && new Date(group.lastAudioRecordingTime);
+
+    if (latestThermal && latestThermal > oneDayAgo) {
       const params = {
         days: 1,
         group: [this.group.id],
+        type: "video",
       };
       const countResponse = await recordingsApi.queryCount(params);
       if (countResponse.success) {
         const {
           result: { count },
         } = countResponse;
-        this.count = count;
+        this.thermalCount = count;
         // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
         const hoursAgo =
-          (new Date(group.lastRecordingTime).getTime() - oneDayAgo.getTime()) /
-          1000 /
-          60 /
-          60;
+          (latestThermal.getTime() - oneDayAgo.getTime()) / 1000 / 60 / 60;
         // console.log("COUNT", this.count, hoursAgo);
 
         // FIXME - count shouldn't be zero.
         // FIXME - 1 day ago doesn't seem to get recordings that are 23.7xx hours old
         //  Could it be because those recordings are corrupt under testing?
       }
-    } else if (group.lastRecordingTime) {
-      //console.log(group.lastRecordingTime);
+    }
+    if (latestAudio && latestAudio > oneDayAgo) {
+      const params = {
+        days: 1,
+        group: [this.group.id],
+        type: "audio",
+      };
+      const countResponse = await recordingsApi.queryCount(params);
+      if (countResponse.success) {
+        const {
+          result: { count },
+        } = countResponse;
+        this.audioCount = count;
+        // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
+        const hoursAgo =
+          (latestAudio.getTime() - oneDayAgo.getTime()) / 1000 / 60 / 60;
+        // console.log("COUNT", this.count, hoursAgo);
+
+        // FIXME - count shouldn't be zero.
+        // FIXME - 1 day ago doesn't seem to get recordings that are 23.7xx hours old
+        //  Could it be because those recordings are corrupt under testing?
+      }
     }
   },
 };
