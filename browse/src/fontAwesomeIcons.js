@@ -73,6 +73,7 @@ import {
   faThumbtack,
   faCheck,
   faImages,
+  faPencilAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   faCalendar,
@@ -172,7 +173,8 @@ library.add(
   faUndo,
   faThumbtack,
   faCheck,
-  faImages
+  faImages,
+  faPencilAlt
 );
 
 export default FontAwesomeIcon;
