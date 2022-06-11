@@ -13,7 +13,7 @@ declare namespace Cypress {
      */
     checkMonitoring(
       userName: string,
-      deviceName: string,
+      stationId: number,
       expectedVisits: TestComparableVisit[],
       log?: boolean
     ): any;
@@ -26,7 +26,7 @@ declare namespace Cypress {
      */
     checkMonitoringWithFilter(
       userName: string,
-      deviceName: string,
+      stationId: number | null,
       searchParams: TestVisitSearchParams,
       expectedVisits: TestComparableVisit[]
     ): any;
@@ -38,7 +38,7 @@ declare namespace Cypress {
      */
     checkMonitoringTags(
       userName: string,
-      deviceName: string,
+      stationId: number,
       expectedTags: string[]
     ): any;
   }

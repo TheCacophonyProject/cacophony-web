@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import sharp from "sharp";
 import zlib from "zlib";
-import { AlertStatic } from "@models/Alert";
+import { Alert, AlertStatic } from "@models/Alert";
 import { AI_MASTER } from "@models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
@@ -714,6 +714,8 @@ export const uploadRawRecording = util.multipartUpload(
     if (data.fileHash) {
       recording.rawFileHash = data.fileHash;
     }
+
+    // TODO - if a fileHash isn't supplied, lets create one anyway.
 
     recording.rawFileSize = uploadedFileData.length;
     recording.rawFileKey = key;
@@ -1643,7 +1645,7 @@ async function sendAlerts(recId: RecordingId) {
   if (!matchedTag) {
     return;
   }
-  const alerts = await (models.Alert as AlertStatic).getActiveAlerts(
+  const alerts: Alert[] = await (models.Alert as AlertStatic).getActiveAlerts(
     recording.DeviceId,
     matchedTag
   );
@@ -1656,7 +1658,11 @@ async function sendAlerts(recId: RecordingId) {
         recording,
         matchedTrack,
         matchedTag,
-        thumbnail && (thumbnail.Body as Buffer)
+        thumbnail && {
+          buffer: thumbnail.Body as Buffer,
+          cid: "thumbnail",
+          mimeType: "image/png",
+        }
       );
     }
   }

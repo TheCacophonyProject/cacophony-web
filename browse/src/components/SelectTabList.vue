@@ -66,7 +66,7 @@ export default {
             "card-body": true,
           },
         },
-        selectedOption.componentOptions.children
+        selectedOption && selectedOption.componentOptions.children
       )
     );
     return createElement(

@@ -17,15 +17,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import config from "../config";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
 import customErrors from "./customErrors";
 import models, { ModelCommon } from "../models";
 import { Request } from "express";
 import { User } from "@models/User";
+import { GroupId, UserId } from "@typedefs/api/common";
+import { randomUUID } from "crypto";
+import { QueryTypes } from "sequelize";
+import logger from "@log";
 /*
  * Create a new JWT for a user or device.
  */
+
+export const ttlTypes = Object.freeze({
+  short: 60,
+  medium: 5 * 60,
+  long: 30 * 60,
+});
+
 function createEntityJWT<T>(
   entity: ModelCommon<T>,
   options?,
@@ -49,13 +60,92 @@ export interface ResetInfo {
   id: number;
 }
 
-export const getResetToken = (user: User, password: string): string => {
+export const getResetToken = (userId: UserId, password: string): string => {
+  // expires in a day
+  return jwt.sign({ id: userId, password }, config.server.passportSecret, {
+    expiresIn: 60 * 60 * 24,
+  });
+};
+
+export const getEmailConfirmationToken = (
+  userId: UserId,
+  email: string
+): string => {
   // expires in a day
   return jwt.sign(
-    { id: user.id, password: password },
+    { id: userId, email, _type: "confirm-email" },
     config.server.passportSecret,
-    { expiresIn: 60 * 60 * 24 }
+    {
+      expiresIn: 60 * 60 * 24,
+    }
   );
+};
+
+export const getJoinGroupRequestToken = (
+  userId: UserId,
+  groupIds: GroupId[]
+): string => {
+  // expires in a week
+  return jwt.sign(
+    { id: userId, groups: groupIds, _type: "join-groups" },
+    config.server.passportSecret,
+    {
+      expiresIn: 60 * 60 * 24 * 7,
+    }
+  );
+};
+
+export const getInviteToGroupsToken = (
+  userId: UserId,
+  groupIds: GroupId[],
+  perms: boolean[]
+): string => {
+  // expires in a week
+  return jwt.sign(
+    { id: userId, groups: groupIds, perms, _type: "groups-invite" },
+    config.server.passportSecret,
+    {
+      expiresIn: 60 * 60 * 24 * 7,
+    }
+  );
+};
+
+export const generateAuthTokensForUser = async (
+  user: User,
+  viewport: string = "",
+  userAgent: string = "unknown user agent",
+  expires: boolean = true
+): Promise<{ refreshToken: string; apiToken: string }> => {
+  const now = new Date().toISOString();
+  const refreshToken = randomUUID();
+  await models.sequelize.query(
+    `
+              insert into "UserSessions"
+              ("refreshToken", "userId", "userAgent", "createdAt", "updatedAt", "viewport")
+              values (:refreshToken, :userId, :userAgent, :createdAt, :updatedAt, :viewport)
+            `,
+    {
+      replacements: {
+        // Can we store screen resolution of clients here?  That would be handy.
+        viewport,
+        userAgent,
+        refreshToken,
+        userId: user.id,
+        createdAt: now,
+        updatedAt: now,
+      },
+      type: QueryTypes.INSERT,
+    }
+  );
+  const expiryOptions = expires ? { expiresIn: ttlTypes.medium } : {};
+  const refreshTokenSigned = jwt.sign(
+    { refreshToken, _type: "refresh" },
+    config.server.passportSecret
+  );
+  return {
+    refreshToken: refreshTokenSigned,
+    apiToken: `JWT ${createEntityJWT(user, expiryOptions)}`,
+  };
 };
 
 export const getDecodedResetToken = (token: string): ResetInfo => {
@@ -63,6 +153,22 @@ export const getDecodedResetToken = (token: string): ResetInfo => {
     return jwt.verify(token, config.server.passportSecret) as ResetInfo;
   } catch (e) {
     throw new customErrors.AuthenticationError("Failed to verify JWT.");
+  }
+};
+
+export const getDecodedToken = (token: string): any => {
+  const decodedToken = jwt.decode(token) as JwtPayload | null;
+  if (decodedToken && decodedToken.exp * 1000 < new Date().getTime()) {
+    throw new customErrors.AuthenticationError("JWT token expired.");
+  }
+  try {
+    return jwt.verify(token, config.server.passportSecret);
+  } catch (e) {
+    throw new customErrors.AuthenticationError(
+      `Failed to verify JWT for token ${token} - (${
+        decodedToken && JSON.stringify(decodedToken)
+      })`
+    );
   }
 };
 
@@ -80,7 +186,9 @@ export const getVerifiedJWT = (
   try {
     return jwt.verify(token, config.server.passportSecret);
   } catch (e) {
-    throw new customErrors.AuthenticationError("Failed to verify JWT.");
+    throw new customErrors.AuthenticationError(
+      `Failed to verify JWT. (${JSON.stringify(jwt.decode(token))})`
+    );
   }
 };
 

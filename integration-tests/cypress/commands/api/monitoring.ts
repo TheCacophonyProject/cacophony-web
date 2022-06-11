@@ -6,21 +6,22 @@ import { v1ApiPath, getCreds, convertToDate } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { stripBackName } from "../names";
 import { TestComparableVisit, TestVisitSearchParams } from "../types";
+import { StationId } from "@typedefs/api/common";
 
 Cypress.Commands.add(
   "checkMonitoringTags",
-  (userName: string, deviceName: string, expectedTags: string[]) => {
+  (userName: string, stationId: StationId, expectedTags: string[]) => {
     const expectedVisits = expectedTags.map((tag) => {
       return { tag };
     });
 
     logTestDescription(`Check visit tags match ${prettyLog(expectedTags)}`, {
       userName,
-      deviceName,
+      stationId,
       expectedVisits,
     });
 
-    checkMonitoringMatches(userName, deviceName, {}, expectedVisits);
+    checkMonitoringMatches(userName, stationId, {}, expectedVisits);
   }
 );
 
@@ -28,7 +29,7 @@ Cypress.Commands.add(
   "checkMonitoring",
   (
     userName: string,
-    deviceName: string,
+    stationId: StationId,
     expectedVisits: TestComparableVisit[],
     log = true
   ) => {
@@ -36,13 +37,13 @@ Cypress.Commands.add(
       `Check visits match ${prettyLog(expectedVisits)}`,
       {
         userName,
-        deviceName,
+        stationId,
         expectedVisits,
       },
       log
     );
 
-    checkMonitoringMatches(userName, deviceName, {}, expectedVisits);
+    checkMonitoringMatches(userName, stationId, {}, expectedVisits);
   }
 );
 
@@ -50,7 +51,7 @@ Cypress.Commands.add(
   "checkMonitoringWithFilter",
   (
     userName: string,
-    deviceName: string,
+    stationId: StationId,
     searchParams: TestVisitSearchParams,
     expectedVisits: TestComparableVisit[]
   ) => {
@@ -60,7 +61,7 @@ Cypress.Commands.add(
       )} match ${prettyLog(expectedVisits)} `,
       {
         userName,
-        deviceName,
+        stationId,
         expectedVisits,
         searchParams,
       }
@@ -74,13 +75,13 @@ Cypress.Commands.add(
       searchParams.until = convertToDate(searchParams.until).toISOString();
     }
 
-    checkMonitoringMatches(userName, deviceName, searchParams, expectedVisits);
+    checkMonitoringMatches(userName, stationId, searchParams, expectedVisits);
   }
 );
 
 function checkMonitoringMatches(
   userName: string,
-  deviceName: string,
+  stationId: StationId,
   specialParams: TestVisitSearchParams,
   expectedVisits: TestComparableVisit[]
 ) {
@@ -91,8 +92,8 @@ function checkMonitoringMatches(
 
   Object.assign(params, specialParams);
 
-  if (deviceName) {
-    params.devices = getCreds(deviceName).id;
+  if (stationId) {
+    params.stations = [stationId];
   }
 
   cy.request({
@@ -123,8 +124,8 @@ function checkResponseMatches(
     const completeResponseVisit = increasingDateResponseVisits[i];
     const simplifiedResponseVisit: TestComparableVisit = {};
 
-    if (expectedVisit.station) {
-      simplifiedResponseVisit.station = completeResponseVisit.station;
+    if (expectedVisit.stationName) {
+      simplifiedResponseVisit.stationName = completeResponseVisit.stationName;
     }
 
     if (expectedVisit.camera) {

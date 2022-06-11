@@ -43,5 +43,5 @@ export interface ApiStationResponse {
 }
 
 export interface ApiStationSettings {
-  // TBC
+  referenceImages?: string[]; // s3 object keys of reference images currently associated with the station.
 }

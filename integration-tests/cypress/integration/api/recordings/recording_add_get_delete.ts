@@ -9,6 +9,7 @@ import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 
 import {
+  checkRecording,
   TestCreateExpectedRecordingData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
@@ -527,8 +528,15 @@ describe("Recordings (thermal): add, get, delete", () => {
       );
     }
 
+    let stationId;
     cy.log("Add recording as device");
-    cy.apiRecordingAdd("raCamera1", recording1, undefined, "raRecording1");
+    cy.apiRecordingAdd("raCamera1", recording1, undefined, "raRecording1").then(
+      (recordingId) => {
+        checkRecording(getCreds("superuser").name, recordingId, (recording) => {
+          stationId = recording.stationId;
+        });
+      }
+    );
 
     cy.log("Delete recording");
     cy.apiRecordingDelete("raGroupAdmin", "raRecording1");
@@ -576,9 +584,8 @@ describe("Recordings (thermal): add, get, delete", () => {
       [],
       EXCLUDE_IDS
     );
-
     cy.log("Check /monitoring ignores deleted recording");
-    cy.checkMonitoringWithFilter("raGroupAdmin", "raCamera1", filter, []);
+    cy.checkMonitoringWithFilter("raGroupAdmin", stationId, filter, []);
 
     if (Cypress.env("running_in_a_dev_environment") == true) {
       cy.log("Check /recordings/needs-tag ignores deleted recording");

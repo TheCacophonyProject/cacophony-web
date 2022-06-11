@@ -67,6 +67,7 @@ export default {
 .link {
   display: inline-block;
   word-break: break-word;
+  white-space: nowrap;
   margin: 0 0.25rem;
 }
 .svg-inline--fa {

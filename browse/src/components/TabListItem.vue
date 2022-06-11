@@ -48,6 +48,7 @@ export default {
   },
   methods: {
     select() {
+      console.log("SELECT");
       this.$parent.$emit("selected");
       this.$parent.$emit("input", this.index);
     },

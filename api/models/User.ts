@@ -27,21 +27,27 @@ import { Group } from "./Group";
 import {
   DeviceId,
   EndUserAgreementVersion,
+  GroupId,
+  StationId,
   UserId,
 } from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { sendResetEmail } from "@/scripts/emailUtil";
 import { Device } from "@models/Device";
 import { ApiUserSettings } from "@typedefs/api/user";
+import { Station } from "./Station";
+import logger from "@/logging";
 
 const Op = Sequelize.Op;
 
 export interface User extends Sequelize.Model, ModelCommon<User> {
   getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
   comparePassword: (password: string) => Promise<boolean>;
-  updatePassword: (password: string) => Promise<boolean>;
-  getDeviceIds: () => Promise<number[]>;
-  getGroupsIds: () => Promise<number[]>;
+  resetPassword: () => Promise<boolean>;
+
+  getDeviceIds: () => Promise<DeviceId[]>;
+  getGroupsIds: () => Promise<GroupId[]>;
+  getStationIds: () => Promise<StationId[]>;
   getGroups: (options?: {
     where: any;
     attributes: string[];
@@ -56,6 +62,8 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   firstName: string;
   lastName: string;
   email: string;
+  emailConfirmed: boolean;
+  lastActiveAt: Date;
   groups: Group[];
   globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
@@ -92,6 +100,15 @@ export default function (
       type: DataTypes.STRING,
       validate: { isEmail: true },
       unique: true,
+    },
+    emailConfirmed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    lastActiveAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     password: {
       type: DataTypes.STRING,
@@ -193,15 +210,19 @@ export default function (
   };
 
   User.prototype.getJwtDataValues = function () {
-    return {
+    const jwtPayload = {
       id: this.getDataValue("id"),
       _type: "user",
     };
+    if (!this.emailConfirmed) {
+      (jwtPayload as any).activated = false;
+    }
+    return jwtPayload;
   };
 
   // Returns the groups that are associated with this user (via
   // GroupUsers).
-  User.prototype.getGroupsIds = async function () {
+  User.prototype.getGroupsIds = async function (): Promise<GroupId[]> {
     const groups = await this.getGroups();
     return groups.map((g) => g.id);
   };
@@ -235,7 +256,43 @@ export default function (
     return [];
   };
 
-  User.prototype.comparePassword = function (password: string) {
+  User.prototype.getStationIds = async function (): Promise<StationId[]> {
+    try {
+      const stations = (await models.Station.findAll({
+        where: {},
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            attributes: [],
+            include: [
+              {
+                model: models.User,
+                attributes: [],
+                through: {
+                  attributes: [],
+                },
+                required: true,
+                where: { id: this.id },
+              },
+            ],
+          },
+        ],
+        attributes: ["id"],
+      })) as Station[];
+      if (stations !== null) {
+        return stations.map((d) => d.id);
+      }
+      return [];
+    } catch (e) {
+      logger.error("%s", e);
+      logger.error("%s", e.sql);
+    }
+  };
+
+  User.prototype.comparePassword = function (
+    password: string
+  ): Promise<boolean> {
     const user = this;
     return new Promise(function (resolve, reject) {
       bcrypt.compare(password, user.password, function (err, isMatch) {
@@ -247,13 +304,9 @@ export default function (
       });
     });
   };
-  User.prototype.updatePassword = async function (password: string) {
-    return this.update({ password: password });
-  };
 
-  User.prototype.resetPassword = async function () {
-    console.log("resetting");
-    await sendResetEmail(this, this.password);
+  User.prototype.resetPassword = async function (): Promise<boolean> {
+    return sendResetEmail(this, this.password);
   };
 
   return User;
@@ -269,9 +322,6 @@ async function beforeModify(user) {
   }
 }
 
-function beforeValidate(user): Promise<void> {
-  return new Promise((resolve) => {
-    user.setDataValue("email", user.getDataValue("email").toLowerCase());
-    resolve();
-  });
+function beforeValidate(user: User) {
+  user.setDataValue("email", user.getDataValue("email").toLowerCase());
 }

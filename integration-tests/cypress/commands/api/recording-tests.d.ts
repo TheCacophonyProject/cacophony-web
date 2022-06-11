@@ -75,7 +75,11 @@ declare namespace Cypress {
       tag: string
     ): any;
 
-    testAddRecordingsAtTimes(deviceName: string, times: string[]): any;
+    testAddRecordingsAtTimes(
+      deviceName: string,
+      times: string[],
+      location: { lat: number; lng: number }
+    ): Cypress.Chainable<number[]>;
 
     // to be run straight after an apiRecordingAdd
     thenUserTagAs(tagger: string, tag: string): any;

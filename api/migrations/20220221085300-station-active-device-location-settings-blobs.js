@@ -165,11 +165,6 @@ module.exports = {
   },
 
   down: async function (queryInterface, Sequelize) {
-    // Delete automatically generated stations.
-    await queryInterface.sequelize.query(
-      `delete from "Stations" where automatic = true`
-    );
-
     await queryInterface.removeColumn("Stations", "activeAt");
     await queryInterface.removeColumn("Stations", "automatic");
     await queryInterface.removeColumn("Stations", "needsRename");

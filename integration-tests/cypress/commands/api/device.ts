@@ -51,6 +51,7 @@ Cypress.Commands.add(
       cy.request(request).then((response) => {
         const id = response.body.id;
         saveCreds(response, deviceName, id);
+        cy.wrap(id);
       });
     } else {
       checkRequestFails(request, statusCode);

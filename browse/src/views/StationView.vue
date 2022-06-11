@@ -22,11 +22,15 @@
             size="xs"
             style="color: #666; font-size: 16px"
           />
-          <StationLink :group-name="groupName" :station-name="stationName" />
+          <StationLink
+            :group-name="groupName"
+            :station-name="stationName"
+            context="visits"
+          />
           <span v-if="stationIsRetired">(retired)</span>
         </h1>
       </div>
-      <div>
+      <div v-if="userIsGroupAdmin">
         <p class="lead d-sm-none d-md-inline-block">Manage this station.</p>
       </div>
     </b-jumbotron>
@@ -36,6 +40,30 @@
     </div>
     <div v-else-if="station" class="tabs-container">
       <tab-list v-model="currentTabIndex">
+        <tab-list-item lazy>
+          <template #title>
+            <TabTemplate
+              title="Visits"
+              :isLoading="visitsCountLoading"
+              :value="visitsCount"
+            />
+          </template>
+          <MonitoringTab
+            :group-name="groupName"
+            :station-name="stationName"
+            :visits-query="visitsQuery()"
+          />
+        </tab-list-item>
+        <tab-list-item lazy>
+          <template #title>
+            <TabTemplate
+              title="Reference photo"
+              :isLoading="!loadedStation"
+              :value="referencePhotos.length"
+            />
+          </template>
+          <StationReferencePhotosTab :station="station" :group="group" />
+        </tab-list-item>
         <tab-list-item lazy>
           <template #title>
             <TabTemplate
@@ -51,20 +79,6 @@
             :recordings-query="recordingsQueryFinal"
           />
         </tab-list-item>
-        <!--        <b-tab lazy>-->
-        <!--          <template #title>-->
-        <!--            <TabTemplate-->
-        <!--              title="Visits"-->
-        <!--              :isLoading="visitsCountLoading"-->
-        <!--              :value="visitsCount"-->
-        <!--            />-->
-        <!--          </template>-->
-        <!--          <MonitoringTab-->
-        <!--            :group-name="groupName"-->
-        <!--            :station-name="stationName"-->
-        <!--            :visits-query="visitsQuery()"-->
-        <!--          />-->
-        <!--        </b-tab>-->
       </tab-list>
     </div>
     <div v-else class="container no-tabs">
@@ -81,7 +95,7 @@ import Spinner from "../components/Spinner.vue";
 import api from "../api";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
-// import MonitoringTab from "@/components/MonitoringTab.vue";
+import MonitoringTab from "@/components/MonitoringTab.vue";
 import { latLng } from "leaflet";
 import { isViewingAsOtherUser } from "@/components/NavBar.vue";
 import { shouldViewAsSuperUser } from "@/utils";
@@ -90,12 +104,14 @@ import GroupLink from "@/components/GroupLink.vue";
 import StationLink from "@/components/StationLink.vue";
 import TabList from "@/components/TabList.vue";
 import TabListItem from "@/components/TabListItem.vue";
+import StationReferencePhotosTab from "@/components/StationReferencePhotosTab.vue";
 
 // TODO(jon): Implement visits/monitoring page for stations - this will require API changes.
 
 export default {
   name: "StationView",
   components: {
+    StationReferencePhotosTab,
     StationLink,
     GroupLink,
     MapWithPoints,
@@ -104,7 +120,7 @@ export default {
     RecordingsTab,
     TabList,
     TabListItem,
-    // MonitoringTab,
+    MonitoringTab,
   },
   computed: {
     ...mapState({
@@ -116,13 +132,13 @@ export default {
         (isViewingAsOtherUser() || shouldViewAsSuperUser())
       );
     },
-    userIsMemberOfGroup() {
+    userIsMemberOfGroup(): boolean {
+      return this.userIsSuperUserAndViewingAsSuperUser || !!this.group;
+    },
+    userIsGroupAdmin() {
       return (
         this.userIsSuperUserAndViewingAsSuperUser ||
-        (this.group.GroupUsers &&
-          this.group.GroupUsers.find(
-            ({ username }) => username === this.currentUser.username
-          ) !== undefined)
+        (this.group && this.group.admin)
       );
     },
     stationName() {
@@ -142,6 +158,11 @@ export default {
         return latLng(this.station.location.lat, this.station.location.lng);
       }
       return null;
+    },
+    referencePhotos(): string[] {
+      return (
+        (this.station.settings && this.station.settings.referenceImages) || []
+      );
     },
     currentTabIndex: {
       get() {
@@ -180,7 +201,7 @@ export default {
       station: null,
       stationIsRetired: false,
       group: {},
-      tabNames: ["recordings", "visits"],
+      tabNames: ["visits", "reference-photo", "recordings"],
     };
   },
   async mounted() {
@@ -204,8 +225,28 @@ export default {
 
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
     await this.fetchStation();
+    await this.fetchVisitsCount();
   },
   methods: {
+    async fetchVisitsCount() {
+      this.visitsCountLoading = true;
+
+      this.groupId = this.group.id;
+      this.visitsQueryFinal = this.visitsQuery();
+
+      const visitsResponse = await api.monitoring.queryVisitPage({
+        ...this.visitsQuery(),
+        days: "all",
+        perPage: 1,
+        page: 1,
+      });
+      if (visitsResponse.success) {
+        const { result } = visitsResponse;
+        this.visitsCount = `${result.params.pagesEstimate}`;
+      }
+
+      this.visitsCountLoading = false;
+    },
     async fetchStation() {
       try {
         if (!this.stationId) {
@@ -289,7 +330,7 @@ export default {
         days: "all",
         // TODO(jon): This should really be chunked into a per-day type thing.
 
-        stationId: [this.station.id],
+        station: [this.station.id],
       };
     },
   },

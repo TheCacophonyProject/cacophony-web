@@ -90,14 +90,14 @@ describe("User: add, get", () => {
       "uagUser5-1",
       "uagPassword1",
       getTestName("uagUser5-1") + "@api.created.com",
-      1
+      LATEST_END_USER_AGREEMENT
     ).then(() => {
       const expectedUser = TestCreateExpectedUser("uagUser5-1", {
         email: getTestName("uaguser5-1") + "@api.created.com",
         firstName: null,
         lastName: null,
         globalPermission: "off",
-        endUserAgreement: 1,
+        endUserAgreement: LATEST_END_USER_AGREEMENT,
       });
       cy.apiUserCheck("uagUser5-1", getTestName("uagUser5-1"), expectedUser);
     });
@@ -133,7 +133,7 @@ describe("User: add, get", () => {
         undefined,
         getTestName("firstEmail") + "@email.com",
         undefined,
-        HTTP_BadRequest,
+        HTTP_Unprocessable,
         { message: "Username in use" }
       );
       cy.log("Add duplicate user (different case)");
@@ -142,7 +142,7 @@ describe("User: add, get", () => {
         undefined,
         getTestName("secondEmail") + "@email.com",
         undefined,
-        HTTP_BadRequest,
+        HTTP_Unprocessable,
         { message: "Username in use" }
       );
     });
@@ -160,7 +160,7 @@ describe("User: add, get", () => {
         "password",
         getTestName("user8") + "@user.com",
         undefined,
-        HTTP_BadRequest,
+        HTTP_Unprocessable,
         { message: "Email address in use" }
       );
       cy.log("Add duplicate email (different case)");
@@ -169,7 +169,7 @@ describe("User: add, get", () => {
         "password",
         getTestName("USER8") + "@USER.COM",
         undefined,
-        HTTP_BadRequest,
+        HTTP_Unprocessable,
         { message: "Email address in use" }
       );
     });

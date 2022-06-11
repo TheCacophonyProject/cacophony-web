@@ -3,6 +3,8 @@
 type ApiLoggedInUserResponse =
   import("@typedefs/api/user").ApiLoggedInUserResponse;
 type ApiUserResponse = import("@typedefs/api/user").ApiUserResponse;
+type UserId = import("@typedefs/api/common").UserId;
+type GroupId = import("@typedefs/api/common").GroupId;
 
 declare namespace Cypress {
   interface Chainable {
@@ -22,7 +24,7 @@ declare namespace Cypress {
       endUserAgreement?: number,
       statusCode?: number,
       additionalChecks?: any
-    ): any;
+    ): Cypress.Chainable<UserId>;
 
     /**
      * Update user with parameters supplied in updates. Valid updates parameters are:
@@ -132,7 +134,10 @@ declare namespace Cypress {
     /**
      * create user group and camera at the same time
      */
-    testCreateUserAndGroup(userName: string, group: string): any;
+    testCreateUserAndGroup(
+      userName: string,
+      group: string
+    ): Cypress.Chainable<{ userId: UserId; groupId: GroupId }>;
 
     /**
      * create user group and camera at the same time
@@ -141,6 +146,6 @@ declare namespace Cypress {
       userName: string,
       group: string,
       ...cameras: string[]
-    ): any;
+    ): Cypress.Chainable<{ groupId: GroupId; deviceIds: DeviceId[] }>;
   }
 }

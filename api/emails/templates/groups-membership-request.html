@@ -1,0 +1,44 @@
+<tr>
+  <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+    <br>
+    <div style="font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#DF4726;padding-right:24px">
+      {{ requesterEmailAddress }} wants to join some of your groups.
+    </div>
+    <br>
+    <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333 !important;">
+      Hi, {{ requesterEmailAddress }} has requested permission to join some of your groups.
+      <br><br>
+      If you don't recognise this person, please ignore this email.
+      <br><br>
+      Allowing this person to join your group will give them access to view (and optionally, manage) your group, including all of its stations, recordings, and devices.
+      <br>If you decide to make them a group administrator, it will also allow them to invite other users to the group, delete recordings, and rename stations.
+      <br><br>
+      This request will expire after one week.
+      <br><br>
+      <a href="{{ acceptToGroupsUrl }}" style="background-color: #2f67f6;border:none;border-radius:3px;color:#ffffff;cursor:auto;padding:15px 25px;display: inline-block;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
+        Review request
+      </a>
+<!--      <br><br>-->
+<!--      Having trouble clicking the button? Copy and paste this url into your browser to reset your password<br>-->
+<!--      <pre style="margin-bottom: 0;line-break: auto;word-break: break-all;"><code>{{ acceptToGroupsUrl }}</code></pre>-->
+      <br><br>
+      &ndash; The Cacophony Team.
+      <br><br>
+    </div>
+  </td>
+</tr>
+<tr>
+  <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
+    <br><br>
+
+    You are receiving this email because you are an admin of the group '{{ requestGroupName }}'.
+    <br><br>
+
+    <strong>The Cacophony Project.</strong><br>
+    <span class="ios-footer">
+New Zealand.<br>
+</span>
+    <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+    <br><br>
+  </td>
+</tr>

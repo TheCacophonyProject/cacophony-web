@@ -29,6 +29,8 @@ import models, { ModelCommon } from "@models";
 import { User } from "@models/User";
 import stream, { Stream } from "stream";
 import { RecordingType } from "@typedefs/api/consts";
+import config from "@config";
+import { Op } from "sequelize";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -53,7 +55,8 @@ function multipartUpload(
     uploadingDeviceOrUser: Device | User | null,
     data: any,
     key: string,
-    uploadedFileData: Uint8Array
+    uploadedFileData: Uint8Array,
+    locals: Record<string, any>
   ) => Promise<ModelCommon<T> | string>
 ) {
   return async (request: Request, response: Response) => {
@@ -174,6 +177,7 @@ function multipartUpload(
             where: {
               DeviceId: uploadingDevice.id,
               rawFileHash: data.fileHash,
+              deletedAt: { [Op.eq]: null },
             },
           });
         if (existingRecordingWithHashForDevice !== null) {
@@ -208,7 +212,7 @@ function multipartUpload(
         // Optional file integrity check, opt-in to be backward compatible with existing clients.
         if (data.fileHash && keyPrefix === "raw") {
           log.info("Checking file hash. Key: %s", key);
-          // Read the full file back from s3 and hash it
+          // Hash the full file
           const checkHash = crypto
             .createHash("sha1")
             // @ts-ignore
@@ -233,6 +237,47 @@ function multipartUpload(
             );
             return;
           }
+        } else if (keyPrefix === "raw" && config.productionEnv) {
+          // NOTE: We need to allow duplicate uploads on test currently.
+          // Create a fileHash if we didn't get one from the device upload, and check for
+          // duplicates.
+          data.fileHash = crypto
+            .createHash("sha1")
+            // @ts-ignore
+            .update(fileDataArray, "binary")
+            .digest("hex");
+
+          const existingRecordingWithHashForDevice =
+            await models.Recording.findOne({
+              where: {
+                DeviceId: uploadingDevice.id,
+                rawFileHash: data.fileHash,
+                deletedAt: { [Op.eq]: null },
+              },
+            });
+          if (existingRecordingWithHashForDevice !== null) {
+            log.error(
+              "Recording with hash %s for device %s already exists, discarding duplicate",
+              data.fileHash,
+              uploadingDevice.id
+            );
+            // Remove from s3
+            await modelsUtil
+              .openS3()
+              .deleteObject({
+                Key: key,
+              })
+              .promise()
+              .catch((err) => {
+                return err;
+              });
+            responseUtil.validRecordingUpload(
+              response,
+              existingRecordingWithHashForDevice.id,
+              "Duplicate recording found for device"
+            );
+            return;
+          }
         }
 
         data.filename = filename;
@@ -241,7 +286,8 @@ function multipartUpload(
           uploadingDevice || response.locals.requestUser || null,
           data,
           key,
-          fileDataArray
+          fileDataArray,
+          response.locals
         );
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();
