@@ -42,6 +42,8 @@ export enum RecordingProcessingState {
 }
 
 export enum AcceptableTag {
+  NoMotion = "no motion",
+  Motion = "motion",
   Cool = "cool",
   RequiresReview = "requires review",
   InteractionWithTrap = "interaction with trap",

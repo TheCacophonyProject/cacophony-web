@@ -57,6 +57,8 @@ var RecordingProcessingState;
 );
 var AcceptableTag;
 (function (AcceptableTag) {
+  AcceptableTag["NoMotion"] = "no motion";
+  AcceptableTag["Motion"] = "motion";
   AcceptableTag["Cool"] = "cool";
   AcceptableTag["RequiresReview"] = "requires review";
   AcceptableTag["InteractionWithTrap"] = "interaction with trap";

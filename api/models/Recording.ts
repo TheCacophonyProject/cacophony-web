@@ -975,7 +975,12 @@ from (
     if (
       (models.Tag as TagStatic).acceptableTags.has(tagMode as AcceptableTag)
     ) {
-      let sqlQuery = `(EXISTS (${Recording.queryBuilder.recordingTaggedWith(
+      let extra = "";
+      if (tagMode == (AcceptableTag.Motion as string)) {
+        extra = " NOT ";
+      }
+
+      let sqlQuery = `(${extra}EXISTS (${Recording.queryBuilder.recordingTaggedWith(
         [tagMode],
         null
       )}))`;
@@ -1134,6 +1139,10 @@ from (
             `("Tags"."${whatName}"!='bird' AND "Tags"."${whatName}"!='false positive')`
           );
         }
+      } else if (tag == (AcceptableTag.Motion as string)) {
+        parts.push(
+          `"Tags"."${whatName}" = '${AcceptableTag.NoMotion as string}'`
+        );
       } else {
         parts.push(`"Tags"."${whatName}" = '${tag}'`);
         if (usesDetail) {

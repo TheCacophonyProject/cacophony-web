@@ -157,6 +157,16 @@ const recordingLabelsBase = [
     text: "Flagged for review",
     specified: true,
   },
+  {
+    value: "motion",
+    text: "Motion video",
+    specified: true,
+  },
+  {
+    value: "no motion",
+    text: "No motion video",
+    specified: true,
+  },
 ];
 
 const taggingFilters = [
