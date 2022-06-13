@@ -40,7 +40,7 @@ const loadCacophonyWebVersion = async (): Promise<void> => {
   const { stdout, stderr } = await asyncExec("dpkg -s cacophony-web | cat");
   for (const line of [...stderr.split("\n"), ...stdout.split("\n")]) {
     if (line.startsWith("Version: ")) {
-      CACOPHONY_WEB_VERSION.version = stdout.replace("Version: ", "");
+      CACOPHONY_WEB_VERSION.version = line.replace("Version: ", "").trim();
       break;
     }
   }
@@ -142,7 +142,7 @@ const checkS3Connection = (): Promise<void> => {
     );
     response.header(
       "Access-Control-Allow-Headers",
-      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport"
+      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control"
     );
     next();
   });
