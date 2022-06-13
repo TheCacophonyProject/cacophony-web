@@ -1,7 +1,7 @@
 cypress/videos
 node_modules
 cypress/screenshots
-cypress.json
+cypress.config.ts
 cypress-performance.json
 cypress-browse.json
 cypress.json.local
