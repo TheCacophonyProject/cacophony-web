@@ -7,7 +7,7 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
 </script>
 <template>
   <div
-    class="section-header d-flex flex-row-reverse d-md-block align-items-center justify-content-between"
+    class="section-header d-flex flex-row-reverse d-md-block align-items-center justify-content-between pt-md-3"
   >
     <h4 class="group-name my-0 m-md-0 mb-md-2 mx-3" v-if="showGroupName">
       <span>{{ currentSelectedGroup.groupName }}</span>
