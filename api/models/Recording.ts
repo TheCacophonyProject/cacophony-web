@@ -977,7 +977,10 @@ from (
     ) {
       let extra = "";
       if (tagMode == (AcceptableTag.Motion as string)) {
-        extra = " NOT ";
+        const noHuman = Recording.queryBuilder.notTagOfType(null, humanSQL);
+        extra = noHuman + "AND NOT ";
+
+        // untagged =  Recording.queryBuilder.notTagOfType(tagWhats, null);
       }
 
       let sqlQuery = `(${extra}EXISTS (${Recording.queryBuilder.recordingTaggedWith(

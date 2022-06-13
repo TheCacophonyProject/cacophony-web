@@ -159,7 +159,7 @@ const recordingLabelsBase = [
   },
   {
     value: "motion",
-    text: "Motion video",
+    text: "Untagged Motion video",
     specified: true,
   },
   {
