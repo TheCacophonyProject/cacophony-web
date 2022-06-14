@@ -162,6 +162,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
 // We configure the parser an add our custom parser to it.
 (async () => {
   const files = await readdir("api");
+
   const schemaDefinitions = files.filter((file) => file.endsWith(".d.ts"));
   // Load the changes cache file if it exists:
   let changes: Record<string, string> = {};
@@ -180,6 +181,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
       !changes[typedefFile] ||
       (changes[typedefFile] && changes[typedefFile] !== digest)
     ) {
+      console.log(`Schema def ${typedefFile} changed, re-compiling`);
       changes[typedefFile] = digest;
       const exportedNames = [];
       {
@@ -264,7 +266,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
       }
     } else {
       changes[typedefFile] = digest;
-      console.log(`Schema def ${typedefFile} unchanged, skipping`);
+      //console.log(`Schema def ${typedefFile} unchanged, skipping`);
     }
   }
   if (updatedSchemas.length) {

@@ -2,31 +2,39 @@ import { NextFunction, Request, Response } from "express";
 import {
   checkAccess,
   DecodedJWTToken,
+  getDecodedResetToken,
+  getDecodedToken,
   getVerifiedJWT,
   lookupEntity,
-  getDecodedResetToken,
 } from "./auth";
 import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
 import log from "../logging";
 import { modelTypeName, modelTypeNamePlural } from "./middleware";
 import { ValidationChain } from "express-validator";
-import { ClientError } from "./customErrors";
+import { AuthorizationError, ClientError } from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
 import { RecordingId, ScheduleId, UserId } from "@typedefs/api/common";
 import { Group } from "models/Group";
 import { Recording } from "models/Recording";
-import { SuperUsers } from "@/Server";
 import { Station } from "@/models/Station";
 import { Schedule } from "@/models/Schedule";
+import { UserGlobalPermission } from "@typedefs/api/consts";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils";
+import { SuperUsers } from "@/Globals";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
 
 const extractJwtAuthenticatedEntity =
-  (types: string[], reqAccess?: { devices?: any }, requireSuperAdmin = false) =>
+  (
+    types: string[],
+    reqAccess?: { devices?: any },
+    requireSuperAdmin = false,
+    requireActivatedUser = false
+  ) =>
   async (
     request: Request,
     response: Response,
@@ -43,6 +51,19 @@ const extractJwtAuthenticatedEntity =
             `Invalid JWT access type '${type}', must be ${
               types.length > 1 ? "one of " : ""
             }${types.map((t) => `'${t}'`).join(", ")}`,
+            401
+          )
+        );
+      }
+
+      if (
+        jwtDecoded._type === "user" &&
+        requireActivatedUser &&
+        jwtDecoded.activated === false
+      ) {
+        return next(
+          new ClientError(
+            "You must have confirmed your email address to activate your account in order to access this API.",
             401
           )
         );
@@ -66,13 +87,14 @@ const extractJwtAuthenticatedEntity =
               id: jwtDecoded.id,
               hasGlobalRead: () => false,
               hasGlobalWrite: () => false,
-              globalPermission: "off",
+              globalPermission: UserGlobalPermission.Off,
             };
           } else {
             response.locals.requestUser = {
               id: jwtDecoded.id,
               hasGlobalRead: () => true,
-              hasGlobalWrite: () => superUserPermissions === "write",
+              hasGlobalWrite: () =>
+                superUserPermissions === UserGlobalPermission.Write,
               globalPermission: superUserPermissions,
             };
           }
@@ -104,7 +126,8 @@ const extractJwtAuthenticatedEntity =
       ) {
         const globalPermissions = (response.locals.requestUser as User)
           .globalPermission;
-        response.locals.viewAsSuperUser = globalPermissions !== "off";
+        response.locals.viewAsSuperUser =
+          globalPermissions !== UserGlobalPermission.Off;
       }
 
       if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
@@ -113,12 +136,17 @@ const extractJwtAuthenticatedEntity =
 
       return next();
     } catch (e) {
-      logger.error("HERE %s", e);
       return next(e);
     }
   };
 
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
+export const extractJwtAuthorizedActivatedUser = extractJwtAuthenticatedEntity(
+  ["user"],
+  undefined,
+  false,
+  true
+);
 export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity([
   "user",
   "device",
@@ -386,6 +414,7 @@ export const fetchModel =
   ) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
+
     let id;
     if (typeof primary === "number") {
       id = primary;
@@ -413,6 +442,7 @@ export const fetchModel =
     try {
       model = await modelGetter(id, id2, response.locals);
     } catch (e) {
+      logger.error("%s", e.sql);
       return next(e);
     }
     if (model instanceof ClientError) {
@@ -556,7 +586,7 @@ const getDevices =
       (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
       (getDeviceOptions as any).where.active = true;
     }
-    //console.dir(getDeviceOptions, {depth: 5});
+    getDeviceOptions.subQuery = false;
     return models.Device.findAll({
       ...getDeviceOptions,
       order: ["devicename"],
@@ -622,10 +652,10 @@ const getStations =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
     }
-
     return models.Station.findAll({
       ...getStationsOptions,
       order: ["name"],
+      subQuery: false,
     });
   };
 
@@ -648,6 +678,19 @@ const getStation =
     let stationWhere;
     let groupWhere = {};
 
+    let groupNameMatch: any = groupNameOrId;
+    if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+      groupNameMatch = {
+        [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+      };
+    }
+    let stationNameMatch: any = stationNameOrId;
+    if (!stationIsId && stationNameOrId !== urlNormaliseName(stationNameOrId)) {
+      stationNameMatch = {
+        [Op.in]: [stationNameOrId, urlNormaliseName(stationNameOrId)],
+      };
+    }
+
     if (groupIsId && stationIsId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
@@ -656,7 +699,7 @@ const getStation =
     } else if (stationIsId && groupNameOrId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
-        "$Group.groupname$": groupNameOrId,
+        "$Group.groupname$": groupNameMatch,
       };
     } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
@@ -669,8 +712,8 @@ const getStation =
       };
     } else {
       stationWhere = {
-        name: stationNameOrId,
-        "$Group.groupname$": groupNameOrId,
+        name: stationNameMatch,
+        "$Group.groupname$": groupNameMatch,
       };
     }
     if (groupIsId) {
@@ -678,7 +721,7 @@ const getStation =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: groupNameOrId };
+      groupWhere = { groupname: groupNameMatch };
     }
 
     let getStationOptions;
@@ -727,7 +770,7 @@ const getStation =
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
     }
-
+    getStationOptions.subQuery = false;
     return models.Station.findOne(getStationOptions);
   };
 
@@ -816,7 +859,11 @@ const getGroups =
         // ],
       };
     }
-    return models.Group.findAll({ ...getGroupOptions, order: ["groupname"] });
+    return models.Group.findAll({
+      ...getGroupOptions,
+      order: ["groupname"],
+      subQuery: false,
+    });
   };
 
 const getRecordingRelationships = (recordingQuery: any): any => {
@@ -1045,6 +1092,20 @@ const getDevice =
 
     let deviceWhere;
     let groupWhere = {};
+
+    let groupNameMatch: any = groupNameOrId;
+    if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+      groupNameMatch = {
+        [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+      };
+    }
+    let deviceNameMatch: any = deviceNameOrId;
+    if (!deviceIsId && deviceNameOrId !== urlNormaliseName(deviceNameOrId)) {
+      deviceNameMatch = {
+        [Op.in]: [deviceNameOrId, urlNormaliseName(deviceNameOrId)],
+      };
+    }
+
     if (deviceIsId && groupIsId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
@@ -1053,7 +1114,7 @@ const getDevice =
     } else if (deviceIsId && groupNameOrId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
-        "$Group.groupname$": groupNameOrId,
+        "$Group.groupname$": groupNameMatch,
       };
     } else if (deviceIsId && !groupNameOrId) {
       deviceWhere = {
@@ -1061,13 +1122,13 @@ const getDevice =
       };
     } else if (groupIsId) {
       deviceWhere = {
-        devicename: deviceNameOrId,
+        devicename: deviceNameMatch,
         GroupId: parseInt(groupNameOrId),
       };
     } else {
       deviceWhere = {
-        devicename: deviceNameOrId,
-        "$Group.groupname$": groupNameOrId,
+        devicename: deviceNameMatch,
+        "$Group.groupname$": groupNameMatch,
       };
     }
     if (groupIsId) {
@@ -1075,7 +1136,7 @@ const getDevice =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: groupNameOrId };
+      groupWhere = { groupname: groupNameMatch };
     }
 
     let getDeviceOptions;
@@ -1124,7 +1185,7 @@ const getDevice =
       (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
       (getDeviceOptions as any).where.active = true;
     }
-    //console.dir(getDeviceOptions, {depth: 5});
+    getDeviceOptions.subQuery = false;
     return models.Device.findOne(getDeviceOptions);
   };
 
@@ -1171,7 +1232,13 @@ const getGroup =
         id: parseInt(groupNameOrId),
       };
     } else {
-      groupWhere = { groupname: groupNameOrId };
+      let groupNameMatch: any = groupNameOrId;
+      if (groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+        groupNameMatch = {
+          [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+        };
+      }
+      groupWhere = { groupname: groupNameMatch };
     }
     let getGroupOptions;
     if (forRequestUser) {
@@ -1189,6 +1256,7 @@ const getGroup =
         where: groupWhere,
       };
     }
+    getGroupOptions.subQuery = false;
     return models.Group.findOne(getGroupOptions);
   };
 
@@ -1210,7 +1278,7 @@ const getUser =
       userWhere = {
         [Op.or]: [
           { username: userNameOrEmailOrId },
-          { email: userNameOrEmailOrId },
+          { email: userNameOrEmailOrId.toLowerCase() },
         ],
       };
     }
@@ -1412,13 +1480,24 @@ export const fetchAdminAuthorizedRequiredGroupById = (
     groupNameOrId
   );
 
+export const extractJWTInfo =
+  (field: ValidationChain) =>
+  async (request: Request, response: Response, next: NextFunction) => {
+    const token = extractValFromRequest(request, field) as string;
+    let tokenInfo;
+    try {
+      tokenInfo = getDecodedToken(token);
+    } catch (e) {
+      return next(e);
+    }
+    response.locals.tokenInfo = tokenInfo;
+    next();
+  };
+
 export const fetchUnauthorizedRequiredUserByResetToken =
   (field: ValidationChain) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const token = extractValFromRequest(request, field) as string;
-    if (!token) {
-      return next(new ClientError(`Invalid reset token`, 401));
-    }
     let resetInfo;
     try {
       resetInfo = getDecodedResetToken(token);
@@ -1426,7 +1505,7 @@ export const fetchUnauthorizedRequiredUserByResetToken =
       return next(new ClientError(`Reset token expired`, 401));
     }
     response.locals.resetInfo = resetInfo;
-    const user = await getUser()(response.locals.resetInfo.id);
+    const user = await models.User.findByPk(response.locals.resetInfo.id);
     if (!user) {
       return next(
         new ClientError(
@@ -1604,6 +1683,13 @@ export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
   false,
   false,
   getGroups(true, false)
+);
+
+export const fetchAdminAuthorizedRequiredGroups = fetchRequiredModels(
+  models.Group,
+  false,
+  false,
+  getGroups(true, true)
 );
 
 export const fetchUnAuthorizedOptionalEventDetailSnapshotById = (

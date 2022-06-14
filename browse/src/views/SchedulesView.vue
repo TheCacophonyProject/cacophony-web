@@ -478,7 +478,7 @@ export default {
         devices: this.assignedDevices[id] || [],
       }));
     },
-    deviceOptions() {
+    audioDeviceOptions() {
       return this.devices.map((device: ApiDeviceResponse) => ({
         name: device.deviceName,
         id: device.id,

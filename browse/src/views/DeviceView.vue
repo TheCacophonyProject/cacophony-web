@@ -26,7 +26,9 @@
         </h1>
       </div>
       <div>
-        <p class="lead d-sm-none d-md-inline-block">Manage this device.</p>
+        <p class="lead d-sm-none d-md-inline-block" v-if="userIsGroupAdmin">
+          Manage this device.
+        </p>
       </div>
     </b-jumbotron>
 
@@ -59,6 +61,8 @@ import { ApiGroupResponse } from "@typedefs/api/group";
 import GroupLink from "@/components/GroupLink.vue";
 import DeviceLink from "@/components/DeviceLink.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
+import { isViewingAsOtherUser } from "@/components/NavBar.vue";
+import { shouldViewAsSuperUser } from "@/utils";
 
 interface DeviceViewData {
   device: ApiDeviceResponse;
@@ -77,6 +81,21 @@ export default {
     },
     groupName() {
       return this.$route.params.groupName;
+    },
+    userIsSuperUserAndViewingAsSuperUser() {
+      return (
+        this.currentUser.globalPermission === "write" &&
+        (isViewingAsOtherUser() || shouldViewAsSuperUser())
+      );
+    },
+    userIsMemberOfGroup(): boolean {
+      return this.userIsSuperUserAndViewingAsSuperUser || !!this.group;
+    },
+    userIsGroupAdmin() {
+      return (
+        this.userIsSuperUserAndViewingAsSuperUser ||
+        (this.group && this.group.admin)
+      );
     },
   },
   data(): Record<string, any> & DeviceViewData {

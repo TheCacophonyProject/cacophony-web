@@ -33,18 +33,40 @@ export default {
   computed: {
     orderedGroups: {
       get(): ApiGroupResponse[] {
-        return [...this.groups].sort((a, b) => {
-          const aDate = a.lastRecordingTime && new Date(a.lastRecordingTime);
-          const bDate = b.lastRecordingTime && new Date(b.lastRecordingTime);
-          if (aDate && bDate) {
-            return bDate.getTime() - aDate.getTime();
-          } else if (aDate) {
-            return -1;
-          } else if (bDate) {
-            return 1;
+        return [...this.groups].sort(
+          (a: ApiGroupResponse, b: ApiGroupResponse) => {
+            const aDateThermal =
+              a.lastThermalRecordingTime &&
+              new Date(a.lastThermalRecordingTime);
+            const aDateAudio =
+              a.lastAudioRecordingTime && new Date(a.lastAudioRecordingTime);
+            const bDateThermal =
+              b.lastThermalRecordingTime &&
+              new Date(b.lastThermalRecordingTime);
+            const bDateAudio =
+              b.lastAudioRecordingTime && new Date(b.lastAudioRecordingTime);
+            let aDate;
+            if (aDateAudio && aDateThermal) {
+              aDate = aDateAudio > aDateThermal ? aDateAudio : aDateThermal;
+            } else {
+              aDate = aDateThermal || aDateAudio;
+            }
+            let bDate;
+            if (bDateAudio && bDateThermal) {
+              bDate = bDateAudio > bDateThermal ? bDateAudio : bDateThermal;
+            } else {
+              bDate = bDateThermal || bDateAudio;
+            }
+            if (aDate && bDate) {
+              return bDate.getTime() - aDate.getTime();
+            } else if (aDate) {
+              return -1;
+            } else if (bDate) {
+              return 1;
+            }
+            return a.groupName.localeCompare(b.groupName);
           }
-          return a.groupName.localeCompare(b.groupName);
-        });
+        );
       },
     },
   },

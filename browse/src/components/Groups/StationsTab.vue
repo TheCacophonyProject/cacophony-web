@@ -39,7 +39,7 @@
             <StationLink
               :group-name="groupName"
               :station-name="data.item.name"
-              context="recordings"
+              context="visits"
             />
           </template>
           <template #cell(latitude)="data">

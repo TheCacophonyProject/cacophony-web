@@ -474,6 +474,21 @@ function thumbnail(id: RecordingId): string {
   return CacophonyApi.url(`/api/v1/recordings/${id}/thumbnail`);
 }
 
+function addRecording(
+  file: Blob,
+  data: any,
+  deviceId: DeviceId
+): Promise<FetchResult<{ id: RecordingId; messages: string[] }>> {
+  const formData = new FormData();
+  formData.set("data", JSON.stringify(data));
+  formData.set("file", file);
+  return CacophonyApi.postMultipartFormData(
+    `/api/v1/recordings/device/${deviceId}`,
+    formData,
+    true
+  );
+}
+
 interface RecordingToTag {
   RecordingId: RecordingId;
   DeviceId: DeviceId;
@@ -553,4 +568,5 @@ export default {
   makeApiQuery,
   needsTag,
   latestForDevice,
+  addRecording,
 };

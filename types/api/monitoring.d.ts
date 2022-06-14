@@ -1,4 +1,4 @@
-import { DeviceId, GroupId, IsoFormattedDateString } from "./common";
+import { GroupId, IsoFormattedDateString, StationId } from "./common";
 
 export interface MonitoringRequest {
   perPage?: number;
@@ -7,6 +7,6 @@ export interface MonitoringRequest {
   from?: IsoFormattedDateString;
   to?: IsoFormattedDateString;
   group?: GroupId[];
-  device?: DeviceId[];
+  station?: StationId[];
   aiModel?: string;
 }

@@ -18,9 +18,11 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
 import { Op } from "sequelize";
-import { asyncLocalStorage } from "./Globals";
-
-export const SuperUsers: Map<number, any> = new Map();
+import {
+  asyncLocalStorage,
+  CACOPHONY_WEB_VERSION,
+  SuperUsers,
+} from "./Globals";
 
 const asyncExec = promisify(exec);
 
@@ -32,6 +34,16 @@ const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
     log.info("Stdout: %s", stdout);
   }
   return;
+};
+
+const loadCacophonyWebVersion = async (): Promise<void> => {
+  const { stdout, stderr } = await asyncExec("dpkg -s cacophony-web | cat");
+  for (const line of [...stderr.split("\n"), ...stdout.split("\n")]) {
+    if (line.startsWith("Version: ")) {
+      CACOPHONY_WEB_VERSION.version = stdout.replace("Version: ", "");
+      break;
+    }
+  }
 };
 
 const openHttpServer = (app): Promise<void> => {
@@ -71,6 +83,7 @@ const checkS3Connection = (): Promise<void> => {
   log.notice("Starting Full Noise.");
   config.loadConfigFromArgs(true);
 
+  await loadCacophonyWebVersion();
   // Check if any of the Cacophony type definitions have changed, and need recompiling?
   if (config.server.loggerLevel === "debug") {
     log.notice("Running in DEBUG mode");
@@ -129,7 +142,7 @@ const checkS3Connection = (): Promise<void> => {
     );
     response.header(
       "Access-Control-Allow-Headers",
-      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept"
+      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport"
     );
     next();
   });

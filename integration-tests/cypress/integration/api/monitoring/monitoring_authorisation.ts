@@ -1,6 +1,8 @@
 /// <reference path="../../../support/index.d.ts" />
 
 import { logTestDescription, NO_LOG_MESSAGE } from "@commands/descriptions";
+import { checkRecording } from "@commands/api/recording-tests";
+import { StationId } from "@typedefs/api/common";
 
 describe("Recording authorizations", () => {
   const admin = "Betty-groupAdmin";
@@ -10,6 +12,7 @@ describe("Recording authorizations", () => {
   const camera = "camera1";
   const NOT_ADMIN = false;
   let recordingUploaded = false;
+  let stationId = 0;
 
   before(() => {
     cy.apiUserAdd(member);
@@ -20,33 +23,42 @@ describe("Recording authorizations", () => {
 
   beforeEach(() => {
     if (!recordingUploaded) {
-      cy.testUploadRecording(camera, { tags: ["possum"] });
+      cy.testUploadRecording(camera, { tags: ["possum"] }).then(
+        (recordingId) => {
+          checkRecording(member, recordingId, (recording) => {
+            stationId = recording.stationId;
+          });
+        }
+      );
       recordingUploaded = true;
     }
   });
 
   it("Admin group member should see everything", () => {
-    checkMonitoringRequestSucceeds(admin, camera);
+    checkMonitoringRequestSucceeds(admin, stationId);
   });
 
   it("Group member should be able to read most things", () => {
-    checkMonitoringRequestSucceeds(member, camera);
+    checkMonitoringRequestSucceeds(member, stationId);
   });
 
   it("Hacker should not have any access", () => {
-    checkMonitoringRequestReturnsNoResults(hacker, camera);
+    checkMonitoringRequestReturnsNoResults(hacker, stationId);
   });
 });
 
-function checkMonitoringRequestSucceeds(username: string, camera: string) {
+function checkMonitoringRequestSucceeds(
+  username: string,
+  stationId: StationId
+) {
   logTestDescription(`User ${username} should be able to see visits.`, {});
-  cy.checkMonitoring(username, camera, [{}], NO_LOG_MESSAGE);
+  cy.checkMonitoring(username, stationId, [{}], NO_LOG_MESSAGE);
 }
 
 function checkMonitoringRequestReturnsNoResults(
   username: string,
-  camera: string
+  stationId: StationId
 ) {
   logTestDescription(`User ${username} should not see any visits.`, {});
-  cy.checkMonitoring(username, camera, [], NO_LOG_MESSAGE);
+  cy.checkMonitoring(username, stationId, [], NO_LOG_MESSAGE);
 }

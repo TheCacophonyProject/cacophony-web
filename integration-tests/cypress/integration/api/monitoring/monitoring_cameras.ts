@@ -1,24 +1,12 @@
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
+import { checkRecording } from "@commands/api/recording-tests";
 
 describe("Monitoring : multiple cameras and stations", () => {
   const Penny = "Penny";
 
   before(() => {
     cy.apiUserAdd(Penny);
-  });
-
-  it("Recordings at the same time on different cameras are never grouped together", () => {
-    const group = "cameras-2";
-    const cameraA = "cameraA";
-    const cameraB = "cameraB";
-    cy.testCreateGroupAndDevices(Penny, group, cameraA, cameraB);
-    cy.testUploadRecording(cameraA, { tags: ["possum"] });
-    cy.testUploadRecording(cameraB, { tags: ["cat"] });
-    cy.checkMonitoring(Penny, null, [
-      { camera: cameraA, tag: "possum" },
-      { camera: cameraB, tag: "cat" },
-    ]);
   });
 
   it("Station name should be recorded, and reported", () => {
@@ -45,16 +33,22 @@ describe("Monitoring : multiple cameras and stations", () => {
               lat: -44.0,
               lng: 172.7,
               time: new Date(),
-            }).thenCheckStationNameIs(Penny, getTestName("forest"));
-            cy.checkMonitoring(Penny, camera, [
-              { station: getTestName("forest") },
-            ]);
+            }).then((recordingId) => {
+              checkRecording(Penny, recordingId, (recording) => {
+                expect(recording.stationName).equals(getTestName("forest"));
+                cy.checkMonitoring(Penny, recording.stationId, [
+                  { stationName: getTestName("forest") },
+                ]);
+              });
+            });
           });
       });
     });
   });
 
   it("If station changes the a new visit should be created", () => {
+    // FIXME?: Not sure this is actually testing what it says it is
+
     const group = "stations-diff";
     const camera = "camera3";
     cy.testCreateGroupAndDevices(Penny, group, camera);
@@ -72,17 +66,27 @@ describe("Monitoring : multiple cameras and stations", () => {
             ...location1,
             tags: ["possum"],
             time: new Date(),
-          }).thenCheckStationNameIs(Penny, getTestName("forest"));
+          }).then((recordingId) => {
+            checkRecording(Penny, recordingId, (recording) => {
+              expect(recording.stationName).equals(getTestName("forest"));
+              cy.checkMonitoring(Penny, recording.stationId, [
+                { stationName: getTestName("forest") },
+              ]);
+            });
+          });
 
           cy.testUploadRecording(camera, {
             ...location2,
             tags: ["cat"],
             time: new Date(),
-          }).thenCheckStationNameIs(Penny, getTestName("waterfall"));
-          cy.checkMonitoring(Penny, camera, [
-            { station: getTestName("waterfall") },
-            { station: getTestName("forest") },
-          ]);
+          }).then((recordingId) => {
+            checkRecording(Penny, recordingId, (recording) => {
+              expect(recording.stationName).equals(getTestName("waterfall"));
+              cy.checkMonitoring(Penny, recording.stationId, [
+                { stationName: getTestName("waterfall") },
+              ]);
+            });
+          });
         });
       }
     );

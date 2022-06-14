@@ -29,6 +29,7 @@ import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import models from "@models";
 import { ClientError } from "@api/customErrors";
+import logger from "@/logging";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -151,7 +152,7 @@ export default function (app: Application, baseUrl: string) {
         .isInt({ min: 1, max: 10000 })
         .toInt()
         .withMessage(`Parameter 'page' must be an integer from 1 to 10000`), //${range.min} and ${range.max}
-      query("devices")
+      query("stations")
         .optional()
         .toArray()
         .isArray({ min: 1 })
@@ -180,8 +181,8 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser.id
       );
 
-      const deviceIds: number[] =
-        (request.query.devices as unknown[] as number[]) || [];
+      const stationIds: number[] =
+        (request.query.stations as unknown[] as number[]) || [];
       const groupIds: number[] =
         (request.query.groups as unknown[] as number[]) || [];
 
@@ -189,7 +190,7 @@ export default function (app: Application, baseUrl: string) {
       //  Easier to do this cleanly once we get rid of the concept of users belonging to devices.
 
       const params: MonitoringParams = {
-        devices: deviceIds,
+        stations: stationIds,
         groups: groupIds,
         page: request.query.page as unknown as number,
         pageSize: request.query["page-size"] as unknown as number,
@@ -202,6 +203,7 @@ export default function (app: Application, baseUrl: string) {
         params.until = request.query.until as unknown as Date;
       }
       const viewAsSuperAdmin = response.locals.viewAsSuperUser;
+
       const searchDetails = await calculateMonitoringPageCriteria(
         requestUser,
         params,

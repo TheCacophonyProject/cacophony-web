@@ -1060,10 +1060,14 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
+      // FIXME - If this is the *last* recording for a station, and the station is automatic, remove the station,
+      //  and the corresponding DeviceHistory entry. (Do we need to worry about undelete then?)
+
       if (request.query["soft-delete"]) {
         const recording: Recording = response.locals.recording;
         recording.deletedAt = new Date();
         recording.deletedBy = response.locals.requestUser.id;
+
         await recording.save();
         responseUtil.send(response, {
           statusCode: 200,

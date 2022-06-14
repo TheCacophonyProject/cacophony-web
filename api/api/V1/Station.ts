@@ -13,6 +13,7 @@ import { Station } from "@models/Station";
 import {
   ApiCreateStationData,
   ApiStationResponse,
+  ApiStationSettings,
 } from "@typedefs/api/station";
 import { booleanOf, idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "@api/schema-validation";
@@ -23,6 +24,10 @@ import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@api/V1/recordingUtil";
+import util from "@api/V1/util";
+import { openS3 } from "@models/util/util";
+import { streamS3Object } from "@api/V1/signedUrl";
+import logger from "@/logging";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -134,6 +139,127 @@ export default function (app: Application, baseUrl: string) {
         station: mapStation(response.locals.station),
       });
     }
+  );
+
+  /**
+   * @api {delete} /api/v1/stations/:id/reference-photo/:fileKey Delete a reference photo for a station given a fileKey
+   * @apiName DeleteReferencePhotoForStation
+   * @apiGroup Station
+   * @apiDescription Delete a reference photo for a station by station id and photo key.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+    `${apiUrl}/:id/reference-photo/:fileKey`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id")), param("fileKey").isString()]),
+    fetchAdminAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response) => {
+      // Make sure the fileKey exists in the station settings.
+      let referenceImages =
+        (response.locals.station as Station).settings.referenceImages || [];
+      const fileKey = request.params.fileKey.replace(/_/g, "/");
+      if (!referenceImages.includes(fileKey)) {
+        return responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["Reference image not found for station"],
+        });
+      }
+      const s3 = openS3();
+      await s3.deleteObject({ Key: fileKey });
+      referenceImages = referenceImages.filter(
+        (imageKey) => imageKey !== fileKey
+      );
+      await response.locals.station.update({
+        settings: {
+          ...(response.locals.station.settings || {}),
+          referenceImages,
+        },
+      });
+      return responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Removed reference image from station"],
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/stations/:id/reference-photo/:fileKey Return a reference photo for a station given a fileKey
+   * @apiName GetReferencePhotoForStation
+   * @apiGroup Station
+   * @apiDescription Get a reference photo for a station by station id and photo key.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/reference-photo/:fileKey`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id")), param("fileKey").isString()]),
+    fetchAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response) => {
+      // Make sure the fileKey exists in the station settings.
+      const referenceImages =
+        (response.locals.station as Station).settings.referenceImages || [];
+      const fileKey = request.params.fileKey.replace(/_/g, "/");
+      if (!referenceImages.includes(fileKey)) {
+        return responseUtil.send(response, {
+          statusCode: 400,
+          messages: ["Reference image not found for station"],
+        });
+      }
+      await streamS3Object(
+        request,
+        response,
+        fileKey,
+        "reference-image.jpg",
+        "image/jpeg"
+      );
+    }
+  );
+
+  /**
+   * @api {post} /api/v1/stations/:id/reference-photo Add a reference photo to a station.
+   * @apiName AddReferencePhotoToStation
+   * @apiGroup Station
+   * @apiDescription Add a reference photo to a station by id.  Must be an admin of the group that owns this station.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiSuccess {string} fileKey Unique fileKey of the newly added reference image.
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/reference-photo`,
+    extractJwtAuthorizedUser,
+    fetchAdminAuthorizedRequiredStationById(param("id")),
+    util.multipartUpload(
+      "f",
+      async (
+        uploader,
+        data,
+        key,
+        uploadedFileData,
+        locals
+      ): Promise<string> => {
+        const station = locals.station;
+        const stationSettings: ApiStationSettings = { ...station.settings };
+        stationSettings.referenceImages = [
+          ...(stationSettings.referenceImages || []),
+          key,
+        ];
+        await station.update({
+          settings: stationSettings,
+        });
+        return key;
+      }
+    )
   );
 
   /**

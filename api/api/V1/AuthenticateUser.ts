@@ -17,7 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import middleware, { validateFields } from "../middleware";
-import auth from "../auth";
+import auth, {
+  generateAuthTokensForUser,
+  getEmailConfirmationToken,
+  ttlTypes,
+} from "../auth";
 import { body, oneOf } from "express-validator";
 import responseUtil from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
@@ -27,15 +31,30 @@ import {
   validPasswordOf,
 } from "../validation-middleware";
 import {
+  extractJWTInfo,
   extractJwtAuthorisedSuperAdminUser,
+  extractJwtAuthorizedUser,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
+  fetchUnauthorizedRequiredUserByNameOrId,
 } from "../extract-middleware";
 
-const ttlTypes = Object.freeze({ short: 60, medium: 5 * 60, long: 30 * 60 });
-
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import { mapUser } from "@api/V1/User";
+import { User } from "@models/User";
+import models from "@/models";
+import { UserId } from "@/../types/api/common";
+import jwt from "jsonwebtoken";
+import config from "@config";
+import { randomUUID } from "crypto";
+import { QueryTypes } from "sequelize";
+import logger from "@log";
+import {
+  sendChangedEmailConfirmationEmail,
+  sendWelcomeEmailConfirmationEmail,
+} from "@/emails/transactionalEmails";
+import { sendEmailConfirmationEmail } from "@/scripts/emailUtil";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
@@ -50,23 +69,13 @@ export interface ApiLoggedInUserResponseData {
   userData: ApiLoggedInUserResponse;
 }
 
-export default function (app: Application) {
-  /**
-   * @api {post} /authenticate_user/ Authenticate a user
-   *
-   * @apiName AuthenticateUser
-   * @apiGroup Authentication
-   * @apiDescription Checks the username corresponds to an existing user account
-   * and the password matches the account.
-   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
-   *
-   * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
-   *
-   * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
-   */
-  app.post(
-    "/authenticate_user",
+export default function (app: Application, baseUrl: string) {
+  const apiUrl = `${baseUrl}/users`;
+
+  // TODO - Give api users the option of asking for a long-lived token, so they don't have to deal with the complexity
+  //  of refresh tokens?
+
+  const authenticateUserOptions = [
     validateFields([
       oneOf(
         [
@@ -78,11 +87,6 @@ export default function (app: Application) {
         ],
         "could not find a user with the given username or email"
       ),
-      // FIXME - How about not sending our passwords in the clear eh?
-      //  Ideally should generate hash on client side, and compare hashes with one
-      //  stored on the backend.  Salt on both sides with some timestamp
-      //  rounded to x minutes, so that if hash is compromised
-      //  it can't be reused for long.
       validPasswordOf(body("password")),
     ]),
     fetchUnauthorizedOptionalUserByNameOrEmailOrId(
@@ -105,29 +109,24 @@ export default function (app: Application) {
         request.body.password
       );
       if (passwordMatch) {
-        const token = auth.createEntityJWT(response.locals.user);
-        const {
-          id,
-          username,
-          firstName,
-          lastName,
-          email,
-          globalPermission,
-          endUserAgreement,
-        } = response.locals.user;
+        // NOTE: If this is called from the old, deprecated API, continue to give out
+        //  tokens that never expire.  If called from the new end-point, timeout in 30mins, and
+        //  require use of the token refresh.
+        const isNewEndPoint = request.path.endsWith("authenticate");
+        await response.locals.user.update({ lastActiveAt: new Date() });
+        const { refreshToken, apiToken } = await generateAuthTokensForUser(
+          response.locals.user,
+          request.headers["viewport"] as string,
+          request.headers["user-agent"],
+          isNewEndPoint
+        );
+
         responseUtil.send(response, {
           statusCode: 200,
           messages: ["Successful login."],
-          token: `JWT ${token}`,
-          userData: {
-            id,
-            userName: username,
-            firstName,
-            lastName,
-            email,
-            globalPermission,
-            endUserAgreement,
-          },
+          token: apiToken,
+          refreshToken,
+          userData: mapUser(response.locals.user),
         });
       } else {
         responseUtil.send(response, {
@@ -135,30 +134,158 @@ export default function (app: Application) {
           messages: ["Wrong password or username/email address."],
         });
       }
-    }
-  );
+    },
+  ];
 
   /**
-   * @api {post} /admin_authenticate_as_other_user/ Authenticate as any user if you are a super-user.
-   * @apiName AdminAuthenticateAsOtherUser
+   * @api {post} /authenticate_user Authenticate a user
+   *
+   * @apiName AuthenticateUser
    * @apiGroup Authentication
-   * @apiDescription Allows an authenticated super-user to obtain a user JWT token for any other user, so that they
-   * can view the site as that user.
+   * @apiDescription Checks the username corresponds to an existing user account
+   * and the password matches the account.
+   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
+   * @apiDeprecated Use /api/v1/users/authenticate-user
+   *
+   * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
+   *
+   * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiSuccess {String} refreshToken one time use token to refresh the users' session JWT token
+   * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   */
+  app.post("/authenticate_user", ...authenticateUserOptions);
+
+  /**
+   * @api {post} /api/v1/users/authenticate Authenticate a user
+   *
+   * @apiName AuthenticateUser
+   * @apiGroup Authentication
+   * @apiDescription Checks the username corresponds to an existing user account
+   * and the password matches the account.
+   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
+   *
+   * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
+   *
+   * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiSuccess {String} refreshToken one time use token to refresh the users' session JWT token
+   * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   */
+  app.post(`${apiUrl}/authenticate`, ...authenticateUserOptions);
+
+  /**
+   * @api {post} /api/v1/users/refresh-session-token Refresh user JWT
+   * @apiName RefreshUserAuthentication
+   * @apiGroup Authentication
+   * @apiDescription Returns a refreshed JWT user auth token for the current user
+   * with an updated timeout
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {String} name Username identifying a valid user account
-   *
    * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiSuccess {String} refreshToken One-time use token to refresh JWT session token
+   * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
    */
   app.post(
-    "/admin_authenticate_as_other_user",
+    `${apiUrl}/refresh-session-token`,
+    validateFields([body("refreshToken").exists()]),
+    extractJWTInfo(body("refreshToken")),
+    async (request: Request, response: Response) => {
+      // NOTE: The key insight for refresh tokens is that they are "one-time-use" tokens.  Every time we give out
+      //  a new refresh token, we invalidate the old one.
+
+      const result = await models.sequelize.query(
+        `
+            select * from "UserSessions" 
+            where "refreshToken" = :refreshToken 
+            limit 1
+        `,
+        {
+          type: QueryTypes.SELECT,
+          replacements: {
+            refreshToken: response.locals.tokenInfo.refreshToken,
+          },
+        }
+      );
+
+      if (result.length) {
+        // if valid token, create new token to return, and update existing token.
+        // create a new short-lived JWT token for user.
+        const validToken = result[0];
+
+        // Best practices taken from auth0 say that we should revoke refresh tokens after 15 days of inactivity:
+        // https://auth0.com/blog/achieving-a-seamless-user-experience-with-refresh-token-inactivity-lifetimes/
+        const fifteenDaysAgo = new Date(
+          new Date().setDate(new Date().getDate() - 15)
+        );
+        if (new Date(validToken.updatedAt) < fifteenDaysAgo) {
+          return responseUtil.send(response, {
+            statusCode: 401,
+            messages: ["Inactive refresh token expired."],
+          });
+        }
+
+        const refreshToken = randomUUID();
+        const user = await models.User.findByPk(validToken.userId);
+        await user.update({ lastActiveAt: new Date() });
+        const expiry = new Date(
+          new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
+        );
+
+        const now = new Date().toISOString();
+        await models.sequelize.query(
+          `
+            update "UserSessions" 
+            set "refreshToken" = :refreshToken, "updatedAt" = :updatedAt
+            where "refreshToken" = :oldRefreshToken
+        `,
+          {
+            type: QueryTypes.UPDATE,
+            replacements: {
+              refreshToken,
+              oldRefreshToken: response.locals.tokenInfo.refreshToken,
+              updatedAt: now,
+            },
+          }
+        );
+
+        const token = auth.createEntityJWT(user, {
+          expiresIn: ttlTypes.medium,
+        });
+        const refreshTokenSigned = jwt.sign(
+          { refreshToken },
+          config.server.passportSecret
+        );
+        responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got user token."],
+          token: `JWT ${token}`,
+          expiry,
+          refreshToken: refreshTokenSigned,
+        });
+      } else {
+        responseUtil.send(response, {
+          statusCode: 401,
+          messages: ["Invalid refresh token."],
+        });
+      }
+    }
+  );
+
+  const authenticateAsOtherUserOptions = [
     extractJwtAuthorisedSuperAdminUser,
     validateFields([validNameOf(body("name"))]),
     fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("name")),
     async (request: Request, response: Response) => {
-      const token = auth.createEntityJWT(response.locals.user);
+      const isNewEndPoint = request.path.endsWith(
+        "admin-authenticate-as-other-user"
+      );
+      const options = isNewEndPoint ? { expiresIn: ttlTypes.medium } : {};
+      const token = auth.createEntityJWT(response.locals.user, options);
+      const expiry = new Date(
+        new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
+      );
       const {
         id,
         username,
@@ -172,6 +299,7 @@ export default function (app: Application) {
         statusCode: 200,
         messages: ["Got user token."],
         token: `JWT ${token}`,
+        expiry,
         userData: {
           id,
           userName: username,
@@ -182,7 +310,47 @@ export default function (app: Application) {
           endUserAgreement,
         },
       });
-    }
+    },
+  ];
+
+  /**
+   * @api {post} /admin_authenticate_as_other_user Authenticate as any user if you are a super-user.
+   * @apiName AdminAuthenticateAsOtherUser
+   * @apiGroup Authentication
+   * @apiDescription Allows an authenticated super-user to obtain a user JWT token for any other user, so that they
+   * can view the site as that user.
+   * @apiDeprecated Use /api/v1/users/admin-authenticate-as-other-user
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {String} name Username identifying a valid user account
+   *
+   * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   */
+  app.post(
+    "/admin_authenticate_as_other_user",
+    ...authenticateAsOtherUserOptions
+  );
+
+  /**
+   * @api {post} /api/v1/users/admin-authenticate-as-other-user Authenticate as any user if you are a super-user.
+   * @apiName AdminAuthenticateAsOtherUser
+   * @apiGroup Authentication
+   * @apiDescription Allows an authenticated super-user to obtain a user JWT token for any other user, so that they
+   * can view the site as that user.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {String} name Username identifying a valid user account
+   *
+   * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   */
+  app.post(
+    `${apiUrl}/admin_authenticate_as_other_user`,
+    ...authenticateAsOtherUserOptions
   );
 
   /**
@@ -207,7 +375,8 @@ export default function (app: Application) {
    */
   app.post(
     "/token",
-    [body("ttl").optional(), body("access").optional(), auth.authenticateUser],
+    validateFields([body("ttl").optional(), body("access").optional()]),
+    auth.authenticateUser,
     middleware.requestWrapper(async (request, response) => {
       // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
@@ -225,84 +394,248 @@ export default function (app: Application) {
     })
   );
 
-  /**
-   * @api {post} /api/v1/resetpassword Sends an email to a user for resetting password
-   * @apiName ResetPassword
-   * @apiGroup Authentication
-   * @apiParam {String} userName Username for new user.
-   * @apiUse V1ResponseSuccess
-   */
-  app.post(
-    "/resetpassword",
+  const resetPasswordOptions = [
     validateFields([
-      oneOf(
-        [
-          deprecatedField(validNameOf(body("username"))),
-          validNameOf(body("userName")),
-          validNameOf(body("nameOrEmail")),
-          body("nameOrEmail").isEmail(),
-          body("email").isEmail(),
-        ],
-        "Missing user name in request"
-      ),
+      oneOf([
+        validNameOf(body("userName")), // TODO - Remove userName from this once browse-next is live
+        body("email").isEmail(),
+      ]),
     ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body(["username", "userName", "nameOrEmail", "email"])
-    ),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body(["email", "userName"])),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
-        response.locals.user.resetPassword();
+        const user = response.locals.user as User;
+        // If we're using the new end-point, make sure the user has confirmed their email address.
+        const isNewEndpoint = request.path.endsWith("reset-password");
+        if (isNewEndpoint && !user.emailConfirmed) {
+          // Do nothing
+        } else {
+          // FIXME - use correct resetPassword emailer
+
+          const sendingSuccess = await user.resetPassword();
+          if (!sendingSuccess) {
+            return responseUtil.send(response, {
+              statusCode: 500,
+              messages: [
+                "We failed to send your password recovery email, please check that you've entered your email correctly.",
+              ],
+            });
+          }
+        }
+      } else {
+        // In the case where the user doesn't exist, we'll pretend it does so
+        // attackers can't use this api to confirm the existence of a given email address.
       }
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: ["Email has been sent"],
+        messages: ["Your password recovery email has been sent"],
       });
-    }
-  );
+    },
+  ];
 
   /**
-   * @api {post} /api/v1/validateToken Validates a reset token
-   * @apiName ValidateToken
+   * @api {post} /api/v1/reset-password Sends an email to a user for resetting password
+   * @apiName ResetPassword
    * @apiGroup Authentication
-   * @apiParam {String} [token] password reset token to validate
-   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiBody {String} email Email of user.
    * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
    */
-  app.post(
-    "/validateToken",
-    validateFields([body("token")]),
+  app.post(`${apiUrl}/reset-password`, ...resetPasswordOptions);
+
+  /**
+   * @api {post} /resetpassword Sends an email to a user for resetting password
+   * @apiName ResetPassword
+   * @apiGroup Authentication
+   * @apiDeprecated Use /api/v1/users/reset-password instead
+   * @apiBody {String} userName Username of user.
+   * @apiUse V1ResponseSuccess
+   */
+  app.post("/resetpassword", ...resetPasswordOptions);
+
+  const validateTokenOptions = [
+    validateFields([body("token").exists()]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response) => {
-      if (response.locals.user.password != response.locals.resetInfo.password) {
+      if (
+        response.locals.user.password !== response.locals.resetInfo.password
+      ) {
         return responseUtil.send(response, {
           statusCode: 403,
           messages: ["Your password has already been changed"],
         });
       }
-
-      const {
-        id,
-        username,
-        firstName,
-        lastName,
-        email,
-        globalPermission,
-        endUserAgreement,
-      } = response.locals.user;
       return responseUtil.send(response, {
         statusCode: 200,
-        messages: [],
-        userData: {
-          id,
-          userName: username,
-          firstName,
-          lastName,
-          email,
-          globalPermission,
-          endUserAgreement,
-        },
+        messages: ["Reset token is still valid"],
+        userData: mapUser(response.locals.user),
       });
+    },
+  ];
+
+  /**
+   * @api {post} /validateToken Validates a reset token
+   * @apiName ValidateToken
+   * @apiGroup Authentication
+   * @apiBody {String} token password reset token to validate
+   * @apiDeprecated Use /api/v1/users/validate-reset-token
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post("/validateToken", ...validateTokenOptions);
+
+  /**
+   * @api {post} /api/v1/users/validate-reset-token Validates a reset token
+   * @apiName ValidateToken
+   * @apiGroup Authentication
+   * @apiDescription Used by the front-end when following a password reset link from an email to make sure
+   * the link has not already been used to reset a users' password.  Should be used on page load.
+   * @apiBody {String} token password reset token to validate
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(`${apiUrl}/validate-reset-token`, ...validateTokenOptions);
+
+  /**
+   * @api {post} /api/v1/users/resend-email-confirmation-request Resends email confirmation email
+   * @apiDescription Resend confirmation email that was originally sent as part of sign-up, or when
+   * changing email addresses.  This should only be used if the original email was lost.
+   * @apiName ResendEmailConfirmationRequest
+   * @apiGroup Authentication
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/resend-email-confirmation-request`,
+    extractJwtAuthorizedUser,
+    async (request: Request, response: Response) => {
+      const user = await models.User.findByPk(response.locals.requestUser.id);
+      if (user.email && !user.emailConfirmed) {
+        const emailConfirmationToken = getEmailConfirmationToken(
+          user.id,
+          user.email
+        );
+        //
+        const groups = await user.getGroups();
+        let sendSuccess;
+        if (!groups.length) {
+          // If the user has no groups, re-send the welcome email,
+          sendSuccess = await sendWelcomeEmailConfirmationEmail(
+            emailConfirmationToken,
+            user.email
+          );
+        } else {
+          // otherwise resend the email change confirmation email.
+          sendSuccess = await sendChangedEmailConfirmationEmail(
+            emailConfirmationToken,
+            user.email
+          );
+        }
+        if (!sendSuccess) {
+          return responseUtil.send(response, {
+            statusCode: 500,
+            messages: [`Failed to send email to ${user.email}`],
+          });
+        }
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Email confirmation request sent"],
+        });
+      } else if (user.emailConfirmed) {
+        return responseUtil.send(response, {
+          statusCode: 422,
+          messages: ["Email already confirmed"],
+        });
+      }
     }
   );
+
+  if (config.server.loggerLevel === "debug") {
+    app.post(
+      `${apiUrl}/get-email-confirmation-token`,
+      extractJwtAuthorizedUser,
+      validateFields([body("email")]),
+      async (request: Request, response: Response) => {
+        const token = getEmailConfirmationToken(
+          response.locals.requestUser.id,
+          request.body.email
+        );
+        return responseUtil.send(response, {
+          statusCode: 200,
+          messages: ["Got email confirmation token"],
+          token,
+        });
+      }
+    );
+  }
+
+  /**
+   * @api {post} /api/v1/users/validate-email-confirmation-request Validates token from email confirmation email
+   * @apiName ConfirmValidateEmail
+   * @apiGroup Authentication
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/validate-email-confirmation-request`,
+    validateFields([body("emailConfirmationJWT").exists()]),
+    // Decode the JWT token, get the email, userId for the token.
+    extractJWTInfo(body("emailConfirmationJWT")),
+    async (request, response, next) => {
+      await fetchUnauthorizedRequiredUserByNameOrId(
+        response.locals.tokenInfo.id
+      )(request, response, next);
+    },
+    async (request: Request, response: Response) => {
+      const tokenInfo = response.locals.tokenInfo as {
+        id: UserId;
+        email: string;
+      };
+      let user = response.locals.user;
+      if (tokenInfo.email !== user.email) {
+        return responseUtil.send(response, {
+          statusCode: 422,
+          messages: ["User email address differs from email to confirm"],
+        });
+      }
+      if (user.email) {
+        // NOTE: It's okay if this link is used multiple times, we'll just say it's confirmed successfully each time.
+        const emailAlreadyConfirmed = user.emailConfirmed; // Email could be already confirmed if we're changing the email address.
+
+        // TODO: Do we return a logged in user here?
+        //  If it's a changed email address, then we should log the user out, and prompt the user to login with the
+        //  new email address.
+        //  If it's a first time email confirmation, then we can return the login details, and log the user in
+        //  again.  Either way we should return a new set of user keys.
+        // Generate a new set of tokens to be replaced.
+        const { refreshToken, apiToken } = await generateAuthTokensForUser(
+          user,
+          request.headers["viewport"] as string,
+          request.headers["user-agent"]
+        );
+
+        user = await user.update({ emailConfirmed: true });
+        return responseUtil.send(response, {
+          statusCode: 200,
+          signOutUser: emailAlreadyConfirmed, // UI should sign out user and make them sign in again with new email.
+          userData: mapUser(user),
+          token: apiToken,
+          refreshToken,
+          messages: ["Email confirmed"],
+        });
+      }
+    }
+  );
+
+  // NOTE: This is really just for is the user has lost the email that was sent
+  // /api/v1/users/resend-email-confirmation-request (initial email confirmation request is sent as part of sign-up)
+  // /api/v1/users/validate-email-confirmation-request (also needs browse endpoint)
+  // /api/v1/users/refresh-session-token
+
+  // /api/v1/users/invite-user-to-group
+  // /api/v1/users/accept-group-invite (user, group, admin) (also needs browse endpoint)
+
+  // Not sure if we want this one:
+  // /api/v1/users/request-group-invite
 }

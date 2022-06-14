@@ -714,6 +714,8 @@ export const uploadRawRecording = util.multipartUpload(
       recording.rawFileHash = data.fileHash;
     }
 
+    // TODO - if a fileHash isn't supplied, lets create one anyway.
+
     recording.rawFileSize = uploadedFileData.length;
     recording.rawFileKey = key;
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
@@ -1720,7 +1722,7 @@ async function sendAlerts(recId: RecordingId) {
   if (!matchedTag) {
     return;
   }
-  const alerts = await (models.Alert as AlertStatic).getActiveAlerts(
+  const alerts: Alert[] = await (models.Alert as AlertStatic).getActiveAlerts(
     recording.DeviceId,
     matchedTag
   );
@@ -1733,7 +1735,11 @@ async function sendAlerts(recId: RecordingId) {
         recording,
         matchedTrack,
         matchedTag,
-        thumbnail && (thumbnail.Body as Buffer)
+        thumbnail && {
+          buffer: thumbnail.Body as Buffer,
+          cid: "thumbnail",
+          mimeType: "image/png",
+        }
       );
     }
   }

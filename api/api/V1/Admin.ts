@@ -26,8 +26,8 @@ import {
 } from "@api/extract-middleware";
 import { nameOrIdOf } from "@api/validation-middleware";
 import { ClientError } from "@api/customErrors";
-import { SuperUsers } from "@/Server";
 import { UserGlobalPermission } from "@typedefs/api/consts";
+import { SuperUsers } from "@/Globals";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiUpdateGlobalPermissionRequestBody {

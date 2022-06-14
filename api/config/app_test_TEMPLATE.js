@@ -9,6 +9,7 @@ const server = {
     port: 1080,
   },
   adminEmails: [],
+  isLocalDev: true,
 };
 
 const s3Local = {
