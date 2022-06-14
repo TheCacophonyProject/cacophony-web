@@ -350,7 +350,7 @@ onBeforeMount(() => {
       </div>
     </nav>
     <section id="main-content">
-      <div class="container p-0 pt-md-3">
+      <div class="container p-0">
         <div class="section-top-padding pt-5 pb-4 d-md-none"></div>
         <!--  The group-scoped views.  -->
         <router-view />
