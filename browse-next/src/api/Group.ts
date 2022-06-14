@@ -66,7 +66,7 @@ const getDevicesForGroup = (
     }`
   ) as Promise<FetchResult<{ devices: ApiDeviceResponse[] }>>;
 
-const getStationsForGroup = (
+export const getStationsForGroup = (
   groupNameOrId: string,
   activeAndInactive = false
 ) =>

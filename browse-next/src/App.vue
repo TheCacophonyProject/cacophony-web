@@ -351,9 +351,9 @@ onBeforeMount(() => {
     </nav>
     <section id="main-content">
       <div class="container p-0">
-        <div class="section-top-padding pt-5 pb-4 d-md-none"></div>
+        <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
-        <router-view />
+        <router-view class="d-flex flex-column router-view" />
       </div>
     </section>
   </main>
@@ -399,7 +399,7 @@ onBeforeMount(() => {
 <style lang="less" scoped>
 #main-wrapper {
   position: relative;
-  @media (min-width: 768px) {
+  @media (min-width: 576px) {
     padding-left: 3.5rem;
   }
   max-height: 100vh;
@@ -418,7 +418,7 @@ onBeforeMount(() => {
   @collapsed-width: 3.5rem;
   @expanded-width: 20rem;
   transform: translateX(-@expanded-width);
-  @media (min-width: 768px) {
+  @media (min-width: 576px) {
     transform: unset;
   }
 
@@ -544,6 +544,10 @@ main {
   /*max-height: 100vh;*/
   /*overflow-x: auto;*/
   /*overflow-y: hidden;*/
+}
+
+.router-view {
+  min-height: 100vh;
 }
 
 .logged-in {
