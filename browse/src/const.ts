@@ -194,7 +194,7 @@ const taggingFilters = [
   },
 ];
 
-export const BirdLabels = [
+export const Birds = [
   "adelie penguin",
   "albatross",
   "american golden plover",
@@ -700,7 +700,7 @@ export const BirdLabels = [
 ];
 
 //filter out duplicates
-const BirdTags = BirdLabels.map(
+const BirdLabels = Birds.map(
   (label) => new TrackLabel(nomenclatureBase, label)
 );
 
@@ -741,12 +741,13 @@ const DefaultLabels = {
     return [
       interesting,
       ...this.trackLabelsBase,
-      ...BirdTags.filter((tag) => tag.value !== "kiwi"),
+      ...BirdLabels.filter((tag) => tag.value !== "kiwi"),
     ];
   },
   trackLabels: function () {
     return [...this.trackLabelsBase];
   },
+  birdLabels: BirdLabels,
   canHaveSpecifiedTags: function (tagType) {
     return (
       filtersWhichCanHaveSpecifiedTags.find((tag) => tag === tagType) != null

@@ -429,8 +429,8 @@ export default {
       direction: "next" | "previous" | "either",
       tagMode: string | false,
       tags: string[] | false,
-      skipMessage: boolean = false,
-      noNavigate: boolean = false
+      skipMessage = false,
+      noNavigate = false
     ): Promise<boolean | any> {
       const params = JSON.parse(JSON.stringify(this.$route.query));
       let order;

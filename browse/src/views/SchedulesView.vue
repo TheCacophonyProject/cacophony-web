@@ -667,7 +667,7 @@ export default {
       rule.volumes.push(10);
       rule.sounds.push("");
     },
-    async removeFile(fileId: FileId, force: boolean = false) {
+    async removeFile(fileId: FileId, force = false) {
       // First check if the file is used by any of our schedules.
       if (
         !force &&

@@ -20,7 +20,7 @@ export interface UserDetails {
 }
 
 function getDevices(
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/devices${
@@ -33,7 +33,7 @@ function getDevices(
 
 function getUsers(
   deviceId: DeviceId,
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{ users: ApiGroupUserResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/devices/users?deviceId=${deviceId}&${
@@ -47,7 +47,7 @@ function getUsers(
 function getDevice(
   groupName: string,
   deviceName: string,
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${deviceName}/in-group/${groupName}?${
@@ -60,7 +60,7 @@ function getDevice(
 
 function getDeviceById(
   id: DeviceId,
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
     `/api/v1/devices/device/${id}${
@@ -74,7 +74,7 @@ function getDeviceById(
 const assignScheduleToDevice = (
   deviceId: DeviceId,
   scheduleId: ScheduleId,
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{}>> => {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
@@ -94,7 +94,7 @@ const assignScheduleToDevice = (
 const removeScheduleFromDevice = (
   deviceId: DeviceId,
   scheduleId: ScheduleId,
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{}>> => {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(

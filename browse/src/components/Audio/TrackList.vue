@@ -275,7 +275,7 @@ export default defineComponent({
     const toggledTrackHistory = ref<TrackId[]>([]);
     //TODO: Add filtering tracks
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [filter, setFilter] = useState<TrackListFilter>(TrackListFilter.All);
+    const [filter] = useState<TrackListFilter>(TrackListFilter.All);
     const filterTracks = (track: AudioTrack) => {
       switch (filter.value) {
         case TrackListFilter.All:
