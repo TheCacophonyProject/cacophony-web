@@ -164,6 +164,7 @@ enum DataType {
   Tag,
   Group,
   Station,
+  Device,
   User,
 }
 export default defineComponent({
@@ -189,17 +190,20 @@ export default defineComponent({
     const devices = ref<string[]>([]);
     const groups = ref<string[]>([]);
     const stations = ref<string[]>([]);
-
+    const userFocus = ref<string | null>(null);
     // Totals
     const tagTotals = ref<{ [key: string]: number }>({});
     const groupTotals = ref<{ [key: string]: number }>({});
     const stationTotals = ref<{ [key: string]: number }>({});
     const userTotals = ref<{ [key: string]: number }>({});
+    // Ids
+    const groupIds = ref<{ [key: string]: string }>({});
+    const stationIds = ref<{ [key: string]: string }>({});
+    const deviceIds = ref<{ [key: string]: string }>({});
 
     // Chart
     const chartDomRef = ref<HTMLCanvasElement | null>(null);
     const datasetFocus = ref<DataType>(DataType.Tag);
-    const userFocus = ref<string | null>(null);
     let barChart: Chart<
       keyof ChartTypeRegistry,
       { [x: string]: number },
@@ -230,6 +234,40 @@ export default defineComponent({
       }
     };
 
+    const setFilterTrackTags = () => {
+      filterTrackTags.value = trackTags.value
+        .filter((trackTag) => {
+          const checkQuery = (query: string) => {
+            const val = route.value.query[query];
+            const trackTagVal = trackTag[query];
+            if (!val) {
+              return true;
+            }
+            if (trackTagVal === null) {
+              return false;
+            }
+
+            return Array.isArray(val)
+              ? val.length === 0 || val.includes(trackTag[query].id.toString())
+              : trackTag[query].id === Number(route.value.query[query]);
+          };
+          return (
+            checkQuery("group") &&
+            checkQuery("station") &&
+            checkQuery("device") &&
+            (userFocus.value !== null
+              ? userFocus.value === trackTag.labeller
+              : true)
+          );
+        })
+        .filter((trackTag) =>
+          route.value.query.tag && route.value.query.tag.length !== 0
+            ? Array.isArray(route.value.query.tag)
+              ? route.value.query.tag.includes(trackTag.label)
+              : trackTag.label === route.value.query.tag
+            : true
+        );
+    };
     watch(
       [mediaType, selectedLabels, devices, groups, stations, userFocus],
       () => {
@@ -245,36 +283,6 @@ export default defineComponent({
         });
       }
     );
-
-    const setFilterTrackTags = () => {
-      filterTrackTags.value = trackTags.value
-        .filter((trackTag) => {
-          const checkQuery = (query: string) => {
-            const val = route.value.query[query];
-            if (!val) {
-              return true;
-            }
-            return Array.isArray(val)
-              ? val.length === 0 || val.includes(trackTag[query].id.toString())
-              : trackTag[query].id === Number(route.value.query[query]);
-          };
-          return (
-            checkQuery("group") &&
-            checkQuery("station") &&
-            checkQuery("device") &&
-            (userFocus.value !== null
-              ? userFocus.value === trackTag.user.username
-              : true)
-          );
-        })
-        .filter((trackTag) =>
-          route.value.query.tag.length !== 0
-            ? Array.isArray(route.value.query.tag)
-              ? route.value.query.tag.includes(trackTag.label)
-              : trackTag.label === route.value.query.tag
-            : true
-        );
-    };
     watch(route, async (curr, prev) => {
       if (curr.query.type !== prev.query.type) {
         await updateTrackTags();
@@ -328,6 +336,9 @@ export default defineComponent({
               } else {
                 newKey = key as string;
               }
+              if (cur === null) {
+                return acc;
+              }
               if (acc.hasOwnProperty(cur[newKey])) {
                 acc[cur[newKey]] += 1;
               } else {
@@ -341,14 +352,27 @@ export default defineComponent({
             .fromPairs()
             .value();
         };
+      const extractIdsOf = (data: { [key: string]: any }[], key: string) => {
+        return data.reduce((acc, cur) => {
+          if (cur[key] === null) {
+            return acc;
+          }
+          acc[cur[key].name] = cur[key].id;
+          return acc;
+        }, {});
+      };
       const totalOf = extractTotalOf(filterTrackTags.value);
       tagTotals.value = totalOf("label");
       stationTotals.value = totalOf(["station", "name"]);
       groupTotals.value = totalOf(["group", "name"]);
-      userTotals.value = totalOf(["user", "username"]);
-    });
-    const { tag, station, group, device, user } = route.value.query;
+      userTotals.value = totalOf("labeller");
 
+      groupIds.value = extractIdsOf(filterTrackTags.value, "group");
+      stationIds.value = extractIdsOf(filterTrackTags.value, "station");
+      deviceIds.value = extractIdsOf(filterTrackTags.value, "device");
+    });
+
+    const { tag, station, group, device, user } = route.value.query;
     selectedLabels.value = tag ? (Array.isArray(tag) ? tag : [tag]) : [];
     stations.value = station
       ? Array.isArray(station)
@@ -358,6 +382,7 @@ export default defineComponent({
     devices.value = device ? (Array.isArray(device) ? device : [device]) : [];
     groups.value = group ? (Array.isArray(group) ? group : [group]) : [];
     userFocus.value = user ? (user as string) : null;
+
     onMounted(async () => {
       await updateTrackTags();
       Chart.register(BarElement, BarController, CategoryScale, LinearScale);

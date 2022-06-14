@@ -174,9 +174,9 @@ export interface RecordingQuery {
 
 export interface TrackTagRow {
   group: { name: string; id: number };
-  station: { name: string; id: number };
+  station?: { name: string; id: number };
   label: string;
-  user: { id: number; username: string };
+  labeller: string;
   device: { id: number; devicename: string };
 }
 

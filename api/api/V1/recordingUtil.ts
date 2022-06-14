@@ -19,7 +19,7 @@ import { dynamicImportESM } from "@/dynamic-import-esm";
 import config from "@config";
 import { default as log, default as logger } from "@log";
 import models from "@models";
-import { AlertStatic } from "@models/Alert";
+import { Alert, AlertStatic } from "@models/Alert";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Device } from "@models/Device";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
@@ -934,10 +934,6 @@ export async function getTrackTags(
             attributes: [],
             required: true,
             where: { id: userId },
-            // If not viewing as super user, make sure the user is a member of the recording group.
-            // This may need to change if we start caring about showing everyone all public recordings.
-            // However, since we're still going to be showing things as "Group centric"  We'd probably just
-            // make the group public - or use a totally different query.
           },
         ];
     const rows = await models.Recording.findAll({
@@ -951,7 +947,7 @@ export async function getTrackTags(
           include: [
             {
               model: models.TrackTag,
-              attributes: ["what"],
+              attributes: ["what", "data"],
               required: true,
               include: [{ model: models.User, attributes: ["id", "username"] }],
             },
@@ -981,7 +977,7 @@ export async function getTrackTags(
               device: row.Device,
               group: row.Group,
               label: tag.what,
-              user: tag.User,
+              labeller: tag.User ? tag.User.username : tag.data.name,
             };
           });
         }).reduce((acc, cur) => {
