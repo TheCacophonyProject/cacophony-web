@@ -35,8 +35,8 @@ const stationsForMap = computed<NamedPoint[]>(() => {
       {
         name: "test2",
         group: "test group",
-        location: { lat: -43.80856, lng:	172.36323 },
-      }
+        location: { lat: -43.80856, lng: 172.36323 },
+      },
     ];
     // return stations.value.map(({ name, groupName, location }) => ({
     //   name,
@@ -46,8 +46,8 @@ const stationsForMap = computed<NamedPoint[]>(() => {
   }
   return [];
 });
-// TODO - load stations for group.
 //  Display in table and on map.
+const highlightedPoint = ref<NamedPoint | null>(null);
 </script>
 <template>
   <div>
@@ -63,8 +63,26 @@ const stationsForMap = computed<NamedPoint[]>(() => {
       class="d-flex flex-md-row flex-column-reverse justify-content-between"
       v-else
     >
-      <div class="px-3 p-md-0">stations list table</div>
-      <map-with-points class="map" :points="stationsForMap" :radius="30" />
+      <div class="px-3 p-md-0">
+        stations list table
+        <div
+          v-for="p in stationsForMap"
+          :key="p.name"
+          @mouseover="highlightedPoint = p"
+          @mouseleave="highlightedPoint = null"
+        >
+          {{ p.name }}
+        </div>
+      </div>
+      <map-with-points
+        class="map"
+        :points="stationsForMap"
+        :highlighted-point="highlightedPoint"
+        @hover-point="(p) => (highlightedPoint = p)"
+        @leave-point="(p) => (highlightedPoint = null)"
+        :radius="30"
+        ref="map"
+      />
     </div>
   </div>
 </template>

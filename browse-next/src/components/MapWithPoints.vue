@@ -26,11 +26,13 @@ const {
   radius = 0,
   navigateToPoint,
   zoom = true,
+  highlightedPoint = null,
   canChangeBaseMap = true,
   isInteractive = true,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => any;
   points: NamedPoint[];
+  highlightedPoint?: NamedPoint | null;
   radius?: number;
   zoom?: boolean;
   canChangeBaseMap?: boolean;
@@ -92,6 +94,16 @@ const onReady = (e: LeafletEvent) => {
 const onZoomChange = (e: LeafletEvent) => {
   //console.log(e);
 };
+
+const emit = defineEmits(["hover-point", "leave-point"]);
+
+const hoverPoint = (point: NamedPoint) => {
+  emit("hover-point", point);
+};
+
+const leavePoint = (point: NamedPoint) => {
+  emit("leave-point", point);
+};
 </script>
 <template>
   <l-map
@@ -127,7 +139,11 @@ const onZoomChange = (e: LeafletEvent) => {
       :key="`r_${point.name}`"
       :fill-opacity="0.25"
       :fill="true"
-      :weight="1"
+      :fill-color="
+        highlightedPoint && point.name === highlightedPoint.name
+          ? '#6EA7FA'
+          : ''
+      "
       :stroke="false"
       :interative="false"
     />
@@ -135,9 +151,18 @@ const onZoomChange = (e: LeafletEvent) => {
       v-for="point in points"
       :lat-lng="point.location"
       :key="`${point.group}_${point.name}`"
-      :radius="5"
+      :radius="
+        highlightedPoint && point.name === highlightedPoint.name ? 10 : 5
+      "
       :fill="true"
-      :weight="0.5"
+      :fill-color="
+        highlightedPoint && point.name === highlightedPoint.name
+          ? '#6EA7FA'
+          : ''
+      "
+      @mouseover="hoverPoint(point)"
+      @mouseleave="leavePoint(point)"
+      :stroke="false"
       :fill-opacity="1"
       @click="(e) => navigateToLocation(point)"
     >
@@ -149,8 +174,28 @@ const onZoomChange = (e: LeafletEvent) => {
   </l-map>
   <div v-else class="map loading">Leaflet map</div>
 </template>
-<style lang="less" scoped>
+<style lang="less">
 .map.loading {
-  background: #2b333f;
+  background: #e7bc0b;
+  // color: #3388ff;
+  // color: #6ea7fa;
+}
+.pulse {
+  animation: pulsate 1s ease-out;
+  -webkit-animation: pulsate 1s ease-out;
+  -webkit-animation-iteration-count: infinite;
+  opacity: 0;
+}
+
+@keyframes pulsate {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 </style>
