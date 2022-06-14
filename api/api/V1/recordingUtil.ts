@@ -15,46 +15,23 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import sharp from "sharp";
-import zlib from "zlib";
-import { AlertStatic } from "@models/Alert";
-import { AI_MASTER } from "@models/TrackTag";
-import jsonwebtoken from "jsonwebtoken";
-import mime from "mime";
-import moment from "moment";
-import urljoin from "url-join";
-import config from "@config";
-import models from "@models";
-import util from "./util";
-import { Recording } from "@models/Recording";
-import { Event, QueryOptions } from "@models/Event";
-import { User } from "@models/User";
-import Sequelize, { Op } from "sequelize";
-import {
-  DeviceSummary,
-  DeviceVisitMap,
-  Visit,
-  VisitEvent,
-  VisitSummary,
-} from "./Visits";
-import { Station } from "@models/Station";
-import modelsUtil from "@models/util/util";
 import { dynamicImportESM } from "@/dynamic-import-esm";
-import log from "@log";
-import {
-  ClassifierModelDescription,
-  ClassifierRawResult,
-  RawTrack,
-  TrackClassification,
-  TrackFramePosition,
-} from "@typedefs/api/fileProcessing";
-import { CptvFrame, CptvHeader } from "cptv-decoder";
-import { GetObjectOutput } from "aws-sdk/clients/s3";
-import { AWSError } from "aws-sdk";
-import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
-import { Track } from "@models/Track";
+import config from "@config";
+import { default as log, default as logger } from "@log";
+import models from "@models";
+import { AlertStatic } from "@models/Alert";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
+import { Device } from "@models/Device";
+import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
+import { Event, QueryOptions } from "@models/Event";
+import { locationsAreEqual } from "@models/Group";
+import { Recording } from "@models/Recording";
+import { Station } from "@models/Station";
 import { Tag } from "@models/Tag";
+import { Track } from "@models/Track";
+import { AI_MASTER } from "@models/TrackTag";
+import { User } from "@models/User";
+import modelsUtil from "@models/util/util";
 import {
   DeviceId,
   FileId,
@@ -70,13 +47,35 @@ import {
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts";
-import { Device } from "@models/Device";
+import {
+  ClassifierModelDescription,
+  ClassifierRawResult,
+  RawTrack,
+  TrackClassification,
+  TrackFramePosition,
+} from "@typedefs/api/fileProcessing";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
-import { locationsAreEqual } from "@models/Group";
-import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
+import { AWSError } from "aws-sdk";
+import { GetObjectOutput } from "aws-sdk/clients/s3";
+import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
+import { CptvFrame, CptvHeader } from "cptv-decoder";
+import jsonwebtoken from "jsonwebtoken";
+import mime from "mime";
+import moment from "moment";
+import Sequelize, { Op, WhereOptions } from "sequelize";
+import sharp from "sharp";
+import urljoin from "url-join";
+import zlib from "zlib";
+import util from "./util";
+import {
+  DeviceSummary,
+  DeviceVisitMap,
+  Visit,
+  VisitEvent,
+  VisitSummary,
+} from "./Visits";
 import SendData = ManagedUpload.SendData;
-import logger from "@log";
 
 let CptvDecoder;
 (async () => {
@@ -917,6 +916,84 @@ async function query(
   }
   const rows = await models.Recording.findAll(builder.get());
   return { count: rows.length, rows: rows };
+}
+
+export async function getTrackTags(
+  userId: UserId,
+  where: WhereOptions = {},
+  viewAsSuperAdmin: boolean
+) {
+  try {
+    const requireGroupMembership = viewAsSuperAdmin
+      ? []
+      : [
+          {
+            model: models.User,
+            attributes: [],
+            required: true,
+            where: { id: userId },
+            // If not viewing as super user, make sure the user is a member of the recording group.
+            // This may need to change if we start caring about showing everyone all public recordings.
+            // However, since we're still going to be showing things as "Group centric"  We'd probably just
+            // make the group public - or use a totally different query.
+          },
+        ];
+    const rows = await models.Recording.findAll({
+      attributes: ["id"],
+      where,
+      include: [
+        {
+          model: models.Track,
+          attributes: ["id"],
+          required: true,
+          include: [
+            {
+              model: models.TrackTag,
+              attributes: ["what"],
+              required: true,
+              include: [{ model: models.User, attributes: ["id", "username"] }],
+            },
+          ],
+        },
+        {
+          model: models.Group,
+          attributes: ["id", ["groupname", "name"]],
+          include: requireGroupMembership,
+        },
+        {
+          model: models.Station,
+          attributes: ["id", "name"],
+        },
+        {
+          model: models.Device,
+          attributes: ["id", "devicename"],
+        },
+      ],
+    });
+    return rows
+      .map((row) => {
+        return row.Tracks.map((track) => {
+          return track.TrackTags.map((tag) => {
+            return {
+              station: row.Station,
+              device: row.Device,
+              group: row.Group,
+              label: tag.what,
+              user: tag.User,
+            };
+          });
+        }).reduce((acc, cur) => {
+          acc.push(...cur);
+          return acc;
+        }, []);
+      })
+      .reduce((acc, cur) => {
+        acc.push(...cur);
+        return acc;
+      }, []);
+  } catch (err) {
+    console.log(err);
+  }
 }
 
 // Returns a promise for report rows for a set of recordings. Takes
