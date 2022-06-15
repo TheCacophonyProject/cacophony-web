@@ -79,7 +79,8 @@ interface RecordingQueryBuilder {
     limit?: number,
     order?: any,
     viewAsSuperAdmin?: boolean,
-    filtered?: boolean
+    filtered?: boolean,
+    minTrack?: number
   ) => RecordingQueryBuilderInstance;
   handleTagMode: (tagMode: TagMode, tagWhatsIn: string[]) => SqlString;
   recordingTaggedWith: (tagModes: string[], any) => SqlString;
@@ -803,7 +804,8 @@ from (
     limit?: number,
     order?: any,
     viewAsSuperAdmin?: boolean,
-    hideFiltered?: boolean
+    hideFiltered?: boolean,
+    minTrack?: number
   ) {
     if (!where) {
       where = {};
@@ -846,6 +848,10 @@ from (
     constraints.push(
       Sequelize.literal(Recording.queryBuilder.handleTagMode(tagMode, tags))
     );
+    if (minTrack) {
+      console.log("setting min track", minTrack);
+      constraints.push(Sequelize.literal(minSQL(minTrack)));
+    }
     const trackWhere = { archivedAt: null };
     const trackRequired = false;
     if (hideFiltered) {
@@ -960,6 +966,21 @@ from (
     return this;
   };
 
+  function minSQL(minTrack) {
+    return `exists(
+		select
+			"Recording"."id"
+		from
+			"Tracks",
+			round((
+			select
+				avg((elem ->>'width')::int)
+			from
+				json_array_elements(("Tracks"."data"->'positions')::json) as elem )) as rAvg
+						where "Tracks"."RecordingId"  = "Recording".id
+		and
+			rAvg > ${minTrack})`;
+  }
   Recording.queryBuilder.handleTagMode = (
     tagMode: AllTagModes,
     tagWhatsIn: string[]

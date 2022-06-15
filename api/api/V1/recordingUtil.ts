@@ -636,7 +636,8 @@ async function query(
   order: any,
   type: RecordingType,
   hideFiltered: boolean,
-  countAll: boolean
+  countAll: boolean,
+  minTrack: number
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
     where.type = type;
@@ -652,7 +653,8 @@ async function query(
     limit,
     order,
     viewAsSuperUser,
-    hideFiltered
+    hideFiltered,
+    minTrack
   );
   builder.query.distinct = true;
 

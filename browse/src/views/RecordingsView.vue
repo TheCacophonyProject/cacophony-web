@@ -224,7 +224,6 @@ export default {
       if (queryParamsHaveChanged) {
         this.currentPage = 1;
       }
-
       this.serialisedQuery = query;
 
       const fullQuery = this.makePaginatedQuery(

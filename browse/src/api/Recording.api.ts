@@ -184,6 +184,8 @@ export interface RecordingQuery {
   station?: number[];
   type?: string;
   hideFiltered?: boolean;
+  minTrack?: number;
+
   countAll?: boolean;
   order?: any; // TODO - It's not clear what order accepts (it's a sequelize thing), but nobody seems to use it right now.
 }
@@ -277,6 +279,9 @@ function makeApiQuery(query: RecordingQuery): any {
   }
   if (query.hideFiltered) {
     apiParams["hideFiltered"] = query.hideFiltered;
+  }
+  if (query.minTrack) {
+    apiParams["minTrack"] = query.minTrack;
   }
   if (query.countAll != undefined && query.countAll != null) {
     apiParams["countAll"] = query.countAll;

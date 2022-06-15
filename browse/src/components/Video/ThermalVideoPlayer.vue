@@ -407,7 +407,10 @@ export default {
       const currentFrame = Math.floor(this.currentVideoTime / frameTime);
       const data = tracks
         .filter(
-          (track) => track.start <= currentTime && track.end >= currentTime
+          (track) =>
+            track.start <= currentTime &&
+            track.end >= currentTime &&
+            track.positions[currentFrame]
         )
         .map((track) => {
           const item = track.positions[currentFrame];

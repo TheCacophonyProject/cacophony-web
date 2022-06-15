@@ -562,6 +562,7 @@ export default (app: Application, baseUrl: string) => {
         .optional()
         .isIn(Object.values(RecordingProcessingState)),
       query("where").isJSON().optional(),
+      integerOf(query("minTrack")).optional(),
       integerOf(query("offset")).optional(),
       integerOf(query("limit")).optional(),
       query("order").isJSON().optional(),
@@ -601,7 +602,8 @@ export default (app: Application, baseUrl: string) => {
         response.locals.order,
         request.query.type as RecordingType,
         request.query.hideFiltered ? true : false,
-        request.query.countAll ? true : false
+        request.query.countAll ? true : false,
+        request.query.minTrack && parseInt(request.query.minTrack as string)
       );
       responseUtil.send(response, {
         statusCode: 200,

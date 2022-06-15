@@ -40,6 +40,10 @@
           </b-button>
         </b-col>
       </b-form-row>
+      <b-form-group v-if="advanced">
+        <span> Min Track Region Width</span>
+        <input type="number" v-model="minTrack" class="form-control" />
+      </b-form-group>
       <SelectDuration v-if="advanced" v-model="duration" />
       <SelectTags v-if="advanced" v-model="tagData" :isDisabled="isAudio" />
       <b-button :disabled="disabled" block variant="primary" @click="submit">
@@ -96,6 +100,7 @@ export default {
       dates: {},
       dateDescription: "",
       duration: {},
+      minTrack: null,
       recordingType: "",
       tagData: {},
     };
@@ -127,6 +132,7 @@ export default {
         days: 7,
       };
       this.duration = {};
+      this.minTrack = null;
       this.recordingType = this.$store.state.User.recordingTypePref || "both";
       this.tagData = {
         tagMode: "any",
@@ -148,6 +154,9 @@ export default {
 
       setOnlyIfExists("minS", routeQuery, this.duration);
       setOnlyIfExists("maxS", routeQuery, this.duration);
+      if (routeQuery.hasOwnProperty("minTrack")) {
+        this.minTrack = routeQuery.minTrack;
+      }
 
       if (routeQuery.hasOwnProperty("tag")) {
         this.tagData.tags = makeArray(routeQuery.tag);
@@ -202,7 +211,9 @@ export default {
         group: this.selectedGroups,
         station: this.selectedStations,
       };
-
+      if (this.minTrack) {
+        query.minTrack = this.minTrack;
+      }
       for (const [key, value] of Object.entries(query)) {
         if (typeof value === "string" && Number(value).toString() === value) {
           query[key] = Number(value);
@@ -222,6 +233,9 @@ export default {
     },
 
     onMountOrSubmit: function (event = "submit") {
+      if (this.minTrack == "" || this.minTrack == 0) {
+        this.minTrack = null;
+      }
       this.lastQuery = this.serialiseQuery();
       this.$emit("description", this.makeSearchDescription());
       this.toggleSearchPanel();
