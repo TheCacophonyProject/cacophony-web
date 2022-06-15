@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
-import {
-  LCircle,
-  LCircleMarker,
-  LMap,
-  LTooltip,
-  LControlLayers,
-  LWmsTileLayer,
-} from "@vue-leaflet/vue-leaflet";
 
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import type { LatLng, LeafletEvent } from "leaflet";
-import { latLngBounds, LatLngBounds } from "leaflet";
+import type { LatLng, LatLngTuple, Layer, Map as LeafletMap } from "leaflet";
+import {
+  tileLayer,
+  latLngBounds,
+  LatLngBounds,
+  circle,
+  circleMarker,
+  map as mapConstructor,
+  control,
+  Control,
+} from "leaflet";
+import attribution = control.attribution;
 
 export interface NamedPoint {
   name: string;
@@ -83,17 +85,124 @@ const navigateToLocation = (point: NamedPoint) => {
   }
 };
 
+const markers = {};
 // IDEA: Hash the name of the point into a colour for that point?
-const onReady = (e: LeafletEvent) => {
-  e.setMaxZoom(17); // Max tile resolution
-  e.fitBounds([
-    mapBounds.value?.getNorthEast(),
-    mapBounds.value?.getSouthWest(),
-  ]);
+const onReady = (map: LeafletMap) => {
+  //map.setMaxZoom(17); // Max tile resolution
 };
-const onZoomChange = (e: LeafletEvent) => {
+const onZoomChange = (zoomLevel: number) => {
   //console.log(e);
 };
+const tileLayers: Record<string, Layer> = {};
+let showAttribution = false;
+let map: null | LeafletMap = null;
+let currentLayer = "OpenTopoMap Basemap";
+const maybeShowAttributionForCurrentLayer = () => {
+  // Should be current layer
+  const tileLayer = tileLayers[currentLayer];
+  const existingAttributionControl = (map as LeafletMap).attributionControl;
+  if (existingAttributionControl) {
+    (map as LeafletMap).removeControl(existingAttributionControl);
+  }
+  if (showAttribution) {
+    const attributionForLayer = attribution().addAttribution(
+      (tileLayer.getAttribution && tileLayer.getAttribution()) || ""
+    );
+    (map as LeafletMap).addControl(attributionForLayer);
+  }
+};
+
+onMounted(() => {
+  const mapElement = document.querySelector(".map");
+
+  for (const layer of mapLayers) {
+    tileLayers[layer.name] = tileLayer.wms(layer.url, {
+      attribution: layer.attribution,
+      detectRetina: true,
+    });
+  }
+
+  // TODO: Add a "Fit to bounds" button.
+
+  map = mapConstructor(mapElement as HTMLElement, {
+    zoomControl: zoom,
+    dragging: isInteractive,
+    maxZoom: 17,
+    attributionControl: false,
+    layers: [tileLayers[currentLayer]], // The default layer
+  });
+  if (canChangeBaseMap && mapLayers.length > 1) {
+    map.addControl(control.layers(tileLayers));
+    map.on("baselayerchange", (e) => {
+      currentLayer = e.name;
+      maybeShowAttributionForCurrentLayer();
+    });
+  }
+  const attributionToggle = new Control({
+    position: "bottomleft",
+  });
+  attributionToggle.onAdd = (map: LeafletMap): HTMLElement => {
+    const el = document.createElement("div");
+    el.classList.add("leaflet-control");
+    el.classList.add("leaflet-control-container");
+    el.classList.add("leaflet-bar");
+    el.classList.add("leaflet-attribution-toggle");
+    el.innerHTML = `<a class="leaflet-control-zoom-in" href="#" title="Toggle attribution" role="button" aria-label="Toggle attribution" aria-disabled="false"><span aria-hidden="true">i</span></a>`;
+    el.addEventListener("click", () => {
+      showAttribution = !showAttribution;
+      maybeShowAttributionForCurrentLayer();
+    });
+    return el;
+  };
+  map.addControl(attributionToggle);
+
+  // TODO - make attribution be an expandable option.
+  if (mapBounds.value) {
+    map.fitBounds([
+      (
+        mapBounds.value as LatLngBounds
+      ).getNorthEast() as unknown as LatLngTuple,
+      (
+        mapBounds.value as LatLngBounds
+      ).getSouthWest() as unknown as LatLngTuple,
+    ]);
+  }
+
+  // Add the points as markers.  Remember to unload them when we leave.
+  for (const point of points) {
+    const marker = {
+      backgroundRadius: circle(point.location, {
+        radius: 30,
+        interactive: false,
+        fillOpacity: 0.25,
+        fillColor: "",
+        fill: true,
+        stroke: false,
+      }),
+      foregroundMarker: circleMarker(point.location, {
+        radius: 5,
+        stroke: false,
+        fillOpacity: 1,
+      }),
+    };
+    const tooltipText = `${point.name}`; // : ${Number(point.location.lat).toFixed(5)}, ${Number(point.location.lng).toFixed(5)}
+    marker.foregroundMarker
+      .bindTooltip(tooltipText, {
+        direction: "top",
+        offset: [0, -5],
+      })
+      .openTooltip();
+    //marker.foregroundMarker
+    map.addLayer(marker.backgroundRadius);
+    map.addLayer(marker.foregroundMarker);
+  }
+});
+//  TODO: On point highlight, animate the size/colour of the point.
+//  Suggests that maybe we don't want to use vue-leaflet to manage the lifecycle of the points.
+//  Would also be cool to have the ability to show "group regions" where there is a bubble or shape around a cluster of
+//  points.  Showing points that are currently active in a different colour (retired stations, or stations that
+//  haven't had a recording in a while.  Maybe filter stations by what kind of recordings we've seen there too,
+//  so we can show either thermal or audio stations, or both.  Show stations that are more active than others?
 
 const emit = defineEmits(["hover-point", "leave-point"]);
 
@@ -106,72 +215,13 @@ const leavePoint = (point: NamedPoint) => {
 };
 </script>
 <template>
-  <l-map
+  <div
     class="map"
     :style="{
-      // height: mapHeight,
       pointerEvents: isInteractive ? 'auto' : 'none',
     }"
-    v-if="hasPoints"
-    :options="{
-      zoomControl: zoom,
-      dragging: isInteractive,
-      maxZoom: 17,
-    }"
-    @ready="onReady"
-    @update:zoom="onZoomChange"
-  >
-    <l-control-layers v-if="canChangeBaseMap && mapLayers.length > 1" />
-    <l-wms-tile-layer
-      v-for="layer in mapLayers"
-      :key="layer.name"
-      :base-url="layer.url"
-      :layers="layer.layers"
-      :visible="layer.visible"
-      :name="layer.name"
-      :attribution="layer.attribution"
-      layer-type="base"
-    />
-    <l-circle
-      v-for="point in mapLocationsForRadius"
-      :lat-lng="point.location"
-      :radius="radius"
-      :key="`r_${point.name}`"
-      :fill-opacity="0.25"
-      :fill="true"
-      :fill-color="
-        highlightedPoint && point.name === highlightedPoint.name
-          ? '#6EA7FA'
-          : ''
-      "
-      :stroke="false"
-      :interative="false"
-    />
-    <l-circle-marker
-      v-for="point in points"
-      :lat-lng="point.location"
-      :key="`${point.group}_${point.name}`"
-      :radius="
-        highlightedPoint && point.name === highlightedPoint.name ? 10 : 5
-      "
-      :fill="true"
-      :fill-color="
-        highlightedPoint && point.name === highlightedPoint.name
-          ? '#6EA7FA'
-          : ''
-      "
-      @mouseover="hoverPoint(point)"
-      @mouseleave="leavePoint(point)"
-      :stroke="false"
-      :fill-opacity="1"
-      @click="(e) => navigateToLocation(point)"
-    >
-      <l-tooltip
-        >{{ point.name }}: {{ Number(point.location.lat).toFixed(5) }},
-        {{ Number(point.location.lng).toFixed(5) }}</l-tooltip
-      >
-    </l-circle-marker>
-  </l-map>
+    v-if="true"
+  ></div>
   <div v-else class="map loading">Leaflet map</div>
 </template>
 <style lang="less">
@@ -197,5 +247,25 @@ const leavePoint = (point: NamedPoint) => {
   100% {
     opacity: 0;
   }
+}
+.leaflet-attribution-toggle {
+  border-radius: 50% !important;
+  margin-left: 5px !important;
+  margin-bottom: 5px !important;
+}
+.leaflet-attribution-toggle > .leaflet-control-zoom-in {
+  border-radius: 50% !important;
+  width: 25px !important;
+  height: 25px !important;
+  font-size: 16px;
+  line-height: 25px !important;
+}
+.leaflet-bottom.leaflet-right {
+  z-index: 999;
+  padding-left: 40px;
+}
+.leaflet-attribution-toggle {
+  position: relative;
+  z-index: 1001;
 }
 </style>
