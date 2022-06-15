@@ -4,7 +4,7 @@ import { testRunOnApi } from "@commands/server";
 describe("Teardown test data", () => {
   before(() => {});
 
-  it("Remove test data from database", () => {
+  it.skip("Remove test data from database", () => {
     if (Cypress.env("running_in_a_dev_environment") == true) {
       // do not error in dev as we don't want a failed teardown to fail a build in travis
       testRunOnApi(

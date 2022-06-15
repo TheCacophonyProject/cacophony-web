@@ -45,7 +45,7 @@ script:
   - docker-compose exec server /app/node_modules/.bin/sequelize db:migrate --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
   # Run cypress tests
   - cd integration-tests
-  - cp cypress.json.TEMPLATE cypress.json
+  - cp cypress.config.ts.TEMPLATE cypress.config.ts
   - npm install
   - npm run release
   - cd ../api
