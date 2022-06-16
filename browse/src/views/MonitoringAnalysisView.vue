@@ -51,7 +51,7 @@
         </article>
       </div>
       <div class="totals-table">
-        <div>
+        <div class="totals-container">
           <h2
             role="button"
             @click="() => (datasetFocus = DataType.Tag)"
@@ -59,18 +59,18 @@
           >
             Tags
           </h2>
-          <div
-            class="totals-item-container"
-            v-for="(value, key) in tagTotals"
-            :key="key"
-          >
-            <div class="totals-item">
+          <div class="totals-item-container">
+            <div
+              v-for="(value, key) in tagTotals"
+              :key="key"
+              class="totals-item"
+            >
               <div class="totals-key">{{ key }}</div>
               <div class="totals-value">{{ value }}</div>
             </div>
           </div>
         </div>
-        <div>
+        <div class="totals-container">
           <h2
             role="button"
             @click="() => (datasetFocus = DataType.Group)"
@@ -78,18 +78,18 @@
           >
             Groups
           </h2>
-          <div
-            class="totals-item-container"
-            v-for="(value, key) in groupTotals"
-            :key="key"
-          >
-            <div class="totals-item">
+          <div class="totals-item-container">
+            <div
+              v-for="(value, key) in groupTotals"
+              :key="key"
+              class="totals-item"
+            >
               <div class="totals-key">{{ key }}</div>
               <div class="totals-value">{{ value }}</div>
             </div>
           </div>
         </div>
-        <div>
+        <div class="totals-container">
           <h2
             role="button"
             @click="() => (datasetFocus = DataType.Station)"
@@ -97,12 +97,12 @@
           >
             Stations
           </h2>
-          <div
-            class="totals-item-container"
-            v-for="(value, key) in stationTotals"
-            :key="key"
-          >
-            <div class="totals-item">
+          <div class="totals-item-container">
+            <div
+              class="totals-item"
+              v-for="(value, key) in stationTotals"
+              :key="key"
+            >
               <div class="totals-key">{{ key }}</div>
               <div class="totals-value">{{ value }}</div>
             </div>
@@ -116,13 +116,11 @@
           >
             Users
           </h2>
-          <div
-            class="totals-item-container"
-            v-for="(value, key) in userTotals"
-            :key="key"
-          >
+          <div class="totals-item-container">
             <div
               class="totals-item"
+              v-for="(value, key) in userTotals"
+              :key="key"
               @click="
                 () => {
                   userFocus = key === userFocus ? null : key.toString();
@@ -231,6 +229,7 @@ export default defineComponent({
       const response = await RecordingApi.queryTrackTags(type);
       if (response.success) {
         trackTags.value = response.result.rows;
+        // console.log(response.result.rows);
       }
     };
 
@@ -363,8 +362,8 @@ export default defineComponent({
       };
       const totalOf = extractTotalOf(filterTrackTags.value);
       tagTotals.value = totalOf("label");
-      stationTotals.value = totalOf(["station", "name"]);
-      groupTotals.value = totalOf(["group", "name"]);
+      stationTotals.value = totalOf("station");
+      groupTotals.value = totalOf("group");
       userTotals.value = totalOf("labeller");
 
       groupIds.value = extractIdsOf(filterTrackTags.value, "group");
@@ -485,7 +484,7 @@ main {
   display: grid;
   margin-top: 3em;
   grid-template-columns: 0.3fr 1fr 1fr 1fr 0.3fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: 6em auto;
   grid-column-gap: 1em;
   & label {
     color: #1e1e1e;
@@ -518,7 +517,7 @@ main {
 .totals-table {
   grid-column-start: 4;
   grid-column-end: 5;
-  grid-row-start: 2;
+  grid-row-start: 1;
   grid-row-end: 3;
   > div {
     margin-bottom: 1em;
@@ -526,8 +525,9 @@ main {
 }
 
 .totals-item-container {
-  margin-bottom: 0.3em;
-  border-bottom: #b9b9b9 1px solid;
+  max-height: 8em;
+  padding-right: 1em;
+  overflow-y: auto;
 }
 
 .totals-item {
@@ -535,6 +535,8 @@ main {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  margin-bottom: 0.3em;
+  border-bottom: #b9b9b9 1px solid;
 }
 
 .selected {

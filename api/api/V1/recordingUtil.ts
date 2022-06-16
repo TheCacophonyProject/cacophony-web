@@ -922,8 +922,9 @@ async function query(
 
 export async function getTrackTags(
   userId: UserId,
-  where: WhereOptions = {},
-  viewAsSuperAdmin: boolean
+  viewAsSuperAdmin: boolean,
+  recordingType: string,
+  excludeTags = []
 ) {
   try {
     const requireGroupMembership = viewAsSuperAdmin
@@ -936,9 +937,13 @@ export async function getTrackTags(
             where: { id: userId },
           },
         ];
-    const rows = await models.Recording.findAll({
-      attributes: ["id"],
-      where,
+    const rows = await models.TrackTag.findAll({
+      attributes: ["id", "what"],
+      where: {
+        what: {
+          [Op.notIn]: excludeTags,
+        },
+      },
       include: [
         {
           model: models.Track,
@@ -946,49 +951,49 @@ export async function getTrackTags(
           required: true,
           include: [
             {
-              model: models.TrackTag,
-              attributes: ["what", "data"],
+              model: models.Recording,
+              attributes: ["id"],
               required: true,
-              include: [{ model: models.User, attributes: ["id", "username"] }],
+              where: {
+                type: {
+                  [Op.eq]: recordingType,
+                },
+              },
+              include: [
+                {
+                  model: models.Group,
+                  attributes: ["groupname"],
+                  required: true,
+                  include: requireGroupMembership,
+                },
+                {
+                  model: models.Device,
+                  attributes: ["devicename"],
+                  required: true,
+                },
+                {
+                  model: models.Station,
+                  attributes: ["name"],
+                },
+              ],
             },
           ],
         },
         {
-          model: models.Group,
-          attributes: ["id", ["groupname", "name"]],
-          include: requireGroupMembership,
-        },
-        {
-          model: models.Station,
-          attributes: ["id", "name"],
-        },
-        {
-          model: models.Device,
-          attributes: ["id", "devicename"],
+          model: models.User,
+          attributes: ["username"],
         },
       ],
     });
-    return rows
-      .map((row) => {
-        return row.Tracks.map((track) => {
-          return track.TrackTags.map((tag) => {
-            return {
-              station: row.Station,
-              device: row.Device,
-              group: row.Group,
-              label: tag.what,
-              labeller: tag.User ? tag.User.username : tag.data.name,
-            };
-          });
-        }).reduce((acc, cur) => {
-          acc.push(...cur);
-          return acc;
-        }, []);
-      })
-      .reduce((acc, cur) => {
-        acc.push(...cur);
-        return acc;
-      }, []);
+    return rows.map((row) => ({
+      label: row.what,
+      device: row.Track.Recording.Device.devicename,
+      station: row.Track.Recording.Station
+        ? row.Track.Recording.Station.name
+        : "None",
+      group: row.Track.Recording.Group.groupname,
+      labeller: row.User ? row.User.username : "AI",
+    }));
   } catch (err) {
     console.log(err);
   }

@@ -173,11 +173,11 @@ export interface RecordingQuery {
 }
 
 export interface TrackTagRow {
-  group: { name: string; id: number };
-  station?: { name: string; id: number };
+  group: string;
+  station: string;
   label: string;
   labeller: string;
-  device: { id: number; devicename: string };
+  device: string;
 }
 
 const apiPath = "/api/v1/recordings";

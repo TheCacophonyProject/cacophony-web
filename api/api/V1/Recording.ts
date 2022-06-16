@@ -787,7 +787,6 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse BaseQueryParams
    * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
-   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
    * @apiUse V1ResponseError
    */
@@ -801,8 +800,15 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       const result = await getTrackTags(
         response.locals.requestUser.id,
-        { type: request.query.type },
-        response.locals.viewAsSuperUser
+        response.locals.viewAsSuperUser,
+        request.query.type.toString(),
+        [
+          "unidentified",
+          "false-positive",
+          "false-positives",
+          "unknown",
+          "poor tracking",
+        ]
       );
       responseUtil.send(response, {
         statusCode: 200,
