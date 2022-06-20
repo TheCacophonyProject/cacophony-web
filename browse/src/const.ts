@@ -482,6 +482,7 @@ export const Birds = [
   "norfolk robin",
   "norfolk golden whistler",
   "norfolk gerygone",
+  "norfolk silvereyes",
   "norfolk silkeye",
   "north island brown kiwi",
   "north island kokako",
