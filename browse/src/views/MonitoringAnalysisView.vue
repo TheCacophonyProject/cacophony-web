@@ -194,10 +194,6 @@ export default defineComponent({
     const groupTotals = ref<{ [key: string]: number }>({});
     const stationTotals = ref<{ [key: string]: number }>({});
     const userTotals = ref<{ [key: string]: number }>({});
-    // Ids
-    const groupIds = ref<{ [key: string]: string }>({});
-    const stationIds = ref<{ [key: string]: string }>({});
-    const deviceIds = ref<{ [key: string]: string }>({});
 
     // Chart
     const chartDomRef = ref<HTMLCanvasElement | null>(null);
@@ -226,7 +222,15 @@ export default defineComponent({
         route.value.query.type === "audio"
           ? RecordingType.Audio
           : RecordingType.ThermalRaw;
-      const response = await RecordingApi.queryTrackTags(type);
+      const response = await RecordingApi.queryTrackTags({
+        type,
+        exclude: [
+          "unidentified",
+          "false-positive",
+          "false-positives",
+          "unknown",
+        ],
+      });
       if (response.success) {
         trackTags.value = response.result.rows;
         // console.log(response.result.rows);
@@ -245,10 +249,10 @@ export default defineComponent({
             if (trackTagVal === null) {
               return false;
             }
-
+            const id = trackTagVal.id || -1;
             return Array.isArray(val)
-              ? val.length === 0 || val.includes(trackTag[query].id.toString())
-              : trackTag[query].id === Number(route.value.query[query]);
+              ? val.length === 0 || val.includes(id.toString())
+              : id === Number(route.value.query[query]);
           };
           return (
             checkQuery("group") &&
@@ -325,23 +329,26 @@ export default defineComponent({
     watch([trackTags, filterTrackTags], () => {
       const extractTotalOf =
         (data: { [key: string]: any }[]) =>
-        (key: string | [string, string]) => {
+        (newKey: string, ...children: string[]) => {
           return _(
-            data.reduce((acc, cur) => {
-              let newKey = "";
-              if (Array.isArray(key)) {
-                cur = cur[key[0]];
-                newKey = key[1] as string;
-              } else {
-                newKey = key as string;
-              }
-              if (cur === null) {
+            data.reduce((acc, newCurr) => {
+              const [curr, key] = children.reduce(
+                ([currChild, key], childKey) => {
+                  if (typeof currChild[key] === "object") {
+                    return [currChild[key], childKey];
+                  } else {
+                    return [currChild, key];
+                  }
+                },
+                [newCurr, newKey]
+              );
+              if (curr === null) {
                 return acc;
               }
-              if (acc.hasOwnProperty(cur[newKey])) {
-                acc[cur[newKey]] += 1;
+              if (acc.hasOwnProperty(curr[key])) {
+                acc[curr[key]] += 1;
               } else {
-                acc[cur[newKey]] = 1;
+                acc[curr[key]] = 1;
               }
               return acc;
             }, {})
@@ -351,24 +358,11 @@ export default defineComponent({
             .fromPairs()
             .value();
         };
-      const extractIdsOf = (data: { [key: string]: any }[], key: string) => {
-        return data.reduce((acc, cur) => {
-          if (cur[key] === null) {
-            return acc;
-          }
-          acc[cur[key].name] = cur[key].id;
-          return acc;
-        }, {});
-      };
       const totalOf = extractTotalOf(filterTrackTags.value);
       tagTotals.value = totalOf("label");
-      stationTotals.value = totalOf("station");
-      groupTotals.value = totalOf("group");
+      stationTotals.value = totalOf("station", "name");
+      groupTotals.value = totalOf("group", "name");
       userTotals.value = totalOf("labeller");
-
-      groupIds.value = extractIdsOf(filterTrackTags.value, "group");
-      stationIds.value = extractIdsOf(filterTrackTags.value, "station");
-      deviceIds.value = extractIdsOf(filterTrackTags.value, "device");
     });
 
     const { tag, station, group, device, user } = route.value.query;
@@ -402,7 +396,6 @@ export default defineComponent({
       labels.value = [
         ...new Set(trackTags.value.map((trackTag) => trackTag.label)),
       ];
-
       setFilterTrackTags();
     });
 

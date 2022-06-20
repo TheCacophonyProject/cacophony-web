@@ -774,51 +774,6 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/track-tags
-   * Gets the total tags of the particulr type of recording (thermal/audio)
-   * @apiName Tracks
-   * @apiGroup Recordings
-   * @apiDescription Parameters are as per GET /api/V1/recordings. On
-   * success (status 200), the response body will contain the tags with
-   * the total number of each.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
-   * @apiUse BaseQueryParams
-   * @apiUse RecordingOrder
-   * @apiUse MoreQueryParams
-   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/track-tags`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      query("type").optional().isIn(Object.values(RecordingType)),
-      query("view-mode").optional().equals("user"),
-    ]),
-    async (request: Request, response: Response) => {
-      const result = await getTrackTags(
-        response.locals.requestUser.id,
-        response.locals.viewAsSuperUser,
-        request.query.type.toString(),
-        [
-          "unidentified",
-          "false-positive",
-          "false-positives",
-          "unknown",
-          "poor tracking",
-        ]
-      );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
-        rows: result,
-      });
-    }
-  );
-
-  /**
    * @api {get} /api/v1/recordings/report
    * Generate report for a set of recordings
    * @apiName Report
@@ -1243,6 +1198,64 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
+   * @api {get} /api/v1/recordings/track-tags
+   * Get all track tags for a particular type of recording (thermal/audio)
+   * @apiName TrackTags
+   * @apiGroup Tracks
+   * @apiDescription On success (status 200), the response body will contain rows of track tags.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
+   * @apiQuery {Number} [offset] Zero-based page number. Use '0' to get the first page.  Each page has 'limit' number of records.
+   * @apiQuery {Number} [limit] Max number of records to be returned.
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
+   * @apiQuery {String[]} [exclude] Exclude the given tags from the query
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} rows List of track tags.
+   * @apiSuccess {String} rows.label Name of the track tag.
+   * @apiSuccess {String} rows.labeller Name of the user who created the track tag or AI.
+   * @apiSuccess {Object} rows.group Group of the track tag.
+   * @apiSuccess {String} rows.group.id Id of the group.
+   * @apiSuccess {String} rows.group.name Name of the group.
+   * @apiSuccess {String} rows.station Station of the track tag.
+   * @apiSuccess {String} rows.station.id Id of the station.
+   * @apiSuccess {String} rows.station.name Name of the station.
+   * @apiSuccess {String} rows.device Device of the track tag.
+   * @apiSuccess {String} rows.device.id Id of the device.
+   * @apiSuccess {String} rows.device.name Name of the device.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/track-tags`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      query("type").optional().isIn(Object.values(RecordingType)),
+      query("exclude").optional().isArray(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+    ]),
+    parseJSONField(query("exclude")),
+    async (request: Request, response: Response) => {
+      const result = await getTrackTags(
+        response.locals.requestUser.id,
+        response.locals.viewAsSuperUser,
+        request.query.type.toString(),
+        response.locals.exclude || [],
+        request.query.offset && parseInt(request.query.offset as string),
+        request.query.limit && parseInt(request.query.limit as string)
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        rows: result,
+      });
+    }
+  );
+
+  /**
    * @api {get} /api/v1/recordings/:id/tracks
    * Get tracks for recording
    * @apiName GetTracks
@@ -1275,10 +1288,10 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id/track
+   * @api {get} /api/v1/recordings/:id/tracks/:trackId
    * Get track for recording
    * @apiName GetTrack
-   * @apiGroup Track
+   * @apiGroup Tracks
    * @apiDescription Get track for a given recording and track id.
    *
    * @apiUse V1UserAuthorizationHeader

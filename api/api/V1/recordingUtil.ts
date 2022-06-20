@@ -924,7 +924,9 @@ export async function getTrackTags(
   userId: UserId,
   viewAsSuperAdmin: boolean,
   recordingType: string,
-  excludeTags = []
+  excludeTags = [],
+  offset?: number,
+  limit?: number
 ) {
   try {
     const requireGroupMembership = viewAsSuperAdmin
@@ -962,18 +964,18 @@ export async function getTrackTags(
               include: [
                 {
                   model: models.Group,
-                  attributes: ["groupname"],
+                  attributes: ["id", "groupname"],
                   required: true,
                   include: requireGroupMembership,
                 },
                 {
                   model: models.Device,
-                  attributes: ["devicename"],
+                  attributes: ["id", "devicename"],
                   required: true,
                 },
                 {
                   model: models.Station,
-                  attributes: ["name"],
+                  attributes: ["id", "name"],
                 },
               ],
             },
@@ -984,14 +986,26 @@ export async function getTrackTags(
           attributes: ["username"],
         },
       ],
+      ...(limit && { limit }),
+      ...(offset && { offset }),
     });
     return rows.map((row) => ({
       label: row.what,
-      device: row.Track.Recording.Device.devicename,
+      device: {
+        id: row.Track.Recording.Device.id,
+        name: row.Track.Recording.Device.devicename,
+      },
       station: row.Track.Recording.Station
-        ? row.Track.Recording.Station.name
-        : "None",
-      group: row.Track.Recording.Group.groupname,
+        ? {
+            id: row.Track.Recording.Station.id,
+            name: row.Track.Recording.Station.name,
+          }
+        : "No Station",
+      group: {
+        id: row.Track.Recording.Group.id,
+        name: row.Track.Recording.Group.groupname,
+      },
+      // TODO - The exact AI model you will need data attribute from track tag
       labeller: row.User ? row.User.username : "AI",
     }));
   } catch (err) {

@@ -173,11 +173,18 @@ export interface RecordingQuery {
 }
 
 export interface TrackTagRow {
-  group: string;
-  station: string;
+  group: { id: number; name: string };
+  station: { id: number; name: string };
+  device: { id: number; name: string };
   label: string;
   labeller: string;
-  device: string;
+}
+
+export interface TrackTagQuery {
+  type: RecordingType;
+  exclude?: string[];
+  offset?: number;
+  limit?: number;
 }
 
 const apiPath = "/api/v1/recordings";
@@ -191,9 +198,14 @@ function query(
 }
 
 function queryTrackTags(
-  type: RecordingType
+  params: TrackTagQuery
 ): Promise<FetchResult<QueryResult<TrackTagRow>>> {
-  return CacophonyApi.get(`${apiPath}/track-tags?type=${type}`);
+  if (!shouldViewAsSuperUser()) {
+    params["view-mode"] = "user";
+  }
+  return CacophonyApi.get(
+    `${apiPath}/track-tags?${querystring.stringify({ ...params })}`
+  );
 }
 
 function addIfSet(map: any, value: string | number, submap: string, key = "") {
