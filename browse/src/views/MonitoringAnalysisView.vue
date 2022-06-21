@@ -242,6 +242,7 @@ export default defineComponent({
           : RecordingType.ThermalRaw;
       const response = await RecordingApi.queryTrackTags({
         type,
+        limit: 150000,
         exclude: [
           "unidentified",
           "false-positive",
