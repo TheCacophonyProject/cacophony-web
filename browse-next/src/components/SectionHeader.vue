@@ -7,21 +7,21 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
 </script>
 <template>
   <div
-    class="section-header d-flex flex-row-reverse d-md-block align-items-center justify-content-between"
+    class="section-header d-flex flex-row-reverse d-sm-block align-items-center justify-content-between pt-sm-3"
   >
-    <h4 class="group-name my-0 m-md-0 mb-md-2 mx-3" v-if="showGroupName">
+    <h4 class="group-name my-0 m-sm-0 mb-sm-2 mx-3" v-if="showGroupName">
       <span>{{ currentSelectedGroup.groupName }}</span>
     </h4>
     <span v-else></span>
     <div class="d-flex align-items-center ms-2 m-md-0">
       <button
         type="button"
-        class="btn toggle-nav d-md-none"
+        class="btn toggle-nav d-sm-none"
         @click.stop.prevent="pinSideNav = true"
       >
         <font-awesome-icon icon="bars" />
       </button>
-      <h2 class="m-0 ms-1 mb-md-4 ms-md-0"><slot></slot></h2>
+      <h2 class="m-0 ms-1 mb-sm-4 ms-sm-0"><slot></slot></h2>
     </div>
   </div>
 </template>
@@ -40,7 +40,7 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
   .group-name {
     font-size: 12px;
   }
-  @media (min-width: 768px) {
+  @media (min-width: 576px) {
     position: unset;
     background: none;
     box-shadow: none;

@@ -25,11 +25,12 @@
           :radius="60"
           :navigate-to-point="
             (point) => ({
-              name: 'station',
+              name: 'station-id',
               params: {
                 groupName,
                 stationName: point.name,
-                tabName: 'recordings',
+                stationId: point.id,
+                tabName: 'visits',
               },
             })
           "
@@ -39,6 +40,7 @@
             <StationLink
               :group-name="groupName"
               :station-name="data.item.name"
+              :station-id="data.item.id"
               context="visits"
             />
           </template>
@@ -252,9 +254,10 @@ export default {
     },
     stationsForMap() {
       // Stations lat/lng as leaflet lat/lng objects
-      return this.stations.map(({ name, latitude, longitude }) => ({
+      return this.stations.map(({ name, latitude, longitude, id }) => ({
         name,
         location: latLng(latitude, longitude),
+        id,
       }));
     },
     updateWarningsText() {

@@ -258,7 +258,7 @@
       @ok="assignSelectedDevices()"
     >
       <multiselect
-        :options="deviceOptions"
+        :options="audioDeviceOptions"
         :multiple="true"
         v-model="selectedDevices"
         placeholder="select devices"

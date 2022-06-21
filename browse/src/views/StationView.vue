@@ -28,6 +28,15 @@
             context="visits"
           />
           <span v-if="stationIsRetired">(retired)</span>
+          <b-btn
+            class="btn-light small"
+            v-if="userIsGroupAdmin"
+            v-b-tooltip.hover
+            title="Rename station"
+            @click.prevent="renameStation"
+          >
+            <font-awesome-icon icon="pencil-alt" size="sm" />
+          </b-btn>
         </h1>
       </div>
       <div v-if="userIsGroupAdmin">
@@ -86,6 +95,25 @@
       station called <i> &nbsp; {{ stationName }}</i
       >.
     </div>
+
+    <b-modal
+      hide-footer
+      title="Rename station"
+      ok-title="Rename"
+      v-model="renaming"
+    >
+      <label
+        >Enter new station name for
+        <StationLink
+          :station-name="station.name"
+          :group-name="groupName"
+          :use-link="false"
+      /></label>
+      <div class="d-flex flex-row">
+        <b-input v-model="newStationName" class="mr-2"></b-input>
+        <b-btn @click="doStationRename">Rename</b-btn>
+      </div>
+    </b-modal>
   </b-container>
 </template>
 
@@ -142,7 +170,9 @@ export default {
       );
     },
     stationName() {
-      return this.$route.params.stationName;
+      return (
+        (this.station && this.station.name) || this.$route.params.stationName
+      );
     },
     groupName() {
       return this.$route.params.groupName;
@@ -199,6 +229,8 @@ export default {
       recordingsQueryFinal: {},
       visitsQueryFinal: {},
       station: null,
+      newStationName: "",
+      renaming: false,
       stationIsRetired: false,
       group: {},
       tabNames: ["visits", "reference-photo", "recordings"],
@@ -228,6 +260,20 @@ export default {
     await this.fetchVisitsCount();
   },
   methods: {
+    renameStation() {
+      this.renaming = true;
+    },
+    async doStationRename() {
+      const renameResponse = await api.station.renameStationById(
+        this.station.id,
+        this.newStationName
+      );
+      if (renameResponse.success) {
+        this.station.name = this.newStationName;
+      }
+      this.renaming = false;
+      this.newStationName = "";
+    },
     async fetchVisitsCount() {
       this.visitsCountLoading = true;
 
@@ -282,9 +328,13 @@ export default {
             }
           }
         } else {
-          const stationResponse = await api.station.getStationById(
-            this.stationId
-          );
+          const [groupResponse, stationResponse] = await Promise.all([
+            api.groups.getGroup(this.groupName),
+            api.station.getStationById(this.stationId),
+          ]);
+          if (groupResponse.success) {
+            this.group = groupResponse.result.group;
+          }
           if (stationResponse.success) {
             this.station = stationResponse.result.station;
             if (this.station.hasOwnProperty("retiredAt")) {
@@ -337,12 +387,20 @@ export default {
 };
 </script>
 <style lang="scss">
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
 .admin .jumbotron {
   margin-bottom: unset;
 }
 .admin.outer {
   position: relative;
   .jumbotron {
+    .svg-inline--fa {
+      color: $gray-600;
+      min-width: 1rem;
+      vertical-align: baseline;
+    }
+
     top: 0;
     position: absolute;
     width: 100%;
