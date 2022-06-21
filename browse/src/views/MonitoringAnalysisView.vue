@@ -52,13 +52,16 @@
       </div>
       <div class="totals-table">
         <div class="totals-container">
-          <h2
-            role="button"
-            @click="() => (datasetFocus = DataType.Tag)"
-            :class="{ selected: DataType.Tag === datasetFocus }"
-          >
-            Tags
-          </h2>
+          <div class="d-flex justify-content-between">
+            <h2
+              role="button"
+              @click="() => (datasetFocus = DataType.Tag)"
+              :class="{ selected: DataType.Tag === datasetFocus }"
+            >
+              Tags
+            </h2>
+            <h2>Total: {{ filterTrackTags.length }}</h2>
+          </div>
           <div class="totals-item-container">
             <div
               v-for="(value, key) in tagTotals"
@@ -123,13 +126,17 @@
               :key="key"
               @click="
                 () => {
-                  userFocus = key === userFocus ? null : key.toString();
+                  if (key === userFocus) {
+                    userFocus = null;
+                  } else {
+                    userFocus = key.toString();
+                  }
                 }
               "
               role="button"
             >
               <div class="totals-key" :class="{ selected: key === userFocus }">
-                {{ key }}
+                {{ key === userFocus ? username : key }}
               </div>
               <div class="totals-value">{{ value }}</div>
             </div>
@@ -157,6 +164,7 @@ import {
   ChartTypeRegistry,
 } from "chart.js";
 import colormap from "colormap";
+import UserApi from "@/api/User.api";
 
 enum DataType {
   Tag,
@@ -189,6 +197,7 @@ export default defineComponent({
     const groups = ref<string[]>([]);
     const stations = ref<string[]>([]);
     const userFocus = ref<string | null>(null);
+    const username = ref<string | null>(null);
     // Totals
     const tagTotals = ref<{ [key: string]: number }>({});
     const groupTotals = ref<{ [key: string]: number }>({});
@@ -215,6 +224,15 @@ export default defineComponent({
       if (eventData.hasOwnProperty("stations")) {
         stations.value = eventData.stations;
       }
+    };
+
+    // User ID currently has id_ attached to it due to sorting
+    const getUserById = async (id: string) => {
+      const details = await UserApi.getUserDetails(id.replace("id_", ""));
+      if (details.success) {
+        return details.result.userData.userName;
+      }
+      return id;
     };
 
     const updateTrackTags = async () => {
@@ -271,6 +289,12 @@ export default defineComponent({
             : true
         );
     };
+    watch(userFocus, async () => {
+      username.value = userFocus.value
+        ? await getUserById(userFocus.value)
+        : null;
+    });
+
     watch(
       [mediaType, selectedLabels, devices, groups, stations, userFocus],
       () => {
@@ -353,12 +377,9 @@ export default defineComponent({
               return acc;
             }, {})
           )
-            .map((val, key) => {
-              return { name: key, count: val };
-            })
-            .orderBy("count", "desc")
-            .keyBy("name")
-            .mapValues("count")
+            .toPairs()
+            .orderBy([1], ["desc"])
+            .fromPairs()
             .value();
         };
       const totalOf = extractTotalOf(filterTrackTags.value);
@@ -417,8 +438,11 @@ export default defineComponent({
       userTotals,
       datasetFocus,
       userFocus,
+      username,
       DataType,
+      filterTrackTags,
       updateDeviceSelection,
+      getUserById,
     };
   },
 });
