@@ -353,9 +353,12 @@ export default defineComponent({
               return acc;
             }, {})
           )
-            .toPairs()
-            .orderBy([1], ["desc"])
-            .fromPairs()
+            .map((val, key) => {
+              return { name: key, count: val };
+            })
+            .orderBy("count", "desc")
+            .keyBy("name")
+            .mapValues("count")
             .value();
         };
       const totalOf = extractTotalOf(filterTrackTags.value);
@@ -519,7 +522,6 @@ main {
 
 .totals-item-container {
   max-height: 8em;
-  padding-right: 1em;
   overflow-y: auto;
 }
 
@@ -529,6 +531,7 @@ main {
   align-items: center;
   gap: 10px;
   margin-bottom: 0.3em;
+  padding-right: 1em;
   border-bottom: #b9b9b9 1px solid;
 }
 

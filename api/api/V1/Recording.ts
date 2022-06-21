@@ -781,7 +781,8 @@ export default (app: Application, baseUrl: string) => {
    * @apiDescription On success (status 200), the response body will contain rows of track tags.
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
+   * @apiQuery {apiQuery::RecordingType="thermalRaw"} [type] Type of recordings
+   * @apiQuery {Boolean="false"} [includeAI] Include tags from AI
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
    * @apiQuery {String[]} [exclude] Exclude the given tags from the query
    * @apiQuery {Number} [offset] Zero-based page number. Use '0' to get the first page.  Each page has 'limit' number of records.
@@ -807,19 +808,25 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/track-tags`,
     extractJwtAuthorizedUser,
     validateFields([
-      query("exclude").optional().isArray(),
+      query("exclude").default([]).optional().isArray(),
+      query("includeAI").default(false).isBoolean(),
       integerOf(query("offset")).optional(),
-      integerOf(query("limit")).optional(),
-      query("type").optional().isIn(Object.values(RecordingType)),
+      integerOf(query("limit").default(50000)),
+      query("type")
+        .default("thermalRaw")
+        .optional()
+        .isIn(Object.values(RecordingType)),
       query("view-mode").optional().equals("user"),
     ]),
     parseJSONField(query("exclude")),
+    parseJSONField(query("includeAI")),
     async (request: Request, response: Response) => {
       const result = await getTrackTags(
         response.locals.requestUser.id,
         response.locals.viewAsSuperUser,
+        Boolean(request.query.includeAI),
         request.query.type.toString(),
-        response.locals.exclude || [],
+        response.locals.exclude,
         request.query.offset && parseInt(request.query.offset as string),
         request.query.limit && parseInt(request.query.limit as string)
       );

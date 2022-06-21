@@ -837,7 +837,7 @@ export default defineComponent({
     return {
       url,
       buffer,
-      BirdLabels: DefaultLabels.birdLabels.sort(),
+      BirdLabels: DefaultLabels.birdLabels.map(({ value }) => value).sort(),
       labels: buttonLabels,
       cacophonyIndex,
       deleted,

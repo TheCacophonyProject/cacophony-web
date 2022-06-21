@@ -923,6 +923,7 @@ async function query(
 export async function getTrackTags(
   userId: UserId,
   viewAsSuperAdmin: boolean,
+  includeAI: boolean,
   recordingType: string,
   excludeTags = [],
   offset?: number,
@@ -940,11 +941,16 @@ export async function getTrackTags(
           },
         ];
     const rows = await models.TrackTag.findAll({
-      attributes: ["id", "what"],
+      attributes: ["id", "what", "UserId"],
       where: {
         what: {
           [Op.notIn]: excludeTags,
         },
+        ...(!includeAI && {
+          UserId: {
+            [Op.ne]: null,
+          },
+        }),
       },
       include: [
         {
@@ -981,10 +987,6 @@ export async function getTrackTags(
             },
           ],
         },
-        {
-          model: models.User,
-          attributes: ["username"],
-        },
       ],
       ...(limit && { limit }),
       ...(offset && { offset }),
@@ -1006,7 +1008,7 @@ export async function getTrackTags(
         name: row.Track.Recording.Group.groupname,
       },
       // TODO - The exact AI model you will need data attribute from track tag
-      labeller: row.User ? row.User.username : "AI",
+      labeller: row.UserId ? `id_${row.UserId.toString()}` : "AI",
     }));
   } catch (err) {
     console.log(err);
