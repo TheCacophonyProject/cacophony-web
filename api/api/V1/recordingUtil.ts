@@ -38,7 +38,7 @@ import {
   VisitSummary,
 } from "./Visits";
 import { Station } from "@models/Station";
-import modelsUtil from "@models/util/util";
+import modelsUtil, { locationsAreEqual } from "@models/util/util";
 import { dynamicImportESM } from "@/dynamic-import-esm";
 import log from "@log";
 import {
@@ -73,7 +73,6 @@ import {
 import { Device } from "@models/Device";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
-import { locationsAreEqual } from "@models/Group";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
 import SendData = ManagedUpload.SendData;
 import logger from "@log";

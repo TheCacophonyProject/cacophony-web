@@ -17,9 +17,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 // Validate that input is a valid [longitude, latitude]
-import { canonicalLatLng } from "@models/Group";
 import { LatLng } from "@typedefs/api/common";
 import logger from "@log";
+import { canonicalLatLng } from "./util";
 
 function isLatLon(
   point: { coordinates: [number, number] } | [number, number] | LatLng
