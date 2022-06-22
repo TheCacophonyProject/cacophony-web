@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, onMounted } from "vue";
+import { computed, onMounted, watch } from "vue";
+import type { Ref } from "vue";
 import { useRouter } from "vue-router";
 import type { LatLng, LatLngTuple, Layer, Map as LeafletMap } from "leaflet";
 import {
@@ -13,8 +14,11 @@ import {
   map as mapConstructor,
   control,
   Control,
+  Circle,
+  CircleMarker,
 } from "leaflet";
 import attribution = control.attribution;
+import { rafFps } from "@models/LoggedInUser";
 
 export interface NamedPoint {
   name: string;
@@ -28,18 +32,108 @@ const {
   radius = 0,
   navigateToPoint,
   zoom = true,
-  highlightedPoint = null,
+  highlightedPoint,
   canChangeBaseMap = true,
   isInteractive = true,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => any;
   points: NamedPoint[];
-  highlightedPoint?: NamedPoint | null;
+  highlightedPoint: Ref<NamedPoint | null>;
   radius?: number;
   zoom?: boolean;
   canChangeBaseMap?: boolean;
   isInteractive?: boolean;
 }>();
+
+const pointKey = (point: NamedPoint) =>
+  `${point.group}|${point.name}|${point.location.lat}|${point.location.lng}`;
+
+const lerp = (targetValue: number, progressZeroOne: number) => {
+  return targetValue * progressZeroOne;
+};
+const iLerp = (targetValue: number, currentValue: number): number => {
+  return currentValue / targetValue;
+};
+
+const updateMarkerRadius = (marker: CircleMarkerGroup, radius: number) => {
+  // Leaflet only allows setting integer radius values, which makes animation stuttery, so we'll just
+  // draw it ourselves.
+  const rawMarker = marker.foregroundMarker as any;
+  {
+    rawMarker._radius = radius;
+    const p = rawMarker._point,
+      r = Math.max(rawMarker._radius, 1),
+      arc = "a" + r + "," + r + " 0 1,0 ";
+
+    // drawing a circle with two half-arcs
+    const d = rawMarker._empty()
+      ? "M0 0"
+      : "M" +
+        (p.x - r) +
+        "," +
+        p.y +
+        arc +
+        r * 2 +
+        ",0 " +
+        arc +
+        -r * 2 +
+        ",0 ";
+
+    rawMarker._path.setAttribute("d", d);
+  }
+};
+
+const highlightMarker = (marker: CircleMarkerGroup) => {
+  const currentRadius = marker.foregroundMarker.getRadius();
+  const numFrames = Math.ceil(rafFps.value * 0.3);
+  const initialRadius = 5;
+  const enlargeBy = 5;
+
+  if (currentRadius < initialRadius + enlargeBy) {
+    const progress = iLerp(enlargeBy, currentRadius - initialRadius);
+    const newRadius =
+      initialRadius + lerp(enlargeBy, Math.min(1, progress + 1 / numFrames));
+    requestAnimationFrame(() => {
+      const rawMarker = marker.foregroundMarker as any;
+      if (!rawMarker._path.classList.contains("pulse")) {
+        rawMarker._path.classList.add("pulse");
+      }
+      updateMarkerRadius(marker, newRadius);
+      highlightMarker(marker);
+    });
+  }
+};
+
+const unHighlightMarker = (marker: CircleMarkerGroup) => {
+  const currentRadius = marker.foregroundMarker.getRadius();
+  if (currentRadius > 5) {
+    requestAnimationFrame(() => {
+      const rawMarker = marker.foregroundMarker as any;
+      if (rawMarker._path.classList.contains("pulse")) {
+        (rawMarker._path as SVGPathElement).classList.remove("pulse");
+      }
+      // TODO - Lerp this number properly.
+      marker.foregroundMarker.setRadius(currentRadius - 1);
+      unHighlightMarker(marker);
+    });
+  }
+};
+
+watch(
+  highlightedPoint,
+  (newPoint: NamedPoint | null, oldPoint: NamedPoint | null) => {
+    if (newPoint) {
+      const pointMarker = markers[pointKey(newPoint)];
+      pointMarker && highlightMarker(pointMarker);
+      pointMarker.foregroundMarker.openTooltip();
+    }
+    if (oldPoint) {
+      const pointMarker = markers[pointKey(oldPoint)];
+      pointMarker && unHighlightMarker(pointMarker);
+      pointMarker.foregroundMarker.closeTooltip();
+    }
+  }
+);
 
 const mapLayers = [
   {
@@ -85,7 +179,12 @@ const navigateToLocation = (point: NamedPoint) => {
   }
 };
 
-const markers = {};
+interface CircleMarkerGroup {
+  backgroundRadius: Circle;
+  foregroundMarker: CircleMarker;
+}
+
+const markers: Record<string, CircleMarkerGroup> = {};
 // IDEA: Hash the name of the point into a colour for that point?
 const onReady = (map: LeafletMap) => {
   //map.setMaxZoom(17); // Max tile resolution
@@ -185,6 +284,7 @@ onMounted(() => {
         fillOpacity: 1,
       }),
     };
+    markers[pointKey(point)] = marker;
     const tooltipText = `${point.name}`; // : ${Number(point.location.lat).toFixed(5)}, ${Number(point.location.lng).toFixed(5)}
     marker.foregroundMarker
       .bindTooltip(tooltipText, {
@@ -192,7 +292,15 @@ onMounted(() => {
         offset: [0, -5],
       })
       .openTooltip();
-    //marker.foregroundMarker
+
+    marker.foregroundMarker.on("mouseover", (e) => {
+      const namedPoint = points.find(
+        (p) =>
+          p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
+      );
+      namedPoint && hoverPoint(namedPoint);
+    });
+    marker.foregroundMarker.on("mouseout", leavePoint);
     map.addLayer(marker.backgroundRadius);
     map.addLayer(marker.foregroundMarker);
   }
@@ -210,8 +318,8 @@ const hoverPoint = (point: NamedPoint) => {
   emit("hover-point", point);
 };
 
-const leavePoint = (point: NamedPoint) => {
-  emit("leave-point", point);
+const leavePoint = () => {
+  emit("leave-point", null);
 };
 </script>
 <template>

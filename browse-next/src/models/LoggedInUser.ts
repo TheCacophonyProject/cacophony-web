@@ -336,7 +336,7 @@ export const creatingNewGroup = reactive({
 export const joiningNewGroup = reactive({ enabled: false, visible: false });
 export const showSwitchGroup = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);
-
+export const rafFps = ref(60);
 // On load:
 {
   const rememberedCredentials = window.localStorage.getItem(

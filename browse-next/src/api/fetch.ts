@@ -5,7 +5,7 @@ import type { ErrorResult, FetchResult } from "@api/types";
 import { reactive } from "vue";
 import { delayMsThen } from "@/utils";
 
-let lastApiVersion: string | null = null;
+const lastApiVersion: string | null = null;
 
 export const INITIAL_RETRY_INTERVAL = 3000;
 export const MAX_RETRY_COUNT = 30;
@@ -118,11 +118,12 @@ export async function fetch<T>(
   }
   const result = await response.json();
   if (result.cwVersion) {
-    if (lastApiVersion !== result.cwVersion) {
+    const lastApiVersion = window.localStorage.getItem("last-api-version");
+    if (lastApiVersion && lastApiVersion !== result.cwVersion) {
       // TODO - could show a user prompt rather than just refreshing?
+      window.localStorage.setItem("last-api-version", result.cwVersion.version);
       return window.location.reload();
     }
-    lastApiVersion = result.cwVersion as string;
     delete result.cwVersion;
   }
 

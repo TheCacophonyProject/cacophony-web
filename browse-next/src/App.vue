@@ -20,8 +20,9 @@ import {
   joiningNewGroup,
   urlNormalisedCurrentGroupName,
   pinSideNav,
+  rafFps,
 } from "@/models/LoggedInUser";
-import { defineAsyncComponent, onBeforeMount, ref } from "vue";
+import { defineAsyncComponent, onBeforeMount, onMounted, ref } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
 import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
@@ -45,6 +46,40 @@ onBeforeMount(() => {
   const styleOverrides = document.createElement("style");
   styleOverrides.innerText = `:root { --bs-body-font-family: "Roboto", sans-serif; } body { font-family: var(--bs-body-font-family); }`;
   document.body.insertBefore(styleOverrides, document.body.firstChild);
+});
+
+const frameTimes: number[] = [];
+const pollFrameTimes = () => {
+  frameTimes.push(performance.now());
+  if (frameTimes.length < 10) {
+    requestAnimationFrame(pollFrameTimes);
+  } else {
+    const diffs = [];
+    for (let i = 1; i < frameTimes.length; i++) {
+      diffs.push(frameTimes[i] - frameTimes[i - 1]);
+    }
+    let total = 0;
+    for (const val of diffs) {
+      total += val;
+    }
+    // Get the average frame time
+    const multiplier = Math.round(1000 / (total / diffs.length) / 30);
+    if (multiplier === 1) {
+      // 30fps
+      rafFps.value = 30;
+    } else if (multiplier === 2 || multiplier === 3) {
+      // 60fps
+      rafFps.value = 60;
+    } else if (multiplier >= 4) {
+      // 120fps
+      rafFps.value = 120;
+    }
+  }
+};
+
+onMounted(() => {
+  // Wait a second so that we know rendering has settled down, then try to work out the display refresh rate.
+  setTimeout(pollFrameTimes, 1000);
 });
 </script>
 <template>

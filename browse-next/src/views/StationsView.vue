@@ -6,6 +6,7 @@ import { getStationsForGroup } from "@api/Group";
 import { currentSelectedGroup } from "@models/LoggedInUser";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@/components/MapWithPoints.vue";
+import {LatLng} from "leaflet";
 
 const stations = ref<ApiStationResponse[] | null>(null);
 const loadingStations = ref(false);
@@ -26,28 +27,33 @@ onMounted(async () => {
 
 const stationsForMap = computed<NamedPoint[]>(() => {
   if (stations.value) {
-    return [
-      {
-        name: "test",
-        group: "test group",
-        location: { lat: -43.80795, lng: 172.36845 },
-      },
-      {
-        name: "test2",
-        group: "test group",
-        location: { lat: -43.80856, lng: 172.36323 },
-      },
-    ];
-    // return stations.value.map(({ name, groupName, location }) => ({
-    //   name,
-    //   group: groupName,
-    //   location,
-    // }));
+    // return [
+    //   {
+    //     name: "test",
+    //     group: "test group",
+    //     location: { lat: -43.80795, lng: 172.36845 } as LatLng,
+    //   },
+    //   {
+    //     name: "test2",
+    //     group: "test group",
+    //     location: { lat: -43.80856, lng: 172.36323 } as LatLng,
+    //   },
+    // ];
+    return stations.value.map(({ name, groupName, location }) => ({
+      name,
+      group: groupName,
+      location: location as LatLng,
+    }));
   }
   return [];
 });
 //  Display in table and on map.
 const highlightedPoint = ref<NamedPoint | null>(null);
+
+const highlightPoint = (p: NamedPoint | null) => {
+  highlightedPoint.value = p;
+};
+
 </script>
 <template>
   <div>
@@ -68,8 +74,9 @@ const highlightedPoint = ref<NamedPoint | null>(null);
         <div
           v-for="p in stationsForMap"
           :key="p.name"
-          @mouseover="highlightedPoint = p"
-          @mouseleave="highlightedPoint = null"
+          @mouseover="highlightPoint(p)"
+          @mouseout="highlightPoint(null)"
+          @mouseleave="highlightPoint(null)"
         >
           {{ p.name }}
         </div>
@@ -77,9 +84,9 @@ const highlightedPoint = ref<NamedPoint | null>(null);
       <map-with-points
         class="map"
         :points="stationsForMap"
-        :highlighted-point="highlightedPoint"
-        @hover-point="(p) => (highlightedPoint = p)"
-        @leave-point="(p) => (highlightedPoint = null)"
+        :highlighted-point="() => highlightedPoint"
+        @hover-point="highlightPoint"
+        @leave-point="highlightPoint"
         :radius="30"
         ref="map"
       />
