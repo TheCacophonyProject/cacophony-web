@@ -31,7 +31,6 @@ import { GroupId, UserId } from "@typedefs/api/common";
 import { ApiGroupSettings } from "@typedefs/api/group";
 import { locationsAreEqual } from "./util/util";
 
-
 export const stationLocationHasChanged = (
   oldStation: Station,
   newStation: CreateStationData

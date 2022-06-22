@@ -28,7 +28,7 @@ import { DataTypes } from "sequelize";
 const EPSILON = 0.000000000001;
 
 export const canonicalLatLng = (
-    location: LatLng | { coordinates: [number, number] } | [number, number]
+  location: LatLng | { coordinates: [number, number] } | [number, number]
 ): LatLng => {
   if (Array.isArray(location)) {
     return { lat: location[0], lng: location[1] };
@@ -44,15 +44,15 @@ export const canonicalLatLng = (
 };
 
 export const locationsAreEqual = (
-    a: LatLng | { coordinates: [number, number] },
-    b: LatLng | { coordinates: [number, number] }
+  a: LatLng | { coordinates: [number, number] },
+  b: LatLng | { coordinates: [number, number] }
 ): boolean => {
   const canonicalA = canonicalLatLng(a);
   const canonicalB = canonicalLatLng(b);
   // NOTE: We need to compare these numbers with an epsilon value, otherwise we get floating-point precision issues.
   return (
-      Math.abs(canonicalA.lat - canonicalB.lat) < EPSILON &&
-      Math.abs(canonicalA.lng - canonicalB.lng) < EPSILON
+    Math.abs(canonicalA.lat - canonicalB.lat) < EPSILON &&
+    Math.abs(canonicalA.lng - canonicalB.lng) < EPSILON
   );
 };
 
