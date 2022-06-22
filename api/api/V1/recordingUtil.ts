@@ -15,23 +15,37 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import { dynamicImportESM } from "@/dynamic-import-esm";
-import config from "@config";
-import { default as log, default as logger } from "@log";
-import models from "@models";
+import sharp from "sharp";
+import zlib from "zlib";
 import { Alert, AlertStatic } from "@models/Alert";
+import { AI_MASTER } from "@models/TrackTag";
+import jsonwebtoken from "jsonwebtoken";
+import mime from "mime";
+import moment from "moment";
+import urljoin from "url-join";
+import config from "@config";
+import models from "@models";
+import util from "./util";
+import { Recording } from "@models/Recording";
+import { Event, QueryOptions } from "@models/Event";
+import { User } from "@models/User";
+import Sequelize, { Op } from "sequelize";
+import {
+  DeviceSummary,
+  DeviceVisitMap,
+  Visit,
+  VisitEvent,
+  VisitSummary,
+} from "./Visits";
+import { Station } from "@models/Station";
+import modelsUtil, { locationsAreEqual } from "@models/util/util";
+import { dynamicImportESM } from "@/dynamic-import-esm";
+import { default as log, default as logger } from "@log";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Device } from "@models/Device";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
-import { Event, QueryOptions } from "@models/Event";
-import { locationsAreEqual } from "@models/Group";
-import { Recording } from "@models/Recording";
-import { Station } from "@models/Station";
 import { Tag } from "@models/Tag";
 import { Track } from "@models/Track";
-import { AI_MASTER } from "@models/TrackTag";
-import { User } from "@models/User";
-import modelsUtil from "@models/util/util";
 import {
   DeviceId,
   FileId,
@@ -60,21 +74,6 @@ import { AWSError } from "aws-sdk";
 import { GetObjectOutput } from "aws-sdk/clients/s3";
 import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
 import { CptvFrame, CptvHeader } from "cptv-decoder";
-import jsonwebtoken from "jsonwebtoken";
-import mime from "mime";
-import moment from "moment";
-import Sequelize, { Op, WhereOptions } from "sequelize";
-import sharp from "sharp";
-import urljoin from "url-join";
-import zlib from "zlib";
-import util from "./util";
-import {
-  DeviceSummary,
-  DeviceVisitMap,
-  Visit,
-  VisitEvent,
-  VisitSummary,
-} from "./Visits";
 import SendData = ManagedUpload.SendData;
 
 let CptvDecoder;
