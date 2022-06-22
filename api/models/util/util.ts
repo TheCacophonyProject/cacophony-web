@@ -21,10 +21,40 @@ import log from "@log";
 import fs from "fs";
 import mime from "mime";
 import config from "@config";
-import { canonicalLatLng } from "@models/Group";
 import { LatLng } from "@typedefs/api/common";
 import validation from "@models/util/validation";
 import { DataTypes } from "sequelize";
+
+const EPSILON = 0.000000000001;
+
+export const canonicalLatLng = (
+    location: LatLng | { coordinates: [number, number] } | [number, number]
+): LatLng => {
+  if (Array.isArray(location)) {
+    return { lat: location[0], lng: location[1] };
+  } else if (location.hasOwnProperty("coordinates")) {
+    // Lat lng is stored in the database as lng/lat (X,Y).
+    // If we get lat/lng in this format we are getting it from the DB.
+    return {
+      lat: (location as { coordinates: [number, number] }).coordinates[1],
+      lng: (location as { coordinates: [number, number] }).coordinates[0],
+    };
+  }
+  return location as LatLng;
+};
+
+export const locationsAreEqual = (
+    a: LatLng | { coordinates: [number, number] },
+    b: LatLng | { coordinates: [number, number] }
+): boolean => {
+  const canonicalA = canonicalLatLng(a);
+  const canonicalB = canonicalLatLng(b);
+  // NOTE: We need to compare these numbers with an epsilon value, otherwise we get floating-point precision issues.
+  return (
+      Math.abs(canonicalA.lat - canonicalB.lat) < EPSILON &&
+      Math.abs(canonicalA.lng - canonicalB.lng) < EPSILON
+  );
+};
 
 export function getFileName(model) {
   let fileName;

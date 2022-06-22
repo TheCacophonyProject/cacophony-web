@@ -46,7 +46,7 @@ function send(response: Response, data: any) {
   data.success = 200 <= statusCode && statusCode <= 299;
   if (CACOPHONY_WEB_VERSION.version !== "unknown") {
     // In production, we add the cacophony-web version to each request
-    data.cwVersion = CACOPHONY_WEB_VERSION;
+    data.cwVersion = CACOPHONY_WEB_VERSION.version;
   }
   delete data.statusCode;
   return response.status(statusCode).json(data);
