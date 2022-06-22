@@ -2131,6 +2131,7 @@ export const mapPosition = (position: any): ApiTrackPosition => {
       width: position.width,
       height: position.height,
       order: position.frame_number ?? position.order,
+      blank: position.blank,
     };
   }
 };
