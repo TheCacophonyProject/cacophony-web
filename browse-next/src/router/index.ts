@@ -216,7 +216,7 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   if (to.name === "dashboard") {
-    debugger;
+    // debugger;
   }
   let jwtToken;
   if (to.params.token) {

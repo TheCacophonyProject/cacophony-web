@@ -388,7 +388,9 @@ onMounted(() => {
       <div class="container p-0">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
-        <router-view class="d-flex flex-column router-view" />
+        <div class="d-flex flex-column router-view">
+          <router-view />
+        </div>
       </div>
     </section>
   </main>
@@ -466,7 +468,7 @@ onMounted(() => {
   overflow: hidden;
   transition: width 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-  z-index: 1;
+  z-index: 1002;
 
   .nav-icon-wrapper {
     // Keep the icons vertically aligned relative to one-another.

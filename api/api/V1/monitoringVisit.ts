@@ -4,10 +4,9 @@ import { Recording } from "@models/Recording";
 import { getCanonicalTrackTag, UNIDENTIFIED_TAGS } from "./Visits";
 import { ClientError } from "../customErrors";
 import { StationId, UserId } from "@typedefs/api/common";
-import { MonitoringPageCriteria } from "@api/V1/monitoringPage";
+import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
-import { Device } from "@/models/Device";
 import { Station } from "@models/Station";
 
 const MINUTE = 60;

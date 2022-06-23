@@ -6,7 +6,7 @@ import { getStationsForGroup } from "@api/Group";
 import { currentSelectedGroup } from "@models/LoggedInUser";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@/components/MapWithPoints.vue";
-import {LatLng} from "leaflet";
+import type { LatLng } from "leaflet";
 
 const stations = ref<ApiStationResponse[] | null>(null);
 const loadingStations = ref(false);
@@ -53,7 +53,6 @@ const highlightedPoint = ref<NamedPoint | null>(null);
 const highlightPoint = (p: NamedPoint | null) => {
   highlightedPoint.value = p;
 };
-
 </script>
 <template>
   <div>
@@ -70,7 +69,6 @@ const highlightPoint = (p: NamedPoint | null) => {
       v-else
     >
       <div class="px-3 p-md-0">
-        stations list table
         <div
           v-for="p in stationsForMap"
           :key="p.name"

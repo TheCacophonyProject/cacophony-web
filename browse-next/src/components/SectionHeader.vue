@@ -13,7 +13,7 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
       <span>{{ currentSelectedGroup.groupName }}</span>
     </h4>
     <span v-else></span>
-    <div class="d-flex align-items-center ms-2 m-md-0">
+    <div class="d-flex align-items-center ms-2 m-sm-0">
       <button
         type="button"
         class="btn toggle-nav d-sm-none"

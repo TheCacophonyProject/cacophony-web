@@ -30,6 +30,7 @@ import { User } from "models/User";
 import models from "@models";
 import { ClientError } from "@api/customErrors";
 import logger from "@/logging";
+import { GroupId, StationId } from "@typedefs/api/common";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -181,10 +182,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser.id
       );
 
-      const stationIds: number[] =
-        (request.query.stations as unknown[] as number[]) || [];
-      const groupIds: number[] =
-        (request.query.groups as unknown[] as number[]) || [];
+      const stationIds: StationId[] =
+        (request.query.stations as string[]).map(Number) || [];
+      const groupIds: GroupId[] =
+        (request.query.groups as string[]).map(Number) || [];
 
       // TODO: Check permissions, reject if we don't have permissions to view any of these devices/groups.
       //  Easier to do this cleanly once we get rid of the concept of users belonging to devices.

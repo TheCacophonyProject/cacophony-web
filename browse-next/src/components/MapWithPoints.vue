@@ -124,13 +124,25 @@ watch(
   (newPoint: NamedPoint | null, oldPoint: NamedPoint | null) => {
     if (newPoint) {
       const pointMarker = markers[pointKey(newPoint)];
-      pointMarker && highlightMarker(pointMarker);
-      pointMarker.foregroundMarker.openTooltip();
+      if (pointMarker) {
+        // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
+        pointMarker.foregroundMarker.bringToFront();
+        highlightMarker(pointMarker);
+        pointMarker.foregroundMarker.openTooltip();
+        ((pointMarker.foregroundMarker as any)._map as LeafletMap).panInside(
+          pointMarker.foregroundMarker.getLatLng(),
+          {
+            padding: [100, 30],
+          }
+        );
+      }
     }
     if (oldPoint) {
       const pointMarker = markers[pointKey(oldPoint)];
-      pointMarker && unHighlightMarker(pointMarker);
-      pointMarker.foregroundMarker.closeTooltip();
+      if (pointMarker) {
+        unHighlightMarker(pointMarker);
+        pointMarker.foregroundMarker.closeTooltip();
+      }
     }
   }
 );
