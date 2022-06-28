@@ -398,6 +398,8 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       oneOf([
         validNameOf(body("userName")), // TODO - Remove userName from this once browse-next is live
+        body("nameOrEmail").isEmail(),
+        validNameOf(body("nameOrEmail")),
         body("email").isEmail(),
       ]),
     ]),
