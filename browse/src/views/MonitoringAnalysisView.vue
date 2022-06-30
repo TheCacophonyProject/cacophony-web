@@ -1,7 +1,7 @@
 <template>
   <main>
     <div class="top-bar-container">
-      <h1>Montioring Analysis</h1>
+      <h1>Monitoring Analysis</h1>
       <div class="media-type-container">
         <h2 :class="{ selected: mediaType === MediaType.ThermalRaw }">Video</h2>
         <button
@@ -46,9 +46,8 @@
         />
       </div>
       <div class="chart-container">
-        <article>
-          <canvas ref="chartDomRef" id="chart" />
-        </article>
+        <b-spinner v-show="isLoading" type="grow" size="lg"></b-spinner>
+        <canvas v-show="!isLoading" ref="chartDomRef" id="chart" />
       </div>
       <div class="totals-table">
         <div class="totals-container">
@@ -184,6 +183,7 @@ export default defineComponent({
     // Track Tags
     const trackTags = ref<TrackTagRow[]>([]);
     const filterTrackTags = ref<TrackTagRow[]>([]);
+    const isLoading = ref(false);
 
     // Data Selectors
     const labels = ref<string[]>([]);
@@ -198,6 +198,7 @@ export default defineComponent({
     const stations = ref<string[]>([]);
     const userFocus = ref<string | null>(null);
     const username = ref<string | null>(null);
+
     // Totals
     const tagTotals = ref<{ [key: string]: number }>({});
     const groupTotals = ref<{ [key: string]: number }>({});
@@ -240,6 +241,7 @@ export default defineComponent({
         route.value.query.type === "audio"
           ? RecordingType.Audio
           : RecordingType.ThermalRaw;
+      isLoading.value = true;
       const response = await RecordingApi.queryTrackTags({
         type,
         limit: 150000,
@@ -250,8 +252,10 @@ export default defineComponent({
           "unknown",
         ],
       });
+      isLoading.value = false;
       if (response.success) {
         trackTags.value = response.result.rows;
+
         // console.log(response.result.rows);
       }
     };
@@ -442,6 +446,7 @@ export default defineComponent({
       username,
       DataType,
       filterTrackTags,
+      isLoading,
       updateDeviceSelection,
       getUserById,
     };
@@ -462,6 +467,7 @@ export default defineComponent({
 
 main {
   width: 100vw;
+  max-width: 100%;
   & h1 {
     font-weight: 800;
     color: #303030;
@@ -533,6 +539,10 @@ main {
   grid-column-end: 4;
   grid-row-start: 2;
   grid-row-end: 3;
+  max-height: 30em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .totals-table {

@@ -72,7 +72,7 @@ interface UserData {
   id: number;
   userName: string;
   email: string;
-  firtname?: string;
+  firstname?: string;
   lastname?: string;
   globalPermission: UserGlobalPermission;
   endUserAgreement: number;
