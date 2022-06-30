@@ -40,21 +40,12 @@ import {
 import { Station } from "@models/Station";
 import modelsUtil, { locationsAreEqual } from "@models/util/util";
 import { dynamicImportESM } from "@/dynamic-import-esm";
-import log from "@log";
-import {
-  ClassifierModelDescription,
-  ClassifierRawResult,
-  RawTrack,
-  TrackClassification,
-  TrackFramePosition,
-} from "@typedefs/api/fileProcessing";
-import { CptvFrame, CptvHeader } from "cptv-decoder";
-import { GetObjectOutput } from "aws-sdk/clients/s3";
-import { AWSError } from "aws-sdk";
-import { ManagedUpload } from "aws-sdk/lib/s3/managed_upload";
-import { Track } from "@models/Track";
+import { default as log, default as logger } from "@log";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
+import { Device } from "@models/Device";
+import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
 import { Tag } from "@models/Tag";
+import { Track } from "@models/Track";
 import {
   DeviceId,
   FileId,
@@ -70,12 +61,16 @@ import {
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts";
-import { Device } from "@models/Device";
+import {
+  ClassifierModelDescription,
+  ClassifierRawResult,
+  RawTrack,
+  TrackClassification,
+  TrackFramePosition,
+} from "@typedefs/api/fileProcessing";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
-import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
 import SendData = ManagedUpload.SendData;
-import logger from "@log";
 
 let CptvDecoder;
 (async () => {
@@ -918,6 +913,101 @@ async function query(
   }
   const rows = await models.Recording.findAll(builder.get());
   return { count: rows.length, rows: rows };
+}
+
+export async function getTrackTags(
+  userId: UserId,
+  viewAsSuperAdmin: boolean,
+  includeAI: boolean,
+  recordingType: string,
+  excludeTags = [],
+  offset?: number,
+  limit?: number
+) {
+  try {
+    const requireGroupMembership = viewAsSuperAdmin
+      ? []
+      : [
+          {
+            model: models.User,
+            attributes: [],
+            required: true,
+            where: { id: userId },
+          },
+        ];
+    const rows = await models.TrackTag.findAll({
+      attributes: ["id", "what", "UserId"],
+      where: {
+        what: {
+          [Op.notIn]: excludeTags,
+        },
+        ...(!includeAI && {
+          UserId: {
+            [Op.ne]: null,
+          },
+        }),
+      },
+      include: [
+        {
+          model: models.Track,
+          attributes: ["id"],
+          required: true,
+          include: [
+            {
+              model: models.Recording,
+              attributes: ["id"],
+              required: true,
+              where: {
+                type: {
+                  [Op.eq]: recordingType,
+                },
+              },
+              include: [
+                {
+                  model: models.Group,
+                  attributes: ["id", "groupname"],
+                  required: true,
+                  include: requireGroupMembership,
+                },
+                {
+                  model: models.Device,
+                  attributes: ["id", "devicename"],
+                  required: true,
+                },
+                {
+                  model: models.Station,
+                  attributes: ["id", "name"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      ...(limit && { limit }),
+      ...(offset && { offset }),
+    });
+    return rows.map((row) => ({
+      label: row.what,
+      device: {
+        id: row.Track.Recording.Device.id,
+        name: row.Track.Recording.Device.devicename,
+      },
+      station: row.Track.Recording.Station
+        ? {
+            id: row.Track.Recording.Station.id,
+            name: row.Track.Recording.Station.name,
+          }
+        : "No Station",
+      group: {
+        id: row.Track.Recording.Group.id,
+        name: row.Track.Recording.Group.groupname,
+      },
+      // TODO - The exact AI model you will need data attribute from track tag
+      labeller: row.UserId ? `id_${row.UserId.toString()}` : "AI",
+    }));
+  } catch (err) {
+    console.log(err);
+  }
 }
 
 // Returns a promise for report rows for a set of recordings. Takes

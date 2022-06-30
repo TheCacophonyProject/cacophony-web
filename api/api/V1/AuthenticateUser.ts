@@ -399,9 +399,12 @@ export default function (app: Application, baseUrl: string) {
       oneOf([
         validNameOf(body("userName")), // TODO - Remove userName from this once browse-next is live
         body("email").isEmail(),
+        validNameOf(body("nameOrEmail")),
       ]),
     ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body(["email", "userName"])),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
+      body(["username", "userName", "nameOrEmail", "email"])
+    ),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
         const user = response.locals.user as User;

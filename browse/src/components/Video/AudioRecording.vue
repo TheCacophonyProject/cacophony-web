@@ -213,7 +213,7 @@ import Multiselect from "vue-multiselect";
 import api from "@api";
 import store from "@/stores";
 import { useState, UUIDv4 } from "@/utils";
-import { TagColours, BirdLabels } from "@/const";
+import DefaultLabels, { TagColours } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
 import TrackList from "../Audio/TrackList.vue";
@@ -837,7 +837,7 @@ export default defineComponent({
     return {
       url,
       buffer,
-      BirdLabels: BirdLabels.sort(),
+      BirdLabels: DefaultLabels.birdLabels.map(({ value }) => value).sort(),
       labels: buttonLabels,
       cacophonyIndex,
       deleted,

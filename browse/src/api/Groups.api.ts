@@ -75,7 +75,7 @@ function getUsersForGroup(
 
 function getDevicesForGroup(
   groupNameOrId: string | number,
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/devices${
@@ -88,7 +88,7 @@ function getDevicesForGroup(
 
 function getStationsForGroup(
   groupNameOrId: string,
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{ stations: ApiStationResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/stations${

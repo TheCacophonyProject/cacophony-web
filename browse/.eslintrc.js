@@ -2,9 +2,9 @@ module.exports = {
   plugins: ["@typescript-eslint", "vue"],
   root: true,
   extends: [
+    "eslint:recommended",
     "plugin:vue/essential",
     "plugin:prettier-vue/recommended",
-    "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
   ],
 
@@ -27,8 +27,8 @@ module.exports = {
     "no-console": ["warn"],
     "no-debugger": ["warn"],
     "no-undef": ["warn"],
-    "no-unused-vars": ["warn"],
     "@typescript-eslint/no-unused-vars": ["warn"],
+    "no-unused-vars": ["warn"],
     "brace-style": ["warn"],
     "prefer-const": ["warn"],
     "prettier-vue/prettier": ["warn"],

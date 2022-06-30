@@ -20,6 +20,7 @@ import AiMetricsView from "@/views/AiMetricsView.vue";
 import ForgotPasswordView from "@/views/ForgotPasswordView.vue";
 import NewPasswordView from "@/views/NewPasswordView.vue";
 import SchedulesView from "@/views/SchedulesView.vue";
+import MonitoringAnalysisView from "@/views/MonitoringAnalysisView.vue";
 
 // TODO(jon): We should be lazy loading some of these components for better code-splitting
 import MonitoringTimeline from "@/views/MonitoringTimeline.vue";
@@ -103,6 +104,12 @@ function createRouter() {
       {
         path: "/monitoring",
         component: MonitoringView,
+        meta: { title: "Monitoring" },
+        beforeEnter: cancelPendingRequests,
+      },
+      {
+        path: "/monitoring-analysis",
+        component: MonitoringAnalysisView,
         meta: { title: "Monitoring" },
         beforeEnter: cancelPendingRequests,
       },

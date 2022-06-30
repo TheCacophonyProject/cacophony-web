@@ -255,10 +255,7 @@ export default {
       }
       return str;
     },
-    gotoVisitsSearchPage(
-      chartItems: string[],
-      openInNewWindow: boolean = false
-    ) {
+    gotoVisitsSearchPage(chartItems: string[], openInNewWindow = false) {
       const deviceName = chartItems[0];
       const device = this.devices.find((device) => {
         return device.name === deviceName;

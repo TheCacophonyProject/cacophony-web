@@ -5,7 +5,7 @@ import { shouldViewAsSuperUser } from "@/utils";
 import { StationId } from "@typedefs/api/common";
 
 export const getStations = (
-  activeAndInactive: boolean = false
+  activeAndInactive = false
 ): Promise<FetchResult<{ stations: ApiStationResponse[] }>> => {
   return CacophonyApi.get(
     `/api/v1/stations?${

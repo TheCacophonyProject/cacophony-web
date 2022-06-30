@@ -24,8 +24,10 @@
   </b-form-group>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from "@vue/composition-api";
+
+export default defineComponent({
   name: "SelectDate",
   props: {
     title: {
@@ -97,7 +99,7 @@ export default {
       this.$emit("input", value);
     },
   },
-};
+});
 
 function parseDate(fullDateTime) {
   if (fullDateTime) {

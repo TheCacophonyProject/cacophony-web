@@ -194,7 +194,7 @@ const taggingFilters = [
   },
 ];
 
-export const BirdLabels = [
+export const Birds = [
   "adelie penguin",
   "albatross",
   "american golden plover",
@@ -407,6 +407,7 @@ export const BirdLabels = [
   "kakapo",
   "kakpo",
   "kea",
+  "kereru",
   "kerguelen petrel",
   "kermadec petrel",
   "kermadec storm petrel",
@@ -471,7 +472,6 @@ export const BirdLabels = [
   "new zealand falcon",
   "new zealand fantail",
   "new zealand king shag",
-  "new zealand pigeon",
   "new zealand pipit",
   "new zealand scaup",
   "new zealand storm petrel",
@@ -482,6 +482,7 @@ export const BirdLabels = [
   "norfolk robin",
   "norfolk golden whistler",
   "norfolk gerygone",
+  "norfolk silvereye",
   "norfolk silkeye",
   "north island brown kiwi",
   "north island kokako",
@@ -700,7 +701,7 @@ export const BirdLabels = [
 ];
 
 //filter out duplicates
-const BirdTags = BirdLabels.map(
+const BirdLabels = Birds.map(
   (label) => new TrackLabel(nomenclatureBase, label)
 );
 
@@ -741,12 +742,13 @@ const DefaultLabels = {
     return [
       interesting,
       ...this.trackLabelsBase,
-      ...BirdTags.filter((tag) => tag.value !== "kiwi"),
+      ...BirdLabels.filter((tag) => tag.value !== "kiwi"),
     ];
   },
   trackLabels: function () {
     return [...this.trackLabelsBase];
   },
+  birdLabels: BirdLabels,
   canHaveSpecifiedTags: function (tagType) {
     return (
       filtersWhichCanHaveSpecifiedTags.find((tag) => tag === tagType) != null
