@@ -56,7 +56,7 @@ export async function fetch<T>(
     (request.headers as Record<string, string>).Authorization = (
       CurrentUser.value as LoggedInUser
     ).apiToken;
-    console.log("Requesting with token", CurrentUser.value?.apiToken);
+    //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
     (
@@ -72,10 +72,11 @@ export async function fetch<T>(
   } catch (e: Error | unknown) {
     if ((e as Error).name === "AbortError") {
       console.log(
+        "!! Abort, abort",
         e,
         (e as Error).name,
         url,
-        CurrentViewAbortController.controller.signal
+        request.signal
       );
       return;
     }

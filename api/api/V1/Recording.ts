@@ -1114,6 +1114,9 @@ export default (app: Application, baseUrl: string) => {
           await util.deleteS3Object(rawFileKey).catch((err) => {
             log.warning(err);
           });
+          await util.deleteS3Object(`${rawFileKey}-thumb`).catch((err) => {
+            log.warning(err);
+          });
         }
         if (deleted && fileKey) {
           await util.deleteS3Object(fileKey).catch((err) => {
@@ -1164,7 +1167,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id/undelete 
+   * @api {patch} /api/v1/recordings/:id/undelete
    * Undelete an existing soft-deleted recording
    * @apiName UndeleteRecording
    * @apiGroup Recordings
@@ -1516,7 +1519,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/undelete 
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/undelete
    * Undelete an existing soft-deleted track
    * @apiName UndeleteTrack
    * @apiGroup Recordings

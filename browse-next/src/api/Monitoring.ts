@@ -16,14 +16,13 @@ export type ProgressUpdater = (progress: number) => void;
 const getVisitsForGroup = async (
   groupId: GroupId,
   fromDate: Date,
-  untilDate: Date,
-  pageNum: number
+  untilDate: Date
 ) => {
   const params = new URLSearchParams();
   params.append("groups", groupId.toString());
   params.append("from", fromDate.toISOString());
   params.append("until", untilDate.toISOString());
-  params.append("page", pageNum.toString());
+  params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
   params.append("page-size", "100");
   if (!shouldViewAsSuperUser) {
     params.append("view-mode", "user");
@@ -49,29 +48,28 @@ export const getAllVisitsForGroup = async (
   const fromDate = new Date(
     new Date(now).setDate(new Date(now).getDate() - numDays)
   );
+  let numPagesEstimate = 0;
   while (morePagesExist && requestNumber < 100) {
     // We only allow up to 100 pages...
     requestNumber++;
-    const response = await getVisitsForGroup(
-      groupId,
-      fromDate,
-      untilDate,
-      requestNumber
-    );
-    if (response.success) {
+    const response = await getVisitsForGroup(groupId, fromDate, untilDate);
+    if (response && response.success) {
       const {
         result: {
           visits,
           params: { pagesEstimate, pageFrom },
         },
       } = response;
+      if (requestNumber === 1) {
+        numPagesEstimate = pagesEstimate;
+      }
       returnVisits.push(...visits);
       morePagesExist = pagesEstimate > 1;
       if (progressUpdaterFn) {
-        const totalPages = requestNumber + pagesEstimate;
-        // TODO - Actually test this...
-        if (totalPages !== 0) {
-          progressUpdaterFn(requestNumber / (requestNumber + pagesEstimate));
+        if (numPagesEstimate !== 0) {
+          progressUpdaterFn(requestNumber / numPagesEstimate);
+        } else {
+          progressUpdaterFn(1);
         }
       }
       if (!pageFrom) {

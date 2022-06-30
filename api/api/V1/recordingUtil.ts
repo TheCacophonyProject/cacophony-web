@@ -70,7 +70,9 @@ import {
 } from "@typedefs/api/fileProcessing";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
-import SendData = ManagedUpload.SendData;
+import { GetObjectOutput, ManagedUpload } from "aws-sdk/clients/s3";
+import { AWSError } from "aws-sdk";
+import { CptvFrame, CptvHeader } from "cptv-decoder";
 
 let CptvDecoder;
 (async () => {
@@ -256,7 +258,7 @@ async function getCPTVFrame(
 async function saveThumbnailInfo(
   recording: Recording,
   thumbnail: TrackFramePosition
-): Promise<SendData | Error> {
+): Promise<ManagedUpload.SendData | Error> {
   const frame = await getCPTVFrame(recording, thumbnail.frame_number);
   if (!frame) {
     throw new Error(`Failed to extract CPTV frame ${thumbnail.frame_number}`);

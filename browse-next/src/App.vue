@@ -22,10 +22,11 @@ import {
   pinSideNav,
   rafFps,
 } from "@/models/LoggedInUser";
-import { defineAsyncComponent, onBeforeMount, onMounted, ref } from "vue";
+import {defineAsyncComponent, onBeforeMount, onMounted, ref, watch} from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
 import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
+import {CurrentViewAbortController} from "@/router";
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
@@ -39,6 +40,7 @@ const userIsSuperAdmin = false;
 const loggedInAsAnotherUser = false;
 const environmentIsProduction = false;
 const hasGitReleaseInfoBar = ref(false);
+
 
 onBeforeMount(() => {
   // Override bootstrap CSS variables.

@@ -9,6 +9,7 @@ import { refreshLogin, login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
+import {CurrentViewAbortController} from "@/router";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
   apiToken: string;
@@ -202,6 +203,11 @@ export const switchCurrentGroup = (newGroup: {
   // Save the current (new) group to the local user settings, and persist it to the server.
   const loggedInUser = CurrentUser.value as LoggedInUser;
   if (newGroup.id !== loggedInUser.settings?.currentSelectedGroup?.id) {
+    if (currentSelectedGroup.value) {
+      // Abort requests for the previous group.
+      console.log("!!! Abort requests");
+      CurrentViewAbortController.newView();
+    }
     setLoggedInUserData({
       ...loggedInUser,
       settings: {

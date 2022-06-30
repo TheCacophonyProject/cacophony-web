@@ -58,7 +58,22 @@ const usedBlocks = async (
   return stdout2.split("\t").map(Number)[0];
 };
 
+const checkOnlyInstanceOfScriptRunning = async () => {
+  const me = process.pid;
+  const { stdout } = await exec("pgrep -f archive-objects");
+  const lines = stdout.split("\n");
+  const processes = lines.filter(
+    (i) => i.trim() !== "" && i.trim() !== me.toString()
+  );
+  if (processes.length !== 0) {
+    // Already running
+    process.exit(0);
+  }
+};
+
 (async function main() {
+  await checkOnlyInstanceOfScriptRunning();
+
   program
     .option("--config <path>", "Configuration file", "./config/app.js")
     .option("--delete", "Actually delete objects (dry run by default)")
