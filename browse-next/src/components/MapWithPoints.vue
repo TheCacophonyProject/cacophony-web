@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, onMounted, watch } from "vue";
+import { computed, nextTick, onMounted, onUpdated, ref, watch } from "vue";
 import type { Ref } from "vue";
 import { useRouter } from "vue-router";
 import type { LatLng, LatLngTuple, Layer, Map as LeafletMap } from "leaflet";
@@ -35,6 +35,8 @@ const {
   highlightedPoint,
   canChangeBaseMap = true,
   isInteractive = true,
+  markersAreInteractive = true,
+  hasAttribution = true,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => any;
   points: NamedPoint[];
@@ -43,7 +45,11 @@ const {
   zoom?: boolean;
   canChangeBaseMap?: boolean;
   isInteractive?: boolean;
+  markersAreInteractive?: boolean;
+  hasAttribution?: boolean;
 }>();
+
+const mapEl = ref<HTMLDivElement | null>(null);
 
 const pointKey = (point: NamedPoint) =>
   `${point.group}|${point.name}|${point.location.lat}|${point.location.lng}`;
@@ -184,6 +190,8 @@ const hasPoints = computed<boolean>(() => {
   return points && points.length !== 0;
 });
 
+const computedPoints = computed<NamedPoint[]>(() => points);
+
 const navigateToLocation = (point: NamedPoint) => {
   if (navigateToPoint) {
     const router = useRouter();
@@ -223,8 +231,77 @@ const maybeShowAttributionForCurrentLayer = () => {
   }
 };
 
+const addPoints = () => {
+  if (map) {
+    console.log("Adding POINTS", points.length);
+    for (const [key, marker] of Object.entries(markers)) {
+      map.removeLayer(marker.backgroundRadius);
+      map.removeLayer(marker.foregroundMarker);
+      delete markers[key];
+    }
+
+    // Add the points as markers.  Remember to unload them when we leave.
+    for (const point of points) {
+      const marker = {
+        backgroundRadius: circle(point.location, {
+          radius: 30,
+          interactive: false,
+          fillOpacity: 0.25,
+          fillColor: "",
+          fill: true,
+          stroke: false,
+        }),
+        foregroundMarker: circleMarker(point.location, {
+          radius: 5,
+          stroke: false,
+          fillOpacity: 1,
+          interactive: markersAreInteractive
+        }),
+      };
+      markers[pointKey(point)] = marker;
+      const tooltipText = `${point.name}`; // : ${Number(point.location.lat).toFixed(5)}, ${Number(point.location.lng).toFixed(5)}
+      if (markersAreInteractive) {
+        marker.foregroundMarker
+          .bindTooltip(tooltipText, {
+            direction: "top",
+            offset: [0, -5],
+          })
+          .openTooltip();
+
+        marker.foregroundMarker.on("mouseover", (e) => {
+          const namedPoint = points.find(
+            (p) =>
+              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
+          );
+          namedPoint && hoverPoint(namedPoint);
+        });
+        marker.foregroundMarker.on("mouseout", leavePoint);
+      }
+      map.addLayer(marker.backgroundRadius);
+      map.addLayer(marker.foregroundMarker);
+    }
+  }
+};
+
+const fitMapBounds = () => {
+  console.log("Fit map bounds", mapBounds.value);
+  if (map && mapBounds.value) {
+    (map as LeafletMap).fitBounds([
+      (
+        mapBounds.value as LatLngBounds
+      ).getNorthEast() as unknown as LatLngTuple,
+      (
+        mapBounds.value as LatLngBounds
+      ).getSouthWest() as unknown as LatLngTuple,
+    ]);
+  }
+};
+
+watch(mapBounds, fitMapBounds);
+watch(computedPoints, addPoints);
+
 onMounted(() => {
-  const mapElement = document.querySelector(".map");
+  const mapElement = mapEl.value;
 
   for (const layer of mapLayers) {
     tileLayers[layer.name] = tileLayer.wms(layer.url, {
@@ -249,73 +326,31 @@ onMounted(() => {
       maybeShowAttributionForCurrentLayer();
     });
   }
-  const attributionToggle = new Control({
-    position: "bottomleft",
-  });
-  attributionToggle.onAdd = (map: LeafletMap): HTMLElement => {
-    const el = document.createElement("div");
-    el.classList.add("leaflet-control");
-    el.classList.add("leaflet-control-container");
-    el.classList.add("leaflet-bar");
-    el.classList.add("leaflet-attribution-toggle");
-    el.innerHTML = `<a class="leaflet-control-zoom-in" href="#" title="Toggle attribution" role="button" aria-label="Toggle attribution" aria-disabled="false"><span aria-hidden="true">i</span></a>`;
-    el.addEventListener("click", () => {
-      showAttribution = !showAttribution;
-      maybeShowAttributionForCurrentLayer();
+  if (hasAttribution) {
+    const attributionToggle = new Control({
+      position: "bottomleft",
     });
-    return el;
-  };
-  map.addControl(attributionToggle);
-
-  // TODO - make attribution be an expandable option.
-  if (mapBounds.value) {
-    map.fitBounds([
-      (
-        mapBounds.value as LatLngBounds
-      ).getNorthEast() as unknown as LatLngTuple,
-      (
-        mapBounds.value as LatLngBounds
-      ).getSouthWest() as unknown as LatLngTuple,
-    ]);
-  }
-
-  // Add the points as markers.  Remember to unload them when we leave.
-  for (const point of points) {
-    const marker = {
-      backgroundRadius: circle(point.location, {
-        radius: 30,
-        interactive: false,
-        fillOpacity: 0.25,
-        fillColor: "",
-        fill: true,
-        stroke: false,
-      }),
-      foregroundMarker: circleMarker(point.location, {
-        radius: 5,
-        stroke: false,
-        fillOpacity: 1,
-      }),
+    attributionToggle.onAdd = (map: LeafletMap): HTMLElement => {
+      const el = document.createElement("div");
+      el.classList.add("leaflet-control");
+      el.classList.add("leaflet-control-container");
+      el.classList.add("leaflet-bar");
+      el.classList.add("leaflet-attribution-toggle");
+      el.innerHTML = `<a class="leaflet-control-zoom-in" href="#" title="Toggle attribution" role="button" aria-label="Toggle attribution" aria-disabled="false"><span aria-hidden="true">i</span></a>`;
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+        showAttribution = !showAttribution;
+        maybeShowAttributionForCurrentLayer();
+      });
+      return el;
     };
-    markers[pointKey(point)] = marker;
-    const tooltipText = `${point.name}`; // : ${Number(point.location.lat).toFixed(5)}, ${Number(point.location.lng).toFixed(5)}
-    marker.foregroundMarker
-      .bindTooltip(tooltipText, {
-        direction: "top",
-        offset: [0, -5],
-      })
-      .openTooltip();
-
-    marker.foregroundMarker.on("mouseover", (e) => {
-      const namedPoint = points.find(
-        (p) =>
-          p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
-      );
-      namedPoint && hoverPoint(namedPoint);
-    });
-    marker.foregroundMarker.on("mouseout", leavePoint);
-    map.addLayer(marker.backgroundRadius);
-    map.addLayer(marker.foregroundMarker);
+    map.addControl(attributionToggle);
   }
+
+  fitMapBounds();
+  addPoints();
 });
 //  TODO: On point highlight, animate the size/colour of the point.
 //  Suggests that maybe we don't want to use vue-leaflet to manage the lifecycle of the points.
@@ -340,9 +375,8 @@ const leavePoint = () => {
     :style="{
       pointerEvents: isInteractive ? 'auto' : 'none',
     }"
-    v-if="true"
+    ref="mapEl"
   ></div>
-  <div v-else class="map loading">Leaflet map</div>
 </template>
 <style lang="less">
 .map.loading {

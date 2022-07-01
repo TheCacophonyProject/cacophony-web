@@ -5,6 +5,10 @@ import { getAllVisitsForGroup } from "@api/Monitoring";
 import { currentSelectedGroup } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
+import type { ApiStationResponse } from "@typedefs/api/station";
+import { getStationsForGroup } from "@api/Group";
+import GroupVisitsSummary from "@/components/GroupVisitsSummary.vue";
+import StationVisitSummary from "@/components/StationVisitSummary.vue";
 
 const audioMode = ref<boolean>(false);
 
@@ -13,8 +17,8 @@ const timePeriodDays = ref<number>(7);
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrStations = ref<"species" | "station">("species");
 
-const loading = ref<boolean>(false);
-const loadingProgress = ref<number>(0);
+const loadingVisits = ref<boolean>(false);
+const loadingVisitsProgress = ref<number>(0);
 const visits = ref<ApiVisitResponse[]>([]);
 
 const ignored: string[] = [
@@ -26,11 +30,11 @@ const ignored: string[] = [
 ];
 
 const visitorIsPredator = (visit: ApiVisitResponse) =>
-  visit.classification && !ignored.includes(visit.classification);
+  visit && visit.classification && !ignored.includes(visit.classification);
 
-const predatorVisits = computed<ApiVisitResponse[]>(() => {
-  return visits.value.filter(visitorIsPredator);
-});
+const predatorVisits = computed<ApiVisitResponse[]>(() =>
+  visits.value.filter(visitorIsPredator)
+);
 
 const speciesSummary = computed<Record<string, number>>(() => {
   return predatorVisits.value.reduce(
@@ -45,31 +49,69 @@ const speciesSummary = computed<Record<string, number>>(() => {
     {}
   );
 });
+const now = new Date();
+const earliestDate = computed<Date>(() => {
+  return new Date(now.setDate(now.getDate() - timePeriodDays.value));
+});
 
-const reloadDashboard = async () => {
+const loadVisits = async () => {
   if (currentSelectedGroup.value) {
-    loading.value = true;
+    loadingVisits.value = true;
     const allVisits = await getAllVisitsForGroup(
       currentSelectedGroup.value.id,
       timePeriodDays.value,
       (val) => {
         // TODO - Do we want to display loading progress via the UI?
-        loadingProgress.value = val;
+        loadingVisitsProgress.value = val;
       }
     );
     visits.value = allVisits.visits;
-    loading.value = false;
+    loadingVisits.value = false;
   }
 };
 
-watch(timePeriodDays, reloadDashboard);
-watch(currentSelectedGroup, reloadDashboard);
+watch(timePeriodDays, loadVisits);
+watch(currentSelectedGroup, loadVisits);
 // I don't think the underlying data changes?
 //watch(visitsOrRecordings, reloadDashboard);
 //watch(speciesOrStations, reloadDashboard);
 
+const stations = ref<ApiStationResponse[]>([]);
+const loadingStations = ref(false);
+const stationsWithRecordingsInSelectedTimeWindow = computed<
+  ApiStationResponse[]
+>(() => {
+  return stations.value.filter((station) => {
+    if (audioMode.value) {
+      return (
+        station.lastAudioRecordingTime &&
+        new Date(station.lastAudioRecordingTime) > earliestDate.value
+      );
+    } else {
+      return (
+        station.lastThermalRecordingTime &&
+        new Date(station.lastThermalRecordingTime) > earliestDate.value
+      );
+    }
+  });
+});
+
+const loadStations = async () => {
+  if (currentSelectedGroup.value) {
+    loadingStations.value = true;
+    const stationsResponse = await getStationsForGroup(
+      currentSelectedGroup.value.id.toString(),
+      true
+    );
+    if (stationsResponse.success) {
+      stations.value = stationsResponse.result.stations;
+    }
+    loadingStations.value = false;
+  }
+};
+
 onMounted(async () => {
-  await reloadDashboard();
+  await Promise.all([loadStations(), loadVisits()]);
   // Load visits for time period.
   // Get species summary.
 });
@@ -105,8 +147,7 @@ onMounted(async () => {
         ><select class="form-select form-select-sm" v-model="timePeriodDays">
           <option value="1">24 hours</option>
           <option value="3">3 days</option>
-          <option value="7">7 days</option>
-          <option value="30">1 month</option></select
+          <option value="7">7 days</option></select
         ><span> grouped by </span
         ><select class="form-select form-select-sm" v-model="speciesOrStations">
           <option>species</option>
@@ -132,10 +173,25 @@ onMounted(async () => {
     </div>
   </horizontal-overflow-carousel>
   <h2>Visits summary</h2>
-  <div style="background: #ccc; height: 500px" class="mb-5"></div>
+  <group-visits-summary
+    class="mb-5"
+    :stations="stationsWithRecordingsInSelectedTimeWindow"
+    :visits="predatorVisits"
+  />
 
   <h2>Stations summary</h2>
-  <div style="background: #ccc; height: 500px"></div>
+  <horizontal-overflow-carousel class="mb-5">
+    <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
+    <div class="card-group species-summary flex-nowrap">
+      <station-visit-summary
+        v-for="(station, index) in stationsWithRecordingsInSelectedTimeWindow"
+        :station="station"
+        :stations="stationsWithRecordingsInSelectedTimeWindow"
+        :visits="predatorVisits"
+        :key="index"
+      />
+    </div>
+  </horizontal-overflow-carousel>
 </template>
 <style lang="less" scoped>
 .group-name {
@@ -195,6 +251,37 @@ h2 {
     white-space: nowrap;
   }
 }
+
+.species-summary-container {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+.species-summary {
+  min-height: 68px;
+  user-select: none;
+  .card {
+    border-radius: unset;
+    border-left-width: 0;
+    border-bottom-width: 0;
+    border-top-width: 0;
+  }
+  .species-icon {
+    width: 24px;
+    background: #aaa;
+    min-height: 24px;
+  }
+  .species-summary-item {
+    padding: 2px;
+    min-width: 130px; // TODO @media breakpoints
+  }
+  .species-count {
+    font-weight: 500;
+  }
+  .species-name {
+    //font-size
+  }
+}
 </style>
 <style lang="less">
 .bi-modal-switch.form-check-input,
@@ -226,36 +313,6 @@ h2 {
   &::before {
     left: 16px;
     transform: rotate(0);
-  }
-}
-
-.species-summary-container {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-  background: white;
-}
-.species-summary {
-  min-height: 68px;
-  user-select: none;
-  .card {
-    border-radius: unset;
-    border-left-width: 0;
-    border-bottom-width: 0;
-    border-top-width: 0;
-  }
-  .species-icon {
-    width: 24px;
-    background: #aaa;
-    min-height: 24px;
-  }
-  .species-summary-item {
-    padding: 2px;
-    min-width: 130px; // TODO @media breakpoints
-  }
-  .species-count {
-    font-weight: 500;
-  }
-  .species-name {
-    //font-size
   }
 }
 </style>
