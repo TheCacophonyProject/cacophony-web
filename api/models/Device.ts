@@ -466,10 +466,27 @@ order by hour;
   };
 
   Device.prototype.updateHeartbeat = async function (nextHeartbeat: Date) {
+    const now = new Date();
+    if (this.location && this.kind !== DeviceType.Unknown) {
+      // Find the station the device was in, update its lastActiveTime.
+      const station = await tryToMatchLocationToStationInGroup(
+        this.location,
+        this.GroupId,
+        now
+      );
+      if (station) {
+        if (this.kind === DeviceType.Thermal) {
+          await station.update({ lastActiveThermalTime: now });
+        } else if (this.kind === DeviceType.Audio) {
+          await station.update({ lastActiveAudioTime: now });
+        }
+      }
+    }
+
     return this.update({
-      lastConnectionTime: new Date(),
+      lastConnectionTime: now,
       nextHeartbeat: nextHeartbeat,
-      heartbeat: new Date(),
+      heartbeat: now,
     });
   };
 

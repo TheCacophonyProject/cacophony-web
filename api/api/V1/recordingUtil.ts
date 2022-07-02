@@ -531,7 +531,6 @@ export const maybeUpdateDeviceHistory = async (
       }
     }
     if (shouldInsertLocation) {
-      logger.error("SHOULD INSERT NEW LOCATION");
       // If we are going to insert a location, then we need to match to existing stations, or create a new station
       // that is active from this point in time.
       const newDeviceHistoryEntry = {

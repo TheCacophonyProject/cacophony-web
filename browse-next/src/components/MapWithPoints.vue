@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, nextTick, onMounted, onUpdated, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
 import { useRouter } from "vue-router";
-import type { LatLng, LatLngTuple, Layer, Map as LeafletMap } from "leaflet";
+import {
+  CircleMarkerOptions,
+  latLng,
+  LatLng,
+  LatLngTuple,
+  Layer,
+  Map as LeafletMap,
+} from "leaflet";
 import {
   tileLayer,
   latLngBounds,
@@ -37,10 +44,14 @@ const {
   isInteractive = true,
   markersAreInteractive = true,
   hasAttribution = true,
+  activePoints,
+  focusedPoint,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => any;
   points: NamedPoint[];
   highlightedPoint: Ref<NamedPoint | null>;
+  activePoints?: NamedPoint[];
+  focusedPoint?: NamedPoint;
   radius?: number;
   zoom?: boolean;
   canChangeBaseMap?: boolean;
@@ -171,12 +182,30 @@ const mapLayers = [
 ];
 
 const mapBounds = computed<LatLngBounds | null>(() => {
-  // Calculate the initial map bounds and zoom level from the set of lat/lng points
-  return (
-    (points.length &&
-      latLngBounds(points.map(({ location }) => location)).pad(0.25)) ||
-    null
-  );
+  if (!activePoints) {
+    // Calculate the initial map bounds and zoom level from the set of lat/lng points
+    return (
+      (points.length &&
+        latLngBounds(points.map(({ location }) => location)).pad(0.25)) ||
+      null
+    );
+  } else {
+    if (focusedPoint) {
+      // Give the bounds 300m around the focused location.
+      return latLng(focusedPoint.location).toBounds(300);
+    }
+    if (activePoints.length > 1) {
+      return latLngBounds(activePoints.map(({ location }) => location)).pad(
+        0.25
+      );
+    }
+
+    if (activePoints.length === 1) {
+      // Give the bounds 300m around the location.
+      return latLng(activePoints[0].location).toBounds(300);
+    }
+    return null;
+  }
 });
 
 const mapLocationsForRadius = computed<NamedPoint[]>(() => {
@@ -233,34 +262,61 @@ const maybeShowAttributionForCurrentLayer = () => {
 
 const addPoints = () => {
   if (map) {
-    console.log("Adding POINTS", points.length);
     for (const [key, marker] of Object.entries(markers)) {
       map.removeLayer(marker.backgroundRadius);
       map.removeLayer(marker.foregroundMarker);
       delete markers[key];
     }
 
-    // Add the points as markers.  Remember to unload them when we leave.
+    // NOTE: If there's a focused point specified, then we want to only colour
+    //  that point - all the other points should be grey.
+
+    // Add the points as markers.
     for (const point of points) {
+      const colour: CircleMarkerOptions = {};
+      const thisPointKey = pointKey(point);
+      const isAnActivePoint =
+        activePoints && activePoints.find((p) => pointKey(p) === thisPointKey);
+      const isFocusedPoint =
+        focusedPoint && pointKey(focusedPoint) === thisPointKey;
+      if (!isAnActivePoint) {
+        colour.fillColor = "#aaa";
+      }
+      let fillOpacityMultiplier = 1;
+      let pointScaleMultiplier = 1;
+      if (!isAnActivePoint) {
+        pointScaleMultiplier = 0.5;
+        fillOpacityMultiplier = 0.85;
+      }
+      if (isAnActivePoint && focusedPoint && !isFocusedPoint) {
+        fillOpacityMultiplier = 0.5;
+      }
+      if (isFocusedPoint) {
+        pointScaleMultiplier = 1.25;
+      }
+
       const marker = {
         backgroundRadius: circle(point.location, {
           radius: 30,
           interactive: false,
-          fillOpacity: 0.25,
+          fillOpacity: 0.25 * fillOpacityMultiplier,
           fillColor: "",
           fill: true,
           stroke: false,
+          ...colour,
         }),
         foregroundMarker: circleMarker(point.location, {
-          radius: 5,
+          radius: 5 * pointScaleMultiplier,
           stroke: false,
-          fillOpacity: 1,
-          interactive: markersAreInteractive
+          fillOpacity: fillOpacityMultiplier,
+          interactive: isAnActivePoint && markersAreInteractive,
+          ...colour,
         }),
       };
       markers[pointKey(point)] = marker;
-      const tooltipText = `${point.name}`; // : ${Number(point.location.lat).toFixed(5)}, ${Number(point.location.lng).toFixed(5)}
-      if (markersAreInteractive) {
+
+      if (markersAreInteractive && isAnActivePoint) {
+        const tooltipText = `${point.name}`;
         marker.foregroundMarker
           .bindTooltip(tooltipText, {
             direction: "top",
@@ -280,11 +336,23 @@ const addPoints = () => {
       map.addLayer(marker.backgroundRadius);
       map.addLayer(marker.foregroundMarker);
     }
+    // Bring active markers to foreground:
+    if (activePoints) {
+      for (const point of activePoints) {
+        const marker = markers[pointKey(point)];
+        marker.backgroundRadius.bringToFront();
+        marker.foregroundMarker.bringToFront();
+      }
+    }
+    if (focusedPoint) {
+      const marker = markers[pointKey(focusedPoint)];
+      marker.backgroundRadius.bringToFront();
+      marker.foregroundMarker.bringToFront();
+    }
   }
 };
 
 const fitMapBounds = () => {
-  console.log("Fit map bounds", mapBounds.value);
   if (map && mapBounds.value) {
     (map as LeafletMap).fitBounds([
       (

@@ -27,6 +27,8 @@ const ignored: string[] = [
   "unidentified",
   "false-positive",
   "bird",
+  "vehicle",
+  "human",
 ];
 
 const visitorIsPredator = (visit: ApiVisitResponse) =>
@@ -91,6 +93,25 @@ const stationsWithRecordingsInSelectedTimeWindow = computed<
       return (
         station.lastThermalRecordingTime &&
         new Date(station.lastThermalRecordingTime) > earliestDate.value
+      );
+    }
+  });
+});
+
+// TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
+const stationsWithOnlineDevicesInSelectedTimeWindow = computed<
+  ApiStationResponse[]
+>(() => {
+  return stations.value.filter((station) => {
+    if (audioMode.value) {
+      return (
+        station.lastActiveAudioTime &&
+        new Date(station.lastActiveAudioTime) > earliestDate.value
+      );
+    } else {
+      return (
+        station.lastActiveThermalTime &&
+        new Date(station.lastActiveThermalTime) > earliestDate.value
       );
     }
   });
@@ -175,7 +196,8 @@ onMounted(async () => {
   <h2>Visits summary</h2>
   <group-visits-summary
     class="mb-5"
-    :stations="stationsWithRecordingsInSelectedTimeWindow"
+    :stations="stations"
+    :active-stations="stationsWithRecordingsInSelectedTimeWindow"
     :visits="predatorVisits"
   />
 
@@ -186,7 +208,8 @@ onMounted(async () => {
       <station-visit-summary
         v-for="(station, index) in stationsWithRecordingsInSelectedTimeWindow"
         :station="station"
-        :stations="stationsWithRecordingsInSelectedTimeWindow"
+        :active-stations="stationsWithRecordingsInSelectedTimeWindow"
+        :stations="stations"
         :visits="predatorVisits"
         :key="index"
       />

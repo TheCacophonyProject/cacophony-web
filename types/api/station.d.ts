@@ -34,6 +34,8 @@ export interface ApiStationResponse {
   retiredAt?: IsoFormattedDateString;
   lastThermalRecordingTime?: IsoFormattedDateString;
   lastAudioRecordingTime?: IsoFormattedDateString;
+  lastActiveThermalTime?: IsoFormattedDateString;
+  lastActiveAudioTime?: IsoFormattedDateString;
   automatic: boolean;
   settings?: ApiStationSettings;
   needsRename?: true;

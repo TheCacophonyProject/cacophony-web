@@ -27,7 +27,6 @@ import {
 import util from "@api/V1/util";
 import { openS3 } from "@models/util/util";
 import { streamS3Object } from "@api/V1/signedUrl";
-import logger from "@/logging";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -67,6 +66,14 @@ export const mapStation = (station: Station): ApiStationResponse => {
   if (station.lastThermalRecordingTime) {
     stationResponse.lastThermalRecordingTime =
       station.lastThermalRecordingTime.toISOString();
+  }
+  if (station.lastActiveAudioTime) {
+    stationResponse.lastActiveAudioTime =
+      station.lastActiveAudioTime.toISOString();
+  }
+  if (station.lastActiveThermalTime) {
+    stationResponse.lastActiveThermalTime =
+      station.lastActiveThermalTime.toISOString();
   }
   if (station.retiredAt) {
     stationResponse.retiredAt = station.retiredAt.toISOString();

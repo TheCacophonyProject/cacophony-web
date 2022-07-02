@@ -7,9 +7,10 @@ import type { NamedPoint } from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 
 // eslint-disable-next-line vue/no-setup-props-destructure
-const { station, stations, visits } = defineProps<{
+const { station, stations, visits, activeStations } = defineProps<{
   station: ApiStationResponse;
   stations: ApiStationResponse[];
+  activeStations: ApiStationResponse[];
   visits: ApiVisitResponse[];
 }>();
 
@@ -59,7 +60,22 @@ const stationsForMap = computed<NamedPoint[]>(() => {
   }
   return [];
 });
+const activeStationsForMap = computed<NamedPoint[]>(() => {
+  if (activeStations) {
+    return activeStations.map(({ name, groupName, location }) => ({
+      name,
+      group: groupName,
+      location: location as LatLng,
+    }));
+  }
+  return [];
+});
 const nullPoint = ref(null);
+const thisStationPoint = {
+  name: station.name,
+  group: station.groupName,
+  location: station.location as LatLng,
+};
 
 // NOTE: Sorting precedence for visit tags displayed as small summary icons
 const tagPrecedence = [
@@ -113,11 +129,13 @@ const speciesSummary = computed<Record<string, number>>(() => {
       <map-with-points
         :highlighted-point="() => nullPoint"
         :points="stationsForMap"
+        :active-points="activeStationsForMap"
         :is-interactive="false"
         :zoom="false"
         :can-change-base-map="false"
         :has-attribution="false"
         :markers-are-interactive="false"
+        :focused-point="thisStationPoint"
       >
       </map-with-points>
       <div class="overlay me-1">
@@ -139,10 +157,13 @@ const speciesSummary = computed<Record<string, number>>(() => {
         <div
           v-for="([species, count], index) in speciesSummary"
           :class="[species, 'species-value']"
-          :style="{width: `calc(max(5px, ${(count / maxVisitsForAnySpeciesInAnyStation) * 100}%))`}"
+          :style="{
+            width: `calc(max(5px, ${
+              (count / maxVisitsForAnySpeciesInAnyStation) * 100
+            }%))`,
+          }"
           :key="index"
-        >
-        </div>
+        ></div>
       </div>
     </div>
   </div>
