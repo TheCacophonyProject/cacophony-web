@@ -340,14 +340,18 @@ const addPoints = () => {
     if (activePoints) {
       for (const point of activePoints) {
         const marker = markers[pointKey(point)];
-        marker.backgroundRadius.bringToFront();
-        marker.foregroundMarker.bringToFront();
+        if (marker && marker.foregroundMarker.getElement()?.parentNode) {
+          marker.backgroundRadius.bringToFront();
+          marker.foregroundMarker.bringToFront();
+        }
       }
     }
     if (focusedPoint) {
       const marker = markers[pointKey(focusedPoint)];
-      marker.backgroundRadius.bringToFront();
-      marker.foregroundMarker.bringToFront();
+      if (marker && marker.foregroundMarker.getElement()?.parentNode) {
+        marker.backgroundRadius.bringToFront();
+        marker.foregroundMarker.bringToFront();
+      }
     }
   }
 };
