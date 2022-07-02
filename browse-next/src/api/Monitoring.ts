@@ -78,6 +78,8 @@ export const getAllVisitsForGroup = async (
       if (morePagesExist) {
         untilDate = new Date(pageFrom);
       }
+    } else if (response && !response.success) {
+      break;
     }
   }
   return {

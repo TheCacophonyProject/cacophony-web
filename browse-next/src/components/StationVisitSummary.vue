@@ -90,7 +90,7 @@ const tagPrecedence = [
   "leporidae",
 ];
 
-const speciesSummary = computed<Record<string, number>>(() => {
+const speciesSummary = computed<[string, number][]>(() => {
   const summary = visitsForStation.value.reduce(
     (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
       if (currentValue.classification) {

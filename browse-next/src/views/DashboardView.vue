@@ -199,6 +199,7 @@ onMounted(async () => {
     :stations="stations"
     :active-stations="stationsWithRecordingsInSelectedTimeWindow"
     :visits="predatorVisits"
+    :start-date="earliestDate"
   />
 
   <h2>Stations summary</h2>
