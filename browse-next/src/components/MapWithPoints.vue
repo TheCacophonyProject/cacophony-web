@@ -6,6 +6,7 @@ import type { Ref } from "vue";
 import { useRouter } from "vue-router";
 import {
   CircleMarkerOptions,
+  DomEvent,
   latLng,
   LatLng,
   LatLngTuple,
@@ -387,6 +388,9 @@ onMounted(() => {
   map = mapConstructor(mapElement as HTMLElement, {
     zoomControl: zoom,
     dragging: isInteractive,
+    scrollWheelZoom: isInteractive,
+    keyboard: isInteractive,
+    tap: isInteractive,
     maxZoom: 17,
     attributionControl: false,
     layers: [tileLayers[currentLayer]], // The default layer
@@ -402,6 +406,7 @@ onMounted(() => {
     const attributionToggle = new Control({
       position: "bottomleft",
     });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     attributionToggle.onAdd = (map: LeafletMap): HTMLElement => {
       const el = document.createElement("div");
       el.classList.add("leaflet-control");
@@ -409,13 +414,17 @@ onMounted(() => {
       el.classList.add("leaflet-bar");
       el.classList.add("leaflet-attribution-toggle");
       el.innerHTML = `<a class="leaflet-control-zoom-in" href="#" title="Toggle attribution" role="button" aria-label="Toggle attribution" aria-disabled="false"><span aria-hidden="true">i</span></a>`;
-      el.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        e.stopPropagation();
-        showAttribution = !showAttribution;
-        maybeShowAttributionForCurrentLayer();
-      });
+      DomEvent.addListener(el, "click", DomEvent.stopPropagation)
+        .addListener(el, "click", DomEvent.preventDefault)
+        .addListener(el, "click", () => {
+          showAttribution = !showAttribution;
+          maybeShowAttributionForCurrentLayer();
+        });
+      DomEvent.addListener(
+        el,
+        "dblclick",
+        DomEvent.stopPropagation
+      ).addListener(el, "dblclick", DomEvent.preventDefault);
       return el;
     };
     map.addControl(attributionToggle);
@@ -493,5 +502,6 @@ const leavePoint = () => {
 .leaflet-attribution-toggle {
   position: relative;
   z-index: 1001;
+  user-select: none;
 }
 </style>
