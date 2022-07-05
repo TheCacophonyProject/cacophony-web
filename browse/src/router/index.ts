@@ -150,7 +150,7 @@ function createRouter() {
         beforeEnter: cancelPendingRequests,
       },
       {
-        path: "/newpassword",
+        path: "/new-password",
         component: NewPasswordView,
         meta: {
           noAuth: true,
