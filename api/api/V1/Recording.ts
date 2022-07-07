@@ -80,6 +80,7 @@ import {
 } from "../validation-middleware";
 
 import recordingUtil, {
+  getTrackTags,
   mapPosition,
   reportRecordings,
   reportVisits,
@@ -281,9 +282,9 @@ export default (app: Application, baseUrl: string) => {
    *            <li> y - top coordinate
    *            <li> width - region width
    *            <li> height - region height
-   *            <li> mass - mass (count of non zero pixels in the filtered image
-   * of this track) <li> frame_number <li> blank - if this is a blank match i.e.
-   * from  kalman filter
+   *            <li> mass - mass (count of non zero pixels in the filtered image of this track)
+   *            <li> frame_number
+   *            <li> blank - if this is a blank match i.e. from  kalman filter
    *          </ul>
    *    <li> start_s - start time of track in seconds
    *    <li> end_s - end time of track in seconds
@@ -296,10 +297,9 @@ export default (app: Application, baseUrl: string) => {
    *      <li>(OPTIONAL) clarity - confidence between 0 - 1 of the prediction
    *      <li>(OPTIONAL) classify_time - time in seconds taken to classify
    *      <li>(OPTIONAL) prediction_frames - frames used in the predictions
-   *      <li>(OPTIONAL) predictions - array of prediction confidences for each
-   * prediction e.g. [[0,1,99,0,0,0]] <li>(OPTIONAL) label - the classified
-   * label (this may be different to the confident_tag) <li>(OPTIONAL)
-   * all_class_confidences - dictionary of confidence per class
+   *      <li>(OPTIONAL) predictions - array of prediction confidences for each prediction e.g. [[0,1,99,0,0,0]]
+   *      <li>(OPTIONAL) label - the classified label (this may be different to the confident_tag)
+   *      <li>(OPTIONAL) all_class_confidences - dictionary of confidence per class
    *  </ul>
    *  <li> models - array of models used
    *    a model object:
@@ -315,12 +315,10 @@ export default (app: Application, baseUrl: string) => {
    *     "model_name": "resnet-wallaby"
    *    },
    *   "tracks": [{
-   *     "positions":[{"x":1, "y":10, "frame_number":20, "mass": 25, "blank":
-   * false}], "start_s": 10, "end_s": 22.2, "predictions":[{"model_id":1,
-   * "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3,
-   * "classify_time": 0.6, "prediction_frames": [[0,2,3,4,5,10,12]],
-   * "predictions": [[0.6,0.3,0.1]], "label":"cat",
-   * "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
+   *     "positions":[{"x":1, "y":10, "frame_number":20, "mass": 25, "blank": false}],
+   *     "start_s": 10,
+   *     "end_s": 22.2,
+   *     "predictions":[{"model_id":1, "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3, "classify_time": 0.6, "prediction_frames": [[0,2,3,4,5,10,12]], "predictions": [[0.6,0.3,0.1]], "label":"cat", "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
    *    }],
    *    "models": [{ "id": 1, "name": "inc3" }]
    * }
@@ -332,8 +330,11 @@ export default (app: Application, baseUrl: string) => {
    * @apiBody {JSON} data Metadata about the recording.   Valid tags are:
    * <ul>
    * <li>(REQUIRED) type: 'thermalRaw', or 'audio'
-   * <li>fileHash - Optional sha1 hexadecimal formatted hash of the file to be
-   * uploaded <li>duration <li>recordingDateTime <li>location <li>version
+   * <li>fileHash - Optional sha1 hexadecimal formatted hash of the file to be uploaded
+   * <li>duration
+   * <li>recordingDateTime
+   * <li>location
+   * <li>version
    * <li>batteryCharging
    * <li>batteryLevel
    * <li>airplaneModeOn
@@ -363,8 +364,7 @@ export default (app: Application, baseUrl: string) => {
   app.post(apiUrl, extractJwtAuthorisedDevice, uploadRawRecording);
 
   /**
-   * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a
-   * new recording on behalf of device using group
+   * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a new recording on behalf of device using group
    * @apiName PostRecordingOnBehalfUsingGroup
    * @apiGroup Recordings
    * @apiDescription Called by a user to upload raw thermal video on behalf of a
@@ -403,8 +403,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/device/:deviceId Add a new recording on
-   * behalf of device
+   * @api {post} /api/v1/recordings/device/:deviceId
+   * Add a new recording on behalf of device
    * @apiName PostRecordingOnBehalf
    * @apiGroup Recordings
    * @apiDescription Called by a user to upload raw thermal video on behalf of a
@@ -440,7 +440,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/:deviceName Legacy upload on behalf of
+   * @api {post} /api/v1/recordings/:deviceName Legacy upload on behalf of a device
    * @apiName PostRecordingOnBehalfLegacy
    * @apiGroup Recordings
    * @apiDeprecated use now (#Recordings:PostRecordingOnBehalf)
@@ -484,8 +484,8 @@ export default (app: Application, baseUrl: string) => {
 
   // FIXME - Should we just delete this now?
   /**
-   * @api {get} /api/v1/recordings/visits Query available recordings and
-   * generate visits
+   * @api {get} /api/v1/recordings/visits
+   * Query available recordings and generate visits
    * @apiName QueryVisits
    * @apiGroup Recordings
    *
@@ -774,8 +774,73 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/report Generate report for a set of
-   * recordings
+   * @api {get} /api/v1/recordings/track-tags
+   * Get all track tags for a particular type of recording (thermal/audio)
+   * @apiName TrackTags
+   * @apiGroup Tracks
+   * @apiDescription On success (status 200), the response body will contain rows of track tags.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   * @apiQuery {apiQuery::RecordingType="thermalRaw"} [type] Type of recordings
+   * @apiQuery {Boolean="false"} [includeAI] Include tags from AI
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a regular user
+   * @apiQuery {String[]} [exclude] Exclude the given tags from the query
+   * @apiQuery {Number} [offset] Zero-based page number. Use '0' to get the first page.  Each page has 'limit' number of records.
+   * @apiQuery {Number} [limit] Max number of records to be returned.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} rows List of track tags.
+   * @apiSuccess {String} rows.label Name of the track tag.
+   * @apiSuccess {String} rows.labeller Name of the user who created the track tag or AI.
+   * @apiSuccess {Object} rows.group Group of the track tag.
+   * @apiSuccess {String} rows.group.id Id of the group.
+   * @apiSuccess {String} rows.group.name Name of the group.
+   * @apiSuccess {String} rows.station Station of the track tag.
+   * @apiSuccess {String} rows.station.id Id of the station.
+   * @apiSuccess {String} rows.station.name Name of the station.
+   * @apiSuccess {String} rows.device Device of the track tag.
+   * @apiSuccess {String} rows.device.id Id of the device.
+   * @apiSuccess {String} rows.device.name Name of the device.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/track-tags`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("exclude").default([]).optional().isArray(),
+      query("includeAI").default(false).isBoolean(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit").default(50000)),
+      query("type")
+        .default("thermalRaw")
+        .optional()
+        .isIn(Object.values(RecordingType)),
+      query("view-mode").optional().equals("user"),
+    ]),
+    parseJSONField(query("exclude")),
+    parseJSONField(query("includeAI")),
+    async (request: Request, response: Response) => {
+      const result = await getTrackTags(
+        response.locals.requestUser.id,
+        response.locals.viewAsSuperUser,
+        Boolean(request.query.includeAI),
+        request.query.type.toString(),
+        response.locals.exclude,
+        request.query.offset && parseInt(request.query.offset as string),
+        request.query.limit && parseInt(request.query.limit as string)
+      );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Completed query."],
+        rows: result,
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/recordings/report
+   * Generate report for a set of recordings
    * @apiName Report
    * @apiGroup Recordings
    * @apiDescription Parameters are as per GET /api/V1/recordings. On
@@ -943,8 +1008,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id/thumbnail Gets a thumbnail png for this
-   * recording
+   * @api {get} /api/v1/recordings/:id/thumbnail
+   * Gets a thumbnail png for this recording
    * @apiName RecordingThumbnail
    * @apiGroup Recordings
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
@@ -1099,8 +1164,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id/undelete Undelete an existing
-   soft-deleted recording
+   * @api {patch} /api/v1/recordings/:id/undelete 
+   * Undelete an existing soft-deleted recording
    * @apiName UndeleteRecording
    * @apiGroup Recordings
    * @apiDescription This call is used for updating deletedAt and deletedBy
@@ -1137,7 +1202,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/:id/tracks Add new track to recording
+   * @api {post} /api/v1/recordings/:id/tracks
+   * Add new track to recording
    * @apiName PostTrack
    * @apiGroup Tracks
    *
@@ -1197,7 +1263,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id/tracks Get tracks for recording
+   * @api {get} /api/v1/recordings/:id/tracks
+   * Get tracks for recording
    * @apiName GetTracks
    * @apiGroup Tracks
    * @apiDescription Get all tracks for a given recording and their tags.
@@ -1228,15 +1295,16 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id/track Get track for recording
+   * @api {get} /api/v1/recordings/:id/tracks/:trackId
+   * Get track for recording
    * @apiName GetTrack
-   * @apiGroup Track
+   * @apiGroup Tracks
    * @apiDescription Get track for a given recording and track id.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer} id Id of the recording
-   * @apiParam {Integer} trackId Id of the recording
+   * @apiParam {Integer} trackId Id of the track
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiTrackResponseSuccess} tracks
@@ -1262,8 +1330,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {delete} /api/v1/recordings/:id/tracks/:trackId Remove track from
-   * recording
+   * @api {delete} /api/v1/recordings/:id/tracks/:trackId
+   * Remove track from recording
    * @apiName DeleteTrack
    * @apiGroup Tracks
    *
@@ -1313,8 +1381,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replaceTag Adds/Replaces
-   * a Track Tag
+   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replaceTag
+   * Adds/Replaces a Track Tag
    * @apiDescription Adds or Replaces track tag based off:
    * if tag already exists for this user, ignore request
    * Add tag if it is an additional tag e.g. :Part"
@@ -1389,14 +1457,14 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/tags/:tagId Adds/Replaces  a
-   * Track Tag
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/tags/:tagId
+   * Updates a Track Tag with new request body
    * @apiDescription Adds or Replaces track tag based off:
    * if tag already exists for this user, ignore request
    * Add tag if it is an additional tag e.g. :Part"
    * Add tag if this user hasn't already tagged this track
    * Replace existing tag, if user has an existing animal tag
-   * @apiName PostTrackTag
+   * @apiName PatchTrackTag
    * @apiGroup Tracks
    *
    * @apiUse V1UserAuthorizationHeader
@@ -1407,6 +1475,7 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiInterface {apiBody::ApiRecordingUpdateRequestBody} updates Object
    * containing the fields to update and their new values.
+   * @apiBody {JSON} [updates] Data containg attributes for tag.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
@@ -1447,8 +1516,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/undelete Undelete an existing
-   soft-deleted track
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/undelete 
+   * Undelete an existing soft-deleted track
    * @apiName UndeleteTrack
    * @apiGroup Recordings
    * @apiDescription This call is used for updating archived of a previously
@@ -1478,7 +1547,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/:id/tracks/:trackId/tags Add tag to track
+   * @api {post} /api/v1/recordings/:id/tracks/:trackId/tags
+   * Add tag to track
    * @apiName PostTrackTag
    * @apiGroup Tracks
    *
@@ -1624,8 +1694,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {delete} /api/v1/recordings/:id/tags/:tagId Delete an existing
-   * recording tag
+   * @api {delete} /api/v1/recordings/:id/tags/:tagId
+   * Delete an existing recording tag
    * @apiName DeleteRecordingTag
    * @apiGroup Recordings
    *
@@ -1650,7 +1720,8 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {post} /api/v1/recordings/:id/tags Add a new recording tag
+   * @api {post} /api/v1/recordings/:id/tags
+   * Add a new recording tag
    * @apiName AddRecordingTag
    * @apiGroup Recordings
    *

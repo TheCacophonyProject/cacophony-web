@@ -27,15 +27,16 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent, PropType } from "@vue/composition-api";
 import SelectDate from "./SelectDate.vue";
 
-export default {
+export default defineComponent({
   name: "SelectDateRange",
   components: { SelectDate },
   props: {
     value: {
-      type: Object,
+      type: Object as PropType<{ days: string; from?: string; to?: string }>,
       required: true,
     },
   },
@@ -43,7 +44,7 @@ export default {
     return {
       toDate: "",
       fromDate: "",
-      dateRange: 30,
+      dateRange: "30",
       options: [
         {
           value: 1,
@@ -86,7 +87,12 @@ export default {
   },
   computed: {
     serialisedData: function () {
-      const dateData = {};
+      const dateData: {
+        days?: number;
+        from?: string;
+        to?: string;
+        description?: string;
+      } = {};
       if (this.dateRange === "custom") {
         dateData.from = this.fromDate;
         dateData.to = this.toDate;
@@ -143,5 +149,5 @@ export default {
       this.deserialise(val);
     },
   },
-};
+});
 </script>

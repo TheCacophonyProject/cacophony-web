@@ -83,6 +83,7 @@
 
 <script lang="ts">
 import api from "@/api";
+import { defineComponent, PropType } from "@vue/composition-api";
 
 const disambiguateDeviceNames = (devices) => {
   // If devices have name collisions, add the groupName:
@@ -133,20 +134,20 @@ const disambiguateStationNames = (stations) => {
   return stations;
 };
 
-export default {
+export default defineComponent({
   name: "SelectDevice",
   props: {
     selectedDevices: {
-      type: Array,
+      type: Array as PropType<string[]>,
       required: true,
     },
     selectedGroups: {
-      type: Array,
+      type: Array as PropType<string[]>,
       required: true,
     },
     selectedStations: {
-      type: Array,
-      default: () => [],
+      type: Array as PropType<string[]>,
+      default: () => [] as string[],
     },
   },
   data() {
@@ -210,7 +211,7 @@ export default {
     async maybeInitialiseValues() {
       await this.loadValues();
     },
-    async loadValues(onLoad: boolean = false) {
+    async loadValues(onLoad = false) {
       this.fetching = true;
       if (onLoad) {
         // Just load information about the groups, devices and stations in the
@@ -225,7 +226,9 @@ export default {
           loadGroupPromises.push(api.groups.getGroupById(groupId));
         }
         for (const stationId of this.selectedStations) {
-          loadStationPromises.push(api.groups.getStationById(stationId));
+          loadStationPromises.push(
+            api.station.getStationById(stationId as number)
+          );
         }
         const [devicesResponses, groupsResponses, stationsResponses] =
           await Promise.all([
@@ -352,6 +355,7 @@ export default {
       this.fetching = false;
     },
   },
+  emits: ["update-device-selection"],
   async created() {
     if (
       this.selectedStations.length ||
@@ -361,7 +365,7 @@ export default {
       await this.loadValues(true);
     }
   },
-};
+});
 </script>
 <style scoped>
 .tag,

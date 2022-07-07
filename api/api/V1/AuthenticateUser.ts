@@ -399,11 +399,16 @@ export default function (app: Application, baseUrl: string) {
       oneOf([
         validNameOf(body("userName")), // TODO - Remove userName from this once browse-next is live
         body("email").isEmail(),
+        validNameOf(body("nameOrEmail")),
+        body("nameOrEmail").isEmail(),
       ]),
     ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body(["email", "userName"])),
+    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
+      body(["username", "userName", "nameOrEmail", "email"])
+    ),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
+        debugger;
         const user = response.locals.user as User;
         // If we're using the new end-point, make sure the user has confirmed their email address.
         const isNewEndpoint = request.path.endsWith("reset-password");

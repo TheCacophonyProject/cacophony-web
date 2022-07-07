@@ -6,6 +6,7 @@ import {
   TrackId,
   TrackTagId,
 } from "@typedefs/api/common";
+import { RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackRequest, ApiTrackResponse } from "@typedefs/api/track";
@@ -168,6 +169,22 @@ export interface RecordingQuery {
   hideFiltered?: boolean;
   countAll?: boolean;
   order?: any; // TODO - It's not clear what order accepts (it's a sequelize thing), but nobody seems to use it right now.
+  where?: string;
+}
+
+export interface TrackTagRow {
+  group: { id: number; name: string };
+  station: { id: number; name: string };
+  device: { id: number; name: string };
+  label: string;
+  labeller: string;
+}
+
+export interface TrackTagQuery {
+  type: RecordingType;
+  exclude?: string[];
+  offset?: number;
+  limit?: number;
 }
 
 const apiPath = "/api/v1/recordings";
@@ -177,6 +194,17 @@ function query(
 ): Promise<FetchResult<QueryResult<ApiRecordingResponse>>> {
   return CacophonyApi.get(
     `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
+  );
+}
+
+function queryTrackTags(
+  params: TrackTagQuery
+): Promise<FetchResult<QueryResult<TrackTagRow>>> {
+  if (!shouldViewAsSuperUser()) {
+    params["view-mode"] = "user";
+  }
+  return CacophonyApi.get(
+    `${apiPath}/track-tags?${querystring.stringify({ ...params })}`
   );
 }
 
@@ -296,7 +324,7 @@ function queryCount(
 
 function id(
   id: RecordingId,
-  deleted: boolean = false
+  deleted = false
 ): Promise<
   FetchResult<{
     recording: ApiRecordingResponse;
@@ -529,6 +557,7 @@ export function latestForDevice(
 
 export default {
   query,
+  queryTrackTags,
   queryVisits,
   queryCount,
   id,

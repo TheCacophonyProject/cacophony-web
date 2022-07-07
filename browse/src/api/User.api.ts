@@ -2,6 +2,7 @@ import CacophonyApi from "./CacophonyApi";
 import { FetchResult, JwtToken } from "@api/Recording.api";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { UserId } from "@typedefs/api/common";
+import { UserGlobalPermission } from "@typedefs/api/consts";
 
 function login(
   usernameOrEmail: string,
@@ -65,6 +66,33 @@ function list(): Promise<
   FetchResult<{ usersList: ApiLoggedInUserResponse[] }>
 > {
   return CacophonyApi.get("/api/v1/listUsers");
+}
+
+interface UserData {
+  id: number;
+  userName: string;
+  email: string;
+  firstname?: string;
+  lastname?: string;
+  globalPermission: UserGlobalPermission;
+  endUserAgreement: number;
+  emailConfirmed: boolean;
+  settings?: {
+    reports: object;
+    savedSearchQueries: object[];
+    displayMode: object;
+    viewAsSuperUser: boolean;
+    currentSelectedGroup?: {
+      groupName: string;
+      id: number;
+    };
+  };
+}
+
+function getUserDetails(
+  id: string
+): Promise<FetchResult<{ userData: UserData }>> {
+  return CacophonyApi.get(`/api/v1/users/${id}`);
 }
 
 function persistUser(
@@ -134,6 +162,7 @@ export default {
   updateFields,
   persistFields,
   getEUAVersion,
+  getUserDetails,
   token,
   reset,
   validateToken,
