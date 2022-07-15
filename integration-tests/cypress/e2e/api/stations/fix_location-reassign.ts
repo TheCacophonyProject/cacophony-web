@@ -8,15 +8,13 @@ import { LatLng } from "@typedefs/api/common";
 
 import { getCreds } from "@commands/server";
 import {
-  HTTP_OK200,
   NOT_NULL,
   NOT_NULL_STRING,
-  HTTP_Forbidden,
 } from "@commands/constants";
 import { TEMPLATE_THERMAL_RECORDING_RESPONSE } from "@commands/dataTemplate";
 import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
 import { getTestName } from "@commands/names";
-import { DeviceType } from "@typedefs/api/consts";
+import {DeviceType, HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
 import { ApiStationResponse } from "@typedefs/api/station";
 
 const templateExpectedCypressRecording: ApiThermalRecordingResponse =

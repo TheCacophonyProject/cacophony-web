@@ -9,8 +9,6 @@ import { TestCreateExpectedDevice } from "@commands/api/device";
 import { getCreds } from "@commands/server";
 import {
   EXCLUDE_IDS,
-  HTTP_OK200,
-  HTTP_Forbidden,
   NOT_NULL,
   NOT_NULL_STRING,
 } from "@commands/constants";
@@ -20,7 +18,7 @@ import {
 } from "@commands/dataTemplate";
 import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
 import { getTestName } from "@commands/names";
-import { DeviceType } from "@typedefs/api/consts";
+import {DeviceType, HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
 let count = 0;
 let group: string;
 const baseGroup: string = "station_use_case_group";

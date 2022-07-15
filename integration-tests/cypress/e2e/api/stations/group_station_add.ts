@@ -5,13 +5,12 @@ import { getTestName } from "@commands/names";
 import {
   NOT_NULL,
   NOT_NULL_STRING,
-  HTTP_OK200,
-  HTTP_Unprocessable,
 } from "@commands/constants";
 import {
   TestCreateStationData,
   TestCreateExpectedStation,
 } from "@commands/api/station";
+import {HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("Stations: adding", () => {
   const TemplateExpectedStation: ApiStationResponse = {

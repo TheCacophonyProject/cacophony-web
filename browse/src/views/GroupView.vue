@@ -19,7 +19,11 @@
       </p>
     </b-jumbotron>
     <tab-list v-model="currentTabIndex" v-if="group && devices.length">
-      <tab-list-item lazy title="Manual uploads" v-if="isGroupAdmin">
+      <tab-list-item
+        lazy
+        title="Manual uploads"
+        v-if="isGroupAdmin && hasAudioOrUnknownDevices"
+      >
         <ManualRecordingUploads :devices="devices" />
       </tab-list-item>
       <tab-list-item lazy v-if="isGroupAdmin">
@@ -132,6 +136,7 @@ import GroupLink from "@/components/GroupLink.vue";
 import TabListItem from "@/components/TabListItem.vue";
 import TabList from "@/components/TabList.vue";
 import ManualRecordingUploads from "@/components/ManualRecordingUploads.vue";
+import { ApiDeviceResponse } from "@typedefs/api/device";
 
 interface GroupViewData {
   group: ApiGroupResponse | null;
@@ -184,16 +189,35 @@ export default {
     isGroupAdmin() {
       return this.group && (this.group as ApiGroupResponse).admin;
     },
+    hasAudioOrUnknownDevices() {
+      const hasAudio = (this.devices as ApiDeviceResponse[]).some(
+        (device) => device.type === DeviceType.Audio
+      );
+      const hasUnknown = (this.devices as ApiDeviceResponse[]).some(
+        (device) => device.type === DeviceType.Unknown
+      );
+      return hasAudio || hasUnknown;
+    },
     tabNames() {
       if (this.isGroupAdmin) {
-        return [
-          "manual-uploads",
-          "users",
-          "visits",
-          "devices",
-          "stations",
-          "recordings",
-        ];
+        if (this.hasAudioOrUnknownDevices) {
+          return [
+            "manual-uploads",
+            "users",
+            "visits",
+            "devices",
+            "stations",
+            "recordings",
+          ];
+        } else {
+          return [
+            "users",
+            "visits",
+            "devices",
+            "stations",
+            "recordings",
+          ];
+        }
       }
       return ["visits", "devices", "stations", "recordings"];
     },

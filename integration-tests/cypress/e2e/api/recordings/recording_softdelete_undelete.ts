@@ -1,8 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
-  HTTP_OK200,
   EXCLUDE_IDS_ARRAY,
 } from "@commands/constants";
 
@@ -23,6 +20,7 @@ import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
+import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 //Note: Disabled checking DATA as that would require creating a model and associating
 //model name and id, and that can only be done through processing API

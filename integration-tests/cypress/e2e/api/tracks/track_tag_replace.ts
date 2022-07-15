@@ -1,8 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
-  HTTP_BadRequest,
   NOT_NULL_STRING,
   NOT_NULL,
 } from "@commands/constants";
@@ -25,6 +22,7 @@ import {
   TEMPLATE_EXPECTED_AUDIO_TRACK,
   TEMPLATE_THERMAL_RECORDING,
 } from "@commands/dataTemplate";
+import {HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = [
   "[].id",

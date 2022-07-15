@@ -1,9 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_BadRequest, HTTP_Unprocessable } from "@commands/constants";
 
 import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestName } from "@commands/names";
+import {HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("User: update", () => {
   before(() => {});

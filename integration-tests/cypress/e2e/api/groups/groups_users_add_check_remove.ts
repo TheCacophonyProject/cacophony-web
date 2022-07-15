@@ -3,12 +3,8 @@
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
-import {
-  HTTP_OK200,
-  HTTP_Forbidden,
-  HTTP_BadRequest,
-} from "@commands/constants";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
+import {HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
 
 describe("Groups - add, check and remove users", () => {
   const ADMIN = true;

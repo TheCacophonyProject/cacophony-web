@@ -1,9 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_Unprocessable,
   EXCLUDE_IDS,
 } from "@commands/constants";
 
@@ -22,6 +18,7 @@ import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
+import {HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("Recordings - parameter tests", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(

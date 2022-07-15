@@ -1,9 +1,10 @@
-import { CurrentViewAbortController } from "@/router";
-import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
-import type { LoggedInUser } from "@/models/LoggedInUser";
-import type { ErrorResult, FetchResult } from "@api/types";
-import { reactive } from "vue";
-import { delayMsThen } from "@/utils";
+import {CurrentViewAbortController} from "@/router";
+import type {LoggedInUser} from "@/models/LoggedInUser";
+import {CurrentUser, userIsLoggedIn} from "@/models/LoggedInUser";
+import type {ErrorResult, FetchResult} from "@api/types";
+import {reactive} from "vue";
+import {delayMsThen} from "@/utils";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 const lastApiVersion: string | null = null;
 
@@ -101,7 +102,7 @@ export async function fetch<T>(
         ],
         errorType: "Client",
       } as ErrorResult,
-      status: 500,
+      status: HttpStatusCode.ServerError,
       success: false,
     };
   }
@@ -113,7 +114,7 @@ export async function fetch<T>(
         messages: ["You must be logged in to access this API."],
         errorType: "Client",
       },
-      status: 401,
+      status: HttpStatusCode.AuthorizationError,
       success: false,
     };
   }
@@ -122,6 +123,9 @@ export async function fetch<T>(
     const lastApiVersion = window.localStorage.getItem("last-api-version");
     if (lastApiVersion && lastApiVersion !== result.cwVersion) {
       // TODO - could show a user prompt rather than just refreshing?
+
+      // TODO - Do we need to actually log the user out, in case there have been changes to the structure
+      //  of the user object stored, and we need to get it again?  Or we could just re-fetch the user info before we reload?
       window.localStorage.setItem("last-api-version", result.cwVersion.version);
       return window.location.reload();
     }

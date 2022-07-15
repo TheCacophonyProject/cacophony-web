@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
   NOT_NULL_STRING,
 } from "@commands/constants";
 
@@ -15,6 +13,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
+import {HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 const EXCLUDE_TAG_IDS = ["[].id"];
 

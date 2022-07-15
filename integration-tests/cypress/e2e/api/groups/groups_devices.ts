@@ -4,12 +4,10 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import {
-  HTTP_OK200,
-  HTTP_Forbidden,
   NOT_NULL_STRING,
 } from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType } from "@typedefs/api/consts";
+import {DeviceType, HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
 
 describe("Groups - get devices for group", () => {
   const NOT_ADMIN = false;

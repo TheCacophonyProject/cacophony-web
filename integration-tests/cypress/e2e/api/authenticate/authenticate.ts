@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_AuthorizationError, HTTP_Forbidden } from "@commands/constants";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
+import {HTTP_AuthorizationError, HTTP_Forbidden} from "@typedefs/api/consts";
 
 describe("Authentication", () => {
   const superuser = getCreds("superuser")["name"];

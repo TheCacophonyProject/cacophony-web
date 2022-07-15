@@ -1,16 +1,13 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_BadRequest,
-  LATEST_END_USER_AGREEMENT,
-  HTTP_Unprocessable,
+  LATEST_END_USER_AGREEMENT
 } from "@commands/constants";
 
 import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
+import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("User: add, get", () => {
   const superuser = getCreds("superuser")["name"];

@@ -14,8 +14,6 @@ import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { getCreds } from "@commands/server";
 import {
   EXCLUDE_IDS,
-  HTTP_Forbidden,
-  HTTP_OK200,
   NOT_NULL,
   NOT_NULL_STRING,
 } from "@commands/constants";
@@ -25,7 +23,7 @@ import {
 } from "@commands/dataTemplate";
 import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
-import { DeviceType } from "@typedefs/api/consts";
+import {DeviceType, HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
 
 const dayZero = new Date();
 const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));

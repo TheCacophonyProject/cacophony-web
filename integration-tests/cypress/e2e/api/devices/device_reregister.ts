@@ -1,15 +1,12 @@
 /// <reference path="../../../support/index.d.ts" />
 
 import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
   NOT_NULL_STRING,
 } from "@commands/constants";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType } from "@typedefs/api/consts";
+import {DeviceType, HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
 import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 

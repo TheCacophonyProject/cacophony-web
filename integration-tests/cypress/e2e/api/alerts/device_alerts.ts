@@ -5,13 +5,7 @@ import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { createExpectedAlert } from "@commands/api/alerts";
 import { createExpectedEvent } from "@commands/api/events";
 
-import {
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_Unprocessable,
-} from "@commands/constants";
-
-import { RecordingProcessingState } from "@typedefs/api/consts";
+import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable, RecordingProcessingState} from "@typedefs/api/consts";
 
 describe("Devices alerts", () => {
   const POSSUM_ALERT: ApiAlertCondition[] = [

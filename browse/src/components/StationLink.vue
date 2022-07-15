@@ -64,7 +64,7 @@ export default {
       return "station";
     },
     params() {
-      if (typeof this.context !== "undefined" && this.context !== "") {
+      if (typeof this.context !== "undefined" && this.context.trim() !== "") {
         if (this.stationId) {
           return {
             groupName: this.groupName,

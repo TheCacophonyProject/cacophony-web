@@ -4,12 +4,7 @@ import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { ApiEventReturned } from "@commands/types";
-
-import {
-  HTTP_Unprocessable,
-  HTTP_OK200,
-  HTTP_Forbidden,
-} from "@commands/constants";
+import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("Events - query events", () => {
   const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values

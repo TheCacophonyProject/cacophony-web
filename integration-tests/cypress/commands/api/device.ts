@@ -13,11 +13,11 @@ import {
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { ApiDevicesDevice, DeviceHistoryEntry, TestNameAndId } from "../types";
-import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
+import { NOT_NULL, NOT_NULL_STRING } from "../constants";
 import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
-import { DeviceType } from "@typedefs/api/consts";
+import {DeviceType, HTTP_OK200} from "@typedefs/api/consts";
 
 Cypress.Commands.add(
   "apiDeviceAdd",

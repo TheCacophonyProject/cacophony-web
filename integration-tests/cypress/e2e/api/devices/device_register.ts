@@ -6,13 +6,9 @@ import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 
 import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_Unprocessable,
   NOT_NULL_STRING,
 } from "@commands/constants";
-import { DeviceType } from "@typedefs/api/consts";
+import {DeviceType, HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("Device register", () => {
   const camsGroup = "cams";

@@ -7,7 +7,7 @@ import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { ApiPowerEventReturned } from "@commands/types";
-import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
+import {HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("Events - query power events", () => {
   const time1 = "2018-01-01T07:22:56.000Z";

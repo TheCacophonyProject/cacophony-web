@@ -1,12 +1,12 @@
 /// <reference path="../../../support/index.d.ts" />
 
 import { getTestName } from "@/commands/names";
-import { HTTP_Forbidden, HTTP_Unprocessable } from "@/commands/constants";
 import {
   ApiEventErrorSimilar,
   ApiEventError,
   ApiEventErrorCategory,
 } from "@/commands/types";
+import {HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 //
 // This test set checks for errors reported against device services

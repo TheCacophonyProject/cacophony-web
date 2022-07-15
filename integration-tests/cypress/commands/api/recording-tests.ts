@@ -24,7 +24,6 @@ import {
 } from "../types";
 
 import {
-  HTTP_OK200,
   NOT_NULL,
   NOT_NULL_STRING,
   filtered_tags,
@@ -32,7 +31,7 @@ import {
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {HTTP_OK200, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
 import { LatLng, RecordingId } from "@typedefs/api/common";
 
 const BASE_URL = Cypress.env("base-url-returned-in-links");

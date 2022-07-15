@@ -5,9 +5,6 @@ import { getTestName } from "@commands/names";
 import {
   NOT_NULL,
   NOT_NULL_STRING,
-  HTTP_OK200,
-  HTTP_Unprocessable,
-  HTTP_Forbidden,
 } from "@commands/constants";
 import {
   TestCreateStationData,
@@ -17,6 +14,7 @@ import {
 } from "@commands/api/station";
 
 import { ApiStationData } from "@commands/types";
+import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("Stations: updating", () => {
   const TemplateExpectedStation: ApiStationResponse = {

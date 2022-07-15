@@ -8,10 +8,7 @@ import {
 } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-
-import { HTTP_OK200 } from "@commands/constants";
-import { HTTP_Unprocessable } from "@commands/constants";
-import { HTTP_Forbidden } from "@commands/constants";
+import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("Groups - add, get group", () => {
   const NOT_ADMIN = false;

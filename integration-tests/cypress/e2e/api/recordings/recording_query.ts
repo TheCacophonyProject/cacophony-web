@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_OK200,
-  HTTP_Unprocessable,
   EXCLUDE_IDS_ARRAY,
 } from "@commands/constants";
 import {
@@ -24,7 +22,7 @@ import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {HTTP_OK200, HTTP_Unprocessable, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];

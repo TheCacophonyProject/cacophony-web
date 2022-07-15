@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
   EXCLUDE_IDS,
 } from "@commands/constants";
 
@@ -14,7 +12,7 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingType } from "@typedefs/api/consts";
+import {HTTP_Forbidden, HTTP_Unprocessable, RecordingType} from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
   TEMPLATE_THERMAL_RECORDING,

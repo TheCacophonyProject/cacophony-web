@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_Forbidden,
-  HTTP_OK200,
   NOT_NULL_STRING,
   NOT_NULL,
 } from "@commands/constants";
@@ -12,7 +10,7 @@ import { getTestName } from "@commands/names";
 
 import { ApiRecordingNeedsTagReturned } from "@commands/types";
 
-import { RecordingType } from "@typedefs/api/consts";
+import {HTTP_Forbidden, HTTP_OK200, RecordingType} from "@typedefs/api/consts";
 
 import {
   TestCreateRecordingData,

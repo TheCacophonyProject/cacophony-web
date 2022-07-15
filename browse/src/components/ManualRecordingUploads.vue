@@ -2,16 +2,12 @@
   <div class="container" style="padding: 0">
     <h2>Manually upload recordings</h2>
     <div>
-      <p>
-        Upload audio recordings from a bird monitor, or thermal recordings from
-        a camera. For thermal recordings, the cameras that made the recordings
-        must belong to this group.
-      </p>
+      <p>Upload audio recordings from a bird monitor.</p>
       <b-form-file
         multiple
         :accept="deviceTypesForGroup"
         @input="selectedFiles"
-        placeholder="Select audio and thermal recordings"
+        placeholder="Select audio recordings"
         v-model="files"
       />
       <div
@@ -101,25 +97,7 @@ export default {
       return this.deviceTypesForGroup.includes("m4a");
     },
     deviceTypesForGroup(): string {
-      const hasThermal = (this.devices as ApiDeviceResponse[]).some(
-        (device) => device.type === DeviceType.Thermal
-      );
-      const hasAudio = (this.devices as ApiDeviceResponse[]).some(
-        (device) => device.type === DeviceType.Audio
-      );
-      const hasUnknown = (this.devices as ApiDeviceResponse[]).some(
-        (device) => device.type === DeviceType.Unknown
-      );
-      if (
-        (hasThermal && hasAudio) ||
-        ((hasThermal || hasAudio) && hasUnknown)
-      ) {
-        return ".cptv, .m4a";
-      } else if (hasThermal) {
-        return ".cptv";
-      } else {
-        return ".m4a";
-      }
+      return ".m4a";
     },
     someFilesAreAudio(): boolean {
       return this.fileList.some((item) => item.type === "audio");

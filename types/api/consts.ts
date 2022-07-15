@@ -62,3 +62,19 @@ export enum UserGlobalPermission {
   Read = "read",
   Off = "off",
 }
+
+export const HTTP_AuthorizationError = 401;
+export const HTTP_Forbidden = 403;
+export const HTTP_BadRequest = 400;
+export const HTTP_Unprocessable = 422;
+export const HTTP_OK200 = 200;
+
+export enum HttpStatusCode {
+  OK200 = 200,
+  NotModified = 301,
+  BadRequest = 400,
+  AuthorizationError = 401,
+  Forbidden = 403,
+  Unprocessable = 422,
+  ServerError = 500,
+}

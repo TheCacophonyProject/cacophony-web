@@ -27,9 +27,9 @@ const getVisitsForGroup = async (
   if (!shouldViewAsSuperUser) {
     params.append("view-mode", "user");
   }
-  return CacophonyApi.get(
+  return (await CacophonyApi.get(
     `/api/v1/monitoring/page?${params.toString()}`
-  ) as Promise<FetchResult<VisitsQueryResult>>;
+  )) as FetchResult<VisitsQueryResult>;
 };
 
 export const getAllVisitsForGroup = async (
@@ -66,11 +66,8 @@ export const getAllVisitsForGroup = async (
       returnVisits.push(...visits);
       morePagesExist = pagesEstimate > 1;
       if (progressUpdaterFn) {
-        if (numPagesEstimate !== 0) {
-          progressUpdaterFn(requestNumber / numPagesEstimate);
-        } else {
-          progressUpdaterFn(1);
-        }
+        // Handle dividing by Infinity
+        progressUpdaterFn(Math.min(1, requestNumber / numPagesEstimate));
       }
       if (!pageFrom) {
         break;

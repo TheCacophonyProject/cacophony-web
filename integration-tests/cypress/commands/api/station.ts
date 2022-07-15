@@ -7,7 +7,6 @@ import { ApiStationData } from "../types";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getTestName } from "../names";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { HTTP_OK200 } from "../constants";
 import {
   getCreds,
   makeAuthorizedRequestWithStatus,
@@ -18,6 +17,7 @@ import {
   checkMessages,
   checkWarnings,
 } from "../server";
+import {HTTP_OK200} from "@typedefs/api/consts";
 
 Cypress.Commands.add(
   "apiStationsCheck",

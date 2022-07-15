@@ -19,8 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "@log";
 import jwt from "jsonwebtoken";
 import config from "@config";
-import { Response } from "express";
-import { CACOPHONY_WEB_VERSION } from "@/Globals";
+import {Response} from "express";
+import {CACOPHONY_WEB_VERSION} from "@/Globals";
+import {HttpStatusCode} from "@/../types/api/consts";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";
@@ -32,22 +33,27 @@ const INVALID_DATAPOINT_UPLOAD_REQUEST =
 const INVALID_DATAPOINT_UPDATE_REQUEST =
   "Request for updating a datapoint was invalid.";
 
-function send(response: Response, data: any) {
+function send(response: Response, data: { statusCode: HttpStatusCode; messages: string[] } & Record<string, any>) {
   // Check that the data is valid.
+
   if (
     typeof data !== "object" ||
     typeof data.statusCode !== "number" ||
     typeof data.messages !== "object"
   ) {
     // Respond with server error if data is invalid.
-    return serverError(response, data);
+    return response.status(HttpStatusCode.ServerError).json({
+      messages: data.messages,
+      success: false,
+      cwVersion: CACOPHONY_WEB_VERSION.version,
+    });
   }
-  const statusCode = data.statusCode;
-  data.success = 200 <= statusCode && statusCode <= 299;
   if (CACOPHONY_WEB_VERSION.version !== "unknown") {
     // In production, we add the cacophony-web version to each request
-    data.cwVersion = CACOPHONY_WEB_VERSION.version;
+    (data as any).cwVersion = CACOPHONY_WEB_VERSION.version;
   }
+  const statusCode = data.statusCode;
+  (data as any).success = 200 <= statusCode && statusCode <= 299;
   delete data.statusCode;
   return response.status(statusCode).json(data);
 }
@@ -61,13 +67,13 @@ function invalidDatapointUpdate(response: Response, message: string) {
 }
 
 function badRequest(response: Response, messages: string[]) {
-  send(response, { statusCode: 400, messages });
+  send(response, { statusCode: HttpStatusCode.BadRequest, messages });
 }
 
 //======VALID REQUESTS=========
 function validRecordingUpload(response, idOfRecording, message = "") {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.OK200,
     messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
     recordingId: idOfRecording,
   });
@@ -75,7 +81,7 @@ function validRecordingUpload(response, idOfRecording, message = "") {
 
 function validAudiobaitUpload(response, id, message = "") {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.OK200,
     messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
     id,
   });
@@ -83,7 +89,7 @@ function validAudiobaitUpload(response, id, message = "") {
 
 function validFileUpload(response, key) {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.OK200,
     messages: [VALID_DATAPOINT_UPLOAD_REQUEST],
     fileKey: key,
   });
@@ -91,22 +97,22 @@ function validFileUpload(response, key) {
 
 function validDatapointUpdate(response) {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.OK200,
     messages: [VALID_DATAPOINT_UPDATE_REQUEST],
   });
 }
 
 function validDatapointGet(response, result) {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.OK200,
     messages: [VALID_DATAPOINT_GET_REQUEST],
-    result: result,
+    result,
   });
 }
 
 function validFileRequest(response, data) {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.OK200,
     messages: [VALID_FILE_REQUEST],
     jwt: jwt.sign(data, config.server.passportSecret, { expiresIn: 60 * 10 }),
   });
@@ -118,8 +124,9 @@ function serverError(
   message = "Server error. Sorry!"
 ) {
   log.error("SERVER ERROR: %s, %s", err.toString(), err.stack);
-  return response.status(500).json({
-    messages: [message],
+  send(response, {
+    statusCode: HttpStatusCode.ServerError,
+    messages: [message]
   });
 }
 

@@ -7,10 +7,8 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState } from "@typedefs/api/consts";
+import {HTTP_Forbidden, HTTP_Unprocessable, RecordingProcessingState} from "@typedefs/api/consts";
 import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
   EXCLUDE_IDS,
 } from "@commands/constants";
 import {

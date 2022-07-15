@@ -9,14 +9,17 @@ import {
 } from "@commands/api/recording-tests";
 import { getCreds } from "@commands/server";
 import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_OK200,
   NOT_NULL_STRING,
   EXCLUDE_IDS,
 } from "@commands/constants";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  HTTP_BadRequest,
+  HTTP_Forbidden,
+  HTTP_OK200,
+  RecordingProcessingState,
+  RecordingType
+} from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_PROCESSING,

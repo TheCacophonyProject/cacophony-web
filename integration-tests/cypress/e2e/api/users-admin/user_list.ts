@@ -1,10 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_Forbidden, HTTP_OK200 } from "@commands/constants";
 
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import { ApiUserResponse } from "@typedefs/api/user";
+import {HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
 
 const expectedUser1 = {} as ApiUserResponse;
 const expectedUser2 = {} as ApiUserResponse;

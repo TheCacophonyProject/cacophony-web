@@ -2,13 +2,14 @@
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
-import { NOT_NULL, NOT_NULL_STRING, HTTP_Forbidden } from "@commands/constants";
+import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import {
   TestCreateStationData,
   TestCreateExpectedStation,
   TestGetLocation,
 } from "@commands/api/station";
 import { ApiStationData } from "@commands/types";
+import {HTTP_Forbidden} from "@typedefs/api/consts";
 
 describe("Stations: permissions", () => {
   const superuser = getCreds("superuser")["name"];

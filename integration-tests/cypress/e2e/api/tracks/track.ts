@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
   NOT_NULL_STRING,
 } from "@commands/constants";
 
@@ -22,6 +20,7 @@ import {
   TEMPLATE_TRACK,
   TEMPLATE_EXPECTED_TRACK,
 } from "@commands/dataTemplate";
+import {HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = ["[].id"];
 

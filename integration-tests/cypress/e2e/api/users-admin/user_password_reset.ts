@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_AuthorizationError } from "@commands/constants";
 
 import { getTestName } from "@commands/names";
+import {HTTP_AuthorizationError} from "@typedefs/api/consts";
 
 describe("User: password reset", () => {
   //Do not run against a live server as we don't have a stubbed email server

@@ -20,7 +20,7 @@ const testToken = ref("");
 onBeforeMount(async () => {
   // Get an email confirmation token for testing.
   const tokenResponse = await debugGetEmailConfirmationToken("admin@email.com");
-  if (tokenResponse.success) {
+  if (tokenResponse.status === ) {
     testToken.value = tokenResponse.result.token.replace(/\./g, ":");
   }
 

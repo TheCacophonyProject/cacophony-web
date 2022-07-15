@@ -3,8 +3,7 @@
 import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-
-import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
+import {HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; //do not check eventId or createdAt time
 

@@ -1,8 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
 import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
   EXCLUDE_IDS,
 } from "@commands/constants";
 
@@ -17,6 +14,7 @@ import {
   TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_AUDIO_RECORDING,
 } from "@commands/dataTemplate";
+import {HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
 describe("Recordings - audio recording parameter tests", () => {
   const templateExpectedRecording: ApiAudioRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)

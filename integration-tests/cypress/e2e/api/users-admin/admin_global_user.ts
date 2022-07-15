@@ -1,16 +1,11 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_Unprocessable,
-} from "@commands/constants";
 
 import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType } from "@typedefs/api/consts";
+import {DeviceType, HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
 
 describe("User: manage global access permissions", () => {
   const superuser = getCreds("superuser")["name"];
