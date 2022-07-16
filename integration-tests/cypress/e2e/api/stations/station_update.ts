@@ -14,7 +14,7 @@ import {
 } from "@commands/api/station";
 
 import { ApiStationData } from "@commands/types";
-import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 describe("Stations: updating", () => {
   const TemplateExpectedStation: ApiStationResponse = {
@@ -77,7 +77,7 @@ describe("Stations: updating", () => {
       "stuStation1",
       undefined,
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -138,7 +138,7 @@ describe("Stations: updating", () => {
       "stuStation3",
       undefined,
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -162,7 +162,7 @@ describe("Stations: updating", () => {
       null,
       null,
       null,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -286,7 +286,7 @@ describe("Stations: updating", () => {
       undefined,
       undefined,
       undefined,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { warnings: "none" }
     );
   });
@@ -323,7 +323,7 @@ describe("Stations: updating", () => {
           undefined,
           undefined,
           undefined,
-          HTTP_OK200,
+          HttpStatusCode.Ok,
           {
             warnings: [
               `Updated station location is too close to ${getTestName(
@@ -372,7 +372,7 @@ describe("Stations: updating", () => {
       undefined,
       undefined,
       undefined,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { warnings: "none" }
     );
   });

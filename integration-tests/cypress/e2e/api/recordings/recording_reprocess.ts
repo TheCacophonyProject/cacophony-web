@@ -21,7 +21,7 @@ import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import {HTTP_Forbidden, HTTP_Unprocessable, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
+import {HttpStatusCode, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
 import {
   TEMPLATE_AUDIO_RECORDING,
   TEMPLATE_AUDIO_RECORDING_PROCESSING,
@@ -352,7 +352,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.apiReprocess(
           "rrpGroup2Admin",
           [getCreds("rrpRecording9").id],
-          HTTP_Forbidden
+          HttpStatusCode.Forbidden
         );
 
         cy.log("Check recording is in FINISHED, with existing tracks intact");
@@ -388,7 +388,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check cannot mark non-existent recording for reprocessing");
-        cy.apiReprocess("rrpGroupAdmin", [999999], HTTP_Forbidden);
+        cy.apiReprocess("rrpGroupAdmin", [999999], HttpStatusCode.Forbidden);
 
         cy.log(
           "Check mix of valid and invalid recordings are rejected correctly"
@@ -396,14 +396,14 @@ describe("Recordings - reprocessing tests", () => {
         cy.apiReprocess(
           "rrpGroupAdmin",
           [999999, getCreds("rrpRecording10").id],
-          HTTP_Forbidden
+          HttpStatusCode.Forbidden
         );
 
         cy.log("Check that recordingIds array must be well formed");
         cy.apiReprocess(
           "rrpGroupAdmin",
           ["foo", "bar", 1] as unknown as number[],
-          HTTP_Unprocessable
+          HttpStatusCode.Unprocessable
         );
         cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording10").id]);
         cy.log(

@@ -3,7 +3,7 @@
 import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import {HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; //do not check eventId or createdAt time
 
@@ -191,7 +191,7 @@ describe("Events - add event as a device", () => {
       [time1],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -203,7 +203,7 @@ describe("Events - add event as a device", () => {
       [time1],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("description missing type");
     cy.apiEventsAdd(
@@ -212,7 +212,7 @@ describe("Events - add event as a device", () => {
       [time1],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -224,7 +224,7 @@ describe("Events - add event as a device", () => {
       [time1],
       null,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("eventDetailsId=non-existent event detail record");
     cy.apiEventsAdd(
@@ -233,7 +233,7 @@ describe("Events - add event as a device", () => {
       [time1],
       9999999,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -245,7 +245,7 @@ describe("Events - add event as a device", () => {
       [],
       null,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("blank time");
     cy.apiEventsAdd(
@@ -254,7 +254,7 @@ describe("Events - add event as a device", () => {
       [""],
       null,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("invalid time");
     cy.apiEventsAdd(
@@ -263,7 +263,7 @@ describe("Events - add event as a device", () => {
       ["bad time"],
       null,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("list containing invaid time");
     cy.apiEventsAdd(
@@ -272,7 +272,7 @@ describe("Events - add event as a device", () => {
       [time1, time2, "bad time"],
       null,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 });

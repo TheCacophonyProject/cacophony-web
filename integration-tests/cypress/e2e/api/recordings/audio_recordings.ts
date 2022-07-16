@@ -14,7 +14,7 @@ import {
   TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_AUDIO_RECORDING,
 } from "@commands/dataTemplate";
-import {HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 describe("Recordings - audio recording parameter tests", () => {
   const templateExpectedRecording: ApiAudioRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
@@ -77,7 +77,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -122,7 +122,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording14,
       "60sec-audio.mp4",
       "rarRecording14",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -166,7 +166,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording8,
       "60sec-audio.mp4",
       "rarRecording8",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -377,7 +377,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording18,
       "60sec-audio.mp4",
       "rarRecording18",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     const recording19 = TestCreateRecordingData(templateRecording);
@@ -387,7 +387,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording19,
       "60sec-audio.mp4",
       "rarRecording19",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     const recording20 = TestCreateRecordingData(templateRecording);
@@ -397,7 +397,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording20,
       "60sec-audio.mp4",
       "rarRecording20",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -614,7 +614,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording28,
       "60sec-audio.mp4",
       "rarRecording28",
-      HTTP_BadRequest,
+      HttpStatusCode.BadRequest,
       { message: "Uploaded file integrity check failed, please retry." }
     );
 
@@ -951,7 +951,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording43,
       "60sec-audio.mp4",
       "rarRecording43",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     cy.log("Invalid charge state");
@@ -962,7 +962,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording44,
       "60sec-audio.mp4",
       "rarRecording44",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -1092,7 +1092,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording45,
       "60sec-audio.mp4",
       "rarRecording45",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -1288,7 +1288,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording52,
       "60sec-audio.mp4",
       "rarRecording52",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     cy.log("Invalid relativeToDusk");
@@ -1299,7 +1299,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording53,
       "60sec-audio.mp4",
       "rarRecording53",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 

@@ -19,9 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "@log";
 import jwt from "jsonwebtoken";
 import config from "@config";
-import {Response} from "express";
-import {CACOPHONY_WEB_VERSION} from "@/Globals";
-import {HttpStatusCode} from "@/../types/api/consts";
+import { Response } from "express";
+import { CACOPHONY_WEB_VERSION } from "@/Globals";
+import { HttpStatusCode } from "@/../types/api/consts";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";
@@ -33,7 +33,10 @@ const INVALID_DATAPOINT_UPLOAD_REQUEST =
 const INVALID_DATAPOINT_UPDATE_REQUEST =
   "Request for updating a datapoint was invalid.";
 
-function send(response: Response, data: { statusCode: HttpStatusCode; messages: string[] } & Record<string, any>) {
+function send(
+  response: Response,
+  data: { statusCode: HttpStatusCode; messages: string[] } & Record<string, any>
+) {
   // Check that the data is valid.
 
   if (
@@ -73,7 +76,7 @@ function badRequest(response: Response, messages: string[]) {
 //======VALID REQUESTS=========
 function validRecordingUpload(response, idOfRecording, message = "") {
   send(response, {
-    statusCode: HttpStatusCode.OK200,
+    statusCode: HttpStatusCode.Ok,
     messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
     recordingId: idOfRecording,
   });
@@ -81,7 +84,7 @@ function validRecordingUpload(response, idOfRecording, message = "") {
 
 function validAudiobaitUpload(response, id, message = "") {
   send(response, {
-    statusCode: HttpStatusCode.OK200,
+    statusCode: HttpStatusCode.Ok,
     messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
     id,
   });
@@ -89,7 +92,7 @@ function validAudiobaitUpload(response, id, message = "") {
 
 function validFileUpload(response, key) {
   send(response, {
-    statusCode: HttpStatusCode.OK200,
+    statusCode: HttpStatusCode.Ok,
     messages: [VALID_DATAPOINT_UPLOAD_REQUEST],
     fileKey: key,
   });
@@ -97,14 +100,14 @@ function validFileUpload(response, key) {
 
 function validDatapointUpdate(response) {
   send(response, {
-    statusCode: HttpStatusCode.OK200,
+    statusCode: HttpStatusCode.Ok,
     messages: [VALID_DATAPOINT_UPDATE_REQUEST],
   });
 }
 
 function validDatapointGet(response, result) {
   send(response, {
-    statusCode: HttpStatusCode.OK200,
+    statusCode: HttpStatusCode.Ok,
     messages: [VALID_DATAPOINT_GET_REQUEST],
     result,
   });
@@ -112,23 +115,60 @@ function validDatapointGet(response, result) {
 
 function validFileRequest(response, data) {
   send(response, {
-    statusCode: HttpStatusCode.OK200,
+    statusCode: HttpStatusCode.Ok,
     messages: [VALID_FILE_REQUEST],
     jwt: jwt.sign(data, config.server.passportSecret, { expiresIn: 60 * 10 }),
   });
 }
 
-function serverError(
+export const someResponse = (
   response: Response,
-  err,
-  message = "Server error. Sorry!"
-) {
-  log.error("SERVER ERROR: %s, %s", err.toString(), err.stack);
-  send(response, {
-    statusCode: HttpStatusCode.ServerError,
-    messages: [message]
+  statusCode: HttpStatusCode,
+  messageOrData: string | string[] | Record<string, any> = "",
+  data: Record<string, any> = {}
+) => {
+  if (typeof messageOrData === "string" || Array.isArray(messageOrData)) {
+    return send(response, {
+      ...data,
+      statusCode,
+      messages: [
+        ...(statusCode === HttpStatusCode.ServerError && [
+          "Server error. Sorry!",
+        ]),
+        ...(data.messages || []),
+        ...(typeof messageOrData === "string"
+          ? [messageOrData]
+          : messageOrData),
+      ],
+    });
+  }
+  return send(response, {
+    ...messageOrData,
+    statusCode,
+    messages: [],
   });
-}
+};
+
+export const successResponse = (
+  response: Response,
+  messageOrData: string | string[] | Record<string, any> = "",
+  data: Record<string, any> = {}
+) => someResponse(response, HttpStatusCode.Ok, messageOrData, data);
+
+export const serverErrorResponse = (
+  response: Response,
+  error: Error,
+  messageOrData: string | string[] | Record<string, any> = "",
+  data: Record<string, any> = {}
+) => {
+  log.error("SERVER ERROR: %s, %s", error.toString(), error.stack);
+  return someResponse(
+    response,
+    HttpStatusCode.ServerError,
+    messageOrData,
+    data
+  );
+};
 
 export default {
   send,
@@ -140,5 +180,4 @@ export default {
   validRecordingUpload,
   validAudiobaitUpload,
   validFileRequest,
-  serverError,
 };

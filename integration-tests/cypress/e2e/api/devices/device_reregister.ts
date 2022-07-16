@@ -6,7 +6,7 @@ import {
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import {DeviceType, HTTP_BadRequest, HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
 import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 
@@ -104,7 +104,7 @@ describe("Device reregister", () => {
           "RR_user1",
           "RR_history_cam",
           [],
-          HTTP_Forbidden
+          HttpStatusCode.Forbidden
         );
       });
     });
@@ -224,8 +224,8 @@ describe("Device reregister", () => {
       "RR_group5",
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HTTP_BadRequest
-      //HTTP_Unprocessable
+      HttpStatusCode.BadRequest
+      //HttpStatusCode.Unprocessable
     ).then(() => {
       cy.log("check old device unaltered");
       cy.apiDevicesCheckContains("RR_user5", [expectedDevice5a]);
@@ -239,7 +239,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiDeviceReregister(
       "RR_default_camera",
@@ -247,7 +247,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -273,7 +273,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiDeviceReregister(
       "RR_default_camera",
@@ -281,7 +281,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiDeviceReregister(
       "RR_default_camera",
@@ -289,7 +289,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -355,7 +355,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       "",
       GENERATE_UNIQUE_NAME,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //not space
     cy.apiDeviceReregister(
@@ -364,7 +364,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       " ",
       GENERATE_UNIQUE_NAME,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //not less than 8 chars
     cy.apiDeviceReregister(
@@ -373,7 +373,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       "1234567",
       GENERATE_UNIQUE_NAME,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -384,7 +384,7 @@ describe("Device reregister", () => {
       "invalid-group",
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 

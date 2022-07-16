@@ -23,9 +23,15 @@ import {
   getJoinGroupRequestToken,
 } from "../auth";
 import models from "@models";
-import responseUtil from "./responseUtil";
-import { body, param, matchedData, query } from "express-validator";
-import { ClientError, ValidationError } from "../customErrors";
+import responseUtil, { successResponse } from "./responseUtil";
+import { body, matchedData, param, query } from "express-validator";
+import {
+  AuthorizationError,
+  ClientError,
+  FatalError,
+  UnprocessableError,
+  ValidationError,
+} from "../customErrors";
 import { Application, NextFunction, Request, Response } from "express";
 import config from "@config";
 import { User } from "@models/User";
@@ -40,11 +46,8 @@ import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
   extractJWTInfo,
-  fetchAdminAuthorizedRequiredGroupByNameOrId,
   fetchAdminAuthorizedRequiredGroups,
-  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedOptionalUserByNameOrId,
-  fetchUnauthorizedRequiredGroupById,
   fetchUnauthorizedRequiredUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrId,
   fetchUnauthorizedRequiredUserByResetToken,
@@ -53,7 +56,6 @@ import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { arrayOf, jsonSchemaOf } from "@api/schema-validation";
 import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
 import { sendEmailConfirmationEmail } from "@/scripts/emailUtil";
-import logger from "@log";
 import { ApiGroupResponse } from "@typedefs/api/group";
 import GroupIdSchema from "@schemas/api/common/GroupId.schema.json";
 import {
@@ -62,6 +64,7 @@ import {
   sendWelcomeEmailConfirmationEmail,
 } from "@/emails/transactionalEmails";
 import { CACOPHONY_WEB_VERSION } from "@/Globals";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -188,7 +191,7 @@ export default function (app: Application, baseUrl: string) {
           // In this case, we don't want to create the user.
           await user.destroy();
           return responseUtil.send(response, {
-            statusCode: 500,
+            statusCode: HttpStatusCode.ServerError,
             messages: ["Failed to send welcome/email confirmation email."],
           });
         }
@@ -198,9 +201,7 @@ export default function (app: Application, baseUrl: string) {
         request.headers["viewport"] as string,
         request.headers["user-agent"]
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Created new user."],
+      return successResponse(response, "Created new user.", {
         token: apiToken,
         refreshToken,
         userData: mapUser(user),
@@ -288,17 +289,14 @@ export default function (app: Application, baseUrl: string) {
           );
           if (!emailSuccess && config.productionEnv) {
             responseUtil.send(response, {
-              statusCode: 500,
+              statusCode: HttpStatusCode.ServerError,
               messages: ["Failed to send email confirmation email."],
             });
           }
         }
       }
       await requestUser.update(dataToUpdate);
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Updated user."],
-      });
+      return successResponse(response, "Updated user.");
     }
   );
 
@@ -333,15 +331,13 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             "User doesn't have permissions to view other user details",
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
     },
     async (request, response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
+      return successResponse(response, {
         userData: mapUser(response.locals.user),
       });
     }
@@ -351,11 +347,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     async (request, response) => {
       const users = await models.User.getAll({});
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
-        usersList: mapUsers(users),
-      });
+      return successResponse(response, { usersList: mapUsers(users) });
     },
   ];
 
@@ -396,11 +388,7 @@ export default function (app: Application, baseUrl: string) {
 
   const endUserAgreementOptions = [
     async (request, response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
-        euaVersion: config.euaVersion,
-      });
+      return successResponse(response, { euaVersion: config.euaVersion });
     },
   ];
 
@@ -435,9 +423,7 @@ export default function (app: Application, baseUrl: string) {
       `${baseUrl}/end-user-agreement/debug-increment`,
       async (request: Request, response: Response) => {
         config.euaVersion++;
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Incremented EUA version"],
+        return successResponse(response, "Incremented EUA version", {
           euaVersion: config.euaVersion,
         });
       }
@@ -448,10 +434,7 @@ export default function (app: Application, baseUrl: string) {
       `${baseUrl}/cacophony-web/debug-increment`,
       async (request: Request, response: Response) => {
         CACOPHONY_WEB_VERSION.version += ".1";
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Incremented Cacophony web version"],
-        });
+        return successResponse(response, "Incremented Cacophony web version");
       }
     );
   }
@@ -459,31 +442,24 @@ export default function (app: Application, baseUrl: string) {
   const changePasswordOptions = [
     validateFields([body("token").exists(), validPasswordOf(body("password"))]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user.password != response.locals.resetInfo.password) {
-        return responseUtil.send(response, {
-          statusCode: 403,
-          messages: ["Your password has already been changed"],
-        });
+        return next(new ClientError("Your password has already been changed"));
       }
       const result = await response.locals.user.update({
         password: request.body.password,
       });
       if (!result) {
-        return responseUtil.send(response, {
-          statusCode: 403,
-          messages: ["Error changing password please contact sys admin"],
-        });
+        return next(
+          new ClientError("Error changing password please contact sys admin")
+        );
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
         response.locals.user,
         request.headers["viewport"] as string,
         request.headers["user-agent"]
       );
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
+      return successResponse(response, {
         token: apiToken,
         refreshToken,
         userData: mapUser(response.locals.user),
@@ -520,7 +496,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([body("inviteToken").exists()]),
     extractJWTInfo(body("inviteToken")),
     // Get a token with user, and group id to add to.
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const { id, groupId, admin, inviterId } = response.locals.tokenInfo;
       const [user, group, inviter] = await Promise.all([
         models.User.findByPk(id),
@@ -528,32 +504,18 @@ export default function (app: Application, baseUrl: string) {
         models.User.findByPk(inviterId),
       ]);
       if (!inviter) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Inviting user no longer exists"],
-        });
+        return next(new UnprocessableError("Inviting user no longer exists"));
       }
       if (!user) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["User no longer exists"],
-        });
+        return next(new UnprocessableError("User no longer exists"));
       }
       if (!group) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Group no longer exists"],
-        });
+        return next(new UnprocessableError("Group no longer exists"));
       }
-
       // TODO:
       // Check if the user already belongs to the group.
       // Check if the user giving permissions is still an admin member of the group in question.
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Added to invited group"],
-      });
+      return successResponse(response, "Added to invited group");
     }
   );
 
@@ -573,9 +535,7 @@ export default function (app: Application, baseUrl: string) {
       const groups: ApiGroupResponse[] = response.locals.groups.map(
         ({ id, groupname }) => ({ id, groupName: groupname, admin: false })
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got groups for admin user"],
+      return successResponse(response, "Got groups for admin user", {
         groups,
       });
     }
@@ -600,7 +560,7 @@ export default function (app: Application, baseUrl: string) {
       return next();
     },
     fetchAdminAuthorizedRequiredGroups,
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // Make sure each of the groups requested is found in the group admin users groups that
       // they are admin of:
       const requestingUser = await models.User.findByPk(
@@ -610,17 +570,13 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser.id
       );
       if (!requestedOfUser.emailConfirmed) {
-        return responseUtil.send(response, {
-          statusCode: 403,
-          messages: ["Requested has has not activated their account"],
-        });
+        return next(
+          new ClientError("Requested has has not activated their account")
+        );
       }
       for (const groupId of request.body.groups) {
         if (!response.locals.groups.find(({ id }) => id === groupId)) {
-          return responseUtil.send(response, {
-            statusCode: 403,
-            messages: ["User is not a group admin"],
-          });
+          return next(new ClientError("User is not a group admin"));
         }
       }
       const joinGroups = response.locals.groups.filter(({ id }) =>
@@ -637,15 +593,11 @@ export default function (app: Application, baseUrl: string) {
         requestedOfUser.email
       );
       if (sendSuccess) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Sent membership request to user"],
-        });
+        return successResponse(response, "Sent membership request to user");
       } else {
-        return responseUtil.send(response, {
-          statusCode: 500,
-          messages: ["Failed sending membership request to user"],
-        });
+        return next(
+          new FatalError("Failed sending membership request email to user")
+        );
       }
     }
   );
@@ -659,29 +611,22 @@ export default function (app: Application, baseUrl: string) {
     ]),
     extractJWTInfo(body("membershipRequest")),
     fetchAdminAuthorizedRequiredGroups,
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // FIXME - make sure all of these JWT tokens have a 'type' field that we can check against,
       // to make sure they can't be reused for other requests.
       const { id, type, groups } = response.locals.tokenInfo;
       if (type !== "join-groups") {
-        return responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Invalid token type"],
-        });
+        return next(new AuthorizationError("Invalid token type"));
       }
       const userToGrantMembershipFor = await models.User.findByPk(id);
       if (!userToGrantMembershipFor) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["User no longer exists"],
-        });
+        return next(new UnprocessableError("User no longer exists"));
       }
 
       if (groups.length !== request.body.admin.length) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Mismatched groups and permissions count"],
-        });
+        return next(
+          new UnprocessableError("Mismatched groups and permissions count")
+        );
       }
       const groupsWithPermissions = [];
       for (let i = 0; i < groups.length; i++) {
@@ -700,10 +645,9 @@ export default function (app: Application, baseUrl: string) {
           admin,
         }));
       if (groupsToAdd.length === 0) {
-        return responseUtil.send(response, {
-          statusCode: 403,
-          messages: ["No longer admin for any of the requested groups"],
-        });
+        return next(
+          new ClientError("No longer admin for any of the requested groups")
+        );
       }
 
       // Now add the user to the requested groups, with permissions.
@@ -719,12 +663,9 @@ export default function (app: Application, baseUrl: string) {
         userToGrantMembershipFor.email,
         groupsToAdd.map(({ group: { groupname } }) => groupname)
       );
-
-      return responseUtil.send(response, {
-        statusCode: 200,
+      return successResponse(response, "Allowed to add user.", {
         userId: id,
         userName: userToGrantMembershipFor.username,
-        messages: ["Allowed to add user."],
       });
     }
   );

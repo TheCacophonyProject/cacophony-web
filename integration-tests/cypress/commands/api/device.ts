@@ -17,7 +17,7 @@ import { NOT_NULL, NOT_NULL_STRING } from "../constants";
 import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
-import {DeviceType, HTTP_OK200} from "@typedefs/api/consts";
+import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -67,7 +67,7 @@ Cypress.Commands.add(
     stationFromDate: string,
     stationIdOrName: string,
     recordingLocation: LatLng,
-    statusCode: number = HTTP_OK200,
+    statusCode: number = HttpStatusCode.Ok,
     additionalChecks: any = {}
   ) => {
     let stationId: number;
@@ -128,7 +128,7 @@ Cypress.Commands.add(
     userName: string,
     deviceIdOrName: string,
     expectedHistory: any[],
-    statusCode: number = HTTP_OK200,
+    statusCode: number = HttpStatusCode.Ok,
     additionalChecks: any = {}
   ) => {
     let deviceId: string;
@@ -634,7 +634,7 @@ Cypress.Commands.add(
               recTime,
               manualStationId.toString(),
               fixLocation,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { messages: [expectedMessage], useRawStationId: true }
             ).then(() => {
               expectedHistory[1].stationId = manualStationId;

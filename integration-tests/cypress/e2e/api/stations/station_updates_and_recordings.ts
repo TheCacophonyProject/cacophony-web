@@ -23,7 +23,7 @@ import {
 } from "@commands/dataTemplate";
 import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
-import {DeviceType, HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
+import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
 
 const dayZero = new Date();
 const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
@@ -92,7 +92,7 @@ describe("Stations: station updates also update recordings", () => {
         ...location,
         time: oneWeekAgo,
       }).then((recordingId) => {
-        cy.apiStationDelete(Josie, stationId.toString(), true, HTTP_OK200, {
+        cy.apiStationDelete(Josie, stationId.toString(), true, HttpStatusCode.Ok, {
           useRawStationId: true,
         }).then(() => {
           cy.log("Check that station and its recordings are deleted");
@@ -101,14 +101,14 @@ describe("Stations: station updates also update recordings", () => {
             getTestName(stationName),
             null,
             null,
-            HTTP_Forbidden
+            HttpStatusCode.Forbidden
           );
           cy.apiRecordingCheck(
             Josie,
             recordingId.toString(),
             null,
             null,
-            HTTP_Forbidden,
+            HttpStatusCode.Forbidden,
             {
               useRawRecordingId: true,
             }
@@ -154,7 +154,7 @@ describe("Stations: station updates also update recordings", () => {
               Josie,
               stationId.toString(),
               false,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { useRawStationId: true }
             );
 
@@ -166,7 +166,7 @@ describe("Stations: station updates also update recordings", () => {
               getTestName(stationName),
               null,
               null,
-              HTTP_Forbidden
+              HttpStatusCode.Forbidden
             );
 
             delete expectedRecording.stationId;

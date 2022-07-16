@@ -3,7 +3,7 @@
 import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import {HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; // do not check claues of event id or createdAt time
 
@@ -109,7 +109,7 @@ describe("Events - add event on behalf of device", () => {
       [firstTime],
       undefined,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -299,7 +299,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -312,7 +312,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("description missing type");
     cy.apiEventsDeviceAddOnBehalf(
@@ -322,7 +322,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -335,7 +335,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("eventDetailsId=non-existent event detail record");
     cy.apiEventsDeviceAddOnBehalf(
@@ -345,7 +345,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       9999999,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -357,7 +357,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -370,7 +370,7 @@ describe("Events - add event on behalf of device", () => {
       [],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("blank time");
     cy.apiEventsDeviceAddOnBehalf(
@@ -380,7 +380,7 @@ describe("Events - add event on behalf of device", () => {
       [""],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("invalid time");
     cy.apiEventsDeviceAddOnBehalf(
@@ -390,7 +390,7 @@ describe("Events - add event on behalf of device", () => {
       ["bad time"],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("list containing invaid time");
     cy.apiEventsDeviceAddOnBehalf(
@@ -400,7 +400,7 @@ describe("Events - add event on behalf of device", () => {
       [time1, time2, "bad time"],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -442,7 +442,7 @@ describe("Events - add event on behalf of device", () => {
       [timeNow],
       undefined,
       true,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 });

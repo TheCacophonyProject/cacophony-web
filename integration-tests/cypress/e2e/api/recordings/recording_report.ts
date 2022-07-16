@@ -1,6 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import {HTTP_OK200, HTTP_Unprocessable, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
+import {HttpStatusCode, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
 
 import {
   ApiRecordingColumns,
@@ -558,7 +558,7 @@ describe("Recordings report using where", () => {
       { where: { badParameter: "bad value" } },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("Tagmode");
     cy.apiRecordingsReportCheck(
@@ -566,7 +566,7 @@ describe("Recordings report using where", () => {
       { where: {}, tagMode: "rubbish value" },
       [],
       EXCLUDE_COLUMNS,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //cy.log("order");
     //cy.apiRecordingsReportCheck( "rreGroupAdmin", {where: {}, order: '["badParameter"]'}, [], HTTP_Unprocessable);
@@ -584,7 +584,7 @@ describe("Recordings report using where", () => {
         "rreGroup",
         true,
         true,
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { useRawUserName: true }
       );
 
@@ -598,7 +598,7 @@ describe("Recordings report using where", () => {
         "rreGroupAdmin",
         superuser,
         "rreGroup",
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { useRawUserName: true }
       );
     });

@@ -26,7 +26,7 @@ import {
   ApiRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import {HTTP_OK200} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 // 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
@@ -257,7 +257,7 @@ Cypress.Commands.add(
       statusCode
     ).then((x) => {
       cy.wrap(x.response.body.recordingId);
-      if (recordingName !== null && x.response.statusCode === HTTP_OK200) {
+      if (recordingName !== null && x.response.statusCode === HttpStatusCode.Ok) {
         saveIdOnly(recordingName, x.response.body.recordingId);
       }
       if (additionalChecks["message"] !== undefined) {

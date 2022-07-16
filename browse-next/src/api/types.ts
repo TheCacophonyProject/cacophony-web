@@ -21,7 +21,7 @@ export interface ValidationErrorResult extends ErrorResult {
   errorType?: "validation";
 }
 
-type HttpSuccessCode = HttpStatusCode.OK200 | HttpStatusCode.NotModified;
+type HttpSuccessCode = HttpStatusCode.Ok | HttpStatusCode.NotModified;
 type HttpFailureCode =
   | HttpStatusCode.BadRequest
   | HttpStatusCode.AuthorizationError

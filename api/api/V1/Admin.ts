@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware";
-import responseUtil from "./responseUtil";
+import responseUtil, { successResponse } from "./responseUtil";
 import { body, param } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
@@ -26,7 +26,7 @@ import {
 } from "@api/extract-middleware";
 import { nameOrIdOf } from "@api/validation-middleware";
 import { ClientError } from "@api/customErrors";
-import { UserGlobalPermission } from "@typedefs/api/consts";
+import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts";
 import { SuperUsers } from "@/Globals";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -61,7 +61,7 @@ export default function (app: Application, baseUrl: string) {
           return next(
             new ClientError(
               "Super admin user must have globalWrite permissions",
-              403
+              HttpStatusCode.Forbidden
             )
           );
         }
@@ -84,10 +84,7 @@ export default function (app: Application, baseUrl: string) {
         } else {
           SuperUsers.delete(userToUpdate.id);
         }
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Users global permission updated."],
-        });
+        return successResponse(response, "Users global permission updated.");
       }
     );
   }

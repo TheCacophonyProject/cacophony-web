@@ -10,7 +10,7 @@ import { getTestName } from "@commands/names";
 
 import { ApiRecordingNeedsTagReturned } from "@commands/types";
 
-import {HTTP_Forbidden, HTTP_OK200, RecordingType} from "@typedefs/api/consts";
+import {HttpStatusCode, RecordingType} from "@typedefs/api/consts";
 
 import {
   TestCreateRecordingData,
@@ -315,7 +315,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack5",
       "ttaTag5",
       tag1,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check tag does not exist");
@@ -359,7 +359,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaRecording6",
       "ttaTrack6",
       "ttaTag6",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check tag still exists");
@@ -566,7 +566,7 @@ describe("Track Tags: add, check, delete", () => {
           "ttaNeedsTag8",
           [expectedRecording1],
           [],
-          HTTP_OK200,
+          HttpStatusCode.Ok,
           { doNotValidate: true }
         ).then(() => {
           tag1.tagJWT = getCreds("ttaNeedsTag8").jwt;
@@ -631,7 +631,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaTrack9",
         "ttaTag9",
         tagA,
-        HTTP_Forbidden,
+        HttpStatusCode.Forbidden,
         { message: "Failed to verify JWT" }
       );
     });
@@ -674,7 +674,7 @@ describe("Track Tags: add, check, delete", () => {
           "ttaNeedsTag10",
           [expectedRecording1],
           [],
-          HTTP_OK200,
+          HttpStatusCode.Ok,
           { doNotValidate: true }
         ).then(() => {
           tag1.tagJWT = getCreds("ttaNeedsTag10").jwt;

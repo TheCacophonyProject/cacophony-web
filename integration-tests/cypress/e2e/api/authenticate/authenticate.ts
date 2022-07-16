@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import {HTTP_AuthorizationError, HTTP_Forbidden} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 describe("Authentication", () => {
   const superuser = getCreds("superuser")["name"];
@@ -35,7 +35,7 @@ describe("Authentication", () => {
       camera1,
       group1,
       "wrong-password",
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
   });
 
@@ -44,7 +44,7 @@ describe("Authentication", () => {
       camera2,
       group1,
       "p" + getTestName(camera1),
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
   });
 
@@ -53,7 +53,7 @@ describe("Authentication", () => {
       camera1,
       group2,
       "p" + getTestName(camera1),
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
   });
 
@@ -84,14 +84,14 @@ describe("Authentication", () => {
 
   it("User is rejected for wrong password", () => {
     cy.log("test using username & name");
-    cy.apiSignInAs(userA, null, null, "bad_password", HTTP_AuthorizationError);
+    cy.apiSignInAs(userA, null, null, "bad_password", HttpStatusCode.AuthorizationError);
     cy.log("test using email and email");
     cy.apiSignInAs(
       null,
       getTestName(userA) + "@api.created.com",
       null,
       "bad_password",
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
     cy.log("test using nameoremail and email");
     cy.apiSignInAs(
@@ -99,7 +99,7 @@ describe("Authentication", () => {
       null,
       getTestName(userA) + "@api.created.com",
       "bad_password",
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
     cy.log("test using nameoremail and name");
     cy.apiSignInAs(
@@ -107,7 +107,7 @@ describe("Authentication", () => {
       null,
       getTestName(userA),
       "bad_password",
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
   });
 
@@ -131,6 +131,6 @@ describe("Authentication", () => {
   it("Non-superuser cannot authenticate as another user", () => {
     cy.apiSignInAs(userA);
     //verify non superuser userA cannot authenticte as userB
-    cy.apiAuthenticateAs(userA, userB, HTTP_Forbidden);
+    cy.apiAuthenticateAs(userA, userB, HttpStatusCode.Forbidden);
   });
 });

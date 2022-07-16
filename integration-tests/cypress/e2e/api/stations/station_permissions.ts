@@ -9,7 +9,7 @@ import {
   TestGetLocation,
 } from "@commands/api/station";
 import { ApiStationData } from "@commands/types";
-import {HTTP_Forbidden} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 describe("Stations: permissions", () => {
   const superuser = getCreds("superuser")["name"];
@@ -111,7 +111,7 @@ describe("Stations: permissions", () => {
               getTestName("saStation1"),
               undefined,
               [],
-              HTTP_Forbidden
+              HttpStatusCode.Forbidden
             );
 
             cy.log("Recording deleted too");
@@ -120,7 +120,7 @@ describe("Stations: permissions", () => {
               "saRecording1",
               undefined,
               [],
-              HTTP_Forbidden
+              HttpStatusCode.Forbidden
             );
           });
         });
@@ -141,7 +141,7 @@ describe("Stations: permissions", () => {
       saStation,
       undefined,
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Get admin to add a station to test with");
@@ -175,11 +175,11 @@ describe("Stations: permissions", () => {
         undefined,
         undefined,
         false,
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
 
       cy.log("Cannot delete station");
-      cy.apiStationDelete("saMember", "saStation2", true, HTTP_Forbidden);
+      cy.apiStationDelete("saMember", "saStation2", true, HttpStatusCode.Forbidden);
 
       cy.log("Station still exists");
       cy.apiStationCheck(
@@ -204,7 +204,7 @@ describe("Stations: permissions", () => {
       saStation,
       undefined,
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Get admin to add a station to test with");
@@ -215,7 +215,7 @@ describe("Stations: permissions", () => {
         getTestName("saStation3"),
         undefined,
         undefined,
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
 
       cy.log("Non-Member cannot get station by group");
@@ -225,7 +225,7 @@ describe("Stations: permissions", () => {
         "saStation3",
         undefined,
         undefined,
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
 
       cy.log("Cannot get stations by group");
@@ -234,7 +234,7 @@ describe("Stations: permissions", () => {
         "saGroup",
         [],
         undefined,
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
 
       cy.log("Get stations by user does not list this station");
@@ -248,11 +248,11 @@ describe("Stations: permissions", () => {
         undefined,
         undefined,
         false,
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
 
       cy.log("Non-member Cannot delete station");
-      cy.apiStationDelete("saNonMember", "saStation3", true, HTTP_Forbidden);
+      cy.apiStationDelete("saNonMember", "saStation3", true, HttpStatusCode.Forbidden);
 
       cy.log("Station still exists");
       cy.apiStationCheck(
@@ -306,7 +306,7 @@ describe("Stations: permissions", () => {
             getTestName("saStation4"),
             undefined,
             undefined,
-            HTTP_Forbidden,
+            HttpStatusCode.Forbidden,
             { additionalParams: { "view-mode": "user" } }
           );
 
@@ -334,7 +334,7 @@ describe("Stations: permissions", () => {
             "saOnlyGroup",
             [saExpectedStation1],
             undefined,
-            HTTP_Forbidden,
+            HttpStatusCode.Forbidden,
             { additionalParams: { "view-mode": "user" } }
           );
 
@@ -366,7 +366,7 @@ describe("Stations: permissions", () => {
             "saStation4",
             undefined,
             undefined,
-            HTTP_Forbidden,
+            HttpStatusCode.Forbidden,
             { additionalParams: { "view-mode": "user" } }
           );
 

@@ -4,7 +4,7 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import { ApiGroupUserResponse } from "@typedefs/api/group";
-import {HTTP_BadRequest, HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 describe("Groups - add, check and remove users", () => {
   const ADMIN = true;
@@ -79,7 +79,7 @@ describe("Groups - add, check and remove users", () => {
       "guGroup",
       NOT_ADMIN,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log(
@@ -95,7 +95,7 @@ describe("Groups - add, check and remove users", () => {
       "guTestUser",
       "guGroupAdmin",
       "guGroup",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("check that user was not deleted");
@@ -116,18 +116,18 @@ describe("Groups - add, check and remove users", () => {
       "guGroup2",
       NOT_ADMIN,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("check that group admin cannot view another groups user list");
-    cy.apiGroupUsersCheck("guGroupAdmin", "guGroup2", [], [], HTTP_Forbidden);
+    cy.apiGroupUsersCheck("guGroupAdmin", "guGroup2", [], [], HttpStatusCode.Forbidden);
 
     cy.log("attempt to remove a user using non admin account");
     cy.apiGroupUserRemove(
       "guGroupAdmin",
       "guGroup2Admin",
       "guGroup2",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -139,17 +139,17 @@ describe("Groups - add, check and remove users", () => {
       "guGroup",
       NOT_ADMIN,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log(
-      "check that connot remove non-existant user (user exists but not in group)"
+      "check that cannot remove non-existent user (user exists but not in group)"
     );
     cy.apiGroupUserRemove(
       "guGroupAdmin",
       "guTestUser2",
       "guGroup",
-      HTTP_BadRequest
+      HttpStatusCode.BadRequest
     );
 
     cy.log(
@@ -159,7 +159,7 @@ describe("Groups - add, check and remove users", () => {
       "guGroupAdmin",
       "IDontExist",
       "guGroup",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -171,7 +171,7 @@ describe("Groups - add, check and remove users", () => {
       "ThisGroupDoesNotExist",
       NOT_ADMIN,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("check that cannot view a non existent group");
@@ -180,7 +180,7 @@ describe("Groups - add, check and remove users", () => {
       "ThisGroupDoesNotExist",
       [],
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log(
@@ -190,7 +190,7 @@ describe("Groups - add, check and remove users", () => {
       "guGroupAdmin",
       "guTestUser",
       "ThisGroupDoesNotExist",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -201,7 +201,7 @@ describe("Groups - add, check and remove users", () => {
       getCreds("guGroup").id.toString(),
       [expectedGuAdminUser],
       [],
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { useRawGroupName: true }
     );
   });
@@ -243,7 +243,7 @@ describe("Groups - add, check and remove users", () => {
       "guGroup",
       ADMIN,
       true,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("change to admin user");

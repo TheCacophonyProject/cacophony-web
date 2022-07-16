@@ -7,7 +7,7 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import {HTTP_Forbidden, HTTP_Unprocessable, RecordingProcessingState} from "@typedefs/api/consts";
+import {HttpStatusCode, RecordingProcessingState} from "@typedefs/api/consts";
 import {
   EXCLUDE_IDS,
 } from "@commands/constants";
@@ -148,7 +148,7 @@ describe("Update recordings", () => {
         "ruGroup2Admin",
         "ruRecording05",
         fieldUpdates,
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
 
       cy.log("Check recording not updated");
@@ -166,7 +166,7 @@ describe("Update recordings", () => {
       "ruGroupAdmin",
       "99999",
       fieldUpdates,
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawRecordingId: true }
     );
   });
@@ -192,14 +192,14 @@ describe("Update recordings", () => {
         "ruGroupAdmin",
         "ruRecording06",
         { badField: "hello" },
-        HTTP_Unprocessable
+        HttpStatusCode.Unprocessable
       );
       cy.log("Attempt to update field with invalid value");
       cy.apiRecordingUpdate(
         "ruGroupAdmin",
         "ruRecording06",
         { additionalMetadata: "badValue" },
-        HTTP_Unprocessable
+        HttpStatusCode.Unprocessable
       );
 
       cy.log("Check recording not updated");

@@ -29,7 +29,11 @@ import {
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
 import log from "../logging";
-import customErrors, { ClientError, ValidationError } from "./customErrors";
+import customErrors, {
+  ClientError,
+  UnprocessableError,
+  ValidationError,
+} from "./customErrors";
 import { NextFunction, Request, RequestHandler, Response } from "express";
 import { IsIntOptions } from "express-validator/src/options";
 import logger from "../logging";
@@ -597,7 +601,7 @@ export const validateFields = (
     );
     if (unknownFields.length) {
       return next(
-        new ClientError(
+        new UnprocessableError(
           `Unknown fields found: ${unknownFields
             .map((item) => {
               let field = `'${item}'`;
@@ -606,8 +610,7 @@ export const validateFields = (
               }
               return field;
             })
-            .join(", ")}`,
-          422
+            .join(", ")}`
         )
       );
     }

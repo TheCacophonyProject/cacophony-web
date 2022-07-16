@@ -12,7 +12,7 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import {HTTP_Forbidden, HTTP_Unprocessable, RecordingType} from "@typedefs/api/consts";
+import {HttpStatusCode, RecordingType} from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
   TEMPLATE_THERMAL_RECORDING,
@@ -72,7 +72,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -110,7 +110,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -152,7 +152,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -194,7 +194,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -235,7 +235,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -276,7 +276,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -320,7 +320,7 @@ describe("Recordings (thermal): add, get, delete", () => {
           "raRecording1",
           undefined,
           [],
-          HTTP_Forbidden
+          HttpStatusCode.Forbidden
         );
       }
     );
@@ -369,7 +369,7 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raRecording1",
         undefined,
         [],
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
     });
   });
@@ -383,7 +383,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording2,
       "raRecording2",
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
     cy.log("Cannot add recording for another group's devices using group");
     cy.apiRecordingAddOnBehalfUsingGroup(
@@ -393,7 +393,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording2,
       "raRecording2",
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.apiRecordingAdd("raCamera2", recording2, undefined, "raRecording2");
@@ -403,11 +403,11 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording2",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Cannot delete another group's recordings");
-    cy.apiRecordingDelete("raGroupAdmin", "raRecording2", HTTP_Forbidden);
+    cy.apiRecordingDelete("raGroupAdmin", "raRecording2", HttpStatusCode.Forbidden);
     cy.apiRecordingDelete("raGroup2Admin", "raRecording2");
   });
 
@@ -420,7 +420,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       undefined,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { useRawDeviceName: true }
     );
 
@@ -431,7 +431,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       undefined,
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawDeviceName: true }
     );
 
@@ -443,7 +443,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       undefined,
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawDeviceName: true }
     );
 
@@ -455,7 +455,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Add recording using valid group and another groups device");
@@ -466,7 +466,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -477,7 +477,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "999999",
       undefined,
       [],
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawRecordingId: true }
     );
     cy.apiRecordingCheck(
@@ -485,20 +485,20 @@ describe("Recordings (thermal): add, get, delete", () => {
       "ThisIsNotAValidId",
       undefined,
       [],
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { useRawRecordingId: true }
     );
   });
 
   it("Correct handling of invalid recording delete parameters", () => {
     cy.log("Delete invalid recording id");
-    cy.apiRecordingDelete("raGroupAdmin", "999999", HTTP_Forbidden, {
+    cy.apiRecordingDelete("raGroupAdmin", "999999", HttpStatusCode.Forbidden, {
       useRawRecordingId: true,
     });
     cy.apiRecordingDelete(
       "raGroupAdmin",
       "ThisIsNotAValidId",
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { useRawRecordingId: true }
     );
   });
@@ -552,14 +552,14 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check /recordings/id:/thumbnail ignores deleted recording");
     cy.apiRecordingThumbnailCheck(
       "raGroupAdmin",
       "raRecording1",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check /recordings/count ignores deleted recording");

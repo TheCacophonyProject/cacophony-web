@@ -8,7 +8,7 @@ import {
   TestCreateExpectedNeedsTagData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
-import {HTTP_BadRequest, HTTP_OK200, RecordingType} from "@typedefs/api/consts";
+import {HttpStatusCode, RecordingType} from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_NEEDS_TAG,
@@ -101,7 +101,7 @@ describe("Recording needs-tag (power-tagger)", () => {
         NO_SAVE_ID,
         [expectedRecording1],
         [],
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { doNotValidate: doNotValidate }
       );
     });
@@ -203,7 +203,7 @@ describe("Recording needs-tag (power-tagger)", () => {
             NO_SAVE_ID,
             [expectedRecording3b],
             [],
-            HTTP_OK200,
+            HttpStatusCode.Ok,
             { doNotValidate: doNotValidate }
           );
 
@@ -223,7 +223,7 @@ describe("Recording needs-tag (power-tagger)", () => {
               NO_SAVE_ID,
               [expectedRecording3, expectedRecording4],
               [],
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { doNotValidate: doNotValidate }
             );
           });
@@ -241,7 +241,7 @@ describe("Recording needs-tag (power-tagger)", () => {
       NO_SAVE_ID,
       [],
       [],
-      HTTP_BadRequest,
+      HttpStatusCode.BadRequest,
       { useRawDeviceId: true }
     );
   });

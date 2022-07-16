@@ -22,7 +22,7 @@ import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import {HTTP_OK200, HTTP_Unprocessable, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
+import {HttpStatusCode, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];
@@ -713,28 +713,28 @@ describe("Recordings query using where", () => {
   //TODO: Issue 94: invalid where, order parameters not caught - cause server error
   it("Can handle invalid queries", () => {
     //cy.log("Where");
-    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {badParameter: "bad value"}}, [], EXCLUDE_PARAMS, HTTP_Unprocessable);
-    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {badParameter: "bad value"}}, undefined, HTTP_Unprocessable);
+    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {badParameter: "bad value"}}, [], EXCLUDE_PARAMS, HttpStatusCode.Unprocessable);
+    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {badParameter: "bad value"}}, undefined, HttpStatusCode.Unprocessable);
     cy.log("Tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
       { where: {}, tagMode: "rubbish value" },
       [],
       EXCLUDE_PARAMS,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: {}, tagMode: "rubbish value" },
       undefined,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //cy.log("order");
-    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, [], EXCLUDE_PARAMS, HTTP_Unprocessable);
-    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, undefined, HTTP_Unprocessable);
+    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, [], EXCLUDE_PARAMS, HttpStatusCode.Unprocessable);
+    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, undefined, HttpStatusCode.Unprocessable);
     //cy.log("unsupported parameter");
-    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, [], EXCLUDE_PARAMS, HTTP_Unprocessable);
-    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, undefined, HTTP_Unprocessable);
+    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, [], EXCLUDE_PARAMS, HttpStatusCode.Unprocessable);
+    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, undefined, HttpStatusCode.Unprocessable);
   });
 
   //TODO: Issue 91: /ap1/v1/recordings/count ignoring view-mode
@@ -747,7 +747,7 @@ describe("Recordings query using where", () => {
         "rqGroup",
         true,
         true,
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { useRawUserName: true }
       );
 
@@ -763,7 +763,7 @@ describe("Recordings query using where", () => {
         EXCLUDE_PARAMS
       );
       //cy.apiRecordingsCountCheck( superuser, {where: {}, "view-mode":'user'}, 2);
-      cy.apiGroupUserRemove("rqGroupAdmin", superuser, "rqGroup", HTTP_OK200, {
+      cy.apiGroupUserRemove("rqGroupAdmin", superuser, "rqGroup", HttpStatusCode.Ok, {
         useRawUserName: true,
       });
     });
@@ -785,7 +785,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 20 }
     );
 
@@ -803,7 +803,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(3, 6),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 20 }
     );
 
@@ -821,7 +821,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(19, 20),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 20 }
     );
   });
@@ -840,7 +840,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 3 }
     );
 
@@ -858,7 +858,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(3, 6),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 3 }
     );
 
@@ -876,7 +876,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(19, 20),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 1 }
     );
   });
@@ -888,7 +888,7 @@ describe("Recordings query using where", () => {
       { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 20 }
     );
   });

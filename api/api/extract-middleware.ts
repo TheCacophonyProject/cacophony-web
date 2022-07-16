@@ -12,7 +12,11 @@ import logger from "../logging";
 import log from "../logging";
 import { modelTypeName, modelTypeNamePlural } from "./middleware";
 import { ValidationChain } from "express-validator";
-import { AuthorizationError, ClientError } from "./customErrors";
+import {
+  AuthenticationError,
+  AuthorizationError,
+  ClientError,
+} from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
@@ -47,11 +51,10 @@ const extractJwtAuthenticatedEntity =
 
       if (types && !types.includes(jwtDecoded._type)) {
         return next(
-          new ClientError(
+          new AuthenticationError(
             `Invalid JWT access type '${type}', must be ${
               types.length > 1 ? "one of " : ""
-            }${types.map((t) => `'${t}'`).join(", ")}`,
-            401
+            }${types.map((t) => `'${t}'`).join(", ")}`
           )
         );
       }
@@ -62,20 +65,19 @@ const extractJwtAuthenticatedEntity =
         jwtDecoded.activated === false
       ) {
         return next(
-          new ClientError(
-            "You must have confirmed your email address to activate your account in order to access this API.",
-            401
+          new AuthorizationError(
+            "You must have confirmed your email address to activate your account in order to access this API."
           )
         );
       }
 
       const hasAccess = checkAccess(reqAccess, jwtDecoded);
       if (!hasAccess) {
-        return next(new ClientError("JWT does not have access.", 401));
+        return next(new AuthenticationError("JWT does not have access."));
       }
 
       if (requireSuperAdmin && type !== "user") {
-        return next(new ClientError("Admin has to be a user", 403));
+        return next(new AuthorizationError("Admin has to be a user"));
       }
 
       const short = true;
@@ -110,9 +112,8 @@ const extractJwtAuthenticatedEntity =
         }
         if (result === null) {
           return next(
-            new ClientError(
-              `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`,
-              403
+            new AuthorizationError(
+              `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`
             )
           );
         }
@@ -131,7 +132,7 @@ const extractJwtAuthenticatedEntity =
       }
 
       if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
-        return next(new ClientError("User is not an admin.", 403));
+        return next(new AuthorizationError("User is not an admin."));
       }
 
       return next();
@@ -453,38 +454,34 @@ export const fetchModel =
         if (byName && byId) {
           // TODO - provide better error messages in the case the group (id2) doesn't exist?
           return next(
-            new ClientError(
+            new AuthorizationError(
               `Could not find a ${modelName} with a name or id of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-              403
+              }${forUser ? " for user" : ""}`
             )
           );
         } else if (byId) {
           return next(
-            new ClientError(
+            new AuthorizationError(
               `Could not find a ${modelName} with an id of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-              403
+              }${forUser ? " for user" : ""}`
             )
           );
         } else if (byName) {
           return next(
-            new ClientError(
+            new AuthorizationError(
               `Could not find a ${modelName} with a name of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-              403
+              }${forUser ? " for user" : ""}`
             )
           );
         } else {
           return next(
-            new ClientError(
+            new AuthorizationError(
               `Could not find any ${modelTypeNamePlural(modelType)}${
                 forUser ? " for user" : ""
-              }`,
-              403
+              }`
             )
           );
         }
@@ -1502,15 +1499,15 @@ export const fetchUnauthorizedRequiredUserByResetToken =
     try {
       resetInfo = getDecodedResetToken(token);
     } catch (e) {
-      return next(new ClientError(`Reset token expired`, 401));
+      return next(new AuthenticationError(`Reset token expired`));
     }
     response.locals.resetInfo = resetInfo;
     const user = await models.User.findByPk(response.locals.resetInfo.id);
     if (!user) {
+      // FIXME - Should this be an AuthenticationError?
       return next(
-        new ClientError(
-          `Could not find a user with id '${response.locals.resetInfo.id}'`,
-          403
+        new AuthorizationError(
+          `Could not find a user with id '${response.locals.resetInfo.id}'`
         )
       );
     }

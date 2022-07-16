@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { validateFields } from "../middleware";
 import { body } from "express-validator";
 import auth from "../auth";
-import responseUtil from "./responseUtil";
-import { Application, Response, Request, NextFunction } from "express";
+import { successResponse } from "./responseUtil";
+import { Application, NextFunction, Request, Response } from "express";
 import {
   anyOf,
   deprecatedField,
@@ -30,7 +30,7 @@ import {
 } from "../validation-middleware";
 import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
 import { Device } from "models/Device";
-import { ClientError } from "../customErrors";
+import { AuthorizationError, ClientError } from "../customErrors";
 import { DeviceId } from "@typedefs/api/common";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -100,35 +100,29 @@ export default function (app: Application) {
       if (!response.locals.device) {
         if (request.body.deviceId || request.body.deviceID) {
           return next(
-            new ClientError("Device not found for supplied deviceId", 401)
+            new AuthorizationError("Device not found for supplied deviceId")
           );
         } else {
           return next(
-            new ClientError(
-              "Device not found for supplied deviceName and groupName",
-              401
+            new AuthorizationError(
+              "Device not found for supplied deviceName and groupName"
             )
           );
         }
       }
       next();
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const passwordMatch = await (
         response.locals.device as Device
       ).comparePassword(request.body.password);
       if (passwordMatch) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Successful login."],
+        return successResponse(response, "Successful login.", {
           id: response.locals.device.id,
           token: `JWT ${auth.createEntityJWT(response.locals.device)}`,
         });
       } else {
-        return responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Wrong password or devicename."],
-        });
+        return next(new AuthorizationError("Wrong password or devicename."));
       }
     }
   );

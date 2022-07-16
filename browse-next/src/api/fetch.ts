@@ -1,10 +1,10 @@
-import {CurrentViewAbortController} from "@/router";
-import type {LoggedInUser} from "@/models/LoggedInUser";
-import {CurrentUser, userIsLoggedIn} from "@/models/LoggedInUser";
-import type {ErrorResult, FetchResult} from "@api/types";
-import {reactive} from "vue";
-import {delayMsThen} from "@/utils";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { CurrentViewAbortController } from "@/router";
+import type { LoggedInUser } from "@/models/LoggedInUser";
+import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
+import type { ErrorResult, FetchResult } from "@api/types";
+import { reactive } from "vue";
+import { delayMsThen } from "@/utils";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const lastApiVersion: string | null = null;
 
@@ -72,25 +72,19 @@ export async function fetch<T>(
     networkConnectionError.hasConnectionError = false;
   } catch (e: Error | unknown) {
     if ((e as Error).name === "AbortError") {
-      console.log(
-        "!! Abort, abort",
-        e,
-        (e as Error).name,
-        url,
-        request.signal
-      );
+      console.log("!! Abort, abort", e, (e as Error).name, url, request.signal);
       return;
     }
     networkConnectionError.hasConnectionError = true;
     const delay = networkConnectionError.retryInterval;
     if (networkConnectionError.retryCount < MAX_RETRY_COUNT) {
-      return delayMsThen(
+      return (await delayMsThen(
         delay,
         () => {
           return fetch(url, request);
         },
         networkConnectionError
-      ) as Promise<FetchResult<T>>;
+      )) as Promise<FetchResult<T>>;
     }
 
     // Network error?

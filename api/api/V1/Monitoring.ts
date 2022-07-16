@@ -16,21 +16,21 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields, expectedTypeOf, isIntArray } from "../middleware";
-import { Application, Response, Request, NextFunction } from "express";
+import { expectedTypeOf, isIntArray, validateFields } from "../middleware";
+import { Application, NextFunction, Request, Response } from "express";
 import {
   calculateMonitoringPageCriteria,
   MonitoringParams,
 } from "./monitoringPage";
 import { generateVisits } from "./monitoringVisit";
-import responseUtil from "./responseUtil";
+import responseUtil, { successResponse } from "./responseUtil";
 import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import models from "@models";
 import { ClientError } from "@api/customErrors";
-import logger from "@/logging";
 import { GroupId, StationId } from "@typedefs/api/common";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -219,9 +219,7 @@ export default function (app: Application, baseUrl: string) {
       if (visits instanceof ClientError) {
         return next(visits);
       }
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
+      return successResponse(response, "Completed query.", {
         params: searchDetails,
         visits,
       });

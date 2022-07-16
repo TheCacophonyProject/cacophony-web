@@ -4,7 +4,7 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import { ApiUserResponse } from "@typedefs/api/user";
-import {HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 const expectedUser1 = {} as ApiUserResponse;
 const expectedUser2 = {} as ApiUserResponse;
@@ -37,7 +37,7 @@ describe("User: list", () => {
         superuser,
         [expectedUser1, expectedUser2, expectedUser3],
         [],
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { contains: true }
       );
     });
@@ -46,6 +46,6 @@ describe("User: list", () => {
   }
 
   it("Non-superuser cannot view users list", () => {
-    cy.apiUsersCheck("uliUser1", [], [], HTTP_Forbidden);
+    cy.apiUsersCheck("uliUser1", [], [], HttpStatusCode.Forbidden);
   });
 });

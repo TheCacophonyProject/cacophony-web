@@ -13,7 +13,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
-import {HTTP_Forbidden, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 const EXCLUDE_TAG_IDS = ["[].id"];
 
@@ -119,7 +119,7 @@ describe("Recordings: tag", () => {
       "tagRecording5",
       null,
       tag1,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check tag was not created");
@@ -143,7 +143,7 @@ describe("Recordings: tag", () => {
       "tagGroupAdmin",
       "tagRecording6",
       "tagTag6",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check recording tag was not deleted");
@@ -178,7 +178,7 @@ describe("Recordings: tag", () => {
       "999999",
       null,
       tag1,
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawRecordingId: true }
     );
   });
@@ -258,7 +258,7 @@ describe("Recordings: tag", () => {
       "tagRecording10",
       "tagTag10",
       ft2,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     cy.log("Bad value");
@@ -269,7 +269,7 @@ describe("Recordings: tag", () => {
       "tagRecording10",
       "tagTag10",
       ft3,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 });

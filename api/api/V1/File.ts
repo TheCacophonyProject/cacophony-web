@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { validateFields } from "../middleware";
 import models from "@models";
 import util from "./util";
-import responseUtil from "./responseUtil";
+import responseUtil, { successResponse } from "./responseUtil";
 import config from "@config";
 import jsonwebtoken from "jsonwebtoken";
 import { param, query } from "express-validator";
@@ -34,6 +34,7 @@ import { Op } from "sequelize";
 import { idOf } from "@api/validation-middleware";
 import { AuthorizationError } from "@api/customErrors";
 import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
@@ -103,10 +104,7 @@ export default (app: Application, baseUrl: string) => {
         0,
         1000
       );
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
+      return successResponse(response, "Completed query.", {
         count: result.count,
         files: mapAudiobaitFiles(result.rows),
       });
@@ -142,9 +140,7 @@ export default (app: Application, baseUrl: string) => {
         key: file.fileKey,
       };
 
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
+      return successResponse(response, "", {
         file: mapAudiobaitFile(file),
         fileSize: await util.getS3ObjectFileSize(file.fileKey),
         jwt: jsonwebtoken.sign(downloadFileData, config.server.passportSecret, {
@@ -186,11 +182,7 @@ export default (app: Application, baseUrl: string) => {
           )
         );
       }
-
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Deleted file."],
-      });
+      return successResponse(response, "Deleted file.");
     }
   );
 };

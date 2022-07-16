@@ -23,7 +23,10 @@ import auth, {
   ttlTypes,
 } from "../auth";
 import { body, oneOf } from "express-validator";
-import responseUtil from "./responseUtil";
+import responseUtil, {
+  serverErrorResponse,
+  successResponse,
+} from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
 import {
   deprecatedField,
@@ -31,13 +34,13 @@ import {
   validPasswordOf,
 } from "../validation-middleware";
 import {
-  extractJWTInfo,
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
+  extractJWTInfo,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
   fetchUnauthorizedRequiredUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByResetToken,
   fetchUnauthorizedRequiredUserByNameOrId,
+  fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
@@ -49,12 +52,16 @@ import jwt from "jsonwebtoken";
 import config from "@config";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
-import logger from "@log";
 import {
   sendChangedEmailConfirmationEmail,
   sendWelcomeEmailConfirmationEmail,
 } from "@/emails/transactionalEmails";
-import { sendEmailConfirmationEmail } from "@/scripts/emailUtil";
+import { HttpStatusCode } from "@typedefs/api/consts";
+import {
+  AuthorizationError,
+  ClientError,
+  UnprocessableError,
+} from "@api/customErrors";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
@@ -96,15 +103,14 @@ export default function (app: Application, baseUrl: string) {
       if (!response.locals.user) {
         // NOTE: Don't give away the fact that the user may not exist - remain vague in the
         //  error message as to whether the error is username or password related.
-        return responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Wrong password or username/email address."],
-        });
+        return next(
+          new AuthorizationError("Wrong password or username/email address.")
+        );
       } else {
         next();
       }
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const passwordMatch = await response.locals.user.comparePassword(
         request.body.password
       );
@@ -120,19 +126,15 @@ export default function (app: Application, baseUrl: string) {
           request.headers["user-agent"],
           isNewEndPoint
         );
-
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Successful login."],
+        return successResponse(response, "Successful login.", {
           token: apiToken,
           refreshToken,
           userData: mapUser(response.locals.user),
         });
       } else {
-        responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Wrong password or username/email address."],
-        });
+        return next(
+          new AuthorizationError("Wrong password or username/email address.")
+        );
       }
     },
   ];
@@ -191,7 +193,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/refresh-session-token`,
     validateFields([body("refreshToken").exists()]),
     extractJWTInfo(body("refreshToken")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // NOTE: The key insight for refresh tokens is that they are "one-time-use" tokens.  Every time we give out
       //  a new refresh token, we invalidate the old one.
 
@@ -220,10 +222,9 @@ export default function (app: Application, baseUrl: string) {
           new Date().setDate(new Date().getDate() - 15)
         );
         if (new Date(validToken.updatedAt) < fifteenDaysAgo) {
-          return responseUtil.send(response, {
-            statusCode: 401,
-            messages: ["Inactive refresh token expired."],
-          });
+          return next(
+            new AuthorizationError("Inactive refresh token expired.")
+          );
         }
 
         const refreshToken = randomUUID();
@@ -257,18 +258,13 @@ export default function (app: Application, baseUrl: string) {
           { refreshToken },
           config.server.passportSecret
         );
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got user token."],
+        return successResponse(response, "Got user token.", {
           token: `JWT ${token}`,
           expiry,
           refreshToken: refreshTokenSigned,
         });
       } else {
-        responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Invalid refresh token."],
-        });
+        return next(new AuthorizationError("Invalid refresh token."));
       }
     }
   );
@@ -295,9 +291,7 @@ export default function (app: Application, baseUrl: string) {
         globalPermission,
         endUserAgreement,
       } = response.locals.user;
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got user token."],
+      return successResponse(response, "Got user token.", {
         token: `JWT ${token}`,
         expiry,
         userData: {
@@ -385,12 +379,7 @@ export default function (app: Application, baseUrl: string) {
         { expiresIn: expiry },
         request.body.access
       );
-
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Token generated."],
-        token: token,
-      });
+      return successResponse(response, "Token generated.", { token });
     })
   );
 
@@ -408,7 +397,6 @@ export default function (app: Application, baseUrl: string) {
     ),
     async (request: Request, response: Response) => {
       if (response.locals.user) {
-        debugger;
         const user = response.locals.user as User;
         // If we're using the new end-point, make sure the user has confirmed their email address.
         const isNewEndpoint = request.path.endsWith("reset-password");
@@ -420,7 +408,7 @@ export default function (app: Application, baseUrl: string) {
           const sendingSuccess = await user.resetPassword();
           if (!sendingSuccess) {
             return responseUtil.send(response, {
-              statusCode: 500,
+              statusCode: HttpStatusCode.ServerError,
               messages: [
                 "We failed to send your password recovery email, please check that you've entered your email correctly.",
               ],
@@ -431,10 +419,10 @@ export default function (app: Application, baseUrl: string) {
         // In the case where the user doesn't exist, we'll pretend it does so
         // attackers can't use this api to confirm the existence of a given email address.
       }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Your password recovery email has been sent"],
-      });
+      return successResponse(
+        response,
+        "Your password recovery email has been sent"
+      );
     },
   ];
 
@@ -460,18 +448,13 @@ export default function (app: Application, baseUrl: string) {
   const validateTokenOptions = [
     validateFields([body("token").exists()]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       if (
         response.locals.user.password !== response.locals.resetInfo.password
       ) {
-        return responseUtil.send(response, {
-          statusCode: 403,
-          messages: ["Your password has already been changed"],
-        });
+        return next(new ClientError("Your password has already been changed"));
       }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Reset token is still valid"],
+      return successResponse(response, "Reset token is still valid", {
         userData: mapUser(response.locals.user),
       });
     },
@@ -514,7 +497,7 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     `${apiUrl}/resend-email-confirmation-request`,
     extractJwtAuthorizedUser,
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const user = await models.User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
@@ -538,20 +521,17 @@ export default function (app: Application, baseUrl: string) {
           );
         }
         if (!sendSuccess) {
-          return responseUtil.send(response, {
-            statusCode: 500,
-            messages: [`Failed to send email to ${user.email}`],
-          });
+          return serverErrorResponse(
+            response,
+            new ClientError(
+              `Failed to send email to ${user.email}`,
+              HttpStatusCode.ServerError
+            )
+          );
         }
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Email confirmation request sent"],
-        });
+        return successResponse(response, "Email confirmation request sent");
       } else if (user.emailConfirmed) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Email already confirmed"],
-        });
+        return next(new UnprocessableError("Email already confirmed"));
       }
     }
   );
@@ -566,9 +546,7 @@ export default function (app: Application, baseUrl: string) {
           response.locals.requestUser.id,
           request.body.email
         );
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got email confirmation token"],
+        return successResponse(response, "Got email confirmation token", {
           token,
         });
       }
@@ -592,17 +570,18 @@ export default function (app: Application, baseUrl: string) {
         response.locals.tokenInfo.id
       )(request, response, next);
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const tokenInfo = response.locals.tokenInfo as {
         id: UserId;
         email: string;
       };
       let user = response.locals.user;
       if (tokenInfo.email !== user.email) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["User email address differs from email to confirm"],
-        });
+        return next(
+          new UnprocessableError(
+            "User email address differs from email to confirm"
+          )
+        );
       }
       if (user.email) {
         // NOTE: It's okay if this link is used multiple times, we'll just say it's confirmed successfully each time.
@@ -621,13 +600,11 @@ export default function (app: Application, baseUrl: string) {
         );
 
         user = await user.update({ emailConfirmed: true });
-        return responseUtil.send(response, {
-          statusCode: 200,
+        return successResponse(response, "Email confirmed", {
           signOutUser: emailAlreadyConfirmed, // UI should sign out user and make them sign in again with new email.
           userData: mapUser(user),
           token: apiToken,
           refreshToken,
-          messages: ["Email confirmed"],
         });
       }
     }

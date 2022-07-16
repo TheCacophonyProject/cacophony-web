@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
 
 import { getTestName } from "@commands/names";
-import {HTTP_AuthorizationError} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 describe("User: password reset", () => {
   //Do not run against a live server as we don't have a stubbed email server
@@ -55,7 +55,7 @@ describe("User: password reset", () => {
           cy.apiSignInAs("uprUser2", null, null, "password2");
 
           cy.log("Cannot log in using old password");
-          cy.apiSignInAs("uprUser2", null, null, null, HTTP_AuthorizationError);
+          cy.apiSignInAs("uprUser2", null, null, null, HttpStatusCode.AuthorizationError);
         });
       });
     });

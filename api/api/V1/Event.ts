@@ -19,15 +19,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { expectedTypeOf, validateFields } from "../middleware";
 import models from "@models";
 import { QueryOptions } from "@models/Event";
-import responseUtil from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
-import { Application, Response, Request, NextFunction } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import { errors, powerEventsPerDevice } from "./eventUtil";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
-  fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedOptionalDeviceById,
+  fetchAuthorizedRequiredDeviceById,
   fetchUnAuthorizedOptionalEventDetailSnapshotById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
@@ -36,15 +36,16 @@ import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.j
 import { EventDescription } from "@typedefs/api/event";
 import logger from "@log";
 import {
-  booleanOf,
   anyOf,
+  booleanOf,
+  deprecatedField,
   idOf,
   integerOf,
-  deprecatedField,
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { IsoFormattedDateString } from "@typedefs/api/common";
 import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -102,9 +103,7 @@ const uploadEvent = async (
       new ClientError(`Failed to record events. ${exception.message}`)
     );
   }
-  return responseUtil.send(response, {
-    statusCode: 200,
-    messages: ["Added events."],
+  return successResponse(response, "Added events.", {
     eventsAdded: count,
     eventDetailId: detailsId,
   });
@@ -181,7 +180,7 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
@@ -234,7 +233,7 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
@@ -296,7 +295,7 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a device with an id of '${request.query.deviceId} for user`,
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
@@ -322,12 +321,7 @@ export default function (app: Application, baseUrl: string) {
         query.latest as unknown as boolean,
         options
       );
-
-      // TODO(jon): Flatten out the response structure and formalise and validate it.
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
+      return successResponse(response, "Completed query.", {
         limit: query.limit,
         offset,
         count: result.count,
@@ -407,7 +401,7 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a device with an id of '${request.query.deviceId} for user`,
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
@@ -421,9 +415,7 @@ export default function (app: Application, baseUrl: string) {
         query: { ...request.query },
         res: { locals: { ...response.locals } },
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
+      return successResponse(response, "Completed query.", {
         limit: query.limit,
         offset: query.offset,
         rows: result,
@@ -480,7 +472,7 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a device with an id of '${request.query.deviceId} for user`,
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
@@ -492,14 +484,12 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser,
         new Date()
       );
-      const result = await powerEventsPerDevice({
+      const events = await powerEventsPerDevice({
         query: { ...request.query },
         res: { locals: { ...response.locals } },
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
-        events: result,
+      return successResponse(response, "Completed query.", {
+        events,
       });
     }
   );

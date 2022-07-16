@@ -1,23 +1,21 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-import { RecordingId, StationId } from "@typedefs/api/common";
-import { checkRecording } from "./recording-tests";
-import { ApiStationData } from "../types";
-import { ApiStationResponse } from "@typedefs/api/station";
-import { getTestName } from "../names";
-import { logTestDescription, prettyLog } from "../descriptions";
+import {ApiStationData} from "../types";
+import {ApiStationResponse} from "@typedefs/api/station";
+import {getTestName} from "../names";
+import {logTestDescription, prettyLog} from "../descriptions";
 import {
+  checkMessages,
+  checkTreeStructuresAreEqualExcept,
+  checkWarnings,
   getCreds,
   makeAuthorizedRequestWithStatus,
   saveIdOnly,
-  v1ApiPath,
   sortArrayOn,
-  checkTreeStructuresAreEqualExcept,
-  checkMessages,
-  checkWarnings,
+  v1ApiPath,
 } from "../server";
-import {HTTP_OK200} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 Cypress.Commands.add(
   "apiStationsCheck",
@@ -272,7 +270,7 @@ Cypress.Commands.add(
         },
       },
       userName,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
   }
 );
@@ -282,13 +280,11 @@ export function TestCreateStationData(
   identifier: number
 ): ApiStationData {
   const thisLocation = TestGetLocation(identifier);
-  const station: ApiStationData = {
+  return {
     name: prefix + identifier.toString(),
     lat: thisLocation.lat,
     lng: thisLocation.lng,
   };
-
-  return station;
 }
 
 export function TestCreateExpectedStation(
@@ -330,10 +326,8 @@ export function TestCreateExpectedAutomaticStation(
 }
 
 export function TestGetLocation(identifier = 0, offsetDegrees = 0) {
-  const thisLocation = {
+  return {
     lat: -45 - identifier / 10 - offsetDegrees,
     lng: 172 + identifier / 10 + offsetDegrees,
   };
-
-  return thisLocation;
 }

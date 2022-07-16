@@ -8,7 +8,7 @@ import {
 } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 describe("Groups - add, get group", () => {
   const NOT_ADMIN = false;
@@ -178,14 +178,14 @@ describe("Groups - add, get group", () => {
       getCreds("gaGroup").id.toString(),
       [expectedGroup],
       EXCLUDE_CREATED_UPDATED_AT,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { useRawGroupName: true }
     );
   });
 
   it("Non member cannot query", () => {
     cy.log("Valid user with no access to this group");
-    cy.apiGroupCheck("gaTestUser", "gaGroup", [], [], HTTP_Forbidden);
+    cy.apiGroupCheck("gaTestUser", "gaGroup", [], [], HttpStatusCode.Forbidden);
 
     cy.log("Valid user with no access to this group using groupId");
     cy.apiGroupCheck(
@@ -193,64 +193,64 @@ describe("Groups - add, get group", () => {
       getCreds("gaGroup").id.toString(),
       [],
       [],
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawGroupName: true }
     );
   });
 
   it("Query nonexistant group handled correctly", () => {
-    cy.apiGroupCheck("gaGroupAdmin", "IDontExist", [], [], HTTP_Forbidden, {
+    cy.apiGroupCheck("gaGroupAdmin", "IDontExist", [], [], HttpStatusCode.Forbidden, {
       useRawGroupName: true,
     });
 
-    cy.apiGroupCheck("gaGroupAdmin", "9999999", [], [], HTTP_Forbidden, {
+    cy.apiGroupCheck("gaGroupAdmin", "9999999", [], [], HttpStatusCode.Forbidden, {
       useRawGroupName: true,
     });
   });
 
   it("Cannot create group with same name (even with different case)", () => {
     cy.log("Add duplicate group (same user)");
-    cy.apiGroupAdd("gaGroupAdmin", "gaGroup", true, HTTP_Unprocessable);
+    cy.apiGroupAdd("gaGroupAdmin", "gaGroup", true, HttpStatusCode.Unprocessable);
     cy.log("Add duplicate group (different user)");
-    cy.apiGroupAdd("gaTestUser", "gaGroup", true, HTTP_Unprocessable);
+    cy.apiGroupAdd("gaTestUser", "gaGroup", true, HttpStatusCode.Unprocessable);
     cy.log("Add duplicate group (different case)");
-    cy.apiGroupAdd("gaGroupAdmin", "GAGROUP", true, HTTP_Unprocessable);
+    cy.apiGroupAdd("gaGroupAdmin", "GAGROUP", true, HttpStatusCode.Unprocessable);
   });
   it("Invalid group names rejected", () => {
     cy.log("Cannot add group with no letters");
-    cy.apiGroupAdd("gaGroupAdmin", "", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", "", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
-    cy.apiGroupAdd("gaGroupAdmin", "1234", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", "1234", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
 
     cy.log("Cannot add group with other non-alphanumeric characters");
-    cy.apiGroupAdd("gaGroupAdmin", "ABC%", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", "ABC%", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
-    cy.apiGroupAdd("gaGroupAdmin", "ABC&", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", "ABC&", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
-    cy.apiGroupAdd("gaGroupAdmin", "ABC<", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", "ABC<", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
-    cy.apiGroupAdd("gaGroupAdmin", "ABC>", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", "ABC>", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
 
     cy.log("Cannot add group with -, _ or space as first letter");
-    cy.apiGroupAdd("gaGroupAdmin", " ABC", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", " ABC", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
-    cy.apiGroupAdd("gaGroupAdmin", "-ABC", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", "-ABC", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
-    cy.apiGroupAdd("gaGroupAdmin", "_ABC", true, HTTP_Unprocessable, {
+    cy.apiGroupAdd("gaGroupAdmin", "_ABC", true, HttpStatusCode.Unprocessable, {
       useRawGroupName: true,
     });
 
     cy.log("Can add group with -, _ or space as subsequent letter");
-    cy.apiGroupAdd("gaGroupAdmin", "A B-C_D", true, HTTP_OK200);
+    cy.apiGroupAdd("gaGroupAdmin", "A B-C_D", true, HttpStatusCode.Ok);
   });
 });

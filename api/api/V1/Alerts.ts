@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { expectedTypeOf, validateFields } from "../middleware";
 import models from "@models";
-import responseUtil from "./responseUtil";
+import responseUtil, { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
@@ -36,6 +36,7 @@ import {
 } from "../validation-middleware";
 import { DeviceId, Seconds } from "@typedefs/api/common";
 import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
@@ -104,18 +105,14 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
     parseJSONField(body("conditions")),
     async (request, response) => {
-      const newAlert = await models.Alert.create({
+      const { id } = await models.Alert.create({
         name: request.body.name,
         conditions: response.locals.conditions,
         frequencySeconds: request.body.frequencySeconds,
         UserId: response.locals.requestUser.id,
         DeviceId: response.locals.device.id,
       });
-      return responseUtil.send(response, {
-        id: newAlert.id,
-        statusCode: 200,
-        messages: ["Created new Alert."],
-      });
+      return successResponse(response, "Created new Alert.", { id });
     }
   );
 
@@ -179,11 +176,7 @@ export default function (app: Application, baseUrl: string) {
       );
       // FIXME validate schema of returned payload,
       //  Reformat the response to conform to deviceName style etc.
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
-        Alerts: alerts,
-      });
+      return successResponse(response, { Alerts: alerts });
     }
   );
 }

@@ -7,7 +7,7 @@ import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import {HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {HttpStatusCode} from "@typedefs/api/consts";
 
 describe("User: add, get", () => {
   const superuser = getCreds("superuser")["name"];
@@ -60,7 +60,7 @@ describe("User: add, get", () => {
       getTestName("uagUser3-2"),
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -75,7 +75,7 @@ describe("User: add, get", () => {
         getCreds("uagUser4-1").id.toString(),
         expectedUser,
         [],
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { useRawUserName: true }
       );
     });
@@ -108,7 +108,7 @@ describe("User: add, get", () => {
         undefined,
         undefined,
         undefined,
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { additionalParams: { firstName: "bob" } }
       );
       cy.apiUserCheck(
@@ -116,7 +116,7 @@ describe("User: add, get", () => {
         getTestName("uagUser6-1"),
         undefined,
         [],
-        HTTP_Forbidden,
+        HttpStatusCode.Forbidden,
         { message: "Could not find a user with a name or id of" }
       );
     });
@@ -130,7 +130,7 @@ describe("User: add, get", () => {
         undefined,
         getTestName("firstEmail") + "@email.com",
         undefined,
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { message: "Username in use" }
       );
       cy.log("Add duplicate user (different case)");
@@ -139,7 +139,7 @@ describe("User: add, get", () => {
         undefined,
         getTestName("secondEmail") + "@email.com",
         undefined,
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { message: "Username in use" }
       );
     });
@@ -157,7 +157,7 @@ describe("User: add, get", () => {
         "password",
         getTestName("user8") + "@user.com",
         undefined,
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { message: "Email address in use" }
       );
       cy.log("Add duplicate email (different case)");
@@ -166,7 +166,7 @@ describe("User: add, get", () => {
         "password",
         getTestName("USER8") + "@USER.COM",
         undefined,
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { message: "Email address in use" }
       );
     });
@@ -174,7 +174,7 @@ describe("User: add, get", () => {
 
   it("Cannot create user with email not matching email format", () => {
     cy.log("Blank email");
-    cy.apiUserAdd("uagUser8-1", "password", "", undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("uagUser8-1", "password", "", undefined, HttpStatusCode.Unprocessable, {
       message: "body.email: Invalid value",
     });
     cy.log("leading space");
@@ -183,7 +183,7 @@ describe("User: add, get", () => {
       "password",
       " startwithspace@email.com",
       undefined,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.email: Invalid value" }
     );
     cy.apiUserAdd(
@@ -191,7 +191,7 @@ describe("User: add, get", () => {
       "password",
       "noatinemail",
       undefined,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.email: Invalid value" }
     );
     cy.log("Email with no user");
@@ -200,7 +200,7 @@ describe("User: add, get", () => {
       "password",
       "user@",
       undefined,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.email: Invalid value" }
     );
     cy.log("Email with no domain");
@@ -209,42 +209,42 @@ describe("User: add, get", () => {
       "password",
       "@email.com",
       undefined,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.email: Invalid value" }
     );
   });
 
   it("Invalid user names rejected", () => {
     cy.log("Cannot add user with no letters");
-    cy.apiUserAdd("", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
       message: "'userName' is required",
     });
-    cy.apiUserAdd("1234", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("1234", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
     });
     cy.log("Cannot add user with other non-alphanumeric characters");
-    cy.apiUserAdd("ABC%", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("ABC%", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
     });
-    cy.apiUserAdd("ABC&", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("ABC&", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
     });
-    cy.apiUserAdd("ABC>", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("ABC>", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
     });
-    cy.apiUserAdd("ABC<", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("ABC<", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
     });
 
     cy.log("Cannot add user with -, _ or space as first letter");
-    cy.apiUserAdd("-ABC", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("-ABC", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
     });
-    cy.apiUserAdd("_ABC", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("_ABC", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
     });
-    cy.apiUserAdd(" ABC", undefined, undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd(" ABC", undefined, undefined, undefined, HttpStatusCode.Unprocessable, {
       useRawUserName: true,
     });
 
@@ -254,13 +254,13 @@ describe("User: add, get", () => {
       undefined,
       getTestName("goodemail") + "@email.com",
       undefined,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
   });
 
   it("Invaliid passwords rejected", () => {
     cy.log("Blank password");
-    cy.apiUserAdd("uagUser9-1", "", undefined, undefined, HTTP_Unprocessable, {
+    cy.apiUserAdd("uagUser9-1", "", undefined, undefined, HttpStatusCode.Unprocessable, {
       message: "Password must be at least 8 characters long",
     });
     cy.log("Short password");
@@ -269,7 +269,7 @@ describe("User: add, get", () => {
       "1234567",
       undefined,
       undefined,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "Password must be at least 8 characters long" }
     );
   });
@@ -277,7 +277,7 @@ describe("User: add, get", () => {
   it("Invalid parameters in user get", () => {
     cy.apiUserAdd("uagUser11").then(() => {
       cy.log("Non existant userId");
-      cy.apiUserCheck("uagUser11", "9999999", undefined, [], HTTP_Forbidden, {
+      cy.apiUserCheck("uagUser11", "9999999", undefined, [], HttpStatusCode.Forbidden, {
         useRawUserId: true,
       });
       cy.log("Non existant username");
@@ -286,7 +286,7 @@ describe("User: add, get", () => {
         "goodLookingUserName",
         undefined,
         [],
-        HTTP_Forbidden,
+        HttpStatusCode.Forbidden,
         { useRawUserId: true }
       );
     });

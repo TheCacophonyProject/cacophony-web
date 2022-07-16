@@ -14,7 +14,7 @@ import {
 import { TEMPLATE_THERMAL_RECORDING_RESPONSE } from "@commands/dataTemplate";
 import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
 import { getTestName } from "@commands/names";
-import {DeviceType, HTTP_Forbidden, HTTP_OK200} from "@typedefs/api/consts";
+import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
 import { ApiStationResponse } from "@typedefs/api/station";
 
 const templateExpectedCypressRecording: ApiThermalRecordingResponse =
@@ -164,7 +164,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               firstTime.toISOString(),
               manualStationId.toString(),
               null,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { messages: ["Updated 4 recording(s)"], useRawStationId: true }
             ).then(() => {
               cy.log("Check 4 recording reassigned, moved");
@@ -199,7 +199,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 autoStation.name,
                 undefined,
                 undefined,
-                HTTP_Forbidden
+                HttpStatusCode.Forbidden
               );
 
               cy.log(
@@ -318,7 +318,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               firstTime.toISOString(),
               manualStationId.toString(),
               null,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { messages: ["Updated 4 recording(s)"], useRawStationId: true }
             ).then(() => {
               //check all 4 recordings updated
@@ -354,7 +354,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 autoStation.name,
                 undefined,
                 undefined,
-                HTTP_Forbidden
+                HttpStatusCode.Forbidden
               );
 
               cy.log(
@@ -465,7 +465,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               firstTime.toISOString(),
               manualStationId.toString(),
               null,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { messages: ["Updated 4 recording(s)"], useRawStationId: true }
             ).then(() => {
               //check all 4 recordings updated
@@ -509,7 +509,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 autoStation.name,
                 undefined,
                 undefined,
-                HTTP_Forbidden
+                HttpStatusCode.Forbidden
               );
 
               cy.log("check new station lastThermalRecordingTime unchanged");
@@ -637,7 +637,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                   firstTime.toISOString(),
                   manualStationId.toString(),
                   null,
-                  HTTP_OK200,
+                  HttpStatusCode.Ok,
                   {
                     messages: ["Updated 2 recording(s)"],
                     useRawStationId: true,
@@ -676,7 +676,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                     autoStation.name,
                     undefined,
                     undefined,
-                    HTTP_Forbidden
+                    HttpStatusCode.Forbidden
                   );
 
                   cy.log(
@@ -808,7 +808,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               thirdTime.toISOString(),
               manualStationId.toString(),
               null,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { messages: ["Updated 2 recording(s)"], useRawStationId: true }
             ).then(() => {
               cy.log("Check 1st 2 recordings unchanged");
@@ -985,7 +985,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                       secondTime.toISOString(),
                       manualStationId.toString(),
                       null,
-                      HTTP_OK200,
+                      HttpStatusCode.Ok,
                       {
                         messages: ["Updated 2 recording(s)"],
                         useRawStationId: true,
@@ -1037,7 +1037,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                         intermediateStation.name,
                         undefined,
                         undefined,
-                        HTTP_Forbidden
+                        HttpStatusCode.Forbidden
                       );
 
                       cy.log(
@@ -1174,7 +1174,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 firstTime.toISOString(),
                 newStationId.toString(),
                 null,
-                HTTP_OK200,
+                HttpStatusCode.Ok,
                 { messages: ["Updated 1 recording(s)"], useRawStationId: true }
               ).then(() => {
                 cy.log("Check recording moved");

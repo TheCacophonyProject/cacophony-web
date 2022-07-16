@@ -18,24 +18,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { validateFields } from "../middleware";
 import models from "@models";
-import responseUtil from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  parseJSONField,
   extractJwtAuthorizedUser,
-  fetchUnauthorizedOptionalGroupByNameOrId,
-  fetchAuthorizedRequiredGroupByNameOrId,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
-  fetchUnauthorizedRequiredUserByNameOrId,
   fetchAuthorizedRequiredDevicesInGroup,
+  fetchAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
-  fetchAuthorizedRequiredStationsForGroup,
   fetchAuthorizedRequiredStationByNameInGroup,
+  fetchAuthorizedRequiredStationsForGroup,
+  fetchUnauthorizedOptionalGroupByNameOrId,
   fetchUnauthorizedOptionalUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
-  fetchAdminAuthorizedRequiredGroups,
+  fetchUnauthorizedRequiredUserByNameOrId,
+  parseJSONField,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
@@ -43,13 +41,13 @@ import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.j
 import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json";
 
 import {
-  booleanOf,
   anyOf,
+  booleanOf,
+  deprecatedField,
   idOf,
   nameOf,
   nameOrIdOf,
   validNameOf,
-  deprecatedField,
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
@@ -68,6 +66,7 @@ import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@api/V1/recordingUtil";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const mapGroup = (
   group: Group,
@@ -179,7 +178,9 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.group) {
-        return next(new ClientError("Group name in use", 422));
+        return next(
+          new ClientError("Group name in use", HttpStatusCode.Unprocessable)
+        );
       }
       next();
     },
@@ -190,10 +191,8 @@ export default function (app: Application, baseUrl: string) {
       await newGroup.addUser(response.locals.requestUser.id, {
         through: { admin: true },
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
+      return successResponse(response, "Created new group.", {
         groupId: newGroup.id,
-        messages: ["Created new group."],
       });
     }
   );
@@ -233,12 +232,8 @@ export default function (app: Application, baseUrl: string) {
         // Sidekick UA
         groups = mapLegacyGroupsResponse(groups);
       }
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [], // FIXME - handle deprecated field.
-        groups,
-      });
+      // FIXME - handle deprecated field.
+      return successResponse(response, { groups });
     }
   );
 
@@ -272,9 +267,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
+      return successResponse(response, {
         group: mapGroup(response.locals.group, response.locals.viewAsSuperUser),
       });
     }
@@ -309,13 +302,11 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredDevicesInGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
+      return successResponse(response, "Got devices for group", {
         devices: mapDevicesResponse(
           response.locals.devices,
           response.locals.viewAsSuperUser
         ),
-        messages: ["Got devices for group"],
       });
     }
   );
@@ -355,14 +346,12 @@ export default function (app: Application, baseUrl: string) {
       const users = await response.locals.group.getUsers({
         attributes: ["id", "username"],
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
+      return successResponse(response, "Got users for group", {
         users: users.map(({ username, id, GroupUsers }) => ({
           userName: username,
           id,
           admin: GroupUsers.admin,
         })),
-        messages: ["Got users for group"],
       });
     }
   );
@@ -386,9 +375,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([idOf(param("groupIdOrName"))]),
     fetchAuthorizedRequiredSchedulesForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got schedules for group"],
+      return successResponse(response, "Got schedules for group", {
         schedules: response.locals.schedules.map(mapSchedule),
       });
     }
@@ -443,11 +430,7 @@ export default function (app: Application, baseUrl: string) {
       //  go to that groups dashboard after logging in.  Should the user have to accept being added?
       //  Adding a user should really be done by email address, not username. Perhaps we need an "invited" state in GroupUsers,
       //  where the user is not quite a real member of the group until they accept.
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [action],
-      });
+      return successResponse(response, action);
     }
   );
 
@@ -485,21 +468,15 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredUserByNameOrId(
       body(["username", "userName", "userId"])
     ),
-    async (request, response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const removed = await models.Group.removeUserFromGroup(
         response.locals.group,
         response.locals.user
       );
       if (removed) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Removed user from the group."],
-        });
+        return successResponse(response, "Removed user from the group.");
       } else {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to remove user from the group."],
-        });
+        return next(new ClientError("Failed to remove user from the group."));
       }
     }
   );
@@ -521,7 +498,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/leave-group`,
     extractJwtAuthorizedUser,
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const group = response.locals.group;
       const user = response.locals.requestUser;
       const groupUsers = await models.GroupUsers.findAll({
@@ -533,17 +510,11 @@ export default function (app: Application, baseUrl: string) {
         ({ UserId, admin }) => UserId !== user.id && admin
       );
       if (otherAdmins.length === 0) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Can't remove last admin from group."],
-        });
+        return next(new ClientError("Can't remove last admin from group."));
       }
       const thisGroupUser = groupUsers.find(({ UserId }) => UserId === user.id);
       await thisGroupUser.destroy();
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["User left the group."],
-      });
+      return successResponse(response, "User left the group.");
     }
   );
 
@@ -574,7 +545,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("station")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const { name, lat, lng } = response.locals.station;
       const groupId = response.locals.group.id;
       const userId = response.locals.requestUser.id;
@@ -604,14 +575,13 @@ export default function (app: Application, baseUrl: string) {
         (existingStation) => existingStation.name === name
       );
       if (nameCollision) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: [
+        return next(
+          new ClientError(
             `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
               (untilTime && untilTime.toISOString()) || "now"
-            }.`,
-          ],
-        });
+            }.`
+          )
+        );
 
         // NOTE: Alternate behaviour: We rename any existing station in the active range that has the same name.
         // await nameCollision.update({ name: `${nameCollision.name}_moved` });
@@ -626,16 +596,10 @@ export default function (app: Application, baseUrl: string) {
         lastUpdatedById: userId,
         GroupId: groupId,
       });
-
-      const responseData = {
-        statusCode: 200,
-        messages: ["Created station"],
+      return successResponse(response, "Created station", {
         stationId: station.id,
-      };
-      if (proximityWarnings.length) {
-        (responseData as any).warnings = proximityWarnings;
-      }
-      return responseUtil.send(response, responseData);
+        ...(proximityWarnings.length && { warnings: proximityWarnings }),
+      });
     }
   );
 
@@ -667,9 +631,7 @@ export default function (app: Application, baseUrl: string) {
       param("stationName")
     ),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got station"],
+      return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
     }
@@ -717,9 +679,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const stations = await response.locals.stations;
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got stations for group"],
+      return successResponse(response, "Got stations for group", {
         stations: mapStations(stations),
       });
     }
@@ -747,10 +707,7 @@ export default function (app: Application, baseUrl: string) {
           },
         }
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Updated group settings for user"],
-      });
+      return successResponse(response, "Updated group settings for user");
     }
   );
 
@@ -767,10 +724,7 @@ export default function (app: Application, baseUrl: string) {
       await response.locals.group.update({
         settings: response.locals.settings,
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Updated group settings"],
-      });
+      return successResponse(response, "Updated group settings");
     }
   );
 
@@ -795,11 +749,7 @@ export default function (app: Application, baseUrl: string) {
         // If the user isn't a member, email them and invite them to create an account, with a special link to
         // accept which will then add them to the group when the account is created.
       }
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Invited user to group"],
-      });
+      return successResponse(response, "Invited user to group");
     }
   );
 }

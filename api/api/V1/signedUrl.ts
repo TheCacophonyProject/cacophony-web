@@ -21,7 +21,7 @@ import auth from "../auth";
 import stream from "stream";
 import log from "@log";
 import modelsUtil from "@models/util/util";
-import responseUtil from "./responseUtil";
+import responseUtil, { serverErrorResponse } from "./responseUtil";
 import { ClientError } from "../customErrors";
 import { Application, Request, Response } from "express";
 
@@ -39,9 +39,7 @@ export const streamS3Object = async (
 
   s3.getObject(params, function (err, data) {
     if (err) {
-      log.error("Error with s3 getObject.");
-      log.error(err.stack);
-      return responseUtil.serverError(response, err);
+      return serverErrorResponse(response, err);
     }
 
     if (!request.headers.range) {

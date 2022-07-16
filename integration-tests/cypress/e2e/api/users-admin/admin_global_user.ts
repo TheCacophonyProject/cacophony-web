@@ -5,7 +5,7 @@ import { TestCreateExpectedUser } from "@commands/api/user";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import {DeviceType, HTTP_Forbidden, HTTP_OK200, HTTP_Unprocessable} from "@typedefs/api/consts";
+import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
 
 describe("User: manage global access permissions", () => {
   const superuser = getCreds("superuser")["name"];
@@ -72,7 +72,7 @@ describe("User: manage global access permissions", () => {
         );
 
         cy.log("Cannot elevate own permisssions");
-        cy.apiAdminUpdate("gapUser1", "gapUser1", "write", HTTP_Forbidden);
+        cy.apiAdminUpdate("gapUser1", "gapUser1", "write", HttpStatusCode.Forbidden);
 
         cy.log("Check cannot write globally");
         cy.apiGroupUserAdd(
@@ -81,7 +81,7 @@ describe("User: manage global access permissions", () => {
           "gapGroup2",
           false,
           false,
-          HTTP_Forbidden
+          HttpStatusCode.Forbidden
         );
 
         cy.log("Set back to default (off)");
@@ -94,7 +94,7 @@ describe("User: manage global access permissions", () => {
             null,
             undefined,
             {},
-            HTTP_Forbidden
+            HttpStatusCode.Forbidden
           );
         });
       });
@@ -137,7 +137,7 @@ describe("User: manage global access permissions", () => {
             null,
             undefined,
             {},
-            HTTP_Forbidden
+            HttpStatusCode.Forbidden
           );
         });
       });
@@ -153,7 +153,7 @@ describe("User: manage global access permissions", () => {
         superuser,
         getCreds("gapUser1").id.toString(),
         "write",
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { useRawUserName: true }
       ).then(() => {
         cy.log("Check can write globally");
@@ -165,7 +165,7 @@ describe("User: manage global access permissions", () => {
           superuser,
           getCreds("gapUser1").id.toString(),
           "off",
-          HTTP_OK200,
+          HttpStatusCode.Ok,
           { useRawUserName: true }
         );
       });
@@ -176,14 +176,14 @@ describe("User: manage global access permissions", () => {
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Correct handling of bad parameters", () => {
-      cy.apiAdminUpdate(superuser, "nonExistantUser", "write", HTTP_Forbidden, {
+      cy.apiAdminUpdate(superuser, "nonExistantUser", "write", HttpStatusCode.Forbidden, {
         message: "Could not find a user with a name",
       });
       cy.apiAdminUpdate(
         superuser,
         "gapUser1",
         "badPermission",
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { message: "body.permission: Invalid value" }
       );
     });
@@ -193,14 +193,14 @@ describe("User: manage global access permissions", () => {
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Correct handling of bad parameters", () => {
-      cy.apiAdminUpdate(superuser, "nonExistantUser", "write", HTTP_Forbidden, {
+      cy.apiAdminUpdate(superuser, "nonExistantUser", "write", HttpStatusCode.Forbidden, {
         message: "Could not find a user with a name",
       });
       cy.apiAdminUpdate(
         superuser,
         "gapUser1",
         "badPermission",
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { message: "body.permission: Invalid value" }
       );
     });
@@ -210,7 +210,7 @@ describe("User: manage global access permissions", () => {
 
   it("Non superuser cannot set global access", () => {
     cy.log("Cannot set global read");
-    cy.apiAdminUpdate("gapUser1", "gapUser1", "read", HTTP_Forbidden, {
+    cy.apiAdminUpdate("gapUser1", "gapUser1", "read", HttpStatusCode.Forbidden, {
       message: "User is not an admin",
     });
 
@@ -222,7 +222,7 @@ describe("User: manage global access permissions", () => {
       null,
       undefined,
       null,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 });

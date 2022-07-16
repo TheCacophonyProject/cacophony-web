@@ -30,7 +30,11 @@ import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecording
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
 import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json";
 import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 import {
   ApiAudioRecordingMetadataResponse,
   ApiAudioRecordingResponse,
@@ -53,10 +57,10 @@ import { body, param, query } from "express-validator";
 // @ts-ignore
 import * as csv from "fast-csv";
 import { Validator } from "jsonschema";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { Op } from "sequelize";
 
-import { ClientError } from "../customErrors";
+import { AuthorizationError, ClientError } from "../customErrors";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -87,7 +91,7 @@ import recordingUtil, {
   signedToken,
   uploadRawRecording,
 } from "./recordingUtil";
-import responseUtil from "./responseUtil";
+import responseUtil, { successResponse } from "./responseUtil";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -533,9 +537,7 @@ export default (app: Application, baseUrl: string) => {
         request.query.offset && parseInt(request.query.offset as string),
         request.query.limit && parseInt(request.query.limit as string)
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
+      return successResponse(response, "Completed query.", {
         limit: request.query.limit,
         offset: request.query.offset,
         numRecordings: result.numRecordings,
@@ -618,9 +620,7 @@ export default (app: Application, baseUrl: string) => {
         request.query.hideFiltered ? true : false,
         request.query.countAll ? true : false
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
+      return successResponse(response, "Completed query.", {
         limit: request.query.limit,
         offset: request.query.offset,
         count: result.count,
@@ -670,7 +670,7 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("order")),
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const user = response.locals.requestUser;
 
       // FIXME - Is this redundant now?
@@ -679,10 +679,8 @@ export default (app: Application, baseUrl: string) => {
         try {
           userWhere = JSON.parse(userWhere);
         } catch (e) {
-          responseUtil.send(response, {
-            statusCode: 400,
-            messages: ["Malformed JSON"],
-          });
+          // FIXME - Should this be Unprocessable instead?  Should we use a json schema validator?
+          return next(new ClientError("Malformed JSON"));
         }
       }
       if (request.query.hasOwnProperty("deleted")) {
@@ -718,11 +716,7 @@ export default (app: Application, baseUrl: string) => {
         delete countQuery.include[0].include;
       }
       const count = await models.Recording.count(countQuery);
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
-        count,
-      });
+      return successResponse(response, "Completed query.", { count });
     }
   );
 
@@ -764,10 +758,8 @@ export default (app: Application, baseUrl: string) => {
           Number(request.query.deviceId)
         );
       }
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
-        // FIXME - should be a mapped recording?
+      // FIXME - should be a mapped recording?
+      return successResponse(response, "Completed query.", {
         rows: [result],
       });
     }
@@ -830,9 +822,7 @@ export default (app: Application, baseUrl: string) => {
         request.query.offset && parseInt(request.query.offset as string),
         request.query.limit && parseInt(request.query.limit as string)
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
+      return successResponse(response, "Completed query.", {
         rows: result,
       });
     }
@@ -920,7 +910,7 @@ export default (app: Application, baseUrl: string) => {
           Boolean(request.query.audiobait)
         );
       }
-      response.status(200).set({
+      response.status(HttpStatusCode.Ok).set({
         "Content-Type": "text/csv",
         "Content-Disposition": "attachment; filename=recordings.csv",
       });
@@ -995,9 +985,7 @@ export default (app: Application, baseUrl: string) => {
         );
       }
 
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
+      return successResponse(response, {
         recording,
         rawSize: rawSize,
         fileSize: cookedSize,
@@ -1028,7 +1016,7 @@ export default (app: Application, baseUrl: string) => {
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
       const mimeType = "image/png";
       const filename = `${rec.id}-thumb.png`;
@@ -1050,15 +1038,13 @@ export default (app: Application, baseUrl: string) => {
           return response.end(null, "binary");
         })
         .catch((err) => {
+          // FIXME - if the thumbnail doesn't exist, lets create it, even if the request takes a while.
           log.error(
             "Error getting thumbnail from s3 %s: %s",
             rec.id,
             err.message
           );
-          return responseUtil.send(response, {
-            statusCode: 400,
-            messages: ["No thumbnail exists"],
-          });
+          return next(new ClientError("No thumbnail exists"));
         });
     }
   );
@@ -1095,10 +1081,7 @@ export default (app: Application, baseUrl: string) => {
         recording.deletedBy = response.locals.requestUser.id;
 
         await recording.save();
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Deleted recording."],
-        });
+        return successResponse(response, "Deleted recording.");
       } else {
         let deleted = false;
         const recording: Recording = response.locals.recording;
@@ -1123,10 +1106,7 @@ export default (app: Application, baseUrl: string) => {
             log.warning(err);
           });
         }
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Hard deleted recording."],
-        });
+        return successResponse(response, "Hard deleted recording.");
       }
     }
   );
@@ -1159,10 +1139,7 @@ export default (app: Application, baseUrl: string) => {
       await response.locals.recording.update(
         response.locals.updates as ApiRecordingUpdateRequest
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Updated recording."],
-      });
+      return successResponse(response, "Updated recording.");
     }
   );
 
@@ -1197,10 +1174,7 @@ export default (app: Application, baseUrl: string) => {
         deletedAt: null,
         deletedBy: null,
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Undeleted recording."],
-      });
+      return successResponse(response, "Undeleted recording.");
     }
   );
 
@@ -1256,9 +1230,7 @@ export default (app: Application, baseUrl: string) => {
       });
       await track.updateIsFiltered();
 
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track added."],
+      return successResponse(response, "Track added.", {
         trackId: track.id,
         algorithmId: track.AlgorithmId,
       });
@@ -1289,11 +1261,7 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       const tracks =
         await response.locals.recording.getActiveTracksTagsAndTagger();
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["OK."],
-        tracks: mapTracks(tracks),
-      });
+      return successResponse(response, "OK.", { tracks: mapTracks(tracks) });
     }
   );
 
@@ -1324,9 +1292,7 @@ export default (app: Application, baseUrl: string) => {
       const track = await response.locals.recording.getTrack(
         request.params.trackId
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["OK."],
+      return successResponse(response, "OK.", {
         track: mapTrack(track),
       });
     }
@@ -1358,7 +1324,7 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
-    async (request, response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // Make sure the track belongs to the recording (this could
       // probably be one query)
       if (
@@ -1370,15 +1336,9 @@ export default (app: Application, baseUrl: string) => {
         } else {
           await response.locals.track.destroy();
         }
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Track deleted."],
-        });
+        return successResponse(response, "Track deleted.");
       } else {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such track."],
-        });
+        return next(new ClientError("No such track."));
       }
     }
   );
@@ -1438,21 +1398,17 @@ export default (app: Application, baseUrl: string) => {
       try {
         const tag = await response.locals.track.replaceTag(newTag);
         if (tag) {
-          responseUtil.send(response, {
-            statusCode: 200,
-            messages: ["Track tag added."],
+          return successResponse(response, "Track tag added.", {
             trackTagId: tag.id,
           });
         } else {
-          responseUtil.send(response, {
-            statusCode: 200,
-            messages: ["Tag already exists."],
-          });
+          // FIXME - should probably not be success
+          return successResponse(response, "Tag already exists.");
         }
       } catch (e) {
         log.warning("Failure replacing tag: %s", e);
         responseUtil.send(response, {
-          statusCode: 500,
+          statusCode: HttpStatusCode.ServerError,
           messages: ["Server error replacing tag."],
         });
       }
@@ -1504,14 +1460,11 @@ export default (app: Application, baseUrl: string) => {
           request.params.tagId,
           request.body.updates
         );
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Tag has been updated."],
-        });
+        return successResponse(response, "Tag has been updated.");
       } catch (e) {
         log.warning("Failure replacing tag: %s", e);
         responseUtil.send(response, {
-          statusCode: 500,
+          statusCode: HttpStatusCode.ServerError,
           messages: ["Server error replacing tag."],
         });
       }
@@ -1542,10 +1495,7 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request: Request, response: Response) => {
       await response.locals.track.unarchive();
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Undeleted track."],
-      });
+      return successResponse(response, "Undeleted track.");
     }
   );
 
@@ -1602,25 +1552,46 @@ export default (app: Application, baseUrl: string) => {
         );
       }
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       let track;
       if (request.body.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users'
         // recording update permissions.
-        track = await loadTrackForTagJWT(request, response);
+        const tagJWT = request.body.tagJWT;
+        try {
+          const jwtDecoded = jwt.verify(
+            tagJWT,
+            config.server.passportSecret
+          ) as JwtPayload;
+          if (
+            jwtDecoded._type === "tagPermission" &&
+            jwtDecoded.recordingId === request.params.id
+          ) {
+            track = await models.Track.findByPk(request.params.trackId);
+          } else {
+            return next(
+              new ClientError(
+                "JWT does not have permissions to tag this recording"
+              )
+            );
+          }
+        } catch (e) {
+          return next(new ClientError("Failed to verify JWT."));
+        }
       } else {
         // Otherwise, just check that the user can update this track.
         track = await response.locals.recording.getTrack(
           request.params.trackId
         );
-        if (!track) {
-          responseUtil.send(response, {
-            statusCode: 403,
-            messages: ["No such track."],
-          });
-          return;
-        }
       }
+      if (!track) {
+        return next(new ClientError("Track does not exist"));
+      }
+      // Ensure track belongs to this recording.
+      if (track.RecordingId !== request.params.id) {
+        return next(new ClientError("Track does not belong to recording"));
+      }
+
       const tag = await track.addTag(
         request.body.what,
         request.body.confidence,
@@ -1628,9 +1599,7 @@ export default (app: Application, baseUrl: string) => {
         response.locals.data || "",
         response.locals.requestUser.id
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track tag added."],
+      return successResponse(response, "Track tag added.", {
         trackTagId: tag.id,
       });
     }
@@ -1657,12 +1626,32 @@ export default (app: Application, baseUrl: string) => {
       query("tagJWT").isString().optional(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request, response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       let track;
       if (request.query.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users'
         // recording update permissions.
-        track = await loadTrackForTagJWT(request, response);
+        const tagJWT = request.query.tagJWT as string;
+        try {
+          const jwtDecoded = jwt.verify(
+            tagJWT,
+            config.server.passportSecret
+          ) as JwtPayload;
+          if (
+            jwtDecoded._type === "tagPermission" &&
+            jwtDecoded.recordingId === request.params.id
+          ) {
+            track = await models.Track.findByPk(request.params.trackId);
+          } else {
+            return next(
+              new AuthorizationError(
+                "JWT does not have permissions to tag this recording"
+              )
+            );
+          }
+        } catch (e) {
+          return next(new AuthorizationError("Failed to verify JWT."));
+        }
       } else {
         // FIXME - fetch in middleware
         // Otherwise, just check that the user can update this track.
@@ -1671,28 +1660,23 @@ export default (app: Application, baseUrl: string) => {
         );
       }
       if (!track) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such track."],
-        });
-        return;
+        return next(new AuthorizationError("Track does not exist"));
+      }
+      // Ensure track belongs to this recording.
+      if (track.RecordingId !== request.params.id) {
+        return next(
+          new AuthorizationError("Track does not belong to recording")
+        );
       }
 
       const tag = await track.getTrackTag(request.params.trackTagId);
       if (!tag) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such track tag."],
-        });
-        return;
+        return next(new ClientError("No such track tag."));
       }
 
       await tag.destroy();
       await track.updateIsFiltered();
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track tag deleted."],
-      });
+      return successResponse(response, "Track tag deleted.");
     }
   );
 
@@ -1715,10 +1699,7 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredRecordingTagById(param("tagId")),
     async (request: Request, response: Response) => {
       await response.locals.tag.destroy();
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Deleted tag."],
-      });
+      return successResponse(response, "Deleted tag.");
     }
   );
 
@@ -1755,57 +1736,9 @@ export default (app: Application, baseUrl: string) => {
         response.locals.recording,
         response.locals.tag
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Added new tag."],
+      return successResponse(response, "Added new tag.", {
         tagId: tagInstance.id,
       });
     }
   );
-
-  // FIXME - This function doesn't belong here
-  async function loadTrackForTagJWT(
-    request: Request,
-    response: Response
-  ): Promise<Track> {
-    let jwtDecoded;
-    const tagJWT = request.body.tagJWT || request.query.tagJWT;
-    try {
-      jwtDecoded = jwt.verify(tagJWT, config.server.passportSecret);
-      if (
-        jwtDecoded._type === "tagPermission" &&
-        jwtDecoded.recordingId === request.params.id
-      ) {
-        const track = await models.Track.findByPk(request.params.trackId);
-        if (!track) {
-          responseUtil.send(response, {
-            statusCode: 403,
-            messages: ["Track does not exist"],
-          });
-          return;
-        }
-        // Ensure track belongs to this recording.
-        if (track.RecordingId !== request.params.id) {
-          responseUtil.send(response, {
-            statusCode: 403,
-            messages: ["Track does not belong to recording"],
-          });
-          return;
-        }
-        return track;
-      } else {
-        responseUtil.send(response, {
-          statusCode: 403,
-          messages: ["JWT does not have permissions to tag this recording"],
-        });
-        return;
-      }
-    } catch (e) {
-      responseUtil.send(response, {
-        statusCode: 403,
-        messages: ["Failed to verify JWT."],
-      });
-      return;
-    }
-  }
 };

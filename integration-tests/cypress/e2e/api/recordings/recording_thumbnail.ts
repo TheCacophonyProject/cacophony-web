@@ -14,9 +14,7 @@ import {
 } from "@commands/constants";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_OK200,
+  HttpStatusCode,
   RecordingProcessingState,
   RecordingType
 } from "@typedefs/api/consts";
@@ -197,7 +195,7 @@ describe("Recording thumbnails", () => {
               cy.apiRecordingThumbnailCheck(
                 "rtGroupAdmin",
                 "rtRecording01",
-                HTTP_OK200,
+                HttpStatusCode.Ok,
                 { type: "PNG" }
               );
             });
@@ -211,7 +209,7 @@ describe("Recording thumbnails", () => {
       cy.apiRecordingThumbnailCheck(
         "rtGroupMember",
         "rtRecording01",
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { type: "PNG" }
       );
     });
@@ -222,12 +220,12 @@ describe("Recording thumbnails", () => {
       cy.apiRecordingThumbnailCheck(
         "rtGroup2Admin",
         "rtRecording01",
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
     });
 
     it("Can handle no returned matches", () => {
-      cy.apiRecordingThumbnailCheck("rtGroup2Admin", "999999", HTTP_Forbidden, {
+      cy.apiRecordingThumbnailCheck("rtGroup2Admin", "999999", HttpStatusCode.Forbidden, {
         useRawRecordingId: true,
       });
     });
@@ -317,7 +315,7 @@ describe("Recording thumbnails", () => {
               cy.apiRecordingThumbnailCheck(
                 "rtGroupAdmin",
                 "rtRecording02",
-                HTTP_BadRequest,
+                HttpStatusCode.BadRequest,
                 { message: "No thumbnail exists" }
               );
             });
