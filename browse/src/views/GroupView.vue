@@ -210,13 +210,7 @@ export default {
             "recordings",
           ];
         } else {
-          return [
-            "users",
-            "visits",
-            "devices",
-            "stations",
-            "recordings",
-          ];
+          return ["users", "visits", "devices", "stations", "recordings"];
         }
       }
       return ["visits", "devices", "stations", "recordings"];
