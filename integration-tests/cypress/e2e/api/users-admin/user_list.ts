@@ -4,7 +4,7 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import { ApiUserResponse } from "@typedefs/api/user";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const expectedUser1 = {} as ApiUserResponse;
 const expectedUser2 = {} as ApiUserResponse;

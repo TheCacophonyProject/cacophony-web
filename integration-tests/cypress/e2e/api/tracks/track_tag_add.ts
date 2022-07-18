@@ -1,8 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  NOT_NULL_STRING,
-  NOT_NULL,
-} from "@commands/constants";
+import { NOT_NULL_STRING, NOT_NULL } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
@@ -10,7 +7,7 @@ import { getTestName } from "@commands/names";
 
 import { ApiRecordingNeedsTagReturned } from "@commands/types";
 
-import {HttpStatusCode, RecordingType} from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 
 import {
   TestCreateRecordingData,
@@ -466,7 +463,7 @@ describe("Track Tags: add, check, delete", () => {
     );
   });
 
-  it.skip("User can add dupliacte tag", () => {
+  it.skip("User can add duplicate tag", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTag1.tags = [expectedTag1];

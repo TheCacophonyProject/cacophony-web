@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  EXCLUDE_IDS,
-} from "@commands/constants";
+import { EXCLUDE_IDS } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
@@ -12,7 +10,7 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import {HttpStatusCode, RecordingType} from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
   TEMPLATE_THERMAL_RECORDING,
@@ -407,7 +405,11 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
 
     cy.log("Cannot delete another group's recordings");
-    cy.apiRecordingDelete("raGroupAdmin", "raRecording2", HttpStatusCode.Forbidden);
+    cy.apiRecordingDelete(
+      "raGroupAdmin",
+      "raRecording2",
+      HttpStatusCode.Forbidden
+    );
     cy.apiRecordingDelete("raGroup2Admin", "raRecording2");
   });
 

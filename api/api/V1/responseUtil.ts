@@ -22,6 +22,7 @@ import config from "@config";
 import { Response } from "express";
 import { CACOPHONY_WEB_VERSION } from "@/Globals";
 import { HttpStatusCode } from "@/../types/api/consts";
+import logger from "@log";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";
@@ -38,7 +39,6 @@ function send(
   data: { statusCode: HttpStatusCode; messages: string[] } & Record<string, any>
 ) {
   // Check that the data is valid.
-
   if (
     typeof data !== "object" ||
     typeof data.statusCode !== "number" ||
@@ -127,25 +127,23 @@ export const someResponse = (
   messageOrData: string | string[] | Record<string, any> = "",
   data: Record<string, any> = {}
 ) => {
+  const dataMessages = data.messages || [];
   if (typeof messageOrData === "string" || Array.isArray(messageOrData)) {
+    const serverError =
+      statusCode === HttpStatusCode.ServerError ? ["Server error. Sorry!"] : [];
+    const otherMessages =
+      typeof messageOrData === "string" ? [messageOrData] : messageOrData;
+    const messages = [...serverError, ...dataMessages, ...otherMessages];
     return send(response, {
       ...data,
       statusCode,
-      messages: [
-        ...(statusCode === HttpStatusCode.ServerError && [
-          "Server error. Sorry!",
-        ]),
-        ...(data.messages || []),
-        ...(typeof messageOrData === "string"
-          ? [messageOrData]
-          : messageOrData),
-      ],
+      messages,
     });
   }
   return send(response, {
-    ...messageOrData,
+    ...(messageOrData as Record<string, any>),
     statusCode,
-    messages: [],
+    messages: dataMessages,
   });
 };
 

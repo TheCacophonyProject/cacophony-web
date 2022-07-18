@@ -30,7 +30,11 @@ import {
 } from "../validation-middleware";
 import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
 import { Device } from "models/Device";
-import { AuthorizationError, ClientError } from "../customErrors";
+import {
+  AuthenticationError,
+  AuthorizationError,
+  ClientError,
+} from "../customErrors";
 import { DeviceId } from "@typedefs/api/common";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -100,11 +104,11 @@ export default function (app: Application) {
       if (!response.locals.device) {
         if (request.body.deviceId || request.body.deviceID) {
           return next(
-            new AuthorizationError("Device not found for supplied deviceId")
+            new AuthenticationError("Device not found for supplied deviceId")
           );
         } else {
           return next(
-            new AuthorizationError(
+            new AuthenticationError(
               "Device not found for supplied deviceName and groupName"
             )
           );
@@ -122,7 +126,7 @@ export default function (app: Application) {
           token: `JWT ${auth.createEntityJWT(response.locals.device)}`,
         });
       } else {
-        return next(new AuthorizationError("Wrong password or devicename."));
+        return next(new AuthenticationError("Wrong password or devicename."));
       }
     }
   );

@@ -60,7 +60,7 @@ import { Validator } from "jsonschema";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { Op } from "sequelize";
 
-import { AuthorizationError, ClientError } from "../customErrors";
+import { AuthorizationError, ClientError, FatalError } from "../customErrors";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -1022,7 +1022,7 @@ export default (app: Application, baseUrl: string) => {
       const filename = `${rec.id}-thumb.png`;
 
       if (!rec.rawFileKey) {
-        throw new ClientError("Rec has no raw file key.");
+        return next(new ClientError("Rec has no raw file key."));
       }
 
       recordingUtil
@@ -1385,7 +1385,7 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
     // FIXME - extract valid track for trackId on recording with id
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = response.locals.requestUser;
       const newTag = models.TrackTag.build({
         what: request.body.what,
@@ -1406,11 +1406,7 @@ export default (app: Application, baseUrl: string) => {
           return successResponse(response, "Tag already exists.");
         }
       } catch (e) {
-        log.warning("Failure replacing tag: %s", e);
-        responseUtil.send(response, {
-          statusCode: HttpStatusCode.ServerError,
-          messages: ["Server error replacing tag."],
-        });
+        return next(new FatalError("Server error replacing tag."));
       }
     }
   );
@@ -1454,7 +1450,7 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
     // FIXME - extract valid track for trackId on recording with id
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       try {
         await response.locals.track.updateTag(
           request.params.tagId,
@@ -1462,11 +1458,7 @@ export default (app: Application, baseUrl: string) => {
         );
         return successResponse(response, "Tag has been updated.");
       } catch (e) {
-        log.warning("Failure replacing tag: %s", e);
-        responseUtil.send(response, {
-          statusCode: HttpStatusCode.ServerError,
-          messages: ["Server error replacing tag."],
-        });
+        return next(new FatalError("Server error replacing tag."));
       }
     }
   );
@@ -1570,13 +1562,13 @@ export default (app: Application, baseUrl: string) => {
             track = await models.Track.findByPk(request.params.trackId);
           } else {
             return next(
-              new ClientError(
+              new AuthorizationError(
                 "JWT does not have permissions to tag this recording"
               )
             );
           }
         } catch (e) {
-          return next(new ClientError("Failed to verify JWT."));
+          return next(new AuthorizationError("Failed to verify JWT."));
         }
       } else {
         // Otherwise, just check that the user can update this track.
@@ -1671,7 +1663,7 @@ export default (app: Application, baseUrl: string) => {
 
       const tag = await track.getTrackTag(request.params.trackTagId);
       if (!tag) {
-        return next(new ClientError("No such track tag."));
+        return next(new AuthorizationError("No such track tag."));
       }
 
       await tag.destroy();

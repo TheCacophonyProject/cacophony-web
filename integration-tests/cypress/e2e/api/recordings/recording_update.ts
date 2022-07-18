@@ -7,10 +7,8 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import {HttpStatusCode, RecordingProcessingState} from "@typedefs/api/consts";
-import {
-  EXCLUDE_IDS,
-} from "@commands/constants";
+import { HttpStatusCode, RecordingProcessingState } from "@typedefs/api/consts";
+import { EXCLUDE_IDS } from "@commands/constants";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,

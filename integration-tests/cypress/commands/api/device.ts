@@ -17,7 +17,7 @@ import { NOT_NULL, NOT_NULL_STRING } from "../constants";
 import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
-import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 
 Cypress.Commands.add(
   "apiDeviceAdd",

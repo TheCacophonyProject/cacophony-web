@@ -1,6 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import {HttpStatusCode, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 
 import {
   ApiRecordingColumns,

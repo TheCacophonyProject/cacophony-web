@@ -4,7 +4,7 @@ import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import { ApiGroupUserResponse } from "@typedefs/api/group";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Groups - add, check and remove users", () => {
   const ADMIN = true;
@@ -120,7 +120,13 @@ describe("Groups - add, check and remove users", () => {
     );
 
     cy.log("check that group admin cannot view another groups user list");
-    cy.apiGroupUsersCheck("guGroupAdmin", "guGroup2", [], [], HttpStatusCode.Forbidden);
+    cy.apiGroupUsersCheck(
+      "guGroupAdmin",
+      "guGroup2",
+      [],
+      [],
+      HttpStatusCode.Forbidden
+    );
 
     cy.log("attempt to remove a user using non admin account");
     cy.apiGroupUserRemove(

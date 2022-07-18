@@ -1,10 +1,10 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-import {ApiStationData} from "../types";
-import {ApiStationResponse} from "@typedefs/api/station";
-import {getTestName} from "../names";
-import {logTestDescription, prettyLog} from "../descriptions";
+import { ApiStationData } from "../types";
+import { ApiStationResponse } from "@typedefs/api/station";
+import { getTestName } from "../names";
+import { logTestDescription, prettyLog } from "../descriptions";
 import {
   checkMessages,
   checkTreeStructuresAreEqualExcept,
@@ -15,7 +15,7 @@ import {
   sortArrayOn,
   v1ApiPath,
 } from "../server";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 Cypress.Commands.add(
   "apiStationsCheck",

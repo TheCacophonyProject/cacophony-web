@@ -8,7 +8,7 @@ import {
 } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Groups - add, get group", () => {
   const NOT_ADMIN = false;
@@ -199,22 +199,46 @@ describe("Groups - add, get group", () => {
   });
 
   it("Query nonexistant group handled correctly", () => {
-    cy.apiGroupCheck("gaGroupAdmin", "IDontExist", [], [], HttpStatusCode.Forbidden, {
-      useRawGroupName: true,
-    });
+    cy.apiGroupCheck(
+      "gaGroupAdmin",
+      "IDontExist",
+      [],
+      [],
+      HttpStatusCode.Forbidden,
+      {
+        useRawGroupName: true,
+      }
+    );
 
-    cy.apiGroupCheck("gaGroupAdmin", "9999999", [], [], HttpStatusCode.Forbidden, {
-      useRawGroupName: true,
-    });
+    cy.apiGroupCheck(
+      "gaGroupAdmin",
+      "9999999",
+      [],
+      [],
+      HttpStatusCode.Forbidden,
+      {
+        useRawGroupName: true,
+      }
+    );
   });
 
   it("Cannot create group with same name (even with different case)", () => {
     cy.log("Add duplicate group (same user)");
-    cy.apiGroupAdd("gaGroupAdmin", "gaGroup", true, HttpStatusCode.Unprocessable);
+    cy.apiGroupAdd(
+      "gaGroupAdmin",
+      "gaGroup",
+      true,
+      HttpStatusCode.Unprocessable
+    );
     cy.log("Add duplicate group (different user)");
     cy.apiGroupAdd("gaTestUser", "gaGroup", true, HttpStatusCode.Unprocessable);
     cy.log("Add duplicate group (different case)");
-    cy.apiGroupAdd("gaGroupAdmin", "GAGROUP", true, HttpStatusCode.Unprocessable);
+    cy.apiGroupAdd(
+      "gaGroupAdmin",
+      "GAGROUP",
+      true,
+      HttpStatusCode.Unprocessable
+    );
   });
   it("Invalid group names rejected", () => {
     cy.log("Cannot add group with no letters");

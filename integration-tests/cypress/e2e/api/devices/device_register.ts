@@ -5,10 +5,8 @@ import { getCreds } from "@commands/server";
 import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 
-import {
-  NOT_NULL_STRING,
-} from "@commands/constants";
-import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
+import { NOT_NULL_STRING } from "@commands/constants";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Device register", () => {
   const camsGroup = "cams";

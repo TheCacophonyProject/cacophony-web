@@ -3,7 +3,7 @@
 import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; //do not check eventId or createdAt time
 
@@ -233,7 +233,7 @@ describe("Events - add event as a device", () => {
       [time1],
       9999999,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Forbidden
     );
   });
 

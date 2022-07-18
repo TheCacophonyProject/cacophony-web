@@ -1,8 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  NOT_NULL_STRING,
-  EXCLUDE_IDS,
-} from "@commands/constants";
+import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
 
 import { getCreds } from "@commands/server";
 
@@ -21,7 +18,11 @@ import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import {HttpStatusCode, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 import {
   TEMPLATE_AUDIO_RECORDING,
   TEMPLATE_AUDIO_RECORDING_PROCESSING,

@@ -6,7 +6,7 @@ import {
   ApiEventError,
   ApiEventErrorCategory,
 } from "@/commands/types";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 //
 // This test set checks for errors reported against device services

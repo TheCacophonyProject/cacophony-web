@@ -8,15 +8,12 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { getCreds } from "@commands/server";
-import {
-  NOT_NULL_STRING,
-  EXCLUDE_IDS,
-} from "@commands/constants";
+import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import {
   HttpStatusCode,
   RecordingProcessingState,
-  RecordingType
+  RecordingType,
 } from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING,
@@ -225,9 +222,14 @@ describe("Recording thumbnails", () => {
     });
 
     it("Can handle no returned matches", () => {
-      cy.apiRecordingThumbnailCheck("rtGroup2Admin", "999999", HttpStatusCode.Forbidden, {
-        useRawRecordingId: true,
-      });
+      cy.apiRecordingThumbnailCheck(
+        "rtGroup2Admin",
+        "999999",
+        HttpStatusCode.Forbidden,
+        {
+          useRawRecordingId: true,
+        }
+      );
     });
 
     it("Thumbnail generator can handle recording with no thumbnail data", () => {

@@ -16,6 +16,7 @@ import {
   ApiHumanTrackTagResponse,
   ApiAutomaticTrackTagResponse,
 } from "@typedefs/api/trackTag";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 Cypress.Commands.add(
   "apiTrackAdd",
@@ -380,7 +381,7 @@ Cypress.Commands.add(
     recordingNameOrId: string,
     trackNameOrId: string,
     tagNameOrId: string,
-    statusCode: number = 200,
+    statusCode: number = HttpStatusCode.Ok,
     additionalChecks: any = {}
   ) => {
     logTestDescription(`Delete tracktag from recording ${recordingNameOrId} `, {

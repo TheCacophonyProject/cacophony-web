@@ -7,14 +7,11 @@ import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { LatLng } from "@typedefs/api/common";
 
 import { getCreds } from "@commands/server";
-import {
-  NOT_NULL,
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import { TEMPLATE_THERMAL_RECORDING_RESPONSE } from "@commands/dataTemplate";
 import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
 import { getTestName } from "@commands/names";
-import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 import { ApiStationResponse } from "@typedefs/api/station";
 
 const templateExpectedCypressRecording: ApiThermalRecordingResponse =

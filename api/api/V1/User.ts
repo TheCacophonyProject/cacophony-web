@@ -23,7 +23,7 @@ import {
   getJoinGroupRequestToken,
 } from "../auth";
 import models from "@models";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, matchedData, param, query } from "express-validator";
 import {
   AuthorizationError,
@@ -167,7 +167,7 @@ export default function (app: Application, baseUrl: string) {
         next();
       }
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const now = new Date().toISOString();
       const user: User = await models.User.create({
         username: request.body.username || request.body.userName,
@@ -179,6 +179,7 @@ export default function (app: Application, baseUrl: string) {
 
       // For now, we don't want to send welcome emails on browse, just browse-next
       if (config.server.browse_url !== "https://browse.cacophony.org.nz") {
+        //  && !config.productionEnv
         // NOTE Send a welcome email, with a requirement to validate the email address.
         //  We won't send transactional emails until the address has been validated.
         //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
@@ -190,10 +191,9 @@ export default function (app: Application, baseUrl: string) {
         if (!sendEmailSuccess && config.productionEnv) {
           // In this case, we don't want to create the user.
           await user.destroy();
-          return responseUtil.send(response, {
-            statusCode: HttpStatusCode.ServerError,
-            messages: ["Failed to send welcome/email confirmation email."],
-          });
+          return next(
+            new FatalError("Failed to send welcome/email confirmation email.")
+          );
         }
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
@@ -268,7 +268,7 @@ export default function (app: Application, baseUrl: string) {
         next();
       }
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // map matchedData to db fields.
       const dataToUpdate = matchedData(request);
       if (dataToUpdate.userName) {
@@ -288,10 +288,9 @@ export default function (app: Application, baseUrl: string) {
             dataToUpdate.email
           );
           if (!emailSuccess && config.productionEnv) {
-            responseUtil.send(response, {
-              statusCode: HttpStatusCode.ServerError,
-              messages: ["Failed to send email confirmation email."],
-            });
+            return next(
+              new FatalError("Failed to send email confirmation email.")
+            );
           }
         }
       }

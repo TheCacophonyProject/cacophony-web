@@ -1,8 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  NOT_NULL_STRING,
-  NOT_NULL,
-} from "@commands/constants";
+import { NOT_NULL_STRING, NOT_NULL } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getTestName } from "@commands/names";
@@ -22,7 +19,7 @@ import {
   TEMPLATE_EXPECTED_AUDIO_TRACK,
   TEMPLATE_THERMAL_RECORDING,
 } from "@commands/dataTemplate";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = [
   "[].id",
@@ -884,7 +881,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
   });
 
-  it("Correct handling in invalid recording, track", () => {
+  it("Correct handling of invalid recording, track", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
     cy.log("Add recording and track");
@@ -898,7 +895,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
 
-    cy.log("Correct handling on invalid recording id in replace");
+    cy.log("Correct handling of invalid recording id in replace");
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "99999",
@@ -909,7 +906,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       { useRawRecordingId: true, useRawTrackId: true }
     );
 
-    cy.log("Correct handling on invalid track id in replace");
+    cy.log("Correct handling of invalid track id in replace");
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "ttgRecording14",
@@ -931,26 +928,24 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
 
     cy.log("Correct handling on invalid track id in delete");
-    //FIXME: Expect forbidden but get badrequest
     //cy.apiTrackTagDelete("ttgGroup1Member2", "ttgRecording14", "99999", "99999", HttpStatusCode.Forbidden, {useRawTrackId: true, useRawTagId: true});
     cy.apiTrackTagDelete(
       "ttgGroup1Member2",
       "ttgRecording14",
       "99999",
       "99999",
-      HttpStatusCode.BadRequest,
+      HttpStatusCode.Forbidden,
       { useRawTrackId: true, useRawTagId: true }
     );
 
-    cy.log("Correct handling on invalid tag id in delete");
-    //FIXME: Expect forbidden but get badrequest
+    cy.log("Correct handling of invalid tag id in delete");
     //cy.apiTrackTagDelete("ttgGroup1Member2", "ttgRecording14", "ttgTrack14", "99999", HttpStatusCode.Forbidden, {useRawTagId: true});
     cy.apiTrackTagDelete(
       "ttgGroup1Member2",
       "ttgRecording14",
       "ttgTrack14",
       "99999",
-      HttpStatusCode.BadRequest,
+      HttpStatusCode.Forbidden,
       { useRawTagId: true }
     );
   });

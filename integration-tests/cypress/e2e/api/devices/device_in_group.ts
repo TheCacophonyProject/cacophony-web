@@ -3,7 +3,7 @@
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { logTestDescription } from "@commands/descriptions";
-import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe("Device in group", () => {

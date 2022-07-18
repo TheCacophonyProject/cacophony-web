@@ -31,6 +31,7 @@ import models from "@models";
 import { ClientError } from "@api/customErrors";
 import { GroupId, StationId } from "@typedefs/api/common";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import logger from "@log";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -183,9 +184,9 @@ export default function (app: Application, baseUrl: string) {
       );
 
       const stationIds: StationId[] =
-        (request.query.stations as string[]).map(Number) || [];
+        ((request.query.stations as string[]) || []).map(Number) || [];
       const groupIds: GroupId[] =
-        (request.query.groups as string[]).map(Number) || [];
+        ((request.query.groups as string[]) || []).map(Number) || [];
 
       // TODO: Check permissions, reject if we don't have permissions to view any of these devices/groups.
       //  Easier to do this cleanly once we get rid of the concept of users belonging to devices.
@@ -204,7 +205,6 @@ export default function (app: Application, baseUrl: string) {
         params.until = request.query.until as unknown as Date;
       }
       const viewAsSuperAdmin = response.locals.viewAsSuperUser;
-
       const searchDetails = await calculateMonitoringPageCriteria(
         requestUser,
         params,

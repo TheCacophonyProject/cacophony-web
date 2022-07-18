@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { NOT_NULL_STRING } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
@@ -13,7 +11,7 @@ import {
   ApiRecordingTagResponse,
 } from "@typedefs/api/tag";
 import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCLUDE_TAG_IDS = ["[].id"];
 

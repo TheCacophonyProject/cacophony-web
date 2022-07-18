@@ -3,11 +3,9 @@
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
-import {
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { NOT_NULL_STRING } from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Groups - get devices for group", () => {
   const NOT_ADMIN = false;
@@ -72,7 +70,13 @@ describe("Groups - get devices for group", () => {
 
   it("Non group members cannot view devices", () => {
     cy.log("Check unrelated user cannot view group's devices");
-    cy.apiGroupDevicesCheck("gdTestUser", "gdGroup", [], [], HttpStatusCode.Forbidden);
+    cy.apiGroupDevicesCheck(
+      "gdTestUser",
+      "gdGroup",
+      [],
+      [],
+      HttpStatusCode.Forbidden
+    );
   });
 
   it("Can query using group id", () => {
@@ -158,9 +162,16 @@ describe("Groups - get devices for group", () => {
   });
 
   it("Handles non-existant group correctly", () => {
-    cy.apiGroupDevicesCheck("gdUser4", "IDoNotExist", [], [], HttpStatusCode.Forbidden, {
-      useRawGroupName: true,
-    });
+    cy.apiGroupDevicesCheck(
+      "gdUser4",
+      "IDoNotExist",
+      [],
+      [],
+      HttpStatusCode.Forbidden,
+      {
+        useRawGroupName: true,
+      }
+    );
   });
 
   it("Handles group with no devices correctly", () => {

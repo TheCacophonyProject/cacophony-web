@@ -9,7 +9,7 @@ import {
   TestGetLocation,
 } from "@commands/api/station";
 import { ApiStationData } from "@commands/types";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Stations: permissions", () => {
   const superuser = getCreds("superuser")["name"];
@@ -179,7 +179,12 @@ describe("Stations: permissions", () => {
       );
 
       cy.log("Cannot delete station");
-      cy.apiStationDelete("saMember", "saStation2", true, HttpStatusCode.Forbidden);
+      cy.apiStationDelete(
+        "saMember",
+        "saStation2",
+        true,
+        HttpStatusCode.Forbidden
+      );
 
       cy.log("Station still exists");
       cy.apiStationCheck(
@@ -252,7 +257,12 @@ describe("Stations: permissions", () => {
       );
 
       cy.log("Non-member Cannot delete station");
-      cy.apiStationDelete("saNonMember", "saStation3", true, HttpStatusCode.Forbidden);
+      cy.apiStationDelete(
+        "saNonMember",
+        "saStation3",
+        true,
+        HttpStatusCode.Forbidden
+      );
 
       cy.log("Station still exists");
       cy.apiStationCheck(

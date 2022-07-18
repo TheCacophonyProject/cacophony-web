@@ -4,7 +4,7 @@ import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { ApiEventReturned } from "@commands/types";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Events - query events", () => {
   const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values

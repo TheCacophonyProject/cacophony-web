@@ -2,15 +2,12 @@
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
-import {
-  NOT_NULL,
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import {
   TestCreateStationData,
   TestCreateExpectedStation,
 } from "@commands/api/station";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Stations: adding", () => {
   const TemplateExpectedStation: ApiStationResponse = {

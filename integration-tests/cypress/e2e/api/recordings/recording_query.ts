@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  EXCLUDE_IDS_ARRAY,
-} from "@commands/constants";
+import { EXCLUDE_IDS_ARRAY } from "@commands/constants";
 import {
   TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_AUDIO_RECORDING,
@@ -22,7 +20,11 @@ import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import {HttpStatusCode, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
   const superuser = getCreds("superuser")["name"];
@@ -763,9 +765,15 @@ describe("Recordings query using where", () => {
         EXCLUDE_PARAMS
       );
       //cy.apiRecordingsCountCheck( superuser, {where: {}, "view-mode":'user'}, 2);
-      cy.apiGroupUserRemove("rqGroupAdmin", superuser, "rqGroup", HttpStatusCode.Ok, {
-        useRawUserName: true,
-      });
+      cy.apiGroupUserRemove(
+        "rqGroupAdmin",
+        superuser,
+        "rqGroup",
+        HttpStatusCode.Ok,
+        {
+          useRawUserName: true,
+        }
+      );
     });
   } else {
     it.skip("Super-user as user should see only their recordings", () => {});

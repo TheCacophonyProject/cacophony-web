@@ -7,18 +7,14 @@ import { TestGetLocation } from "@commands/api/station";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 import { TestCreateExpectedDevice } from "@commands/api/device";
 import { getCreds } from "@commands/server";
-import {
-  EXCLUDE_IDS,
-  NOT_NULL,
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { EXCLUDE_IDS, NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
 import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
 import { getTestName } from "@commands/names";
-import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 let count = 0;
 let group: string;
 const baseGroup: string = "station_use_case_group";

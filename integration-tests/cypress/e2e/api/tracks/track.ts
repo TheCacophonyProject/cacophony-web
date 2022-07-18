@@ -1,7 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { NOT_NULL_STRING } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import {
@@ -20,7 +18,7 @@ import {
   TEMPLATE_TRACK,
   TEMPLATE_EXPECTED_TRACK,
 } from "@commands/dataTemplate";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = ["[].id"];
 
@@ -213,7 +211,13 @@ describe("Tracks: add, check, delete", () => {
     );
 
     cy.log("Check recording tag cannot be viewed by non- group2 member");
-    cy.apiTracksCheck("trkGroupAdmin", "trkRecording5", [], [], HttpStatusCode.Forbidden);
+    cy.apiTracksCheck(
+      "trkGroupAdmin",
+      "trkRecording5",
+      [],
+      [],
+      HttpStatusCode.Forbidden
+    );
     cy.apiTrackCheck(
       "trkGroupAdmin",
       "trkRecording5",

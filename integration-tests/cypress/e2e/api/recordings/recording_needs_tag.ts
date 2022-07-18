@@ -8,7 +8,7 @@ import {
   TestCreateExpectedNeedsTagData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
-import {HttpStatusCode, RecordingType} from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_NEEDS_TAG,

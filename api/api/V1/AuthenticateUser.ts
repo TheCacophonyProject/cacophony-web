@@ -58,8 +58,10 @@ import {
 } from "@/emails/transactionalEmails";
 import { HttpStatusCode } from "@typedefs/api/consts";
 import {
+  AuthenticationError,
   AuthorizationError,
   ClientError,
+  FatalError,
   UnprocessableError,
 } from "@api/customErrors";
 
@@ -104,7 +106,7 @@ export default function (app: Application, baseUrl: string) {
         // NOTE: Don't give away the fact that the user may not exist - remain vague in the
         //  error message as to whether the error is username or password related.
         return next(
-          new AuthorizationError("Wrong password or username/email address.")
+          new AuthenticationError("Wrong password or username/email address.")
         );
       } else {
         next();
@@ -133,7 +135,7 @@ export default function (app: Application, baseUrl: string) {
         });
       } else {
         return next(
-          new AuthorizationError("Wrong password or username/email address.")
+          new AuthenticationError("Wrong password or username/email address.")
         );
       }
     },
@@ -395,7 +397,7 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedOptionalUserByNameOrEmailOrId(
       body(["username", "userName", "nameOrEmail", "email"])
     ),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         const user = response.locals.user as User;
         // If we're using the new end-point, make sure the user has confirmed their email address.
@@ -407,12 +409,11 @@ export default function (app: Application, baseUrl: string) {
 
           const sendingSuccess = await user.resetPassword();
           if (!sendingSuccess) {
-            return responseUtil.send(response, {
-              statusCode: HttpStatusCode.ServerError,
-              messages: [
-                "We failed to send your password recovery email, please check that you've entered your email correctly.",
-              ],
-            });
+            return next(
+              new FatalError(
+                "We failed to send your password recovery email, please check that you've entered your email correctly."
+              )
+            );
           }
         }
       } else {

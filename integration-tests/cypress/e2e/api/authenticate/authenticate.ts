@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import {HttpStatusCode} from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Authentication", () => {
   const superuser = getCreds("superuser")["name"];
@@ -84,7 +84,13 @@ describe("Authentication", () => {
 
   it("User is rejected for wrong password", () => {
     cy.log("test using username & name");
-    cy.apiSignInAs(userA, null, null, "bad_password", HttpStatusCode.AuthorizationError);
+    cy.apiSignInAs(
+      userA,
+      null,
+      null,
+      "bad_password",
+      HttpStatusCode.AuthorizationError
+    );
     cy.log("test using email and email");
     cy.apiSignInAs(
       null,

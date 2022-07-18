@@ -5,7 +5,7 @@ import { TestCreateExpectedUser } from "@commands/api/user";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import {DeviceType, HttpStatusCode} from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 
 describe("User: manage global access permissions", () => {
   const superuser = getCreds("superuser")["name"];
@@ -72,7 +72,12 @@ describe("User: manage global access permissions", () => {
         );
 
         cy.log("Cannot elevate own permisssions");
-        cy.apiAdminUpdate("gapUser1", "gapUser1", "write", HttpStatusCode.Forbidden);
+        cy.apiAdminUpdate(
+          "gapUser1",
+          "gapUser1",
+          "write",
+          HttpStatusCode.Forbidden
+        );
 
         cy.log("Check cannot write globally");
         cy.apiGroupUserAdd(
@@ -176,9 +181,15 @@ describe("User: manage global access permissions", () => {
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Correct handling of bad parameters", () => {
-      cy.apiAdminUpdate(superuser, "nonExistantUser", "write", HttpStatusCode.Forbidden, {
-        message: "Could not find a user with a name",
-      });
+      cy.apiAdminUpdate(
+        superuser,
+        "nonExistantUser",
+        "write",
+        HttpStatusCode.Forbidden,
+        {
+          message: "Could not find a user with a name",
+        }
+      );
       cy.apiAdminUpdate(
         superuser,
         "gapUser1",
@@ -193,9 +204,15 @@ describe("User: manage global access permissions", () => {
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Correct handling of bad parameters", () => {
-      cy.apiAdminUpdate(superuser, "nonExistantUser", "write", HttpStatusCode.Forbidden, {
-        message: "Could not find a user with a name",
-      });
+      cy.apiAdminUpdate(
+        superuser,
+        "nonExistantUser",
+        "write",
+        HttpStatusCode.Forbidden,
+        {
+          message: "Could not find a user with a name",
+        }
+      );
       cy.apiAdminUpdate(
         superuser,
         "gapUser1",
@@ -210,9 +227,15 @@ describe("User: manage global access permissions", () => {
 
   it("Non superuser cannot set global access", () => {
     cy.log("Cannot set global read");
-    cy.apiAdminUpdate("gapUser1", "gapUser1", "read", HttpStatusCode.Forbidden, {
-      message: "User is not an admin",
-    });
+    cy.apiAdminUpdate(
+      "gapUser1",
+      "gapUser1",
+      "read",
+      HttpStatusCode.Forbidden,
+      {
+        message: "User is not an admin",
+      }
+    );
 
     cy.log("Check cannot read globally");
     cy.apiDeviceInGroupCheck(
