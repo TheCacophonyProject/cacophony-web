@@ -53,7 +53,7 @@ const speciesSummary = computed<Record<string, number>>(() => {
 });
 const now = new Date();
 const earliestDate = computed<Date>(() => {
-  return new Date(now.setDate(now.getDate() - timePeriodDays.value));
+  return new Date(now.setUTCDate(now.getUTCDate() - timePeriodDays.value));
 });
 
 const loadVisits = async () => {

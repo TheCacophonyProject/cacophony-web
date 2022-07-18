@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@/components/MapWithPoints.vue";
-import { computed, defineProps, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LatLng } from "leaflet";
@@ -57,11 +57,12 @@ const tagPrecedence = [
 // TODO - from startDate, work out the day buckets, then position the visits on them.
 const dates = computed<Date[]>(() => {
   const now = new Date();
-  let start = new Date(startDate);
-  let d = [start];
-  while (start < now) {
-    start = new Date(start.setDate(start.getDate() + 1));
-    d.push(start);
+  let d = [new Date(startDate)];
+
+  // NOTE: This should go from the beginning of day 0 to the end of day x.
+  while (d[d.length - 1] < now) {
+    const prevDate = new Date(d[d.length - 1]);
+    d.push(new Date(prevDate.setUTCDate(prevDate.getUTCDate() + 1)));
   }
   d = d.filter((date) => date < now);
   return d;
@@ -101,9 +102,38 @@ const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() => {
     }
   );
 });
+
+const getLeft = (minTime: number, time: number, maxTime: number) => {
+  return ((time - minTime) / (maxTime - minTime)) * 100;
+};
+
+const getRight = (minTime: number, time: number, maxTime: number) => {
+  return (1 - (time - minTime) / (maxTime - minTime)) * 100;
+};
+
+const minTime = computed<number>(() => {
+  if (dates.value.length) {
+    const minDate = new Date(dates.value[0]);
+    minDate.setUTCHours(0, 0, 0, 0);
+    return minDate.getTime();
+  }
+  return 0;
+});
+
+
+// FIXME - These things should be shown in the timezone of the devices/stations that made the recordings.
+//  Get the timezone from the latlng of the station.
+const maxTime = computed<number>(() => {
+  if (dates.value.length) {
+    const maxDate = new Date(dates.value[dates.value.length - 1]);
+    maxDate.setUTCHours(23, 59, 59, 999);
+    return maxDate.getTime();
+  }
+  return 0;
+});
 </script>
 <template>
-  <div style="background: #ccc; height: 500px">
+  <div style="background: #ccc">
     <map-with-points
       :points="stationsForMap"
       :active-points="activeStationsForMap"
@@ -121,17 +151,35 @@ const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() => {
         :key="index"
         class="d-flex"
       >
-        <div>{{ species }}</div>
-        <div class="d-flex">
-          <div>
-            <div v-for="date in dates" :key="date.getTime()">
-              {{ date.getDate() }}
-            </div>
-          </div>
-          <div>
-            // TODO - offset of visit in date, // mouse over events for visit
-            item, click to see recordings?
-          </div>
+        <div style="min-width: 100px">
+          <span class="p-1">{{ species }}</span>
+        </div>
+        <div class="flex-fill d-flex justify-content-center position-relative">
+          <div
+            v-for="date in dates"
+            :key="date.getTime()"
+            :title="date.toISOString()"
+            :style="{ left: `${getLeft(minTime, date.getTime(), maxTime)}%` }"
+            class="event-item position-absolute"
+          />
+          <div
+            v-for="visit in visits"
+            :key="visit.timeStart"
+            :title="visit.timeStart"
+            :style="{
+              left: `${getLeft(
+                minTime,
+                new Date(visit.timeStart).getTime(),
+                maxTime
+              )}%`,
+              right: `${getRight(
+                minTime,
+                new Date(visit.timeEnd).getTime(),
+                maxTime
+              )}%`,
+            }"
+            :class="['event-item-visit', visit.classification]"
+          />
         </div>
       </div>
     </div>
@@ -141,5 +189,24 @@ const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() => {
 <style scoped lang="less">
 .map {
   height: 300px;
+}
+.event-item-visit {
+  min-width: 5px;
+  background: rgba(100, 100, 100, 0.3);
+  position: absolute;
+  bottom: 2px;
+  top: 2px;
+
+  &.mustelid {
+    background: rgba(255, 0, 0, 0.3);
+  }
+  &.possum,
+  &.cat {
+    background: rgba(181, 51, 38, 0.3);
+  }
+  &.rodent,
+  &.hedgehog {
+    background: rgba(255, 127, 80, 0.3);
+  }
 }
 </style>
