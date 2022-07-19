@@ -3,6 +3,9 @@ import { onBeforeUnmount, onMounted, onUpdated, ref } from "vue";
 const container = ref<HTMLDivElement | null>(null);
 const innerScrollContainer = ref<HTMLDivElement | null>(null);
 
+// TODO - Don't do horizontal scrolling of contents after a certain point -
+//  stack items as per design?
+
 const evaluateScrollOverflow = () => {
   const inner = innerScrollContainer.value;
   const outer = container.value;

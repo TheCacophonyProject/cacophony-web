@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
+import { visitsByStation, visitsCountBySpecies } from "@models/VisitsUtils";
 
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { station, stations, visits, activeStations } = defineProps<{
@@ -23,27 +24,10 @@ const visitCount = computed<number>(() => visitsForStation.value.length);
 const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
   // The summary bars get scaled by this amount.
   let max = 0;
-  // Get visits by station:
-  const visitsByStation: Record<number, ApiVisitResponse[]> = visits.reduce(
-    (acc, visit) => {
-      acc[visit.stationId] = acc[visit.stationId] || [];
-      acc[visit.stationId].push(visit);
-      return acc;
-    },
-    {} as Record<number, ApiVisitResponse[]>
-  );
-  for (const stationVisits of Object.values(visitsByStation)) {
-    const visitsBySpecies: Record<string, number> = stationVisits.reduce(
-      (acc: Record<string, number>, visit: ApiVisitResponse) => {
-        if (visit.classification) {
-          acc[visit.classification] = acc[visit.classification] || 0;
-          acc[visit.classification]++;
-        }
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-    max = Math.max(...Object.values(visitsBySpecies), max);
+  for (const stationVisits of Object.values(visitsByStation(visits))) {
+    const visitsCount = visitsCountBySpecies(stationVisits);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    max = Math.max(...visitsCount.map(([_, count]) => count), max);
   }
   return max;
 });
@@ -77,50 +61,9 @@ const thisStationPoint = {
   location: station.location as LatLng,
 };
 
-// NOTE: Sorting precedence for visit tags displayed as small summary icons
-const tagPrecedence = [
-  "conflicting tags",
-  "unidentified",
-  "none",
-  "mustelid",
-  "cat",
-  "possum",
-  "hedgehog",
-  "rodent",
-  "leporidae",
-];
-
-const speciesSummary = computed<[string, number][]>(() => {
-  const summary = visitsForStation.value.reduce(
-    (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
-      if (currentValue.classification) {
-        acc[currentValue.classification] =
-          acc[currentValue.classification] || 0;
-        acc[currentValue.classification]++;
-      }
-      return acc;
-    },
-    {}
-  );
-  // NOTE: Order by "badness" of predator
-  return Object.entries(summary).sort(
-    (a: [string, number], b: [string, number]) => {
-      const aPriority = tagPrecedence.indexOf(a[0]);
-      const bPriority = tagPrecedence.indexOf(b[0]);
-      if (aPriority === -1 && bPriority > -1) {
-        return 1;
-      } else if (bPriority === -1 && aPriority > -1) {
-        return -1;
-      } else if (aPriority === -1 && bPriority === -1) {
-        if (a[0] === b[0]) {
-          return 0;
-        }
-        return a[0] > b[0] ? 1 : -1;
-      }
-      return aPriority - bPriority;
-    }
-  );
-});
+const speciesSummary = computed<[string, number][]>(() =>
+  visitsCountBySpecies(visitsForStation.value)
+);
 </script>
 
 <template>

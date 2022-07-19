@@ -201,7 +201,7 @@ onMounted(async () => {
     :visits="predatorVisits"
     :start-date="earliestDate"
   />
-
+  <visits-breakdown-list />
   <h2>Stations summary</h2>
   <horizontal-overflow-carousel class="mb-5">
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->

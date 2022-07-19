@@ -7,6 +7,7 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LatLng } from "leaflet";
 import * as tzLookup from "tz-lookup-oss";
 import { DateTime } from "luxon";
+import {visitsBySpecies as visitsBySpeciesCalc} from "@models/VisitsUtils";
 
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { stations, visits, activeStations, startDate } = defineProps<{
@@ -99,20 +100,6 @@ const timezoneForActiveStations = computed<string>(() => {
   return "Auckland/Pacific";
 });
 
-// TODO - De-dupe
-// NOTE: Sorting precedence for visit tags displayed as small summary icons
-const tagPrecedence = [
-  "conflicting tags",
-  "unidentified",
-  "none",
-  "mustelid",
-  "cat",
-  "possum",
-  "hedgehog",
-  "rodent",
-  "leporidae",
-];
-
 const capitalize = (str: string): string =>
   `${str.slice(0, 1).toUpperCase()}${str.slice(1)}`;
 
@@ -137,42 +124,10 @@ const dateLabels = computed<DateTime[]>(() => {
   return dates.value.slice(0, dates.value.length - 1);
 });
 
-const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() => {
-  const summary = visits.reduce(
-    (
-      acc: Record<string, ApiVisitResponse[]>,
-      currentValue: ApiVisitResponse
-    ) => {
-      if (currentValue.classification) {
-        acc[currentValue.classification] =
-          acc[currentValue.classification] || [];
-        acc[currentValue.classification].push(currentValue);
-      }
-      return acc;
-    },
-    {}
-  );
-  // NOTE: Order by "badness" of predator
-  return Object.entries(summary).sort(
-    (a: [string, ApiVisitResponse[]], b: [string, ApiVisitResponse[]]) => {
-      const aPriority = tagPrecedence.indexOf(a[0]);
-      const bPriority = tagPrecedence.indexOf(b[0]);
-      if (aPriority === -1 && bPriority > -1) {
-        return 1;
-      } else if (bPriority === -1 && aPriority > -1) {
-        return -1;
-      } else if (aPriority === -1 && bPriority === -1) {
-        if (a[0] === b[0]) {
-          return 0;
-        }
-        return a[0] > b[0] ? 1 : -1;
-      }
-      return aPriority - bPriority;
-    }
-  );
-});
-
+// Recalculate clipping of date labels whenever the dates change.
 watch(dateLabels, () => nextTick(evaluateLabelClipping));
+
+const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() => visitsBySpeciesCalc(visits));
 
 const getLeft = (minTime: number, time: number, maxTime: number) => {
   return Math.max(0, ((time - minTime) / (maxTime - minTime)) * 100);
