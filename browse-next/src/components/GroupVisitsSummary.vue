@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@/components/MapWithPoints.vue";
-import { computed, ref } from "vue";
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LatLng } from "leaflet";
+import * as tzLookup from "tz-lookup-oss";
+import { DateTime } from "luxon";
 
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { stations, visits, activeStations, startDate } = defineProps<{
@@ -15,6 +17,55 @@ const { stations, visits, activeStations, startDate } = defineProps<{
 }>();
 
 const highlightedPoint = ref<NamedPoint | null>(null);
+const labelContainer = ref<HTMLDivElement | null>(null);
+const clipLabelLeft = ref<HTMLDivElement | null>(null);
+const checkClipping = (
+  label: HTMLDivElement,
+  labelBounds: DOMRect,
+  clipBounds: DOMRect
+) => {
+  if (labelBounds.right > clipBounds.right) {
+    label.style.display = "none";
+  } else {
+    label.style.display = "block";
+  }
+};
+
+const evaluateLabelClipping = () => {
+  if (labelContainer.value) {
+    const containerBounds = labelContainer.value.getBoundingClientRect();
+    const labels = labelContainer.value.querySelectorAll(
+      ".visits-timeline-date-label"
+    );
+    let leftMostLabel = null;
+    let leftMostVal = containerBounds.right;
+    for (let i = 0; i < labels.length; i++) {
+      const label = labels[i] as HTMLDivElement;
+      const labelBounds = label.getBoundingClientRect();
+      if (labelBounds.left < leftMostVal) {
+        leftMostLabel = label;
+        leftMostVal = labelBounds.left;
+      }
+      checkClipping(label, labelBounds, containerBounds);
+    }
+    if (clipLabelLeft.value && leftMostLabel) {
+      const clipBounds = clipLabelLeft.value.getBoundingClientRect();
+      checkClipping(
+        leftMostLabel as HTMLDivElement,
+        leftMostLabel.getBoundingClientRect(),
+        clipBounds
+      );
+    }
+  }
+};
+
+onMounted(() => {
+  evaluateLabelClipping();
+  window.addEventListener("resize", evaluateLabelClipping);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", evaluateLabelClipping);
+});
 
 const highlightPoint = (p: NamedPoint | null) => {
   highlightedPoint.value = p;
@@ -40,6 +91,14 @@ const activeStationsForMap = computed<NamedPoint[]>(() => {
   return [];
 });
 
+const timezoneForActiveStations = computed<string>(() => {
+  if (activeStationsForMap.value.length) {
+    const station = activeStationsForMap.value[0];
+    return tzLookup(station.location.lat, station.location.lng);
+  }
+  return "Auckland/Pacific";
+});
+
 // TODO - De-dupe
 // NOTE: Sorting precedence for visit tags displayed as small summary icons
 const tagPrecedence = [
@@ -54,18 +113,28 @@ const tagPrecedence = [
   "leporidae",
 ];
 
-// TODO - from startDate, work out the day buckets, then position the visits on them.
-const dates = computed<Date[]>(() => {
-  const now = new Date();
-  let d = [new Date(startDate)];
+const capitalize = (str: string): string =>
+  `${str.slice(0, 1).toUpperCase()}${str.slice(1)}`;
 
-  // NOTE: This should go from the beginning of day 0 to the end of day x.
-  while (d[d.length - 1] < now) {
-    const prevDate = new Date(d[d.length - 1]);
-    d.push(new Date(prevDate.setUTCDate(prevDate.getUTCDate() + 1)));
+const dates = computed<DateTime[]>(() => {
+  const now = DateTime.now().setZone(timezoneForActiveStations.value);
+  let d = [
+    DateTime.fromISO(startDate.toISOString(), {
+      zone: timezoneForActiveStations.value,
+    }),
+  ];
+  while (d[d.length - 1].plus({ days: 1 }) < now) {
+    d.push(d[d.length - 1].plus({ days: 1 }));
   }
-  d = d.filter((date) => date < now);
+  for (let i = 1; i < d.length; i++) {
+    d[i] = d[i].set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+  }
+  d.push(now);
   return d;
+});
+
+const dateLabels = computed<DateTime[]>(() => {
+  return dates.value.slice(0, dates.value.length - 1);
 });
 
 const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() => {
@@ -103,37 +172,36 @@ const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() => {
   );
 });
 
+watch(dateLabels, () => nextTick(evaluateLabelClipping));
+
 const getLeft = (minTime: number, time: number, maxTime: number) => {
-  return ((time - minTime) / (maxTime - minTime)) * 100;
+  return Math.max(0, ((time - minTime) / (maxTime - minTime)) * 100);
 };
 
 const getRight = (minTime: number, time: number, maxTime: number) => {
-  return (1 - (time - minTime) / (maxTime - minTime)) * 100;
+  return Math.min(100, (1 - (time - minTime) / (maxTime - minTime)) * 100);
 };
 
 const minTime = computed<number>(() => {
   if (dates.value.length) {
-    const minDate = new Date(dates.value[0]);
-    minDate.setUTCHours(0, 0, 0, 0);
-    return minDate.getTime();
+    return dates.value[0].toMillis();
   }
   return 0;
 });
 
-
-// FIXME - These things should be shown in the timezone of the devices/stations that made the recordings.
-//  Get the timezone from the latlng of the station.
 const maxTime = computed<number>(() => {
   if (dates.value.length) {
-    const maxDate = new Date(dates.value[dates.value.length - 1]);
-    maxDate.setUTCHours(23, 59, 59, 999);
-    return maxDate.getTime();
+    return dates.value[dates.value.length - 1].toMillis();
   }
   return 0;
 });
+
+const dateAndDayOfWeek = (date: DateTime): string => {
+  return `${date.weekdayShort} ${date.day}`;
+};
 </script>
 <template>
-  <div style="background: #ccc">
+  <div>
     <map-with-points
       :points="stationsForMap"
       :active-points="activeStationsForMap"
@@ -145,27 +213,26 @@ const maxTime = computed<number>(() => {
       :zoom="false"
       :can-change-base-map="false"
     />
-    <div>
+    <div class="visits-timeline">
       <div
         v-for="([species, visits], index) in visitsBySpecies"
         :key="index"
-        class="d-flex"
+        class="d-flex visits-timeline-row"
       >
         <div style="min-width: 100px">
-          <span class="p-1">{{ species }}</span>
+          <span class="p-1 visits-timeline-species">{{
+            capitalize(species)
+          }}</span>
         </div>
-        <div class="flex-fill d-flex justify-content-center position-relative">
-          <div
-            v-for="date in dates"
-            :key="date.getTime()"
-            :title="date.toISOString()"
-            :style="{ left: `${getLeft(minTime, date.getTime(), maxTime)}%` }"
-            class="event-item position-absolute"
-          />
+        <div class="flex-fill position-relative">
           <div
             v-for="visit in visits"
             :key="visit.timeStart"
-            :title="visit.timeStart"
+            :title="
+              DateTime.fromISO(visit.timeStart, {
+                zone: timezoneForActiveStations,
+              }).toString()
+            "
             :style="{
               left: `${getLeft(
                 minTime,
@@ -180,7 +247,43 @@ const maxTime = computed<number>(() => {
             }"
             :class="['event-item-visit', visit.classification]"
           />
+          <div
+            v-for="(date, index) in dates"
+            :key="index"
+            class="event-item"
+            :style="{
+              left: `${getLeft(minTime, date.toMillis(), maxTime)}%`,
+            }"
+          />
         </div>
+      </div>
+    </div>
+    <div class="visits-timeline-date-labels d-flex">
+      <div style="min-width: 100px"></div>
+      <div class="flex-fill position-relative" ref="labelContainer">
+        <div
+          v-for="(date, index) in dateLabels"
+          :key="index"
+          :style="{
+            left: `${getLeft(minTime, date.toMillis(), maxTime)}%`,
+          }"
+          class="visits-timeline-date-label py-1"
+        >
+          {{ dateAndDayOfWeek(date) }}
+        </div>
+        <div
+          class="clip-left-label position-absolute"
+          ref="clipLabelLeft"
+          key="clip-left-label"
+          :style="{
+            left: `${getLeft(minTime, dates[0].toMillis(), maxTime)}%`,
+            right: `${getRight(
+              minTime,
+              dates[Math.min(1, dates.length - 1)].toMillis(),
+              maxTime
+            )}%`,
+          }"
+        ></div>
       </div>
     </div>
   </div>
@@ -190,23 +293,48 @@ const maxTime = computed<number>(() => {
 .map {
   height: 300px;
 }
+.event-item {
+  border-left: 1px solid #eee;
+  position: absolute;
+  bottom: 0;
+  top: 0;
+}
 .event-item-visit {
-  min-width: 5px;
-  background: rgba(100, 100, 100, 0.3);
+  background: rgba(100, 100, 100, 0.7);
   position: absolute;
   bottom: 2px;
   top: 2px;
 
   &.mustelid {
-    background: rgba(255, 0, 0, 0.3);
+    background: rgba(255, 0, 0, 0.7);
   }
   &.possum,
   &.cat {
-    background: rgba(181, 51, 38, 0.3);
+    background: rgba(181, 51, 38, 0.7);
   }
   &.rodent,
   &.hedgehog {
-    background: rgba(255, 127, 80, 0.3);
+    background: rgba(255, 127, 80, 0.7);
   }
+}
+.visits-timeline {
+  background: white;
+  > .visits-timeline-row {
+    border-bottom: 1px solid #f2f2f2;
+  }
+}
+.visits-timeline-date-label {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 10px;
+  user-select: none;
+}
+.visits-timeline-species {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+}
+.clip-left-label {
+  min-height: 1px;
 }
 </style>

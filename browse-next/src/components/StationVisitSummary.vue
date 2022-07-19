@@ -124,7 +124,7 @@ const speciesSummary = computed<[string, number][]>(() => {
 </script>
 
 <template>
-  <div class="station-visit-summary card">
+  <div class="station-visit-summary">
     <div class="map-container">
       <map-with-points
         :highlighted-point="() => nullPoint"
@@ -174,7 +174,12 @@ const speciesSummary = computed<[string, number][]>(() => {
   height: 150px;
 }
 .station-visit-summary {
+  background: white;
+  border-radius: 2px;
   width: 300px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 2px;
+  min-width: 295px;
   &:not(:first-child) {
     margin-left: 19px;
   }

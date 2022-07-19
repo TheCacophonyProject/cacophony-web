@@ -74,7 +74,7 @@ onBeforeUnmount(() => {
     width: 10px;
     top: -2px;
     bottom: -2px;
-    z-index: 1;
+    z-index: 1000;
     opacity: 0;
     transition: opacity 0.15s linear;
   }
