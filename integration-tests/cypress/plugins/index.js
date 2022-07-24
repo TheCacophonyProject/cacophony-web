@@ -26,6 +26,5 @@ module.exports = (on, config) => {
   );
   config.video = false; //process.env["IS_CI_ENV"] === undefined;
 
-
   return config;
 };

@@ -123,7 +123,11 @@ const signInFormIsFilledAndValid = computed<boolean>(
           <button
             type="button"
             :title="showPassword ? 'hide password' : 'show password'"
-            class="input-group-text toggle-password-visibility-btn justify-content-center"
+            class="
+              input-group-text
+              toggle-password-visibility-btn
+              justify-content-center
+            "
             @click.stop.prevent="togglePasswordVisibility"
           >
             <font-awesome-icon :icon="showPassword ? 'eye-slash' : 'eye'" />

@@ -5,7 +5,7 @@ import {
   debugGetEmailConfirmationToken,
   validateEmailConfirmationToken,
 } from "@api/User";
-import {setLoggedInUserData, UserGroups} from "@models/LoggedInUser";
+import { setLoggedInUserData, UserGroups } from "@models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
 
 const checkingValidateEmailToken = ref(false);

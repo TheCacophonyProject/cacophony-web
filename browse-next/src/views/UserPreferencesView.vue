@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { CurrentUser} from "@models/LoggedInUser";
+import { CurrentUser } from "@models/LoggedInUser";
 </script>
 <template>
   <section-header>User preferences</section-header>

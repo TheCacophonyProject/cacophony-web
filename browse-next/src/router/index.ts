@@ -20,7 +20,7 @@ import {
 import { getEUAVersion } from "@api/User";
 import { getGroups } from "@api/Group";
 import { reactive } from "vue";
-import {decodeJWT, urlNormaliseGroupName} from "@/utils";
+import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 
 // Allows us to abort all pending fetch requests when switching between major views.
