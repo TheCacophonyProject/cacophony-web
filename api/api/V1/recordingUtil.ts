@@ -1788,6 +1788,8 @@ const mapPosition = (position: any): ApiTrackPosition => {
       frameNumber: position.frame_number,
       order: position.frame_number ?? position.order,
       mass: position.mass,
+      blank: position.blank,
+
     };
   }
 };
