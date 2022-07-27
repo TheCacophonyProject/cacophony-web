@@ -1,5 +1,7 @@
 <template>
-  <div id="releases">Releases info bar - todo - hide this if the user prefs have dismissed it.</div>
+  <div id="releases">
+    Releases info bar - todo - hide this if the user prefs have dismissed it.
+  </div>
 </template>
 
 <script setup>

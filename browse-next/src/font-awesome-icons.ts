@@ -16,8 +16,8 @@ import {
   faEye,
   faEyeSlash,
   faTriangleExclamation,
-    faQuestion,
-    faBars
+  faQuestion,
+  faBars,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -36,8 +36,8 @@ library.add(
   faEye,
   faEyeSlash,
   faTriangleExclamation,
-    faQuestion,
-    faBars
+  faQuestion,
+  faBars
 );
 
 export default FontAwesomeIcon;

@@ -124,7 +124,7 @@ const resetPassword = async () => {
       </b-form>
     </div>
     <div class="alternate-action-links d-flex justify-content-between my-2">
-      <router-link :to="{ name: 'register'}" class="small"
+      <router-link :to="{ name: 'register' }" class="small"
         >Create a new account</router-link
       >
       <router-link :to="{ name: 'sign-in' }" class="small"
