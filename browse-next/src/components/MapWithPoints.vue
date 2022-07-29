@@ -8,7 +8,6 @@ import {
   CircleMarkerOptions,
   DomEvent,
   latLng,
-  LatLng,
   LatLngTuple,
   Layer,
   Map as LeafletMap,
@@ -27,12 +26,7 @@ import {
 } from "leaflet";
 import attribution = control.attribution;
 import { rafFps } from "@models/LoggedInUser";
-
-export interface NamedPoint {
-  name: string;
-  group: string;
-  location: LatLng;
-}
+import type {NamedPoint} from "@models/mapUtils";
 
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {

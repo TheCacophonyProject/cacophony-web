@@ -79,6 +79,12 @@ export const getAllVisitsForGroup = async (
       break;
     }
   }
+
+  // Make sure visits are in chronological order from oldest to newest
+  returnVisits.sort((a, b) => {
+    return new Date(a.timeStart).getTime() - new Date(b.timeStart).getTime();
+  });
+
   return {
     visits: returnVisits,
     all: !morePagesExist,

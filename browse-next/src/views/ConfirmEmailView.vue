@@ -5,8 +5,9 @@ import {
   debugGetEmailConfirmationToken,
   validateEmailConfirmationToken,
 } from "@api/User";
-import {setLoggedInUserData, UserGroups} from "@models/LoggedInUser";
+import { setLoggedInUserData, UserGroups } from "@models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");
@@ -20,7 +21,7 @@ const testToken = ref("");
 onBeforeMount(async () => {
   // Get an email confirmation token for testing.
   const tokenResponse = await debugGetEmailConfirmationToken("admin@email.com");
-  if (tokenResponse.status === ) {
+  if (tokenResponse.status === HttpStatusCode.Ok) {
     testToken.value = tokenResponse.result.token.replace(/\./g, ":");
   }
 
@@ -39,7 +40,7 @@ onBeforeMount(async () => {
       validateToken.value
     );
     if (!validateTokenResponse.success) {
-      if (validateTokenResponse.status === 401) {
+      if (validateTokenResponse.status === HttpStatusCode.AuthorizationError) {
         // await router.push({
         //   path: "/",
         // });

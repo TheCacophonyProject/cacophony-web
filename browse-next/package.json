@@ -28,6 +28,7 @@
     "@types/leaflet": "^1.7.11",
     "@types/luxon": "^2.4.0",
     "@types/node": "^16.11.25",
+    "@types/suncalc": "^1.8.1",
     "@vitejs/plugin-vue": "^2.2.2",
     "@vue/eslint-config-prettier": "^7.0.0",
     "@vue/eslint-config-typescript": "^10.0.0",

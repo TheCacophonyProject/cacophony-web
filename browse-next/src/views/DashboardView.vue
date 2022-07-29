@@ -9,6 +9,8 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import { getStationsForGroup } from "@api/Group";
 import GroupVisitsSummary from "@/components/GroupVisitsSummary.vue";
 import StationVisitSummary from "@/components/StationVisitSummary.vue";
+import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
+import type { LatLng } from "@typedefs/api/common";
 
 const audioMode = ref<boolean>(false);
 
@@ -51,8 +53,8 @@ const speciesSummary = computed<Record<string, number>>(() => {
     {}
   );
 });
-const now = new Date();
 const earliestDate = computed<Date>(() => {
+  const now = new Date();
   return new Date(now.setUTCDate(now.getUTCDate() - timePeriodDays.value));
 });
 
@@ -131,6 +133,13 @@ const loadStations = async () => {
   }
 };
 
+const canonicalLocationForActiveStations = computed<LatLng>(() => {
+  if (stationsWithRecordingsInSelectedTimeWindow.value.length) {
+    return stationsWithRecordingsInSelectedTimeWindow.value[0].location;
+  }
+  return { lat: 0, lng: 0 };
+});
+
 onMounted(async () => {
   await Promise.all([loadStations(), loadVisits()]);
   // Load visits for time period.
@@ -194,14 +203,19 @@ onMounted(async () => {
     </div>
   </horizontal-overflow-carousel>
   <h2>Visits summary</h2>
-  <group-visits-summary
-    class="mb-5"
-    :stations="stations"
-    :active-stations="stationsWithRecordingsInSelectedTimeWindow"
-    :visits="predatorVisits"
-    :start-date="earliestDate"
-  />
-  <visits-breakdown-list />
+  <div class="d-md-flex flex-md-row">
+    <group-visits-summary
+      class="mb-5 flex-md-fill"
+      :stations="stations"
+      :active-stations="stationsWithRecordingsInSelectedTimeWindow"
+      :visits="predatorVisits"
+      :start-date="earliestDate"
+    />
+    <visits-breakdown-list
+      :visits="predatorVisits"
+      :location="canonicalLocationForActiveStations"
+    />
+  </div>
   <h2>Stations summary</h2>
   <horizontal-overflow-carousel class="mb-5">
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->

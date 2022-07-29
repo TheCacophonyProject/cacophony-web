@@ -4,19 +4,46 @@
 
 import { computed } from "vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
+import VisitsDailyBreakdown from "@/components/VisitsDailyBreakdown.vue";
+import {
+  visitsAreNocturnalOnlyAtLocation,
+  visitsByDayAtLocation,
+  visitsByNightAtLocation,
+} from "@models/VisitsUtils";
+import type { LatLng } from "@typedefs/api/common";
+import { DateTime } from "luxon";
+// eslint-disable-next-line vue/no-setup-props-destructure
+const { visits, location } = defineProps<{
+  visits: ApiVisitResponse[];
+  location: LatLng;
+}>();
 
-const visitsByNight = computed<ApiVisitResponse[][]>((visits: ApiVisitResponse[]) => {
-  return [];
+const isNocturnal = computed<boolean>(() =>
+  visitsAreNocturnalOnlyAtLocation(visits, location)
+);
+
+const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
+  if (isNocturnal.value) {
+    //return visitsByDayAtLocation(visits, location);
+    return visitsByNightAtLocation(visits, location).reverse();
+  } else {
+    return visitsByDayAtLocation(visits, location).reverse();
+  }
 });
 </script>
 <template>
-  <div>
+  <div class="ps-md-3">
     <visits-daily-breakdown
-      v-for="(visits, index) in visitsByNight"
+      v-for="([startTime, visits], index) in visitsByChunk"
       :key="index"
+      :start-time="startTime"
       :visits="visits"
+      :is-nocturnal="isNocturnal"
+      :location="location"
     />
   </div>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+
+</style>
