@@ -56,8 +56,11 @@ export default {
    * @param {*} [body] - An object to go in the request body that will be sent as JSON.
    * @param {boolean} [abortable] - Whether this is a request for the current view, and if so should be aborted when the view changes.
    * @returns {Promise<{result: *, success: boolean, status: number}>} */
-  postMultipartFormData: async (endpoint: string, body: FormData, abortable?: boolean) =>
-    fetch(`${API_ROOT}${endpoint}`, { method: "POST", body }, abortable),
+  postMultipartFormData: async (
+    endpoint: string,
+    body: FormData,
+    abortable?: boolean
+  ) => fetch(`${API_ROOT}${endpoint}`, { method: "POST", body }, abortable),
 
   /**
    * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.

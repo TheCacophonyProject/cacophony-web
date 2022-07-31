@@ -60,7 +60,7 @@
           :group-name="groupName"
           :device-name="row.item.deviceName"
           :type="row.item.type"
-          :context="row.item.type === 'thermal' ? 'visits' : 'recordings'"
+          context="recordings"
         />
       </template>
       <template v-slot:cell(deviceHealth)="row">
