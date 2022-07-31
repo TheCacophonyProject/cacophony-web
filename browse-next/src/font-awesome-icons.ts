@@ -19,6 +19,8 @@ import {
   faQuestion,
   faBars,
   faChevronRight,
+  faMoon,
+  faMapMarkerAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -39,7 +41,9 @@ library.add(
   faTriangleExclamation,
   faQuestion,
   faBars,
-  faChevronRight
+  faChevronRight,
+  faMoon,
+  faMapMarkerAlt
 );
 
 export default FontAwesomeIcon;

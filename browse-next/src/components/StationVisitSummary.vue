@@ -3,14 +3,14 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { computed, ref } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type { NamedPoint } from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import { visitsByStation, visitsCountBySpecies } from "@models/VisitsUtils";
+import type { NamedPoint } from "@models/mapUtils";
 
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { station, stations, visits, activeStations } = defineProps<{
   station: ApiStationResponse;
-  stations: ApiStationResponse[];
+  stations: ApiStationResponse[] | null;
   activeStations: ApiStationResponse[];
   visits: ApiVisitResponse[];
 }>();

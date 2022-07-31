@@ -9,11 +9,11 @@ import {
   watch,
 } from "vue";
 import {
-  timezoneForStation,
+  timezoneForLocation,
   visitsBySpecies as visitsBySpeciesCalc,
 } from "@models/VisitsUtils";
 import { DateTime } from "luxon";
-import type {NamedPoint} from "@models/mapUtils";
+import type { NamedPoint } from "@models/mapUtils";
 
 const { visits, stations, startDate } = defineProps<{
   visits: ApiVisitResponse[];
@@ -77,7 +77,7 @@ onBeforeUnmount(() => {
 const timezoneForActiveStations = computed<string>(() => {
   if (stations.length) {
     const station = stations[0];
-    return timezoneForStation(station);
+    return timezoneForLocation(station.location);
   }
   return "Auckland/Pacific";
 });

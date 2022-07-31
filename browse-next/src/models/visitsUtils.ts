@@ -77,54 +77,18 @@ export const eventsAreNocturnalOnlyAtLocation = (
   eventDates: Date[],
   location: LatLng
 ): boolean => {
-  const zone = timezoneForLocation(location);
   for (const eventDate of eventDates) {
     const visitDay = new Date(eventDate);
-    const visitDateTime = DateTime.fromISO(eventDate.toISOString(), {
-      zone,
-    });
-    const isBeforeMidday = visitDateTime.hour < 12;
-    let visitDusk: Date;
-    let visitDawn: Date;
-    // If the visit is *after* midday in the local time on the day it is on, then we want to look at dusk and dawn + 1
-    // If the visit is *before* midday in the local time on the day it is on, then we want to look at dawn and dusk - 1
-    if (isBeforeMidday) {
-      const { dawn } = sunCalc.getTimes(visitDay, location.lat, location.lng);
-      const yesterday = new Date(visitDay);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const { dusk } = sunCalc.getTimes(yesterday, location.lat, location.lng);
-      visitDusk = dusk;
-      visitDawn = dawn;
-    } else {
-      const { dusk } = sunCalc.getTimes(visitDay, location.lat, location.lng);
-      const tomorrow = new Date(visitDay);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const { dawn } = sunCalc.getTimes(tomorrow, location.lat, location.lng);
-      visitDusk = dusk;
-      visitDawn = dawn;
-    }
-    // console.log("Dusk", DateTime.fromJSDate(visitDusk, {zone}).toString(), "Dawn", DateTime.fromJSDate(visitDawn, {zone}).toString());
-    // Allow our standard window around dusk/dawn
-    visitDawn.setMinutes(
-      visitDawn.getMinutes() + MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
+    const { sunrise, sunset } = sunCalc.getTimes(
+      visitDay,
+      location.lat,
+      location.lng
     );
-    visitDusk.setMinutes(
-      visitDusk.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
+    sunrise.setMinutes(
+      sunrise.getMinutes() + MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
     );
-    // Is the visit before the dawn for this day?
-    // Is the visit after the dusk for this day?
-    // TODO - Should we just make nights go from midday until midday?
-    if (eventDate < visitDusk || eventDate > visitDawn) {
-      console.log(
-        "Dusk",
-        DateTime.fromJSDate(visitDusk, { zone }).toString(),
-        "Dawn",
-        DateTime.fromJSDate(visitDawn, { zone }).toString(),
-        "Event",
-        DateTime.fromJSDate(eventDate, { zone }).toString(),
-        "Before midday?",
-        isBeforeMidday
-      );
+    sunset.setMinutes(sunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN);
+    if (eventDate > sunrise && eventDate < sunset) {
       return false;
     }
   }
@@ -147,40 +111,41 @@ export const visitsByNightAtLocation = (
   const zone = timezoneForLocation(location);
   const visitsChunked: [DateTime, ApiVisitResponse[]][] = [];
   for (const visit of visits) {
+    // If the visit is after sunset, and before sunrise, it goes to the current day
+    // otherwise, it goes to the previous day?
     const visitDay = new Date(visit.timeStart);
-    const visitDateTime = DateTime.fromISO(visit.timeStart, {
-      zone,
-    });
-    const isBeforeMidday = visitDateTime.hour < 12;
-    let visitDusk: Date;
-    // If the visit is *after* midday in the local time on the day it is on, then we want to look at dusk and dawn + 1
-    // If the visit is *before* midday in the local time on the day it is on, then we want to look at dawn and dusk - 1
-    if (isBeforeMidday) {
+    const { sunset } = sunCalc.getTimes(visitDay, location.lat, location.lng);
+    let visitSunset = new Date(sunset);
+    visitSunset.setMinutes(
+      visitSunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
+    );
+    if (visitDay < visitSunset) {
+      // Attribute the visit to the previous day
       const yesterday = new Date(visitDay);
       yesterday.setDate(yesterday.getDate() - 1);
-      const { dusk } = sunCalc.getTimes(yesterday, location.lat, location.lng);
-      visitDusk = dusk;
+      const { sunset } = sunCalc.getTimes(
+        yesterday,
+        location.lat,
+        location.lng
+      );
+      visitSunset = sunset;
     } else {
-      const { dusk } = sunCalc.getTimes(visitDay, location.lat, location.lng);
-      const tomorrow = new Date(visitDay);
-      tomorrow.setDate(tomorrow.getDate() - 1);
-      visitDusk = dusk;
+      visitSunset = sunset;
     }
-    // Allow our standard window around dusk/dawn
-    visitDusk.setMinutes(
-      visitDusk.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
+    visitSunset.setMinutes(
+      visitSunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
     );
-
     let lastDateTime: DateTime;
     if (visitsChunked.length) {
       lastDateTime = visitsChunked[visitsChunked.length - 1][0];
     } else {
-      lastDateTime = DateTime.fromJSDate(visitDusk, { zone });
+      lastDateTime = DateTime.fromJSDate(visitSunset, { zone });
     }
-    if (visitsChunked.length && visitDateTime.equals(lastDateTime)) {
+    const visitSunsetDateTime = DateTime.fromJSDate(visitSunset);
+    if (visitsChunked.length && visitSunsetDateTime.equals(lastDateTime)) {
       visitsChunked[visitsChunked.length - 1][1].push(visit);
     } else {
-      visitsChunked.push([visitDateTime, [visit]]);
+      visitsChunked.push([visitSunsetDateTime, [visit]]);
     }
   }
   return visitsChunked;

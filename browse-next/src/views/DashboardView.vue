@@ -11,6 +11,7 @@ import GroupVisitsSummary from "@/components/GroupVisitsSummary.vue";
 import StationVisitSummary from "@/components/StationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { LatLng } from "@typedefs/api/common";
+import { BSpinner } from "bootstrap-vue-3";
 
 const audioMode = ref<boolean>(false);
 
@@ -18,10 +19,10 @@ const audioMode = ref<boolean>(false);
 const timePeriodDays = ref<number>(7);
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrStations = ref<"species" | "station">("species");
-
-const loadingVisits = ref<boolean>(false);
 const loadingVisitsProgress = ref<number>(0);
-const visits = ref<ApiVisitResponse[]>([]);
+
+const visits = ref<ApiVisitResponse[] | null>(null);
+const stations = ref<ApiStationResponse[] | null>(null);
 
 const ignored: string[] = [
   "unknown",
@@ -36,9 +37,12 @@ const ignored: string[] = [
 const visitorIsPredator = (visit: ApiVisitResponse) =>
   visit && visit.classification && !ignored.includes(visit.classification);
 
-const predatorVisits = computed<ApiVisitResponse[]>(() =>
-  visits.value.filter(visitorIsPredator)
-);
+const predatorVisits = computed<ApiVisitResponse[]>(() => {
+  if (visits.value) {
+    return visits.value.filter(visitorIsPredator);
+  }
+  return [];
+});
 
 const speciesSummary = computed<Record<string, number>>(() => {
   return predatorVisits.value.reduce(
@@ -60,7 +64,7 @@ const earliestDate = computed<Date>(() => {
 
 const loadVisits = async () => {
   if (currentSelectedGroup.value) {
-    loadingVisits.value = true;
+    visits.value = null;
     const allVisits = await getAllVisitsForGroup(
       currentSelectedGroup.value.id,
       timePeriodDays.value,
@@ -70,66 +74,82 @@ const loadVisits = async () => {
       }
     );
     visits.value = allVisits.visits;
-    loadingVisits.value = false;
   }
 };
 
+const reloadDashboard = async () => {
+  await Promise.all([loadStations(), loadVisits()]);
+};
+
 watch(timePeriodDays, loadVisits);
-watch(currentSelectedGroup, loadVisits);
+watch(currentSelectedGroup, reloadDashboard);
 // I don't think the underlying data changes?
 //watch(visitsOrRecordings, reloadDashboard);
 //watch(speciesOrStations, reloadDashboard);
 
-const stations = ref<ApiStationResponse[]>([]);
-const loadingStations = ref(false);
 const stationsWithRecordingsInSelectedTimeWindow = computed<
   ApiStationResponse[]
 >(() => {
-  return stations.value.filter((station) => {
-    if (audioMode.value) {
-      return (
-        station.lastAudioRecordingTime &&
-        new Date(station.lastAudioRecordingTime) > earliestDate.value
-      );
-    } else {
-      return (
-        station.lastThermalRecordingTime &&
-        new Date(station.lastThermalRecordingTime) > earliestDate.value
-      );
-    }
-  });
+  if (stations.value) {
+    return stations.value.filter((station) => {
+      if (audioMode.value) {
+        return (
+          station.lastAudioRecordingTime &&
+          new Date(station.lastAudioRecordingTime) > earliestDate.value
+        );
+      } else {
+        return (
+          station.lastThermalRecordingTime &&
+          new Date(station.lastThermalRecordingTime) > earliestDate.value
+        );
+      }
+    });
+  }
+  return [];
 });
 
 // TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
 const stationsWithOnlineDevicesInSelectedTimeWindow = computed<
   ApiStationResponse[]
 >(() => {
-  return stations.value.filter((station) => {
-    if (audioMode.value) {
-      return (
-        station.lastActiveAudioTime &&
-        new Date(station.lastActiveAudioTime) > earliestDate.value
-      );
-    } else {
-      return (
-        station.lastActiveThermalTime &&
-        new Date(station.lastActiveThermalTime) > earliestDate.value
-      );
-    }
-  });
+  if (stations.value) {
+    return stations.value.filter((station) => {
+      if (audioMode.value) {
+        return (
+          station.lastActiveAudioTime &&
+          new Date(station.lastActiveAudioTime) > earliestDate.value
+        );
+      } else {
+        return (
+          station.lastActiveThermalTime &&
+          new Date(station.lastActiveThermalTime) > earliestDate.value
+        );
+      }
+    });
+  }
+  return [];
+});
+
+const allStations = computed<ApiStationResponse[]>(() => {
+  if (stations.value) {
+    return stations.value;
+  }
+  return [];
 });
 
 const loadStations = async () => {
   if (currentSelectedGroup.value) {
-    loadingStations.value = true;
+    stations.value = null;
     const stationsResponse = await getStationsForGroup(
       currentSelectedGroup.value.id.toString(),
       true
     );
     if (stationsResponse.success) {
       stations.value = stationsResponse.result.stations;
+    } else {
+      // TODO: Handle errors?
+      stations.value = [];
     }
-    loadingStations.value = false;
   }
 };
 
@@ -141,10 +161,14 @@ const canonicalLocationForActiveStations = computed<LatLng>(() => {
 });
 
 onMounted(async () => {
-  await Promise.all([loadStations(), loadVisits()]);
+  await reloadDashboard();
   // Load visits for time period.
   // Get species summary.
 });
+
+const isLoading = computed<boolean>(
+  () => stations.value === null || visits.value === null
+);
 </script>
 <template>
   <div class="header-container">
@@ -206,10 +230,11 @@ onMounted(async () => {
   <div class="d-md-flex flex-md-row">
     <group-visits-summary
       class="mb-5 flex-md-fill"
-      :stations="stations"
+      :stations="allStations"
       :active-stations="stationsWithRecordingsInSelectedTimeWindow"
       :visits="predatorVisits"
       :start-date="earliestDate"
+      :loading="isLoading"
     />
     <visits-breakdown-list
       :visits="predatorVisits"
@@ -219,16 +244,21 @@ onMounted(async () => {
   <h2>Stations summary</h2>
   <horizontal-overflow-carousel class="mb-5">
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
-    <div class="card-group species-summary flex-nowrap">
+    <b-spinner v-if="isLoading" />
+    <div
+      class="card-group species-summary flex-nowrap"
+      v-else-if="stationsWithRecordingsInSelectedTimeWindow.length"
+    >
       <station-visit-summary
         v-for="(station, index) in stationsWithRecordingsInSelectedTimeWindow"
         :station="station"
         :active-stations="stationsWithRecordingsInSelectedTimeWindow"
-        :stations="stations"
+        :stations="allStations"
         :visits="predatorVisits"
         :key="index"
       />
     </div>
+    <div v-else>There were no active stations in the last {{ timePeriodDays }} days for this group.</div>
   </horizontal-overflow-carousel>
 </template>
 <style lang="less" scoped>
@@ -303,6 +333,9 @@ h2 {
     border-left-width: 0;
     border-bottom-width: 0;
     border-top-width: 0;
+    &:last-child {
+      border-right-width: 0;
+    }
   }
   .species-icon {
     width: 24px;

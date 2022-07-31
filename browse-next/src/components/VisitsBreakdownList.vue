@@ -30,9 +30,10 @@ const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
     return visitsByDayAtLocation(visits, location).reverse();
   }
 });
+const hasVisits = computed<boolean>(() => visits.length !== 0);
 </script>
 <template>
-  <div class="ps-md-3">
+  <div :class="[{ 'ps-md-3': hasVisits }]">
     <visits-daily-breakdown
       v-for="([startTime, visits], index) in visitsByChunk"
       :key="index"
@@ -44,6 +45,4 @@ const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
   </div>
 </template>
 
-<style scoped lang="less">
-
-</style>
+<style scoped lang="less"></style>

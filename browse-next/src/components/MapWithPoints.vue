@@ -26,7 +26,11 @@ import {
 } from "leaflet";
 import attribution = control.attribution;
 import { rafFps } from "@models/LoggedInUser";
-import type {NamedPoint} from "@models/mapUtils";
+import type { NamedPoint } from "@models/mapUtils";
+import { BSpinner } from "bootstrap-vue-3";
+
+// FIXME - if there are only inactive points, and the points are very spread apart, the points are grey and small
+//  and hard to see.  Maybe make them a minimum size, or give them an outline colour?
 
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {
@@ -39,13 +43,14 @@ const {
   isInteractive = true,
   markersAreInteractive = true,
   hasAttribution = true,
-  activePoints,
+  activePoints = [],
   focusedPoint,
+  //loading,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => any;
   points: NamedPoint[];
   highlightedPoint: Ref<NamedPoint | null>;
-  activePoints?: NamedPoint[];
+  activePoints: NamedPoint[];
   focusedPoint?: NamedPoint;
   radius?: number;
   zoom?: boolean;
@@ -53,8 +58,10 @@ const {
   isInteractive?: boolean;
   markersAreInteractive?: boolean;
   hasAttribution?: boolean;
+  //loading: boolean;
 }>();
 
+const loading = ref(true);
 const mapEl = ref<HTMLDivElement | null>(null);
 
 const pointKey = (point: NamedPoint) =>
@@ -177,7 +184,7 @@ const mapLayers = [
 ];
 
 const mapBounds = computed<LatLngBounds | null>(() => {
-  if (!activePoints) {
+  if (activePoints.length === 0) {
     // Calculate the initial map bounds and zoom level from the set of lat/lng points
     return (
       (points.length &&
@@ -215,6 +222,7 @@ const hasPoints = computed<boolean>(() => {
 });
 
 const computedPoints = computed<NamedPoint[]>(() => points);
+const computedLoading = computed<boolean>(() => loading);
 
 const navigateToLocation = (point: NamedPoint) => {
   if (navigateToPoint) {
@@ -227,6 +235,13 @@ interface CircleMarkerGroup {
   backgroundRadius: Circle;
   foregroundMarker: CircleMarker;
 }
+
+watch(computedLoading, (nextLoadingState: boolean) => {
+  if (nextLoadingState) {
+    // TODO - Add a loading overlay to the current map?
+    clearCurrentMarkers();
+  }
+});
 
 const markers: Record<string, CircleMarkerGroup> = {};
 // IDEA: Hash the name of the point into a colour for that point?
@@ -255,14 +270,19 @@ const maybeShowAttributionForCurrentLayer = () => {
   }
 };
 
-const addPoints = () => {
+const clearCurrentMarkers = () => {
   if (map) {
     for (const [key, marker] of Object.entries(markers)) {
       map.removeLayer(marker.backgroundRadius);
       map.removeLayer(marker.foregroundMarker);
       delete markers[key];
     }
+  }
+};
 
+const addPoints = () => {
+  if (map) {
+    clearCurrentMarkers();
     // NOTE: If there's a focused point specified, then we want to only colour
     //  that point - all the other points should be grey.
 
@@ -446,18 +466,33 @@ const leavePoint = () => {
 </script>
 <template>
   <div
-    class="map"
+    :class="['map', { loading }]"
     :style="{
-      pointerEvents: isInteractive ? 'auto' : 'none',
+      pointerEvents: isInteractive ? 'auto' : 'none'
     }"
     ref="mapEl"
-  ></div>
+  >
+    <div
+      v-if="loading"
+      class="d-flex justify-content-center align-items-center loading-overlay"
+    >
+      <b-spinner />
+    </div>
+  </div>
 </template>
 <style lang="less">
+// TODO: Set a min-height for the map from props.
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  color: #666;
+}
 .map.loading {
-  background: #e7bc0b;
-  // color: #3388ff;
-  // color: #6ea7fa;
+  background: rgba(140, 140, 140, 0.5);
+  position: relative;
 }
 .pulse {
   animation: pulsate 1s ease-out;
