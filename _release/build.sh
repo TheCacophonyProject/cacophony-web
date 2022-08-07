@@ -80,8 +80,6 @@ npm run build
 rm -rf node_modules
 
 cd ../types
-echo "Compiling TypeScript..."
-./node_modules/.bin/tsc
 echo "Removing typedefs external dependencies..."
 rm -rf node_modules
 echo "Removing typedefs TypeScript files..."
