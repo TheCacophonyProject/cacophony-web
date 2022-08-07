@@ -9,7 +9,7 @@ import { refreshLogin, login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
-import {CurrentViewAbortController} from "@/router";
+import { CurrentViewAbortController } from "@/router";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
   apiToken: string;
@@ -242,9 +242,8 @@ export const currentUserSettings = computed<ApiUserSettings | false>(() => {
   return false;
 });
 
-export const currentSelectedGroup = computed<
-  { groupName: string; id: GroupId; admin?: boolean } | false
->(() => {
+export type SelectedGroup = { groupName: string; id: GroupId; admin?: boolean };
+export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
     if (UserGroups.value && UserGroups.value?.length === 0) {
       return false;
@@ -361,3 +360,10 @@ export const rafFps = ref(60);
     }
   }
 }
+
+export const currentGroupName = computed<string>(() => {
+  if (currentSelectedGroup.value) {
+    return currentSelectedGroup.value.groupName;
+  }
+  return "";
+});

@@ -258,7 +258,10 @@ const isLoading = computed<boolean>(
         :key="index"
       />
     </div>
-    <div v-else>There were no active stations in the last {{ timePeriodDays }} days for this group.</div>
+    <div v-else>
+      There were no active stations in the last {{ timePeriodDays }} days for
+      this group.
+    </div>
   </horizontal-overflow-carousel>
 </template>
 <style lang="less" scoped>

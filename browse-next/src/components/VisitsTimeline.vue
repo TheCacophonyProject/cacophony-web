@@ -11,7 +11,7 @@ import {
 import {
   timezoneForLocation,
   visitsBySpecies as visitsBySpeciesCalc,
-} from "@models/VisitsUtils";
+} from "@models/visitsUtils";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 

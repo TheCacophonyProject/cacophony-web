@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, onMounted, ref, watch } from "vue";
+import {computed, onMounted, ref, unref, watch} from "vue";
 import type { Ref } from "vue";
 import { useRouter } from "vue-router";
 import {
-  CircleMarkerOptions,
+  type CircleMarkerOptions,
   DomEvent,
   latLng,
-  LatLngTuple,
+  type LatLngTuple,
   Layer,
   Map as LeafletMap,
 } from "leaflet";
@@ -24,10 +24,11 @@ import {
   Circle,
   CircleMarker,
 } from "leaflet";
-import attribution = control.attribution;
 import { rafFps } from "@models/LoggedInUser";
 import type { NamedPoint } from "@models/mapUtils";
 import { BSpinner } from "bootstrap-vue-3";
+
+const attribution = control.attribution;
 
 // FIXME - if there are only inactive points, and the points are very spread apart, the points are grey and small
 //  and hard to see.  Maybe make them a minimum size, or give them an outline colour?
@@ -141,8 +142,10 @@ const unHighlightMarker = (marker: CircleMarkerGroup) => {
 watch(
   highlightedPoint,
   (newPoint: NamedPoint | null, oldPoint: NamedPoint | null) => {
-    if (newPoint) {
-      const pointMarker = markers[pointKey(newPoint)];
+    const newP = unref(newPoint);
+    const oldP = unref(oldPoint);
+    if (newP) {
+      const pointMarker = markers[pointKey(newP)];
       if (pointMarker) {
         // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
         pointMarker.foregroundMarker.bringToFront();
@@ -156,8 +159,8 @@ watch(
         );
       }
     }
-    if (oldPoint) {
-      const pointMarker = markers[pointKey(oldPoint)];
+    if (oldP) {
+      const pointMarker = markers[pointKey(oldP)];
       if (pointMarker) {
         unHighlightMarker(pointMarker);
         pointMarker.foregroundMarker.closeTooltip();
@@ -222,7 +225,7 @@ const hasPoints = computed<boolean>(() => {
 });
 
 const computedPoints = computed<NamedPoint[]>(() => points);
-const computedLoading = computed<boolean>(() => loading);
+const computedLoading = computed<boolean>(() => loading.value);
 
 const navigateToLocation = (point: NamedPoint) => {
   if (navigateToPoint) {
@@ -468,7 +471,7 @@ const leavePoint = () => {
   <div
     :class="['map', { loading }]"
     :style="{
-      pointerEvents: isInteractive ? 'auto' : 'none'
+      pointerEvents: isInteractive ? 'auto' : 'none',
     }"
     ref="mapEl"
   >

@@ -4,7 +4,7 @@ import { computed, ref } from "vue";
 import {
   timezoneForLocation,
   visitsCountBySpecies as visitsCountBySpeciesCalc,
-} from "@models/VisitsUtils";
+} from "@models/visitsUtils";
 import { DateTime, Duration } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";

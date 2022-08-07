@@ -5,8 +5,8 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import { getStationsForGroup } from "@api/Group";
 import { currentSelectedGroup } from "@models/LoggedInUser";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type { NamedPoint } from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
+import type { NamedPoint } from "@models/mapUtils";
 
 const stations = ref<ApiStationResponse[] | null>(null);
 const loadingStations = ref(false);
@@ -82,7 +82,7 @@ const highlightPoint = (p: NamedPoint | null) => {
       <map-with-points
         class="map"
         :points="stationsForMap"
-        :highlighted-point="() => highlightedPoint"
+        :highlighted-point="() => ref(highlightedPoint)"
         @hover-point="highlightPoint"
         @leave-point="highlightPoint"
         :radius="30"

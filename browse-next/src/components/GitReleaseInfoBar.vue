@@ -4,10 +4,6 @@
   </div>
 </template>
 
-<script setup>
-import { userIsLoggedIn } from "@/models/LoggedInUser";
-</script>
-
 <style lang="less">
 #releases {
   background: lightgray;

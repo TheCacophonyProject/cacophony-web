@@ -9,9 +9,9 @@ import {
   visitsAreNocturnalOnlyAtLocation,
   visitsByDayAtLocation,
   visitsByNightAtLocation,
-} from "@models/VisitsUtils";
+} from "@models/visitsUtils";
 import type { LatLng } from "@typedefs/api/common";
-import { DateTime } from "luxon";
+import type { DateTime } from "luxon";
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { visits, location } = defineProps<{
   visits: ApiVisitResponse[];

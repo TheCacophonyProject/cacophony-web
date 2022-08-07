@@ -67,8 +67,15 @@ rm -rf node_modules
 npm install
 npm run release
 rm -rf node_modules
-cd ../types
 
+cd ../browse-next
+npm version --no-git-tag-version ${version}
+rm -rf node_modules
+npm install
+npm run build
+rm -rf node_modules
+
+cd ../types
 echo "Removing typedefs external dependencies..."
 rm -rf node_modules
 echo "Removing typedefs TypeScript files..."

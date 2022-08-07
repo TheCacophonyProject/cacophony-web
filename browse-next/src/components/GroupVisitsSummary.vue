@@ -45,7 +45,7 @@ const hasVisits = computed<boolean>(() => {
       <map-with-points
         :points="stationsForMap"
         :active-points="activeStationsForMap"
-        :highlighted-point="() => highlightedPoint"
+        :highlighted-point="() => ref(highlightedPoint)"
         @hover-point="highlightPoint"
         @leave-point="highlightPoint"
         :radius="30"

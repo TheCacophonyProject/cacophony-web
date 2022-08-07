@@ -4,7 +4,7 @@ import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { computed, ref } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
-import { visitsByStation, visitsCountBySpecies } from "@models/VisitsUtils";
+import { visitsByStation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
 
 // eslint-disable-next-line vue/no-setup-props-destructure
@@ -54,7 +54,6 @@ const activeStationsForMap = computed<NamedPoint[]>(() => {
   }
   return [];
 });
-const nullPoint = ref(null);
 const thisStationPoint = {
   name: station.name,
   group: station.groupName,
@@ -70,7 +69,7 @@ const speciesSummary = computed<[string, number][]>(() =>
   <div class="station-visit-summary">
     <div class="map-container">
       <map-with-points
-        :highlighted-point="() => nullPoint"
+        :highlighted-point="() => ref(null)"
         :points="stationsForMap"
         :active-points="activeStationsForMap"
         :is-interactive="false"
