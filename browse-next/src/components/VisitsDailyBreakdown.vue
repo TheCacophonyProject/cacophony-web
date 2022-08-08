@@ -8,7 +8,13 @@ import {
 import { DateTime, Duration } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
+import { API_ROOT } from "@api/api";
 
+// TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
+// TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
+//  Of course, we don't currently do this.
+
+const now = new Date();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { visits, startTime, isNocturnal, location } = defineProps<{
   visits: ApiVisitResponse[];
@@ -28,7 +34,6 @@ const periodInProgress = computed<boolean>(() => {
     location.lat,
     location.lng
   );
-  const now = new Date();
   return endTime.value.toJSDate() > now && sunrise > now;
 });
 
@@ -51,7 +56,6 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
   const events = [];
-  const now = new Date();
   let usedSunrise = false;
   {
     const visit = visits[0];
@@ -223,8 +227,7 @@ const visitDuration = (visit: ApiVisitResponse): string => {
 };
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
-  // Actually, should this be the blob that we add?
-  return "";
+  return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
 };
 </script>
 <template>

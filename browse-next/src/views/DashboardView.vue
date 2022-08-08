@@ -2,7 +2,11 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { getAllVisitsForGroup } from "@api/Monitoring";
-import { currentSelectedGroup } from "@models/LoggedInUser";
+import {
+  currentSelectedGroup,
+  type SelectedGroup,
+  UserGroups,
+} from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
 import type { ApiStationResponse } from "@typedefs/api/station";
@@ -12,6 +16,7 @@ import StationVisitSummary from "@/components/StationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { LatLng } from "@typedefs/api/common";
 import { BSpinner } from "bootstrap-vue-3";
+import type { ApiGroupResponse } from "@typedefs/api/group";
 
 const audioMode = ref<boolean>(false);
 
@@ -169,12 +174,30 @@ onMounted(async () => {
 const isLoading = computed<boolean>(
   () => stations.value === null || visits.value === null
 );
+
+const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
+  if (currentSelectedGroup.value && UserGroups.value) {
+    const group = UserGroups.value.find(
+      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+    );
+    return (
+      (group as ApiGroupResponse).lastAudioRecordingTime !== undefined &&
+      (group as ApiGroupResponse).lastThermalRecordingTime !== undefined
+    );
+  }
+  return true;
+});
+
+// TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
   <div class="header-container">
     <section-header>Dashboard</section-header>
     <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
-      <div class="d-flex align-items-center">
+      <div
+        class="d-flex align-items-center"
+        v-if="currentSelectedGroupHasAudioAndThermal"
+      >
         <span
           :class="['toggle-label', 'me-2', { selected: !audioMode }]"
           @click="audioMode = false"

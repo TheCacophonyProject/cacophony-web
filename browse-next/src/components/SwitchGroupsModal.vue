@@ -40,6 +40,8 @@ const currentGroupName = computed<string>(() => {
     (currentSelectedGroup.value && currentSelectedGroup.value.groupName) || ""
   );
 });
+
+// TODO: Add icons for a) the kinds of devices in the group, and b) If there are recent recordings in the last 24 hours for each device type.
 </script>
 <template>
   <b-modal

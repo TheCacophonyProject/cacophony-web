@@ -24,13 +24,13 @@ const isNocturnal = computed<boolean>(() =>
 
 const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
   if (isNocturnal.value) {
-    //return visitsByDayAtLocation(visits, location);
     return visitsByNightAtLocation(visits, location).reverse();
   } else {
     return visitsByDayAtLocation(visits, location).reverse();
   }
 });
 const hasVisits = computed<boolean>(() => visits.length !== 0);
+
 </script>
 <template>
   <div :class="[{ 'ps-md-3': hasVisits }]">
