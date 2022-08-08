@@ -23,7 +23,13 @@ const visitCountBySpecies = computed<[string, number][]>(() =>
 );
 
 const periodInProgress = computed<boolean>(() => {
-  return endTime.value.toJSDate() > new Date();
+  const { sunrise } = sunCalc.getTimes(
+    endTime.value.toJSDate(),
+    location.lat,
+    location.lng
+  );
+  const now = new Date();
+  return endTime.value.toJSDate() > now && sunrise > now;
 });
 
 interface EventItem {

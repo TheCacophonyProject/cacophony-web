@@ -102,6 +102,20 @@ onBeforeUnmount(() => {
   }
 }
 .inner {
-  overflow-x: scroll;
+  overflow-x: auto;
+  scrollbar-color: #999 transparent;
+  &::-webkit-scrollbar {
+    height: 0.5em;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 0.25em;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+  }
 }
 </style>
