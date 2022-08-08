@@ -6,6 +6,8 @@ if (API_ROOT === "CURRENT_HOST") {
   API_ROOT = "";
 }
 
+// TODO - Handle getting all the revision information like the current version of browse does.
+
 type HttpMethod = "POST" | "PATCH" | "DELETE" | "GET";
 
 const fetchJsonWithMethod = async (
