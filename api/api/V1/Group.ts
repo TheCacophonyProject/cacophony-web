@@ -39,7 +39,6 @@ import { jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
 import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json";
 import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json";
-
 import {
   anyOf,
   booleanOf,
@@ -54,7 +53,6 @@ import { mapDevicesResponse } from "./Device";
 import { Group } from "@/models/Group";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   ApiCreateStationData,
   ApiStationResponse,

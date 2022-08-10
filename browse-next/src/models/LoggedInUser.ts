@@ -309,7 +309,7 @@ export const shouldViewAsSuperUser = computed<boolean>(() => {
 // TODO - If viewing other user as super user, return appropriate naem
 export const userDisplayName = computed<string>(() => {
   if (userIsLoggedIn.value) {
-    return CurrentUser.value?.firstName || CurrentUser.value?.userName || "";
+    return CurrentUser.value?.userName || "";
   }
   return "";
 });
