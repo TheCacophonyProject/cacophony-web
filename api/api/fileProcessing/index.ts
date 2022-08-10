@@ -1,4 +1,4 @@
-import responseUtil, { successResponse } from "../V1/responseUtil";
+import { successResponse } from "../V1/responseUtil";
 import middleware, {
   getRecordingById,
   expectedTypeOf,

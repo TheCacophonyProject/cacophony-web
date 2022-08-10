@@ -61,7 +61,6 @@ import { DeviceHistory } from "@models/DeviceHistory";
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
 import config from "@config";
-import logger from "@log";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -174,18 +173,18 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
     async (request: Request, response: Response) => {
-        if (request.body.devicename) {
-          request.body.deviceName = request.body.devicename;
-          delete request.body.devicename;
-        }
-        const device: Device = await models.Device.create({
-          deviceName: request.body.deviceName,
-          password: request.body.password,
-          GroupId: response.locals.group.id,
-        });
-        let saltId;
-        if (request.body.saltId) {
-          /*
+      if (request.body.devicename) {
+        request.body.deviceName = request.body.devicename;
+        delete request.body.devicename;
+      }
+      const device: Device = await models.Device.create({
+        deviceName: request.body.deviceName,
+        password: request.body.password,
+        GroupId: response.locals.group.id,
+      });
+      let saltId;
+      if (request.body.saltId) {
+        /*
           NOTE: We decided not to use this check, since damage caused by someone
           spamming us with in-use saltIds is minimal.
           const existingSaltId = await models.Device.findOne({
@@ -202,28 +201,28 @@ export default function (app: Application, baseUrl: string) {
             );
           }
           */
-          saltId = request.body.saltId;
-        } else {
-          saltId = device.id;
-        }
-        await Promise.all([
-          device.update({saltId, uuid: device.id}),
-          // Create the initial entry in the device history table.
-          models.DeviceHistory.create({
-            saltId,
-            setBy: "register",
-            GroupId: device.GroupId,
-            DeviceId: device.id,
-            fromDateTime: new Date(),
-            deviceName: device.deviceName,
-            uuid: device.id,
-          }),
-        ]);
-        return successResponse(response, "Created new device.", {
-          id: device.id,
-          saltId: device.saltId,
-          token: `JWT ${auth.createEntityJWT(device)}`,
-        });
+        saltId = request.body.saltId;
+      } else {
+        saltId = device.id;
+      }
+      await Promise.all([
+        device.update({ saltId, uuid: device.id }),
+        // Create the initial entry in the device history table.
+        models.DeviceHistory.create({
+          saltId,
+          setBy: "register",
+          GroupId: device.GroupId,
+          DeviceId: device.id,
+          fromDateTime: new Date(),
+          deviceName: device.deviceName,
+          uuid: device.id,
+        }),
+      ]);
+      return successResponse(response, "Created new device.", {
+        id: device.id,
+        saltId: device.saltId,
+        token: `JWT ${auth.createEntityJWT(device)}`,
+      });
     }
   );
 

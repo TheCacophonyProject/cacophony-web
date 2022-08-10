@@ -26,7 +26,6 @@ import { User } from "@models/User";
 import { GroupId, UserId } from "@typedefs/api/common";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
-import logger from "@log";
 import { HttpStatusCode } from "@typedefs/api/consts";
 /*
  * Create a new JWT for a user or device.

@@ -73,7 +73,10 @@ interface ApiLoggedInUsersResponseSuccess {
 interface ApiLoggedInUserResponseSuccess {
   userData: ApiLoggedInUserResponse;
 }
-export const mapUser = (user: User, omitSettings = false): ApiLoggedInUserResponse => {
+export const mapUser = (
+  user: User,
+  omitSettings = false
+): ApiLoggedInUserResponse => {
   const userData: ApiLoggedInUserResponse = {
     id: user.id,
     userName: user.userName,
@@ -88,7 +91,8 @@ export const mapUser = (user: User, omitSettings = false): ApiLoggedInUserRespon
   return userData;
 };
 
-export const mapUsers = (users: User[], omitSettings = false) => users.map((user) => mapUser(user, omitSettings));
+export const mapUsers = (users: User[], omitSettings = false) =>
+  users.map((user) => mapUser(user, omitSettings));
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiChangePasswordRequestBody {

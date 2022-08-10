@@ -132,10 +132,7 @@ export default function (
 
   User.publicFields = Object.freeze(["id", "userName"]);
 
-  User.apiSettableFields = Object.freeze([
-    "email",
-    "endUserAgreement",
-  ]);
+  User.apiSettableFields = Object.freeze(["email", "endUserAgreement"]);
   //---------------
   // CLASS METHODS
   //---------------

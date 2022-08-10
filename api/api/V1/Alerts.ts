@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { expectedTypeOf, validateFields } from "../middleware";
 import models from "@models";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
@@ -36,7 +36,6 @@ import {
 } from "../validation-middleware";
 import { DeviceId, Seconds } from "@typedefs/api/common";
 import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
-import { HttpStatusCode } from "@typedefs/api/consts";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 

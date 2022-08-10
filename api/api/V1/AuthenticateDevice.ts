@@ -30,11 +30,7 @@ import {
 } from "../validation-middleware";
 import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
 import { Device } from "models/Device";
-import {
-  AuthenticationError,
-  AuthorizationError,
-  ClientError,
-} from "../customErrors";
+import { AuthenticationError, ClientError } from "../customErrors";
 import { DeviceId } from "@typedefs/api/common";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

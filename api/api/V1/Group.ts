@@ -406,18 +406,13 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(
-        body("email").isEmail(),
-        idOf(body("userId"))
-      ),
+      anyOf(body("email").isEmail(), idOf(body("userId"))),
       booleanOf(body("admin")),
     ]),
     // Extract required resources to validate permissions.
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByEmailOrId(
-      body(["email", "userId"])
-    ),
+    fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request, response) => {
       const action = await models.Group.addUserToGroup(
         response.locals.group,
@@ -455,17 +450,12 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(
-        body("email").isEmail(),
-        idOf(body("userId"))
-      ),
+      anyOf(body("email").isEmail(), idOf(body("userId"))),
     ]),
     // Extract required resources to check permissions
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByEmailOrId(
-      body(["userId", "email"])
-    ),
+    fetchUnauthorizedRequiredUserByEmailOrId(body(["userId", "email"])),
     async (request: Request, response: Response, next: NextFunction) => {
       const removed = await models.Group.removeUserFromGroup(
         response.locals.group,

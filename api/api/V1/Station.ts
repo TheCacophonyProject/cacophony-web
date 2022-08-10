@@ -27,7 +27,6 @@ import {
 import util from "@api/V1/util";
 import { openS3 } from "@models/util/util";
 import { streamS3Object } from "@api/V1/signedUrl";
-import { HttpStatusCode } from "@typedefs/api/consts";
 import { ClientError } from "@api/customErrors";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

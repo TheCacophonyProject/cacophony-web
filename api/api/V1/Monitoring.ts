@@ -23,15 +23,13 @@ import {
   MonitoringParams,
 } from "./monitoringPage";
 import { generateVisits } from "./monitoringVisit";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import models from "@models";
 import { ClientError } from "@api/customErrors";
 import { GroupId, StationId } from "@typedefs/api/common";
-import { HttpStatusCode } from "@typedefs/api/consts";
-import logger from "@log";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;

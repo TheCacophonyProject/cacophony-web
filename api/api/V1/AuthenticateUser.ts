@@ -22,17 +22,10 @@ import auth, {
   getEmailConfirmationToken,
   ttlTypes,
 } from "../auth";
-import { body, oneOf } from "express-validator";
-import {
-  serverErrorResponse,
-  successResponse,
-} from "./responseUtil";
+import { body } from "express-validator";
+import { serverErrorResponse, successResponse } from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
-import {
-  anyOf,
-  idOf,
-  validPasswordOf,
-} from "../validation-middleware";
+import { anyOf, idOf, validPasswordOf } from "../validation-middleware";
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
@@ -85,14 +78,12 @@ export default function (app: Application, baseUrl: string) {
   const authenticateUserOptions = [
     validateFields([
       anyOf(
-          body("nameOrEmail").isEmail().optional(),
-          body("email").isEmail().optional(),
+        body("nameOrEmail").isEmail().optional(),
+        body("email").isEmail().optional()
       ),
       validPasswordOf(body("password")),
     ]),
-    fetchUnauthorizedOptionalUserByEmailOrId(
-      body(["email", "nameOrEmail"])
-    ),
+    fetchUnauthorizedOptionalUserByEmailOrId(body(["email", "nameOrEmail"])),
     (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.user) {
         // NOTE: Don't give away the fact that the user may not exist - remain vague in the
@@ -265,9 +256,7 @@ export default function (app: Application, baseUrl: string) {
 
   const authenticateAsOtherUserOptions = [
     extractJwtAuthorisedSuperAdminUser,
-    validateFields([
-        anyOf(body("email").isEmail(), idOf(body("userId")))
-    ]),
+    validateFields([anyOf(body("email").isEmail(), idOf(body("userId")))]),
     fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request: Request, response: Response) => {
       const isNewEndPoint = request.path.endsWith(
@@ -278,13 +267,8 @@ export default function (app: Application, baseUrl: string) {
       const expiry = new Date(
         new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
       );
-      const {
-        id,
-        userName,
-        email,
-        globalPermission,
-        endUserAgreement,
-      } = response.locals.user;
+      const { id, userName, email, globalPermission, endUserAgreement } =
+        response.locals.user;
       return successResponse(response, "Got user token.", {
         token: `JWT ${token}`,
         expiry,
@@ -376,12 +360,8 @@ export default function (app: Application, baseUrl: string) {
   );
 
   const resetPasswordOptions = [
-    validateFields([
-      body("email").isEmail(),
-    ]),
-    fetchUnauthorizedOptionalUserByEmailOrId(
-      body("email")
-    ),
+    validateFields([body("email").isEmail()]),
+    fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         const user = response.locals.user as User;

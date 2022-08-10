@@ -20,7 +20,7 @@ import { expectedTypeOf, validateFields } from "../middleware";
 import { body } from "express-validator";
 import models from "@models";
 import recordingUtil from "./recordingUtil";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
@@ -31,7 +31,6 @@ import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
 import { ClientError } from "@api/customErrors";
-import { HttpStatusCode } from "@typedefs/api/consts";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;

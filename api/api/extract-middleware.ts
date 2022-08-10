@@ -1273,7 +1273,7 @@ const getUser =
       };
     } else {
       userWhere = {
-        email: userEmailOrId.toLowerCase()
+        email: userEmailOrId.toLowerCase(),
       };
     }
     return models.User.findOne({
@@ -1514,21 +1514,18 @@ export const fetchUnauthorizedRequiredUserByResetToken =
 
 export const fetchUnauthorizedRequiredUserByEmailOrId = (
   userEmailOrId: ValidationChain
-) =>
-  fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
+) => fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
 
 export const fetchUnauthorizedOptionalUserByEmailOrId = (
   userEmailOrId: ValidationChain
-) =>
-  fetchOptionalModel(models.User, true, true, getUser(), userEmailOrId);
+) => fetchOptionalModel(models.User, true, true, getUser(), userEmailOrId);
 
 // export const fetchUnauthorizedRequiredUserByEmailOrId = (
 //   userEmailOrId: ValidationChain
 // ) => fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
 
 export const fetchUnauthorizedRequiredUserById = (userId: ValidationChain) =>
-    fetchRequiredModel(models.User, false, true, getUser(), userId);
-
+  fetchRequiredModel(models.User, false, true, getUser(), userId);
 
 export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
   fetchOptionalModel(models.User, false, true, getUser(), userId);

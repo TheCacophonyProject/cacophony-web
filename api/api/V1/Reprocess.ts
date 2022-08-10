@@ -26,7 +26,7 @@ import {
   fetchAuthorizedRequiredRecordingsByIds,
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { NextFunction } from "express-serve-static-core";
 import { ClientError } from "../customErrors";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";

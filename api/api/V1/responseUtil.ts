@@ -22,7 +22,6 @@ import config from "@config";
 import { Response } from "express";
 import { CACOPHONY_WEB_VERSION } from "@/Globals";
 import { HttpStatusCode } from "@/../types/api/consts";
-import logger from "@log";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";

@@ -21,9 +21,10 @@ import { successResponse } from "./responseUtil";
 import { body, param } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorisedSuperAdminUser, fetchUnauthorizedRequiredUserByEmailOrId,
+  extractJwtAuthorisedSuperAdminUser,
+  fetchUnauthorizedRequiredUserByEmailOrId,
 } from "@api/extract-middleware";
-import {anyOf, idOf } from "@api/validation-middleware";
+import { anyOf, idOf } from "@api/validation-middleware";
 import { ClientError } from "@api/customErrors";
 import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts";
 import { SuperUsers } from "@/Globals";

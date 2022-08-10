@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { validateFields } from "../middleware";
 import { body, param } from "express-validator";
 import models from "@models";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorisedDevice,

@@ -28,7 +28,7 @@ import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
 import { User } from "@models/User";
 import stream, { Stream } from "stream";
-import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts";
 import config from "@config";
 import { Op } from "sequelize";
 import { UnprocessableError } from "@api/customErrors";
