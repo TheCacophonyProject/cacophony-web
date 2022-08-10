@@ -1,4 +1,3 @@
-import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 import { checkRecording } from "@commands/api/recording-tests";
 

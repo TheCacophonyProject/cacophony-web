@@ -74,7 +74,7 @@ function multipartUpload(
       // on the devices' behalf, set the lastConnectionTime for the device.
       if (
         response.locals.requestDevice &&
-        !response.locals.requestDevice.devicename
+        !response.locals.requestDevice.deviceName
       ) {
         // We just have a device id, so get the actual device object to update.
         uploadingDevice = await models.Device.findByPk(

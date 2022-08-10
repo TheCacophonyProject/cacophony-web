@@ -104,27 +104,27 @@ describe("Events - query power events", () => {
   });
 
   before(() => {
-    peGroup = { groupname: getTestName("peGroup"), id: getCreds("peGroup").id };
+    peGroup = { groupName: getTestName("peGroup"), id: getCreds("peGroup").id };
     peOtherGroup = {
-      groupname: getTestName("peOtherGroup"),
+      groupName: getTestName("peOtherGroup"),
       id: getCreds("peOtherGroup").id,
     };
     peCameraDevice = {
       id: getCreds("peCamera").id,
-      devicename: getTestName("peCamera"),
+      deviceName: getTestName("peCamera"),
       GroupId: getCreds("peGroup").id,
       Group: peGroup,
     };
     peOtherCameraDevice = {
       id: getCreds("peOtherCamera").id,
-      devicename: getTestName("peOtherCamera"),
+      deviceName: getTestName("peOtherCamera"),
       GroupId: getCreds("peGroup").id,
       Group: peGroup,
     };
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     peOtherGroupCameraDevice = {
       id: getCreds("peOtherGroupCamera").id,
-      devicename: getTestName("peOtherGroupCamera"),
+      deviceName: getTestName("peOtherGroupCamera"),
       GroupId: getCreds("peOtherGroup").id,
       Group: peOtherGroup,
     };

@@ -17,15 +17,15 @@
           </b-alert>
 
           <b-form-group
-            label="Username or Email"
+            label="Email"
             label-class="sr-only"
             label-for="input-username-or-email"
           >
             <b-form-input
               id="input-username-or-email"
-              v-model="usernameOrEmail"
-              placeholder="Username or Email Address"
-              type="text"
+              v-model="email"
+              placeholder="Email Address"
+              type="email"
               autocapitalize="none"
             />
           </b-form-group>
@@ -44,7 +44,7 @@
           </b-form-group>
 
           <b-button
-            :disabled="usernameOrEmail === '' || password === '' || loggingIn"
+            :disabled="email === '' || password === '' || loggingIn"
             type="submit"
             variant="primary"
             class="btn-block"
@@ -52,12 +52,12 @@
           </b-button>
           <b-row>
             <b-col>
-              <p class="small mt-4">
+              <p class="small mt-4" style="text-align: left">
                 <b-link href="/register">Register here</b-link>.
               </p>
             </b-col>
             <b-col>
-              <p class="small mt-4">
+              <p class="small mt-4" style="text-align: right">
                 <b-link href="/forgot">Forgot password?</b-link>
               </p>
             </b-col>
@@ -74,7 +74,7 @@ export default {
   props: {},
   data() {
     return {
-      usernameOrEmail: "",
+      email: "",
       password: "",
       errorMessage: null,
       loggingIn: false,
@@ -88,7 +88,7 @@ export default {
       evt.preventDefault();
 
       const response = await this.$store.dispatch("User/LOGIN", {
-        username: this.usernameOrEmail,
+        email: this.email,
         password: this.password,
       });
       if (response.success) {

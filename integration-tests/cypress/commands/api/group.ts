@@ -1,7 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-import { getTestName } from "../names";
+import { getTestEmail, getTestName } from "../names";
 import { logTestDescription } from "../descriptions";
 
 import {
@@ -38,7 +38,7 @@ Cypress.Commands.add(
     if (additionalChecks["useRawUserName"] === true) {
       fullName = userName;
     } else {
-      fullName = getTestName(userName);
+      fullName = getTestEmail(userName);
     }
 
     const adminStr = admin ? " as admin " : "";
@@ -55,7 +55,7 @@ Cypress.Commands.add(
         body: {
           group: fullGroupName,
           admin: admin.toString(),
-          username: fullName,
+          email: fullName,
         },
       },
       groupAdminUser,
@@ -80,11 +80,11 @@ Cypress.Commands.add(
       fullGroupName = getTestName(groupName);
     }
 
-    let fullName: string;
+    let email: string;
     if (additionalChecks["useRawUserName"] === true) {
-      fullName = userName;
+      email = userName;
     } else {
-      fullName = getTestName(userName);
+      email = getTestEmail(userName);
     }
 
     logTestDescription(
@@ -99,7 +99,7 @@ Cypress.Commands.add(
         url: v1ApiPath("groups/users"),
         body: {
           group: fullGroupName,
-          username: fullName,
+          email: email,
         },
       },
       groupAdminUser,
@@ -237,18 +237,18 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        //sort expected and actual events into same order (means groupName, devicename, username, userId is mandatory in expectedGroup)
+        //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
         if (additionalChecks["doNotSort"] === true) {
           sortGroups = sortArrayOn(response.body.groups, "groupName");
           sortExpectedGroups = sortArrayOn(expectedGroups, "groupName");
           for (let count = 0; count < sortGroups.length; count++) {
             sortGroups[count].Devices = sortArrayOn(
               sortGroups[count].Devices,
-              "devicename"
+              "deviceName"
             );
             sortGroups[count].Users = sortArrayOn(
               sortGroups[count].Users,
-              "username"
+              "userName"
             );
             sortGroups[count].GroupUsers = sortArrayOn(
               sortGroups[count].GroupUsers,
@@ -258,11 +258,11 @@ Cypress.Commands.add(
           for (let count = 0; count < sortExpectedGroups.length; count++) {
             sortExpectedGroups[count].Devices = sortArrayOn(
               sortExpectedGroups[count].Devices,
-              "devicename"
+              "deviceName"
             );
             sortExpectedGroups[count].Users = sortArrayOn(
               sortExpectedGroups[count].Users,
-              "username"
+              "userName"
             );
             sortExpectedGroups[count].GroupUsers = sortArrayOn(
               sortExpectedGroups[count].GroupUsers,
@@ -311,7 +311,7 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        //sort expected and actual events into same order (means groupName, devicename, username, userId is mandatory in expectedGroup)
+        //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
         if (additionalChecks["doNotSort"] === true) {
           sortGroups = response.body.groups;
           sortExpectedGroups = expectedGroups;
@@ -321,11 +321,11 @@ Cypress.Commands.add(
           for (let count = 0; count < sortGroups.length; count++) {
             sortGroups[count].Devices = sortArrayOn(
               sortGroups[count].Devices,
-              "devicename"
+              "deviceName"
             );
             sortGroups[count].Users = sortArrayOn(
               sortGroups[count].Users,
-              "username"
+              "userName"
             );
             sortGroups[count].GroupUsers = sortArrayOn(
               sortGroups[count].GroupUsers,
@@ -335,11 +335,11 @@ Cypress.Commands.add(
           for (let count = 0; count < sortExpectedGroups.length; count++) {
             sortExpectedGroups[count].Devices = sortArrayOn(
               sortExpectedGroups[count].Devices,
-              "devicename"
+              "deviceName"
             );
             sortExpectedGroups[count].Users = sortArrayOn(
               sortExpectedGroups[count].Users,
-              "username"
+              "userName"
             );
             sortExpectedGroups[count].GroupUsers = sortArrayOn(
               sortExpectedGroups[count].GroupUsers,
@@ -394,7 +394,7 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        //sort expected and actual events into same order (means groupName, devicename, username, userId is mandatory in expectedGroup)
+        //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
         if (additionalChecks["doNotSort"] === true) {
           sortDevices = response.body.devices;
           sortExpectedDevices = expectedDevices;

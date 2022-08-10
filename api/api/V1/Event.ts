@@ -57,7 +57,7 @@ const uploadEvent = async (
   let device = response.locals.device || response.locals.requestDevice;
   if (response.locals.requestDevice) {
     // The device is connecting directly, so update the last connected time.
-    if (!device.devicename) {
+    if (!device.deviceName) {
       // If we just have a device JWT id, get the actual device at this point.
       device = await models.Device.findByPk(device.id);
     }
@@ -441,10 +441,10 @@ export default function (app: Application, baseUrl: string) {
    *   "hasAlerted": true,
    *   "Device": {
    *     "id": 1576,
-   *     "devicename": "test-device",
+   *     "deviceName": "test-device",
    *     "GroupId": 246,
    *     "Group":  {
-   *       "groupname": "test-group",
+   *       "groupName": "test-group",
    *       "id": 246
    *     }
    *    }

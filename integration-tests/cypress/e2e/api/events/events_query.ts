@@ -72,7 +72,7 @@ describe("Events - query events", () => {
       createdAt: null,
       dateTime: time1,
       DeviceId: getCreds("eqCamera").id,
-      Device: { devicename: getTestName("eqCamera") },
+      Device: { deviceName: getTestName("eqCamera") },
       EventDetail: eventDetails1,
     };
     expectedEvent2 = {
@@ -80,7 +80,7 @@ describe("Events - query events", () => {
       createdAt: null,
       dateTime: time2,
       DeviceId: getCreds("eqCamera").id,
-      Device: { devicename: getTestName("eqCamera") },
+      Device: { deviceName: getTestName("eqCamera") },
       EventDetail: eventDetails2,
     };
     expectedEvent3 = {
@@ -88,7 +88,7 @@ describe("Events - query events", () => {
       createdAt: null,
       dateTime: time3,
       DeviceId: getCreds("eqOtherCamera").id,
-      Device: { devicename: getTestName("eqOtherCamera") },
+      Device: { deviceName: getTestName("eqOtherCamera") },
       EventDetail: eventDetails3,
     };
     //   expectedEvent4 = {
@@ -96,7 +96,7 @@ describe("Events - query events", () => {
     //     createdAt: null,
     //     dateTime: time4,
     //     DeviceId: getCreds("eqOtherGroupCamera").id,
-    //     Device: { devicename: getTestName("eqOtherGroupCamera") },
+    //     Device: { deviceName: getTestName("eqOtherGroupCamera") },
     //     EventDetail: eventDetails4,
     //   };
   });

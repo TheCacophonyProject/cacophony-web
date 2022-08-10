@@ -13,11 +13,11 @@ export interface ApiAlertResponse {
   lastAlert: IsoFormattedDateString;
   User: {
     id: UserId;
-    username: string;
+    userName: string;
     email: string;
   };
   Device: {
     id: DeviceId;
-    devicename: string;
+    deviceName: string;
   };
 }

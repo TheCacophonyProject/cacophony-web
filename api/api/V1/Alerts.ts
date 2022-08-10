@@ -146,13 +146,13 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccessExample {JSON} User:
    * {
    *  "id":456,
-   *  "username":"user name",
+   *  "userName":"user name",
    *  "email":"email@server.org.nz"
    * }
    * @apiSuccessExample {JSON} Device:
    * {
    *   "id":1234,
-   *   "devicename":"device name"
+   *   "deviceName":"device name"
    * }
    */
   app.get(

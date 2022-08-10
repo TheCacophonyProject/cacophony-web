@@ -40,7 +40,7 @@
           :loading="usersLoading"
           :group-name="groupName"
           @user-added="() => fetchUsers()"
-          @user-removed="(userName) => removedUser(userName)"
+          @user-removed="(userId) => removedUser(userId)"
         />
       </tab-list-item>
       <tab-list-item lazy>
@@ -128,7 +128,7 @@ import UsersTab from "@/components/Groups/UsersTab.vue";
 import DevicesTab from "@/components/Groups/DevicesTab.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
-import { ApiGroupResponse } from "@typedefs/api/group";
+import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { GroupId } from "@typedefs/api/common";
 import { DeviceType } from "@typedefs/api/consts";
 import MonitoringTab from "@/components/MonitoringTab.vue";
@@ -173,7 +173,7 @@ export default {
       recordingQueryFinal: {},
       deletedRecordingQueryFinal: {},
       visitsQueryFinal: {},
-      users: [],
+      users: [] as ApiGroupUserResponse[],
       devices: [],
       stations: [],
       visits: [],
@@ -303,7 +303,7 @@ export default {
       this.usersLoading = true;
       const usersResponse = await api.groups.getUsersForGroup(this.groupName);
       if (usersResponse.success) {
-        this.users = usersResponse.result.users;
+        this.users = usersResponse.result.users as ApiGroupUserResponse[];
       }
       this.usersLoading = false;
     },
@@ -392,8 +392,8 @@ export default {
       }
       this.stationsLoading = false;
     },
-    removedUser(userName: string) {
-      this.users = this.users.filter((user) => user.userName !== userName);
+    removedUser(userId: number) {
+      this.users = this.users.filter((user) => user.id !== userId);
     },
   },
 };

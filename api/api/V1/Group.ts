@@ -31,8 +31,8 @@ import {
   fetchAuthorizedRequiredStationByNameInGroup,
   fetchAuthorizedRequiredStationsForGroup,
   fetchUnauthorizedOptionalGroupByNameOrId,
-  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrId,
+  fetchUnauthorizedOptionalUserByEmailOrId,
+  fetchUnauthorizedRequiredUserByEmailOrId,
   parseJSONField,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
@@ -74,7 +74,7 @@ const mapGroup = (
 ): ApiGroupResponse => {
   const groupData: ApiGroupResponse = {
     id: group.id,
-    groupName: group.groupname,
+    groupName: group.groupName,
     admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
   };
   if (group.settings) {
@@ -186,7 +186,7 @@ export default function (app: Application, baseUrl: string) {
     },
     async (request: Request, response: Response) => {
       const newGroup = await models.Group.create({
-        groupname: request.body.groupname || request.body.groupName,
+        groupName: request.body.groupname || request.body.groupName,
       });
       await newGroup.addUser(response.locals.requestUser.id, {
         through: { admin: true },
@@ -344,11 +344,11 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const users = await response.locals.group.getUsers({
-        attributes: ["id", "username"],
+        attributes: ["id", "userName"],
       });
       return successResponse(response, "Got users for group", {
-        users: users.map(({ username, id, GroupUsers }) => ({
-          userName: username,
+        users: users.map(({ userName, id, GroupUsers }) => ({
+          userName,
           id,
           admin: GroupUsers.admin,
         })),
@@ -393,7 +393,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
    * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
-   * @apiBody {String} userName name of the user to add to the group.
+   * @apiBody {String} email Email address of the user to add to the group.
    * @apiBody {Boolean} admin If the user should be an admin for the group.
    *
    * @apiUse V1ResponseSuccess
@@ -407,8 +407,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
       anyOf(
-        nameOf(body("username")),
-        nameOf(body("userName")),
+        body("email").isEmail(),
         idOf(body("userId"))
       ),
       booleanOf(body("admin")),
@@ -416,8 +415,8 @@ export default function (app: Application, baseUrl: string) {
     // Extract required resources to validate permissions.
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByNameOrId(
-      body(["username", "userName", "userId"])
+    fetchUnauthorizedRequiredUserByEmailOrId(
+      body(["email", "userId"])
     ),
     async (request, response) => {
       const action = await models.Group.addUserToGroup(
@@ -445,8 +444,8 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
    * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
-   * @apiBody {String} [userName] name of the user to remove from the group (either 'userName' or 'userId' must be specified).
-   * @apiBody {Integer} [userId] id of the user to remove from the group (either 'userName' or 'userId' must be specified).
+   * @apiBody {Integer} [userId] id of the user to remove from the group (must supply either userId or email).
+   * @apiBody {Integer} [email] email of the user to remove from the group (must supply either userId or email).
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -457,16 +456,15 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
       anyOf(
-        nameOf(body("username")),
-        nameOf(body("userName")),
+        body("email").isEmail(),
         idOf(body("userId"))
       ),
     ]),
     // Extract required resources to check permissions
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByNameOrId(
-      body(["username", "userName", "userId"])
+    fetchUnauthorizedRequiredUserByEmailOrId(
+      body(["userId", "email"])
     ),
     async (request: Request, response: Response, next: NextFunction) => {
       const removed = await models.Group.removeUserFromGroup(
@@ -737,7 +735,7 @@ export default function (app: Application, baseUrl: string) {
       booleanOf(body("admin")).default(false),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body("email")),
+    fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     async (request: Request, response: Response) => {
       const group = response.locals.group;
       const user = response.locals.user;

@@ -53,7 +53,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera1").id,
       dateTime: firstTime,
-      Device: { devicename: getTestName("camera1") },
+      Device: { deviceName: getTestName("camera1") },
       EventDetail: { type: EventTypes.POWERED_ON, details: {} },
     };
 
@@ -80,7 +80,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera2").id,
       dateTime: firstTime,
-      Device: { devicename: getTestName("camera2") },
+      Device: { deviceName: getTestName("camera2") },
       EventDetail: { type: EventTypes.POWERED_ON, details: {} },
     };
     cy.apiGroupUserAdd("groupAdmin2", "groupMember2", "group2", false);
@@ -173,7 +173,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera").id,
       dateTime: time1,
-      Device: { devicename: getTestName("camera") },
+      Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
     };
     const expectedEvent7b = {
@@ -181,7 +181,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera").id,
       dateTime: time2,
-      Device: { devicename: getTestName("camera") },
+      Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
     };
     const expectedEvent7c = {
@@ -189,7 +189,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera").id,
       dateTime: time3,
-      Device: { devicename: getTestName("camera") },
+      Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
     };
     const expectedEvent7d = {
@@ -197,7 +197,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera").id,
       dateTime: time4,
-      Device: { devicename: getTestName("camera") },
+      Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
     };
     const expectedEvent7e = {
@@ -205,7 +205,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera").id,
       dateTime: time5,
-      Device: { devicename: getTestName("camera") },
+      Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
     };
     const expectedEvent7f = {
@@ -213,7 +213,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera").id,
       dateTime: time6,
-      Device: { devicename: getTestName("camera") },
+      Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
     };
     cy.apiEventsCheck(
@@ -254,7 +254,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera8").id,
       dateTime: time11,
-      Device: { devicename: getTestName("camera8") },
+      Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
     };
     const expectedEvent8b = {
@@ -262,7 +262,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera8").id,
       dateTime: time12,
-      Device: { devicename: getTestName("camera8") },
+      Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
     };
     const expectedEvent8c = {
@@ -270,7 +270,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera8").id,
       dateTime: time13,
-      Device: { devicename: getTestName("camera8") },
+      Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
     };
     const expectedEvent8d = {
@@ -278,7 +278,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera8").id,
       dateTime: time14,
-      Device: { devicename: getTestName("camera8") },
+      Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
     };
 
@@ -404,7 +404,7 @@ describe("Events - add event on behalf of device", () => {
     );
   });
 
-  it.skip("Can upload event using devicename", () => {
+  it.skip("Can upload event using deviceName", () => {
     // NOTE: Deprecated, no longer works
     cy.apiEventsDeviceAddOnBehalf(
       "groupAdmin9",
@@ -418,7 +418,7 @@ describe("Events - add event on behalf of device", () => {
       createdAt: null,
       DeviceId: getCreds("camera9").id,
       dateTime: time1,
-      Device: { devicename: getTestName("camera9") },
+      Device: { deviceName: getTestName("camera9") },
       EventDetail: eventDetails1,
     };
 
@@ -431,7 +431,7 @@ describe("Events - add event on behalf of device", () => {
     );
   });
 
-  it("Cannot upload event by devicename where duplicate devicenames exist", () => {
+  it("Cannot upload event by deviceName where duplicate deviceNames exist", () => {
     const timeNow = new Date().toISOString();
     cy.log("duplicate camera name");
     cy.testCreateUserGroupAndDevice("groupAdmin10", "group10", "camera");

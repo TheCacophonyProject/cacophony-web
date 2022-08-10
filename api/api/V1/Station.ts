@@ -45,7 +45,7 @@ export const mapStation = (station: Station): ApiStationResponse => {
     name: station.name,
     id: station.id,
     groupId: station.GroupId,
-    groupName: (station as any).Group.groupname,
+    groupName: (station as any).Group.groupName,
     createdAt: station.createdAt.toISOString(),
     activeAt: station.activeAt.toISOString(),
     location: station.location,

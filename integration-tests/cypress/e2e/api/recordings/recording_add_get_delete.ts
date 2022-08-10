@@ -518,9 +518,10 @@ describe("Recordings (thermal): add, get, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     if (Cypress.env("running_in_a_dev_environment") == true) {
       cy.log("Removing all recordings not associated with this test");
-      const superuser = getCreds("superuser")["name"];
+      const superuser = getCreds("superuser")["email"];
       const suPassword = getCreds("superuser")["password"];
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.log("superuser", superuser);
+      cy.apiSignInAs(null, superuser, suPassword);
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
@@ -532,9 +533,13 @@ describe("Recordings (thermal): add, get, delete", () => {
     cy.log("Add recording as device");
     cy.apiRecordingAdd("raCamera1", recording1, undefined, "raRecording1").then(
       (recordingId) => {
-        checkRecording(getCreds("superuser").name, recordingId, (recording) => {
-          stationId = recording.stationId;
-        });
+        checkRecording(
+          getCreds("superuser").email,
+          recordingId,
+          (recording) => {
+            stationId = recording.stationId;
+          }
+        );
       }
     );
 

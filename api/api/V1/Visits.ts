@@ -98,8 +98,8 @@ class DeviceSummary {
       let devVisits = this.deviceMap[rec.DeviceId];
       if (!devVisits) {
         devVisits = new DeviceVisits(
-          rec.Device.devicename,
-          rec.Group.groupname,
+          rec.Device.deviceName,
+          rec.Group.groupName,
           rec.DeviceId
         );
         this.deviceMap[rec.DeviceId] = devVisits;
@@ -359,8 +359,8 @@ class Visit {
     this.visitID = visitID;
     this.events = [];
     this.deviceId = rec.Device.id;
-    this.deviceName = rec.Device.devicename;
-    this.groupName = rec.Group.groupname;
+    this.deviceName = rec.Device.deviceName;
+    this.groupName = rec.Group.groupName;
     this.audioBaitEvents = [];
     this.audioBaitVisit = false;
     this.audioBaitDay = false;

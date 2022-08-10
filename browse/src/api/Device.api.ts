@@ -151,7 +151,7 @@ export interface DeviceEvent {
   dateTime: IsoFormattedString;
   createdAt: IsoFormattedString;
   DeviceId: DeviceId;
-  Device: { devicename: string };
+  Device: { deviceName: string };
   EventDetail: {
     type: DeviceEventType;
     details?: any;

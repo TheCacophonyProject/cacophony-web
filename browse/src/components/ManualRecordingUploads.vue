@@ -51,7 +51,6 @@
 
 <script lang="ts">
 import api from "@api";
-import { ApiDeviceResponse } from "@typedefs/api/device";
 import { DeviceType, RecordingType } from "@typedefs/api/consts";
 import { CptvDecoder, CptvHeader } from "cptv-decoder";
 

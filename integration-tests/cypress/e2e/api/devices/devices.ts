@@ -5,7 +5,7 @@ import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import { DeviceType } from "@typedefs/api/consts";
 
 describe("Devices list", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   const groupAdmin = "Edith-groupAdmin";
@@ -97,7 +97,7 @@ describe("Devices list", () => {
   //Do not run against a live server as we don't have superuser login
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user should see all devices", () => {
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
 
       const expectedDevice2AdminView = {
         id: getCreds(camera2).id,
@@ -123,7 +123,7 @@ describe("Devices list", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user 'as user' should see only their devices and users only where they are device admin", () => {
       // note: if this test fails and does not clean up after itself, it will continue to fail until the superuser is removed from the old test devices
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
       // add superuser to group2
       makeAuthorizedRequest(
         {
@@ -132,7 +132,7 @@ describe("Devices list", () => {
           body: {
             group: getTestName(group2),
             admin: true,
-            username: superuser,
+            email: superuser,
           },
         },
         user2
@@ -149,7 +149,7 @@ describe("Devices list", () => {
           url: v1ApiPath("groups/users"),
           body: {
             group: getTestName(group2),
-            username: superuser,
+            email: superuser,
           },
         },
         user2

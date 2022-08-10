@@ -2,19 +2,19 @@
 
 import { TestCreateExpectedUser } from "@commands/api/user";
 
-import { getTestName } from "@commands/names";
+import { getTestEmail, getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 
 describe("User: manage global access permissions", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
   let expectedDevice1: ApiDeviceResponse;
   let expectedDevice2: ApiDeviceResponse;
 
   before(() => {
-    cy.apiSignInAs(null, null, superuser, suPassword);
+    cy.apiSignInAs(null, superuser, suPassword);
     cy.testCreateUserGroupAndDevice("gapUser1", "gapGroup1", "gapCamera1").then(
       () => {
         expectedDevice1 = {
@@ -60,7 +60,7 @@ describe("User: manage global access permissions", () => {
         });
 
         cy.log("Check correct permissions reported");
-        cy.apiUserCheck("gapUser1", getTestName("gapUser1"), expectedUser);
+        cy.apiUserCheck("gapUser1", getTestEmail("gapUser1"), expectedUser);
 
         cy.log("Check can read globally");
         cy.apiDeviceInGroupCheck(
@@ -117,7 +117,7 @@ describe("User: manage global access permissions", () => {
         });
 
         cy.log("Check correct permissions reported");
-        cy.apiUserCheck("gapUser1", getTestName("gapUser1"), expectedUser);
+        cy.apiUserCheck("gapUser1", getTestEmail("gapUser1"), expectedUser);
 
         cy.log("Check can read globally");
         cy.apiDeviceInGroupCheck(

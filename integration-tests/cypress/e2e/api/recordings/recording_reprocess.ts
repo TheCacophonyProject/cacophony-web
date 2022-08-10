@@ -36,7 +36,7 @@ import { createExpectedAlert } from "@commands/api/alerts";
 import { createExpectedEvent } from "@commands/api/events";
 
 describe("Recordings - reprocessing tests", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
@@ -105,7 +105,7 @@ describe("Recordings - reprocessing tests", () => {
       );
 
       //Sign in superuser so that their credentials are available
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
     });
 
     beforeEach(() => {

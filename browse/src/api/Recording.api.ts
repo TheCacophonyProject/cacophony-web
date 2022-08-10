@@ -104,7 +104,7 @@ export interface Track {
 }
 
 export interface User {
-  username: string;
+  userName: string;
   id?: number;
   email: string;
   globalPermission: "read" | "write" | "off";

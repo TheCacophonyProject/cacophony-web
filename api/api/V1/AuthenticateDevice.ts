@@ -126,7 +126,7 @@ export default function (app: Application) {
           token: `JWT ${auth.createEntityJWT(response.locals.device)}`,
         });
       } else {
-        return next(new AuthenticationError("Wrong password or devicename."));
+        return next(new AuthenticationError("Wrong password or deviceName."));
       }
     }
   );

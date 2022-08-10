@@ -22,7 +22,7 @@ import {
 } from "@commands/dataTemplate";
 
 describe("Recording thumbnails", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
@@ -60,7 +60,7 @@ describe("Recording thumbnails", () => {
       //Second group with admin and member
       cy.testCreateUserGroupAndDevice("rtGroup2Admin", "rtGroup2", "rtCamera2");
 
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
     });
 
     beforeEach(() => {

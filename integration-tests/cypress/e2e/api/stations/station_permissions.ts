@@ -12,7 +12,7 @@ import { ApiStationData } from "@commands/types";
 import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Stations: permissions", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   const TemplateExpectedStation: ApiStationResponse = {
@@ -275,7 +275,7 @@ describe("Stations: permissions", () => {
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user as user should see only their recordings", () => {
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
 
       cy.apiGroupAdd("saAdmin", "saOnlyGroup");
       cy.apiDeviceAdd("saOnlyCamera", "saOnlyGroup");

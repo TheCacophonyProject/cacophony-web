@@ -5,6 +5,7 @@ import { oneOf, Result, ValidationChain } from "express-validator";
 import { expectedTypeOf } from "./middleware";
 import { Middleware } from "express-validator/src/base";
 import { extractValFromRequest } from "./extract-middleware";
+import logging from "@log";
 
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
@@ -13,19 +14,19 @@ export const checkDeviceNameIsUniqueInGroup =
     response: Response,
     next: NextFunction
   ): Promise<void> => {
-    const deviceName = extractValFromRequest(request, device);
-    const group = response.locals.group;
-    if (!group) {
-      return next(new ClientError("No group specified"));
-    }
-    const nameIsFree = await models.Device.freeDevicename(
-      request.body.devicename,
-      response.locals.group.id
-    );
-    if (!nameIsFree) {
-      return next(new ClientError(`Device name ${deviceName} in use`));
-    }
-    next();
+      const deviceName = extractValFromRequest(request, device);
+      const group = response.locals.group;
+      if (!group) {
+        return next(new ClientError("No group specified"));
+      }
+      const nameIsFree = await models.Device.freeDeviceName(
+          request.body.deviceName,
+          response.locals.group.id
+      );
+      if (!nameIsFree) {
+        return next(new ClientError(`Device name ${deviceName} in use`));
+      }
+      next();
   };
 
 export const idOf = (field: ValidationChain): ValidationChain =>

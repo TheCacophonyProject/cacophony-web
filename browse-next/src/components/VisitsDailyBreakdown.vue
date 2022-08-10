@@ -153,7 +153,8 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       } as SunEventItem);
     }
   }
-  return events;
+  // TODO: Should this be reversed or not?
+  return events.reverse();
 });
 
 const nightOfRange = computed<string>(() => {

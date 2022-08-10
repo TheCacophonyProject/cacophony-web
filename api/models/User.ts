@@ -58,9 +58,7 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
 
   admin: boolean;
   id: UserId;
-  username: string;
-  firstName: string;
-  lastName: string;
+  userName: string;
   email: string;
   emailConfirmed: boolean;
   lastActiveAt: Date;
@@ -74,7 +72,6 @@ export interface UserStatic extends ModelStaticCommon<User> {
   new (values?: object, options?: BuildOptions): User;
   getAll: (where: any) => Promise<User[]>;
   getFromName: (name: string) => Promise<User | null>;
-  freeUsername: (name: string) => Promise<boolean>;
   getFromEmail: (email: string) => Promise<User | null>;
   freeEmail: (email: string) => Promise<boolean>;
   getFromId: (id: number) => Promise<User | null>;
@@ -86,14 +83,7 @@ export default function (
 ): UserStatic {
   const name = "User";
   const attributes: ModelAttributes = {
-    username: {
-      type: DataTypes.STRING,
-      unique: true,
-    },
-    firstName: {
-      type: DataTypes.STRING,
-    },
-    lastName: {
+    userName: {
       type: DataTypes.STRING,
     },
     email: {
@@ -140,11 +130,9 @@ export default function (
     options
   ) as unknown as UserStatic;
 
-  User.publicFields = Object.freeze(["id", "username"]);
+  User.publicFields = Object.freeze(["id", "userName"]);
 
   User.apiSettableFields = Object.freeze([
-    "firstName",
-    "lastName",
     "email",
     "endUserAgreement",
   ]);
@@ -172,11 +160,7 @@ export default function (
   };
 
   User.getFromName = async (name: string): Promise<User | null> => {
-    return User.findOne({ where: { username: name } });
-  };
-
-  User.freeUsername = async (name: string): Promise<boolean> => {
-    return (await User.getFromName(name)) === null;
+    return User.findOne({ where: { userName: name } });
   };
 
   User.getFromEmail = async (email): Promise<User | null> => {

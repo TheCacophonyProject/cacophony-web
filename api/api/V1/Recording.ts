@@ -91,7 +91,7 @@ import recordingUtil, {
   signedToken,
   uploadRawRecording,
 } from "./recordingUtil";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -123,7 +123,7 @@ const mapTrackTag = (
     (trackTagBase as ApiHumanTrackTagResponse).automatic = false;
     (trackTagBase as ApiHumanTrackTagResponse).userId = trackTag.UserId;
     (trackTagBase as ApiHumanTrackTagResponse).userName =
-      trackTag.User.username;
+      trackTag.User.userName;
     return trackTagBase as ApiHumanTrackTagResponse;
   }
 };
@@ -174,7 +174,7 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
   if (tag.taggerId) {
     result.taggerId = tag.taggerId;
     if ((tag as any).tagger) {
-      result.taggerName = (tag as any).tagger.username;
+      result.taggerName = (tag as any).tagger.userName;
     }
   }
   if (tag.startTime !== undefined) {
@@ -209,9 +209,9 @@ const mapRecordingResponse = (
       location: recording.location,
       rawMimeType: recording.rawMimeType,
       comment: ifNotNull(recording.comment),
-      deviceName: recording.Device?.devicename,
+      deviceName: recording.Device?.deviceName,
       groupId: recording.GroupId,
-      groupName: recording.Group?.groupname,
+      groupName: recording.Group?.groupName,
       processing: recording.processing || false,
       processingState: recording.processingState,
       recordingDateTime: recording.recordingDateTime?.toISOString(),
@@ -416,7 +416,7 @@ export default (app: Application, baseUrl: string) => {
    * call will return an error.
    *
    * @apiParam {Integer} deviceId ID of the device to upload on behalf of. If
-   * you don't have access to the ID the devicename can be used instead in it's
+   * you don't have access to the ID the deviceName can be used instead in it's
    * place.
    * @apiQuery {Boolean} [only-active=false] operate only on active devices
    * @apiUse V1UserAuthorizationHeader

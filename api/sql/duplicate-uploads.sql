@@ -1,17 +1,17 @@
 -- Find duplicate audio recordings.
-select d.devicename, r."recordingDateTime", count(*), string_agg(r.id::text, ' ')
+select d."deviceName", r."recordingDateTime", count(*), string_agg(r.id::text, ' ')
 from "Recordings" r join "Devices" d on r."DeviceId" = d.id
 where type = 'audio'
-group by d."devicename", r.duration, r."recordingDateTime"
+group by d."deviceName", r.duration, r."recordingDateTime"
 having count(*) > 1
 order by r."recordingDateTime" desc;
 
 -- Find duplicate thermal video recordings.
 with dups as (
-  select d.devicename, r."recordingDateTime", min(r.id)
+  select d."deviceName", r."recordingDateTime", min(r.id)
   from "Recordings" r join "Devices" d on r."DeviceId" = d.id
   where type = 'thermalRaw'
-  group by d."devicename", r.duration, r."recordingDateTime"
+  group by d."deviceName", r.duration, r."recordingDateTime"
   having count(*) > 1
   order by r."recordingDateTime" desc
 )

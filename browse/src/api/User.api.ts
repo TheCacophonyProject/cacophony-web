@@ -5,7 +5,7 @@ import { UserId } from "@typedefs/api/common";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 
 function login(
-  usernameOrEmail: string,
+  email: string,
   password: string
 ): Promise<
   FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
@@ -13,24 +13,24 @@ function login(
   return CacophonyApi.post(
     "/authenticate_user",
     {
-      nameOrEmail: usernameOrEmail,
-      password: password,
+      email,
+      password,
     },
     true
   );
 }
 
-function loginOther(username) {
+function loginOther(email) {
   return CacophonyApi.post("/admin_authenticate_as_other_user", {
-    name: username,
+    email,
   });
 }
 
-function reset(usernameOrEmail: string): Promise<FetchResult<{}>> {
+function reset(email: string): Promise<FetchResult<{}>> {
   return CacophonyApi.post(
     "/resetpassword",
     {
-      nameOrEmail: usernameOrEmail,
+      email,
     },
     true
   );
@@ -44,7 +44,7 @@ function validateToken(
   return CacophonyApi.post(
     "/validateToken",
     {
-      token: token,
+      token,
     },
     true
   );
@@ -72,8 +72,6 @@ interface UserData {
   id: number;
   userName: string;
   email: string;
-  firstname?: string;
-  lastname?: string;
   globalPermission: UserGlobalPermission;
   endUserAgreement: number;
   emailConfirmed: boolean;
@@ -96,14 +94,14 @@ function getUserDetails(
 }
 
 function persistUser(
-  username,
+  userName,
   token,
   email,
   globalPermission,
   userId,
   acceptedEUA
 ) {
-  localStorage.setItem("userName", username);
+  localStorage.setItem("userName", userName);
   localStorage.setItem("JWT", token);
   localStorage.setItem("email", email);
   localStorage.setItem("globalPermission", globalPermission);
@@ -125,16 +123,16 @@ function logout() {
   localStorage.removeItem("acceptedEUA");
   localStorage.removeItem("superUserCreds");
 }
-function register(username, password, email, endUserAgreement) {
-  return CacophonyApi.post("/api/v1/Users", {
-    username: username,
-    password: password,
-    endUserAgreement: endUserAgreement,
-    email: email,
+function register(userName, password, email, endUserAgreement) {
+  return CacophonyApi.post("/api/v1/users", {
+    userName,
+    password,
+    endUserAgreement,
+    email,
   });
 }
 function updateFields(fields) {
-  return CacophonyApi.patch("/api/v1/Users", fields);
+  return CacophonyApi.patch("/api/v1/users", fields);
 }
 function getEUAVersion() {
   return CacophonyApi.get("/api/v1/endUserAgreement/latest");

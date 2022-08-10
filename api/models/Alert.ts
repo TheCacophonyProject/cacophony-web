@@ -104,12 +104,12 @@ export default function (sequelize, DataTypes): AlertStatic {
       include: [
         {
           model: models.User,
-          attributes: ["id", "username"],
+          attributes: ["id", "userName"],
           where: userWhere,
         },
         {
           model: models.Device,
-          attributes: ["id", "devicename"],
+          attributes: ["id", "deviceName"],
         },
       ],
     });
@@ -146,12 +146,12 @@ export default function (sequelize, DataTypes): AlertStatic {
       include: [
         {
           model: models.User,
-          attributes: ["id", "username", "email"],
+          attributes: ["id", "userName", "email"],
           where: userWhere,
         },
         {
           model: models.Device,
-          attributes: ["id", "devicename"],
+          attributes: ["id", "deviceName"],
         },
       ],
     });
@@ -195,7 +195,7 @@ export default function (sequelize, DataTypes): AlertStatic {
     const [html, text] = alertBody(
       recording,
       tag,
-      this.Device.devicename,
+      this.Device.deviceName,
       !!thumbnail
     );
     const alertTime = new Date().toISOString();

@@ -48,7 +48,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera2").id,
       dateTime: timeNow,
-      Device: { devicename: getTestName("evCamera2") },
+      Device: { deviceName: getTestName("evCamera2") },
       EventDetail: eventDetails1c,
     };
     cy.apiEventsCheck(
@@ -94,7 +94,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera").id,
       dateTime: time1,
-      Device: { devicename: getTestName("evCamera") },
+      Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails1,
     };
     const expectedEvent7b = {
@@ -102,7 +102,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera").id,
       dateTime: time2,
-      Device: { devicename: getTestName("evCamera") },
+      Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails2,
     };
     const expectedEvent7c = {
@@ -110,7 +110,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera").id,
       dateTime: time3,
-      Device: { devicename: getTestName("evCamera") },
+      Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails2,
     };
     const expectedEvent7d = {
@@ -118,7 +118,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera").id,
       dateTime: time4,
-      Device: { devicename: getTestName("evCamera") },
+      Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails1,
     };
     cy.apiEventsCheck(
@@ -147,7 +147,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera8").id,
       dateTime: time11,
-      Device: { devicename: getTestName("evCamera8") },
+      Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
     };
     const expectedEvent8b = {
@@ -155,7 +155,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera8").id,
       dateTime: time12,
-      Device: { devicename: getTestName("evCamera8") },
+      Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
     };
     const expectedEvent8c = {
@@ -163,7 +163,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera8").id,
       dateTime: time13,
-      Device: { devicename: getTestName("evCamera8") },
+      Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
     };
     const expectedEvent8d = {
@@ -171,7 +171,7 @@ describe("Events - add event as a device", () => {
       createdAt: null,
       DeviceId: getCreds("evCamera8").id,
       dateTime: time14,
-      Device: { devicename: getTestName("evCamera8") },
+      Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
     };
 

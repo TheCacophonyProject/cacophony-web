@@ -5,15 +5,14 @@ declare namespace Cypress {
   type ApiAuthenticateAccess = import("../types").ApiAuthenticateAccess;
   interface Chainable {
     /**
-     * Sign is as user using supplied username and session-unique suffixi.
+     * Sign is as user using supplied username and session-unique suffix.
      * Optionally supply a password, otherwise password is calculated)
-     * optionally use email / nameOrEmail (as supplied) - these are not made unique. caller needs to supply
+     * optionally use email (as supplied) - this is not made unique. caller needs to supply
      * optionally wait for non-200 statusCode
      */
     apiSignInAs(
       userName?: string,
       email?: string,
-      nameOrEmail?: string,
       password?: string,
       statuscode?: number
     ): Chainable<Element>;

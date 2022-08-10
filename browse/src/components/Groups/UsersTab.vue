@@ -37,7 +37,7 @@
       <b-modal
         id="group-user-remove-self"
         title="Remove yourself from group"
-        @ok="removeGroupUser(currentUser.userName)"
+        @ok="removeGroupUser(currentUser.id)"
         ok-title="Remove"
         ok-variant="danger"
         v-model="showUserRemoveSelfModal"
@@ -53,7 +53,7 @@
         :fields="[
           {
             key: 'userName',
-            label: 'Username',
+            label: 'Name',
             sortable: true,
           },
           {
@@ -66,7 +66,7 @@
             class: 'device-actions-cell',
           },
         ]"
-        sort-by="username"
+        sort-by="userName"
         striped
         hover
         outlined
@@ -137,23 +137,23 @@ export default {
     },
   },
   methods: {
-    async removeGroupUser(userName: string) {
+    async removeGroupUser(userId: number) {
       this.isRemovingUser = true;
       {
-        await api.groups.removeGroupUser(this.groupName, userName);
+        await api.groups.removeGroupUser(this.groupName, userId);
         // Mutate our local users object, we don't need to fetch it again.
-        this.$emit("user-removed", userName);
+        this.$emit("user-removed", userId);
       }
       this.isRemovingUser = false;
     },
-    async removeGroupUserCheckIfSelf(userName: string) {
+    async removeGroupUserCheckIfSelf(userId: number) {
       if (
         !this.isSuperUserAndViewingAsSuperUser &&
-        userName === this.currentUser.userName
+        userId === this.currentUser.id
       ) {
         this.showUserRemoveSelfModal = true;
       } else {
-        await this.removeGroupUser(userName);
+        await this.removeGroupUser(userId);
       }
     },
   },

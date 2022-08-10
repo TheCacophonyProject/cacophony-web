@@ -27,12 +27,10 @@ import {
 } from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
-  const queryHasPositions = false;
-  //TODO enable after merge
 
-  //Do not validate IDs or additoonaMetadata
+  //Do not validate IDs or additionalMetadata
   //On test server, do not validate processingData, as recordings may be processed during test
   let EXCLUDE_PARAMS = [];
   if (Cypress.env("running_in_a_dev_environment") == true) {
@@ -549,13 +547,13 @@ describe("Recordings query using where", () => {
     );
   });
 
-  //TODO: devicename and groupname appear not to be supported.  What nested parameters are?
+  //TODO: deviceName and groupName appear not to be supported.  What nested parameters are?
   it.skip("Can query by nested parameters", () => {
-    cy.log("Device.devicename");
+    cy.log("Device.deviceName");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
       {
-        where: { "Device.devicename": getTestName("rqCamera1") },
+        where: { "Device.deviceName": getTestName("rqCamera1") },
         order: '[["id", "ASC"]]',
       },
       [expectedRecording1, expectedRecording2],
@@ -563,15 +561,15 @@ describe("Recordings query using where", () => {
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
-      { where: { "Device.devicename": getTestName("rqCamera1") } },
+      { where: { "Device.deviceName": getTestName("rqCamera1") } },
       2
     );
 
-    cy.log("Group.groupname");
+    cy.log("Group.groupName");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
       {
-        where: { "Group.groupname": getTestName("rqGroup") },
+        where: { "Group.groupName": getTestName("rqGroup") },
         order: '[["id", "ASC"]]',
       },
       [expectedRecording1, expectedRecording2, expectedRecording3],
@@ -579,11 +577,11 @@ describe("Recordings query using where", () => {
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
-      { where: { "Group.groupname": getTestName("rqGroup") } },
+      { where: { "Group.groupName": getTestName("rqGroup") } },
       3
     );
 
-    cy.log("Station.stationname");
+    cy.log("Station.stationName");
     //TODO: add stations once helper functions support them
     //
   });
@@ -742,7 +740,7 @@ describe("Recordings query using where", () => {
   //TODO: Issue 91: /ap1/v1/recordings/count ignoring view-mode
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user as user should see only their recordings", () => {
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
       cy.apiGroupUserAdd(
         "rqGroupAdmin",
         superuser,

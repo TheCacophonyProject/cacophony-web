@@ -245,14 +245,14 @@ function createDevice(
   }
 
   interface DataType {
-    devicename: string;
+    deviceName: string;
     password: string;
     group: string;
     saltId?: number;
   }
 
   const data: DataType = {
-    devicename: fullName,
+    deviceName: fullName,
     password: password,
     group: getTestName(groupName),
   };
@@ -481,7 +481,7 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
-        // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
+        // API returns devices: [ groupName: ..., deviceName: ..., saltId, ..., Group.groupName: ... ]
         // sort users and expected users to ensure order is the same
         const users = sortArrayOn(response.body.users, "userName");
         expectedUsers = sortArrayOn(expectedUsers, "userName");

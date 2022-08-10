@@ -55,10 +55,7 @@ const getters = {
 const actions = {
   async LOGIN({ commit }, payload) {
     commit("invalidateLogin");
-    const loginResponse = await api.user.login(
-      payload.username,
-      payload.password
-    );
+    const loginResponse = await api.user.login(payload.email, payload.password);
     if (loginResponse.success) {
       const {
         result: { userData, token },
@@ -121,7 +118,7 @@ const actions = {
   },
   async REGISTER({ commit, state }, payload) {
     const { result, success } = await api.user.register(
-      payload.username,
+      payload.userName,
       payload.password,
       payload.email,
       state.latestEUA

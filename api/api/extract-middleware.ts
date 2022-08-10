@@ -163,7 +163,7 @@ export const extractJwtAuthorisedDevice = extractJwtAuthenticatedEntity([
 
 const deviceAttributes = [
   "id",
-  "devicename",
+  "deviceName",
   "location",
   "saltId",
   "uuid",
@@ -206,7 +206,7 @@ const getDeviceInclude =
     include: [
       {
         model: models.Group,
-        attributes: ["id", "groupname"],
+        attributes: ["id", "groupName"],
         required:
           Object.keys(groupWhere).length !== 0 &&
           Object.keys(deviceWhere).length === 0,
@@ -238,7 +238,7 @@ const getStationInclude =
     include: [
       {
         model: models.Group,
-        attributes: ["id", "groupname"],
+        attributes: ["id", "groupName"],
         required: true,
         where: groupWhere,
         include: [
@@ -268,7 +268,7 @@ const getScheduleInclude =
     include: [
       {
         model: models.Group,
-        attributes: ["id", "groupname"],
+        attributes: ["id", "groupName"],
         required: Object.keys(groupWhere).length !== 0,
         where: groupWhere,
         include: [
@@ -301,7 +301,7 @@ const getRecordingInclude =
     include: [
       {
         model: models.Group,
-        attributes: ["id", "groupname"],
+        attributes: ["id", "groupName"],
         required: false,
         where: groupWhere,
         include: [
@@ -321,7 +321,7 @@ const getRecordingInclude =
       },
       {
         model: models.Device,
-        attributes: ["id", "devicename"],
+        attributes: ["id", "deviceName"],
         required: false,
         where: deviceWhere,
       },
@@ -543,7 +543,7 @@ const getDevices =
       if (groupIsId) {
         groupWhere = { id: parseInt(groupNameOrId) };
       } else {
-        groupWhere = { groupname: groupNameOrId };
+        groupWhere = { groupName: groupNameOrId };
       }
     }
 
@@ -586,7 +586,7 @@ const getDevices =
     getDeviceOptions.subQuery = false;
     return models.Device.findAll({
       ...getDeviceOptions,
-      order: ["devicename"],
+      order: ["deviceName"],
     });
   };
 
@@ -608,7 +608,7 @@ const getStations =
       if (groupIsId) {
         groupWhere = { id: parseInt(groupNameOrId) };
       } else {
-        groupWhere = { groupname: groupNameOrId };
+        groupWhere = { groupName: groupNameOrId };
       }
     }
     const allStationsOptions = {
@@ -618,7 +618,7 @@ const getStations =
           model: models.Group,
           required: true,
           where: groupWhere,
-          attributes: ["id", "groupname"],
+          attributes: ["id", "groupName"],
         },
       ],
     };
@@ -696,7 +696,7 @@ const getStation =
     } else if (stationIsId && groupNameOrId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
-        "$Group.groupname$": groupNameMatch,
+        "$Group.groupName$": groupNameMatch,
       };
     } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
@@ -710,7 +710,7 @@ const getStation =
     } else {
       stationWhere = {
         name: stationNameMatch,
-        "$Group.groupname$": groupNameMatch,
+        "$Group.groupName$": groupNameMatch,
       };
     }
     if (groupIsId) {
@@ -718,7 +718,7 @@ const getStation =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: groupNameMatch };
+      groupWhere = { groupName: groupNameMatch };
     }
 
     let getStationOptions;
@@ -738,7 +738,7 @@ const getStation =
               {
                 model: models.Group,
                 required: true,
-                attributes: ["groupname"],
+                attributes: ["groupName"],
                 where: groupWhere,
               },
             ],
@@ -756,7 +756,7 @@ const getStation =
           {
             model: models.Group,
             required: true,
-            attributes: ["groupname"],
+            attributes: ["groupName"],
             where: groupWhere,
           },
         ],
@@ -789,7 +789,7 @@ const getSchedules =
       if (groupIsId) {
         groupWhere = { id: parseInt(groupNameOrId) };
       } else {
-        groupWhere = { groupname: groupNameOrId };
+        groupWhere = { groupName: groupNameOrId };
       }
     }
 
@@ -858,7 +858,7 @@ const getGroups =
     }
     return models.Group.findAll({
       ...getGroupOptions,
-      order: ["groupname"],
+      order: ["groupName"],
       subQuery: false,
     });
   };
@@ -912,7 +912,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
         model: models.User,
         as: "tagger",
         required: false,
-        attributes: ["username"],
+        attributes: ["userName"],
       },
     ],
     required: false,
@@ -941,7 +941,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
           {
             model: models.User,
             required: false,
-            attributes: ["username"],
+            attributes: ["userName"],
           },
         ],
       },
@@ -1111,7 +1111,7 @@ const getDevice =
     } else if (deviceIsId && groupNameOrId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
-        "$Group.groupname$": groupNameMatch,
+        "$Group.groupName$": groupNameMatch,
       };
     } else if (deviceIsId && !groupNameOrId) {
       deviceWhere = {
@@ -1119,13 +1119,13 @@ const getDevice =
       };
     } else if (groupIsId) {
       deviceWhere = {
-        devicename: deviceNameMatch,
+        deviceName: deviceNameMatch,
         GroupId: parseInt(groupNameOrId),
       };
     } else {
       deviceWhere = {
-        devicename: deviceNameMatch,
-        "$Group.groupname$": groupNameMatch,
+        deviceName: deviceNameMatch,
+        "$Group.groupName$": groupNameMatch,
       };
     }
     if (groupIsId) {
@@ -1133,7 +1133,7 @@ const getDevice =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: groupNameMatch };
+      groupWhere = { groupName: groupNameMatch };
     }
 
     let getDeviceOptions;
@@ -1235,7 +1235,7 @@ const getGroup =
           [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
         };
       }
-      groupWhere = { groupname: groupNameMatch };
+      groupWhere = { groupName: groupNameMatch };
     }
     let getGroupOptions;
     if (forRequestUser) {
@@ -1260,23 +1260,20 @@ const getGroup =
 const getUser =
   () =>
   (
-    userNameOrEmailOrId: string
+    userEmailOrId: string
   ): Promise<ModelStaticCommon<User> | ClientError | null> => {
     // @ts-ignore
     const userIsId =
-      !isNaN(parseInt(userNameOrEmailOrId)) &&
-      parseInt(userNameOrEmailOrId).toString() === String(userNameOrEmailOrId);
+      !isNaN(parseInt(userEmailOrId)) &&
+      parseInt(userEmailOrId).toString() === String(userEmailOrId);
     let userWhere;
     if (userIsId) {
       userWhere = {
-        id: parseInt(userNameOrEmailOrId),
+        id: parseInt(userEmailOrId),
       };
     } else {
       userWhere = {
-        [Op.or]: [
-          { username: userNameOrEmailOrId },
-          { email: userNameOrEmailOrId.toLowerCase() },
-        ],
+        email: userEmailOrId.toLowerCase()
       };
     }
     return models.User.findOne({
@@ -1515,23 +1512,23 @@ export const fetchUnauthorizedRequiredUserByResetToken =
     next();
   };
 
-export const fetchUnauthorizedRequiredUserByNameOrEmailOrId = (
-  userNameOrEmailOrId: ValidationChain
+export const fetchUnauthorizedRequiredUserByEmailOrId = (
+  userEmailOrId: ValidationChain
 ) =>
-  fetchRequiredModel(models.User, true, true, getUser(), userNameOrEmailOrId);
+  fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
 
-export const fetchUnauthorizedOptionalUserByNameOrEmailOrId = (
-  userNameOrEmailOrId: ValidationChain
+export const fetchUnauthorizedOptionalUserByEmailOrId = (
+  userEmailOrId: ValidationChain
 ) =>
-  fetchOptionalModel(models.User, true, true, getUser(), userNameOrEmailOrId);
+  fetchOptionalModel(models.User, true, true, getUser(), userEmailOrId);
 
-export const fetchUnauthorizedOptionalUserByNameOrId = (
-  userNameOrId: ValidationChain
-) => fetchOptionalModel(models.User, true, true, getUser(), userNameOrId);
+// export const fetchUnauthorizedRequiredUserByEmailOrId = (
+//   userEmailOrId: ValidationChain
+// ) => fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
 
-export const fetchUnauthorizedRequiredUserByNameOrId = (
-  userNameOrId: ValidationChain
-) => fetchRequiredModel(models.User, true, true, getUser(), userNameOrId);
+export const fetchUnauthorizedRequiredUserById = (userId: ValidationChain) =>
+    fetchRequiredModel(models.User, false, true, getUser(), userId);
+
 
 export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
   fetchOptionalModel(models.User, false, true, getUser(), userId);

@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
-import { logTestDescription, prettyLog } from "./descriptions";
+import { logTestDescription } from "./descriptions";
 
 import { format as urlFormat } from "url";
 
@@ -52,6 +52,7 @@ export function convertToDate(timeOrDate: Date | string): Date {
 
 interface ApiCreds {
   name: string;
+  email: string;
   password: string;
   headers: {
     authorization: any;
@@ -103,6 +104,7 @@ export function getCreds(userName: string): ApiCreds {
 
     return {
       name: null,
+      email: null,
       id: null,
       password: undefined,
       jwt: undefined,

@@ -12,6 +12,10 @@ export function getTestName(baseName: string): string {
   return `cy_${baseName}_${Cypress.config("env")[uniqueIdName]}`;
 }
 
+export function getTestEmail(baseName: string): string {
+  return getTestName(baseName) + "@api.created.com";
+}
+
 export function initializeTestNames(uniqueId: string = "") {
   if (
     typeof Cypress.config("env") === "undefined" ||

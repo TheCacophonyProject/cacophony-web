@@ -17,25 +17,30 @@ function addNewGroup(groupName): Promise<FetchResult<{ groupId: GroupId }>> {
 
 function addGroupUser(
   groupName,
-  userName,
+  emailOrUserId,
   isAdmin
 ): Promise<{ success: boolean; status: number; result: any }> {
   const suppressGlobalMessaging = true;
+  const payload = {
+    group: groupName,
+    admin: isAdmin,
+  };
+  if (typeof emailOrUserId === "number") {
+    (payload as any).userId = emailOrUserId;
+  } else {
+    (payload as any).email = emailOrUserId;
+  }
   return CacophonyApi.post(
     "/api/v1/groups/users",
-    {
-      group: groupName,
-      username: userName,
-      admin: isAdmin,
-    },
+    payload,
     suppressGlobalMessaging
   );
 }
 
-function removeGroupUser(groupName, userName) {
+function removeGroupUser(groupName, userId) {
   return CacophonyApi.delete("/api/v1/groups/users", {
     group: groupName,
-    username: userName,
+    userId,
   });
 }
 

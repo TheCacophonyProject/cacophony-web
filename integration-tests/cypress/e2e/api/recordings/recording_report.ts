@@ -21,7 +21,7 @@ import {
 import { TEMPLATE_AUDIO_RECORDING } from "@commands/dataTemplate";
 
 describe("Recordings report using where", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   //define recordings here so we have a range of values to check, rather than using predefined templates
@@ -445,7 +445,7 @@ describe("Recordings report using where", () => {
     );
   });
 
-  //TODO: devicename and groupname appear not to be supported.  What nested parameters are?
+  //TODO: deviceName and groupName appear not to be supported.  What nested parameters are?
   it.skip("Can query by nested parameters", () => {});
 
   it("Can query by multiple parameters", () => {
@@ -581,7 +581,7 @@ describe("Recordings report using where", () => {
   //TODO: Issue 102 - FAILS.  view-mode is ignored
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it.skip("Super-user as user should see only their recordings", () => {
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
       cy.apiGroupUserAdd(
         "rreGroupAdmin",
         superuser,

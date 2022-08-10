@@ -118,8 +118,8 @@ describe("Group Admin Pages", () => {
     return "@" + username;
   }
 
-  function getGroupPageUrl(groupname: string) {
-    return "/groups/" + getTestName(groupname);
+  function getGroupPageUrl(groupName: string) {
+    return "/groups/" + getTestName(groupName);
   }
 
   function ensureFriendsForeverGroupExists() {

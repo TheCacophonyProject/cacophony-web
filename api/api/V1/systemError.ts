@@ -47,7 +47,7 @@ function groupSystemErrors(events: Event[]): ServiceErrorMap {
     }
 
     const log = new Log(
-      errorEvent.Device.devicename,
+      errorEvent.Device.deviceName,
       errorEvent.dateTime,
       details["logs"]
     );

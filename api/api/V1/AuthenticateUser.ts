@@ -23,23 +23,22 @@ import auth, {
   ttlTypes,
 } from "../auth";
 import { body, oneOf } from "express-validator";
-import responseUtil, {
+import {
   serverErrorResponse,
   successResponse,
 } from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  deprecatedField,
-  validNameOf,
+  anyOf,
+  idOf,
   validPasswordOf,
 } from "../validation-middleware";
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
   extractJWTInfo,
-  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrId,
+  fetchUnauthorizedOptionalUserByEmailOrId,
+  fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 
@@ -68,9 +67,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
   password: string; // Password for the user account
-  userName?: string; // Username identifying a valid user account
-  nameOrEmail?: string; // Username or email of a valid user account.
-  email?: string; // Email identifying a valid user account
+  email: string; // Email identifying a valid user account
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -84,29 +81,24 @@ export default function (app: Application, baseUrl: string) {
   // TODO - Give api users the option of asking for a long-lived token, so they don't have to deal with the complexity
   //  of refresh tokens?
 
+  // NOTE: nameOrEmail is just in here until we can update sidekick to just use email.
   const authenticateUserOptions = [
     validateFields([
-      oneOf(
-        [
-          deprecatedField(validNameOf(body("username"))),
-          validNameOf(body("userName")),
-          validNameOf(body("nameOrEmail")),
-          body("nameOrEmail").isEmail(),
-          body("email").isEmail(),
-        ],
-        "could not find a user with the given username or email"
+      anyOf(
+          body("nameOrEmail").isEmail().optional(),
+          body("email").isEmail().optional(),
       ),
       validPasswordOf(body("password")),
     ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body(["username", "userName", "nameOrEmail", "email"])
+    fetchUnauthorizedOptionalUserByEmailOrId(
+      body(["email", "nameOrEmail"])
     ),
     (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.user) {
         // NOTE: Don't give away the fact that the user may not exist - remain vague in the
         //  error message as to whether the error is username or password related.
         return next(
-          new AuthenticationError("Wrong password or username/email address.")
+          new AuthenticationError("Wrong password or email address.")
         );
       } else {
         next();
@@ -135,7 +127,7 @@ export default function (app: Application, baseUrl: string) {
         });
       } else {
         return next(
-          new AuthenticationError("Wrong password or username/email address.")
+          new AuthenticationError("Wrong password or email address.")
         );
       }
     },
@@ -146,9 +138,9 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiName AuthenticateUser
    * @apiGroup Authentication
-   * @apiDescription Checks the username corresponds to an existing user account
+   * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
-   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
+   * @apiBody {String} email Address identifying a valid user account
    * @apiDeprecated Use /api/v1/users/authenticate-user
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
@@ -165,9 +157,9 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiName AuthenticateUser
    * @apiGroup Authentication
-   * @apiDescription Checks the username corresponds to an existing user account
+   * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
-   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
+   * @apiBody {String} email Address identifying a valid user account
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
@@ -273,8 +265,10 @@ export default function (app: Application, baseUrl: string) {
 
   const authenticateAsOtherUserOptions = [
     extractJwtAuthorisedSuperAdminUser,
-    validateFields([validNameOf(body("name"))]),
-    fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("name")),
+    validateFields([
+        anyOf(body("email").isEmail(), idOf(body("userId")))
+    ]),
+    fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request: Request, response: Response) => {
       const isNewEndPoint = request.path.endsWith(
         "admin-authenticate-as-other-user"
@@ -286,9 +280,7 @@ export default function (app: Application, baseUrl: string) {
       );
       const {
         id,
-        username,
-        firstName,
-        lastName,
+        userName,
         email,
         globalPermission,
         endUserAgreement,
@@ -298,9 +290,7 @@ export default function (app: Application, baseUrl: string) {
         expiry,
         userData: {
           id,
-          userName: username,
-          firstName,
-          lastName,
+          userName,
           email,
           globalPermission,
           endUserAgreement,
@@ -319,7 +309,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {String} name Username identifying a valid user account
+   * @apiBody {String} email Address identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
@@ -339,13 +329,13 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {String} name Username identifying a valid user account
+   * @apiBody {String} email Address identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    */
   app.post(
-    `${apiUrl}/admin_authenticate_as_other_user`,
+    `${apiUrl}/admin-authenticate-as-other-user`,
     ...authenticateAsOtherUserOptions
   );
 
@@ -387,15 +377,10 @@ export default function (app: Application, baseUrl: string) {
 
   const resetPasswordOptions = [
     validateFields([
-      oneOf([
-        validNameOf(body("userName")), // TODO - Remove userName from this once browse-next is live
-        body("email").isEmail(),
-        validNameOf(body("nameOrEmail")),
-        body("nameOrEmail").isEmail(),
-      ]),
+      body("email").isEmail(),
     ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body(["username", "userName", "nameOrEmail", "email"])
+    fetchUnauthorizedOptionalUserByEmailOrId(
+      body("email")
     ),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
@@ -431,7 +416,7 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/reset-password Sends an email to a user for resetting password
    * @apiName ResetPassword
    * @apiGroup Authentication
-   * @apiBody {String} email Email of user.
+   * @apiBody {String} email Email address of user.
    * @apiUse V1ResponseSuccess
    */
   app.post(`${apiUrl}/reset-password`, ...resetPasswordOptions);
@@ -441,7 +426,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ResetPassword
    * @apiGroup Authentication
    * @apiDeprecated Use /api/v1/users/reset-password instead
-   * @apiBody {String} userName Username of user.
+   * @apiBody {String} email Email address of user.
    * @apiUse V1ResponseSuccess
    */
   app.post("/resetpassword", ...resetPasswordOptions);
@@ -567,7 +552,7 @@ export default function (app: Application, baseUrl: string) {
     // Decode the JWT token, get the email, userId for the token.
     extractJWTInfo(body("emailConfirmationJWT")),
     async (request, response, next) => {
-      await fetchUnauthorizedRequiredUserByNameOrId(
+      await fetchUnauthorizedRequiredUserByEmailOrId(
         response.locals.tokenInfo.id
       )(request, response, next);
     },

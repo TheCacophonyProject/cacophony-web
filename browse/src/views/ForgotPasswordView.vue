@@ -17,20 +17,20 @@
           </b-alert>
 
           <b-form-group
-            label="Username or Email"
+            label="Email"
             label-class="sr-only"
             label-for="input-username-or-email"
           >
             <b-form-input
               id="input-username-or-email"
-              v-model="usernameOrEmail"
-              placeholder="Username or Email Address"
-              type="text"
+              v-model="email"
+              placeholder="Email Address"
+              type="email"
               autocapitalize="none"
             />
           </b-form-group>
           <b-button
-            :disabled="usernameOrEmail === ''"
+            :disabled="email === ''"
             type="submit"
             variant="primary"
             class="btn-block"
@@ -39,12 +39,12 @@
 
           <b-row>
             <b-col>
-              <p class="small mt-4">
+              <p class="small mt-4" style="text-align: left">
                 <b-link href="/login">Login here</b-link>.
               </p>
             </b-col>
             <b-col>
-              <p class="small mt-4">
+              <p class="small mt-4" style="text-align: right">
                 <b-link href="/register">Register here</b-link>.
               </p>
             </b-col>
@@ -63,7 +63,7 @@ export default {
   props: {},
   data() {
     return {
-      usernameOrEmail: "",
+      email: "",
       successMessage: null,
     };
   },
@@ -72,7 +72,7 @@ export default {
     async onSubmit(evt) {
       this.successMessage = null;
       evt.preventDefault();
-      const response = await User.reset(this.usernameOrEmail);
+      const response = await User.reset(this.email);
       if (response.success) {
         this.successMessage = "An email has been sent to reset your password";
       } else {

@@ -73,6 +73,6 @@ const hasVisits = computed<boolean>(() => {
 }
 .map-and-timeline {
   position: sticky;
-  top: 0;
+  top: 15px;
 }
 </style>

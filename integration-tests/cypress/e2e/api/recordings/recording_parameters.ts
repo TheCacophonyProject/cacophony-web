@@ -300,7 +300,6 @@ describe("Recordings - parameter tests", () => {
 
     cy.log("Recording can not have blank recordingDateTime");
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiThermalRecordingResponse;
     recording2.recordingDateTime = null;
     cy.apiRecordingAdd(
       "rpaCamera1",

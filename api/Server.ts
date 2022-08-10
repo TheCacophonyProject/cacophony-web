@@ -148,13 +148,6 @@ const checkS3Connection = (): Promise<void> => {
     next();
   });
   initialiseApi(app);
-  app.use(async (request, response, next) => {
-    try {
-      //
-    } catch (e) {
-      return next(e);
-    }
-  });
   app.use(customErrors.errorHandler);
 
   // FIXME / TODO

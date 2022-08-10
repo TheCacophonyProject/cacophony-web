@@ -597,7 +597,7 @@ Cypress.Commands.add(
       { camera: deviceName, requestData: data }
     );
 
-    //look up device Id for this devicename unless we're asked not to
+    //look up device Id for this deviceName unless we're asked not to
     let fullDeviceName: string;
     if (additionalChecks["useRawDeviceName"] === true) {
       fullDeviceName = deviceName;
@@ -651,7 +651,7 @@ Cypress.Commands.add(
       { camera: deviceName, requestData: data }
     );
 
-    //look up device Id for this devicename unless we're asked not to
+    //look up device Id for this deviceName unless we're asked not to
     let deviceId: string;
     if (additionalChecks["useRawDeviceName"] === true) {
       deviceId = deviceName;

@@ -32,7 +32,7 @@ describe("Groups - add, get group", () => {
       () => {
         expectedGroup = {
           id: getCreds("gaGroup").id,
-          groupname: getTestName("gaGroup"),
+          groupName: getTestName("gaGroup"),
           Users: [],
           Devices: [],
           GroupUsers: [],
@@ -105,7 +105,7 @@ describe("Groups - add, get group", () => {
     cy.apiGroupAdd("gaTestUser", "gaTestGroup1", true).then(() => {
       const expectedTestGroupUser = {
         id: getCreds("gaTestUser").id,
-        username: getTestName("gaTestUser"),
+        userName: getTestName("gaTestUser"),
         GroupUsers: {
           admin: true,
           createdAt: "",
@@ -116,12 +116,12 @@ describe("Groups - add, get group", () => {
       };
       const expectedTestGroupGroupUser = {
         id: getCreds("gaTestUser").id,
-        username: getTestName("gaTestUser"),
+        userName: getTestName("gaTestUser"),
         admin: true,
       };
       expectedTestGroup = {
         id: getCreds("gaTestGroup1").id,
-        groupname: getTestName("gaTestGroup1"),
+        groupName: getTestName("gaTestGroup1"),
         Users: [expectedTestGroupUser],
         Devices: [],
         GroupUsers: [expectedTestGroupGroupUser],

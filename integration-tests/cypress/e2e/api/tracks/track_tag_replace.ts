@@ -14,11 +14,7 @@ import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
-import {
-  TEMPLATE_AUDIO_TRACK,
-  TEMPLATE_EXPECTED_AUDIO_TRACK,
-  TEMPLATE_THERMAL_RECORDING,
-} from "@commands/dataTemplate";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = [

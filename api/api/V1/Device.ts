@@ -61,7 +61,7 @@ import { DeviceHistory } from "@models/DeviceHistory";
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
 import config from "@config";
-import { error } from "winston";
+import logger from "@log";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -69,10 +69,10 @@ export const mapDeviceResponse = (
 ): ApiDeviceResponse => {
   try {
     const mapped: ApiDeviceResponse = {
-      deviceName: device.devicename,
+      deviceName: device.deviceName,
       id: device.id,
       type: device.kind,
-      groupName: device.Group?.groupname,
+      groupName: device.Group?.groupName,
       groupId: device.GroupId,
       active: device.active,
       saltId: device.saltId,
@@ -174,52 +174,56 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
     async (request: Request, response: Response) => {
-      const device: Device = await models.Device.create({
-        devicename: request.body.devicename || request.body.deviceName,
-        password: request.body.password,
-        GroupId: response.locals.group.id,
-      });
-      let saltId;
-      if (request.body.saltId) {
-        /*
-        NOTE: We decided not to use this check, since damage caused by someone
-        spamming us with in-use saltIds is minimal.
-        const existingSaltId = await models.Device.findOne({
-          where: {
-            saltId: request.body.saltId,
-            active: true
-          },
-        });
-        if (existingSaltId !== null) {
-          return next(
-            new ClientError(
-              `saltId ${request.body.saltId} is already in use by another active device`
-            )
-          );
+        if (request.body.devicename) {
+          request.body.deviceName = request.body.devicename;
+          delete request.body.devicename;
         }
-        */
-        saltId = request.body.saltId;
-      } else {
-        saltId = device.id;
-      }
-      await Promise.all([
-        device.update({ saltId, uuid: device.id }),
-        // Create the initial entry in the device history table.
-        models.DeviceHistory.create({
-          saltId,
-          setBy: "register",
-          GroupId: device.GroupId,
-          DeviceId: device.id,
-          fromDateTime: new Date(),
-          deviceName: device.devicename,
-          uuid: device.id,
-        }),
-      ]);
-      return successResponse(response, "Created new device.", {
-        id: device.id,
-        saltId: device.saltId,
-        token: `JWT ${auth.createEntityJWT(device)}`,
-      });
+        const device: Device = await models.Device.create({
+          deviceName: request.body.deviceName,
+          password: request.body.password,
+          GroupId: response.locals.group.id,
+        });
+        let saltId;
+        if (request.body.saltId) {
+          /*
+          NOTE: We decided not to use this check, since damage caused by someone
+          spamming us with in-use saltIds is minimal.
+          const existingSaltId = await models.Device.findOne({
+            where: {
+              saltId: request.body.saltId,
+              active: true
+            },
+          });
+          if (existingSaltId !== null) {
+            return next(
+              new ClientError(
+                `saltId ${request.body.saltId} is already in use by another active device`
+              )
+            );
+          }
+          */
+          saltId = request.body.saltId;
+        } else {
+          saltId = device.id;
+        }
+        await Promise.all([
+          device.update({saltId, uuid: device.id}),
+          // Create the initial entry in the device history table.
+          models.DeviceHistory.create({
+            saltId,
+            setBy: "register",
+            GroupId: device.GroupId,
+            DeviceId: device.id,
+            fromDateTime: new Date(),
+            deviceName: device.deviceName,
+            uuid: device.id,
+          }),
+        ]);
+        return successResponse(response, "Created new device.", {
+          id: device.id,
+          saltId: device.saltId,
+          token: `JWT ${auth.createEntityJWT(device)}`,
+        });
     }
   );
 
@@ -428,7 +432,7 @@ export default function (app: Application, baseUrl: string) {
           location: setLocation,
           setBy: "user",
           GroupId: device.GroupId,
-          deviceName: device.devicename,
+          deviceName: device.deviceName,
           stationId: station.id,
         });
       }
@@ -698,9 +702,9 @@ export default function (app: Application, baseUrl: string) {
     },
     async (request: Request, response: Response) => {
       const users = (
-        await response.locals.group.getUsers({ attributes: ["id", "username"] })
+        await response.locals.group.getUsers({ attributes: ["id", "userName"] })
       ).map((user) => ({
-        userName: user.username,
+        userName: user.userName,
         id: user.id,
         admin: (user as any).GroupUsers.admin,
       }));
@@ -850,7 +854,7 @@ export default function (app: Application, baseUrl: string) {
       if (device === false) {
         return next(
           new ClientError(
-            `already a device in group '${response.locals.group.groupname}' with the name '${request.body.newName}'`
+            `already a device in group '${response.locals.group.groupName}' with the name '${request.body.newName}'`
           )
         );
       }

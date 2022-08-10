@@ -36,7 +36,7 @@ const EXCLUDE_TRACK_IDS = [
 ];
 
 describe("Track Tags: add, check, delete", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   //Recording with no track - added as part of test
@@ -155,7 +155,7 @@ describe("Track Tags: add, check, delete", () => {
     //API calls work
     if (Cypress.env("running_in_a_dev_environment") == true) {
       dev_env = true;
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
     } else {
       cy.log(
         "Warning: validating returned returned data presence but not parameter values"

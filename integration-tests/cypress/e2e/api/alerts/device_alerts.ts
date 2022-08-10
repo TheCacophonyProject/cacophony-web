@@ -391,7 +391,7 @@ describe("Devices alerts", () => {
     });
   });
 
-  it("Alerts for recording uploaded on behalf using devicename and groupname", () => {
+  it("Alerts for recording uploaded on behalf using deviceName and groupName", () => {
     const usera = getNewIdentity("andrea");
     const userb = getNewIdentity("bruce");
 

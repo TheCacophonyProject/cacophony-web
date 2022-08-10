@@ -5,6 +5,7 @@ type ApiLoggedInUserResponse =
 type ApiUserResponse = import("@typedefs/api/user").ApiUserResponse;
 type UserId = import("@typedefs/api/common").UserId;
 type GroupId = import("@typedefs/api/common").GroupId;
+type DeviceId = import("@typedefs/api/common").DeviceId;
 
 declare namespace Cypress {
   interface Chainable {

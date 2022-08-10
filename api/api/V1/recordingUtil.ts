@@ -537,7 +537,7 @@ export const maybeUpdateDeviceHistory = async (
         location,
         setBy,
         fromDateTime: dateTime,
-        deviceName: device.devicename,
+        deviceName: device.deviceName,
         DeviceId: device.id,
         GroupId: device.GroupId,
         saltId: device.saltId,
@@ -556,7 +556,7 @@ export const maybeUpdateDeviceHistory = async (
         // Create new automatic station
         stationToAssign = (await models.Station.create({
           name: `New station for ${
-            device.devicename
+            device.deviceName
           }_${dateTime.toISOString()}`,
           location,
           activeAt: dateTime,
@@ -925,90 +925,86 @@ export async function getTrackTags(
   offset?: number,
   limit?: number
 ) {
-  try {
-    const requireGroupMembership = viewAsSuperAdmin
-      ? []
-      : [
-          {
-            model: models.User,
-            attributes: [],
-            required: true,
-            where: { id: userId },
-          },
-        ];
-    const rows = await models.TrackTag.findAll({
-      attributes: ["id", "what", "UserId"],
-      where: {
-        what: {
-          [Op.notIn]: excludeTags,
-        },
-        ...(!includeAI && {
-          UserId: {
-            [Op.ne]: null,
-          },
-        }),
-      },
-      include: [
+  const requireGroupMembership = viewAsSuperAdmin
+    ? []
+    : [
         {
-          model: models.Track,
-          attributes: ["id"],
+          model: models.User,
+          attributes: [],
           required: true,
-          include: [
-            {
-              model: models.Recording,
-              attributes: ["id"],
-              required: true,
-              where: {
-                type: {
-                  [Op.eq]: recordingType,
-                },
-              },
-              include: [
-                {
-                  model: models.Group,
-                  attributes: ["id", "groupname"],
-                  required: true,
-                  include: requireGroupMembership,
-                },
-                {
-                  model: models.Device,
-                  attributes: ["id", "devicename"],
-                  required: true,
-                },
-                {
-                  model: models.Station,
-                  attributes: ["id", "name"],
-                },
-              ],
-            },
-          ],
+          where: { id: userId },
         },
-      ],
-      ...(limit && { limit }),
-      ...(offset && { offset }),
-    });
-    return rows.map((row) => ({
-      label: row.what,
-      device: {
-        id: row.Track.Recording.Device.id,
-        name: row.Track.Recording.Device.devicename,
+      ];
+  const rows = await models.TrackTag.findAll({
+    attributes: ["id", "what", "UserId"],
+    where: {
+      what: {
+        [Op.notIn]: excludeTags,
       },
-      station: row.Track.Recording.Station
-        ? {
-            id: row.Track.Recording.Station.id,
-            name: row.Track.Recording.Station.name,
-          }
-        : "No Station",
-      group: {
-        id: row.Track.Recording.Group.id,
-        name: row.Track.Recording.Group.groupname,
+      ...(!includeAI && {
+        UserId: {
+          [Op.ne]: null,
+        },
+      }),
+    },
+    include: [
+      {
+        model: models.Track,
+        attributes: ["id"],
+        required: true,
+        include: [
+          {
+            model: models.Recording,
+            attributes: ["id"],
+            required: true,
+            where: {
+              type: {
+                [Op.eq]: recordingType,
+              },
+            },
+            include: [
+              {
+                model: models.Group,
+                attributes: ["id", "groupName"],
+                required: true,
+                include: requireGroupMembership,
+              },
+              {
+                model: models.Device,
+                attributes: ["id", "deviceName"],
+                required: true,
+              },
+              {
+                model: models.Station,
+                attributes: ["id", "name"],
+              },
+            ],
+          },
+        ],
       },
-      // TODO - The exact AI model you will need data attribute from track tag
-      labeller: row.UserId ? `id_${row.UserId.toString()}` : "AI",
-    }));
-  } catch (err) {
-    console.log(err);
-  }
+    ],
+    ...(limit && { limit }),
+    ...(offset && { offset }),
+  });
+  return rows.map((row) => ({
+    label: row.what,
+    device: {
+      id: row.Track.Recording.Device.id,
+      name: row.Track.Recording.Device.deviceName,
+    },
+    station: row.Track.Recording.Station
+      ? {
+          id: row.Track.Recording.Station.id,
+          name: row.Track.Recording.Station.name,
+        }
+      : "No Station",
+    group: {
+      id: row.Track.Recording.Group.id,
+      name: row.Track.Recording.Group.groupName,
+    },
+    // TODO - The exact AI model you will need data attribute from track tag
+    labeller: row.UserId ? `id_${row.UserId.toString()}` : "AI",
+  }));
 }
 
 // Returns a promise for report rows for a set of recordings. Takes
@@ -1140,8 +1136,8 @@ export async function reportRecordings(
     const thisRow = [
       r.id,
       r.type,
-      r.Group.groupname,
-      r.Device.devicename,
+      r.Group.groupName,
+      r.Device.deviceName,
       r.Station ? r.Station.name : "",
       moment(r.recordingDateTime).tz(config.timeZone).format("YYYY-MM-DD"),
       moment(r.recordingDateTime).tz(config.timeZone).format("HH:mm:ss"),
@@ -1666,7 +1662,7 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
     include: [
       {
         model: models.Group,
-        attributes: ["groupname"],
+        attributes: ["groupName"],
       },
       {
         model: models.Track,
@@ -1702,7 +1698,7 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
       },
       {
         model: models.Device,
-        attributes: ["devicename", "id"],
+        attributes: ["deviceName", "id"],
       },
     ],
     attributes: [

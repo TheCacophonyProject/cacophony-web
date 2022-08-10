@@ -226,6 +226,7 @@ const dateAndDayOfWeek = (date: DateTime): string => {
   position: absolute;
   bottom: 2px;
   top: 2px;
+  min-width: 2.5px;
 
   &.mustelid {
     background: rgba(255, 0, 0, 0.7);

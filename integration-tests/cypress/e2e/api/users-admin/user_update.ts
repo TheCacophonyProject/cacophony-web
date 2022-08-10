@@ -2,7 +2,7 @@
 
 import { TestCreateExpectedUser } from "@commands/api/user";
 
-import { getTestName } from "@commands/names";
+import { getTestEmail, getTestName } from "@commands/names";
 import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("User: update", () => {
@@ -16,17 +16,17 @@ describe("User: update", () => {
     cy.apiUserUpdate("uupUser1", {
       userName: "uupUser1b",
       password: "password2",
-      email: getTestName("uupUser1b") + "@mail.com",
+      email: getTestEmail("uupUser1b"),
       endUserAgreement: 1,
     }).then(() => {
       const expectedUser = TestCreateExpectedUser("uupUser1b", {
-        email: getTestName("uupuser1b") + "@mail.com",
+        email: getTestEmail("uupuser1b"),
         endUserAgreement: 1,
       });
       //check user's details
-      cy.apiUserCheck("uupUser1b", getTestName("uupUser1b"), expectedUser);
+      cy.apiUserCheck("uupUser1b", getTestEmail("uupUser1b"), expectedUser);
       //log in again to verify new password
-      cy.apiSignInAs(null, null, getTestName("uupUser1b"), "password2");
+      cy.apiSignInAs(null, getTestEmail("uupUser1b"), "password2");
     });
   });
 
@@ -41,31 +41,31 @@ describe("User: update", () => {
         endUserAgreement: 1,
       });
       //check user's details
-      cy.apiUserCheck("uupUser2", getTestName("uupUser2"), expectedUser);
+      cy.apiUserCheck("uupUser2", getTestEmail("uupUser2"), expectedUser);
       //log in again to verify old password still valid
-      cy.apiSignInAs(null, null, getTestName("uupUser2"), "password1");
+      cy.apiSignInAs(null, getTestEmail("uupUser2"), "password1");
 
       cy.log("Update password");
       cy.apiUserUpdate("uupUser2", {
         password: "password2",
       }).then(() => {
         //check user's details
-        cy.apiUserCheck("uupUser2", getTestName("uupUser2"), expectedUser);
+        cy.apiUserCheck("uupUser2", getTestEmail("uupUser2"), expectedUser);
         //log in again to verify new password
-        cy.apiSignInAs(null, null, getTestName("uupUser2"), "password2");
+        cy.apiSignInAs(null, getTestEmail("uupUser2"), "password2");
 
         cy.log("Update email");
         cy.apiUserUpdate("uupUser2", {
-          email: getTestName("uupUser2b") + "@mail.com",
+          email: getTestEmail("uupUser2b"),
         }).then(() => {
           const expectedUser2 = TestCreateExpectedUser("uupUser2", {
-            email: getTestName("uupuser2b") + "@mail.com",
+            email: getTestEmail("uupUser2b").toLowerCase(),
             endUserAgreement: 1,
           });
           //check user's details
-          cy.apiUserCheck("uupUser2", getTestName("uupUser2"), expectedUser2);
+          cy.apiUserCheck("uupUser2", getTestEmail("uupUser2b"), expectedUser2);
           //log in again to verify new password
-          cy.apiSignInAs(null, null, getTestName("uupUser2"), "password2");
+          cy.apiSignInAs(null, getTestEmail("uupUser2b"), "password2");
 
           cy.log("Update userName");
 
@@ -73,17 +73,17 @@ describe("User: update", () => {
             userName: "uupUser2b",
           }).then(() => {
             const expectedUser3 = TestCreateExpectedUser("uupUser2b", {
-              email: getTestName("uupuser2b") + "@mail.com",
+              email: getTestEmail("uupUser2b").toLowerCase(),
               endUserAgreement: 1,
             });
             //check user's details
             cy.apiUserCheck(
               "uupUser2b",
-              getTestName("uupUser2b"),
+              getTestEmail("uupUser2b"),
               expectedUser3
             );
             //log in again to verify new password
-            cy.apiSignInAs(null, null, getTestName("uupUser2b"), "password2");
+            cy.apiSignInAs(null, getTestEmail("uupUser2b"), "password2");
           });
         });
       });
@@ -104,21 +104,19 @@ describe("User: update", () => {
     });
   });
 
-  it("Cannot create user with same name (even with different case)", () => {
+  it("*Can* create user with same name (even with different case)", () => {
     cy.apiUserAdd("uupUser4a");
     cy.apiUserAdd("uupUser4b").then(() => {
       cy.log("Rename to duplicate user");
       cy.apiUserUpdate(
         "uupUser4b",
         { userName: "uupUser4a" },
-        HttpStatusCode.Unprocessable,
-        { message: "Username in use" }
+        HttpStatusCode.Ok
       );
       cy.apiUserUpdate(
         "uupUser4b",
         { userName: "UUPUSER4A" },
-        HttpStatusCode.Unprocessable,
-        { message: "Username in use" }
+        HttpStatusCode.Ok
       );
     });
   });

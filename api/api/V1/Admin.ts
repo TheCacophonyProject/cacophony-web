@@ -17,14 +17,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, param } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorisedSuperAdminUser,
-  fetchUnauthorizedRequiredUserByNameOrId,
+  extractJwtAuthorisedSuperAdminUser, fetchUnauthorizedRequiredUserByEmailOrId,
 } from "@api/extract-middleware";
-import { nameOrIdOf } from "@api/validation-middleware";
+import {anyOf, idOf } from "@api/validation-middleware";
 import { ClientError } from "@api/customErrors";
 import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts";
 import { SuperUsers } from "@/Globals";
@@ -38,11 +37,11 @@ export default function (app: Application, baseUrl: string) {
 
   {
     /**
-     * @api {patch} /api/v1/admin/global-permission/:userNameOrId Update user global permissions
+     * @api {patch} /api/v1/admin/global-permission/:userEmailOrId Update user global permissions
      * @apiUse V1UserAuthorizationHeader
      * @apiName UpdateGlobalPermission
      * @apiGroup Admin
-     * @apiParam {String|Number} userNameOrId name or id of user to update
+     * @apiParam {String|Number} userEmailOrId email or id of user to update
      * @apiInterface {apiBody::ApiUpdateGlobalPermissionRequestBody}
      * @apiUse V1ResponseSuccess
      * @apiUse V1ResponseError
@@ -50,10 +49,10 @@ export default function (app: Application, baseUrl: string) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
     app.patch(
-      `${apiUrl}/global-permission/:userNameOrId`,
+      `${apiUrl}/global-permission/:userEmailOrId`,
       extractJwtAuthorisedSuperAdminUser,
       validateFields([
-        nameOrIdOf(param("userNameOrId")),
+        anyOf(param("userEmailOrId").isEmail(), idOf(param("userEmailOrId"))),
         body("permission").isIn(Object.values(UserGlobalPermission)),
       ]),
       (request: Request, response: Response, next: NextFunction) => {
@@ -67,7 +66,7 @@ export default function (app: Application, baseUrl: string) {
         }
         next();
       },
-      fetchUnauthorizedRequiredUserByNameOrId(param("userNameOrId")),
+      fetchUnauthorizedRequiredUserByEmailOrId(param("userEmailOrId")),
       async (request, response) => {
         const permission: UserGlobalPermission = request.body.permission;
         const userToUpdate = response.locals.user;

@@ -61,7 +61,7 @@ function errorHandler(
   return serverErrorResponse(
     response,
     err,
-    `Internal server error: ${err.name}: ${err.message}.`,
+    `Internal server error: ${err.name}: ${err.message}`,
     {
       errorType: "server",
       requestId,
@@ -89,7 +89,7 @@ class CustomError extends Error {
   }
 
   toString() {
-    return format("%s [%d]: %s.", this.name, this.statusCode, this.message);
+    return format("%s [%d]: %s", this.name, this.statusCode, this.message);
   }
 
   toJson() {

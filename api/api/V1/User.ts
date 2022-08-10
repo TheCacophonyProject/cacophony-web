@@ -47,9 +47,8 @@ import {
   extractJwtAuthorizedUser,
   extractJWTInfo,
   fetchAdminAuthorizedRequiredGroups,
-  fetchUnauthorizedOptionalUserByNameOrId,
-  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrId,
+  fetchUnauthorizedOptionalUserByEmailOrId,
+  fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
@@ -74,24 +73,22 @@ interface ApiLoggedInUsersResponseSuccess {
 interface ApiLoggedInUserResponseSuccess {
   userData: ApiLoggedInUserResponse;
 }
-export const mapUser = (user: User): ApiLoggedInUserResponse => {
+export const mapUser = (user: User, omitSettings = false): ApiLoggedInUserResponse => {
   const userData: ApiLoggedInUserResponse = {
     id: user.id,
-    userName: user.username,
-    firstName: user.firstName,
-    lastName: user.lastName,
+    userName: user.userName,
     email: user.email,
     emailConfirmed: user.emailConfirmed,
     globalPermission: user.globalPermission,
     endUserAgreement: user.endUserAgreement,
   };
-  if (user.settings) {
+  if (user.settings && !omitSettings) {
     userData.settings = user.settings;
   }
   return userData;
 };
 
-export const mapUsers = (users: User[]) => users.map(mapUser);
+export const mapUsers = (users: User[], omitSettings = false) => users.map((user) => mapUser(user, omitSettings));
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiChangePasswordRequestBody {
@@ -114,7 +111,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    *
    * @apiUse V1ResponseError
    */
@@ -126,18 +123,7 @@ export default function (app: Application, baseUrl: string) {
       validPasswordOf(body("password")),
       body("endUserAgreement").isInt().optional(),
     ]),
-    fetchUnauthorizedOptionalUserByNameOrId(body(["username", "userName"])),
-    (request: Request, response: Response, next: NextFunction) => {
-      if (response.locals.user) {
-        return next(
-          new ValidationError([
-            { msg: "Username in use", location: "body", param: "userName" },
-          ])
-        );
-      } else {
-        next();
-      }
-    },
+    fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     async (request: Request, Response: Response, next: NextFunction) => {
       if (!(await models.User.freeEmail(request.body.email))) {
         return next(
@@ -170,7 +156,7 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       const now = new Date().toISOString();
       const user: User = await models.User.create({
-        username: request.body.username || request.body.userName,
+        userName: request.body.username || request.body.userName,
         password: request.body.password,
         email: request.body.email,
         endUserAgreement: request.body.endUserAgreement,
@@ -216,7 +202,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} [userName] New username to set.
+   * @apiParam {String} [userName] New full name to set.
    * @apiParam {String} [password] New password to set.
    * @apiParam {String} [email] New email to set.
    * @apiParam {Number} [endUserAgreement] New version of the end user agreement accepted to set.
@@ -240,22 +226,6 @@ export default function (app: Application, baseUrl: string) {
     ]),
     async (request: Request, Response: Response, next: NextFunction) => {
       if (
-        (request.body.username || request.body.userName) &&
-        !(await models.User.freeUsername(
-          request.body.username || request.body.userName
-        ))
-      ) {
-        return next(
-          new ValidationError([
-            { msg: "Username in use", location: "body", param: "userName" },
-          ])
-        );
-      } else {
-        next();
-      }
-    },
-    async (request: Request, Response: Response, next: NextFunction) => {
-      if (
         request.body.email &&
         !(await models.User.freeEmail(request.body.email))
       ) {
@@ -271,10 +241,6 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       // map matchedData to db fields.
       const dataToUpdate = matchedData(request);
-      if (dataToUpdate.userName) {
-        dataToUpdate.username = dataToUpdate.userName;
-        delete dataToUpdate.userName;
-      }
       const requestUser = await models.User.findByPk(
         response.locals.requestUser.id
       );
@@ -300,7 +266,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} api/v1/users/:userNameOrId Get details for a user
+   * @api {get} api/v1/users/:userEmailOrId Get details for a user
    * @apiName GetUser
    * @apiGroup User
    *
@@ -312,13 +278,13 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:userNameOrId`,
+    `${apiUrl}/:userEmailOrId`,
     extractJwtAuthorizedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
-      anyOf(validNameOf(param("userNameOrId")), idOf(param("userNameOrId"))),
+      anyOf(param("userEmailOrId").isEmail(), idOf(param("userEmailOrId"))),
     ]),
-    fetchUnauthorizedRequiredUserByNameOrId(param("userNameOrId")),
+    fetchUnauthorizedRequiredUserByEmailOrId(param("userEmailOrId")),
     (request: Request, response: Response, next: NextFunction) => {
       if (
         (response.locals.requestUser.hasGlobalRead() &&
@@ -346,7 +312,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     async (request, response) => {
       const users = await models.User.getAll({});
-      return successResponse(response, { usersList: mapUsers(users) });
+      return successResponse(response, { usersList: mapUsers(users, true) });
     },
   ];
 
@@ -355,7 +321,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ListUsers
    * @apiGroup User
    * @apiDescription Given an authenticated super-user, we need to be able to get
-   * a list of all usernames on the system, so that we can switch to viewing
+   * a list of all email addresses on the system, so that we can switch to viewing
    * as a given user.
    * @apiDeprecated Use /api/v1/users/list-users
    *
@@ -523,7 +489,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/groups-for-admin-user/:emailAddress`,
     extractJwtAuthorizedUser,
     validateFields([param("emailAddress").isEmail()]),
-    fetchUnauthorizedRequiredUserByNameOrEmailOrId(param("emailAddress")),
+    fetchUnauthorizedRequiredUserByEmailOrId(param("emailAddress")),
     (request: Request, response: Response, next: NextFunction) => {
       // This is a little bit hacky, but is safe in this context.
       response.locals.requestUser = response.locals.user;
@@ -532,7 +498,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredGroups,
     async (request: Request, response: Response) => {
       const groups: ApiGroupResponse[] = response.locals.groups.map(
-        ({ id, groupname }) => ({ id, groupName: groupname, admin: false })
+        ({ id, groupName }) => ({ id, groupName, admin: false })
       );
       return successResponse(response, "Got groups for admin user", {
         groups,
@@ -551,7 +517,7 @@ export default function (app: Application, baseUrl: string) {
         .bail()
         .custom(jsonSchemaOf(arrayOf(GroupIdSchema))),
     ]),
-    fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("groupAdminEmail")),
+    fetchUnauthorizedRequiredUserByEmailOrId(body("groupAdminEmail")),
     (request: Request, response: Response, next: NextFunction) => {
       // This is a little bit hacky, but is safe in this context.
       response.locals.originalUser = response.locals.requestUser;
@@ -588,7 +554,7 @@ export default function (app: Application, baseUrl: string) {
       const sendSuccess = await sendGroupMembershipRequestEmail(
         acceptToGroupRequestToken,
         requestingUser.email,
-        joinGroups.map(({ groupname }) => groupname),
+        joinGroups.map(({ groupName }) => groupName),
         requestedOfUser.email
       );
       if (sendSuccess) {
@@ -660,11 +626,11 @@ export default function (app: Application, baseUrl: string) {
       // Let the requesting user know that they've now been added to the groups.
       await sendAddedToGroupNotificationEmail(
         userToGrantMembershipFor.email,
-        groupsToAdd.map(({ group: { groupname } }) => groupname)
+        groupsToAdd.map(({ group: { groupName } }) => groupName)
       );
       return successResponse(response, "Allowed to add user.", {
         userId: id,
-        userName: userToGrantMembershipFor.username,
+        userName: userToGrantMembershipFor.userName,
       });
     }
   );

@@ -1,7 +1,7 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-import { getTestName } from "../names";
+import { getTestEmail, getTestName } from "../names";
 import {
   apiPath,
   v1ApiPath,
@@ -23,7 +23,7 @@ Cypress.Commands.add(
   (
     userName: string,
     password: string = "p" + getTestName(userName),
-    email: string = getTestName(userName) + "@api.created.com",
+    email: string = getTestEmail(userName),
     endUserAgreement: number = LATEST_END_USER_AGREEMENT,
     statusCode: number = 200,
     additionalChecks: any = {}
@@ -89,7 +89,7 @@ Cypress.Commands.add(
     const newUserName = updates["userName"];
     //make name unique if supplied, unless asked not to
     if (
-      additionalChecks["useRawUserName"] != true &&
+      additionalChecks["useRawUserName"] !== true &&
       newUserName !== undefined
     ) {
       updates["userName"] = getTestName(newUserName);
@@ -138,7 +138,7 @@ Cypress.Commands.add(
     if (additionalChecks["useRawUserName"] == true) {
       fullUserName = updateUserNameOrId;
     } else {
-      fullUserName = getTestName(updateUserNameOrId);
+      fullUserName = getTestEmail(updateUserNameOrId);
     }
 
     const url = v1ApiPath(`admin/global-permission/${fullUserName}`);
@@ -297,11 +297,11 @@ Cypress.Commands.add(
     if (additionalChecks["useRawUserName"] === true) {
       fullName = userName;
     } else {
-      fullName = getTestName(userName);
+      fullName = getTestEmail(userName);
     }
 
     const data = {
-      userName: fullName,
+      email: fullName,
     };
 
     cy.request({
@@ -309,7 +309,7 @@ Cypress.Commands.add(
       url: fullUrl,
       body: data,
       failOnStatusCode: true,
-    }).then((response) => {});
+    });
   }
 );
 
@@ -333,7 +333,7 @@ Cypress.Commands.add(
       url: fullUrl,
       body: data,
       failOnStatusCode: true,
-    }).then((response) => {});
+    });
   }
 );
 
@@ -398,8 +398,6 @@ export function TestCreateExpectedUser(
     globalPermission: params["globalPermission"] || "off",
     endUserAgreement: params["endUserAgreement"] || LATEST_END_USER_AGREEMENT,
     id: getCreds(userName).id,
-    firstName: params["firstName"] || null,
-    lastName: params["lastName"] || null,
   };
 
   return user;

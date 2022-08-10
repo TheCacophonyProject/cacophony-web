@@ -17,15 +17,15 @@
           </b-alert>
 
           <b-form-group
-            :state="getState($v.form.username)"
-            :invalid-feedback="usernameFeedback"
-            label="Username"
-            label-for="input-username"
+            :state="getState($v.form.userName)"
+            :invalid-feedback="userNameFeedback"
+            label="Full name"
+            label-for="input-userName"
           >
             <b-form-input
-              id="input-username"
-              v-model="$v.form.username.$model"
-              :state="getState($v.form.username)"
+              id="input-userName"
+              v-model="$v.form.userName.$model"
+              :state="getState($v.form.userName)"
               type="text"
               autofocus
               required
@@ -114,9 +114,10 @@
 <script>
 import { minLength, required, sameAs } from "vuelidate/lib/validators";
 
+// FIXME(jon): Should allow accents for names.
 const validPattern = (value) =>
   /^[a-zA-Z0-9]+(?:[_ -]?[a-zA-Z0-9])*$/.test(value);
-const usernameLength = 5;
+const fullNameLength = 2;
 const passwordLength = 8;
 
 export default {
@@ -128,7 +129,7 @@ export default {
   data() {
     return {
       form: {
-        username: "",
+        userName: "",
         email: "",
         password: "",
         passwordConfirm: "",
@@ -139,12 +140,12 @@ export default {
   },
   // https://vuejs.org/v2/style-guide/#Simple-computed-properties-strongly-recommended
   computed: {
-    usernameFeedback() {
-      if (this.$v.form.username.$invalid) {
-        if (!this.$v.form.username.validPattern) {
+    userNameFeedback() {
+      if (this.$v.form.userName.$invalid) {
+        if (!this.$v.form.userName.validPattern) {
           return `Must be letters (either case) or numbers`;
         }
-        return `Minimum username length is ${usernameLength} characters`;
+        return `Minimum full name length is ${fullNameLength} characters`;
       }
       return null;
     },
@@ -163,9 +164,9 @@ export default {
   },
   validations: {
     form: {
-      username: {
+      userName: {
         required,
-        minLength: minLength(usernameLength),
+        minLength: minLength(fullNameLength),
         validPattern,
       },
       email: {
@@ -180,7 +181,7 @@ export default {
         sameAsPassword: sameAs("password"),
       },
       endUserAgreement: {
-        value: (value) => value == "accepted",
+        value: (value) => value === "accepted",
       },
     },
   },
@@ -196,7 +197,7 @@ export default {
 
       if (!this.$v.$invalid) {
         await this.$store.dispatch("User/REGISTER", {
-          username: this.$v.form.username.$model,
+          userName: this.$v.form.userName.$model,
           password: this.$v.form.password.$model,
           email: this.$v.form.email.$model,
         });
