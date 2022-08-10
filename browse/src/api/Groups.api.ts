@@ -17,7 +17,7 @@ function addNewGroup(groupName): Promise<FetchResult<{ groupId: GroupId }>> {
 
 function addGroupUser(
   groupName,
-  emailOrUserId,
+  emailOrUserId: string | number,
   isAdmin
 ): Promise<{ success: boolean; status: number; result: any }> {
   const suppressGlobalMessaging = true;

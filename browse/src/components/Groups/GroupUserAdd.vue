@@ -18,7 +18,7 @@
           ref="input-emailOrUserId"
           id="input-emailOrUserId"
           @update="resetFormSubmission"
-          v-model.trim="$v.form.email.$model"
+          v-model.trim="$v.form.emailOrUserId.$model"
           :state="emailState"
           aria-describedby="email-live-help email-live-feedback"
           type="text"
@@ -29,7 +29,7 @@
         />
         <multiselect
           v-else
-          v-model="form.email"
+          v-model="form.emailOrUserId"
           :options="users"
           :placeholder="usersListLabel"
           :disabled="users.length === 0"
@@ -158,9 +158,8 @@ export default {
         // already an admin user, and we're trying to downgrade ourselves to
         // a regular user *and* we're the last admin in the group, we should warn.
         const userToAdd =
-          (this.isSuperUserAndViewingAsSuperUser &&
-            this.form.emailOrUserId.name) ||
-          this.form.emailOrUserId;
+          (!this.isSuperUserAndViewingAsSuperUser && this.form.emailOrUserId) ||
+          this.form.emailOrUserId.id;
         if (
           !this.isSuperUserAndViewingAsSuperUser &&
           userToAdd === this.thisUserId &&
@@ -173,14 +172,13 @@ export default {
             "The last user cannot remove their admin status";
           return;
         }
-
         const result = await api.groups.addGroupUser(
           this.groupName,
           userToAdd,
           this.form.isAdmin
         );
         if (!result.success) {
-          this.formErrorMessage = "The username couldn't be found";
+          this.formErrorMessage = "The email address couldn't be found";
           this.formSubmissionFailed = true;
         } else {
           // We can emit that a user was added to the group:

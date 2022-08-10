@@ -85,7 +85,7 @@
             title="Remove user from group"
             class="trash-button"
             variant="light"
-            @click="removeGroupUserCheckIfSelf(data.item.userName)"
+            @click="removeGroupUserCheckIfSelf(data.item.id)"
           >
             <font-awesome-icon icon="trash" size="1x" />
           </b-button>
