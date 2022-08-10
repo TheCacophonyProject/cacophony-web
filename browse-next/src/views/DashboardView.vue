@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, provide, ref, watch } from "vue";
 import { getAllVisitsForGroup } from "@api/Monitoring";
 import {
   currentSelectedGroup,
-  type SelectedGroup,
+  urlNormalisedCurrentGroupName,
   UserGroups,
 } from "@models/LoggedInUser";
+import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
 import type { ApiStationResponse } from "@typedefs/api/station";
@@ -15,10 +16,35 @@ import GroupVisitsSummary from "@/components/GroupVisitsSummary.vue";
 import StationVisitSummary from "@/components/StationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { LatLng } from "@typedefs/api/common";
-import { BSpinner } from "bootstrap-vue-3";
+import { BModal, BSpinner } from "bootstrap-vue-3";
 import type { ApiGroupResponse } from "@typedefs/api/group";
+import { useRoute, useRouter } from "vue-router";
 
 const audioMode = ref<boolean>(false);
+const selectedVisit = ref<ApiVisitResponse | null>(null);
+const router = useRouter();
+const route = useRoute();
+
+const selectedVisitContext = computed({
+  get: () => selectedVisit.value,
+  set: (visit: ApiVisitResponse | null) => {
+    if (visit) {
+      // Set route so that modal shows up
+      const recordingIds = visit.recordings.map(({ recId }) => recId);
+      router.push({
+        name: "dashboard-visit",
+        params: {
+          visitLabel: visit.classification,
+          recordingIds: recordingIds.join(","),
+        },
+      });
+    }
+    selectedVisit.value = visit;
+  },
+});
+provide("selectedVisit", selectedVisitContext);
+// Use provide to provide selected visit context to loaded modal.
+// If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
 
 // TODO - Reload these from user preferences.
 const timePeriodDays = ref<number>(7);
@@ -188,6 +214,20 @@ const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
   return true;
 });
 
+const hasSelectedVisit = computed<boolean>({
+  get: () =>
+    route.name === "dashboard-visit" || route.name === "dashboard-recording",
+  set: (value: boolean) => {
+    if (!value) {
+      // Return to dashboard from modal.
+      router.push({
+        name: "dashboard",
+        params: { groupName: urlNormalisedCurrentGroupName.value },
+      });
+      selectedVisitContext.value = null;
+    }
+  },
+});
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
@@ -262,6 +302,7 @@ const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
     <visits-breakdown-list
       :visits="predatorVisits"
       :location="canonicalLocationForActiveStations"
+      @selectedVisit="(visit) => (selectedVisitContext = visit)"
     />
   </div>
   <h2>Stations summary</h2>
@@ -286,6 +327,9 @@ const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
       this group.
     </div>
   </horizontal-overflow-carousel>
+  <b-modal v-model="hasSelectedVisit">
+    <router-view />
+  </b-modal>
 </template>
 <style lang="less" scoped>
 .group-name {

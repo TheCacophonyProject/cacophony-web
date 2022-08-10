@@ -14,6 +14,10 @@ import { API_ROOT } from "@api/api";
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
 
+const emit = defineEmits<{
+  (e: "selectedVisit", visit: ApiVisitResponse): void;
+}>();
+
 const now = new Date();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { visits, startTime, isNocturnal, location } = defineProps<{
@@ -153,8 +157,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       } as SunEventItem);
     }
   }
-  // TODO: Should this be reversed or not?
-  return events.reverse();
+  return events;
 });
 
 const nightOfRange = computed<string>(() => {
@@ -230,6 +233,13 @@ const visitDuration = (visit: ApiVisitResponse): string => {
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
 };
+
+const selectedVisit = (visit: VisitEventItem) => {
+  console.log(visit);
+  if (visit.type === "visit") {
+    emit("selectedVisit", visit.data);
+  }
+};
 </script>
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">
@@ -274,6 +284,7 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
         :key="index"
         class="visit-event-item d-flex user-select-none"
         :class="[visit.type]"
+        @click="selectedVisit(visit)"
       >
         <div class="visit-time-duration d-flex flex-column py-2 pe-2">
           <span class="pb-1">{{ visitTime(visit.timeStart) }}</span>

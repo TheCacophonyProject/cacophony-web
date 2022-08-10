@@ -80,6 +80,22 @@ const router = createRouter({
       meta: { title: "Group :stationName :tabName", requiresLogin: true },
       component: () => import("../views/DashboardView.vue"),
       beforeEnter: cancelPendingRequests,
+      children: [
+        {
+          // RecordingView will be rendered inside Dashboards' <router-view>
+          // when /:groupName/visit/:visitLabel/:recordingIds is matched
+          path: "visit/:visitLabel/:recordingIds",
+          name: "dashboard-visit",
+          component: () => import("../views/RecordingView.vue"),
+        },
+        {
+          // RecordingView will be rendered inside Dashboards' <router-view>
+          // when /:groupName/recordings/:recordingIds is matched
+          path: "recording/:recordingIds",
+          name: "dashboard-recording",
+          component: () => import("../views/RecordingView.vue"),
+        },
+      ],
     },
     {
       path: "/:groupName/stations",

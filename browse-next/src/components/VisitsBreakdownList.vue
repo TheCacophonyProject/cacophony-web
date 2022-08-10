@@ -12,6 +12,11 @@ import {
 } from "@models/visitsUtils";
 import type { LatLng } from "@typedefs/api/common";
 import type { DateTime } from "luxon";
+
+const emit = defineEmits<{
+  (e: "selectedVisit", visit: ApiVisitResponse): void;
+}>();
+
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { visits, location } = defineProps<{
   visits: ApiVisitResponse[];
@@ -30,7 +35,6 @@ const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
   }
 });
 const hasVisits = computed<boolean>(() => visits.length !== 0);
-
 </script>
 <template>
   <div :class="[{ 'ps-md-3': hasVisits }]">
@@ -41,6 +45,7 @@ const hasVisits = computed<boolean>(() => visits.length !== 0);
       :visits="visits"
       :is-nocturnal="isNocturnal"
       :location="location"
+      @selectedVisit="(visit) => emit('selectedVisit', visit)"
     />
   </div>
 </template>

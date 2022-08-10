@@ -4,7 +4,9 @@ import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
 import type { ErrorResult, FetchResult } from "@api/types";
 import { reactive } from "vue";
 import { delayMsThen } from "@/utils";
-import { HttpStatusCode } from "@typedefs/api/consts";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { HttpStatusCode } from "@typedefs/api/consts.ts";
 
 const lastApiVersion: string | null = null;
 
