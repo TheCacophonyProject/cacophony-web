@@ -206,7 +206,7 @@ export default {
     showChangeUserViewDialog: {
       async set(val) {
         this.internalShowChangeUserViewDialog = val;
-        if (this.emails.length === 0) {
+        if (this.users.length === 0) {
           await this.initUsersList();
           this.usersListLabel = "select a user";
         }
@@ -255,7 +255,9 @@ export default {
     async changeViewingUser() {
       if (this.selectedUser) {
         // Log in as user:
-        const otherUser = await User.loginOther(this.selectedUser.email);
+        const otherUser = await User.loginOther(
+          this.selectedUser.email || this.selectedUser.id
+        );
         this.$store.dispatch("User/LOGIN_OTHER", otherUser.result);
         window.location.reload();
       }

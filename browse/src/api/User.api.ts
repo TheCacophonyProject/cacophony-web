@@ -20,10 +20,16 @@ function login(
   );
 }
 
-function loginOther(email) {
-  return CacophonyApi.post("/admin_authenticate_as_other_user", {
-    email,
-  });
+function loginOther(emailOrUserId: string | number) {
+  if (typeof emailOrUserId === "number") {
+    return CacophonyApi.post("/admin_authenticate_as_other_user", {
+      userId: emailOrUserId,
+    });
+  } else {
+    return CacophonyApi.post("/admin_authenticate_as_other_user", {
+      email: emailOrUserId,
+    });
+  }
 }
 
 function reset(email: string): Promise<FetchResult<{}>> {

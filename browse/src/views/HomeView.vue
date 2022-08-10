@@ -86,6 +86,7 @@ export default {
   computed: {
     ...mapState({
       email: (state) => (state as any).User.userData.email,
+      userName: (state) => (state as any).User.userData.userName,
     }),
     hasGroups() {
       return this.groups.length !== 0;

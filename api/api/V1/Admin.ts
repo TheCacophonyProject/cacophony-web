@@ -47,8 +47,6 @@ export default function (app: Application, baseUrl: string) {
      * @apiUse V1ResponseSuccess
      * @apiUse V1ResponseError
      */
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-
     app.patch(
       `${apiUrl}/global-permission/:userEmailOrId`,
       extractJwtAuthorisedSuperAdminUser,

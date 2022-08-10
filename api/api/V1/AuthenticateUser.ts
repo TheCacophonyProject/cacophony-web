@@ -34,12 +34,11 @@ import {
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
-
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { mapUser } from "@api/V1/User";
 import { User } from "@models/User";
 import models from "@/models";
-import { UserId } from "@/../types/api/common";
+import { UserId } from "@typedefs/api/common";
 import jwt from "jsonwebtoken";
 import config from "@config";
 import { randomUUID } from "crypto";
