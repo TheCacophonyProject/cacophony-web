@@ -15,6 +15,12 @@ const closeModal = () => {
 };
 const modal = ref<typeof BModal | null>(null);
 
+// Okay, if we're in a visit context, and the user changes the tags, we're going to wait while we re-query the visit.
+
+// To recreate the visits context *around* this visit we need:
+//  - Are the visits group or station based?
+//  - Were the visits filtered on any particular species?
+
 // TODO: Provide parent context to return to as a prop or provide
 const show = computed<boolean>({
   get: () =>

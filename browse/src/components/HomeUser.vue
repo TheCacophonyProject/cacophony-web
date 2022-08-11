@@ -18,7 +18,7 @@
       <dt>Your display name</dt>
       <dd id="username">
         <span>{{ userName }}</span>
-        <b-btn @click="changeUserName = true" size="sm" variant="transparent"
+        <b-btn @click="updateUserName" size="sm" variant="transparent"
           ><font-awesome-icon icon="pencil-alt" size="xs" color="#666"
         /></b-btn>
       </dd>
@@ -40,6 +40,10 @@ export default {
     };
   },
   methods: {
+    updateUserName() {
+      this.changeUserName = true;
+      this.newUserName = this.userName;
+    },
     async alterUserName() {
       await this.$store.dispatch("User/UPDATE", { userName: this.newUserName });
       this.newUserName = "";
