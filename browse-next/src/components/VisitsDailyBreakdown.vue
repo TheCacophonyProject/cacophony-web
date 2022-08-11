@@ -234,7 +234,7 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
 };
 
-const selectedVisit = (visit: VisitEventItem) => {
+const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   console.log(visit);
   if (visit.type === "visit") {
     emit("selectedVisit", visit.data);

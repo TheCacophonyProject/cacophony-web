@@ -5,7 +5,7 @@
       title="Change your display name"
       @ok="alterUserName"
     >
-      <b-form-group>
+      <b-form-group label="New display name">
         <b-input
           type="text"
           v-model="newUserName"
@@ -36,7 +36,7 @@ export default {
   data() {
     return {
       changeUserName: false,
-      newUserName: "",
+      newUserName: this.userName,
     };
   },
   methods: {

@@ -10,13 +10,14 @@ import {
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
+import RecordingViewModal from "@/components/RecordingViewModal.vue";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import { getStationsForGroup } from "@api/Group";
 import GroupVisitsSummary from "@/components/GroupVisitsSummary.vue";
 import StationVisitSummary from "@/components/StationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { LatLng } from "@typedefs/api/common";
-import { BModal, BSpinner } from "bootstrap-vue-3";
+import { BSpinner } from "bootstrap-vue-3";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 
@@ -327,9 +328,7 @@ const hasSelectedVisit = computed<boolean>({
       this group.
     </div>
   </horizontal-overflow-carousel>
-  <b-modal v-model="hasSelectedVisit">
-    <router-view />
-  </b-modal>
+  <recording-view-modal @close="selectedVisitContext = null" />
 </template>
 <style lang="less" scoped>
 .group-name {

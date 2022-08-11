@@ -7,7 +7,9 @@ import {
 } from "@api/User";
 import { setLoggedInUserData, UserGroups } from "@models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
-import { HttpStatusCode } from "@typedefs/api/consts";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { HttpStatusCode } from "@typedefs/api/consts.ts";
 
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");
@@ -21,7 +23,7 @@ const testToken = ref("");
 onBeforeMount(async () => {
   // Get an email confirmation token for testing.
   const tokenResponse = await debugGetEmailConfirmationToken("admin@email.com");
-  if (tokenResponse.status === HttpStatusCode.Ok) {
+  if (tokenResponse.success && tokenResponse.status === HttpStatusCode.Ok) {
     testToken.value = tokenResponse.result.token.replace(/\./g, ":");
   }
 

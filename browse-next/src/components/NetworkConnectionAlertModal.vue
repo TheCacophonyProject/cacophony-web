@@ -45,7 +45,7 @@ watch(
       countDown.value = count / 1000;
       countDownInterval.value = setInterval(() => {
         countDown.value--;
-      }, 1000);
+      }, 1000) as unknown as number;
     }
   },
   { immediate: true }
