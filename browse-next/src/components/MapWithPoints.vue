@@ -524,7 +524,7 @@ const leavePoint = () => {
   border-radius: 50% !important;
   width: 25px !important;
   height: 25px !important;
-  font-size: 16px;
+  font-size: var(--bs-body-font-size);
   line-height: 25px !important;
 }
 .leaflet-bottom.leaflet-right {

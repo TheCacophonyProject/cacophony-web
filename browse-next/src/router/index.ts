@@ -83,15 +83,15 @@ const router = createRouter({
       children: [
         {
           // RecordingView will be rendered inside Dashboards' <router-view>
-          // when /:groupName/visit/:visitLabel/:recordingIds is matched
-          path: "visit/:visitLabel/:recordingIds",
+          // when /:groupName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
+          path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
           name: "dashboard-visit",
           component: () => import("../views/RecordingView.vue"),
         },
         {
           // RecordingView will be rendered inside Dashboards' <router-view>
           // when /:groupName/recordings/:recordingIds is matched
-          path: "recording/:recordingIds",
+          path: "recording/:currentRecordingId/:recordingIds?",
           name: "dashboard-recording",
           component: () => import("../views/RecordingView.vue"),
         },

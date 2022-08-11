@@ -32,12 +32,17 @@ const selectedVisitContext = computed({
     if (visit) {
       // Set route so that modal shows up
       const recordingIds = visit.recordings.map(({ recId }) => recId);
+      const params = {
+        visitLabel: visit.classification,
+        currentRecordingId: recordingIds[0].toString(),
+      };
+      if (recordingIds.length > 1) {
+        (params as Record<string, string>).recordingIds =
+          recordingIds.join(",");
+      }
       router.push({
         name: "dashboard-visit",
-        params: {
-          visitLabel: visit.classification,
-          recordingIds: recordingIds.join(","),
-        },
+        params,
       });
     }
     selectedVisit.value = visit;
@@ -191,6 +196,9 @@ const canonicalLocationForActiveStations = computed<LatLng>(() => {
   }
   return { lat: 0, lng: 0 };
 });
+
+provide("locationContext", canonicalLocationForActiveStations);
+provide("locationContext", canonicalLocationForActiveStations);
 
 onMounted(async () => {
   await reloadDashboard();

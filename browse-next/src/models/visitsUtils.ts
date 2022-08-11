@@ -1,6 +1,6 @@
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { LatLng } from "@typedefs/api/common";
-import { DateTime } from "luxon";
+import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
@@ -193,3 +193,25 @@ export const timezoneForLocation = (location: LatLng) =>
   tzLookup(location.lat, location.lng);
 export const timezoneForStation = (station: ApiStationResponse) =>
   timezoneForLocation(station.location);
+
+export const visitDuration = (visit: ApiVisitResponse): string => {
+  const millis =
+    new Date(visit.timeEnd).getTime() - new Date(visit.timeStart).getTime();
+  const minsSecs = Duration.fromMillis(millis).shiftTo("minutes", "seconds");
+  if (minsSecs.minutes > 0) {
+    return minsSecs.toFormat("m'm''&nbsp;'ss's'");
+  }
+  return minsSecs.toFormat("ss's'");
+};
+export const visitTimeAtLocation = (timeIsoString: string, location: LatLng): string => {
+  const zone = timezoneForLocation(location);
+  const localTime = DateTime.fromISO(timeIsoString, { zone });
+  return localTime
+      .toLocaleString({
+        hour: "numeric",
+        minute: "2-digit",
+        hourCycle: "h12",
+      })
+      .replace(/ /g, "");
+};
+

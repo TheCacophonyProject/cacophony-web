@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import {
-  timezoneForLocation,
   visitsCountBySpecies as visitsCountBySpeciesCalc,
+  visitTimeAtLocation,
+  visitDuration,
 } from "@models/visitsUtils";
-import { DateTime, Duration } from "luxon";
+import { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/api";
@@ -19,7 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const now = new Date();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { visits, startTime, isNocturnal, location } = defineProps<{
   visits: ApiVisitResponse[];
   startTime: DateTime;
@@ -157,7 +158,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       } as SunEventItem);
     }
   }
-  return events;
+  return events.reverse();
 });
 
 const nightOfRange = computed<string>(() => {
@@ -177,9 +178,6 @@ const nightOfRange = computed<string>(() => {
   }
   return range;
 });
-
-const capitalize = (str: string): string =>
-  `${str.slice(0, 1).toUpperCase()}${str.slice(1)}`;
 
 const truncateLongStationNames = (str: string): string => {
   const split = str.indexOf("_");
@@ -208,27 +206,8 @@ const hasVisits = computed<boolean>(() => {
   return visitCountBySpecies.value.length !== 0;
 });
 
-const visitTime = (timeIsoString: string) => {
-  const zone = timezoneForLocation(location);
-  const localTime = DateTime.fromISO(timeIsoString, { zone });
-  return localTime
-    .toLocaleString({
-      hour: "numeric",
-      minute: "2-digit",
-      hourCycle: "h12",
-    })
-    .replace(/ /g, "");
-};
-
-const visitDuration = (visit: ApiVisitResponse): string => {
-  const millis =
-    new Date(visit.timeEnd).getTime() - new Date(visit.timeStart).getTime();
-  const minsSecs = Duration.fromMillis(millis).shiftTo("minutes", "seconds");
-  if (minsSecs.minutes > 0) {
-    return minsSecs.toFormat("m'm''&nbsp;'ss's'");
-  }
-  return minsSecs.toFormat("ss's'");
-};
+const visitTime = (timeIsoString: string) =>
+  visitTimeAtLocation(timeIsoString, location);
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
@@ -240,11 +219,13 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
     emit("selectedVisit", visit.data);
   }
 };
+
+const currentlySelectedVisit = inject("selectedVisit");
 </script>
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">
     <div
-      class="header p-2 d-flex justify-content-between user-select-none align-items-center"
+      class="header fs-7 p-2 d-flex justify-content-between user-select-none align-items-center"
       @click="toggleVisitsDetail"
     >
       <div>
@@ -270,11 +251,14 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
       <div v-else class="visits-species-count p-3 user-select-none">
         <div
           v-for="([classification, count], index) in visitCountBySpecies"
-          :class="[classification, 'visit-species-count']"
+          class="fs-8 visit-species-count"
+          :class="[classification]"
           :key="index"
         >
-          <span class="count">{{ count }}</span>
-          <span class="species">{{ capitalize(classification) }}</span>
+          <span class="count text-capitalize">{{ count }}</span>
+          <span class="text-capitalize species d-inline-block">
+            {{ classification }}
+          </span>
         </div>
       </div>
     </div>
@@ -282,14 +266,20 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
       <div
         v-for="(visit, index) in visitEvents"
         :key="index"
-        class="visit-event-item d-flex user-select-none"
-        :class="[visit.type]"
+        class="visit-event-item d-flex user-select-none fs-8"
+        :class="[
+          visit.type,
+          {
+            selected:
+              visit.type === 'visit' && visit.data === currentlySelectedVisit,
+          },
+        ]"
         @click="selectedVisit(visit)"
       >
         <div class="visit-time-duration d-flex flex-column py-2 pe-2">
           <span class="pb-1">{{ visitTime(visit.timeStart) }}</span>
           <span
-            class="duration"
+            class="duration fs-8"
             v-if="visit.type === 'visit'"
             v-html="visitDuration(visit.data)"
           ></span>
@@ -300,7 +290,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         <div v-if="visit.type === 'sun'" class="py-2 ps-2">
           {{ visit.name }}
         </div>
-        <div v-else class="d-flex py-2 ps-2">
+        <div v-else class="d-flex py-2 ps-2 align-items-center">
           <div class="visit-thumb">
             <img
               :src="thumbnailSrcForVisit(visit.data)"
@@ -312,11 +302,13 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
               visit.data.recordings.length
             }}</span>
           </div>
-          <div class="pb-3 ps-2 d-flex flex-column">
+          <div class="ps-2 d-flex flex-column">
             <div>
-              <span class="visit-species-tag px-1 mb-1" :class="[visit.name]">{{
-                capitalize(visit.name)
-              }}</span>
+              <span
+                class="visit-species-tag px-1 mb-1 text-capitalize"
+                :class="[visit.name]"
+                >{{ visit.name }}</span
+              >
             </div>
             <span
               ><font-awesome-icon
@@ -339,7 +331,6 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
 
   .header {
     border-bottom: 1px solid #eee;
-    font-size: 13px;
     font-weight: 500;
   }
   .visit-species-count {
@@ -348,7 +339,6 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
     display: inline-block;
     height: 24px;
     line-height: 24px;
-    font-size: 12px;
     &:not(:first-child) {
       margin-left: 21px;
     }
@@ -396,21 +386,19 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   color: rgba(0, 0, 0, 0.2);
 }
 .visit-event-item {
-  font-size: 12px;
   line-height: 14px;
   transition: background-color linear 0.2s;
   border-radius: 3px;
   &:hover:not(&.sun) {
     background: #eee;
   }
-
+  &.selected {
+    background: #aaa;
+  }
   .visit-time-duration {
     width: 70px;
     color: #666;
     text-align: right;
-    .duration {
-      font-size: 10px;
-    }
   }
   &.sun {
     .visit-time-duration {

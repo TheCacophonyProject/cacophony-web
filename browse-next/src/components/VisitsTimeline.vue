@@ -82,9 +82,6 @@ const timezoneForActiveStations = computed<string>(() => {
   return "Auckland/Pacific";
 });
 
-const capitalize = (str: string): string =>
-  `${str.slice(0, 1).toUpperCase()}${str.slice(1)}`;
-
 const dates = computed<DateTime[]>(() => {
   const now = DateTime.now().setZone(timezoneForActiveStations.value);
   let d = [
@@ -147,8 +144,8 @@ const dateAndDayOfWeek = (date: DateTime): string => {
       class="d-flex visits-timeline-row"
     >
       <div style="min-width: 100px">
-        <span class="p-1 visits-timeline-species">{{
-          capitalize(species)
+        <span class="p-1 visits-timeline-species text-capitalize">{{
+          species
         }}</span>
       </div>
       <div class="flex-fill position-relative">

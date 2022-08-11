@@ -21,6 +21,7 @@ import {
   faChevronRight,
   faMoon,
   faMapMarkerAlt,
+  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -43,7 +44,8 @@ library.add(
   faBars,
   faChevronRight,
   faMoon,
-  faMapMarkerAlt
+  faMapMarkerAlt,
+  faXmark
 );
 
 export default FontAwesomeIcon;
