@@ -29,8 +29,16 @@ cp _release/* ${build_dir}/_release  # makes things easier while developing rele
 
 cd ${build_dir}
 
+echo "Building Cacophony Browse-Next"
+cd browse-next
+npm version --no-git-tag-version ${version}
+rm -rf node_modules
+npm install
+npm run build
+rm -rf node_modules
+
 echo "Installing shared type definitions"
-cd types
+cd ../types
 rm -rf node_modules
 npm install
 echo "Compiling TypeScript..."
@@ -61,14 +69,15 @@ find -name '*.ts' -print0 | xargs -0 rm
 
 # BROWSE: Update files which need the right version number, build the packed
 # release
+echo "Building Cacophony Browse"
 cd ../browse
 npm version --no-git-tag-version ${version}
 rm -rf node_modules
 npm install
 npm run release
 rm -rf node_modules
-cd ../types
 
+cd ../types
 echo "Removing typedefs external dependencies..."
 rm -rf node_modules
 echo "Removing typedefs TypeScript files..."

@@ -5,13 +5,7 @@ import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { createExpectedAlert } from "@commands/api/alerts";
 import { createExpectedEvent } from "@commands/api/events";
 
-import {
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_Unprocessable,
-} from "@commands/constants";
-
-import { RecordingProcessingState } from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingProcessingState } from "@typedefs/api/consts";
 
 describe("Devices alerts", () => {
   const POSSUM_ALERT: ApiAlertCondition[] = [
@@ -32,9 +26,9 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       null,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     ).then((response: any) => {
-      checkResponse(response, HTTP_Forbidden);
+      checkResponse(response, HttpStatusCode.Forbidden);
     });
   });
 
@@ -52,9 +46,9 @@ describe("Devices alerts", () => {
       BAD_POSSUM_ALERT,
       usera.camera,
       null,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     ).then((response: any) => {
-      checkResponse(response, HTTP_Unprocessable);
+      checkResponse(response, HttpStatusCode.Unprocessable);
     });
   });
 
@@ -69,7 +63,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     ).then(() => {
       // crete an example alert to compare against
       const emptyExpectedAlert = createExpectedAlert(
@@ -100,7 +94,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
@@ -146,7 +140,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //upload a recording tagged as rat and  build an expected event using the returned recording details
@@ -185,7 +179,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //upload a recording tagged as possum against another camera and  build an expected event using the returned recording details
@@ -223,7 +217,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
@@ -272,7 +266,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
@@ -312,7 +306,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //upload a recording tagged as possum
@@ -357,7 +351,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //add userb to camera's group
@@ -397,7 +391,7 @@ describe("Devices alerts", () => {
     });
   });
 
-  it("Alerts for recording uploaded on behalf using devicename and groupname", () => {
+  it("Alerts for recording uploaded on behalf using deviceName and groupName", () => {
     const usera = getNewIdentity("andrea");
     const userb = getNewIdentity("bruce");
 
@@ -411,7 +405,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //add userb to camera's group
@@ -463,7 +457,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HTTP_OK200
+      HttpStatusCode.Ok
     );
 
     //upload a recording tagged as possum using group

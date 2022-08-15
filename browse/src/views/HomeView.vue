@@ -38,8 +38,8 @@
                   add you to the devices' group.
                 </p>
                 <p>
-                  They will need your Cacophony username:
-                  <strong>{{ userName }}</strong
+                  They will need your Cacophony email address:
+                  <strong>{{ email }}</strong
                   ><br />
                 </p>
                 <p class="mb-0">
@@ -85,6 +85,7 @@ export default {
   },
   computed: {
     ...mapState({
+      email: (state) => (state as any).User.userData.email,
       userName: (state) => (state as any).User.userData.userName,
     }),
     hasGroups() {
@@ -97,13 +98,9 @@ export default {
   methods: {
     async fetchGroups() {
       this.hasLoaded = false;
-      try {
-        const {
-          result: { groups },
-        } = await api.groups.getGroups();
-        this.groups = groups;
-      } catch (e) {
-        // Handle this at a component level, or boot it up to a global error.
+      const response = await api.groups.getGroups();
+      if (response.success) {
+        this.groups = response.result.groups;
       }
       this.hasLoaded = true;
     },

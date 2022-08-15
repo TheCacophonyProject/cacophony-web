@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { currentSelectedGroup, pinSideNav } from "@models/LoggedInUser";
+import { currentGroupName, pinSideNav } from "@models/LoggedInUser";
 import { useRoute } from "vue-router";
 import { computed } from "vue";
 const route = useRoute();
@@ -7,21 +7,13 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
 </script>
 <template>
   <div
-    class="
-      section-header
-      d-flex
-      flex-row-reverse
-      d-sm-block
-      align-items-center
-      justify-content-between
-      pt-sm-3
-    "
+    class="section-header d-flex flex-row-reverse d-sm-block align-items-center justify-content-between pt-sm-3"
   >
     <h4 class="group-name my-0 m-sm-0 mb-sm-2 mx-3" v-if="showGroupName">
-      <span>{{ currentSelectedGroup.groupName }}</span>
+      <span>{{ currentGroupName }}</span>
     </h4>
     <span v-else></span>
-    <div class="d-flex align-items-center ms-2 m-md-0">
+    <div class="d-flex align-items-center ms-2 m-sm-0">
       <button
         type="button"
         class="btn toggle-nav d-sm-none"

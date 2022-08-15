@@ -1,9 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { NOT_NULL_STRING } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import {
@@ -22,6 +18,7 @@ import {
   TEMPLATE_TRACK,
   TEMPLATE_EXPECTED_TRACK,
 } from "@commands/dataTemplate";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = ["[].id"];
 
@@ -132,7 +129,7 @@ describe("Tracks: add, check, delete", () => {
       "trkTrack1",
       undefined,
       null,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -181,7 +178,7 @@ describe("Tracks: add, check, delete", () => {
       "trkTrack2",
       undefined,
       null,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -200,7 +197,7 @@ describe("Tracks: add, check, delete", () => {
       null,
       track1,
       algorithm1,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("But device member can add track to recording");
@@ -214,14 +211,20 @@ describe("Tracks: add, check, delete", () => {
     );
 
     cy.log("Check recording tag cannot be viewed by non- group2 member");
-    cy.apiTracksCheck("trkGroupAdmin", "trkRecording5", [], [], HTTP_Forbidden);
+    cy.apiTracksCheck(
+      "trkGroupAdmin",
+      "trkRecording5",
+      [],
+      [],
+      HttpStatusCode.Forbidden
+    );
     cy.apiTrackCheck(
       "trkGroupAdmin",
       "trkRecording5",
       "trkTrack5",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check tag cannot be deleted by non group2 member");
@@ -229,7 +232,7 @@ describe("Tracks: add, check, delete", () => {
       "trkGroupAdmin",
       "trkRecording5",
       "trkTrack5",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check track still exists");
@@ -318,7 +321,7 @@ describe("Tracks: add, check, delete", () => {
       "trkAlgorithm6",
       { start_s: 2 } as unknown as ApiTrackDataRequest,
       undefined,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiTrackAdd(
       "trkGroup2Admin",
@@ -327,7 +330,7 @@ describe("Tracks: add, check, delete", () => {
       "trkAlgorithm6",
       { end_s: 2 } as unknown as ApiTrackDataRequest,
       undefined,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     cy.log("Add track with invalid fields");
@@ -338,7 +341,7 @@ describe("Tracks: add, check, delete", () => {
       "trkAlgorithm6",
       { badField: 2 } as unknown as ApiTrackDataRequest,
       undefined,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     cy.log("Add track with invalid field values");
@@ -353,7 +356,7 @@ describe("Tracks: add, check, delete", () => {
         positions: "badValue",
       } as unknown as ApiTrackDataRequest,
       undefined,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     cy.log("Add track with invalid algorithm field values");
@@ -364,7 +367,7 @@ describe("Tracks: add, check, delete", () => {
       "trkAlgorithm6",
       { start_s: 1, end_s: 2 } as unknown as ApiTrackDataRequest,
       "bad value",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -377,7 +380,7 @@ describe("Tracks: add, check, delete", () => {
       "trkAlgorithm8",
       track1,
       algorithm1,
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawRecordingId: true }
     );
   });

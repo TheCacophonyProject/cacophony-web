@@ -398,7 +398,7 @@ export function createExpectedEvent(
         trackId: 1,
       },
     },
-    Device: { devicename: getTestName(getCreds(deviceName).name) },
+    Device: { deviceName: getTestName(getCreds(deviceName).name) },
   };
   return expectedEvent;
 }
@@ -471,9 +471,9 @@ function checkEventMatchesExpected(
     ).to.eq(expectedEvent.dateTime);
   }
   expect(
-    event.Device.devicename,
-    `devicename should be ${expectedEvent.Device.devicename}`
-  ).to.eq(expectedEvent.Device.devicename);
+    event.Device.deviceName,
+    `deviceName should be ${expectedEvent.Device.deviceName}`
+  ).to.eq(expectedEvent.Device.deviceName);
   expect(
     event.EventDetail.type,
     `Type should be ${expectedEvent.EventDetail.type}`
@@ -515,7 +515,7 @@ export function testCreateExpectedEvent(deviceName: string, eventDetail: any) {
     createdAt: NOT_NULL_STRING,
     DeviceId: getCreds(deviceName).id,
     EventDetail: eventDetail,
-    Device: { devicename: getTestName(deviceName) },
+    Device: { deviceName: getTestName(deviceName) },
   };
   return expectedEvent;
 }

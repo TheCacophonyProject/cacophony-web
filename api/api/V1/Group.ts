@@ -18,45 +18,41 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { validateFields } from "../middleware";
 import models from "@models";
-import responseUtil from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  parseJSONField,
   extractJwtAuthorizedUser,
-  fetchUnauthorizedOptionalGroupByNameOrId,
-  fetchAuthorizedRequiredGroupByNameOrId,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
-  fetchUnauthorizedRequiredUserByNameOrId,
   fetchAuthorizedRequiredDevicesInGroup,
+  fetchAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredGroups,
   fetchAuthorizedRequiredSchedulesForGroup,
-  fetchAuthorizedRequiredStationsForGroup,
   fetchAuthorizedRequiredStationByNameInGroup,
-  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
-  fetchAdminAuthorizedRequiredGroups,
+  fetchAuthorizedRequiredStationsForGroup,
+  fetchUnauthorizedOptionalGroupByNameOrId,
+  fetchUnauthorizedOptionalUserByEmailOrId,
+  fetchUnauthorizedRequiredUserByEmailOrId,
+  parseJSONField,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
 import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json";
 import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json";
-
 import {
-  booleanOf,
   anyOf,
+  booleanOf,
+  deprecatedField,
   idOf,
   nameOf,
   nameOrIdOf,
   validNameOf,
-  deprecatedField,
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
 import { Group } from "@/models/Group";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   ApiCreateStationData,
   ApiStationResponse,
@@ -68,6 +64,7 @@ import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@api/V1/recordingUtil";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const mapGroup = (
   group: Group,
@@ -75,7 +72,7 @@ const mapGroup = (
 ): ApiGroupResponse => {
   const groupData: ApiGroupResponse = {
     id: group.id,
-    groupName: group.groupname,
+    groupName: group.groupName,
     admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
   };
   if (group.settings) {
@@ -179,21 +176,21 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.group) {
-        return next(new ClientError("Group name in use", 422));
+        return next(
+          new ClientError("Group name in use", HttpStatusCode.Unprocessable)
+        );
       }
       next();
     },
     async (request: Request, response: Response) => {
       const newGroup = await models.Group.create({
-        groupname: request.body.groupname || request.body.groupName,
+        groupName: request.body.groupname || request.body.groupName,
       });
       await newGroup.addUser(response.locals.requestUser.id, {
         through: { admin: true },
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
+      return successResponse(response, "Created new group.", {
         groupId: newGroup.id,
-        messages: ["Created new group."],
       });
     }
   );
@@ -233,12 +230,8 @@ export default function (app: Application, baseUrl: string) {
         // Sidekick UA
         groups = mapLegacyGroupsResponse(groups);
       }
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [], // FIXME - handle deprecated field.
-        groups,
-      });
+      // FIXME - handle deprecated field.
+      return successResponse(response, { groups });
     }
   );
 
@@ -272,9 +265,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
+      return successResponse(response, {
         group: mapGroup(response.locals.group, response.locals.viewAsSuperUser),
       });
     }
@@ -309,13 +300,11 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredDevicesInGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
+      return successResponse(response, "Got devices for group", {
         devices: mapDevicesResponse(
           response.locals.devices,
           response.locals.viewAsSuperUser
         ),
-        messages: ["Got devices for group"],
       });
     }
   );
@@ -353,16 +342,14 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const users = await response.locals.group.getUsers({
-        attributes: ["id", "username"],
+        attributes: ["id", "userName"],
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        users: users.map(({ username, id, GroupUsers }) => ({
-          userName: username,
+      return successResponse(response, "Got users for group", {
+        users: users.map(({ userName, id, GroupUsers }) => ({
+          userName,
           id,
           admin: GroupUsers.admin,
         })),
-        messages: ["Got users for group"],
       });
     }
   );
@@ -386,9 +373,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([idOf(param("groupIdOrName"))]),
     fetchAuthorizedRequiredSchedulesForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got schedules for group"],
+      return successResponse(response, "Got schedules for group", {
         schedules: response.locals.schedules.map(mapSchedule),
       });
     }
@@ -406,7 +391,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
    * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
-   * @apiBody {String} userName name of the user to add to the group.
+   * @apiBody {String} email Email address of the user to add to the group.
    * @apiBody {Boolean} admin If the user should be an admin for the group.
    *
    * @apiUse V1ResponseSuccess
@@ -419,19 +404,13 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(
-        nameOf(body("username")),
-        nameOf(body("userName")),
-        idOf(body("userId"))
-      ),
+      anyOf(body("email").isEmail(), idOf(body("userId"))),
       booleanOf(body("admin")),
     ]),
     // Extract required resources to validate permissions.
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByNameOrId(
-      body(["username", "userName", "userId"])
-    ),
+    fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request, response) => {
       const action = await models.Group.addUserToGroup(
         response.locals.group,
@@ -443,11 +422,7 @@ export default function (app: Application, baseUrl: string) {
       //  go to that groups dashboard after logging in.  Should the user have to accept being added?
       //  Adding a user should really be done by email address, not username. Perhaps we need an "invited" state in GroupUsers,
       //  where the user is not quite a real member of the group until they accept.
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [action],
-      });
+      return successResponse(response, action);
     }
   );
 
@@ -462,8 +437,8 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
    * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
-   * @apiBody {String} [userName] name of the user to remove from the group (either 'userName' or 'userId' must be specified).
-   * @apiBody {Integer} [userId] id of the user to remove from the group (either 'userName' or 'userId' must be specified).
+   * @apiBody {Integer} [userId] id of the user to remove from the group (must supply either userId or email).
+   * @apiBody {Integer} [email] email of the user to remove from the group (must supply either userId or email).
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -473,33 +448,21 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(
-        nameOf(body("username")),
-        nameOf(body("userName")),
-        idOf(body("userId"))
-      ),
+      anyOf(body("email").isEmail(), idOf(body("userId"))),
     ]),
     // Extract required resources to check permissions
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByNameOrId(
-      body(["username", "userName", "userId"])
-    ),
-    async (request, response) => {
+    fetchUnauthorizedRequiredUserByEmailOrId(body(["userId", "email"])),
+    async (request: Request, response: Response, next: NextFunction) => {
       const removed = await models.Group.removeUserFromGroup(
         response.locals.group,
         response.locals.user
       );
       if (removed) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Removed user from the group."],
-        });
+        return successResponse(response, "Removed user from the group.");
       } else {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Failed to remove user from the group."],
-        });
+        return next(new ClientError("Failed to remove user from the group."));
       }
     }
   );
@@ -521,7 +484,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/leave-group`,
     extractJwtAuthorizedUser,
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const group = response.locals.group;
       const user = response.locals.requestUser;
       const groupUsers = await models.GroupUsers.findAll({
@@ -533,17 +496,11 @@ export default function (app: Application, baseUrl: string) {
         ({ UserId, admin }) => UserId !== user.id && admin
       );
       if (otherAdmins.length === 0) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Can't remove last admin from group."],
-        });
+        return next(new ClientError("Can't remove last admin from group."));
       }
       const thisGroupUser = groupUsers.find(({ UserId }) => UserId === user.id);
       await thisGroupUser.destroy();
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["User left the group."],
-      });
+      return successResponse(response, "User left the group.");
     }
   );
 
@@ -574,7 +531,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("station")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const { name, lat, lng } = response.locals.station;
       const groupId = response.locals.group.id;
       const userId = response.locals.requestUser.id;
@@ -604,14 +561,13 @@ export default function (app: Application, baseUrl: string) {
         (existingStation) => existingStation.name === name
       );
       if (nameCollision) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: [
+        return next(
+          new ClientError(
             `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
               (untilTime && untilTime.toISOString()) || "now"
-            }.`,
-          ],
-        });
+            }.`
+          )
+        );
 
         // NOTE: Alternate behaviour: We rename any existing station in the active range that has the same name.
         // await nameCollision.update({ name: `${nameCollision.name}_moved` });
@@ -626,16 +582,10 @@ export default function (app: Application, baseUrl: string) {
         lastUpdatedById: userId,
         GroupId: groupId,
       });
-
-      const responseData = {
-        statusCode: 200,
-        messages: ["Created station"],
+      return successResponse(response, "Created station", {
         stationId: station.id,
-      };
-      if (proximityWarnings.length) {
-        (responseData as any).warnings = proximityWarnings;
-      }
-      return responseUtil.send(response, responseData);
+        ...(proximityWarnings.length && { warnings: proximityWarnings }),
+      });
     }
   );
 
@@ -667,9 +617,7 @@ export default function (app: Application, baseUrl: string) {
       param("stationName")
     ),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got station"],
+      return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
     }
@@ -717,9 +665,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const stations = await response.locals.stations;
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got stations for group"],
+      return successResponse(response, "Got stations for group", {
         stations: mapStations(stations),
       });
     }
@@ -747,10 +693,7 @@ export default function (app: Application, baseUrl: string) {
           },
         }
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Updated group settings for user"],
-      });
+      return successResponse(response, "Updated group settings for user");
     }
   );
 
@@ -767,10 +710,7 @@ export default function (app: Application, baseUrl: string) {
       await response.locals.group.update({
         settings: response.locals.settings,
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Updated group settings"],
-      });
+      return successResponse(response, "Updated group settings");
     }
   );
 
@@ -783,7 +723,7 @@ export default function (app: Application, baseUrl: string) {
       booleanOf(body("admin")).default(false),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(body("email")),
+    fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     async (request: Request, response: Response) => {
       const group = response.locals.group;
       const user = response.locals.user;
@@ -795,11 +735,7 @@ export default function (app: Application, baseUrl: string) {
         // If the user isn't a member, email them and invite them to create an account, with a special link to
         // accept which will then add them to the group when the account is created.
       }
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Invited user to group"],
-      });
+      return successResponse(response, "Invited user to group");
     }
   );
 }

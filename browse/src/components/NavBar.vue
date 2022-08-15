@@ -154,6 +154,7 @@ export default {
       viewAs: "",
       selectedUser: {
         name: "",
+        email: "",
         id: "",
       },
       config,
@@ -227,18 +228,25 @@ export default {
   methods: {
     async initUsersList() {
       if (this.hasGlobalReadPermissions) {
-        const usersList = await User.list();
-        this.users = usersList.result.usersList
-          .map(({ userName, id }) => ({
-            name: userName,
-            id,
-          }))
-          .filter(({ name }) => name !== this.superUserName());
+        const response = await User.list();
+        if (response.success) {
+          this.users = response.result.usersList
+            .map(({ userName, id, email }) => ({
+              name: userName,
+              email,
+              id,
+            }))
+            .filter(({ email }) => email !== this.superUserEmail());
+        }
       }
     },
     superUserName() {
       const creds = superUserCreds();
       return creds && creds.userName;
+    },
+    superUserEmail() {
+      const creds = superUserCreds();
+      return creds && creds.email;
     },
     logout() {
       this.$store.dispatch("User/LOGOUT");
@@ -247,7 +255,9 @@ export default {
     async changeViewingUser() {
       if (this.selectedUser) {
         // Log in as user:
-        const otherUser = await User.loginOther(this.selectedUser.name);
+        const otherUser = await User.loginOther(
+          this.selectedUser.email || this.selectedUser.id
+        );
         this.$store.dispatch("User/LOGIN_OTHER", otherUser.result);
         window.location.reload();
       }

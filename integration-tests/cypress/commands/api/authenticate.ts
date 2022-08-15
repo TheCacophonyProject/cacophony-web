@@ -2,7 +2,7 @@
 /// <reference types="cypress" />
 
 import { ApiAuthenticateAccess } from "@commands/types";
-import { getTestName } from "../names";
+import { getTestEmail, getTestName } from "../names";
 import {
   apiPath,
   makeAuthorizedRequestWithStatus,
@@ -15,7 +15,6 @@ Cypress.Commands.add(
   (
     userName: string | null = null,
     email: string | null = null,
-    nameOrEmail: string | null = null,
     password: string | null = null,
     statusCode: number = 200
   ) => {
@@ -23,15 +22,11 @@ Cypress.Commands.add(
     const data = {};
 
     if (userName !== null) {
-      data["username"] = getTestName(userName);
+      data["email"] = getTestEmail(userName);
     }
     if (email !== null) {
       data["email"] = email;
       userName = email;
-    }
-    if (nameOrEmail !== null) {
-      data["nameOrEmail"] = nameOrEmail;
-      userName = nameOrEmail;
     }
     //calculate password if not specified
     if (password === null) {
@@ -65,7 +60,7 @@ Cypress.Commands.add(
     const data = {};
 
     if (userB !== null) {
-      data["name"] = getTestName(userB);
+      data["email"] = getTestEmail(userB);
     }
 
     makeAuthorizedRequestWithStatus(
@@ -109,8 +104,8 @@ Cypress.Commands.add(
       };
     } else {
       data = {
-        devicename: fullDeviceName,
-        groupname: fullGroupName,
+        deviceName: fullDeviceName,
+        groupName: fullGroupName,
         password: password,
       };
     }

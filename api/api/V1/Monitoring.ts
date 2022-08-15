@@ -16,20 +16,20 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields, expectedTypeOf, isIntArray } from "../middleware";
-import { Application, Response, Request, NextFunction } from "express";
+import { expectedTypeOf, isIntArray, validateFields } from "../middleware";
+import { Application, NextFunction, Request, Response } from "express";
 import {
   calculateMonitoringPageCriteria,
   MonitoringParams,
 } from "./monitoringPage";
 import { generateVisits } from "./monitoringVisit";
-import responseUtil from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
 import { User } from "models/User";
 import models from "@models";
 import { ClientError } from "@api/customErrors";
-import logger from "@/logging";
+import { GroupId, StationId } from "@typedefs/api/common";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -181,10 +181,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser.id
       );
 
-      const stationIds: number[] =
-        (request.query.stations as unknown[] as number[]) || [];
-      const groupIds: number[] =
-        (request.query.groups as unknown[] as number[]) || [];
+      const stationIds: StationId[] =
+        ((request.query.stations as string[]) || []).map(Number) || [];
+      const groupIds: GroupId[] =
+        ((request.query.groups as string[]) || []).map(Number) || [];
 
       // TODO: Check permissions, reject if we don't have permissions to view any of these devices/groups.
       //  Easier to do this cleanly once we get rid of the concept of users belonging to devices.
@@ -203,7 +203,6 @@ export default function (app: Application, baseUrl: string) {
         params.until = request.query.until as unknown as Date;
       }
       const viewAsSuperAdmin = response.locals.viewAsSuperUser;
-
       const searchDetails = await calculateMonitoringPageCriteria(
         requestUser,
         params,
@@ -218,9 +217,7 @@ export default function (app: Application, baseUrl: string) {
       if (visits instanceof ClientError) {
         return next(visits);
       }
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Completed query."],
+      return successResponse(response, "Completed query.", {
         params: searchDetails,
         visits,
       });

@@ -33,7 +33,7 @@ import { createExpectedEvent } from "@commands/api/events";
 const EXCLUDE_ALL_IDS = EXCLUDE_IDS.concat([".id"]);
 
 describe("Recordings - processing tests", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
@@ -90,7 +90,7 @@ describe("Recordings - processing tests", () => {
       cy.testCreateUserGroupAndDevice("rpGroup2Admin", "rpGroup2", "rpCamera2");
 
       //Sign is as superuser so we have their JWT
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
     });
 
     beforeEach(() => {

@@ -1,12 +1,12 @@
 /// <reference path="../../../support/index.d.ts" />
 
 import { getTestName } from "@/commands/names";
-import { HTTP_Forbidden, HTTP_Unprocessable } from "@/commands/constants";
 import {
   ApiEventErrorSimilar,
   ApiEventError,
   ApiEventErrorCategory,
 } from "@/commands/types";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 //
 // This test set checks for errors reported against device services
@@ -362,7 +362,7 @@ describe("Events - query errors", () => {
       {},
       [],
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -409,7 +409,7 @@ describe("Events - query errors", () => {
       { startTime: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -417,7 +417,7 @@ describe("Events - query errors", () => {
       { endTime: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -425,7 +425,7 @@ describe("Events - query errors", () => {
       { startTime: "not a timestamp" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -433,7 +433,7 @@ describe("Events - query errors", () => {
       { endTime: "not a timestamp" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -498,7 +498,7 @@ describe("Events - query errors", () => {
       { limit: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -506,7 +506,7 @@ describe("Events - query errors", () => {
       { limit: "a" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //TODO: Issue 68 - -ve values cause server error - disabling until fixed
     // cy.apiEventsErrorsCheck("erGroupAdmin",DEVICE_NOT_SPECIFIED,{limit: -1}, [],[],HTTP_Unprocessable);
@@ -519,7 +519,7 @@ describe("Events - query errors", () => {
       { limit: 1, offset: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -527,7 +527,7 @@ describe("Events - query errors", () => {
       { limit: 1, offset: "a" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //TODO: Issue 68 - -ve values cause server error - disabling until fixed
     //cy.apiEventsErrorsCheck("erGroupAdmin",DEVICE_NOT_SPECIFIED,{limit: 1, offset: -1}, [],[],HTTP_Unprocessable);

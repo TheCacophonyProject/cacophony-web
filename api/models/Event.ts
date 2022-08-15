@@ -163,7 +163,7 @@ export default function (sequelize, DataTypes) {
         },
         {
           model: models.Device,
-          attributes: ["devicename"],
+          attributes: ["deviceName"],
         },
       ],
       attributes: { exclude: ["updatedAt", "EventDetailId"] },
@@ -220,11 +220,11 @@ export default function (sequelize, DataTypes) {
         },
         {
           model: models.Device,
-          attributes: ["id", "devicename", "GroupId"],
+          attributes: ["id", "deviceName", "GroupId"],
           include: [
             {
               model: models.Group,
-              attributes: ["groupname", "id"],
+              attributes: ["groupName", "id"],
             },
           ],
         },

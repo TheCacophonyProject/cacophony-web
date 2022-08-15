@@ -67,7 +67,7 @@ export default {
       return this.useLink;
     },
     params() {
-      if (typeof this.context !== "undefined" && this.context !== "") {
+      if (typeof this.context !== "undefined" && this.context.trim() !== "") {
         return {
           groupName: this.groupName,
           deviceName: this.deviceName,
@@ -77,7 +77,6 @@ export default {
       return {
         groupName: this.groupName,
         deviceName: this.deviceName,
-        tabName: this.context,
       };
     },
   },

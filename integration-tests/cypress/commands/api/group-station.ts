@@ -209,7 +209,7 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === 200) {
-        //sort expected and actual events into same order (means groupName, devicename, username,   userId is mandatory in   expectedGroup)
+        //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
         if (additionalChecks["doNotSort"] === true) {
           sortStations = response.body.stations;
           sortExpectedStations = expectedStations;

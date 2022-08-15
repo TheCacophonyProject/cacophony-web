@@ -1,10 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
-  HTTP_OK200,
-  EXCLUDE_IDS_ARRAY,
-} from "@commands/constants";
+import { EXCLUDE_IDS_ARRAY } from "@commands/constants";
 
 import {
   ApiRecordingSet,
@@ -23,6 +18,7 @@ import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 //Note: Disabled checking DATA as that would require creating a model and associating
 //model name and id, and that can only be done through processing API
@@ -81,9 +77,14 @@ describe("Recordings: soft delete, undelete", () => {
       //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Soft delete recording");
-      cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording1", HTTP_OK200, {
-        additionalParams: "{soft-delete: true}",
-      }).then(() => {
+      cy.apiRecordingDelete(
+        "rsdGroupAdmin",
+        "rsdRecording1",
+        HttpStatusCode.Ok,
+        {
+          additionalParams: "{soft-delete: true}",
+        }
+      ).then(() => {
         cy.log("Check recording no longer shown by default");
         cy.apiRecordingsQueryCheck(
           "rsdGroupAdmin",
@@ -145,9 +146,14 @@ describe("Recordings: soft delete, undelete", () => {
       //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Soft delete recording");
-      cy.apiRecordingDelete("rsdGroupMember", "rsdRecording2", HTTP_OK200, {
-        additionalParams: "{soft-delete: true}",
-      }).then(() => {
+      cy.apiRecordingDelete(
+        "rsdGroupMember",
+        "rsdRecording2",
+        HttpStatusCode.Ok,
+        {
+          additionalParams: "{soft-delete: true}",
+        }
+      ).then(() => {
         cy.log("Check recording no longer shown by default");
         cy.apiRecordingsQueryCheck(
           "rsdGroupMember",
@@ -195,9 +201,14 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdRecording5"
     ).then(() => {
       cy.log("Hard delete recording");
-      cy.apiRecordingDelete("rsdGroupMember", "rsdRecording5", HTTP_OK200, {
-        additionalParams: { "soft-delete": false },
-      });
+      cy.apiRecordingDelete(
+        "rsdGroupMember",
+        "rsdRecording5",
+        HttpStatusCode.Ok,
+        {
+          additionalParams: { "soft-delete": false },
+        }
+      );
 
       cy.log("Check recording no longer shown by default");
       cy.apiRecordingsQueryCheck(
@@ -219,7 +230,7 @@ describe("Recordings: soft delete, undelete", () => {
       cy.apiRecordingUndelete(
         "rsdGroupMember",
         "rsdRecording5",
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
     });
   });
@@ -248,7 +259,11 @@ describe("Recordings: soft delete, undelete", () => {
       //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Member of a different group cannot soft delete recording");
-      cy.apiRecordingDelete("rsdGroup2Admin", "rsdRecording6", HTTP_Forbidden);
+      cy.apiRecordingDelete(
+        "rsdGroup2Admin",
+        "rsdRecording6",
+        HttpStatusCode.Forbidden
+      );
 
       cy.log("Check recording not deleted");
       cy.apiRecordingsQueryCheck(
@@ -259,9 +274,14 @@ describe("Recordings: soft delete, undelete", () => {
       );
 
       cy.log("Owner can soft-delete recording");
-      cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording6", HTTP_OK200, {
-        additionalParams: "{soft-delete: true}",
-      }).then(() => {
+      cy.apiRecordingDelete(
+        "rsdGroupAdmin",
+        "rsdRecording6",
+        HttpStatusCode.Ok,
+        {
+          additionalParams: "{soft-delete: true}",
+        }
+      ).then(() => {
         cy.log("Non member cannot list as deleted");
         cy.apiRecordingsQueryCheck(
           "rsdGroup2Admin",
@@ -274,7 +294,7 @@ describe("Recordings: soft delete, undelete", () => {
         cy.apiRecordingUndelete(
           "rsdGroup2Admin",
           "rsdRecording6",
-          HTTP_Forbidden
+          HttpStatusCode.Forbidden
         ).then(() => {
           cy.log("Check recording still deleted");
           cy.apiRecordingsQueryCheck(
@@ -299,9 +319,14 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdRecording7"
     ).then(() => {
       cy.log("Soft-delete recording");
-      cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording7", HTTP_OK200, {
-        additionalParams: "{soft-delete: true}",
-      }).then(() => {
+      cy.apiRecordingDelete(
+        "rsdGroupAdmin",
+        "rsdRecording7",
+        HttpStatusCode.Ok,
+        {
+          additionalParams: "{soft-delete: true}",
+        }
+      ).then(() => {
         cy.log("Check not returned by /recordings/?where=");
         cy.apiRecordingsQueryCheck(
           "rsdGroupAdmin",
@@ -359,9 +384,14 @@ describe("Recordings: soft delete, undelete", () => {
         );
 
         cy.log("Soft-delete recording");
-        cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording8", HTTP_OK200, {
-          additionalParams: "{soft-delete: true}",
-        }).then(() => {
+        cy.apiRecordingDelete(
+          "rsdGroupAdmin",
+          "rsdRecording8",
+          HttpStatusCode.Ok,
+          {
+            additionalParams: "{soft-delete: true}",
+          }
+        ).then(() => {
           cy.log(
             "Check returned when deleted requested by /recordings/?where="
           );
@@ -441,19 +471,29 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdRecording10"
     ).then(() => {
       cy.log("Delete recording without specifying soft/hard delete");
-      cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording10", HTTP_OK200, {
-        additionalParams: "{soft-delete: true}",
-      }).then(() => {
+      cy.apiRecordingDelete(
+        "rsdGroupAdmin",
+        "rsdRecording10",
+        HttpStatusCode.Ok,
+        {
+          additionalParams: "{soft-delete: true}",
+        }
+      ).then(() => {
         cy.log("Handling of undelete invalid recording id");
-        cy.apiRecordingUndelete("rsdGroupAdmin", "999999", HTTP_Forbidden, {
-          useRawRecordingId: true,
-        });
+        cy.apiRecordingUndelete(
+          "rsdGroupAdmin",
+          "999999",
+          HttpStatusCode.Forbidden,
+          {
+            useRawRecordingId: true,
+          }
+        );
 
         cy.log("Handling of invalid parameter");
         cy.apiRecordingUndelete(
           "rsdGroupAdmin",
           "rsdRecording10",
-          HTTP_Unprocessable,
+          HttpStatusCode.Unprocessable,
           { additionalParams: { badParameter: "hello" } }
         );
       });

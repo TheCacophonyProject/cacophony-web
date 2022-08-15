@@ -9,6 +9,7 @@ import { refreshLogin, login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
+import { CurrentViewAbortController } from "@/router";
 
 export interface LoggedInUser extends ApiLoggedInUserResponse {
   apiToken: string;
@@ -180,7 +181,7 @@ const refreshCredentialsAtIn = (milliseconds: number) => {
   milliseconds = Math.max(1000, milliseconds);
   console.log("Setting refresh in", milliseconds);
   clearTimeout(refreshTimeout);
-  refreshTimeout = setTimeout(refreshCredentials, milliseconds);
+  refreshTimeout = setTimeout(refreshCredentials, milliseconds) as unknown as number;
 };
 
 export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
@@ -202,6 +203,11 @@ export const switchCurrentGroup = (newGroup: {
   // Save the current (new) group to the local user settings, and persist it to the server.
   const loggedInUser = CurrentUser.value as LoggedInUser;
   if (newGroup.id !== loggedInUser.settings?.currentSelectedGroup?.id) {
+    if (currentSelectedGroup.value) {
+      // Abort requests for the previous group.
+      console.log("!!! Abort requests");
+      CurrentViewAbortController.newView();
+    }
     setLoggedInUserData({
       ...loggedInUser,
       settings: {
@@ -236,9 +242,8 @@ export const currentUserSettings = computed<ApiUserSettings | false>(() => {
   return false;
 });
 
-export const currentSelectedGroup = computed<
-  { groupName: string; id: GroupId; admin?: boolean } | false
->(() => {
+export type SelectedGroup = { groupName: string; id: GroupId; admin?: boolean };
+export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
     if (UserGroups.value && UserGroups.value?.length === 0) {
       return false;
@@ -304,7 +309,7 @@ export const shouldViewAsSuperUser = computed<boolean>(() => {
 // TODO - If viewing other user as super user, return appropriate naem
 export const userDisplayName = computed<string>(() => {
   if (userIsLoggedIn.value) {
-    return CurrentUser.value?.firstName || CurrentUser.value?.userName || "";
+    return CurrentUser.value?.userName || "";
   }
   return "";
 });
@@ -336,7 +341,7 @@ export const creatingNewGroup = reactive({
 export const joiningNewGroup = reactive({ enabled: false, visible: false });
 export const showSwitchGroup = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);
-
+export const rafFps = ref(60);
 // On load:
 {
   const rememberedCredentials = window.localStorage.getItem(
@@ -355,3 +360,10 @@ export const pinSideNav = ref(false);
     }
   }
 }
+
+export const currentGroupName = computed<string>(() => {
+  if (currentSelectedGroup.value) {
+    return currentSelectedGroup.value.groupName;
+  }
+  return "";
+});

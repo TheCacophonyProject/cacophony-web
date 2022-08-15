@@ -1,11 +1,14 @@
 import { CurrentViewAbortController } from "@/router";
-import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
 import type { LoggedInUser } from "@/models/LoggedInUser";
+import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
 import type { ErrorResult, FetchResult } from "@api/types";
 import { reactive } from "vue";
 import { delayMsThen } from "@/utils";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { HttpStatusCode } from "@typedefs/api/consts.ts";
 
-let lastApiVersion: string | null = null;
+const lastApiVersion: string | null = null;
 
 export const INITIAL_RETRY_INTERVAL = 3000;
 export const MAX_RETRY_COUNT = 30;
@@ -56,7 +59,7 @@ export async function fetch<T>(
     (request.headers as Record<string, string>).Authorization = (
       CurrentUser.value as LoggedInUser
     ).apiToken;
-    console.log("Requesting with token", CurrentUser.value?.apiToken);
+    //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
     (
@@ -71,24 +74,19 @@ export async function fetch<T>(
     networkConnectionError.hasConnectionError = false;
   } catch (e: Error | unknown) {
     if ((e as Error).name === "AbortError") {
-      console.log(
-        e,
-        (e as Error).name,
-        url,
-        CurrentViewAbortController.controller.signal
-      );
+      console.log("!! Abort, abort", e, (e as Error).name, url, request.signal);
       return;
     }
     networkConnectionError.hasConnectionError = true;
     const delay = networkConnectionError.retryInterval;
     if (networkConnectionError.retryCount < MAX_RETRY_COUNT) {
-      return delayMsThen(
+      return (await delayMsThen(
         delay,
         () => {
           return fetch(url, request);
         },
         networkConnectionError
-      ) as Promise<FetchResult<T>>;
+      )) as Promise<FetchResult<T>>;
     }
 
     // Network error?
@@ -100,7 +98,7 @@ export async function fetch<T>(
         ],
         errorType: "Client",
       } as ErrorResult,
-      status: 500,
+      status: HttpStatusCode.ServerError,
       success: false,
     };
   }
@@ -112,17 +110,21 @@ export async function fetch<T>(
         messages: ["You must be logged in to access this API."],
         errorType: "Client",
       },
-      status: 401,
+      status: HttpStatusCode.AuthorizationError,
       success: false,
     };
   }
   const result = await response.json();
   if (result.cwVersion) {
-    if (lastApiVersion !== result.cwVersion) {
+    const lastApiVersion = window.localStorage.getItem("last-api-version");
+    if (lastApiVersion && lastApiVersion !== result.cwVersion) {
       // TODO - could show a user prompt rather than just refreshing?
+
+      // TODO - Do we need to actually log the user out, in case there have been changes to the structure
+      //  of the user object stored, and we need to get it again?  Or we could just re-fetch the user info before we reload?
+      window.localStorage.setItem("last-api-version", result.cwVersion.version);
       return window.location.reload();
     }
-    lastApiVersion = result.cwVersion as string;
     delete result.cwVersion;
   }
 

@@ -1,4 +1,5 @@
 import type { UserId } from "@typedefs/api/common";
+import type { HttpStatusCode } from "@typedefs/api/consts";
 
 export type JwtToken<T> = string;
 
@@ -20,16 +21,24 @@ export interface ValidationErrorResult extends ErrorResult {
   errorType?: "validation";
 }
 
+type HttpSuccessCode = HttpStatusCode.Ok | HttpStatusCode.NotModified;
+type HttpFailureCode =
+  | HttpStatusCode.BadRequest
+  | HttpStatusCode.AuthorizationError
+  | HttpStatusCode.Forbidden
+  | HttpStatusCode.Unprocessable
+  | HttpStatusCode.ServerError;
+
 interface SuccessFetchResult<SUCCESS> {
   result: SUCCESS;
+  status: HttpSuccessCode;
   success: true;
-  status: number;
 }
 
 interface FailureFetchResult<FAILURE = ErrorResult> {
   result: FAILURE;
+  status: HttpFailureCode;
   success: false;
-  status: number;
 }
 
 export interface JwtTokenPayload<

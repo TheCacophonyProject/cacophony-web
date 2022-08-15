@@ -1,10 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_OK200,
-  NOT_NULL_STRING,
-  NOT_NULL,
-} from "@commands/constants";
+import { NOT_NULL_STRING, NOT_NULL } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
@@ -12,7 +7,7 @@ import { getTestName } from "@commands/names";
 
 import { ApiRecordingNeedsTagReturned } from "@commands/types";
 
-import { RecordingType } from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 
 import {
   TestCreateRecordingData,
@@ -41,7 +36,7 @@ const EXCLUDE_TRACK_IDS = [
 ];
 
 describe("Track Tags: add, check, delete", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   //Recording with no track - added as part of test
@@ -160,7 +155,7 @@ describe("Track Tags: add, check, delete", () => {
     //API calls work
     if (Cypress.env("running_in_a_dev_environment") == true) {
       dev_env = true;
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
     } else {
       cy.log(
         "Warning: validating returned returned data presence but not parameter values"
@@ -317,7 +312,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack5",
       "ttaTag5",
       tag1,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check tag does not exist");
@@ -361,7 +356,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaRecording6",
       "ttaTrack6",
       "ttaTag6",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check tag still exists");
@@ -468,7 +463,7 @@ describe("Track Tags: add, check, delete", () => {
     );
   });
 
-  it.skip("User can add dupliacte tag", () => {
+  it.skip("User can add duplicate tag", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTag1 = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTag1.tags = [expectedTag1];
@@ -568,7 +563,7 @@ describe("Track Tags: add, check, delete", () => {
           "ttaNeedsTag8",
           [expectedRecording1],
           [],
-          HTTP_OK200,
+          HttpStatusCode.Ok,
           { doNotValidate: true }
         ).then(() => {
           tag1.tagJWT = getCreds("ttaNeedsTag8").jwt;
@@ -633,7 +628,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaTrack9",
         "ttaTag9",
         tagA,
-        HTTP_Forbidden,
+        HttpStatusCode.Forbidden,
         { message: "Failed to verify JWT" }
       );
     });
@@ -676,7 +671,7 @@ describe("Track Tags: add, check, delete", () => {
           "ttaNeedsTag10",
           [expectedRecording1],
           [],
-          HTTP_OK200,
+          HttpStatusCode.Ok,
           { doNotValidate: true }
         ).then(() => {
           tag1.tagJWT = getCreds("ttaNeedsTag10").jwt;

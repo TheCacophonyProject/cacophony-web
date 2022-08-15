@@ -87,7 +87,7 @@ export interface DeviceHistoryEntry {
 // from api/v1/alerts (get)
 export interface ApiAlertUser {
   id: number;
-  username: string;
+  userName: string;
   email: string;
   name: string;
 }
@@ -95,20 +95,20 @@ export interface ApiAlertUser {
 // from api/v1/devices/users (get)
 export interface ApiDeviceUsersUser {
   id: number;
-  username: string;
+  userName: string;
   email: string;
   admin: boolean;
 }
 
 // from api/v1/recordings (get)
 export interface ApiUserNameAndId {
-  username: string;
+  userName: string;
   id: number;
 }
 
 // from api/v1/groups (get)
 export interface ApiGroupUser {
-  username: string;
+  userName: string;
   id: number;
   admin: boolean;
 }
@@ -129,7 +129,7 @@ export interface ApiGroupsUserReturned {
 
 export interface ApiDevicesDeviceUser {
   id: number;
-  username: string;
+  userName: string;
   email: string;
   name: string;
 }
@@ -137,20 +137,20 @@ export interface ApiDevicesDeviceUser {
 // from api/v1/devices/users (get)
 export interface ApiDeviceUsersUser {
   id: number;
-  username: string;
+  userName: string;
   email: string;
   admin: boolean;
 }
 
 // from api/v1/recordings (get)
 export interface ApiUserNameAndId {
-  username: string;
+  userName: string;
   id: number;
 }
 
 // from api/v1/groups (get)
 export interface ApiGroupUser {
-  username: string;
+  userName: string;
   id: number;
   admin: boolean;
 }
@@ -172,7 +172,7 @@ export interface ApiGroupsUserReturned {
 // from api/v1/devices
 export interface ApiDevicesDeviceUser {
   id: number;
-  username: string;
+  userName: string;
   DeviceUsers: ApiDeviceUserRelationship;
 }
 
@@ -208,7 +208,7 @@ export interface ApiEventReturned {
   DeviceId?: number;
   EventDetail?: ApiEventDetail;
   dateTime?: string;
-  Device?: { devicename: string };
+  Device?: { deviceName: string };
 }
 
 // from api/v1/events/powerevents (get)
@@ -220,10 +220,10 @@ export interface ApiPowerEventReturned {
   hasAlerted?: boolean;
   Device?: {
     id: number;
-    devicename: string;
+    deviceName: string;
     GroupId: number;
     Group: {
-      groupname: string;
+      groupName: string;
       id: number;
     };
   };
@@ -265,7 +265,7 @@ export interface ApiEventErrorCategory {
 // from api/v1/groups (get)
 export interface ApiGroupReturned {
   id: number;
-  groupname: string;
+  groupName: string;
   Users: ApiGroupUserRelation[];
   Devices: ApiDeviceIdAndName[];
   GroupUsers: ApiGroupUser[];
@@ -274,7 +274,7 @@ export interface ApiGroupReturned {
 // from api/v1/groups/get
 export interface ApiGroupUserRelation {
   id: number;
-  username: string;
+  userName: string;
   GroupUsers: {
     admin: boolean;
     createdAt: string;
@@ -379,7 +379,7 @@ export interface ApiRecordingReturned {
   StationId: number;
   comment?: string;
   processing: boolean;
-  Group?: { groupname: string };
+  Group?: { groupName: string };
   Station?: ApiRecordingStation;
   Tags?: ApiRecordingTag[];
   Tracks?: ApiRecordingTrack[];
@@ -561,11 +561,11 @@ export interface ApiStationDataReturned {
 export interface TestComparableEvent {
   id: number;
   dateTime: string;
-  createdat: string;
+  createdAt: string;
   DeviceId: number;
   EventDetail: ApiEventDetail;
   Device: {
-    devicename: string;
+    deviceName: string;
   };
 }
 
@@ -603,8 +603,8 @@ export interface TestComparablePowerEvent {
 }
 
 export interface TestDeviceAndGroup {
-  devicename: string;
-  groupname: string;
+  deviceName: string;
+  groupName: string;
 }
 
 // hash of name and ID - for wherever needed!

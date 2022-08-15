@@ -1,17 +1,342 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
+import { computed, onMounted, provide, ref, watch } from "vue";
+import { getAllVisitsForGroup } from "@api/Monitoring";
+import {
+  currentSelectedGroup,
+  urlNormalisedCurrentGroupName,
+  UserGroups,
+} from "@models/LoggedInUser";
+import type { SelectedGroup } from "@models/LoggedInUser";
+import type { ApiVisitResponse } from "@typedefs/api/monitoring";
+import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
+import RecordingViewModal from "@/components/RecordingViewModal.vue";
+import type { ApiStationResponse } from "@typedefs/api/station";
+import { getStationsForGroup } from "@api/Group";
+import GroupVisitsSummary from "@/components/GroupVisitsSummary.vue";
+import StationVisitSummary from "@/components/StationVisitSummary.vue";
+import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
+import type { LatLng } from "@typedefs/api/common";
+import { BSpinner } from "bootstrap-vue-3";
+import type { ApiGroupResponse } from "@typedefs/api/group";
+import { useRoute, useRouter } from "vue-router";
+
+const audioMode = ref<boolean>(false);
+const selectedVisit = ref<ApiVisitResponse | null>(null);
+const router = useRouter();
+const route = useRoute();
+
+const selectedVisitContext = computed({
+  get: () => selectedVisit.value,
+  set: (visit: ApiVisitResponse | null) => {
+    if (visit) {
+      // Set route so that modal shows up
+      const recordingIds = visit.recordings.map(({ recId }) => recId);
+      const params = {
+        visitLabel: visit.classification,
+        currentRecordingId: recordingIds[0].toString(),
+      };
+      if (recordingIds.length > 1) {
+        (params as Record<string, string>).recordingIds =
+          recordingIds.join(",");
+      }
+      router.push({
+        name: "dashboard-visit",
+        params,
+      });
+    }
+    selectedVisit.value = visit;
+  },
+});
+provide("selectedVisit", selectedVisitContext);
+// Use provide to provide selected visit context to loaded modal.
+// If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
+
+// TODO - Reload these from user preferences.
+const timePeriodDays = ref<number>(7);
+const visitsOrRecordings = ref<"visits" | "recordings">("visits");
+const speciesOrStations = ref<"species" | "station">("species");
+const loadingVisitsProgress = ref<number>(0);
+
+const visits = ref<ApiVisitResponse[] | null>(null);
+const stations = ref<ApiStationResponse[] | null>(null);
+
+const ignored: string[] = [
+  "unknown",
+  "none",
+  "unidentified",
+  "false-positive",
+  "bird",
+  "vehicle",
+  "human",
+];
+
+const visitorIsPredator = (visit: ApiVisitResponse) =>
+  visit && visit.classification && !ignored.includes(visit.classification);
+
+const predatorVisits = computed<ApiVisitResponse[]>(() => {
+  if (visits.value) {
+    return visits.value.filter(visitorIsPredator);
+  }
+  return [];
+});
+
+const speciesSummary = computed<Record<string, number>>(() => {
+  return predatorVisits.value.reduce(
+    (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
+      if (currentValue.classification) {
+        acc[currentValue.classification] =
+          acc[currentValue.classification] || 0;
+        acc[currentValue.classification]++;
+      }
+      return acc;
+    },
+    {}
+  );
+});
+const earliestDate = computed<Date>(() => {
+  const now = new Date();
+  return new Date(now.setUTCDate(now.getUTCDate() - timePeriodDays.value));
+});
+
+const loadVisits = async () => {
+  if (currentSelectedGroup.value) {
+    visits.value = null;
+    const allVisits = await getAllVisitsForGroup(
+      currentSelectedGroup.value.id,
+      timePeriodDays.value,
+      (val) => {
+        // TODO - Do we want to display loading progress via the UI?
+        loadingVisitsProgress.value = val;
+      }
+    );
+    visits.value = allVisits.visits;
+  }
+};
+
+const reloadDashboard = async () => {
+  await Promise.all([loadStations(), loadVisits()]);
+};
+
+watch(timePeriodDays, loadVisits);
+watch(currentSelectedGroup, reloadDashboard);
+// I don't think the underlying data changes?
+//watch(visitsOrRecordings, reloadDashboard);
+//watch(speciesOrStations, reloadDashboard);
+
+const stationsWithRecordingsInSelectedTimeWindow = computed<
+  ApiStationResponse[]
+>(() => {
+  if (stations.value) {
+    return stations.value.filter((station) => {
+      if (audioMode.value) {
+        return (
+          station.lastAudioRecordingTime &&
+          new Date(station.lastAudioRecordingTime) > earliestDate.value
+        );
+      } else {
+        return (
+          station.lastThermalRecordingTime &&
+          new Date(station.lastThermalRecordingTime) > earliestDate.value
+        );
+      }
+    });
+  }
+  return [];
+});
+
+// TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
+const stationsWithOnlineDevicesInSelectedTimeWindow = computed<
+  ApiStationResponse[]
+>(() => {
+  if (stations.value) {
+    return stations.value.filter((station) => {
+      if (audioMode.value) {
+        return (
+          station.lastActiveAudioTime &&
+          new Date(station.lastActiveAudioTime) > earliestDate.value
+        );
+      } else {
+        return (
+          station.lastActiveThermalTime &&
+          new Date(station.lastActiveThermalTime) > earliestDate.value
+        );
+      }
+    });
+  }
+  return [];
+});
+
+const allStations = computed<ApiStationResponse[]>(() => {
+  if (stations.value) {
+    return stations.value;
+  }
+  return [];
+});
+
+const loadStations = async () => {
+  if (currentSelectedGroup.value) {
+    stations.value = null;
+    const stationsResponse = await getStationsForGroup(
+      currentSelectedGroup.value.id.toString(),
+      true
+    );
+    if (stationsResponse.success) {
+      stations.value = stationsResponse.result.stations;
+    } else {
+      // TODO: Handle errors?
+      stations.value = [];
+    }
+  }
+};
+
+const canonicalLocationForActiveStations = computed<LatLng>(() => {
+  if (stationsWithRecordingsInSelectedTimeWindow.value.length) {
+    return stationsWithRecordingsInSelectedTimeWindow.value[0].location;
+  }
+  return { lat: 0, lng: 0 };
+});
+
+provide("locationContext", canonicalLocationForActiveStations);
+provide("locationContext", canonicalLocationForActiveStations);
+
+onMounted(async () => {
+  await reloadDashboard();
+  // Load visits for time period.
+  // Get species summary.
+});
+
+const isLoading = computed<boolean>(
+  () => stations.value === null || visits.value === null
+);
+
+const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
+  if (currentSelectedGroup.value && UserGroups.value) {
+    const group = UserGroups.value.find(
+      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+    );
+    return (
+      (group as ApiGroupResponse).lastAudioRecordingTime !== undefined &&
+      (group as ApiGroupResponse).lastThermalRecordingTime !== undefined
+    );
+  }
+  return true;
+});
+
+const hasSelectedVisit = computed<boolean>({
+  get: () =>
+    route.name === "dashboard-visit" || route.name === "dashboard-recording",
+  set: (value: boolean) => {
+    if (!value) {
+      // Return to dashboard from modal.
+      router.push({
+        name: "dashboard",
+        params: { groupName: urlNormalisedCurrentGroupName.value },
+      });
+      selectedVisitContext.value = null;
+    }
+  },
+});
+// TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
-  <section-header>Dashboard</section-header>
-
+  <div class="header-container">
+    <section-header>Dashboard</section-header>
+    <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
+      <div
+        class="d-flex align-items-center"
+        v-if="currentSelectedGroupHasAudioAndThermal"
+      >
+        <span
+          :class="['toggle-label', 'me-2', { selected: !audioMode }]"
+          @click="audioMode = false"
+          >Thermal</span
+        ><b-form-checkbox
+          class="bi-modal-switch"
+          v-model="audioMode"
+          switch
+        /><span
+          @click="audioMode = true"
+          :class="['toggle-label', { selected: audioMode }]"
+          >Audio</span
+        >
+      </div>
+      <div class="scope-filters d-flex align-items-center">
+        <span>View </span
+        ><select
+          class="form-select form-select-sm"
+          v-model="visitsOrRecordings"
+        >
+          <option>visits</option>
+          <option>recordings</option></select
+        ><span> in the last </span
+        ><select class="form-select form-select-sm" v-model="timePeriodDays">
+          <option value="1">24 hours</option>
+          <option value="3">3 days</option>
+          <option value="7">7 days</option></select
+        ><span> grouped by </span
+        ><select class="form-select form-select-sm" v-model="speciesOrStations">
+          <option>species</option>
+          <option>station</option>
+        </select>
+      </div>
+    </div>
+  </div>
   <h2>Species summary</h2>
-  <div style="background: #ccc; height: 93px" class="mb-5"></div>
-
+  <horizontal-overflow-carousel class="species-summary-container mb-5">
+    <div class="card-group species-summary flex-nowrap">
+      <div
+        v-for="[key, val] in Object.entries(speciesSummary)"
+        :key="key"
+        class="card d-flex flex-row species-summary-item align-items-center"
+      >
+        <img width="24" height="auto" class="species-icon ms-3" />
+        <div class="d-flex justify-content-evenly flex-column ms-3 pe-3">
+          <div class="species-count fs-4 lh-sm">{{ val }}</div>
+          <div class="species-name fs-6 lh-sm small">{{ key }}</div>
+        </div>
+      </div>
+    </div>
+  </horizontal-overflow-carousel>
   <h2>Visits summary</h2>
-  <div style="background: #ccc; height: 500px" class="mb-5"></div>
-
+  <div class="d-md-flex flex-md-row">
+    <group-visits-summary
+      class="mb-5 flex-md-fill"
+      :stations="allStations"
+      :active-stations="stationsWithRecordingsInSelectedTimeWindow"
+      :visits="predatorVisits"
+      :start-date="earliestDate"
+      :loading="isLoading"
+    />
+    <visits-breakdown-list
+      :visits="predatorVisits"
+      :location="canonicalLocationForActiveStations"
+      @selectedVisit="(visit) => (selectedVisitContext = visit)"
+    />
+  </div>
   <h2>Stations summary</h2>
-  <div style="background: #ccc; height: 500px"></div>
+  <horizontal-overflow-carousel class="mb-5">
+    <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
+    <b-spinner v-if="isLoading" />
+    <div
+      class="card-group species-summary flex-nowrap"
+      v-else-if="stationsWithRecordingsInSelectedTimeWindow.length"
+    >
+      <station-visit-summary
+        v-for="(station, index) in stationsWithRecordingsInSelectedTimeWindow"
+        :station="station"
+        :active-stations="stationsWithRecordingsInSelectedTimeWindow"
+        :stations="allStations"
+        :visits="predatorVisits"
+        :key="index"
+      />
+    </div>
+    <div v-else>
+      There were no active stations in the last {{ timePeriodDays }} days for
+      this group.
+    </div>
+  </horizontal-overflow-carousel>
+  <recording-view-modal @close="selectedVisitContext = null" />
 </template>
 <style lang="less" scoped>
 .group-name {
@@ -34,5 +359,108 @@ h2 {
   font-weight: 500;
   color: #444;
   font-size: 17px;
+}
+.header-container {
+  @media screen and (min-width: 576px) {
+    position: relative;
+  }
+}
+.dashboard-scope {
+  @media screen and (min-width: 576px) {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+}
+.toggle-label {
+  color: #999;
+  font-weight: 500;
+  font-size: 14px;
+  transition: color 0.2s linear;
+  cursor: pointer;
+  user-select: none;
+  &.selected {
+    color: #666;
+  }
+}
+
+.scope-filters {
+  font-size: 14px;
+  color: #999;
+  .form-select {
+    background-color: unset;
+    border: 0;
+    width: auto;
+  }
+  span {
+    white-space: nowrap;
+  }
+}
+
+.species-summary-container {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+.species-summary {
+  min-height: 68px;
+  user-select: none;
+  .card {
+    border-radius: unset;
+    border-left-width: 0;
+    border-bottom-width: 0;
+    border-top-width: 0;
+    &:last-child {
+      border-right-width: 0;
+    }
+  }
+  .species-icon {
+    width: 24px;
+    background: #aaa;
+    min-height: 24px;
+  }
+  .species-summary-item {
+    padding: 2px;
+    min-width: 130px; // TODO @media breakpoints
+  }
+  .species-count {
+    font-weight: 500;
+  }
+  .species-name {
+    //font-size
+  }
+}
+</style>
+<style lang="less">
+.bi-modal-switch.form-check-input,
+.bi-modal-switch.form-check-input:checked,
+.bi-modal-switch.form-check-input:focus {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  position: relative;
+  background-image: unset;
+  &::before {
+    position: absolute;
+    height: 100%;
+    width: 14px;
+    display: block;
+    content: " ";
+    background-repeat: no-repeat;
+    background-image: url(../assets/switch-base.svg);
+    background-size: auto 100%;
+    transition: transform 0.15s ease-in-out, left 0.2s ease-in-out;
+  }
+}
+.bi-modal-switch.form-check-input {
+  &::before {
+    left: 0;
+    transform: rotate(-180deg);
+  }
+}
+.bi-modal-switch.form-check-input:checked {
+  &::before {
+    left: 16px;
+    transform: rotate(0);
+  }
 }
 </style>

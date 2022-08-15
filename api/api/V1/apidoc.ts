@@ -114,7 +114,7 @@
  *      }
  *    },
  *    "Device": {
- *      "devicename": "test-camera"
+ *      "deviceName": "test-camera"
  *    }
  *  }
  */
@@ -144,7 +144,7 @@
  * @apiSuccessExample {json} ApiGroupUserRelation
  *  {
  *    id: 123,
- *    username: "name of user making query",
+ *    userName: "name of user making query",
  *    GroupUsers: {
  *      admin: true,
  *      createdAt: "2017-11-13T00:47:51.160Z",
@@ -158,7 +158,7 @@
  * @apiDefine ApiGroupUser
  * @apiSuccessExample {json} ApiGroupUser
  *  {
- *    username: "name-of-a-group-member",
+ *    userName: "name-of-a-group-member",
  *    id: 1234,
  *    isAdmin: false
  *  }
@@ -168,6 +168,6 @@
  * @apiSuccessExample {json} ApiDeviceIdAndName
  *  {
  *    id: 123456,
- *    devicename: "test-camera"
+ *    deviceName: "test-camera"
  *  }
  */

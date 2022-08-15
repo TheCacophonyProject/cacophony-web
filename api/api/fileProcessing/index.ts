@@ -1,4 +1,4 @@
-import responseUtil from "../V1/responseUtil";
+import { successResponse } from "../V1/responseUtil";
 import middleware, {
   getRecordingById,
   expectedTypeOf,
@@ -21,7 +21,11 @@ import { jsonSchemaOf } from "../schema-validation";
 import { booleanOf, idOf } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import util from "../V1/util";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 import {
   fetchUnauthorizedRequiredEventDetailSnapshotById,
   fetchUnauthorizedRequiredRecordingById,
@@ -75,7 +79,8 @@ export default function (app: Application) {
           type,
           state
         );
-        return response.status(204).json();
+        // FIXME - Do we really want this status code/response?
+        return response.status(HttpStatusCode.OkNoContent).json();
       } else {
         const rawJWT = recordingUtil.signedToken(
           recording.rawFileKey,
@@ -87,7 +92,7 @@ export default function (app: Application) {
           // Some versions of postgres seem to put this in.
           delete rec.location.crs;
         }
-        return response.status(200).json({
+        return successResponse(response, {
           recording: rec,
           rawJWT,
         });
@@ -196,9 +201,7 @@ export default function (app: Application) {
         ) {
           await finishedProcessingRecording(recording, result, prevState);
         }
-        return response
-          .status(200)
-          .json({ messages: [`Processing finished for #${id}`] });
+        return successResponse(response, `Processing finished for #${id}`);
       } else {
         // The current stage failed
         recording.processingState =
@@ -207,9 +210,8 @@ export default function (app: Application) {
         recording.processing = false;
         recording.processingEndTime = new Date().toISOString(); // Still set processingEndTime, since we might want to know how long it took to fail.
         await recording.save();
-        return response.status(200).json({
-          messages: [`Processing failed for #${id}`],
-        });
+        // FIXME - should this be an error response?
+        return successResponse(response, `Processing failed for #${id}`);
       }
     })
   );
@@ -243,14 +245,13 @@ export default function (app: Application) {
       if (!recording) {
         return next(
           new ClientError(
-            `Recording ${request.body.id} not found for jobKey ${request.body.jobKey}`,
-            400
+            `Recording ${request.body.id} not found for jobKey ${request.body.jobKey}`
           )
         );
       } else {
         if (recording.jobKey !== request.body.jobKey) {
           return next(
-            new ClientError("'jobKey' given did not match the database.", 400)
+            new ClientError("'jobKey' given did not match the database.")
           );
         }
         response.locals.recording = recording;
@@ -312,16 +313,13 @@ export default function (app: Application) {
             await recordingUtil.sendAlerts(recording.id);
           }
         }
-        return response.status(200).json({
-          messages: ["Processing finished."],
-        });
+        return successResponse(response, "Processing finished.");
       } else {
         recording.processingState =
           `${recording.processingState}.failed` as RecordingProcessingState;
         await recording.save();
-        return response.status(200).json({
-          messages: ["Processing failed."],
-        });
+        // FIXME, should this be an error response?
+        return successResponse(response, "Processing failed.");
       }
     }
   );
@@ -359,9 +357,7 @@ export default function (app: Application) {
         response.locals.recording,
         response.locals.tag
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Added new tag."],
+      return successResponse(response, "Added new tag.", {
         tagId: tagInstance.id,
       });
     }
@@ -428,9 +424,7 @@ export default function (app: Application) {
         AlgorithmId: request.body.algorithmId,
       });
       await track.updateIsFiltered();
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track added."],
+      return successResponse(response, "Track added.", {
         trackId: track.id,
       });
     }
@@ -453,10 +447,7 @@ export default function (app: Application) {
     async (request: Request, response: Response) => {
       const tracks = await response.locals.recording.getTracks();
       tracks.forEach((track) => track.destroy());
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Tracks cleared."],
-      });
+      return successResponse(response, "Tracks cleared.");
     }
   );
 
@@ -493,9 +484,7 @@ export default function (app: Application) {
         true,
         response.locals.data
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Track tag added."],
+      return successResponse(response, "Track tag added.", {
         trackTagId: tag.id,
       });
     }
@@ -522,10 +511,7 @@ export default function (app: Application) {
         "algorithm",
         response.locals.algorithm
       );
-
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Algorithm key retrieved."],
+      return successResponse(response, "Algorithm key retrieved.", {
         algorithmId: algorithm.id,
       });
     }
@@ -546,28 +532,24 @@ export default function (app: Application) {
   app.get(
     `${apiUrl}/:id/tracks`,
     param("id").isInt().toInt(),
-    middleware.requestWrapper(async (request, response) => {
-      const recording = await models.Recording.findOne({
-        where: { id: request.params.id },
-      });
-
-      if (!recording) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["No such recording."],
+    middleware.requestWrapper(
+      async (request: Request, response: Response, next: NextFunction) => {
+        const recording = await models.Recording.findOne({
+          where: { id: request.params.id },
         });
-        return;
-      }
 
-      const tracks = await recording.getActiveTracksTagsAndTagger();
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["OK."],
-        tracks: tracks.map((t) => {
+        if (!recording) {
+          return next(new ClientError("No such recording."));
+        }
+
+        const tracks = await recording.getActiveTracksTagsAndTagger();
+        tracks.forEach((t) => {
           delete t.dataValues.RecordingId;
-          return t;
-        }),
-      });
-    })
+        });
+        return successResponse(response, "OK.", {
+          tracks,
+        });
+      }
+    )
   );
 }

@@ -20,6 +20,8 @@ import log from "../logging";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals";
 import { NextFunction, Request, Response } from "express";
+import { HttpStatusCode } from "@typedefs/api/consts";
+import { serverErrorResponse, someResponse } from "@api/V1/responseUtil";
 
 function errorHandler(
   err: Error,
@@ -32,7 +34,7 @@ function errorHandler(
     err instanceof SyntaxError &&
     (err as any).type === "entity.parse.failed"
   ) {
-    err = new ClientError(err.message, 422); // Convert invalid JSON body error to UnprocessableEntity
+    err = new ClientError(err.message, HttpStatusCode.Unprocessable); // Convert invalid JSON body error to UnprocessableEntity
   }
   const session = asyncLocalStorage.getStore();
   let requestId;
@@ -46,25 +48,32 @@ function errorHandler(
       // FIXME - leave this in for sidekick etc, since currently it expects a 'message' error response.
       delete error.message;
     }
-    return response.status(err.statusCode).json({
-      messages: [err.message],
-      ...error,
-      requestId,
-    });
+    return someResponse(
+      response,
+      (err as CustomError).statusCode,
+      err.message,
+      {
+        ...error,
+        requestId,
+      }
+    );
   }
-  log.error("%s, %s", err.toString(), err.stack);
-  response.status(500).json({
-    messages: [`Internal server error: ${err.name}: ${err.message}.`],
-    errorType: "server",
-    requestId,
-  });
+  return serverErrorResponse(
+    response,
+    err,
+    `Internal server error: ${err.name}: ${err.message}`,
+    {
+      errorType: "server",
+      requestId,
+    }
+  );
 }
 
 class CustomError extends Error {
-  statusCode: number;
+  statusCode: HttpStatusCode;
   constructor(
     message: string = "Internal server error.",
-    statusCode: number = 500
+    statusCode: HttpStatusCode = HttpStatusCode.ServerError
   ) {
     super();
     this.name = this.constructor.name;
@@ -80,7 +89,7 @@ class CustomError extends Error {
   }
 
   toString() {
-    return format("%s [%d]: %s.", this.name, this.statusCode, this.message);
+    return format("%s [%d]: %s", this.name, this.statusCode, this.message);
   }
 
   toJson() {
@@ -104,7 +113,7 @@ export class ValidationError extends CustomError {
       .filter((error) => typeof error.msg === "string")
       .map(({ msg, location, param }) => `${location}.${param}: ${msg}`)
       .join("; ");
-    super(message, 422);
+    super(message, HttpStatusCode.Unprocessable);
     this.errors = errors;
   }
 
@@ -119,20 +128,36 @@ export class ValidationError extends CustomError {
   }
 }
 
-class AuthenticationError extends CustomError {
+// FIXME - Are we mixing up authentication and authorization here?
+export class AuthenticationError extends CustomError {
   constructor(message: string) {
-    super(message, 401);
+    super(message, HttpStatusCode.AuthorizationError);
   }
 }
 
 export class AuthorizationError extends CustomError {
   constructor(message: string) {
-    super(message, 403);
+    super(message, HttpStatusCode.Forbidden);
+  }
+}
+
+export class UnprocessableError extends CustomError {
+  constructor(message: string) {
+    super(message, HttpStatusCode.Unprocessable);
+  }
+}
+
+export class FatalError extends CustomError {
+  constructor(message: string) {
+    super(message, HttpStatusCode.ServerError);
   }
 }
 
 export class ClientError extends CustomError {
-  constructor(message: string, statusCode: number = 400) {
+  constructor(
+    message: string,
+    statusCode: HttpStatusCode = HttpStatusCode.BadRequest
+  ) {
     super(message, statusCode);
   }
 }

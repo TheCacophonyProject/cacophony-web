@@ -16,10 +16,13 @@ const userNameFieldValidationError = computed<
   () =>
     registerErrorMessage.value &&
     registerErrorMessage.value.errorType === "validation" &&
-    (registerErrorMessage.value.errors as FieldValidationError[])!.find(
+    (registerErrorMessage.value.errors as FieldValidationError[])?.find(
       ({ param }) => param === "userName"
     )
 );
+const userNameFieldValidationErrorMessage = computed<string>(() => {
+  return (userNameFieldValidationError.value as FieldValidationError).msg;
+});
 const userNameIsTooShort = computed<boolean>(
   () => userName.value.trim().length < 3
 );
@@ -47,10 +50,13 @@ const emailFieldValidationError = computed(() => {
   return (
     registerErrorMessage.value &&
     registerErrorMessage.value.errorType === "validation" &&
-    (registerErrorMessage.value.errors as FieldValidationError[])!.find(
+    (registerErrorMessage.value.errors as FieldValidationError[])?.find(
       ({ param }) => param === "email"
     )
   );
+});
+const emailFieldValidationErrorMessage = computed<string>(() => {
+  return (emailFieldValidationError.value as FieldValidationError).msg;
 });
 const emailIsTooShort = computed<boolean>(
   () => userEmailAddress.value.trim().length < 3
@@ -234,7 +240,7 @@ const register = async () => {
             <em>begin</em> with a letter or number.
           </span>
           <span v-else-if="userNameInUse">
-            {{ userNameFieldValidationError.msg }}
+            {{ userNameFieldValidationErrorMessage }}
           </span>
         </b-form-invalid-feedback>
       </div>
@@ -250,7 +256,7 @@ const register = async () => {
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
-          <span v-if="emailInUse">{{ emailFieldValidationError.msg }}</span>
+          <span v-if="emailInUse">{{ emailFieldValidationErrorMessage }}</span>
           <span v-else>Enter a valid email address</span>
         </b-form-invalid-feedback>
       </div>
@@ -269,11 +275,7 @@ const register = async () => {
           <button
             type="button"
             :title="showPassword ? 'hide password' : 'show password'"
-            class="
-              input-group-text
-              toggle-password-visibility-btn
-              justify-content-center
-            "
+            class="input-group-text toggle-password-visibility-btn justify-content-center"
             @click.stop.prevent="togglePasswordVisibility"
           >
             <font-awesome-icon :icon="showPassword ? 'eye-slash' : 'eye'" />

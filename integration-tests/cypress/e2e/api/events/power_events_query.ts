@@ -7,7 +7,7 @@ import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { ApiPowerEventReturned } from "@commands/types";
-import { HTTP_Forbidden, HTTP_Unprocessable } from "@commands/constants";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Events - query power events", () => {
   const time1 = "2018-01-01T07:22:56.000Z";
@@ -104,27 +104,27 @@ describe("Events - query power events", () => {
   });
 
   before(() => {
-    peGroup = { groupname: getTestName("peGroup"), id: getCreds("peGroup").id };
+    peGroup = { groupName: getTestName("peGroup"), id: getCreds("peGroup").id };
     peOtherGroup = {
-      groupname: getTestName("peOtherGroup"),
+      groupName: getTestName("peOtherGroup"),
       id: getCreds("peOtherGroup").id,
     };
     peCameraDevice = {
       id: getCreds("peCamera").id,
-      devicename: getTestName("peCamera"),
+      deviceName: getTestName("peCamera"),
       GroupId: getCreds("peGroup").id,
       Group: peGroup,
     };
     peOtherCameraDevice = {
       id: getCreds("peOtherCamera").id,
-      devicename: getTestName("peOtherCamera"),
+      deviceName: getTestName("peOtherCamera"),
       GroupId: getCreds("peGroup").id,
       Group: peGroup,
     };
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     peOtherGroupCameraDevice = {
       id: getCreds("peOtherGroupCamera").id,
-      devicename: getTestName("peOtherGroupCamera"),
+      deviceName: getTestName("peOtherGroupCamera"),
       GroupId: getCreds("peOtherGroup").id,
       Group: peOtherGroup,
     };
@@ -180,7 +180,7 @@ describe("Events - query power events", () => {
       {},
       [],
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -192,7 +192,7 @@ describe("Events - query power events", () => {
       { deviceId: 999999 },
       [],
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
     cy.log("Bad value for device id");
     cy.apiPowerEventsCheck(
@@ -201,7 +201,7 @@ describe("Events - query power events", () => {
       { deviceId: "bad value" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 });

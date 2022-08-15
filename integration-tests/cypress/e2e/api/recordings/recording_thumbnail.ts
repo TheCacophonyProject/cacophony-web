@@ -8,15 +8,13 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { getCreds } from "@commands/server";
-import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_OK200,
-  NOT_NULL_STRING,
-  EXCLUDE_IDS,
-} from "@commands/constants";
+import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_PROCESSING,
@@ -24,7 +22,7 @@ import {
 } from "@commands/dataTemplate";
 
 describe("Recording thumbnails", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
@@ -62,7 +60,7 @@ describe("Recording thumbnails", () => {
       //Second group with admin and member
       cy.testCreateUserGroupAndDevice("rtGroup2Admin", "rtGroup2", "rtCamera2");
 
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
     });
 
     beforeEach(() => {
@@ -194,7 +192,7 @@ describe("Recording thumbnails", () => {
               cy.apiRecordingThumbnailCheck(
                 "rtGroupAdmin",
                 "rtRecording01",
-                HTTP_OK200,
+                HttpStatusCode.Ok,
                 { type: "PNG" }
               );
             });
@@ -208,7 +206,7 @@ describe("Recording thumbnails", () => {
       cy.apiRecordingThumbnailCheck(
         "rtGroupMember",
         "rtRecording01",
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { type: "PNG" }
       );
     });
@@ -219,14 +217,19 @@ describe("Recording thumbnails", () => {
       cy.apiRecordingThumbnailCheck(
         "rtGroup2Admin",
         "rtRecording01",
-        HTTP_Forbidden
+        HttpStatusCode.Forbidden
       );
     });
 
     it("Can handle no returned matches", () => {
-      cy.apiRecordingThumbnailCheck("rtGroup2Admin", "999999", HTTP_Forbidden, {
-        useRawRecordingId: true,
-      });
+      cy.apiRecordingThumbnailCheck(
+        "rtGroup2Admin",
+        "999999",
+        HttpStatusCode.Forbidden,
+        {
+          useRawRecordingId: true,
+        }
+      );
     });
 
     it("Thumbnail generator can handle recording with no thumbnail data", () => {
@@ -314,7 +317,7 @@ describe("Recording thumbnails", () => {
               cy.apiRecordingThumbnailCheck(
                 "rtGroupAdmin",
                 "rtRecording02",
-                HTTP_BadRequest,
+                HttpStatusCode.BadRequest,
                 { message: "No thumbnail exists" }
               );
             });

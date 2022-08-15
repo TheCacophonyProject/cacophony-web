@@ -622,7 +622,7 @@ from (
             include: [
               {
                 model: models.User,
-                attributes: ["username"],
+                attributes: ["userName"],
               },
             ],
             required: false,
@@ -811,7 +811,7 @@ from (
       include: [
         {
           model: models.Group,
-          attributes: ["groupname"],
+          attributes: ["groupName"],
           required: !viewAsSuperAdmin,
           include: requireGroupMembership,
         },
@@ -825,7 +825,7 @@ from (
           include: [
             {
               association: "tagger",
-              attributes: ["username", "id"],
+              attributes: ["userName", "id"],
             },
           ],
         },
@@ -866,7 +866,7 @@ from (
               include: [
                 {
                   model: models.User,
-                  attributes: ["username", "id"],
+                  attributes: ["userName", "id"],
                 },
               ],
               required: false,
@@ -876,7 +876,7 @@ from (
         {
           model: models.Device,
           where: {},
-          attributes: ["devicename", "id"],
+          attributes: ["deviceName", "id"],
         },
       ],
       limit,

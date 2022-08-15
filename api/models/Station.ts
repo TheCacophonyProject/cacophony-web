@@ -37,6 +37,8 @@ export interface Station extends Sequelize.Model, ModelCommon<Station> {
   lastUpdatedById: UserId | null;
   lastThermalRecordingTime: Date | null;
   lastAudioRecordingTime: Date | null;
+  lastActiveThermalTime: Date | null;
+  lastActiveAudioTime: Date | null;
   createdAt: Date;
   updatedAt: Date;
   activeAt: Date;
@@ -90,6 +92,14 @@ export default function (
       allowNull: true,
     },
     lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastActiveThermalTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastActiveAudioTime: {
       type: DataTypes.DATE,
       allowNull: true,
     },

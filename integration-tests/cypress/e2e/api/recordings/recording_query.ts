@@ -1,9 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_OK200,
-  HTTP_Unprocessable,
-  EXCLUDE_IDS_ARRAY,
-} from "@commands/constants";
+import { EXCLUDE_IDS_ARRAY } from "@commands/constants";
 import {
   TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_AUDIO_RECORDING,
@@ -24,15 +20,17 @@ import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
-  const queryHasPositions = false;
-  //TODO enable after merge
 
-  //Do not validate IDs or additoonaMetadata
+  //Do not validate IDs or additionalMetadata
   //On test server, do not validate processingData, as recordings may be processed during test
   let EXCLUDE_PARAMS = [];
   if (Cypress.env("running_in_a_dev_environment") == true) {
@@ -549,13 +547,13 @@ describe("Recordings query using where", () => {
     );
   });
 
-  //TODO: devicename and groupname appear not to be supported.  What nested parameters are?
+  //TODO: deviceName and groupName appear not to be supported.  What nested parameters are?
   it.skip("Can query by nested parameters", () => {
-    cy.log("Device.devicename");
+    cy.log("Device.deviceName");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
       {
-        where: { "Device.devicename": getTestName("rqCamera1") },
+        where: { "Device.deviceName": getTestName("rqCamera1") },
         order: '[["id", "ASC"]]',
       },
       [expectedRecording1, expectedRecording2],
@@ -563,15 +561,15 @@ describe("Recordings query using where", () => {
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
-      { where: { "Device.devicename": getTestName("rqCamera1") } },
+      { where: { "Device.deviceName": getTestName("rqCamera1") } },
       2
     );
 
-    cy.log("Group.groupname");
+    cy.log("Group.groupName");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
       {
-        where: { "Group.groupname": getTestName("rqGroup") },
+        where: { "Group.groupName": getTestName("rqGroup") },
         order: '[["id", "ASC"]]',
       },
       [expectedRecording1, expectedRecording2, expectedRecording3],
@@ -579,11 +577,11 @@ describe("Recordings query using where", () => {
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
-      { where: { "Group.groupname": getTestName("rqGroup") } },
+      { where: { "Group.groupName": getTestName("rqGroup") } },
       3
     );
 
-    cy.log("Station.stationname");
+    cy.log("Station.stationName");
     //TODO: add stations once helper functions support them
     //
   });
@@ -715,41 +713,41 @@ describe("Recordings query using where", () => {
   //TODO: Issue 94: invalid where, order parameters not caught - cause server error
   it("Can handle invalid queries", () => {
     //cy.log("Where");
-    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {badParameter: "bad value"}}, [], EXCLUDE_PARAMS, HTTP_Unprocessable);
-    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {badParameter: "bad value"}}, undefined, HTTP_Unprocessable);
+    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {badParameter: "bad value"}}, [], EXCLUDE_PARAMS, HttpStatusCode.Unprocessable);
+    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {badParameter: "bad value"}}, undefined, HttpStatusCode.Unprocessable);
     cy.log("Tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
       { where: {}, tagMode: "rubbish value" },
       [],
       EXCLUDE_PARAMS,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: {}, tagMode: "rubbish value" },
       undefined,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //cy.log("order");
-    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, [], EXCLUDE_PARAMS, HTTP_Unprocessable);
-    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, undefined, HTTP_Unprocessable);
+    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, [], EXCLUDE_PARAMS, HttpStatusCode.Unprocessable);
+    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, undefined, HttpStatusCode.Unprocessable);
     //cy.log("unsupported parameter");
-    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, [], EXCLUDE_PARAMS, HTTP_Unprocessable);
-    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, undefined, HTTP_Unprocessable);
+    //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, [], EXCLUDE_PARAMS, HttpStatusCode.Unprocessable);
+    //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, badParameter: 11}, undefined, HttpStatusCode.Unprocessable);
   });
 
   //TODO: Issue 91: /ap1/v1/recordings/count ignoring view-mode
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Super-user as user should see only their recordings", () => {
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
       cy.apiGroupUserAdd(
         "rqGroupAdmin",
         superuser,
         "rqGroup",
         true,
         true,
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { useRawUserName: true }
       );
 
@@ -765,9 +763,15 @@ describe("Recordings query using where", () => {
         EXCLUDE_PARAMS
       );
       //cy.apiRecordingsCountCheck( superuser, {where: {}, "view-mode":'user'}, 2);
-      cy.apiGroupUserRemove("rqGroupAdmin", superuser, "rqGroup", HTTP_OK200, {
-        useRawUserName: true,
-      });
+      cy.apiGroupUserRemove(
+        "rqGroupAdmin",
+        superuser,
+        "rqGroup",
+        HttpStatusCode.Ok,
+        {
+          useRawUserName: true,
+        }
+      );
     });
   } else {
     it.skip("Super-user as user should see only their recordings", () => {});
@@ -787,7 +791,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 20 }
     );
 
@@ -805,7 +809,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(3, 6),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 20 }
     );
 
@@ -823,7 +827,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(19, 20),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 20 }
     );
   });
@@ -842,7 +846,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 3 }
     );
 
@@ -860,7 +864,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(3, 6),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 3 }
     );
 
@@ -878,7 +882,7 @@ describe("Recordings query using where", () => {
       },
       expectedRecording.slice(19, 20),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 1 }
     );
   });
@@ -890,7 +894,7 @@ describe("Recordings query using where", () => {
       { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { count: 20 }
     );
   });

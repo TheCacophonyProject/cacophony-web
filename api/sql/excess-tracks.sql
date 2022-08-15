@@ -12,5 +12,5 @@ delete from "Recordings" where id in (
   "Devices" d
   where jsonb_array_length("additionalMetadata"->'tracks') >= 8
   and r."DeviceId" = d.id
-  and devicename = 'somedevice'
+  and "deviceName" = 'somedevice'
 );

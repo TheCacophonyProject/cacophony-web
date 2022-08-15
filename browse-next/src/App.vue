@@ -8,9 +8,9 @@ import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue"
 import {
   userIsLoggedIn,
   userHasGroups,
-  CurrentUser,
+  CurrentUser as fallibleCurrentUser,
   euaIsOutOfDate,
-  currentSelectedGroup,
+  currentSelectedGroup as fallibleCurrentSelectedGroup,
   userHasMultipleGroups,
   isLoggingInAutomatically,
   isFetchingGroups,
@@ -20,11 +20,21 @@ import {
   joiningNewGroup,
   urlNormalisedCurrentGroupName,
   pinSideNav,
+  rafFps,
+  type SelectedGroup,
+  type LoggedInUser,
 } from "@/models/LoggedInUser";
-import { defineAsyncComponent, onBeforeMount, ref } from "vue";
+import {
+  computed,
+  defineAsyncComponent,
+  onBeforeMount,
+  onMounted,
+  ref,
+} from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
 import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
+import { CurrentViewAbortController } from "@/router";
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
@@ -39,12 +49,54 @@ const loggedInAsAnotherUser = false;
 const environmentIsProduction = false;
 const hasGitReleaseInfoBar = ref(false);
 
+const currentSelectedGroup = computed<SelectedGroup>(() => {
+  return fallibleCurrentSelectedGroup.value as SelectedGroup;
+});
+
+const CurrentUser = computed<LoggedInUser>(() => {
+  return fallibleCurrentUser.value as LoggedInUser;
+});
+
 onBeforeMount(() => {
   // Override bootstrap CSS variables.
   // This has to appear after the original bootstrap CSS variable declarations in the DOM to take effect.
   const styleOverrides = document.createElement("style");
   styleOverrides.innerText = `:root { --bs-body-font-family: "Roboto", sans-serif; } body { font-family: var(--bs-body-font-family); }`;
   document.body.insertBefore(styleOverrides, document.body.firstChild);
+});
+
+const frameTimes: number[] = [];
+const pollFrameTimes = () => {
+  frameTimes.push(performance.now());
+  if (frameTimes.length < 10) {
+    requestAnimationFrame(pollFrameTimes);
+  } else {
+    const diffs = [];
+    for (let i = 1; i < frameTimes.length; i++) {
+      diffs.push(frameTimes[i] - frameTimes[i - 1]);
+    }
+    let total = 0;
+    for (const val of diffs) {
+      total += val;
+    }
+    // Get the average frame time
+    const multiplier = Math.round(1000 / (total / diffs.length) / 30);
+    if (multiplier === 1) {
+      // 30fps
+      rafFps.value = 30;
+    } else if (multiplier === 2 || multiplier === 3) {
+      // 60fps
+      rafFps.value = 60;
+    } else if (multiplier >= 4) {
+      // 120fps
+      rafFps.value = 120;
+    }
+  }
+};
+
+onMounted(() => {
+  // Wait a second so that we know rendering has settled down, then try to work out the display refresh rate.
+  setTimeout(pollFrameTimes, 1000);
 });
 </script>
 <template>
@@ -103,24 +155,10 @@ onBeforeMount(() => {
           <span class="visually-hidden">Icon-only</span>
         </router-link>
         <div
-          class="
-            d-flex
-            flex-row
-            group-switcher
-            justify-content-between
-            mt-5
-            mb-2
-          "
+          class="d-flex flex-row group-switcher justify-content-between mt-5 mb-2"
         >
           <button
-            class="
-              btn btn-light
-              current-group
-              d-flex
-              flex-fill
-              me-1
-              align-items-center
-            "
+            class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
             v-if="userHasMultipleGroups"
             @click="showSwitchGroup.visible = true"
           >
@@ -367,7 +405,9 @@ onBeforeMount(() => {
       <div class="container p-0">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
-        <router-view class="d-flex flex-column router-view" />
+        <div class="d-flex flex-column router-view">
+          <router-view />
+        </div>
       </div>
     </section>
   </main>
@@ -377,13 +417,7 @@ onBeforeMount(() => {
   </main>
   <main
     v-else
-    class="
-      logged-out
-      justify-content-center
-      align-items-center
-      d-flex
-      flex-column flex-fill
-    "
+    class="logged-out justify-content-center align-items-center d-flex flex-column flex-fill"
   >
     <!--  This will always be the sign-in screen, right?  -->
     <router-view />
@@ -413,6 +447,43 @@ onBeforeMount(() => {
       opacity: 1;
     }
   }
+}
+:root {
+  --bs-body-font-size: 1rem;
+}
+
+.fs-1 {
+  font-size: calc(var(--bs-body-font-size) * 2.5);
+}
+.fs-2 {
+  font-size: calc(var(--bs-body-font-size) * 2);
+}
+.fs-3 {
+  font-size: calc(var(--bs-body-font-size) * 1.75);
+}
+.fs-4 {
+  font-size: calc(var(--bs-body-font-size) * 1.5);
+}
+.fs-5 {
+  font-size: calc(var(--bs-body-font-size) * 1.25);
+}
+.fs-6 {
+  font-size: calc(var(--bs-body-font-size) * 1);
+}
+.fw-bold {
+  font-weight: 500 !important;
+}
+//.fs-7 {
+//  font-size: calc(var(--bs-body-font-size) * 0.9375); // 14px
+//}
+.fs-7 {
+  font-size: calc(var(--bs-body-font-size) * 0.8125); // 13px
+}
+.fs-8 {
+  font-size: calc(var(--bs-body-font-size) * 0.75); // 12px
+}
+.fs-9 {
+  font-size: calc(var(--bs-body-font-size) * 0.625); // 10px
 }
 </style>
 
@@ -451,7 +522,7 @@ onBeforeMount(() => {
   overflow: hidden;
   transition: width 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-  z-index: 1;
+  z-index: 1002;
 
   .nav-icon-wrapper {
     // Keep the icons vertically aligned relative to one-another.

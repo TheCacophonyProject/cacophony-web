@@ -19,33 +19,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { validateFields } from "../middleware";
 import auth from "../auth";
 import models from "@models";
-import responseUtil from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
-import { Application, Response, Request, NextFunction } from "express";
-import { ClientError } from "../customErrors";
+import { Application, NextFunction, Request, Response } from "express";
+import { ClientError, UnprocessableError } from "../customErrors";
 import {
-  extractJwtAuthorizedUser,
   extractJwtAuthorisedDevice,
-  fetchAuthorizedRequiredDeviceInGroup,
-  fetchAuthorizedRequiredDeviceById,
-  fetchUnauthorizedRequiredGroupByNameOrId,
+  extractJwtAuthorizedUser,
   fetchAdminAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
-  fetchUnauthorizedRequiredScheduleById,
   fetchAuthorizedRequiredGroupById,
-  parseJSONField,
   fetchAuthorizedRequiredStationById,
+  fetchUnauthorizedRequiredGroupByNameOrId,
+  fetchUnauthorizedRequiredScheduleById,
+  parseJSONField,
 } from "../extract-middleware";
 import {
-  checkDeviceNameIsUniqueInGroup,
   anyOf,
+  checkDeviceNameIsUniqueInGroup,
+  deprecatedField,
   idOf,
+  integerOfWithDefault,
   nameOf,
   nameOrIdOf,
   validNameOf,
   validPasswordOf,
-  deprecatedField,
-  integerOfWithDefault,
 } from "../validation-middleware";
 import { Device } from "models/Device";
 import {
@@ -58,7 +58,7 @@ import { ApiGroupUserResponse } from "@typedefs/api/group";
 import { jsonSchemaOf } from "@api/schema-validation";
 import { Op } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory";
-import { RecordingType } from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
 import config from "@config";
 
@@ -68,10 +68,10 @@ export const mapDeviceResponse = (
 ): ApiDeviceResponse => {
   try {
     const mapped: ApiDeviceResponse = {
-      deviceName: device.devicename,
+      deviceName: device.deviceName,
       id: device.id,
       type: device.kind,
-      groupName: device.Group?.groupname,
+      groupName: device.Group?.groupName,
       groupId: device.GroupId,
       active: device.active,
       saltId: device.saltId,
@@ -173,30 +173,34 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
     async (request: Request, response: Response) => {
+      if (request.body.devicename) {
+        request.body.deviceName = request.body.devicename;
+        delete request.body.devicename;
+      }
       const device: Device = await models.Device.create({
-        devicename: request.body.devicename || request.body.deviceName,
+        deviceName: request.body.deviceName,
         password: request.body.password,
         GroupId: response.locals.group.id,
       });
       let saltId;
       if (request.body.saltId) {
         /*
-        NOTE: We decided not to use this check, since damage caused by someone
-        spamming us with in-use saltIds is minimal.
-        const existingSaltId = await models.Device.findOne({
-          where: {
-            saltId: request.body.saltId,
-            active: true
-          },
-        });
-        if (existingSaltId !== null) {
-          return next(
-            new ClientError(
-              `saltId ${request.body.saltId} is already in use by another active device`
-            )
-          );
-        }
-        */
+          NOTE: We decided not to use this check, since damage caused by someone
+          spamming us with in-use saltIds is minimal.
+          const existingSaltId = await models.Device.findOne({
+            where: {
+              saltId: request.body.saltId,
+              active: true
+            },
+          });
+          if (existingSaltId !== null) {
+            return next(
+              new ClientError(
+                `saltId ${request.body.saltId} is already in use by another active device`
+              )
+            );
+          }
+          */
         saltId = request.body.saltId;
       } else {
         saltId = device.id;
@@ -210,13 +214,11 @@ export default function (app: Application, baseUrl: string) {
           GroupId: device.GroupId,
           DeviceId: device.id,
           fromDateTime: new Date(),
-          deviceName: device.devicename,
+          deviceName: device.deviceName,
           uuid: device.id,
         }),
       ]);
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Created new device."],
+      return successResponse(response, "Created new device.", {
         id: device.id,
         saltId: device.saltId,
         token: `JWT ${auth.createEntityJWT(device)}`,
@@ -257,7 +259,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
       if (request.headers["user-agent"].includes("okhttp")) {
-        return responseUtil.send(response, {
+        return successResponse(response, "Completed get devices query.", {
           devices: {
             rows: mapLegacyDevicesResponse(
               mapDevicesResponse(
@@ -266,18 +268,13 @@ export default function (app: Application, baseUrl: string) {
               )
             ),
           },
-          statusCode: 200,
-          messages: ["Completed get devices query."],
         });
       }
-
-      return responseUtil.send(response, {
+      return successResponse(response, "Completed get devices query.", {
         devices: mapDevicesResponse(
           response.locals.devices,
           response.locals.viewAsSuperUser
         ),
-        statusCode: 200,
-        messages: ["Completed get devices query."],
       });
     }
   );
@@ -336,13 +333,11 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
+      return successResponse(response, "Completed get device query.", {
         device: mapDeviceResponse(
           response.locals.device,
           response.locals.viewAsSuperUser
         ),
-        statusCode: 200,
-        messages: ["Completed get device query."],
       });
     }
   );
@@ -383,14 +378,13 @@ export default function (app: Application, baseUrl: string) {
         response.locals.setStationAtTime.stationId
       )(request, response, next);
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.device.GroupId !== response.locals.station.GroupId) {
-        return responseUtil.send(response, {
-          statusCode: 403,
-          messages: [
-            "Supplied station doesn't belong to the same group as supplied device",
-          ],
-        });
+        return next(
+          new ClientError(
+            "Supplied station doesn't belong to the same group as supplied device"
+          )
+        );
       }
       const { stationId, fromDateTime, location } =
         response.locals.setStationAtTime;
@@ -400,10 +394,11 @@ export default function (app: Application, baseUrl: string) {
       try {
         fromDateTimeParsed = new Date(Date.parse(fromDateTime));
       } catch (e) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Supplied fromDateTime is not a valid timestamp"],
-        });
+        return next(
+          new UnprocessableError(
+            "Supplied fromDateTime is not a valid timestamp"
+          )
+        );
       }
       if (fromDateTimeParsed < station.activeAt) {
         station = await station.update({ activeAt: fromDateTime });
@@ -436,7 +431,7 @@ export default function (app: Application, baseUrl: string) {
           location: setLocation,
           setBy: "user",
           GroupId: device.GroupId,
-          deviceName: device.devicename,
+          deviceName: device.deviceName,
           stationId: station.id,
         });
       }
@@ -592,13 +587,10 @@ export default function (app: Application, baseUrl: string) {
       if (allStationRecordingTimeUpdates.length) {
         await Promise.all(allStationRecordingTimeUpdates);
       }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [
-          "Updated device station at time.",
-          `Updated ${affectedCount} recording(s)`,
-        ],
-      });
+      return successResponse(response, [
+        "Updated device station at time.",
+        `Updated ${affectedCount} recording(s)`,
+      ]);
     }
   );
 
@@ -657,13 +649,11 @@ export default function (app: Application, baseUrl: string) {
       param("groupIdOrName")
     ),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
+      return successResponse(response, "Request successful", {
         device: mapDeviceResponse(
           response.locals.device,
           response.locals.viewAsSuperUser
         ),
-        messages: ["Request successful"],
       });
     }
   );
@@ -711,18 +701,13 @@ export default function (app: Application, baseUrl: string) {
     },
     async (request: Request, response: Response) => {
       const users = (
-        await response.locals.group.getUsers({ attributes: ["id", "username"] })
+        await response.locals.group.getUsers({ attributes: ["id", "userName"] })
       ).map((user) => ({
-        userName: user.username,
+        userName: user.userName,
         id: user.id,
         admin: (user as any).GroupUsers.admin,
       }));
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["OK."],
-        users,
-      });
+      return successResponse(response, "OK.", { users });
     }
   );
 
@@ -761,17 +746,19 @@ export default function (app: Application, baseUrl: string) {
       ) {
         next();
       } else {
-        return next(new ClientError("Schedule doesn't belong to user", 403));
+        return next(
+          new ClientError(
+            "Schedule doesn't belong to user",
+            HttpStatusCode.Forbidden
+          )
+        );
       }
     },
     async (request, response) => {
       await response.locals.device.update({
         ScheduleId: response.locals.schedule.id,
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["schedule assigned"],
-      });
+      return successResponse(response, "schedule assigned");
     }
   );
 
@@ -810,17 +797,19 @@ export default function (app: Application, baseUrl: string) {
       ) {
         next();
       } else {
-        return next(new ClientError("Schedule doesn't belong to user", 403));
+        return next(
+          new ClientError(
+            "Schedule doesn't belong to user",
+            HttpStatusCode.Forbidden
+          )
+        );
       }
     },
     async (request, response) => {
       await response.locals.device.update({
         ScheduleId: null,
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["schedule removed"],
-      });
+      return successResponse(response, "schedule removed");
     }
   );
 
@@ -864,13 +853,11 @@ export default function (app: Application, baseUrl: string) {
       if (device === false) {
         return next(
           new ClientError(
-            `already a device in group '${response.locals.group.groupname}' with the name '${request.body.newName}'`
+            `already a device in group '${response.locals.group.groupName}' with the name '${request.body.newName}'`
           )
         );
       }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Registered the device again."],
+      return successResponse(response, "Registered the device again.", {
         id: device.id,
         token: `JWT ${auth.createEntityJWT(device)}`,
       });
@@ -912,11 +899,7 @@ export default function (app: Application, baseUrl: string) {
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        cacophonyIndex,
-        messages: [],
-      });
+      return successResponse(response, { cacophonyIndex });
     }
   );
 
@@ -955,11 +938,7 @@ export default function (app: Application, baseUrl: string) {
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number
       );
-      return responseUtil.send(response, {
-        statusCode: 200,
-        cacophonyIndex,
-        messages: [],
-      });
+      return successResponse(response, { cacophonyIndex });
     }
   );
 
@@ -984,11 +963,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestDevice.id
       )) as Device;
       await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Heartbeat updated."],
-      });
+      return successResponse(response, "Heartbeat updated.");
     }
   );
 
@@ -1018,12 +993,7 @@ export default function (app: Application, baseUrl: string) {
           },
           order: [["fromDateTime", "ASC"]],
         });
-
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got device history"],
-          history,
-        });
+        return successResponse(response, "Got device history", { history });
       }
     );
   }

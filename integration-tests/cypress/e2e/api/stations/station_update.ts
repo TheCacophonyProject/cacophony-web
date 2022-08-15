@@ -2,13 +2,7 @@
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
-import {
-  NOT_NULL,
-  NOT_NULL_STRING,
-  HTTP_OK200,
-  HTTP_Unprocessable,
-  HTTP_Forbidden,
-} from "@commands/constants";
+import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import {
   TestCreateStationData,
   TestCreateExpectedStation,
@@ -17,6 +11,7 @@ import {
 } from "@commands/api/station";
 
 import { ApiStationData } from "@commands/types";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Stations: updating", () => {
   const TemplateExpectedStation: ApiStationResponse = {
@@ -79,7 +74,7 @@ describe("Stations: updating", () => {
       "stuStation1",
       undefined,
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -140,7 +135,7 @@ describe("Stations: updating", () => {
       "stuStation3",
       undefined,
       undefined,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -164,7 +159,7 @@ describe("Stations: updating", () => {
       null,
       null,
       null,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -288,7 +283,7 @@ describe("Stations: updating", () => {
       undefined,
       undefined,
       undefined,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { warnings: "none" }
     );
   });
@@ -325,7 +320,7 @@ describe("Stations: updating", () => {
           undefined,
           undefined,
           undefined,
-          HTTP_OK200,
+          HttpStatusCode.Ok,
           {
             warnings: [
               `Updated station location is too close to ${getTestName(
@@ -374,7 +369,7 @@ describe("Stations: updating", () => {
       undefined,
       undefined,
       undefined,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { warnings: "none" }
     );
   });

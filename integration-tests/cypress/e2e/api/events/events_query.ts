@@ -4,12 +4,7 @@ import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { ApiEventReturned } from "@commands/types";
-
-import {
-  HTTP_Unprocessable,
-  HTTP_OK200,
-  HTTP_Forbidden,
-} from "@commands/constants";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Events - query events", () => {
   const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values
@@ -77,7 +72,7 @@ describe("Events - query events", () => {
       createdAt: null,
       dateTime: time1,
       DeviceId: getCreds("eqCamera").id,
-      Device: { devicename: getTestName("eqCamera") },
+      Device: { deviceName: getTestName("eqCamera") },
       EventDetail: eventDetails1,
     };
     expectedEvent2 = {
@@ -85,7 +80,7 @@ describe("Events - query events", () => {
       createdAt: null,
       dateTime: time2,
       DeviceId: getCreds("eqCamera").id,
-      Device: { devicename: getTestName("eqCamera") },
+      Device: { deviceName: getTestName("eqCamera") },
       EventDetail: eventDetails2,
     };
     expectedEvent3 = {
@@ -93,7 +88,7 @@ describe("Events - query events", () => {
       createdAt: null,
       dateTime: time3,
       DeviceId: getCreds("eqOtherCamera").id,
-      Device: { devicename: getTestName("eqOtherCamera") },
+      Device: { deviceName: getTestName("eqOtherCamera") },
       EventDetail: eventDetails3,
     };
     //   expectedEvent4 = {
@@ -101,7 +96,7 @@ describe("Events - query events", () => {
     //     createdAt: null,
     //     dateTime: time4,
     //     DeviceId: getCreds("eqOtherGroupCamera").id,
-    //     Device: { devicename: getTestName("eqOtherGroupCamera") },
+    //     Device: { deviceName: getTestName("eqOtherGroupCamera") },
     //     EventDetail: eventDetails4,
     //   };
   });
@@ -147,7 +142,7 @@ describe("Events - query events", () => {
       {},
       [],
       EXCL_TIME_ID,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -211,7 +206,7 @@ describe("Events - query events", () => {
       { startTime: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsCheck(
       "eqGroupAdmin",
@@ -219,7 +214,7 @@ describe("Events - query events", () => {
       { endTime: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsCheck(
       "eqGroupAdmin",
@@ -227,7 +222,7 @@ describe("Events - query events", () => {
       { startTime: "not a timestamp" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsCheck(
       "eqGroupAdmin",
@@ -235,7 +230,7 @@ describe("Events - query events", () => {
       { endTime: "not a timestamp" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("Time range start>end returns empty");
     cy.apiEventsCheck(
@@ -358,7 +353,7 @@ describe("Events - query events", () => {
       { limit: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsCheck(
       "eqGroupAdmin",
@@ -366,7 +361,7 @@ describe("Events - query events", () => {
       { limit: "a" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //TODO Following test fails.  Issue 68
     // cy.apiEventsCheck("eqGroupAdmin",undefined,{limit: -1}, [],[],HTTP_Unprocessable);
@@ -378,7 +373,7 @@ describe("Events - query events", () => {
       { limit: 1, offset: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsCheck(
       "eqGroupAdmin",
@@ -386,7 +381,7 @@ describe("Events - query events", () => {
       { limit: 1, offset: "a" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     //TODO Following test fails.  Issue 68
     //cy.apiEventsCheck("eqGroupAdmin",undefined,{limit: 1, offset: -1}, [],[],HTTP_Unprocessable);
@@ -447,7 +442,7 @@ describe("Events - query events", () => {
       { type: "" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.log("Test cannot inject 'LIKE'-type searches");
     cy.apiEventsCheck(
@@ -456,7 +451,7 @@ describe("Events - query events", () => {
       { type: "a%" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
     cy.apiEventsCheck(
       "eqGroupAdmin",
@@ -464,7 +459,7 @@ describe("Events - query events", () => {
       { type: "a*" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -476,7 +471,7 @@ describe("Events - query events", () => {
       { latest: true },
       [expectedEvent3, expectedEvent2, expectedEvent1],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true }
     );
 
@@ -487,7 +482,7 @@ describe("Events - query events", () => {
       { latest: true, limit: 2, offset: 0 },
       [expectedEvent3, expectedEvent2],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true, offset: 0, count: 3 }
     );
     cy.apiEventsCheck(
@@ -496,7 +491,7 @@ describe("Events - query events", () => {
       { latest: true, limit: 2, offset: 1 },
       [expectedEvent2, expectedEvent1],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true, offset: 1, count: 3 }
     );
     cy.apiEventsCheck(
@@ -505,7 +500,7 @@ describe("Events - query events", () => {
       { latest: true, limit: 2, offset: 2 },
       [expectedEvent1],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true, offset: 2, count: 3 }
     );
     cy.apiEventsCheck(
@@ -514,7 +509,7 @@ describe("Events - query events", () => {
       { latest: true, limit: 2, offset: 3 },
       [],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true, offset: 3, count: 3 }
     );
 
@@ -525,7 +520,7 @@ describe("Events - query events", () => {
       { latest: true, startTime: time1, endTime: time3 },
       [expectedEvent2, expectedEvent1],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true }
     );
     cy.apiEventsCheck(
@@ -534,7 +529,7 @@ describe("Events - query events", () => {
       { latest: true, startTime: time2, endTime: time3 },
       [expectedEvent2],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true }
     );
 
@@ -545,7 +540,7 @@ describe("Events - query events", () => {
       { latest: false },
       [expectedEvent1, expectedEvent2, expectedEvent3],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true }
     );
 
@@ -556,7 +551,7 @@ describe("Events - query events", () => {
       {},
       [expectedEvent1, expectedEvent2, expectedEvent3],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true }
     );
   });
@@ -576,7 +571,7 @@ describe("Events - query events", () => {
       },
       [expectedEvent2],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true, count: 2 }
     );
     cy.apiEventsCheck(
@@ -592,7 +587,7 @@ describe("Events - query events", () => {
       },
       [expectedEvent1],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true, offset: 1, count: 2 }
     );
     cy.apiEventsCheck(
@@ -608,7 +603,7 @@ describe("Events - query events", () => {
       },
       [expectedEvent2, expectedEvent1],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true }
     );
     cy.log("reverse paging filtered by type and device");
@@ -626,7 +621,7 @@ describe("Events - query events", () => {
       },
       [expectedEvent1],
       EXCL_TIME_ID,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { doNotSort: true }
     );
   });
@@ -639,7 +634,7 @@ describe("Events - query events", () => {
       { deviceId: 999999 },
       [],
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
     cy.log("Bad value for device id");
     cy.apiEventsCheck(
@@ -648,7 +643,7 @@ describe("Events - query events", () => {
       { deviceId: "bad value" },
       [],
       [],
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 

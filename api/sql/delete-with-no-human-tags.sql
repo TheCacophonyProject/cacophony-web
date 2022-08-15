@@ -4,7 +4,7 @@ with recs as (
     select r.id
     from "Recordings" r
     join "Devices" d on r."DeviceId" = d.id
-    where d.devicename = 'somedevice'
+    where d."deviceName" = 'somedevice'
 ),
 human_tagged as (
     select distinct r.id

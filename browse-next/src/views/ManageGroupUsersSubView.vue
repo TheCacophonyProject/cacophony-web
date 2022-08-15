@@ -1,11 +1,24 @@
 <script setup lang="ts">
-import { currentSelectedGroup, CurrentUser } from "@models/LoggedInUser";
-import { onBeforeMount, ref } from "vue";
+import {
+  currentSelectedGroup as fallibleCurrentSelectedGroup,
+  CurrentUser as fallibleCurrentUser,
+  type LoggedInUser,
+  type SelectedGroup,
+} from "@models/LoggedInUser";
+import { computed, onBeforeMount, ref } from "vue";
 import { getUsersForGroup } from "@api/Group";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupUserResponse } from "@typedefs/api/group";
 const groupUsers = ref<ApiGroupUserResponse[]>([]);
 const loadingUsers = ref(false);
+
+// NOTE: If this route loaded, these globals are properly set, so we can unwrap the fallible versions.
+const currentSelectedGroup = computed<SelectedGroup>(() => {
+  return fallibleCurrentSelectedGroup.value as SelectedGroup;
+});
+const CurrentUser = computed<LoggedInUser>(() => {
+  return fallibleCurrentUser.value as LoggedInUser;
+});
 
 onBeforeMount(async () => {
   loadingUsers.value = true;

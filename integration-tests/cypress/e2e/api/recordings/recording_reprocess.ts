@@ -1,10 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
-  NOT_NULL_STRING,
-  EXCLUDE_IDS,
-} from "@commands/constants";
+import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
 
 import { getCreds } from "@commands/server";
 
@@ -23,7 +18,11 @@ import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 import {
   TEMPLATE_AUDIO_RECORDING,
   TEMPLATE_AUDIO_RECORDING_PROCESSING,
@@ -37,7 +36,7 @@ import { createExpectedAlert } from "@commands/api/alerts";
 import { createExpectedEvent } from "@commands/api/events";
 
 describe("Recordings - reprocessing tests", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
@@ -106,7 +105,7 @@ describe("Recordings - reprocessing tests", () => {
       );
 
       //Sign in superuser so that their credentials are available
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
     });
 
     beforeEach(() => {
@@ -354,7 +353,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.apiReprocess(
           "rrpGroup2Admin",
           [getCreds("rrpRecording9").id],
-          HTTP_Forbidden
+          HttpStatusCode.Forbidden
         );
 
         cy.log("Check recording is in FINISHED, with existing tracks intact");
@@ -390,7 +389,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check cannot mark non-existent recording for reprocessing");
-        cy.apiReprocess("rrpGroupAdmin", [999999], HTTP_Forbidden);
+        cy.apiReprocess("rrpGroupAdmin", [999999], HttpStatusCode.Forbidden);
 
         cy.log(
           "Check mix of valid and invalid recordings are rejected correctly"
@@ -398,14 +397,14 @@ describe("Recordings - reprocessing tests", () => {
         cy.apiReprocess(
           "rrpGroupAdmin",
           [999999, getCreds("rrpRecording10").id],
-          HTTP_Forbidden
+          HttpStatusCode.Forbidden
         );
 
         cy.log("Check that recordingIds array must be well formed");
         cy.apiReprocess(
           "rrpGroupAdmin",
           ["foo", "bar", 1] as unknown as number[],
-          HTTP_Unprocessable
+          HttpStatusCode.Unprocessable
         );
         cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording10").id]);
         cy.log(

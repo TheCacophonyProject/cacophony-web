@@ -25,14 +25,14 @@ export const getGroups = (abortable: boolean) =>
 const addGroupUser = (groupName: string, userName: string, isAdmin: boolean) =>
   CacophonyApi.post("/api/v1/groups/users", {
     group: groupName,
-    username: userName,
+    userName,
     admin: isAdmin,
   }) as Promise<FetchResult<void>>;
 
 const removeGroupUser = (groupName: string, userName: string) =>
   CacophonyApi.delete("/api/v1/groups/users", {
     group: groupName,
-    username: userName,
+    userName,
   }) as Promise<FetchResult<void>>;
 
 const getGroupByName = (groupName: string) =>

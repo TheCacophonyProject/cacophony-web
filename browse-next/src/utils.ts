@@ -40,7 +40,7 @@ export const delayMsThen = async <T>(
         networkConnectionError.retryInterval *= 2;
       }
       resolve(callback());
-    }, delayInMs);
+    }, delayInMs) as unknown as number;
   });
 
 export const isValidName = (str: string): boolean =>

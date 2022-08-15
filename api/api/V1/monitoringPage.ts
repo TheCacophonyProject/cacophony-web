@@ -20,6 +20,7 @@ import { User } from "@models/User";
 import { QueryTypes } from "sequelize";
 import models from "@models";
 import { GroupId, StationId } from "@typedefs/api/common";
+import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
 
 export interface MonitoringParams {
   groups: GroupId[];
@@ -28,18 +29,6 @@ export interface MonitoringParams {
   until?: Date;
   page: number;
   pageSize: number;
-}
-
-export interface MonitoringPageCriteria {
-  compareAi: string;
-  stations?: StationId[];
-  groups?: GroupId[];
-  page: number;
-  pagesEstimate: number;
-  pageFrom?: Date;
-  pageUntil?: Date;
-  searchFrom?: Date;
-  searchUntil?: Date;
 }
 
 const GROUPS_AND_STATIONS = "GROUPS_AND_STATIONS";

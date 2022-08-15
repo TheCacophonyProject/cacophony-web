@@ -19,19 +19,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { expectedTypeOf, validateFields } from "../middleware";
 import { body, param } from "express-validator";
 
-import { Application, Response, Request } from "express";
+import { Application, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredRecordingById,
   fetchAuthorizedRequiredRecordingsByIds,
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
-import responseUtil from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { NextFunction } from "express-serve-static-core";
 import { ClientError } from "../customErrors";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import { uniq as dedupe } from "lodash";
 import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
@@ -55,10 +56,7 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       await response.locals.recording.reprocess();
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Recording reprocessed"],
-      });
+      return successResponse(response, "Recording reprocessed");
     }
   );
 
@@ -97,17 +95,14 @@ export default (app: Application, baseUrl: string) => {
         return next(
           new ClientError(
             "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
       for (const recording of recordings) {
         await recording.reprocess();
       }
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Recordings scheduled for reprocessing"],
-      });
+      return successResponse(response, "Recordings scheduled for reprocessing");
     }
   );
 };

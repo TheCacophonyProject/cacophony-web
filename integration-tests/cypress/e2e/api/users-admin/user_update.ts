@@ -1,9 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_BadRequest, HTTP_Unprocessable } from "@commands/constants";
 
 import { TestCreateExpectedUser } from "@commands/api/user";
 
-import { getTestName } from "@commands/names";
+import { getTestEmail, getTestName } from "@commands/names";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("User: update", () => {
   before(() => {});
@@ -16,17 +16,17 @@ describe("User: update", () => {
     cy.apiUserUpdate("uupUser1", {
       userName: "uupUser1b",
       password: "password2",
-      email: getTestName("uupUser1b") + "@mail.com",
+      email: getTestEmail("uupUser1b"),
       endUserAgreement: 1,
     }).then(() => {
       const expectedUser = TestCreateExpectedUser("uupUser1b", {
-        email: getTestName("uupuser1b") + "@mail.com",
+        email: getTestEmail("uupuser1b"),
         endUserAgreement: 1,
       });
       //check user's details
-      cy.apiUserCheck("uupUser1b", getTestName("uupUser1b"), expectedUser);
+      cy.apiUserCheck("uupUser1b", getTestEmail("uupUser1b"), expectedUser);
       //log in again to verify new password
-      cy.apiSignInAs(null, null, getTestName("uupUser1b"), "password2");
+      cy.apiSignInAs(null, getTestEmail("uupUser1b"), "password2");
     });
   });
 
@@ -41,31 +41,31 @@ describe("User: update", () => {
         endUserAgreement: 1,
       });
       //check user's details
-      cy.apiUserCheck("uupUser2", getTestName("uupUser2"), expectedUser);
+      cy.apiUserCheck("uupUser2", getTestEmail("uupUser2"), expectedUser);
       //log in again to verify old password still valid
-      cy.apiSignInAs(null, null, getTestName("uupUser2"), "password1");
+      cy.apiSignInAs(null, getTestEmail("uupUser2"), "password1");
 
       cy.log("Update password");
       cy.apiUserUpdate("uupUser2", {
         password: "password2",
       }).then(() => {
         //check user's details
-        cy.apiUserCheck("uupUser2", getTestName("uupUser2"), expectedUser);
+        cy.apiUserCheck("uupUser2", getTestEmail("uupUser2"), expectedUser);
         //log in again to verify new password
-        cy.apiSignInAs(null, null, getTestName("uupUser2"), "password2");
+        cy.apiSignInAs(null, getTestEmail("uupUser2"), "password2");
 
         cy.log("Update email");
         cy.apiUserUpdate("uupUser2", {
-          email: getTestName("uupUser2b") + "@mail.com",
+          email: getTestEmail("uupUser2b"),
         }).then(() => {
           const expectedUser2 = TestCreateExpectedUser("uupUser2", {
-            email: getTestName("uupuser2b") + "@mail.com",
+            email: getTestEmail("uupUser2b").toLowerCase(),
             endUserAgreement: 1,
           });
           //check user's details
-          cy.apiUserCheck("uupUser2", getTestName("uupUser2"), expectedUser2);
+          cy.apiUserCheck("uupUser2", getTestEmail("uupUser2b"), expectedUser2);
           //log in again to verify new password
-          cy.apiSignInAs(null, null, getTestName("uupUser2"), "password2");
+          cy.apiSignInAs(null, getTestEmail("uupUser2b"), "password2");
 
           cy.log("Update userName");
 
@@ -73,17 +73,17 @@ describe("User: update", () => {
             userName: "uupUser2b",
           }).then(() => {
             const expectedUser3 = TestCreateExpectedUser("uupUser2b", {
-              email: getTestName("uupuser2b") + "@mail.com",
+              email: getTestEmail("uupUser2b").toLowerCase(),
               endUserAgreement: 1,
             });
             //check user's details
             cy.apiUserCheck(
               "uupUser2b",
-              getTestName("uupUser2b"),
+              getTestEmail("uupUser2b"),
               expectedUser3
             );
             //log in again to verify new password
-            cy.apiSignInAs(null, null, getTestName("uupUser2b"), "password2");
+            cy.apiSignInAs(null, getTestEmail("uupUser2b"), "password2");
           });
         });
       });
@@ -93,27 +93,30 @@ describe("User: update", () => {
   it("Invalid parameters in user update", () => {
     cy.apiUserAdd("uupUser3").then(() => {
       cy.log("Unsupported: firstName");
-      cy.apiUserUpdate("uupUser3", { firstName: "bob" }, HTTP_Unprocessable, {
-        message: "Unknown fields found",
-      });
+      cy.apiUserUpdate(
+        "uupUser3",
+        { firstName: "bob" },
+        HttpStatusCode.Unprocessable,
+        {
+          message: "Unknown fields found",
+        }
+      );
     });
   });
 
-  it("Cannot create user with same name (even with different case)", () => {
+  it("*Can* create user with same name (even with different case)", () => {
     cy.apiUserAdd("uupUser4a");
     cy.apiUserAdd("uupUser4b").then(() => {
       cy.log("Rename to duplicate user");
       cy.apiUserUpdate(
         "uupUser4b",
         { userName: "uupUser4a" },
-        HTTP_Unprocessable,
-        { message: "Username in use" }
+        HttpStatusCode.Ok
       );
       cy.apiUserUpdate(
         "uupUser4b",
         { userName: "UUPUSER4A" },
-        HTTP_Unprocessable,
-        { message: "Username in use" }
+        HttpStatusCode.Ok
       );
     });
   });
@@ -125,13 +128,13 @@ describe("User: update", () => {
       cy.apiUserUpdate(
         "uupUser5b",
         { email: getTestName("uupUser5a") + "@api.created.com" },
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { message: "Email address in use" }
       );
       cy.apiUserUpdate(
         "uupUser5b",
         { email: getTestName("UUPUSER5A") + "@api.created.com" },
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { message: "Email address in use" }
       );
     });
@@ -140,63 +143,121 @@ describe("User: update", () => {
   it("Cannot create user with email not matching email format", () => {
     cy.apiUserAdd("uupUser6").then(() => {
       cy.log("Blank email");
-      cy.apiUserUpdate("uupUser6", { email: "" }, HTTP_Unprocessable);
+      cy.apiUserUpdate("uupUser6", { email: "" }, HttpStatusCode.Unprocessable);
       cy.log("leading space");
       cy.apiUserUpdate(
         "uupUser6",
         { email: " startswithaspace@email.com" },
-        HTTP_Unprocessable
+        HttpStatusCode.Unprocessable
       );
       cy.log("Email with no @");
       cy.apiUserUpdate(
         "uupUser6",
         { email: "noatinemail" },
-        HTTP_Unprocessable
+        HttpStatusCode.Unprocessable
       );
       cy.log("Email with no user");
-      cy.apiUserUpdate("uupUser6", { email: "@mail.com" }, HTTP_Unprocessable);
+      cy.apiUserUpdate(
+        "uupUser6",
+        { email: "@mail.com" },
+        HttpStatusCode.Unprocessable
+      );
       cy.log("Email with no domain");
-      cy.apiUserUpdate("uupUser6", { email: "user@" }, HTTP_Unprocessable);
+      cy.apiUserUpdate(
+        "uupUser6",
+        { email: "user@" },
+        HttpStatusCode.Unprocessable
+      );
     });
   });
 
   it("Invalid user names rejected", () => {
     cy.apiUserAdd("uupUser7").then(() => {
       cy.log("Cannot add user with no letters");
-      cy.apiUserUpdate("uupUser7", { userName: "" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: "" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
       //
-      cy.apiUserUpdate("uupUser7", { userName: "1234" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: "1234" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
       cy.log("Cannot add user with other non-alphanumeric characters");
-      cy.apiUserUpdate("uupUser7", { userName: "ABC%" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
-      cy.apiUserUpdate("uupUser7", { userName: "ABC&" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
-      cy.apiUserUpdate("uupUser7", { userName: "ABC>" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
-      cy.apiUserUpdate("uupUser7", { userName: "ABC<" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: "ABC%" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: "ABC&" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: "ABC>" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: "ABC<" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
 
       cy.log("Cannot add user with -, _ or space as first letter");
-      cy.apiUserUpdate("uupUser7", { userName: "-ABC" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
-      cy.apiUserUpdate("uupUser7", { userName: "_ABC" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
-      cy.apiUserUpdate("uupUser7", { userName: " ABC" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
-      cy.apiUserUpdate("uupUser7", { userName: " ABC" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: "-ABC" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: "_ABC" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: " ABC" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
+      cy.apiUserUpdate(
+        "uupUser7",
+        { userName: " ABC" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
 
       cy.log("Can add user with -, _ or space as subsequent letter");
       cy.apiUserUpdate("uupUser7", { userName: getTestName("A-B_ C") });
@@ -206,14 +267,19 @@ describe("User: update", () => {
   it("Invaliid passwords rejected", () => {
     cy.apiUserAdd("uupUser8").then(() => {
       cy.log("Blank password");
-      cy.apiUserUpdate("uupUser7", { password: "" }, HTTP_Unprocessable, {
-        useRawUserName: true,
-      });
+      cy.apiUserUpdate(
+        "uupUser7",
+        { password: "" },
+        HttpStatusCode.Unprocessable,
+        {
+          useRawUserName: true,
+        }
+      );
       cy.log("Short password");
       cy.apiUserUpdate(
         "uupUser7",
         { password: "1234567" },
-        HTTP_Unprocessable,
+        HttpStatusCode.Unprocessable,
         { useRawUserName: true }
       );
     });

@@ -5,7 +5,7 @@
         <div class="logo" />
 
         <h2>New Password</h2>
-        <h2>{{ nameOrUserName }}</h2>
+        <h2>{{ userName }}</h2>
         <b-form @submit="onSubmit">
           <b-alert
             :show="!!errorMessage"
@@ -64,6 +64,7 @@
 <script lang="ts">
 import User from "../api/User.api";
 import { minLength, required, sameAs } from "vuelidate/lib/validators";
+import { ErrorResult } from "@/api/Recording.api";
 
 const passwordLength = 8;
 
@@ -84,19 +85,11 @@ export default {
     this.queryUser();
   },
   computed: {
-    nameOrUserName() {
+    userName() {
       if (!this.user) {
         return "";
       }
-      if (this.user.firstName) {
-        if (this.user.lastName) {
-          return `${this.nameOrUserName} ${this.user.lastName}`;
-        } else {
-          return this.user.firstName;
-        }
-      } else {
-        return this.user.userName;
-      }
+      return this.user.userName;
     },
     token() {
       return this.$route.query.token;
@@ -139,7 +132,8 @@ export default {
         this.user = response.result.userData;
       } else {
         this.errorMessage =
-          response.result.messages.length && response.result.messages[0];
+          (response.result as ErrorResult).messages.length &&
+          (response.result as ErrorResult).messages[0];
         setTimeout(() => this.$router.replace({ path: "/" }), 5000);
       }
     },

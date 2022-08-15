@@ -17,16 +17,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware";
-import responseUtil from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, param } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorisedSuperAdminUser,
-  fetchUnauthorizedRequiredUserByNameOrId,
+  fetchUnauthorizedRequiredUserByEmailOrId,
 } from "@api/extract-middleware";
-import { nameOrIdOf } from "@api/validation-middleware";
+import { anyOf, idOf } from "@api/validation-middleware";
 import { ClientError } from "@api/customErrors";
-import { UserGlobalPermission } from "@typedefs/api/consts";
+import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts";
 import { SuperUsers } from "@/Globals";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -38,22 +38,20 @@ export default function (app: Application, baseUrl: string) {
 
   {
     /**
-     * @api {patch} /api/v1/admin/global-permission/:userNameOrId Update user global permissions
+     * @api {patch} /api/v1/admin/global-permission/:userEmailOrId Update user global permissions
      * @apiUse V1UserAuthorizationHeader
      * @apiName UpdateGlobalPermission
      * @apiGroup Admin
-     * @apiParam {String|Number} userNameOrId name or id of user to update
+     * @apiParam {String|Number} userEmailOrId email or id of user to update
      * @apiInterface {apiBody::ApiUpdateGlobalPermissionRequestBody}
      * @apiUse V1ResponseSuccess
      * @apiUse V1ResponseError
      */
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-
     app.patch(
-      `${apiUrl}/global-permission/:userNameOrId`,
+      `${apiUrl}/global-permission/:userEmailOrId`,
       extractJwtAuthorisedSuperAdminUser,
       validateFields([
-        nameOrIdOf(param("userNameOrId")),
+        anyOf(param("userEmailOrId").isEmail(), idOf(param("userEmailOrId"))),
         body("permission").isIn(Object.values(UserGlobalPermission)),
       ]),
       (request: Request, response: Response, next: NextFunction) => {
@@ -61,13 +59,13 @@ export default function (app: Application, baseUrl: string) {
           return next(
             new ClientError(
               "Super admin user must have globalWrite permissions",
-              403
+              HttpStatusCode.Forbidden
             )
           );
         }
         next();
       },
-      fetchUnauthorizedRequiredUserByNameOrId(param("userNameOrId")),
+      fetchUnauthorizedRequiredUserByEmailOrId(param("userEmailOrId")),
       async (request, response) => {
         const permission: UserGlobalPermission = request.body.permission;
         const userToUpdate = response.locals.user;
@@ -84,10 +82,7 @@ export default function (app: Application, baseUrl: string) {
         } else {
           SuperUsers.delete(userToUpdate.id);
         }
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Users global permission updated."],
-        });
+        return successResponse(response, "Users global permission updated.");
       }
     );
   }

@@ -37,7 +37,7 @@ delete trackApiTrackTemplate.frame_start;
 delete trackApiTrackTemplate.frame_end;
 delete trackApiTrackTemplate.predictions;
 
-describe("Recording fitering", () => {
+describe("Recording filtering", () => {
   const algorithm1 = {
     model_name: "Master",
   };

@@ -28,6 +28,7 @@ export const CurrentViewAbortController = {
   newView() {
     this.controller && this.controller.abort();
     this.controller = new AbortController();
+    this.controller = new AbortController();
   },
   controller: new AbortController(),
 };
@@ -79,6 +80,22 @@ const router = createRouter({
       meta: { title: "Group :stationName :tabName", requiresLogin: true },
       component: () => import("../views/DashboardView.vue"),
       beforeEnter: cancelPendingRequests,
+      children: [
+        {
+          // RecordingView will be rendered inside Dashboards' <router-view>
+          // when /:groupName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
+          path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
+          name: "dashboard-visit",
+          component: () => import("../views/RecordingView.vue"),
+        },
+        {
+          // RecordingView will be rendered inside Dashboards' <router-view>
+          // when /:groupName/recordings/:recordingIds is matched
+          path: "recording/:currentRecordingId/:recordingIds?",
+          name: "dashboard-recording",
+          component: () => import("../views/RecordingView.vue"),
+        },
+      ],
     },
     {
       path: "/:groupName/stations",
@@ -216,7 +233,7 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   if (to.name === "dashboard") {
-    debugger;
+    // debugger;
   }
   let jwtToken;
   if (to.params.token) {

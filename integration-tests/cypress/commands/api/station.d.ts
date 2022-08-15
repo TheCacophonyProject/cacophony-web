@@ -2,8 +2,8 @@
 /// <reference types="cypress" />
 
 declare namespace Cypress {
-  type ApiCreateStationData =
-    import("@typedefs/api/station").ApiCreateStationData;
+  // @ts-ignore
+  type ApiStationData = import("../types").ApiStationData;
   type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
   interface Chainable {
     /**

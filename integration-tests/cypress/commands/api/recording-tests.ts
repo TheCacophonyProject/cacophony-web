@@ -23,16 +23,15 @@ import {
   ApiRecordingModel,
 } from "../types";
 
-import {
-  HTTP_OK200,
-  NOT_NULL,
-  NOT_NULL_STRING,
-  filtered_tags,
-} from "../constants";
+import { NOT_NULL, NOT_NULL_STRING, filtered_tags } from "../constants";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { ApiTrackResponse } from "@typedefs/api/track";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
 import { LatLng, RecordingId } from "@typedefs/api/common";
 
 const BASE_URL = Cypress.env("base-url-returned-in-links");
@@ -60,7 +59,7 @@ Cypress.Commands.add(
             cy.apiRecordingDelete(
               superuser,
               recordingId.toString(),
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               {
                 useRawRecordingId: true,
               }

@@ -110,7 +110,7 @@ async function main() {
 function generateText(stoppedDevices: Device[]): string {
   let textBody = `Stopped Devices ${moment().format("MMM ddd Do ha")}\r\n`;
   for (const device of stoppedDevices) {
-    const deviceText = `${device.Group.groupname}- ${device.devicename} id: ${
+    const deviceText = `${device.Group.groupName}- ${device.deviceName} id: ${
       device.id
     } has stopped, last last message at ${moment(device.heartbeat).format(
       "MMM ddd Do ha"
@@ -127,8 +127,8 @@ function generateHtml(stoppedDevices: Device[]): string {
   let html = `<b>Stopped Devices ${moment().format("MMM ddd Do ha")} </b>`;
   html += "<ul>";
   for (const device of stoppedDevices) {
-    const deviceText = `<li>${device.Group.groupname}-${
-      device.devicename
+    const deviceText = `<li>${device.Group.groupName}-${
+      device.deviceName
     } id: ${device.id} has stopped, received last message at ${moment(
       device.heartbeat
     ).format("MMM ddd Do ha")} expected to hear again at ${moment(

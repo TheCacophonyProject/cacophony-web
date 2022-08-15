@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { validateFields } from "../middleware";
 import { body, param } from "express-validator";
 import models from "@models";
-import responseUtil from "./responseUtil";
-import { Application, NextFunction, Response, Request } from "express";
+import { successResponse } from "./responseUtil";
+import { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -36,6 +36,7 @@ import { ApiScheduleResponse, ScheduleConfig } from "@typedefs/api/schedule";
 import { Schedule } from "@models/Schedule";
 import { Device } from "@models/Device";
 import { ClientError } from "@api/customErrors";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 export const mapSchedule = (schedule: Schedule): ApiScheduleResponse => ({
   id: schedule.id,
@@ -83,10 +84,8 @@ export default (app: Application, baseUrl: string) => {
       });
       schedule.UserId = response.locals.requestUser.id;
       await schedule.save();
-      return responseUtil.send(response, {
-        statusCode: 200,
+      return successResponse(response, "Created new schedule.", {
         id: schedule.id,
-        messages: ["Created new schedule."],
       });
     }
   );
@@ -113,16 +112,14 @@ export default (app: Application, baseUrl: string) => {
       )) as Device;
       const schedule = await models.Schedule.findByPk(device.ScheduleId);
       if (schedule) {
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: [],
+        return successResponse(response, {
           schedule: schedule.schedule as ScheduleConfig,
         });
       } else {
         return next(
           new ClientError(
             `Could not find schedule for device ${device.id}`,
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
@@ -152,10 +149,7 @@ export default (app: Application, baseUrl: string) => {
           UserId: response.locals.requestUser.id,
         },
       });
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got schedules for user"],
+      return successResponse(response, "Got schedules for user", {
         schedules: schedules.map(mapSchedule),
       });
     }
@@ -185,9 +179,7 @@ export default (app: Application, baseUrl: string) => {
       )(request, response, next);
     },
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: [],
+      return successResponse(response, {
         schedule: response.locals.schedule.schedule as ApiScheduleConfig,
       });
     }
@@ -220,14 +212,11 @@ export default (app: Application, baseUrl: string) => {
         return next(
           new ClientError(
             `User #${response.locals.requestUser.id} doesn't have permission to delete schedule`,
-            403
+            HttpStatusCode.Forbidden
           )
         );
       }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["schedule deleted"],
-      });
+      return successResponse(response, "schedule deleted");
     }
   );
 };

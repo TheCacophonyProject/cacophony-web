@@ -15,7 +15,7 @@ Cypress.Commands.add("createDevice", (cameraName, groupName) => {
   cy.request(Cypress.config("fakeCameraUrl") + urlParams).then((request) => {
     Cypress.config("devices")[cameraName] = {
       id: request.body,
-      groupname: groupName,
+      groupName: groupName,
     };
   });
 });

@@ -1,4 +1,4 @@
-import { Application, Request, Response } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAdminAuthorizedRequiredStationById,
@@ -6,7 +6,7 @@ import {
   fetchAuthorizedRequiredStations,
   parseJSONField,
 } from "@api/extract-middleware";
-import responseUtil from "@api/V1/responseUtil";
+import { successResponse } from "@api/V1/responseUtil";
 import { validateFields } from "@api/middleware";
 import { body, param, query } from "express-validator";
 import { Station } from "@models/Station";
@@ -27,7 +27,7 @@ import {
 import util from "@api/V1/util";
 import { openS3 } from "@models/util/util";
 import { streamS3Object } from "@api/V1/signedUrl";
-import logger from "@/logging";
+import { ClientError } from "@api/customErrors";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -44,7 +44,7 @@ export const mapStation = (station: Station): ApiStationResponse => {
     name: station.name,
     id: station.id,
     groupId: station.GroupId,
-    groupName: (station as any).Group.groupname,
+    groupName: (station as any).Group.groupName,
     createdAt: station.createdAt.toISOString(),
     activeAt: station.activeAt.toISOString(),
     location: station.location,
@@ -67,6 +67,14 @@ export const mapStation = (station: Station): ApiStationResponse => {
   if (station.lastThermalRecordingTime) {
     stationResponse.lastThermalRecordingTime =
       station.lastThermalRecordingTime.toISOString();
+  }
+  if (station.lastActiveAudioTime) {
+    stationResponse.lastActiveAudioTime =
+      station.lastActiveAudioTime.toISOString();
+  }
+  if (station.lastActiveThermalTime) {
+    stationResponse.lastActiveThermalTime =
+      station.lastActiveThermalTime.toISOString();
   }
   if (station.retiredAt) {
     stationResponse.retiredAt = station.retiredAt.toISOString();
@@ -103,9 +111,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredStations,
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got stations"],
+      return successResponse(response, "Got stations", {
         stations: mapStations(response.locals.stations),
       });
     }
@@ -133,9 +139,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got station"],
+      return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
     }
@@ -157,16 +161,13 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), param("fileKey").isString()]),
     fetchAdminAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // Make sure the fileKey exists in the station settings.
       let referenceImages =
         (response.locals.station as Station).settings.referenceImages || [];
       const fileKey = request.params.fileKey.replace(/_/g, "/");
       if (!referenceImages.includes(fileKey)) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Reference image not found for station"],
-        });
+        return next(new ClientError("Reference image not found for station"));
       }
       const s3 = openS3();
       await s3.deleteObject({ Key: fileKey });
@@ -179,10 +180,7 @@ export default function (app: Application, baseUrl: string) {
           referenceImages,
         },
       });
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Removed reference image from station"],
-      });
+      return successResponse(response, "Removed reference image from station");
     }
   );
 
@@ -202,16 +200,13 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), param("fileKey").isString()]),
     fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // Make sure the fileKey exists in the station settings.
       const referenceImages =
         (response.locals.station as Station).settings.referenceImages || [];
       const fileKey = request.params.fileKey.replace(/_/g, "/");
       if (!referenceImages.includes(fileKey)) {
-        return responseUtil.send(response, {
-          statusCode: 400,
-          messages: ["Reference image not found for station"],
-        });
+        return next(new ClientError("Reference image not found for station"));
       }
       await streamS3Object(
         request,
@@ -292,7 +287,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("station-updates")),
     fetchAdminAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // If a from date is set, that is the date from which the station became active.
       // If an until date is set, that is the date that the station was retired at
 
@@ -330,12 +325,11 @@ export default function (app: Application, baseUrl: string) {
         newName &&
         otherActiveStationsInTimeWindow.find(({ name }) => name === newName)
       ) {
-        responseUtil.send(response, {
-          statusCode: 400,
-          messages: [
-            `An active station with the name ${newName} already exists between ${activeAt.toISOString()} and ${retiredAt.toISOString()}`,
-          ],
-        });
+        return next(
+          new ClientError(
+            `An active station with the name ${newName} already exists between ${activeAt.toISOString()} and ${retiredAt.toISOString()}`
+          )
+        );
       }
 
       if (positionUpdated) {
@@ -384,14 +378,9 @@ export default function (app: Application, baseUrl: string) {
       }
 
       await response.locals.station.update(updates);
-      const responseData: any = {
-        statusCode: 200,
-        messages: ["Updated station"],
-      };
-      if (proximityWarnings.length) {
-        responseData.warnings = proximityWarnings;
-      }
-      responseUtil.send(response, responseData);
+      return successResponse(response, "Updated station", {
+        ...(proximityWarnings.length && { warnings: proximityWarnings }),
+      });
     }
   );
 
@@ -452,18 +441,13 @@ export default function (app: Application, baseUrl: string) {
         }
         await Promise.all(deleteRecordingPromises);
         await response.locals.station.destroy();
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: [
-            `Deleted station and ${recordings.length} associated recordings`,
-          ],
-        });
+        return successResponse(
+          response,
+          `Deleted station and ${recordings.length} associated recordings`
+        );
       } else {
         await response.locals.station.destroy();
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Deleted station"],
-        });
+        return successResponse(response, "Deleted station");
       }
     }
   );

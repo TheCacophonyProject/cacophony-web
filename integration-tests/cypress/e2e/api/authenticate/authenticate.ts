@@ -1,10 +1,10 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_AuthorizationError, HTTP_Forbidden } from "@commands/constants";
-import { getTestName } from "@commands/names";
+import { getTestEmail, getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Authentication", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   const group1 = "first_group";
@@ -35,86 +35,46 @@ describe("Authentication", () => {
       camera1,
       group1,
       "wrong-password",
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
   });
 
-  it("Device is correctly rejected if devicename is wrong", () => {
+  it("Device is correctly rejected if deviceName is wrong", () => {
     cy.apiAuthenticateDevice(
       camera2,
       group1,
       "p" + getTestName(camera1),
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
   });
 
-  it("Device is correctly rejected if groupname is wrong", () => {
+  it("Device is correctly rejected if groupName is wrong", () => {
     cy.apiAuthenticateDevice(
       camera1,
       group2,
       "p" + getTestName(camera1),
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
-  });
-
-  it("Can authenticate as a user using name", () => {
-    cy.apiSignInAs(userA);
   });
 
   it("Can authenticate as a user using email", () => {
-    cy.apiSignInAs(
-      null,
-      getTestName(userA) + "@api.created.com",
-      null,
-      "p" + getTestName(userA)
-    );
-  });
-
-  it("Can authenticate as a user using nameoremail", () => {
-    cy.log("test using email");
-    cy.apiSignInAs(
-      null,
-      null,
-      getTestName(userA) + "@api.created.com",
-      "p" + getTestName(userA)
-    );
-    cy.log("test using name");
-    cy.apiSignInAs(null, null, getTestName(userA), "p" + getTestName(userA));
+    cy.apiSignInAs(null, getTestEmail(userA), "p" + getTestName(userA));
   });
 
   it("User is rejected for wrong password", () => {
-    cy.log("test using username & name");
-    cy.apiSignInAs(userA, null, null, "bad_password", HTTP_AuthorizationError);
-    cy.log("test using email and email");
+    cy.log("test using email");
     cy.apiSignInAs(
       null,
-      getTestName(userA) + "@api.created.com",
-      null,
+      getTestEmail(userA),
       "bad_password",
-      HTTP_AuthorizationError
-    );
-    cy.log("test using nameoremail and email");
-    cy.apiSignInAs(
-      null,
-      null,
-      getTestName(userA) + "@api.created.com",
-      "bad_password",
-      HTTP_AuthorizationError
-    );
-    cy.log("test using nameoremail and name");
-    cy.apiSignInAs(
-      null,
-      null,
-      getTestName(userA),
-      "bad_password",
-      HTTP_AuthorizationError
+      HttpStatusCode.AuthorizationError
     );
   });
 
   //Do not run against a live server as we don't have superuser login
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Superuser can authenticate as another user and receive their permissions", () => {
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
       //superuser authenticates as Bruce
       cy.apiAuthenticateAs(superuser, userB);
       //verify each user gets their own data
@@ -130,7 +90,7 @@ describe("Authentication", () => {
 
   it("Non-superuser cannot authenticate as another user", () => {
     cy.apiSignInAs(userA);
-    //verify non superuser userA cannot authenticte as userB
-    cy.apiAuthenticateAs(userA, userB, HTTP_Forbidden);
+    //verify non superuser userA cannot authenticate as userB
+    cy.apiAuthenticateAs(userA, userB, HttpStatusCode.Forbidden);
   });
 });

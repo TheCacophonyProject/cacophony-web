@@ -3,8 +3,7 @@
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { logTestDescription } from "@commands/descriptions";
-import { HTTP_Forbidden } from "@commands/constants";
-import { DeviceType } from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 
 describe("Device in group", () => {
@@ -77,7 +76,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -99,7 +98,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -111,7 +110,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 });

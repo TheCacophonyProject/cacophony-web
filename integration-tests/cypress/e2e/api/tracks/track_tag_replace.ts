@@ -1,11 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_Forbidden,
-  HTTP_Unprocessable,
-  HTTP_BadRequest,
-  NOT_NULL_STRING,
-  NOT_NULL,
-} from "@commands/constants";
+import { NOT_NULL_STRING, NOT_NULL } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";
 import { getTestName } from "@commands/names";
@@ -20,11 +14,8 @@ import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
-import {
-  TEMPLATE_AUDIO_TRACK,
-  TEMPLATE_EXPECTED_AUDIO_TRACK,
-  TEMPLATE_THERMAL_RECORDING,
-} from "@commands/dataTemplate";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = [
   "[].id",
@@ -401,7 +392,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack5",
       "ttgTag5",
       tag1,
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check tag does not exist");
@@ -445,7 +436,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording6",
       "ttgTrack6",
       "ttgTag6",
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check tag still exists");
@@ -886,7 +877,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
   });
 
-  it("Correct handling in invalid recording, track", () => {
+  it("Correct handling of invalid recording, track", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
     cy.log("Add recording and track");
@@ -900,25 +891,25 @@ describe("Track Tags: replaceTag, check, delete", () => {
       algorithm1
     );
 
-    cy.log("Correct handling on invalid recording id in replace");
+    cy.log("Correct handling of invalid recording id in replace");
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "99999",
       "99999",
       "ttgTag14",
       tag1,
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawRecordingId: true, useRawTrackId: true }
     );
 
-    cy.log("Correct handling on invalid track id in replace");
+    cy.log("Correct handling of invalid track id in replace");
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "ttgRecording14",
       "99999",
       "ttgTag14",
       tag1,
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawTrackId: true }
     );
 
@@ -928,31 +919,29 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "99999",
       "99999",
       "99999",
-      HTTP_Forbidden,
+      HttpStatusCode.Forbidden,
       { useRawRecordingId: true, useRawTrackId: true, useRawTagId: true }
     );
 
     cy.log("Correct handling on invalid track id in delete");
-    //FIXME: Expect forbidden but get badrequest
-    //cy.apiTrackTagDelete("ttgGroup1Member2", "ttgRecording14", "99999", "99999", HTTP_Forbidden, {useRawTrackId: true, useRawTagId: true});
+    //cy.apiTrackTagDelete("ttgGroup1Member2", "ttgRecording14", "99999", "99999", HttpStatusCode.Forbidden, {useRawTrackId: true, useRawTagId: true});
     cy.apiTrackTagDelete(
       "ttgGroup1Member2",
       "ttgRecording14",
       "99999",
       "99999",
-      HTTP_BadRequest,
+      HttpStatusCode.Forbidden,
       { useRawTrackId: true, useRawTagId: true }
     );
 
-    cy.log("Correct handling on invalid tag id in delete");
-    //FIXME: Expect forbidden but get badrequest
-    //cy.apiTrackTagDelete("ttgGroup1Member2", "ttgRecording14", "ttgTrack14", "99999", HTTP_Forbidden, {useRawTagId: true});
+    cy.log("Correct handling of invalid tag id in delete");
+    //cy.apiTrackTagDelete("ttgGroup1Member2", "ttgRecording14", "ttgTrack14", "99999", HttpStatusCode.Forbidden, {useRawTagId: true});
     cy.apiTrackTagDelete(
       "ttgGroup1Member2",
       "ttgRecording14",
       "ttgTrack14",
       "99999",
-      HTTP_BadRequest,
+      HttpStatusCode.Forbidden,
       { useRawTagId: true }
     );
   });
@@ -990,7 +979,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack13",
       "ttgTag13",
       tagA,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.what:" }
     );
 
@@ -1003,7 +992,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack13",
       "ttgTag13",
       tagB,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.confidence:" }
     );
 
@@ -1016,7 +1005,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack13",
       "ttgTag13",
       tagC,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.automatic:" }
     );
 
@@ -1029,7 +1018,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack13",
       "ttgTag13",
       tagD,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.confidence:" }
     );
 
@@ -1042,7 +1031,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack13",
       "ttgTag13",
       tagE,
-      HTTP_Unprocessable,
+      HttpStatusCode.Unprocessable,
       { message: "body.automatic:" }
     );
   });

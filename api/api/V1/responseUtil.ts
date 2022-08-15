@@ -21,6 +21,7 @@ import jwt from "jsonwebtoken";
 import config from "@config";
 import { Response } from "express";
 import { CACOPHONY_WEB_VERSION } from "@/Globals";
+import { HttpStatusCode } from "@/../types/api/consts";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";
@@ -32,7 +33,10 @@ const INVALID_DATAPOINT_UPLOAD_REQUEST =
 const INVALID_DATAPOINT_UPDATE_REQUEST =
   "Request for updating a datapoint was invalid.";
 
-function send(response: Response, data: any) {
+function send(
+  response: Response,
+  data: { statusCode: HttpStatusCode; messages: string[] } & Record<string, any>
+) {
   // Check that the data is valid.
   if (
     typeof data !== "object" ||
@@ -40,14 +44,18 @@ function send(response: Response, data: any) {
     typeof data.messages !== "object"
   ) {
     // Respond with server error if data is invalid.
-    return serverError(response, data);
+    return response.status(HttpStatusCode.ServerError).json({
+      messages: data.messages,
+      success: false,
+      cwVersion: CACOPHONY_WEB_VERSION.version,
+    });
   }
-  const statusCode = data.statusCode;
-  data.success = 200 <= statusCode && statusCode <= 299;
   if (CACOPHONY_WEB_VERSION.version !== "unknown") {
     // In production, we add the cacophony-web version to each request
-    data.cwVersion = CACOPHONY_WEB_VERSION.version;
+    (data as any).cwVersion = CACOPHONY_WEB_VERSION.version;
   }
+  const statusCode = data.statusCode;
+  (data as any).success = 200 <= statusCode && statusCode <= 299;
   delete data.statusCode;
   return response.status(statusCode).json(data);
 }
@@ -61,13 +69,13 @@ function invalidDatapointUpdate(response: Response, message: string) {
 }
 
 function badRequest(response: Response, messages: string[]) {
-  send(response, { statusCode: 400, messages });
+  send(response, { statusCode: HttpStatusCode.BadRequest, messages });
 }
 
 //======VALID REQUESTS=========
 function validRecordingUpload(response, idOfRecording, message = "") {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.Ok,
     messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
     recordingId: idOfRecording,
   });
@@ -75,7 +83,7 @@ function validRecordingUpload(response, idOfRecording, message = "") {
 
 function validAudiobaitUpload(response, id, message = "") {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.Ok,
     messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
     id,
   });
@@ -83,7 +91,7 @@ function validAudiobaitUpload(response, id, message = "") {
 
 function validFileUpload(response, key) {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.Ok,
     messages: [VALID_DATAPOINT_UPLOAD_REQUEST],
     fileKey: key,
   });
@@ -91,37 +99,73 @@ function validFileUpload(response, key) {
 
 function validDatapointUpdate(response) {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.Ok,
     messages: [VALID_DATAPOINT_UPDATE_REQUEST],
   });
 }
 
 function validDatapointGet(response, result) {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.Ok,
     messages: [VALID_DATAPOINT_GET_REQUEST],
-    result: result,
+    result,
   });
 }
 
 function validFileRequest(response, data) {
   send(response, {
-    statusCode: 200,
+    statusCode: HttpStatusCode.Ok,
     messages: [VALID_FILE_REQUEST],
     jwt: jwt.sign(data, config.server.passportSecret, { expiresIn: 60 * 10 }),
   });
 }
 
-function serverError(
+export const someResponse = (
   response: Response,
-  err,
-  message = "Server error. Sorry!"
-) {
-  log.error("SERVER ERROR: %s, %s", err.toString(), err.stack);
-  return response.status(500).json({
-    messages: [message],
+  statusCode: HttpStatusCode,
+  messageOrData: string | string[] | Record<string, any> = "",
+  data: Record<string, any> = {}
+) => {
+  const dataMessages = data.messages || [];
+  if (typeof messageOrData === "string" || Array.isArray(messageOrData)) {
+    const serverError =
+      statusCode === HttpStatusCode.ServerError ? ["Server error. Sorry!"] : [];
+    const otherMessages =
+      typeof messageOrData === "string" ? [messageOrData] : messageOrData;
+    const messages = [...serverError, ...dataMessages, ...otherMessages];
+    return send(response, {
+      ...data,
+      statusCode,
+      messages,
+    });
+  }
+  return send(response, {
+    ...(messageOrData as Record<string, any>),
+    statusCode,
+    messages: dataMessages,
   });
-}
+};
+
+export const successResponse = (
+  response: Response,
+  messageOrData: string | string[] | Record<string, any> = "",
+  data: Record<string, any> = {}
+) => someResponse(response, HttpStatusCode.Ok, messageOrData, data);
+
+export const serverErrorResponse = (
+  response: Response,
+  error: Error,
+  messageOrData: string | string[] | Record<string, any> = "",
+  data: Record<string, any> = {}
+) => {
+  log.error("SERVER ERROR: %s, %s", error.toString(), error.stack);
+  return someResponse(
+    response,
+    HttpStatusCode.ServerError,
+    messageOrData,
+    data
+  );
+};
 
 export default {
   send,
@@ -133,5 +177,4 @@ export default {
   validRecordingUpload,
   validAudiobaitUpload,
   validFileRequest,
-  serverError,
 };

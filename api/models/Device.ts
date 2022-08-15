@@ -38,8 +38,8 @@ const Op = Sequelize.Op;
 export interface Device extends Sequelize.Model, ModelCommon<Device> {
   id: DeviceId;
   addUser: (userId: UserId, options: any) => any;
-  devicename: string;
-  groupname: string;
+  deviceName: string;
+  groupName: string;
   saltId: number;
   uuid: number;
   active: boolean;
@@ -52,7 +52,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   nextHeartbeat: Date | null;
   comparePassword: (password: string) => Promise<boolean>;
   reRegister: (
-    devicename: string,
+    deviceName: string,
     group: Group,
     newPassword: string
   ) => Promise<Device | false>;
@@ -66,7 +66,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
-  freeDevicename: (name: string, id: GroupId) => Promise<boolean>;
+  freeDeviceName: (name: string, id: GroupId) => Promise<boolean>;
   getFromId: (id: DeviceId) => Promise<Device>;
   findDevice: (
     deviceID?: DeviceId,
@@ -103,7 +103,7 @@ export default function (
   const name = "Device";
 
   const attributes = {
-    devicename: {
+    deviceName: {
       type: DataTypes.STRING,
       unique: true,
     },
@@ -172,9 +172,9 @@ export default function (
     models.Device.hasMany(models.DeviceHistory);
   };
 
-  Device.freeDevicename = async function (devicename, groupId) {
+  Device.freeDeviceName = async function (deviceName, groupId) {
     const device = await this.findOne({
-      where: { devicename, GroupId: groupId },
+      where: { deviceName, GroupId: groupId },
     });
     return device === null;
   };
@@ -189,8 +189,8 @@ export default function (
     groupName,
     password
   ) {
-    // attempts to find a unique device by groupname, then deviceid (devicename if int),
-    // then devicename, finally password
+    // attempts to find a unique device by groupName, then deviceId (deviceName if int),
+    // then deviceName, finally password
     let model = null;
     if (deviceID && deviceID > 0) {
       model = this.findByPk(deviceID);
@@ -198,7 +198,7 @@ export default function (
       model = await this.getFromNameAndGroup(deviceName, groupName);
     } else {
       const models = await this.allWithName(deviceName);
-      //check for devicename being id
+      //check for deviceName being id
       deviceID = parseExactInt(deviceName);
       if (deviceID) {
         model = this.findByPk(deviceID);
@@ -220,7 +220,7 @@ export default function (
   };
 
   Device.wherePasswordMatches = async function (devices, password) {
-    // checks if there is a unique devicename and password match, else returns null
+    // checks if there is a unique deviceName and password match, else returns null
     const validDevices = [];
     let passwordMatch = false;
     for (let i = 0; i < devices.length; i++) {
@@ -247,7 +247,7 @@ export default function (
   };
 
   Device.allWithName = async function (name) {
-    return this.findAll({ where: { devicename: name } });
+    return this.findAll({ where: { deviceName: name } });
   };
 
   Device.stoppedDevices = async function () {
@@ -267,13 +267,13 @@ export default function (
       ],
     });
   };
-  Device.getFromNameAndGroup = async function (name, groupName) {
+  Device.getFromNameAndGroup = async function (deviceName, groupName) {
     return this.findOne({
-      where: { devicename: name },
+      where: { deviceName },
       include: [
         {
           model: models.Group,
-          where: { groupname: groupName },
+          where: { groupName },
         },
       ],
     });
@@ -396,7 +396,7 @@ order by hour;
         async (t) => {
           const conflictingDevice = await Device.findOne({
             where: {
-              devicename: newName,
+              deviceName: newName,
               GroupId: newGroup.id,
             },
             transaction: t,
@@ -411,7 +411,7 @@ order by hour;
           // NOTE: When a device is re-registered it keeps the last known location.
           newDevice = (await models.Device.create(
             {
-              devicename: newName,
+              deviceName: newName,
               GroupId: newGroup.id,
               password: newPassword,
               saltId: this.saltId,
@@ -466,10 +466,27 @@ order by hour;
   };
 
   Device.prototype.updateHeartbeat = async function (nextHeartbeat: Date) {
+    const now = new Date();
+    if (this.location && this.kind !== DeviceType.Unknown) {
+      // Find the station the device was in, update its lastActiveTime.
+      const station = await tryToMatchLocationToStationInGroup(
+        this.location,
+        this.GroupId,
+        now
+      );
+      if (station) {
+        if (this.kind === DeviceType.Thermal) {
+          await station.update({ lastActiveThermalTime: now });
+        } else if (this.kind === DeviceType.Audio) {
+          await station.update({ lastActiveAudioTime: now });
+        }
+      }
+    }
+
     return this.update({
-      lastConnectionTime: new Date(),
+      lastConnectionTime: now,
       nextHeartbeat: nextHeartbeat,
-      heartbeat: new Date(),
+      heartbeat: now,
     });
   };
 

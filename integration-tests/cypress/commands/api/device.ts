@@ -13,11 +13,11 @@ import {
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { ApiDevicesDevice, DeviceHistoryEntry, TestNameAndId } from "../types";
-import { HTTP_OK200, NOT_NULL, NOT_NULL_STRING } from "../constants";
+import { NOT_NULL, NOT_NULL_STRING } from "../constants";
 import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
-import { DeviceType } from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -67,7 +67,7 @@ Cypress.Commands.add(
     stationFromDate: string,
     stationIdOrName: string,
     recordingLocation: LatLng,
-    statusCode: number = HTTP_OK200,
+    statusCode: number = HttpStatusCode.Ok,
     additionalChecks: any = {}
   ) => {
     let stationId: number;
@@ -128,7 +128,7 @@ Cypress.Commands.add(
     userName: string,
     deviceIdOrName: string,
     expectedHistory: any[],
-    statusCode: number = HTTP_OK200,
+    statusCode: number = HttpStatusCode.Ok,
     additionalChecks: any = {}
   ) => {
     let deviceId: string;
@@ -245,14 +245,14 @@ function createDevice(
   }
 
   interface DataType {
-    devicename: string;
+    deviceName: string;
     password: string;
     group: string;
     saltId?: number;
   }
 
   const data: DataType = {
-    devicename: fullName,
+    deviceName: fullName,
     password: password,
     group: getTestName(groupName),
   };
@@ -481,7 +481,7 @@ Cypress.Commands.add(
       statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
-        // API returns devices: [ groupname: ..., devicename: ..., saltId, ..., Group.groupName: ... ]
+        // API returns devices: [ groupName: ..., deviceName: ..., saltId, ..., Group.groupName: ... ]
         // sort users and expected users to ensure order is the same
         const users = sortArrayOn(response.body.users, "userName");
         expectedUsers = sortArrayOn(expectedUsers, "userName");
@@ -634,7 +634,7 @@ Cypress.Commands.add(
               recTime,
               manualStationId.toString(),
               fixLocation,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { messages: [expectedMessage], useRawStationId: true }
             ).then(() => {
               expectedHistory[1].stationId = manualStationId;

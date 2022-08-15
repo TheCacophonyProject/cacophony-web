@@ -1,11 +1,5 @@
 /// <reference path="../../../support/index.d.ts" />
-import {
-  HTTP_BadRequest,
-  HTTP_Forbidden,
-  HTTP_OK200,
-  HTTP_Unprocessable,
-  EXCLUDE_IDS,
-} from "@commands/constants";
+import { EXCLUDE_IDS } from "@commands/constants";
 
 import {
   ApiLocation,
@@ -22,6 +16,7 @@ import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Recordings - parameter tests", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
@@ -83,7 +78,7 @@ describe("Recordings - parameter tests", () => {
       "rpaRecording1",
       undefined,
       [],
-      HTTP_Forbidden
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -305,14 +300,13 @@ describe("Recordings - parameter tests", () => {
 
     cy.log("Recording can not have blank recordingDateTime");
     const recording2 = TestCreateRecordingData(templateRecording);
-    let expectedRecording2: ApiThermalRecordingResponse;
     recording2.recordingDateTime = null;
     cy.apiRecordingAdd(
       "rpaCamera1",
       recording2,
       "oneframe.cptv",
       "rpaRecording9",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
   it("Can read recordingDateTime from file if not provided", () => {
@@ -354,7 +348,7 @@ describe("Recordings - parameter tests", () => {
       recording1,
       "oneframe.cptv",
       "rpaRecording10",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -565,7 +559,7 @@ describe("Recordings - parameter tests", () => {
       recording1,
       "oneframe.cptv",
       "rpaRecording18",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     const recording2 = TestCreateRecordingData(templateRecording);
@@ -575,7 +569,7 @@ describe("Recordings - parameter tests", () => {
       recording2,
       "oneframe.cptv",
       "rpaRecording19",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
 
     const recording3 = TestCreateRecordingData(templateRecording);
@@ -585,7 +579,7 @@ describe("Recordings - parameter tests", () => {
       recording3,
       "oneframe.cptv",
       "rpaRecording20",
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -798,7 +792,7 @@ describe("Recordings - parameter tests", () => {
         recording1,
         "oneframe.cptv",
         "rpaRecording27",
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { message: "Duplicate recording found for device" }
       );
 
@@ -814,7 +808,7 @@ describe("Recordings - parameter tests", () => {
       recording2,
       "oneframe.cptv",
       "rpaRecording28",
-      HTTP_BadRequest,
+      HttpStatusCode.BadRequest,
       { message: "Uploaded file integrity check failed, please retry." }
     );
 

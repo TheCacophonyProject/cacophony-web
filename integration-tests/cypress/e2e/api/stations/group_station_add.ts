@@ -2,16 +2,12 @@
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
-import {
-  NOT_NULL,
-  NOT_NULL_STRING,
-  HTTP_OK200,
-  HTTP_Unprocessable,
-} from "@commands/constants";
+import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import {
   TestCreateStationData,
   TestCreateExpectedStation,
 } from "@commands/api/station";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Stations: adding", () => {
   const TemplateExpectedStation: ApiStationResponse = {
@@ -78,7 +74,7 @@ describe("Stations: adding", () => {
       stationWithSameName,
       null,
       null,
-      HTTP_Unprocessable
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -197,7 +193,7 @@ describe("Stations: adding", () => {
       station1,
       undefined,
       undefined,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { warnings: "none" }
     );
   });
@@ -228,7 +224,7 @@ describe("Stations: adding", () => {
           stationTooClose,
           undefined,
           undefined,
-          HTTP_OK200,
+          HttpStatusCode.Ok,
           {
             warnings: [
               `New station is too close to ${getTestName(
@@ -270,7 +266,7 @@ describe("Stations: adding", () => {
       stationTooClose,
       undefined,
       undefined,
-      HTTP_OK200,
+      HttpStatusCode.Ok,
       { warnings: "none" }
     );
   });

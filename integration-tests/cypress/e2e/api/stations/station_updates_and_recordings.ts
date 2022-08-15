@@ -4,46 +4,22 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { TestGetLocation, TestCreateStationData } from "@commands/api/station";
-import { ApiStationResponse } from "@typedefs/api/station";
-import {
-  TestCreateExpectedDevice,
-  TestCreateExpectedHistoryEntry,
-} from "@commands/api/device";
-import { LatLng } from "@typedefs/api/common";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { getCreds } from "@commands/server";
-import {
-  EXCLUDE_IDS,
-  HTTP_Forbidden,
-  HTTP_OK200,
-  NOT_NULL,
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { EXCLUDE_IDS, NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
-import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
+import { TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
-import { DeviceType } from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
-const dayZero = new Date();
 const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
 const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
 const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
-const dayFour = new Date(new Date().setDate(new Date().getDate() + 4));
-const dayFive = new Date(new Date().setDate(new Date().getDate() + 5));
-const fifthTime = new Date(new Date().setDate(new Date().getDate() + 6));
 const firstName = "recording 1";
 const secondName = "recording 2";
-const thirdName = "recording 3";
-const fourthName = "recording 4";
-const fifthName = "recording 5";
-const oldLocation = TestGetLocation(1);
-const intermediateLocation = TestGetLocation(2);
-const newLocation = TestGetLocation(3);
-const elsewhereLocation = TestGetLocation(4);
-let expectedManualStation: ApiStationResponse;
 
 const templateExpectedCypressRecording: ApiThermalRecordingResponse =
   JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
@@ -94,23 +70,29 @@ describe("Stations: station updates also update recordings", () => {
         ...location,
         time: oneWeekAgo,
       }).then((recordingId) => {
-        cy.apiStationDelete(Josie, stationId.toString(), true, HTTP_OK200, {
-          useRawStationId: true,
-        }).then(() => {
+        cy.apiStationDelete(
+          Josie,
+          stationId.toString(),
+          true,
+          HttpStatusCode.Ok,
+          {
+            useRawStationId: true,
+          }
+        ).then(() => {
           cy.log("Check that station and its recordings are deleted");
           cy.apiStationCheck(
             Josie,
             getTestName(stationName),
             null,
             null,
-            HTTP_Forbidden
+            HttpStatusCode.Forbidden
           );
           cy.apiRecordingCheck(
             Josie,
             recordingId.toString(),
             null,
             null,
-            HTTP_Forbidden,
+            HttpStatusCode.Forbidden,
             {
               useRawRecordingId: true,
             }
@@ -156,7 +138,7 @@ describe("Stations: station updates also update recordings", () => {
               Josie,
               stationId.toString(),
               false,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { useRawStationId: true }
             );
 
@@ -168,7 +150,7 @@ describe("Stations: station updates also update recordings", () => {
               getTestName(stationName),
               null,
               null,
-              HTTP_Forbidden
+              HttpStatusCode.Forbidden
             );
 
             delete expectedRecording.stationId;

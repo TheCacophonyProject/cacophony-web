@@ -1,5 +1,4 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_BadRequest, HTTP_OK200 } from "@commands/constants";
 
 import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
@@ -9,7 +8,7 @@ import {
   TestCreateExpectedNeedsTagData,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
-import { RecordingType } from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_NEEDS_TAG,
@@ -18,7 +17,7 @@ import {
 const NO_SAVE_ID = null;
 
 describe("Recording needs-tag (power-tagger)", () => {
-  const superuser = getCreds("superuser")["name"];
+  const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
   const templateExpectedRecording: ApiRecordingNeedsTagReturned = JSON.parse(
@@ -56,7 +55,7 @@ describe("Recording needs-tag (power-tagger)", () => {
     if (Cypress.env("running_in_a_dev_environment") == true) {
       dev_env = true;
       doNotValidate = false;
-      cy.apiSignInAs(null, null, superuser, suPassword);
+      cy.apiSignInAs(null, superuser, suPassword);
     } else {
       doNotValidate = true;
       cy.log(
@@ -102,7 +101,7 @@ describe("Recording needs-tag (power-tagger)", () => {
         NO_SAVE_ID,
         [expectedRecording1],
         [],
-        HTTP_OK200,
+        HttpStatusCode.Ok,
         { doNotValidate: doNotValidate }
       );
     });
@@ -204,7 +203,7 @@ describe("Recording needs-tag (power-tagger)", () => {
             NO_SAVE_ID,
             [expectedRecording3b],
             [],
-            HTTP_OK200,
+            HttpStatusCode.Ok,
             { doNotValidate: doNotValidate }
           );
 
@@ -224,7 +223,7 @@ describe("Recording needs-tag (power-tagger)", () => {
               NO_SAVE_ID,
               [expectedRecording3, expectedRecording4],
               [],
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { doNotValidate: doNotValidate }
             );
           });
@@ -242,7 +241,7 @@ describe("Recording needs-tag (power-tagger)", () => {
       NO_SAVE_ID,
       [],
       [],
-      HTTP_BadRequest,
+      HttpStatusCode.BadRequest,
       { useRawDeviceId: true }
     );
   });

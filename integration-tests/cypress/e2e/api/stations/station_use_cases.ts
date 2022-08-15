@@ -7,20 +7,14 @@ import { TestGetLocation } from "@commands/api/station";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 import { TestCreateExpectedDevice } from "@commands/api/device";
 import { getCreds } from "@commands/server";
-import {
-  EXCLUDE_IDS,
-  HTTP_OK200,
-  HTTP_Forbidden,
-  NOT_NULL,
-  NOT_NULL_STRING,
-} from "@commands/constants";
+import { EXCLUDE_IDS, NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
 import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
 import { getTestName } from "@commands/names";
-import { DeviceType } from "@typedefs/api/consts";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 let count = 0;
 let group: string;
 const baseGroup: string = "station_use_case_group";
@@ -200,7 +194,7 @@ describe("Stations: use cases", () => {
               oneWeekFromNow.toISOString(),
               stationName,
               null,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { messages: ["Updated 1 recording(s)"] }
             ).then(() => {
               cy.log(
@@ -261,7 +255,7 @@ describe("Stations: use cases", () => {
                 autoStation.name,
                 undefined,
                 undefined,
-                HTTP_Forbidden
+                HttpStatusCode.Forbidden
               );
 
               cy.log(
@@ -621,7 +615,7 @@ describe("Stations: use cases", () => {
                     secondRecordingTime.toISOString(),
                     newStation.id.toString(),
                     null,
-                    HTTP_OK200,
+                    HttpStatusCode.Ok,
                     {
                       messages: ["Updated 1 recording(s)"],
                       useRawStationId: true,
@@ -906,7 +900,7 @@ describe("Stations: use cases", () => {
               firstRecordingTime.toISOString(),
               manualStationId.toString(),
               firstRecordingLocation,
-              HTTP_OK200,
+              HttpStatusCode.Ok,
               { messages: ["Updated 1 recording(s)"], useRawStationId: true }
             ).then(() => {
               cy.log(
@@ -966,7 +960,7 @@ describe("Stations: use cases", () => {
                 autoStation.name,
                 undefined,
                 undefined,
-                HTTP_Forbidden
+                HttpStatusCode.Forbidden
               );
 
               cy.log(

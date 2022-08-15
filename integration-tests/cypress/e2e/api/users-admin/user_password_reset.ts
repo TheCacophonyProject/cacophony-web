@@ -1,7 +1,7 @@
 /// <reference path="../../../support/index.d.ts" />
-import { HTTP_AuthorizationError } from "@commands/constants";
 
 import { getTestName } from "@commands/names";
+import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("User: password reset", () => {
   //Do not run against a live server as we don't have a stubbed email server
@@ -22,13 +22,16 @@ describe("User: password reset", () => {
       //clear mailserver log
       const address =
         "uprUser2" + getTestName("").substring(4, 12) + "@test.com";
+      cy.log("Adding user with email address", address);
       cy.apiUserAdd("uprUser2", "password", address);
 
       cy.exec(
         `cd ../api && docker-compose exec -T server bash -lic "echo "" > mailServerStub.log;"`
       ).then(() => {
         cy.log("Request a password reset");
-        cy.apiResetPassword("uprUser2");
+        cy.apiResetPassword(address, HttpStatusCode.Ok, {
+          useRawUserName: true,
+        });
 
         cy.log("wait for a password reset email");
         cy.log(
@@ -52,10 +55,15 @@ describe("User: password reset", () => {
           cy.apiUserChangePassword(token, "password2");
 
           cy.log("Log in using new password");
-          cy.apiSignInAs("uprUser2", null, null, "password2");
+          cy.apiSignInAs(null, address, "password2");
 
           cy.log("Cannot log in using old password");
-          cy.apiSignInAs("uprUser2", null, null, null, HTTP_AuthorizationError);
+          cy.apiSignInAs(
+            null,
+            address,
+            null,
+            HttpStatusCode.AuthorizationError
+          );
         });
       });
     });

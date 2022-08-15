@@ -19,7 +19,11 @@
       </p>
     </b-jumbotron>
     <tab-list v-model="currentTabIndex" v-if="group && devices.length">
-      <tab-list-item lazy title="Manual uploads" v-if="isGroupAdmin">
+      <tab-list-item
+        lazy
+        title="Manual uploads"
+        v-if="isGroupAdmin && hasAudioOrUnknownDevices"
+      >
         <ManualRecordingUploads :devices="devices" />
       </tab-list-item>
       <tab-list-item lazy v-if="isGroupAdmin">
@@ -36,7 +40,7 @@
           :loading="usersLoading"
           :group-name="groupName"
           @user-added="() => fetchUsers()"
-          @user-removed="(userName) => removedUser(userName)"
+          @user-removed="(userId) => removedUser(userId)"
         />
       </tab-list-item>
       <tab-list-item lazy>
@@ -124,7 +128,7 @@ import UsersTab from "@/components/Groups/UsersTab.vue";
 import DevicesTab from "@/components/Groups/DevicesTab.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
-import { ApiGroupResponse } from "@typedefs/api/group";
+import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { GroupId } from "@typedefs/api/common";
 import { DeviceType } from "@typedefs/api/consts";
 import MonitoringTab from "@/components/MonitoringTab.vue";
@@ -132,6 +136,7 @@ import GroupLink from "@/components/GroupLink.vue";
 import TabListItem from "@/components/TabListItem.vue";
 import TabList from "@/components/TabList.vue";
 import ManualRecordingUploads from "@/components/ManualRecordingUploads.vue";
+import { ApiDeviceResponse } from "@typedefs/api/device";
 
 interface GroupViewData {
   group: ApiGroupResponse | null;
@@ -168,7 +173,7 @@ export default {
       recordingQueryFinal: {},
       deletedRecordingQueryFinal: {},
       visitsQueryFinal: {},
-      users: [],
+      users: [] as ApiGroupUserResponse[],
       devices: [],
       stations: [],
       visits: [],
@@ -184,16 +189,29 @@ export default {
     isGroupAdmin() {
       return this.group && (this.group as ApiGroupResponse).admin;
     },
+    hasAudioOrUnknownDevices() {
+      const hasAudio = (this.devices as ApiDeviceResponse[]).some(
+        (device) => device.type === DeviceType.Audio
+      );
+      const hasUnknown = (this.devices as ApiDeviceResponse[]).some(
+        (device) => device.type === DeviceType.Unknown
+      );
+      return hasAudio || hasUnknown;
+    },
     tabNames() {
       if (this.isGroupAdmin) {
-        return [
-          "manual-uploads",
-          "users",
-          "visits",
-          "devices",
-          "stations",
-          "recordings",
-        ];
+        if (this.hasAudioOrUnknownDevices) {
+          return [
+            "manual-uploads",
+            "users",
+            "visits",
+            "devices",
+            "stations",
+            "recordings",
+          ];
+        } else {
+          return ["users", "visits", "devices", "stations", "recordings"];
+        }
       }
       return ["visits", "devices", "stations", "recordings"];
     },
@@ -285,7 +303,7 @@ export default {
       this.usersLoading = true;
       const usersResponse = await api.groups.getUsersForGroup(this.groupName);
       if (usersResponse.success) {
-        this.users = usersResponse.result.users;
+        this.users = usersResponse.result.users as ApiGroupUserResponse[];
       }
       this.usersLoading = false;
     },
@@ -374,8 +392,8 @@ export default {
       }
       this.stationsLoading = false;
     },
-    removedUser(userName: string) {
-      this.users = this.users.filter((user) => user.userName !== userName);
+    removedUser(userId: number) {
+      this.users = this.users.filter((user) => user.id !== userId);
     },
   },
 };

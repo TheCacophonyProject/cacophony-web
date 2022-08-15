@@ -8,23 +8,28 @@
     :ok-disabled="isDisabled"
   >
     <b-form @submit="addUser" data-cy="add-user-form">
-      <b-form-group label-for="input-username" label="Username">
+      <b-form-group
+        label-for="input-emailOrUserId"
+        :label="
+          isSuperUserAndViewingAsSuperUser ? 'User' : 'User email address'
+        "
+      >
         <b-form-input
-          ref="input-username"
-          id="input-username"
+          ref="input-emailOrUserId"
+          id="input-emailOrUserId"
           @update="resetFormSubmission"
-          v-model.trim="$v.form.username.$model"
-          :state="usernameState"
-          aria-describedby="username-live-help username-live-feedback"
+          v-model.trim="$v.form.emailOrUserId.$model"
+          :state="emailState"
+          aria-describedby="email-live-help email-live-feedback"
           type="text"
           autofocus
           class="input"
-          data-cy="user-name-input"
+          data-cy="user-email-input"
           v-if="!isSuperUserAndViewingAsSuperUser"
         />
         <multiselect
           v-else
-          v-model="form.username"
+          v-model="form.emailOrUserId"
           :options="users"
           :placeholder="usersListLabel"
           :disabled="users.length === 0"
@@ -71,7 +76,7 @@ import { shouldViewAsSuperUser } from "@/utils";
 import { superUserCreds } from "@/components/NavBar.vue";
 
 const initialFormState = {
-  username: null,
+  emailOrUserId: null,
   isAdmin: false,
 };
 
@@ -96,21 +101,21 @@ export default {
     };
   },
   computed: {
-    usernameIsEmpty() {
+    emailIsEmpty() {
       return (
         !this.isSuperUserAndViewingAsSuperUser &&
-        (this.$v.form.username.$model === null ||
-          this.$v.form.username.$model.trim() === "")
+        (this.$v.form.emailOrUserId.$model === null ||
+          this.$v.form.emailOrUserId.$model.trim() === "")
       );
     },
-    usernameState() {
-      if (this.usernameIsEmpty) {
+    emailState() {
+      if (this.emailIsEmpty) {
         return null;
       }
       if (this.formSubmissionFailed) {
         return false;
       }
-      return !this.$v.form.username.$error;
+      return !this.$v.form.emailOrUserId.$error;
     },
     isDisabled() {
       return this.usernameIsEmpty;
@@ -120,19 +125,19 @@ export default {
         this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
       );
     },
-    thisUserName() {
-      return this.$store.state.User.userData.userName;
+    thisUserId() {
+      return this.$store.state.User.userData.id;
     },
     usersListLabel() {
       if (this.isSuperUserAndViewingAsSuperUser) {
         return "select a user";
       }
-      return "enter a username";
+      return "enter a user email address";
     },
   },
   validations: {
     form: {
-      username: {
+      emailOrUserId: {
         required,
       },
       isAdmin: {},
@@ -153,28 +158,27 @@ export default {
         // already an admin user, and we're trying to downgrade ourselves to
         // a regular user *and* we're the last admin in the group, we should warn.
         const userToAdd =
-          (this.isSuperUserAndViewingAsSuperUser && this.form.username.name) ||
-          this.form.username;
+          (!this.isSuperUserAndViewingAsSuperUser && this.form.emailOrUserId) ||
+          this.form.emailOrUserId.id;
         if (
           !this.isSuperUserAndViewingAsSuperUser &&
-          userToAdd === this.thisUserName &&
+          userToAdd === this.thisUserId &&
           !this.form.isAdmin &&
           this.groupUsers.length === 1 &&
-          this.groupUsers[0].userName === this.thisUserName
+          this.groupUsers[0].id === this.thisUserId
         ) {
           this.formSubmissionFailed = true;
           this.formErrorMessage =
             "The last user cannot remove their admin status";
           return;
         }
-
         const result = await api.groups.addGroupUser(
           this.groupName,
           userToAdd,
           this.form.isAdmin
         );
         if (!result.success) {
-          this.formErrorMessage = "The username couldn't be found";
+          this.formErrorMessage = "The email address couldn't be found";
           this.formSubmissionFailed = true;
         } else {
           // We can emit that a user was added to the group:
@@ -185,15 +189,17 @@ export default {
     },
     setFocusAndReset() {
       this.form = { ...initialFormState };
-      this.$refs["input-username"] && this.$refs["input-username"].focus();
+      this.$refs["input-emailOrUserId"] &&
+        this.$refs["input-emailOrUserId"].focus();
     },
     async initUsersList() {
       if (this.isSuperUserAndViewingAsSuperUser) {
         const usersListResponse = await User.list();
         if (usersListResponse.success) {
           this.users = usersListResponse.result.usersList.map(
-            ({ userName, id }) => ({
+            ({ userName, id, email }) => ({
               name: userName,
+              email,
               id,
             })
           );

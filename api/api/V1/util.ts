@@ -20,10 +20,10 @@ import moment from "moment";
 import { v4 as uuidv4 } from "uuid";
 import multiparty from "multiparty";
 import log from "@log";
-import responseUtil from "./responseUtil";
+import responseUtil, { serverErrorResponse } from "./responseUtil";
 import modelsUtil from "@models/util/util";
 import crypto from "crypto";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
 import { User } from "@models/User";
@@ -31,6 +31,7 @@ import stream, { Stream } from "stream";
 import { RecordingType } from "@typedefs/api/consts";
 import config from "@config";
 import { Op } from "sequelize";
+import { UnprocessableError } from "@api/customErrors";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -59,7 +60,7 @@ function multipartUpload(
     locals: Record<string, any>
   ) => Promise<ModelCommon<T> | string>
 ) {
-  return async (request: Request, response: Response) => {
+  return async (request: Request, response: Response, next: NextFunction) => {
     const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
     let data;
     let filename;
@@ -73,7 +74,7 @@ function multipartUpload(
       // on the devices' behalf, set the lastConnectionTime for the device.
       if (
         response.locals.requestDevice &&
-        !response.locals.requestDevice.devicename
+        !response.locals.requestDevice.deviceName
       ) {
         // We just have a device id, so get the actual device object to update.
         uploadingDevice = await models.Device.findByPk(
@@ -103,11 +104,7 @@ function multipartUpload(
               data.type === RecordingType.Audio) &&
             isNaN(Date.parse(data.recordingDateTime))
           ) {
-            responseUtil.send(response, {
-              statusCode: 422,
-              messages: ["Invalid recordingDateTime"],
-            });
-            return;
+            return next(new UnprocessableError("Invalid recordingDateTime"));
           }
         }
       } catch (err) {
@@ -147,7 +144,7 @@ function multipartUpload(
     // Handle any errors. If this is called, the close handler
     // shouldn't be.
     form.on("error", (err) => {
-      responseUtil.serverError(response, err);
+      return serverErrorResponse(response, err);
     });
 
     // This gets called once all fields and parts have been read.
@@ -204,8 +201,7 @@ function multipartUpload(
         ]);
         const fileDataArray = new Uint8Array(fileData);
         if (uploadResult instanceof Error) {
-          responseUtil.serverError(response, uploadResult);
-          return;
+          return serverErrorResponse(response, uploadResult);
         }
         log.info("Finished streaming upload to object store. Key: %s", key);
 
@@ -304,8 +300,7 @@ function multipartUpload(
           return;
         }
       } catch (err) {
-        responseUtil.serverError(response, err);
-        return;
+        return serverErrorResponse(response, err);
       }
     });
 

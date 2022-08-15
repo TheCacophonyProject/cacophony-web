@@ -62,3 +62,14 @@ export enum UserGlobalPermission {
   Read = "read",
   Off = "off",
 }
+
+export enum HttpStatusCode {
+  Ok = 200,
+  OkNoContent = 204,
+  NotModified = 301,
+  BadRequest = 400,
+  AuthorizationError = 401,
+  Forbidden = 403,
+  Unprocessable = 422,
+  ServerError = 500,
+}

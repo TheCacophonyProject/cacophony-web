@@ -7,7 +7,6 @@ import moment from "moment";
 import { User } from "@models/User";
 import { getEmailConfirmationToken, getResetToken } from "@api/auth";
 import { sendEmail } from "@/emails/sendEmail";
-import logger from "@/logging";
 
 export interface EmailImageAttachment {
   buffer: Buffer;
@@ -57,7 +56,7 @@ function resetBody(userTitle: string, token: string): string[] {
 
 async function sendResetEmail(user: User, password: string): Promise<boolean> {
   const token = getResetToken(user.id, password);
-  const [html, text] = resetBody(user.firstName || user.username, token);
+  const [html, text] = resetBody(user.userName, token);
   return sendEmail(
     html,
     text,
@@ -74,7 +73,7 @@ async function sendResetEmail(user: User, password: string): Promise<boolean> {
 //   const token = getEmailConfirmationToken(user.id, user.email);
 //   // FIXME - This needs to be a transactional email about confirming your email.
 //   // TODO - Only send automated emails to users if they have confirmed their email address.
-//   const [html, text] = resetBody(user.firstName || user.username, token);
+//   const [html, text] = resetBody(user.userName, token);
 //   return sendEmail(
 //     html,
 //     text,
@@ -89,7 +88,7 @@ export async function sendEmailConfirmationEmail(
   const token = getEmailConfirmationToken(user.id, newEmailAddress);
   // FIXME - This needs to be a transactional email about confirming your email.
   // TODO - Only send automated emails to users if they have confirmed their email address.
-  const [html, text] = resetBody(user.firstName || user.username, token);
+  const [html, text] = resetBody(user.userName, token);
   return sendEmail(
     html,
     text,

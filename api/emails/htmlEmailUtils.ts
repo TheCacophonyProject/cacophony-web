@@ -1,6 +1,5 @@
 import fs from "fs/promises";
 import * as Handlebars from "handlebars";
-import config from "@config";
 import { JSDOM } from "jsdom";
 
 const SEPARATOR_LINE = "-----------";

@@ -21,10 +21,10 @@ Cypress.Commands.add("checkOnGroupPage", () => {
   cy.checkOnPage("/groups");
 });
 
-Cypress.Commands.add("addUserToGroup", (userName, groupname, admin = false) => {
+Cypress.Commands.add("addUserToGroup", (userName, groupName, admin = false) => {
   const fullUserName = getTestName(userName);
 
-  goToGroupPage(groupname);
+  goToGroupPage(groupName);
   cy.contains("Add user").click();
 
   cy.get('form[data-cy="add-user-form"]').as("adduser");
@@ -37,7 +37,7 @@ Cypress.Commands.add("addUserToGroup", (userName, groupname, admin = false) => {
   }
   cy.get(".modal-dialog button.btn-primary").should("have.text", "Add").click();
 
-  cy.checkOnPage("/groups/" + getTestName(groupname));
+  cy.checkOnPage("/groups/" + getTestName(groupName));
 });
 
 function goToGroupPage(groupName) {

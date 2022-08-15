@@ -12,7 +12,11 @@ import logger from "../logging";
 import log from "../logging";
 import { modelTypeName, modelTypeNamePlural } from "./middleware";
 import { ValidationChain } from "express-validator";
-import { AuthorizationError, ClientError } from "./customErrors";
+import {
+  AuthenticationError,
+  AuthorizationError,
+  ClientError,
+} from "./customErrors";
 import { User } from "models/User";
 import { Op } from "sequelize";
 import { Device } from "models/Device";
@@ -47,11 +51,10 @@ const extractJwtAuthenticatedEntity =
 
       if (types && !types.includes(jwtDecoded._type)) {
         return next(
-          new ClientError(
+          new AuthenticationError(
             `Invalid JWT access type '${type}', must be ${
               types.length > 1 ? "one of " : ""
-            }${types.map((t) => `'${t}'`).join(", ")}`,
-            401
+            }${types.map((t) => `'${t}'`).join(", ")}`
           )
         );
       }
@@ -62,20 +65,19 @@ const extractJwtAuthenticatedEntity =
         jwtDecoded.activated === false
       ) {
         return next(
-          new ClientError(
-            "You must have confirmed your email address to activate your account in order to access this API.",
-            401
+          new AuthorizationError(
+            "You must have confirmed your email address to activate your account in order to access this API."
           )
         );
       }
 
       const hasAccess = checkAccess(reqAccess, jwtDecoded);
       if (!hasAccess) {
-        return next(new ClientError("JWT does not have access.", 401));
+        return next(new AuthenticationError("JWT does not have access."));
       }
 
       if (requireSuperAdmin && type !== "user") {
-        return next(new ClientError("Admin has to be a user", 403));
+        return next(new AuthorizationError("Admin has to be a user"));
       }
 
       const short = true;
@@ -110,9 +112,8 @@ const extractJwtAuthenticatedEntity =
         }
         if (result === null) {
           return next(
-            new ClientError(
-              `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`,
-              403
+            new AuthorizationError(
+              `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`
             )
           );
         }
@@ -131,7 +132,7 @@ const extractJwtAuthenticatedEntity =
       }
 
       if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
-        return next(new ClientError("User is not an admin.", 403));
+        return next(new AuthorizationError("User is not an admin."));
       }
 
       return next();
@@ -162,7 +163,7 @@ export const extractJwtAuthorisedDevice = extractJwtAuthenticatedEntity([
 
 const deviceAttributes = [
   "id",
-  "devicename",
+  "deviceName",
   "location",
   "saltId",
   "uuid",
@@ -205,7 +206,7 @@ const getDeviceInclude =
     include: [
       {
         model: models.Group,
-        attributes: ["id", "groupname"],
+        attributes: ["id", "groupName"],
         required:
           Object.keys(groupWhere).length !== 0 &&
           Object.keys(deviceWhere).length === 0,
@@ -237,7 +238,7 @@ const getStationInclude =
     include: [
       {
         model: models.Group,
-        attributes: ["id", "groupname"],
+        attributes: ["id", "groupName"],
         required: true,
         where: groupWhere,
         include: [
@@ -267,7 +268,7 @@ const getScheduleInclude =
     include: [
       {
         model: models.Group,
-        attributes: ["id", "groupname"],
+        attributes: ["id", "groupName"],
         required: Object.keys(groupWhere).length !== 0,
         where: groupWhere,
         include: [
@@ -300,7 +301,7 @@ const getRecordingInclude =
     include: [
       {
         model: models.Group,
-        attributes: ["id", "groupname"],
+        attributes: ["id", "groupName"],
         required: false,
         where: groupWhere,
         include: [
@@ -320,7 +321,7 @@ const getRecordingInclude =
       },
       {
         model: models.Device,
-        attributes: ["id", "devicename"],
+        attributes: ["id", "deviceName"],
         required: false,
         where: deviceWhere,
       },
@@ -453,38 +454,34 @@ export const fetchModel =
         if (byName && byId) {
           // TODO - provide better error messages in the case the group (id2) doesn't exist?
           return next(
-            new ClientError(
+            new AuthorizationError(
               `Could not find a ${modelName} with a name or id of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-              403
+              }${forUser ? " for user" : ""}`
             )
           );
         } else if (byId) {
           return next(
-            new ClientError(
+            new AuthorizationError(
               `Could not find a ${modelName} with an id of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-              403
+              }${forUser ? " for user" : ""}`
             )
           );
         } else if (byName) {
           return next(
-            new ClientError(
+            new AuthorizationError(
               `Could not find a ${modelName} with a name of '${id}'${
                 id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-              403
+              }${forUser ? " for user" : ""}`
             )
           );
         } else {
           return next(
-            new ClientError(
+            new AuthorizationError(
               `Could not find any ${modelTypeNamePlural(modelType)}${
                 forUser ? " for user" : ""
-              }`,
-              403
+              }`
             )
           );
         }
@@ -546,7 +543,7 @@ const getDevices =
       if (groupIsId) {
         groupWhere = { id: parseInt(groupNameOrId) };
       } else {
-        groupWhere = { groupname: groupNameOrId };
+        groupWhere = { groupName: groupNameOrId };
       }
     }
 
@@ -589,7 +586,7 @@ const getDevices =
     getDeviceOptions.subQuery = false;
     return models.Device.findAll({
       ...getDeviceOptions,
-      order: ["devicename"],
+      order: ["deviceName"],
     });
   };
 
@@ -611,7 +608,7 @@ const getStations =
       if (groupIsId) {
         groupWhere = { id: parseInt(groupNameOrId) };
       } else {
-        groupWhere = { groupname: groupNameOrId };
+        groupWhere = { groupName: groupNameOrId };
       }
     }
     const allStationsOptions = {
@@ -621,7 +618,7 @@ const getStations =
           model: models.Group,
           required: true,
           where: groupWhere,
-          attributes: ["id", "groupname"],
+          attributes: ["id", "groupName"],
         },
       ],
     };
@@ -699,7 +696,7 @@ const getStation =
     } else if (stationIsId && groupNameOrId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
-        "$Group.groupname$": groupNameMatch,
+        "$Group.groupName$": groupNameMatch,
       };
     } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
@@ -713,7 +710,7 @@ const getStation =
     } else {
       stationWhere = {
         name: stationNameMatch,
-        "$Group.groupname$": groupNameMatch,
+        "$Group.groupName$": groupNameMatch,
       };
     }
     if (groupIsId) {
@@ -721,7 +718,7 @@ const getStation =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: groupNameMatch };
+      groupWhere = { groupName: groupNameMatch };
     }
 
     let getStationOptions;
@@ -741,7 +738,7 @@ const getStation =
               {
                 model: models.Group,
                 required: true,
-                attributes: ["groupname"],
+                attributes: ["groupName"],
                 where: groupWhere,
               },
             ],
@@ -759,7 +756,7 @@ const getStation =
           {
             model: models.Group,
             required: true,
-            attributes: ["groupname"],
+            attributes: ["groupName"],
             where: groupWhere,
           },
         ],
@@ -792,7 +789,7 @@ const getSchedules =
       if (groupIsId) {
         groupWhere = { id: parseInt(groupNameOrId) };
       } else {
-        groupWhere = { groupname: groupNameOrId };
+        groupWhere = { groupName: groupNameOrId };
       }
     }
 
@@ -861,7 +858,7 @@ const getGroups =
     }
     return models.Group.findAll({
       ...getGroupOptions,
-      order: ["groupname"],
+      order: ["groupName"],
       subQuery: false,
     });
   };
@@ -915,7 +912,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
         model: models.User,
         as: "tagger",
         required: false,
-        attributes: ["username"],
+        attributes: ["userName"],
       },
     ],
     required: false,
@@ -944,7 +941,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
           {
             model: models.User,
             required: false,
-            attributes: ["username"],
+            attributes: ["userName"],
           },
         ],
       },
@@ -1114,7 +1111,7 @@ const getDevice =
     } else if (deviceIsId && groupNameOrId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
-        "$Group.groupname$": groupNameMatch,
+        "$Group.groupName$": groupNameMatch,
       };
     } else if (deviceIsId && !groupNameOrId) {
       deviceWhere = {
@@ -1122,13 +1119,13 @@ const getDevice =
       };
     } else if (groupIsId) {
       deviceWhere = {
-        devicename: deviceNameMatch,
+        deviceName: deviceNameMatch,
         GroupId: parseInt(groupNameOrId),
       };
     } else {
       deviceWhere = {
-        devicename: deviceNameMatch,
-        "$Group.groupname$": groupNameMatch,
+        deviceName: deviceNameMatch,
+        "$Group.groupName$": groupNameMatch,
       };
     }
     if (groupIsId) {
@@ -1136,7 +1133,7 @@ const getDevice =
         id: parseInt(groupNameOrId),
       };
     } else if (groupNameOrId) {
-      groupWhere = { groupname: groupNameMatch };
+      groupWhere = { groupName: groupNameMatch };
     }
 
     let getDeviceOptions;
@@ -1238,7 +1235,7 @@ const getGroup =
           [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
         };
       }
-      groupWhere = { groupname: groupNameMatch };
+      groupWhere = { groupName: groupNameMatch };
     }
     let getGroupOptions;
     if (forRequestUser) {
@@ -1263,23 +1260,20 @@ const getGroup =
 const getUser =
   () =>
   (
-    userNameOrEmailOrId: string
+    userEmailOrId: string
   ): Promise<ModelStaticCommon<User> | ClientError | null> => {
     // @ts-ignore
     const userIsId =
-      !isNaN(parseInt(userNameOrEmailOrId)) &&
-      parseInt(userNameOrEmailOrId).toString() === String(userNameOrEmailOrId);
+      !isNaN(parseInt(userEmailOrId)) &&
+      parseInt(userEmailOrId).toString() === String(userEmailOrId);
     let userWhere;
     if (userIsId) {
       userWhere = {
-        id: parseInt(userNameOrEmailOrId),
+        id: parseInt(userEmailOrId),
       };
     } else {
       userWhere = {
-        [Op.or]: [
-          { username: userNameOrEmailOrId },
-          { email: userNameOrEmailOrId.toLowerCase() },
-        ],
+        email: userEmailOrId.toLowerCase(),
       };
     }
     return models.User.findOne({
@@ -1502,15 +1496,15 @@ export const fetchUnauthorizedRequiredUserByResetToken =
     try {
       resetInfo = getDecodedResetToken(token);
     } catch (e) {
-      return next(new ClientError(`Reset token expired`, 401));
+      return next(new AuthenticationError(`Reset token expired`));
     }
     response.locals.resetInfo = resetInfo;
     const user = await models.User.findByPk(response.locals.resetInfo.id);
     if (!user) {
+      // FIXME - Should this be an AuthenticationError?
       return next(
-        new ClientError(
-          `Could not find a user with id '${response.locals.resetInfo.id}'`,
-          403
+        new AuthorizationError(
+          `Could not find a user with id '${response.locals.resetInfo.id}'`
         )
       );
     }
@@ -1518,23 +1512,20 @@ export const fetchUnauthorizedRequiredUserByResetToken =
     next();
   };
 
-export const fetchUnauthorizedRequiredUserByNameOrEmailOrId = (
-  userNameOrEmailOrId: ValidationChain
-) =>
-  fetchRequiredModel(models.User, true, true, getUser(), userNameOrEmailOrId);
+export const fetchUnauthorizedRequiredUserByEmailOrId = (
+  userEmailOrId: ValidationChain
+) => fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
 
-export const fetchUnauthorizedOptionalUserByNameOrEmailOrId = (
-  userNameOrEmailOrId: ValidationChain
-) =>
-  fetchOptionalModel(models.User, true, true, getUser(), userNameOrEmailOrId);
+export const fetchUnauthorizedOptionalUserByEmailOrId = (
+  userEmailOrId: ValidationChain
+) => fetchOptionalModel(models.User, true, true, getUser(), userEmailOrId);
 
-export const fetchUnauthorizedOptionalUserByNameOrId = (
-  userNameOrId: ValidationChain
-) => fetchOptionalModel(models.User, true, true, getUser(), userNameOrId);
+// export const fetchUnauthorizedRequiredUserByEmailOrId = (
+//   userEmailOrId: ValidationChain
+// ) => fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
 
-export const fetchUnauthorizedRequiredUserByNameOrId = (
-  userNameOrId: ValidationChain
-) => fetchRequiredModel(models.User, true, true, getUser(), userNameOrId);
+export const fetchUnauthorizedRequiredUserById = (userId: ValidationChain) =>
+  fetchRequiredModel(models.User, false, true, getUser(), userId);
 
 export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
   fetchOptionalModel(models.User, false, true, getUser(), userId);

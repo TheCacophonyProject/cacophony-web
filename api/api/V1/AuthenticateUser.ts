@@ -22,46 +22,44 @@ import auth, {
   getEmailConfirmationToken,
   ttlTypes,
 } from "../auth";
-import { body, oneOf } from "express-validator";
-import responseUtil from "./responseUtil";
+import { body } from "express-validator";
+import { serverErrorResponse, successResponse } from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
+import { anyOf, idOf, validPasswordOf } from "../validation-middleware";
 import {
-  deprecatedField,
-  validNameOf,
-  validPasswordOf,
-} from "../validation-middleware";
-import {
-  extractJWTInfo,
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
-  fetchUnauthorizedOptionalUserByNameOrEmailOrId,
-  fetchUnauthorizedRequiredUserByNameOrEmailOrId,
+  extractJWTInfo,
+  fetchUnauthorizedOptionalUserByEmailOrId,
+  fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
-  fetchUnauthorizedRequiredUserByNameOrId,
 } from "../extract-middleware";
-
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { mapUser } from "@api/V1/User";
 import { User } from "@models/User";
 import models from "@/models";
-import { UserId } from "@/../types/api/common";
+import { UserId } from "@typedefs/api/common";
 import jwt from "jsonwebtoken";
 import config from "@config";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
-import logger from "@log";
 import {
   sendChangedEmailConfirmationEmail,
   sendWelcomeEmailConfirmationEmail,
 } from "@/emails/transactionalEmails";
-import { sendEmailConfirmationEmail } from "@/scripts/emailUtil";
+import { HttpStatusCode } from "@typedefs/api/consts";
+import {
+  AuthenticationError,
+  AuthorizationError,
+  ClientError,
+  FatalError,
+  UnprocessableError,
+} from "@api/customErrors";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
   password: string; // Password for the user account
-  userName?: string; // Username identifying a valid user account
-  nameOrEmail?: string; // Username or email of a valid user account.
-  email?: string; // Email identifying a valid user account
+  email: string; // Email identifying a valid user account
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -75,36 +73,28 @@ export default function (app: Application, baseUrl: string) {
   // TODO - Give api users the option of asking for a long-lived token, so they don't have to deal with the complexity
   //  of refresh tokens?
 
+  // NOTE: nameOrEmail is just in here until we can update sidekick to just use email.
   const authenticateUserOptions = [
     validateFields([
-      oneOf(
-        [
-          deprecatedField(validNameOf(body("username"))),
-          validNameOf(body("userName")),
-          validNameOf(body("nameOrEmail")),
-          body("nameOrEmail").isEmail(),
-          body("email").isEmail(),
-        ],
-        "could not find a user with the given username or email"
+      anyOf(
+        body("nameOrEmail").isEmail().optional(),
+        body("email").isEmail().optional()
       ),
       validPasswordOf(body("password")),
     ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body(["username", "userName", "nameOrEmail", "email"])
-    ),
+    fetchUnauthorizedOptionalUserByEmailOrId(body(["email", "nameOrEmail"])),
     (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.user) {
         // NOTE: Don't give away the fact that the user may not exist - remain vague in the
         //  error message as to whether the error is username or password related.
-        return responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Wrong password or username/email address."],
-        });
+        return next(
+          new AuthenticationError("Wrong password or email address.")
+        );
       } else {
         next();
       }
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const passwordMatch = await response.locals.user.comparePassword(
         request.body.password
       );
@@ -120,19 +110,15 @@ export default function (app: Application, baseUrl: string) {
           request.headers["user-agent"],
           isNewEndPoint
         );
-
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Successful login."],
+        return successResponse(response, "Successful login.", {
           token: apiToken,
           refreshToken,
           userData: mapUser(response.locals.user),
         });
       } else {
-        responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Wrong password or username/email address."],
-        });
+        return next(
+          new AuthenticationError("Wrong password or email address.")
+        );
       }
     },
   ];
@@ -142,9 +128,9 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiName AuthenticateUser
    * @apiGroup Authentication
-   * @apiDescription Checks the username corresponds to an existing user account
+   * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
-   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
+   * @apiBody {String} email Address identifying a valid user account
    * @apiDeprecated Use /api/v1/users/authenticate-user
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
@@ -161,9 +147,9 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiName AuthenticateUser
    * @apiGroup Authentication
-   * @apiDescription Checks the username corresponds to an existing user account
+   * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
-   * One of 'username', 'userName', 'email', or 'nameOrEmail' is required.
+   * @apiBody {String} email Address identifying a valid user account
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
@@ -191,7 +177,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/refresh-session-token`,
     validateFields([body("refreshToken").exists()]),
     extractJWTInfo(body("refreshToken")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // NOTE: The key insight for refresh tokens is that they are "one-time-use" tokens.  Every time we give out
       //  a new refresh token, we invalidate the old one.
 
@@ -220,10 +206,9 @@ export default function (app: Application, baseUrl: string) {
           new Date().setDate(new Date().getDate() - 15)
         );
         if (new Date(validToken.updatedAt) < fifteenDaysAgo) {
-          return responseUtil.send(response, {
-            statusCode: 401,
-            messages: ["Inactive refresh token expired."],
-          });
+          return next(
+            new AuthorizationError("Inactive refresh token expired.")
+          );
         }
 
         const refreshToken = randomUUID();
@@ -257,26 +242,21 @@ export default function (app: Application, baseUrl: string) {
           { refreshToken },
           config.server.passportSecret
         );
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got user token."],
+        return successResponse(response, "Got user token.", {
           token: `JWT ${token}`,
           expiry,
           refreshToken: refreshTokenSigned,
         });
       } else {
-        responseUtil.send(response, {
-          statusCode: 401,
-          messages: ["Invalid refresh token."],
-        });
+        return next(new AuthorizationError("Invalid refresh token."));
       }
     }
   );
 
   const authenticateAsOtherUserOptions = [
     extractJwtAuthorisedSuperAdminUser,
-    validateFields([validNameOf(body("name"))]),
-    fetchUnauthorizedRequiredUserByNameOrEmailOrId(body("name")),
+    validateFields([anyOf(body("email").isEmail(), idOf(body("userId")))]),
+    fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request: Request, response: Response) => {
       const isNewEndPoint = request.path.endsWith(
         "admin-authenticate-as-other-user"
@@ -286,25 +266,14 @@ export default function (app: Application, baseUrl: string) {
       const expiry = new Date(
         new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
       );
-      const {
-        id,
-        username,
-        firstName,
-        lastName,
-        email,
-        globalPermission,
-        endUserAgreement,
-      } = response.locals.user;
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Got user token."],
+      const { id, userName, email, globalPermission, endUserAgreement } =
+        response.locals.user;
+      return successResponse(response, "Got user token.", {
         token: `JWT ${token}`,
         expiry,
         userData: {
           id,
-          userName: username,
-          firstName,
-          lastName,
+          userName,
           email,
           globalPermission,
           endUserAgreement,
@@ -323,7 +292,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {String} name Username identifying a valid user account
+   * @apiBody {String} email Address identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
@@ -343,13 +312,13 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {String} name Username identifying a valid user account
+   * @apiBody {String} email Address identifying a valid user account
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    */
   app.post(
-    `${apiUrl}/admin_authenticate_as_other_user`,
+    `${apiUrl}/admin-authenticate-as-other-user`,
     ...authenticateAsOtherUserOptions
   );
 
@@ -385,30 +354,15 @@ export default function (app: Application, baseUrl: string) {
         { expiresIn: expiry },
         request.body.access
       );
-
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Token generated."],
-        token: token,
-      });
+      return successResponse(response, "Token generated.", { token });
     })
   );
 
   const resetPasswordOptions = [
-    validateFields([
-      oneOf([
-        validNameOf(body("userName")), // TODO - Remove userName from this once browse-next is live
-        body("email").isEmail(),
-        validNameOf(body("nameOrEmail")),
-        body("nameOrEmail").isEmail(),
-      ]),
-    ]),
-    fetchUnauthorizedOptionalUserByNameOrEmailOrId(
-      body(["username", "userName", "nameOrEmail", "email"])
-    ),
-    async (request: Request, response: Response) => {
+    validateFields([body("email").isEmail()]),
+    fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
+    async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
-        debugger;
         const user = response.locals.user as User;
         // If we're using the new end-point, make sure the user has confirmed their email address.
         const isNewEndpoint = request.path.endsWith("reset-password");
@@ -419,22 +373,21 @@ export default function (app: Application, baseUrl: string) {
 
           const sendingSuccess = await user.resetPassword();
           if (!sendingSuccess) {
-            return responseUtil.send(response, {
-              statusCode: 500,
-              messages: [
-                "We failed to send your password recovery email, please check that you've entered your email correctly.",
-              ],
-            });
+            return next(
+              new FatalError(
+                "We failed to send your password recovery email, please check that you've entered your email correctly."
+              )
+            );
           }
         }
       } else {
         // In the case where the user doesn't exist, we'll pretend it does so
         // attackers can't use this api to confirm the existence of a given email address.
       }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Your password recovery email has been sent"],
-      });
+      return successResponse(
+        response,
+        "Your password recovery email has been sent"
+      );
     },
   ];
 
@@ -442,7 +395,7 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/reset-password Sends an email to a user for resetting password
    * @apiName ResetPassword
    * @apiGroup Authentication
-   * @apiBody {String} email Email of user.
+   * @apiBody {String} email Email address of user.
    * @apiUse V1ResponseSuccess
    */
   app.post(`${apiUrl}/reset-password`, ...resetPasswordOptions);
@@ -452,7 +405,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ResetPassword
    * @apiGroup Authentication
    * @apiDeprecated Use /api/v1/users/reset-password instead
-   * @apiBody {String} userName Username of user.
+   * @apiBody {String} email Email address of user.
    * @apiUse V1ResponseSuccess
    */
   app.post("/resetpassword", ...resetPasswordOptions);
@@ -460,18 +413,13 @@ export default function (app: Application, baseUrl: string) {
   const validateTokenOptions = [
     validateFields([body("token").exists()]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       if (
         response.locals.user.password !== response.locals.resetInfo.password
       ) {
-        return responseUtil.send(response, {
-          statusCode: 403,
-          messages: ["Your password has already been changed"],
-        });
+        return next(new ClientError("Your password has already been changed"));
       }
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Reset token is still valid"],
+      return successResponse(response, "Reset token is still valid", {
         userData: mapUser(response.locals.user),
       });
     },
@@ -514,7 +462,7 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     `${apiUrl}/resend-email-confirmation-request`,
     extractJwtAuthorizedUser,
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const user = await models.User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
@@ -538,20 +486,17 @@ export default function (app: Application, baseUrl: string) {
           );
         }
         if (!sendSuccess) {
-          return responseUtil.send(response, {
-            statusCode: 500,
-            messages: [`Failed to send email to ${user.email}`],
-          });
+          return serverErrorResponse(
+            response,
+            new ClientError(
+              `Failed to send email to ${user.email}`,
+              HttpStatusCode.ServerError
+            )
+          );
         }
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Email confirmation request sent"],
-        });
+        return successResponse(response, "Email confirmation request sent");
       } else if (user.emailConfirmed) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["Email already confirmed"],
-        });
+        return next(new UnprocessableError("Email already confirmed"));
       }
     }
   );
@@ -566,9 +511,7 @@ export default function (app: Application, baseUrl: string) {
           response.locals.requestUser.id,
           request.body.email
         );
-        return responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Got email confirmation token"],
+        return successResponse(response, "Got email confirmation token", {
           token,
         });
       }
@@ -588,21 +531,22 @@ export default function (app: Application, baseUrl: string) {
     // Decode the JWT token, get the email, userId for the token.
     extractJWTInfo(body("emailConfirmationJWT")),
     async (request, response, next) => {
-      await fetchUnauthorizedRequiredUserByNameOrId(
+      await fetchUnauthorizedRequiredUserByEmailOrId(
         response.locals.tokenInfo.id
       )(request, response, next);
     },
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const tokenInfo = response.locals.tokenInfo as {
         id: UserId;
         email: string;
       };
       let user = response.locals.user;
       if (tokenInfo.email !== user.email) {
-        return responseUtil.send(response, {
-          statusCode: 422,
-          messages: ["User email address differs from email to confirm"],
-        });
+        return next(
+          new UnprocessableError(
+            "User email address differs from email to confirm"
+          )
+        );
       }
       if (user.email) {
         // NOTE: It's okay if this link is used multiple times, we'll just say it's confirmed successfully each time.
@@ -621,13 +565,11 @@ export default function (app: Application, baseUrl: string) {
         );
 
         user = await user.update({ emailConfirmed: true });
-        return responseUtil.send(response, {
-          statusCode: 200,
+        return successResponse(response, "Email confirmed", {
           signOutUser: emailAlreadyConfirmed, // UI should sign out user and make them sign in again with new email.
           userData: mapUser(user),
           token: apiToken,
           refreshToken,
-          messages: ["Email confirmed"],
         });
       }
     }

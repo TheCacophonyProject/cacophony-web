@@ -159,7 +159,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
 
 export interface Group extends Sequelize.Model, ModelCommon<Group> {
   id: GroupId;
-  groupname: string;
+  groupName: string;
   lastThermalRecordingTime?: Date;
   lastAudioRecordingTime?: Date;
   settings?: ApiGroupSettings;
@@ -189,14 +189,14 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
   ) => Promise<string>;
   removeUserFromGroup: (group: Group, userToRemove: User) => Promise<boolean>;
   getFromId: (id: GroupId) => Promise<Group>;
-  getIdFromName: (groupname: string) => Promise<GroupId | null>;
+  getIdFromName: (groupName: string) => Promise<GroupId | null>;
 }
 
 export default function (sequelize, DataTypes): GroupStatic {
   const name = "Group";
 
   const attributes = {
-    groupname: {
+    groupName: {
       type: DataTypes.STRING,
       unique: true,
     },
@@ -278,7 +278,7 @@ export default function (sequelize, DataTypes): GroupStatic {
   };
 
   Group.getFromName = async function (name): Promise<Group | null> {
-    return this.findOne({ where: { groupname: name } });
+    return this.findOne({ where: { groupName: name } });
   };
 
   // NOTE: It doesn't seem that there are any consumers of this function right now.

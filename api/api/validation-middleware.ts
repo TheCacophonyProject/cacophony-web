@@ -18,8 +18,8 @@ export const checkDeviceNameIsUniqueInGroup =
     if (!group) {
       return next(new ClientError("No group specified"));
     }
-    const nameIsFree = await models.Device.freeDevicename(
-      request.body.devicename,
+    const nameIsFree = await models.Device.freeDeviceName(
+      request.body.deviceName,
       response.locals.group.id
     );
     if (!nameIsFree) {

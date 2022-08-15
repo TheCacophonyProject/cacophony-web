@@ -20,7 +20,6 @@ import {
   body,
   CustomValidator,
   matchedData,
-  oneOf,
   query,
   Result,
   ValidationChain,
@@ -29,9 +28,12 @@ import {
 import models, { ModelStaticCommon } from "../models";
 import { format } from "util";
 import log from "../logging";
-import customErrors, { ClientError, ValidationError } from "./customErrors";
-import { NextFunction, Request, RequestHandler, Response } from "express";
-import { IsIntOptions } from "express-validator/src/options";
+import customErrors, {
+  ClientError,
+  UnprocessableError,
+  ValidationError,
+} from "./customErrors";
+import { NextFunction, Request, Response } from "express";
 import logger from "../logging";
 import { DecodedJWTToken } from "./auth";
 import levenshteinEditDistance from "levenshtein-edit-distance";
@@ -75,27 +77,6 @@ type ValidationMiddleware = (
   fields?: string | string[] | undefined,
   message?: any
 ) => ValidationChain;
-
-export const getModelByName = function <T>(
-  modelType: ModelStaticCommon<T>,
-  fieldName: string,
-  checkFunc: ValidationMiddleware
-): ValidationChain {
-  return checkFunc(fieldName).custom(async (val, { req }) => {
-    const model: T = await modelType.getFromName(val);
-    if (model === null) {
-      await Promise.reject(format("Could not find %s of %s.", fieldName, val));
-      //throw new Error(format("Could not find %s of %s.", fieldName, val));
-    }
-    req.body[modelTypeName(modelType)] = model;
-    logger.info(
-      "req.body.%s = %s",
-      modelTypeName(modelType),
-      JSON.stringify(req.body[modelTypeName(modelType)])
-    );
-    return true;
-  });
-};
 
 export const getUserByEmail = function (
   checkFunc: ValidationMiddleware,
@@ -148,34 +129,6 @@ export const convertToIdArray = function (idsAsString: string): number[] {
   return [];
 };
 
-export const isInteger = function (
-  fieldName: string,
-  range: IsIntOptions
-): ValidationChain {
-  // add an actually useful error to this isInt check
-  const error = `Parameter '${fieldName}' must be an integer between ${range.min} and ${range.max}`;
-  return query("page-size", error).isInt(range);
-};
-
-export const toDate = function (fieldName: string): ValidationChain {
-  return query(fieldName, DATE_ERROR)
-    .customSanitizer((value) => {
-      return getAsDate(value);
-    })
-    .isInt();
-};
-
-export const getAsDate = function (dateAsString: string): number {
-  try {
-    return Date.parse(dateAsString);
-  } catch (error) {
-    return NaN;
-  }
-};
-
-const DATE_ERROR =
-  "Must be a date or timestamp.   For example, '2017-11-13' or '2017-11-13T00:47:51.160Z'.";
-
 export const isDateArray = function (
   fieldName: string,
   customError
@@ -203,92 +156,6 @@ export const isDateArray = function (
 
 export function getUserById(checkFunc: ValidationMiddleware): ValidationChain {
   return getModelByIdChain(models.User, "userId", checkFunc);
-}
-
-export function getUserByName(
-  checkFunc: ValidationMiddleware,
-  fieldName: string = "username"
-): ValidationChain {
-  return getModelByName(models.User, fieldName, checkFunc);
-}
-
-export function getUserByNameOrId(
-  checkFunc: ValidationMiddleware
-): RequestHandler {
-  return oneOf(
-    [getUserByName(checkFunc), getUserById(checkFunc)],
-    "User doesn't exist or was not specified"
-  );
-}
-
-export function getGroupById(checkFunc: ValidationMiddleware): ValidationChain {
-  return getModelByIdChain(models.Group, "groupId", checkFunc);
-}
-
-export function getGroupByName(
-  checkFunc: ValidationMiddleware,
-  fieldName: string = "group"
-) {
-  return getModelByName(models.Group, fieldName, checkFunc);
-}
-
-export function getGroupByNameOrId(
-  checkFunc: ValidationMiddleware
-): RequestHandler {
-  return oneOf(
-    [getGroupById(checkFunc), getGroupByName(checkFunc)],
-    "Group doesn't exist or hasn't been specified."
-  );
-}
-
-export function getGroupByNameOrIdDynamic(
-  checkFunc: ValidationMiddleware,
-  fieldName: string
-): RequestHandler {
-  return oneOf(
-    [
-      getModelByIdChain(models.Group, fieldName, checkFunc),
-      getModelByName(models.Group, fieldName, checkFunc),
-    ],
-    "Group doesn't exist or hasn't been specified."
-  );
-}
-
-export function getDeviceById(
-  checkFunc: ValidationMiddleware
-): ValidationChain {
-  return getModelByIdChain(models.Device, "deviceId", checkFunc);
-}
-
-export function setGroupName(checkFunc: ValidationMiddleware): ValidationChain {
-  return checkFunc("groupname").custom(async (value, { req }) => {
-    req.body["groupname"] = value;
-    return true;
-  });
-}
-
-export function getDevice(
-  checkFunc: ValidationMiddleware,
-  paramName: string = "devicename"
-) {
-  return checkFunc(paramName).custom(async (deviceName, { req }) => {
-    const password = req.body["password"];
-    const groupName = req.body["groupname"];
-    const deviceID = req.body["deviceID"];
-    const model = await models.Device.findDevice(
-      deviceID,
-      deviceName,
-      groupName,
-      password
-    );
-    if (model == null) {
-      throw new Error(
-        format("Could not find device %s in group %s.", deviceName, groupName)
-      );
-    }
-    req.body["device"] = model;
-    return true;
-  });
 }
 
 export const getDetailSnapshotById = (
@@ -433,13 +300,13 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
     logMessage = format(
       "%s (user: %s)",
       logMessage,
-      request.user.get("username")
+      request.user.get("userName")
     );
   } else if (request.device) {
     logMessage = format(
       "%s (device: %s)",
       logMessage,
-      request.device.get("devicename")
+      request.device.get("deviceName")
     );
   }
   log.info(logMessage);
@@ -455,29 +322,6 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
     throw new customErrors.ValidationError(validationErrors);
   } else {
     Promise.resolve(fn(request, response, next)).catch(next);
-  }
-};
-
-export const asArray = (options?: { min?: number; max?: number }) => (val) => {
-  if (typeof val === "string") {
-    try {
-      val = JSON.parse(val);
-    } catch (e) {
-      throw new ClientError("Expected array of strings");
-    }
-  }
-  if (options) {
-    if (options.min && val.length < options.min) {
-      throw new ClientError(`Expected at least ${options.min} array elements`);
-    }
-    if (options.max && val.length > options.max) {
-      throw new ClientError(`Expected at most ${options.max} array elements`);
-    }
-  }
-  if (Array.isArray(val)) {
-    return true;
-  } else {
-    throw new ClientError("Expected array");
   }
 };
 
@@ -589,6 +433,7 @@ export const validateFields = (
         validationPromises.push(validation.run(request));
       }
       await Promise.all(validationPromises);
+      //logger.warning("%s", validationPromises);
     }
 
     const { unknownFields, suggestions } = checkForUnknownFields(
@@ -597,7 +442,7 @@ export const validateFields = (
     );
     if (unknownFields.length) {
       return next(
-        new ClientError(
+        new UnprocessableError(
           `Unknown fields found: ${unknownFields
             .map((item) => {
               let field = `'${item}'`;
@@ -606,8 +451,7 @@ export const validateFields = (
               }
               return field;
             })
-            .join(", ")}`,
-          422
+            .join(", ")}`
         )
       );
     }
@@ -618,12 +462,12 @@ export const validateFields = (
         response.locals.token &&
         (response.locals.token as DecodedJWTToken)._type;
       const requestId =
-        (response.locals.user && response.locals.user.username) ||
+        (response.locals.user && response.locals.user.userName) ||
         (response.locals.device && response.locals.device.devicename) ||
         (requester && (response.locals.token as DecodedJWTToken).id) ||
         "unknown";
 
-      // TODO: At this point *if* we have errors, we may want to lookup the username or devicename?
+      // TODO: At this point *if* we have errors, we may want to lookup the userName or deviceName?
 
       log.info(
         "%s (%s: %s%s)",
@@ -644,14 +488,6 @@ export const validateFields = (
 
 export default {
   getUserById,
-  getUserByName,
-  getUserByNameOrId,
-  getGroupById,
-  getGroupByName,
-  getGroupByNameOrId,
-  getGroupByNameOrIdDynamic,
-  getDeviceById,
-  getDevice,
   getDetailSnapshotById,
   getFileById,
   getRecordingById: getRecordingByIdChain,
@@ -665,7 +501,6 @@ export default {
   requestWrapper,
   isDateArray,
   getUserByEmail,
-  setGroupName,
   viewMode,
   validateSequentially: validateFields,
   typeError: expectedTypeOf,

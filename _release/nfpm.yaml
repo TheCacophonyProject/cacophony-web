@@ -15,6 +15,7 @@ depends:
 files:
   "./api/**/*": "/srv/cacophony/api/"
   "./browse/dist/**/*": "/srv/cacophony/cacophony-browse/"
+  "./browse-next/dist/**/*": "/srv/cacophony/cacophony-browse-next/"
   "./types/**/*": "/srv/cacophony/types/"
   "_release/cacophony-api.service": "/etc/systemd/system/cacophony-api.service"
   "_release/cacophony-api-report-errors": "/etc/cron.d/cacophony-api-report-errors"

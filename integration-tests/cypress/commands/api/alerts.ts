@@ -100,12 +100,12 @@ export function createExpectedAlert(
     lastAlert: lastAlert,
     User: {
       id: getCreds(userName).id,
-      username: getTestName(userName),
+      userName: getTestName(userName),
       email: getTestName(userName).toLowerCase() + "@api.created.com",
     },
     Device: {
       id: getCreds(deviceName).id,
-      devicename: getTestName(getCreds(deviceName).name),
+      deviceName: getTestName(getCreds(deviceName).name),
     },
   };
 
@@ -143,11 +143,11 @@ function checkExpectedAlerts(
   ).to.eq(expectedAlert.frequencySeconds);
   expect(
     thealert.conditions[0]["tag"],
-    `conditons should have been ${expectedAlert.conditions[0]["tag"]}`
+    `conditions should have been ${expectedAlert.conditions[0]["tag"]}`
   ).to.eq(expectedAlert.conditions[0].tag);
   expect(
     thealert.conditions[0].automatic,
-    `conditons should have been ${expectedAlert.conditions[0].automatic}`
+    `conditions should have been ${expectedAlert.conditions[0].automatic}`
   ).to.eq(expectedAlert.conditions[0].automatic);
   if (expectedAlert.lastAlert == false) {
     expect(thealert.lastAlert, `lastAlert should have been null `).to.eq(null);
@@ -171,11 +171,11 @@ function checkExpectedAlerts(
     `device.id should have been ${expectedAlert.Device.id}`
   ).to.eq(expectedAlert.Device.id);
   expect(
-    thealert.Device.devicename,
-    `device.devicename should have been ${
-      (expectedAlert.Device as any).devicename
+    thealert.Device.deviceName,
+    `device.deviceName should have been ${
+      (expectedAlert.Device as any).deviceName
     }`
-  ).to.eq((expectedAlert.Device as any).devicename);
+  ).to.eq((expectedAlert.Device as any).deviceName);
   return response;
 }
 

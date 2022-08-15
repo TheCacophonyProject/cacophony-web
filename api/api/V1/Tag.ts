@@ -20,12 +20,12 @@ import { expectedTypeOf, validateFields } from "../middleware";
 import { body } from "express-validator";
 import models from "@models";
 import recordingUtil from "./recordingUtil";
-import responseUtil from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  parseJSONField,
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredRecordingById,
+  parseJSONField,
 } from "../extract-middleware";
 import { idOf } from "../validation-middleware";
 import { jsonSchemaOf } from "../schema-validation";
@@ -80,9 +80,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.recording,
         request.body.tag
       );
-      responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Added new tag."],
+      return successResponse(response, "Added new tag.", {
         tagId: tagInstance.id,
       });
     }
@@ -117,17 +115,13 @@ export default function (app: Application, baseUrl: string) {
           next
         );
       } else {
-        next(new ClientError("Failed to delete tag.", 400));
+        next(new ClientError("Failed to delete tag."));
       }
     },
     async function (request: Request, response: Response) {
       // There is a matching tag, and the user has access to the corresponding recording.
       await response.locals.tag.destroy();
-
-      return responseUtil.send(response, {
-        statusCode: 200,
-        messages: ["Deleted tag."],
-      });
+      return successResponse(response, "Deleted tag.");
     }
   );
 }

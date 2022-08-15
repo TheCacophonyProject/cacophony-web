@@ -46,14 +46,14 @@ export default {
       return this.useLink;
     },
     params() {
-      if (typeof this.context !== "undefined" && this.context !== "") {
+      if (typeof this.context !== "undefined" && this.context.trim() !== "") {
         return {
           groupName: this.groupName,
+          tabName: this.context,
         };
       }
       return {
         groupName: this.groupName,
-        context: this.context,
       };
     },
   },

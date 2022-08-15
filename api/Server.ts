@@ -86,6 +86,7 @@ const checkS3Connection = (): Promise<void> => {
   await loadCacophonyWebVersion();
   // Check if any of the Cacophony type definitions have changed, and need recompiling?
   if (config.server.loggerLevel === "debug") {
+    log.notice("productionEnv %s", config.productionEnv);
     log.notice("Running in DEBUG mode");
     await maybeRecompileJSONSchemaDefinitions();
   } else {

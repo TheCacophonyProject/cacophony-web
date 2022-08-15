@@ -26,7 +26,7 @@ import { User } from "@models/User";
 import { GroupId, UserId } from "@typedefs/api/common";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
-import logger from "@log";
+import { HttpStatusCode } from "@typedefs/api/consts";
 /*
  * Create a new JWT for a user or device.
  */
@@ -238,18 +238,22 @@ function signedUrl(req, res, next) {
   const jwtParam = req.query["jwt"];
   if (jwtParam == null) {
     return res
-      .status(403)
+      .status(HttpStatusCode.Forbidden)
       .json({ messages: ["Could not find JWT token in query params."] });
   }
   let jwtDecoded;
   try {
     jwtDecoded = jwt.verify(jwtParam, config.server.passportSecret);
   } catch (e) {
-    return res.status(403).json({ messages: ["Failed to verify JWT."] });
+    return res
+      .status(HttpStatusCode.Forbidden)
+      .json({ messages: ["Failed to verify JWT."] });
   }
 
   if (jwtDecoded._type !== "fileDownload") {
-    return res.status(403).json({ messages: ["Incorrect JWT type."] });
+    return res
+      .status(HttpStatusCode.Forbidden)
+      .json({ messages: ["Incorrect JWT type."] });
   }
 
   req.jwtDecoded = jwtDecoded;
@@ -269,11 +273,13 @@ const authenticate = (
     try {
       jwtDecoded = getVerifiedJWT(req) as DecodedJWTToken;
     } catch (e) {
-      return res.status(401).json({ messages: [e.message] });
+      return res
+        .status(HttpStatusCode.AuthorizationError)
+        .json({ messages: [e.message] });
     }
 
     if (types && !types.includes(jwtDecoded._type)) {
-      res.status(401).json({
+      res.status(HttpStatusCode.AuthorizationError).json({
         messages: [
           `Invalid JWT access type '${jwtDecoded._type}', must be ${
             types.length > 1 ? "one of " : ""
@@ -284,12 +290,14 @@ const authenticate = (
     }
     const hasAccess = checkAccess(reqAccess, jwtDecoded);
     if (!hasAccess) {
-      res.status(401).json({ messages: ["JWT does not have access."] });
+      res
+        .status(HttpStatusCode.AuthorizationError)
+        .json({ messages: ["JWT does not have access."] });
       return;
     }
     const result = await lookupEntity(jwtDecoded);
     if (!result) {
-      res.status(401).json({
+      res.status(HttpStatusCode.AuthorizationError).json({
         messages: [
           `Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`,
         ],
