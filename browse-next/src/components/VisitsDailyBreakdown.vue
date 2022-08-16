@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import { computed, inject, ref } from "vue";
+import { computed, ref } from "vue";
 import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
   visitTimeAtLocation,
@@ -10,14 +10,11 @@ import { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/api";
-
+import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
+import { truncateLongStationNames } from "@/utils";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
-
-const emit = defineEmits<{
-  (e: "selectedVisit", visit: ApiVisitResponse): void;
-}>();
 
 const now = new Date();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
@@ -179,14 +176,6 @@ const nightOfRange = computed<string>(() => {
   return range;
 });
 
-const truncateLongStationNames = (str: string): string => {
-  const split = str.indexOf("_");
-  if (split !== -1 && str.length > 30) {
-    return str.slice(0, split) + "...";
-  }
-  return str;
-};
-
 const showVisitsDetail = ref(false);
 const toggleVisitsDetail = (e: Event) => {
   e.preventDefault();
@@ -216,11 +205,9 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   console.log(visit);
   if (visit.type === "visit") {
-    emit("selectedVisit", visit.data);
+    currentlySelectedVisit.value = visit.data;
   }
 };
-
-const currentlySelectedVisit = inject("selectedVisit");
 </script>
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">

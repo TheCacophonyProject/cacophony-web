@@ -4,6 +4,7 @@ import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
+import {min} from "@popperjs/core/lib/utils/math";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 
@@ -199,7 +200,10 @@ export const visitDuration = (visit: ApiVisitResponse): string => {
     new Date(visit.timeEnd).getTime() - new Date(visit.timeStart).getTime();
   const minsSecs = Duration.fromMillis(millis).shiftTo("minutes", "seconds");
   if (minsSecs.minutes > 0) {
-    return minsSecs.toFormat("m'm''&nbsp;'ss's'");
+    if (Math.floor(minsSecs.seconds) > 0) {
+      return minsSecs.toFormat("m'm''&nbsp;'ss's'");
+    }
+    return minsSecs.toFormat("m'm'");
   }
   return minsSecs.toFormat("ss's'");
 };

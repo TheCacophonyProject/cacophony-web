@@ -20,16 +20,29 @@ import type { LatLng } from "@typedefs/api/common";
 import { BSpinner } from "bootstrap-vue-3";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
+import {
+  maybeFilteredVisitsContext,
+  selectedVisit,
+  visitsContext,
+} from "@models/SelectionContext";
 
 const audioMode = ref<boolean>(false);
-const selectedVisit = ref<ApiVisitResponse | null>(null);
+
 const router = useRouter();
 const route = useRoute();
 
-const selectedVisitContext = computed({
-  get: () => selectedVisit.value,
-  set: (visit: ApiVisitResponse | null) => {
-    if (visit) {
+// Two ways we can go about next/prev visit.  We pass the loaded visits through from the parent context,
+// and then move through them as an array index.
+
+// Otherwise, we pass the visit context/scope (group or a set of stations) to the recordings view,
+// and when it reaches the end of the current visit set, it queries for prev/next visit using the visit start/end time, and the scope.
+// Second option is more resilient to changes of classification, although if the classification changes, we also need to broadcast that
+// to the parent list, and have that refresh...
+
+watch(
+  selectedVisit,
+  (visit: ApiVisitResponse | null, prevVisit: ApiVisitResponse | null) => {
+    if (visit && !prevVisit) {
       // Set route so that modal shows up
       const recordingIds = visit.recordings.map(({ recId }) => recId);
       const params = {
@@ -45,10 +58,8 @@ const selectedVisitContext = computed({
         params,
       });
     }
-    selectedVisit.value = visit;
-  },
-});
-provide("selectedVisit", selectedVisitContext);
+  }
+);
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
 
@@ -58,31 +69,10 @@ const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrStations = ref<"species" | "station">("species");
 const loadingVisitsProgress = ref<number>(0);
 
-const visits = ref<ApiVisitResponse[] | null>(null);
 const stations = ref<ApiStationResponse[] | null>(null);
 
-const ignored: string[] = [
-  "unknown",
-  "none",
-  "unidentified",
-  "false-positive",
-  "bird",
-  "vehicle",
-  "human",
-];
-
-const visitorIsPredator = (visit: ApiVisitResponse) =>
-  visit && visit.classification && !ignored.includes(visit.classification);
-
-const predatorVisits = computed<ApiVisitResponse[]>(() => {
-  if (visits.value) {
-    return visits.value.filter(visitorIsPredator);
-  }
-  return [];
-});
-
 const speciesSummary = computed<Record<string, number>>(() => {
-  return predatorVisits.value.reduce(
+  return maybeFilteredVisitsContext.value.reduce(
     (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
       if (currentValue.classification) {
         acc[currentValue.classification] =
@@ -101,7 +91,7 @@ const earliestDate = computed<Date>(() => {
 
 const loadVisits = async () => {
   if (currentSelectedGroup.value) {
-    visits.value = null;
+    visitsContext.value = null;
     const allVisits = await getAllVisitsForGroup(
       currentSelectedGroup.value.id,
       timePeriodDays.value,
@@ -110,7 +100,7 @@ const loadVisits = async () => {
         loadingVisitsProgress.value = val;
       }
     );
-    visits.value = allVisits.visits;
+    visitsContext.value = allVisits.visits;
   }
 };
 
@@ -123,49 +113,36 @@ watch(currentSelectedGroup, reloadDashboard);
 // I don't think the underlying data changes?
 //watch(visitsOrRecordings, reloadDashboard);
 //watch(speciesOrStations, reloadDashboard);
-
-const stationsWithRecordingsInSelectedTimeWindow = computed<
-  ApiStationResponse[]
->(() => {
-  if (stations.value) {
-    return stations.value.filter((station) => {
-      if (audioMode.value) {
-        return (
-          station.lastAudioRecordingTime &&
-          new Date(station.lastAudioRecordingTime) > earliestDate.value
-        );
-      } else {
-        return (
-          station.lastThermalRecordingTime &&
-          new Date(station.lastThermalRecordingTime) > earliestDate.value
-        );
-      }
-    });
-  }
-  return [];
-});
-
 // TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
-const stationsWithOnlineDevicesInSelectedTimeWindow = computed<
+const stationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
   ApiStationResponse[]
 >(() => {
   if (stations.value) {
     return stations.value.filter((station) => {
       if (audioMode.value) {
         return (
-          station.lastActiveAudioTime &&
-          new Date(station.lastActiveAudioTime) > earliestDate.value
+          (station.lastActiveAudioTime &&
+            new Date(station.lastActiveAudioTime) > earliestDate.value) ||
+          (station.lastAudioRecordingTime &&
+            new Date(station.lastAudioRecordingTime) > earliestDate.value)
         );
       } else {
         return (
-          station.lastActiveThermalTime &&
-          new Date(station.lastActiveThermalTime) > earliestDate.value
+          (station.lastActiveThermalTime &&
+            new Date(station.lastActiveThermalTime) > earliestDate.value) ||
+          (station.lastThermalRecordingTime &&
+            new Date(station.lastThermalRecordingTime) > earliestDate.value)
         );
       }
     });
   }
   return [];
 });
+
+provide(
+  "activeStationsContext",
+  stationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+);
 
 const allStations = computed<ApiStationResponse[]>(() => {
   if (stations.value) {
@@ -191,13 +168,14 @@ const loadStations = async () => {
 };
 
 const canonicalLocationForActiveStations = computed<LatLng>(() => {
-  if (stationsWithRecordingsInSelectedTimeWindow.value.length) {
-    return stationsWithRecordingsInSelectedTimeWindow.value[0].location;
+  if (stationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length) {
+    return stationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value[0]
+      .location;
   }
   return { lat: 0, lng: 0 };
 });
 
-provide("locationContext", canonicalLocationForActiveStations);
+// TODO - Maybe this should be some global context variable too.
 provide("locationContext", canonicalLocationForActiveStations);
 
 onMounted(async () => {
@@ -207,7 +185,7 @@ onMounted(async () => {
 });
 
 const isLoading = computed<boolean>(
-  () => stations.value === null || visits.value === null
+  () => stations.value === null || visitsContext.value === null
 );
 
 const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
@@ -225,15 +203,16 @@ const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
 
 const hasSelectedVisit = computed<boolean>({
   get: () =>
-    route.name === "dashboard-visit" || route.name === "dashboard-recording",
+    (route.name as string).startsWith("dashboard-visit") ||
+    (route.name as string).startsWith("dashboard-recording"),
   set: (value: boolean) => {
     if (!value) {
       // Return to dashboard from modal.
       router.push({
         name: "dashboard",
-        params: { groupName: urlNormalisedCurrentGroupName.value },
+        params: { groupName: route.params.groupName },
       });
-      selectedVisitContext.value = null;
+      selectedVisit.value = null;
     }
   },
 });
@@ -303,15 +282,14 @@ const hasSelectedVisit = computed<boolean>({
     <group-visits-summary
       class="mb-5 flex-md-fill"
       :stations="allStations"
-      :active-stations="stationsWithRecordingsInSelectedTimeWindow"
-      :visits="predatorVisits"
+      :active-stations="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+      :visits="maybeFilteredVisitsContext"
       :start-date="earliestDate"
       :loading="isLoading"
     />
     <visits-breakdown-list
-      :visits="predatorVisits"
+      :visits="maybeFilteredVisitsContext"
       :location="canonicalLocationForActiveStations"
-      @selectedVisit="(visit) => (selectedVisitContext = visit)"
     />
   </div>
   <h2>Stations summary</h2>
@@ -320,14 +298,16 @@ const hasSelectedVisit = computed<boolean>({
     <b-spinner v-if="isLoading" />
     <div
       class="card-group species-summary flex-nowrap"
-      v-else-if="stationsWithRecordingsInSelectedTimeWindow.length"
+      v-else-if="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length"
     >
       <station-visit-summary
-        v-for="(station, index) in stationsWithRecordingsInSelectedTimeWindow"
+        v-for="(
+          station, index
+        ) in stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
         :station="station"
-        :active-stations="stationsWithRecordingsInSelectedTimeWindow"
+        :active-stations="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
         :stations="allStations"
-        :visits="predatorVisits"
+        :visits="maybeFilteredVisitsContext"
         :key="index"
       />
     </div>
@@ -336,7 +316,7 @@ const hasSelectedVisit = computed<boolean>({
       this group.
     </div>
   </horizontal-overflow-carousel>
-  <recording-view-modal @close="selectedVisitContext = null" />
+  <recording-view-modal @close="selectedVisit = null" />
 </template>
 <style lang="less" scoped>
 .group-name {

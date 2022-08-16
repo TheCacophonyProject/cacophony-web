@@ -401,14 +401,13 @@ onMounted(() => {
   }
 
   // TODO: Add a "Fit to bounds" button.
-
   map = mapConstructor(mapElement as HTMLElement, {
     zoomControl: zoom,
     dragging: isInteractive,
     scrollWheelZoom: isInteractive,
     keyboard: isInteractive,
     tap: isInteractive,
-    maxZoom: 17,
+    maxZoom: 15,
     attributionControl: false,
     layers: [tileLayers[currentLayer]], // The default layer
   });
