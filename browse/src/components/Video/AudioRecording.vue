@@ -404,10 +404,12 @@ export default defineComponent({
 
     const mappedTracks = (tracks: ApiTrackResponse[]) =>
       new Map(
-        tracks.map((track, index) => {
-          const audioTrack = createAudioTrack(track, index);
-          return [track.id, audioTrack];
-        })
+        tracks
+          .filter((val) => !val.filtered)
+          .map((track, index) => {
+            const audioTrack = createAudioTrack(track, index);
+            return [track.id, audioTrack];
+          })
       );
 
     const [tracks, setTracks] = useState<AudioTracks>(
