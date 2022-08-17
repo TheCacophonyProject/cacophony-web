@@ -1,30 +1,20 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import type {
-  ApiAutomaticTrackTagResponse,
-  ApiHumanTrackTagResponse,
-} from "@typedefs/api/trackTag";
-
+import TrackTaggerRow from "@/components/TrackTaggerRow.vue";
+import { TagColours } from "@/consts";
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse;
 }>();
-
-const calculatedTagClassification = (
-  tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[]
-): string => {
-  return tags[0].what;
-};
 </script>
 <template>
   <div v-if="recording">
-    <div v-for="(track, index) in recording.tracks" :key="index">
-      <span class="track-number">{{ index + 1 }}</span>
-      <span class="classification">{{
-        calculatedTagClassification(track.tags)
-      }}</span>
-    </div>
+    <track-tagger-row
+      v-for="(track, index) in recording.tracks"
+      :key="index"
+      :index="index"
+      :color="TagColours[index % recording.tracks.length]"
+      :track="track"
+    />
   </div>
 </template>
-
-<style scoped></style>

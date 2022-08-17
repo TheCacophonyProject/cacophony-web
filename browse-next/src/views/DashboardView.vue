@@ -2,11 +2,7 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { getAllVisitsForGroup } from "@api/Monitoring";
-import {
-  currentSelectedGroup,
-  urlNormalisedCurrentGroupName,
-  UserGroups,
-} from "@models/LoggedInUser";
+import { currentSelectedGroup, UserGroups } from "@models/LoggedInUser";
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
@@ -21,8 +17,11 @@ import { BSpinner } from "bootstrap-vue-3";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import {
+  currentVisitsFilter,
   maybeFilteredVisitsContext,
   selectedVisit,
+  visitHasClassification,
+  visitorIsPredator,
   visitsContext,
 } from "@models/SelectionContext";
 
@@ -30,6 +29,13 @@ const audioMode = ref<boolean>(false);
 
 const router = useRouter();
 const route = useRoute();
+
+const maybeFilteredDashboardVisitsContext = computed<ApiVisitResponse[]>(() => {
+  if (visitsContext.value) {
+    return visitsContext.value.filter(visitorIsPredator);
+  }
+  return [];
+});
 
 // Two ways we can go about next/prev visit.  We pass the loaded visits through from the parent context,
 // and then move through them as an array index.
@@ -57,6 +63,9 @@ watch(
         name: "dashboard-visit",
         params,
       });
+    } else if (!visit && prevVisit) {
+      // We've stopped having a selected visit modal
+      currentVisitsFilter.value = null;
     }
   }
 );
@@ -72,7 +81,7 @@ const loadingVisitsProgress = ref<number>(0);
 const stations = ref<ApiStationResponse[] | null>(null);
 
 const speciesSummary = computed<Record<string, number>>(() => {
-  return maybeFilteredVisitsContext.value.reduce(
+  return maybeFilteredDashboardVisitsContext.value.reduce(
     (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
       if (currentValue.classification) {
         acc[currentValue.classification] =
@@ -216,6 +225,16 @@ const hasSelectedVisit = computed<boolean>({
     }
   },
 });
+
+const showVisitsForTag = (tag: string) => {
+  // set the selected visit to the last visit with the tag,
+  // and set the filter for the context to the tag.
+  currentVisitsFilter.value = visitHasClassification(tag);
+  if (maybeFilteredVisitsContext.value.length) {
+    selectedVisit.value = maybeFilteredVisitsContext.value[0];
+  }
+};
+
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
@@ -268,6 +287,7 @@ const hasSelectedVisit = computed<boolean>({
         v-for="[key, val] in Object.entries(speciesSummary)"
         :key="key"
         class="card d-flex flex-row species-summary-item align-items-center"
+        @click="showVisitsForTag(key)"
       >
         <img width="24" height="auto" class="species-icon ms-3" />
         <div class="d-flex justify-content-evenly flex-column ms-3 pe-3">
@@ -283,12 +303,12 @@ const hasSelectedVisit = computed<boolean>({
       class="mb-5 flex-md-fill"
       :stations="allStations"
       :active-stations="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-      :visits="maybeFilteredVisitsContext"
+      :visits="maybeFilteredDashboardVisitsContext"
       :start-date="earliestDate"
       :loading="isLoading"
     />
     <visits-breakdown-list
-      :visits="maybeFilteredVisitsContext"
+      :visits="maybeFilteredDashboardVisitsContext"
       :location="canonicalLocationForActiveStations"
     />
   </div>
@@ -307,7 +327,7 @@ const hasSelectedVisit = computed<boolean>({
         :station="station"
         :active-stations="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
         :stations="allStations"
-        :visits="maybeFilteredVisitsContext"
+        :visits="maybeFilteredDashboardVisitsContext"
         :key="index"
       />
     </div>
@@ -400,8 +420,16 @@ h2 {
     min-height: 24px;
   }
   .species-summary-item {
+    cursor: pointer;
+    user-select: none;
+    text-decoration: none;
+    color: inherit;
     padding: 2px;
     min-width: 130px; // TODO @media breakpoints
+    transition: background-color 0.2s ease-in-out;
+    &:hover {
+      background-color: #ececec;
+    }
   }
   .species-count {
     font-weight: 500;

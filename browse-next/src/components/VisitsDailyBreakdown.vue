@@ -59,6 +59,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
   const events = [];
   let usedSunrise = false;
+  let usedSunset = false;
   {
     const visit = visits[0];
     const { sunrise, sunset } = sunCalc.getTimes(
@@ -127,6 +128,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         name: "Sunset",
         timeStart: sunset.toISOString(),
       } as SunEventItem);
+      usedSunset = true;
     }
     events.push({
       type: "visit",
@@ -138,7 +140,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
     if (
       i === visits.length - 1 &&
       sunrise < now &&
-      sunrise > new Date(visit.timeStart) &&
+      (sunrise > new Date(visit.timeStart) || usedSunset) &&
       !usedSunrise
     ) {
       // Add the sunrise at the end if it hasn't been added
@@ -235,7 +237,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
     </div>
     <div v-if="!showVisitsDetail">
       <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
-      <div v-else class="visits-species-count p-3 user-select-none">
+      <div v-else class="visits-species-count p-3 pb-1 user-select-none">
         <div
           v-for="([classification, count], index) in visitCountBySpecies"
           class="fs-8 visit-species-count"
@@ -294,8 +296,14 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
               <span
                 class="visit-species-tag px-1 mb-1 text-capitalize"
                 :class="[visit.name]"
-                >{{ visit.name }}</span
-              >
+                >{{ visit.name }}
+                <font-awesome-icon
+                  icon="check"
+                  v-if="visit.data.classFromUserTag"
+                  class="mx-1 align-middle"
+                  style="padding-bottom: 2px"
+                />
+              </span>
             </div>
             <span
               ><font-awesome-icon
@@ -326,8 +334,9 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
     display: inline-block;
     height: 24px;
     line-height: 24px;
-    &:not(:first-child) {
-      margin-left: 21px;
+    margin-bottom: 10px;
+    &:not(:last-child) {
+      margin-right: 21px;
     }
     .species {
       padding: 0 5px;

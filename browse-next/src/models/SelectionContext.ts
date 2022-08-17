@@ -26,27 +26,48 @@ export const visitsContext = ref<ApiVisitResponse[] | null>(null);
 export const recordingsContext = ref<ApiRecordingResponse[] | null>(null);
 
 const ignored: string[] = [
-  "unknown",
+  //"unknown",
   "none",
-  "unidentified",
+  //"unidentified",
   "false-positive",
   "bird",
   "vehicle",
   "human",
 ];
 
-const visitorIsPredator = (visit: ApiVisitResponse) => {
+export const visitorIsPredator = (visit: ApiVisitResponse): boolean => {
   if (onlyShowPredators.value) {
-    return (
-      visit && visit.classification && !ignored.includes(visit.classification)
-    );
+    return (visit &&
+      visit.classification &&
+      !ignored.includes(visit.classification)) as boolean;
   }
   return true;
 };
 
+export const visitHasClassification =
+  (tag: string) =>
+  (visit: ApiVisitResponse): boolean => {
+    return (visit &&
+      visit.classification &&
+      visit.classification === tag) as boolean;
+  };
+
+export const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
+  null
+);
+export const currentVisitsFilterComputed = computed<
+  (visit: ApiVisitResponse) => boolean
+>(() => {
+  if (currentVisitsFilter.value === null) {
+    return visitorIsPredator;
+  } else {
+    return currentVisitsFilter.value;
+  }
+});
+
 export const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
-    return visitsContext.value.filter(visitorIsPredator);
+    return visitsContext.value.filter(currentVisitsFilterComputed.value);
   }
   return [];
 });

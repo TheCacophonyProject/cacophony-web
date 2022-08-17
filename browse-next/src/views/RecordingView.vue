@@ -291,7 +291,7 @@ onMounted(async () => {
 
 const visitDurationString = computed<string>(() => {
   if (selectedVisit.value && locationContext && locationContext.value) {
-    const duration = visitDuration(selectedVisit.value);
+    const duration = visitDuration(selectedVisit.value, true);
     let visitStart = visitTimeAtLocation(
       selectedVisit.value.timeStart,
       locationContext.value
@@ -360,7 +360,7 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
   return [];
 });
 
-const navLinkClasses = ["nav-item", "nav-link", "border-0"];
+const navLinkClasses = ["nav-item", "nav-link", "border-0", "fs-7", "fw-bold"];
 const activeTabName = computed(() => {
   return route.name;
 });
@@ -394,7 +394,7 @@ const recordingViewContext = "dashboard-visit";
         <div class="player-tracks"></div>
       </div>
       <div class="recording-info d-flex flex-column flex-fill">
-        <div class="recording-station-info d-flex mb-3">
+        <div class="recording-station-info d-flex mb-3 pe-3">
           <map-with-points
             class="recording-location-map"
             :points="mapPointForRecording"
@@ -407,11 +407,56 @@ const recordingViewContext = "dashboard-visit";
             :zoom="false"
             :radius="30"
           />
-          <div>
-            <div>{{ currentStationName }}</div>
-            <div class="recording-date-time">
-              <span v-html="recordingDate" />
-              <span v-html="recordingStartTime" />
+          <div class="flex-fill">
+            <div class="station-name fw-bolder pt-3 px-3">
+              <font-awesome-icon
+                icon="map-marker-alt"
+                size="xs"
+                class="me-2"
+                color="rgba(0, 0, 0, 0.7)"
+              />{{ currentStationName }}
+            </div>
+            <div class="recording-date-time fs-7 d-flex px-3 mt-1">
+              <div>
+                <font-awesome-icon
+                  :icon="['far', 'calendar']"
+                  size="sm"
+                  class="me-1"
+                  color="rgba(0, 0, 0, 0.5)"
+                />
+                <span v-html="recordingDate" />
+              </div>
+              <div class="ms-4">
+                <font-awesome-icon
+                  :icon="['far', 'clock']"
+                  size="sm"
+                  class="me-1"
+                  color="rgba(0, 0, 0, 0.5)"
+                />
+                <span v-html="recordingStartTime" />
+              </div>
+            </div>
+            <div
+              class="recording-icons d-flex justify-content-between mt-2 ps-2"
+            >
+              <button type="button" class="btn">
+                <font-awesome-icon icon="tag" color="#666" />
+              </button>
+              <button type="button" class="btn">
+                <font-awesome-icon :icon="['far', 'flag']" color="#666" />
+              </button>
+              <button type="button" class="btn">
+                <font-awesome-icon :icon="['far', 'star']" color="#666" />
+              </button>
+              <button type="button" class="btn">
+                <font-awesome-icon icon="download" color="#666" />
+              </button>
+              <button type="button" class="btn">
+                <font-awesome-icon icon="trash-can" color="#666" />
+              </button>
+              <button type="button" class="btn">
+                <font-awesome-icon icon="link" color="#666" />
+              </button>
             </div>
           </div>
         </div>
@@ -428,7 +473,12 @@ const recordingViewContext = "dashboard-visit";
               name: `${recordingViewContext}-tracks`,
               params: route.params,
             }"
-            >Tracks (6)</router-link
+            >Tracks
+            <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
+              >({{
+                recordingData && recordingData.recording.tracks.length
+              }})</span
+            ></router-link
           >
           <router-link
             :class="[
@@ -440,7 +490,12 @@ const recordingViewContext = "dashboard-visit";
               name: `${recordingViewContext}-labels`,
               params: route.params,
             }"
-            >Labels (3)</router-link
+            >Labels
+            <span v-if="activeTabName !== `${recordingViewContext}-labels`"
+              >({{
+                recordingData && recordingData.recording.tags.length
+              }})</span
+            ></router-link
           >
         </ul>
         <router-view
@@ -553,6 +608,8 @@ const recordingViewContext = "dashboard-visit";
     height: 2px;
     background: #e1e1e1;
     .progress-bar {
+      // TODO - make the progress bar proportional to the offset of the recording within the visit timeline.
+      // When the video is playing, we could even update it for the duration of the video?
       height: 100%;
       background: #6dbd4b;
     }
@@ -573,5 +630,12 @@ const recordingViewContext = "dashboard-visit";
 .nav-item.active {
   background: unset;
   border-bottom: 3px solid #6dbd4b !important;
+}
+.station-name,
+.recording-date-time {
+  color: #444;
+}
+.recording-icons {
+  color: #666;
 }
 </style>

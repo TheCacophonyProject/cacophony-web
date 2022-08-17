@@ -4,7 +4,7 @@ import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
-import {min} from "@popperjs/core/lib/utils/math";
+import { min } from "@popperjs/core/lib/utils/math";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 
@@ -195,27 +195,38 @@ export const timezoneForLocation = (location: LatLng) =>
 export const timezoneForStation = (station: ApiStationResponse) =>
   timezoneForLocation(station.location);
 
-export const visitDuration = (visit: ApiVisitResponse): string => {
+export const visitDuration = (
+  visit: ApiVisitResponse,
+  longForm = false
+): string => {
   const millis =
     new Date(visit.timeEnd).getTime() - new Date(visit.timeStart).getTime();
   const minsSecs = Duration.fromMillis(millis).shiftTo("minutes", "seconds");
   if (minsSecs.minutes > 0) {
     if (Math.floor(minsSecs.seconds) > 0) {
-      return minsSecs.toFormat("m'm''&nbsp;'ss's'");
+      return longForm
+        ? minsSecs.toFormat("m 'minutes''&nbsp;'s 'seconds'")
+        : minsSecs.toFormat("m'm''&nbsp;'ss's'");
     }
-    return minsSecs.toFormat("m'm'");
+    return longForm
+      ? minsSecs.toFormat("m 'minutes'")
+      : minsSecs.toFormat("m'm'");
   }
-  return minsSecs.toFormat("ss's'");
+  return longForm
+    ? minsSecs.toFormat("s 'seconds'")
+    : minsSecs.toFormat("ss's'");
 };
-export const visitTimeAtLocation = (timeIsoString: string, location: LatLng): string => {
+export const visitTimeAtLocation = (
+  timeIsoString: string,
+  location: LatLng
+): string => {
   const zone = timezoneForLocation(location);
   const localTime = DateTime.fromISO(timeIsoString, { zone });
   return localTime
-      .toLocaleString({
-        hour: "numeric",
-        minute: "2-digit",
-        hourCycle: "h12",
-      })
-      .replace(/ /g, "");
+    .toLocaleString({
+      hour: "numeric",
+      minute: "2-digit",
+      hourCycle: "h12",
+    })
+    .replace(/ /g, "");
 };
-
