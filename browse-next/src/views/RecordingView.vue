@@ -508,6 +508,7 @@ const recordingViewContext = "dashboard-visit";
       <div class="visit-progress">
         <div
           class="progress-bar"
+          v-if="currentRecordingIndex"
           :style="{
             width: `${
               ((currentRecordingIndex + 1) / recordingIds.length) * 100
@@ -530,7 +531,7 @@ const recordingViewContext = "dashboard-visit";
               >Previous visit</span
             >
             <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-            <span class="fs-9" v-if="hasPreviousRecording"
+            <span class="fs-9" v-if="previousRecordingIndex"
               >{{ previousRecordingIndex + 1 }}/ {{ recordingIds.length }}</span
             >
             <span class="fs-9" v-else-if="previousVisit">
@@ -569,7 +570,7 @@ const recordingViewContext = "dashboard-visit";
               >Next visit</span
             >
             <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-            <span class="fs-9" v-if="hasNextRecording"
+            <span class="fs-9" v-if="nextRecordingIndex"
               >{{ nextRecordingIndex + 1 }}/{{ recordingIds.length }}</span
             >
             <span class="fs-9" v-else-if="nextVisit">

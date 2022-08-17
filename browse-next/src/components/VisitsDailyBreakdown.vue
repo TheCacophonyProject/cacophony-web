@@ -6,7 +6,7 @@ import {
   visitTimeAtLocation,
   visitDuration,
 } from "@models/visitsUtils";
-import { DateTime } from "luxon";
+import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/api";
