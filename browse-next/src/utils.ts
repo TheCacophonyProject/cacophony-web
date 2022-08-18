@@ -79,3 +79,14 @@ export const urlNormaliseGroupName = (name: string): string => {
 };
 
 export type FormInputValidationState = boolean | null;
+
+export const truncateLongStationNames = (
+  str: string,
+  maxLength = 30
+): string => {
+  const split = str.indexOf("_");
+  if (split !== -1 && str.length > maxLength) {
+    return str.slice(0, split) + "...";
+  }
+  return str;
+};

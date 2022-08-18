@@ -29,8 +29,6 @@ describe("Recordings: tag", () => {
     id: -99,
     detail: "animal in trap",
     confidence: 100,
-    startTime: null,
-    duration: null,
     automatic: false,
     taggerId: 99,
     taggerName: "xxx",

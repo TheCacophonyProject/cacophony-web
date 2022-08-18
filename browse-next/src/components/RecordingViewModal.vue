@@ -23,7 +23,9 @@ const modal = ref<typeof BModal | null>(null);
 
 // TODO: Provide parent context to return to as a prop or provide
 const isModalRouteName = (name: RouteRecordName) => {
-  return ["dashboard-visit", "dashboard-recording"].includes(name as string);
+  return ["dashboard-visit", "dashboard-recording"].some((str) =>
+    (name as string).startsWith(str)
+  );
 };
 const show = ref(isModalRouteName(route.name as string));
 
@@ -42,6 +44,7 @@ watch(route, (next) => {
     @hidden="closedModal"
     body-class="p-0"
     content-class="recording-view-modal"
+    dialog-class="recording-view-dialog"
   >
     <router-view @close="show = false" />
   </b-modal>
@@ -53,5 +56,8 @@ watch(route, (next) => {
   box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
 
   // TODO What's the best way to set the width of this at different breakpoints?
+}
+.recording-view-dialog {
+  max-width: 1080px;
 }
 </style>

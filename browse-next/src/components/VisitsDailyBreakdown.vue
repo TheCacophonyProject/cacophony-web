@@ -1,23 +1,20 @@
 <script setup lang="ts">
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import { computed, inject, ref } from "vue";
+import { computed, ref } from "vue";
 import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
   visitTimeAtLocation,
   visitDuration,
 } from "@models/visitsUtils";
-import { DateTime } from "luxon";
+import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/api";
-
+import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
+import { truncateLongStationNames } from "@/utils";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
-
-const emit = defineEmits<{
-  (e: "selectedVisit", visit: ApiVisitResponse): void;
-}>();
 
 const now = new Date();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
@@ -62,6 +59,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
   const events = [];
   let usedSunrise = false;
+  let usedSunset = false;
   {
     const visit = visits[0];
     const { sunrise, sunset } = sunCalc.getTimes(
@@ -130,6 +128,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         name: "Sunset",
         timeStart: sunset.toISOString(),
       } as SunEventItem);
+      usedSunset = true;
     }
     events.push({
       type: "visit",
@@ -141,7 +140,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
     if (
       i === visits.length - 1 &&
       sunrise < now &&
-      sunrise > new Date(visit.timeStart) &&
+      (sunrise > new Date(visit.timeStart) || usedSunset) &&
       !usedSunrise
     ) {
       // Add the sunrise at the end if it hasn't been added
@@ -179,14 +178,6 @@ const nightOfRange = computed<string>(() => {
   return range;
 });
 
-const truncateLongStationNames = (str: string): string => {
-  const split = str.indexOf("_");
-  if (split !== -1 && str.length > 30) {
-    return str.slice(0, split) + "...";
-  }
-  return str;
-};
-
 const showVisitsDetail = ref(false);
 const toggleVisitsDetail = (e: Event) => {
   e.preventDefault();
@@ -216,11 +207,9 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   console.log(visit);
   if (visit.type === "visit") {
-    emit("selectedVisit", visit.data);
+    currentlySelectedVisit.value = visit.data;
   }
 };
-
-const currentlySelectedVisit = inject("selectedVisit");
 </script>
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">
@@ -248,7 +237,7 @@ const currentlySelectedVisit = inject("selectedVisit");
     </div>
     <div v-if="!showVisitsDetail">
       <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
-      <div v-else class="visits-species-count p-3 user-select-none">
+      <div v-else class="visits-species-count p-3 pb-1 user-select-none">
         <div
           v-for="([classification, count], index) in visitCountBySpecies"
           class="fs-8 visit-species-count"
@@ -307,8 +296,14 @@ const currentlySelectedVisit = inject("selectedVisit");
               <span
                 class="visit-species-tag px-1 mb-1 text-capitalize"
                 :class="[visit.name]"
-                >{{ visit.name }}</span
-              >
+                >{{ visit.name }}
+                <font-awesome-icon
+                  icon="check"
+                  v-if="visit.data.classFromUserTag"
+                  class="mx-1 align-middle"
+                  style="padding-bottom: 2px"
+                />
+              </span>
             </div>
             <span
               ><font-awesome-icon
@@ -339,8 +334,9 @@ const currentlySelectedVisit = inject("selectedVisit");
     display: inline-block;
     height: 24px;
     line-height: 24px;
-    &:not(:first-child) {
-      margin-left: 21px;
+    margin-bottom: 10px;
+    &:not(:last-child) {
+      margin-right: 21px;
     }
     .species {
       padding: 0 5px;

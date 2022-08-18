@@ -22,7 +22,21 @@ import {
   faMoon,
   faMapMarkerAlt,
   faXmark,
+  faTag,
+  faFlag as faFlagSolid,
+  faStar as faStarSolid,
+  faDownload,
+  faTrashCan,
+  faLink,
+  faCheck,
 } from "@fortawesome/free-solid-svg-icons";
+
+import {
+  faClock,
+  faCalendar,
+  faFlag,
+  faStar,
+} from "@fortawesome/free-regular-svg-icons";
 
 library.add(
   faUser,
@@ -45,7 +59,18 @@ library.add(
   faChevronRight,
   faMoon,
   faMapMarkerAlt,
-  faXmark
+  faXmark,
+  faClock,
+  faCalendar,
+  faTag,
+  faFlag,
+  faStar,
+  faFlagSolid,
+  faStarSolid,
+  faDownload,
+  faTrashCan,
+  faLink,
+  faCheck
 );
 
 export default FontAwesomeIcon;

@@ -177,10 +177,10 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
       result.taggerName = (tag as any).tagger.userName;
     }
   }
-  if (tag.startTime !== undefined) {
+  if (tag.startTime !== null && tag.startTime !== undefined) {
     result.startTime = tag.startTime;
   }
-  if (tag.duration !== undefined) {
+  if (tag.duration !== null && tag.duration !== undefined) {
     result.duration = tag.duration;
   }
   if (tag.what) {
