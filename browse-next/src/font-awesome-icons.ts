@@ -29,6 +29,15 @@ import {
   faTrashCan,
   faLink,
   faCheck,
+  faSpinner,
+  faBackward,
+  faRedoAlt,
+  faForward,
+  faPlay,
+  faStepBackward,
+  faStepForward,
+  faEyedropper,
+  faImage,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -70,7 +79,16 @@ library.add(
   faDownload,
   faTrashCan,
   faLink,
-  faCheck
+  faCheck,
+  faSpinner,
+  faBackward,
+  faRedoAlt,
+  faForward,
+  faPlay,
+  faStepBackward,
+  faStepForward,
+  faEyedropper,
+  faImage
 );
 
 export default FontAwesomeIcon;

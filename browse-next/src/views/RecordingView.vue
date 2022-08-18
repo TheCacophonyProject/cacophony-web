@@ -23,6 +23,9 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import { truncateLongStationNames } from "@/utils";
+import CptvPlayer from "@/components/CptvPlayer.vue";
+import type { ApiTrackResponse } from "@typedefs/api/track";
+import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 const route = useRoute();
 const emit = defineEmits(["close"]);
 
@@ -50,7 +53,6 @@ watch(
 
 watch(stations, (nextStations) => {
   if (nextStations) {
-    console.log("Stations", nextStations);
     currentStations.value = nextStations;
   }
 });
@@ -131,7 +133,6 @@ const currentVisitIndex = computed<number | null>(() => {
     if (currentVisitIndex !== -1) {
       return currentVisitIndex;
     }
-    return null;
   }
   return null;
 });
@@ -279,11 +280,45 @@ const loadRecording = async () => {
         downloadJwt: recordingResponse.result.downloadRawJWT || "",
       };
       console.log("Loaded recording", recordingData.value);
+
+      if ((route.name as string).endsWith("-tracks") && !route.params.trackId) {
+        // set the default track if not set
+        if (tracks.value.length) {
+          await router.replace({
+            name: route.name as string,
+            params: {
+              ...route.params,
+              trackId: tracks.value[0].id,
+            },
+          });
+        }
+      }
     } else {
       // TODO: Handle recording permissions error
     }
   }
 };
+
+const tracks = computed<ApiTrackResponse[]>(() => {
+  if (recordingData.value) {
+    return recordingData.value.recording.tracks;
+  }
+  return [];
+});
+
+const tags = computed<ApiRecordingTagResponse[]>(() => {
+  if (recordingData.value) {
+    return recordingData.value.recording.tags;
+  }
+  return [];
+});
+
+const recording = computed<ApiRecordingResponse | null>(() => {
+  if (recordingData.value) {
+    return recordingData.value.recording;
+  }
+  return null;
+});
 
 onMounted(async () => {
   await loadRecording();
@@ -313,14 +348,14 @@ const visitDurationString = computed<string>(() => {
 });
 
 const recordingDateTime = computed<DateTime | null>(() => {
-  if (recordingData.value) {
-    if (recordingData.value.recording.location) {
-      const zone = timezoneForLocation(recordingData.value.recording.location);
-      return DateTime.fromISO(recordingData.value.recording.recordingDateTime, {
+  if (recording.value) {
+    if (recording.value.location) {
+      const zone = timezoneForLocation(recording.value.location);
+      return DateTime.fromISO(recording.value.recordingDateTime, {
         zone,
       });
     }
-    return DateTime.fromISO(recordingData.value?.recording.recordingDateTime);
+    return DateTime.fromISO(recording.value.recordingDateTime);
   }
   return null;
 });
@@ -342,18 +377,16 @@ const recordingStartTime = computed<string>(() => {
 });
 
 const currentStationName = computed<string>(() => {
-  return truncateLongStationNames(
-    recordingData.value?.recording.stationName || ""
-  );
+  return truncateLongStationNames(recording.value?.stationName || "");
 });
 
 const mapPointForRecording = computed<NamedPoint[]>(() => {
-  if (recordingData.value && recordingData.value.recording.location) {
+  if (recording.value?.location) {
     return [
       {
         name: currentStationName.value,
-        location: recordingData.value.recording.location,
-        group: recordingData.value.recording.groupName,
+        location: recording.value?.location,
+        group: recording.value?.groupName,
       },
     ] as NamedPoint[];
   }
@@ -390,8 +423,7 @@ const recordingViewContext = "dashboard-visit";
     </header>
     <div class="d-flex">
       <div class="player-container">
-        <div class="player"></div>
-        <div class="player-tracks"></div>
+        <cptv-player :recording="recording" />
       </div>
       <div class="recording-info d-flex flex-column flex-fill">
         <div class="recording-station-info d-flex mb-3 pe-3">
@@ -475,9 +507,7 @@ const recordingViewContext = "dashboard-visit";
             }"
             >Tracks
             <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
-              >({{
-                recordingData && recordingData.recording.tracks.length
-              }})</span
+              >({{ tracks.length }})</span
             ></router-link
           >
           <router-link
@@ -488,18 +518,19 @@ const recordingViewContext = "dashboard-visit";
             title="Labels"
             :to="{
               name: `${recordingViewContext}-labels`,
-              params: route.params,
+              params: {
+                ...route.params,
+                trackId: tracks[0]?.id,
+              },
             }"
             >Labels
             <span v-if="activeTabName !== `${recordingViewContext}-labels`"
-              >({{
-                recordingData && recordingData.recording.tags.length
-              }})</span
+              >({{ tags.length }})</span
             ></router-link
           >
         </ul>
         <router-view
-          :recording="recordingData && recordingData.recording"
+          :recording="recordingData?.recording"
           @trackTagChanged="recalculateCurrentVisit"
         />
       </div>
@@ -618,12 +649,7 @@ const recordingViewContext = "dashboard-visit";
 }
 .recording-info {
 }
-.player {
-  background: #ccc;
-  width: 640px;
-  min-height: 500px;
-  aspect-ratio: 4 / 3;
-}
+
 .recording-location-map {
   width: 120px;
   height: 120px;

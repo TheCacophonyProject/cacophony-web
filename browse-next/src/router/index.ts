@@ -95,7 +95,7 @@ const router = createRouter({
               component: () => import("@/components/RecordingViewLabels.vue"),
             },
             {
-              path: "tracks",
+              path: "tracks/:trackId?",
               name: "dashboard-visit-tracks",
               component: () => import("@/components/RecordingViewTracks.vue"),
             },

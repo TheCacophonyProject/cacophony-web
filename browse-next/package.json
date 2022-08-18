@@ -21,6 +21,8 @@
     "suncalc": "^1.9.0",
     "tz-lookup-oss": "^6.3.0",
     "vue": "^3.2.31",
+    "@vueuse/core": "^9.1.0",
+    "cptv-decoder": "github:TheCacophonyProject/cptv-rs#v1.3.1",
     "vue-multiselect": "^3.0.0-alpha.2",
     "vue-router": "^4.0.12"
   },

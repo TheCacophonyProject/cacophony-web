@@ -13,7 +13,7 @@ const { recording } = defineProps<{
       v-for="(track, index) in recording.tracks"
       :key="index"
       :index="index"
-      :color="TagColours[index % recording.tracks.length]"
+      :color="TagColours[index % TagColours.length]"
       :track="track"
     />
   </div>
