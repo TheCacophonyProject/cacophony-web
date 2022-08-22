@@ -34,10 +34,15 @@ import {
   faRedoAlt,
   faForward,
   faPlay,
+  faPause,
   faStepBackward,
   faStepForward,
   faEyedropper,
   faImage,
+  faAngleRight,
+  faWrench,
+  faPalette,
+  faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -88,7 +93,12 @@ library.add(
   faStepBackward,
   faStepForward,
   faEyedropper,
-  faImage
+  faImage,
+  faPause,
+  faAngleRight,
+  faWrench,
+  faPalette,
+  faInfoCircle
 );
 
 export default FontAwesomeIcon;

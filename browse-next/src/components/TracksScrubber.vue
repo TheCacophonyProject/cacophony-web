@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ScrubberWrapper from "@/components/ScrubberWrapper.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
-import { computed, defineEmits, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { TagColours } from "@/consts";
 import { useDevicePixelRatio } from "@vueuse/core";
 const { pixelRatio } = useDevicePixelRatio();
@@ -9,14 +9,14 @@ const { pixelRatio } = useDevicePixelRatio();
 const {
   tracks = [],
   duration,
-  currentTrackIndex = 0,
+  currentTrack,
   timeAdjustmentForBackgroundFrame = 0,
   sidePadding = 1,
   playbackTime = 0,
 } = defineProps<{
   tracks: ApiTrackResponse[];
   duration: number;
-  currentTrackIndex?: number;
+  currentTrack?: ApiTrackResponse;
   timeAdjustmentForBackgroundFrame?: number;
   sidePadding?: number;
   playbackTime: number;
@@ -30,6 +30,8 @@ interface TrackDimensions {
 
 const emit = defineEmits<{
   (e: "change-playback-time", offset: number): void;
+  (e: "start-scrub"): void;
+  (e: "end-scrub"): void;
 }>();
 
 const playhead = ref<HTMLCanvasElement | null>(null);
@@ -198,6 +200,14 @@ const updatePlayhead = (
 const setPlaybackTime = (offset: number) => {
   emit("change-playback-time", offset);
 };
+
+const currentTrackIndex = computed<number>(() => {
+  if (currentTrack) {
+    return tracks.indexOf(currentTrack) || 0;
+  }
+  return 0;
+});
+
 </script>
 <template>
   <scrubber-wrapper

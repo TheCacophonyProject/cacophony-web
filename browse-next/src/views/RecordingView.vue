@@ -23,7 +23,7 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import { truncateLongStationNames } from "@/utils";
-import CptvPlayer from "@/components/CptvPlayer.vue";
+import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 const route = useRoute();
@@ -399,6 +399,13 @@ const activeTabName = computed(() => {
 });
 
 const recordingViewContext = "dashboard-visit";
+
+const cptvUrl = computed<string | null>(() => {
+  if (recordingData.value) {
+    return `https://browse.cacophony.org.nz/api/v1/signedUrl?jwt=${recordingData.value.downloadJwt}`;
+  }
+  return undefined;
+});
 </script>
 <template>
   <div class="recording-view">
@@ -423,7 +430,7 @@ const recordingViewContext = "dashboard-visit";
     </header>
     <div class="d-flex">
       <div class="player-container">
-        <cptv-player :recording="recording" />
+        <cptv-player :recording="recording" :cptv-url="cptvUrl" />
       </div>
       <div class="recording-info d-flex flex-column flex-fill">
         <div class="recording-station-info d-flex mb-3 pe-3">

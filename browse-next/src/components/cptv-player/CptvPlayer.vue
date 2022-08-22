@@ -1,36 +1,39 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, defineEmits, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import type { TrackId } from "@typedefs/api/common";
-import type { CptvFrame, CptvFrameHeader, CptvHeader } from "cptv-decoder";
+import type {
+  CptvFrame,
+  CptvFrameHeader,
+  CptvHeader,
+} from "./cptv-decoder/decoder";
 import {
   ColourMaps,
   renderFrameIntoFrameBuffer,
-} from "cptv-decoder/frameRenderUtils";
-import { useDevicePixelRatio } from "@vueuse/core";
+} from "./cptv-decoder/frameRenderUtils";
+import { useDevicePixelRatio, useWindowSize } from "@vueuse/core";
 import type { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
+import { CptvDecoder } from "./cptv-decoder/decoder";
 import { TagColours } from "@/consts";
 const { pixelRatio } = useDevicePixelRatio();
-//import { CptvDecoder } from "cptv-decoder";
+const { width: windowWidth } = useWindowSize();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {
   recording,
-  standAlone = false,
   cptvUrl,
+  cptvSize = null,
   currentTrack,
-  userFiles = false,
   extLoading = false,
-  canUseAdvancedControls = false,
+  canUseAdvancedControls = true,
   canSelectTracks = true,
   showOverlaysForCurrentTrackOnly = false,
 } = defineProps<{
   recording: ApiRecordingResponse | null;
-  standAlone?: boolean;
   cptvUrl?: string;
-  currentTrack?: TrackId;
-  userFiles?: boolean;
+  cptvSize?: number | null;
+  currentTrack?: ApiTrackResponse;
   extLoading?: boolean;
   canUseAdvancedControls?: boolean;
   canSelectTracks?: boolean;
@@ -38,50 +41,82 @@ const {
 }>();
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
-const playbackTime = ref(0.6);
-const smoothed = ref(false);
+const playbackTime = ref(0);
 let frames: CptvFrame[] = [];
+let lastCptvUrl: string | undefined = undefined;
 let frameBuffer: Uint8ClampedArray;
-//const decoder = new CptvDecoder();
+let cptvDecoder: CptvDecoder;
+
+watch(windowWidth, () => {
+  animationTick.value = 0;
+  console.log("window width changed");
+  setCanvasDimensions();
+});
+
+watch(pixelRatio, () => {
+  animationTick.value = 0;
+  console.log("window width changed");
+  setCanvasDimensions();
+});
 
 const playbackTimeChanged = (offset: number) => {
-  console.log("set playback time", offset);
   playbackTime.value = offset;
+  setTimeAndRedraw(offset);
 };
 
-const emit = defineEmits([
-  "request-prev-recording",
-  "request-next-recording",
-  "track-selected",
-]);
+const emit = defineEmits<{
+  (e: "request-prev-recording"): void;
+  (e: "request-next-recording"): void;
+  (e: "track-selected", { trackId: TrackId }): void;
+  (e: "ready-to-play", header: CptvHeader): void;
+}>();
 const canvas = ref<HTMLCanvasElement | null>(null);
+const container = ref<HTMLDivElement | null>(null);
 const frameNumField = ref<HTMLDivElement | null>(null);
 const ffcSecsAgo = ref<HTMLDivElement | null>(null);
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
+const valueTooltip = ref<HTMLSpanElement | null>(null);
 const playing = ref<boolean>(false);
 const openUserDefinedCptvFile = ref<boolean>(true);
-const userSuppliedFile = ref<File | null>(null);
 const header = ref<CptvHeader | null>(null);
 const valueUnderCursor = ref<string | null>(null);
 const playerMessage = ref<string | null>(null);
 const showValueInfo = ref<boolean>(false);
 const buffering = ref<boolean>(false);
 const atEndOfPlayback = ref<boolean>(false);
+const ended = ref<boolean>(false);
 const showAtEndOfSearch = ref<boolean>(false);
 const frameNum = ref<number>(0);
 const showAdvancedControls = ref<boolean>(false);
 const animationTick = ref<number>(0);
 const isShowingBackgroundFrame = ref<boolean>(false);
 const animationFrame = ref<number>(0);
-const showDebugTools = ref<boolean>(false);
+
+// TODO(jon): Ideally we'd set the frame number and drive everything else off that change, right?
+
+// TODO - Maybe make these preferences be per group per user?
+const smoothed = ref(window.localStorage.getItem("video-smoothing") === "true");
+const showDebugTools = ref<boolean>(
+  localStorage.getItem("show-debug-tools") === "true" || false
+);
+const speedMultiplierIndex = ref<number>(
+  Number(localStorage.getItem("video-playback-speed")) || 0
+);
+
+const paletteIndex = ref<number>(
+  ColourMaps.findIndex(
+    ([name]) => name === localStorage.getItem("video-palette")
+  ) || 0
+);
+const colourMap = ref<[string, Uint32Array]>(ColourMaps[paletteIndex.value]);
 const messageTimeout = ref<number | null>(null);
 const messageAnimationFrame = ref<number>(0);
-const paletteIndex = ref<number>(0);
-const colourMap = ref<[string, Uint32Array]>(ColourMaps[0]);
+
 const displayHeaderInfo = ref<boolean>(false);
-const speedMultiplierIndex = ref<number>(0);
+
 const loadProgress = ref<number>(0);
 const loadedFrames = ref<number>(0);
+const loadedStream = ref<boolean | string>(false);
 const totalFrames = ref<number | null>(null);
 const seekingInProgress = ref<boolean>(false);
 const streamLoadError = ref<string | null>(null);
@@ -90,8 +125,13 @@ const maxValue = ref<number>(Number.MIN_VALUE);
 const frameHeader = ref<CptvFrameHeader | null>(null);
 const scale = ref<number>(1);
 const raqFps = ref<number>(60);
+const polledFps = ref<boolean>(false);
 const stopAtFrame = ref<number | null>(null);
 const wasPaused = ref<boolean>(false);
+const isSeeking = ref<boolean>(false);
+const canvasWidth = ref<number>(160);
+const canvasHeight = ref<number>(120);
+const trackExportOptions = ref<TrackExportOption[]>([]);
 
 const canGoBackwards = computed<boolean>(() => {
   // TODO
@@ -102,6 +142,84 @@ const canGoForwards = computed<boolean>(() => {
   // TODO
   return false;
 });
+
+const setTimeAndRedraw = async (timeZeroOne = -1, frameNumToDraw = -1) => {
+  // If the user is already seeking, don't queue up new seek events until that download progress completes.
+  if (!seekingInProgress.value) {
+    isShowingBackgroundFrame.value = false;
+    if (header.value) {
+      let totalFramesCount =
+        totalFrames.value &&
+        totalFrames.value - (header.value.hasBackgroundFrame ? 1 : 0);
+      if (totalFramesCount === null) {
+        totalFramesCount = Math.floor(actualDuration.value * header.value.fps);
+      }
+      animationTick.value = 0;
+      if (timeZeroOne !== -1 && actualDuration.value !== 0) {
+        frameNum.value = Math.floor(
+          Math.min(totalFramesCount, timeZeroOne * totalFramesCount)
+        );
+      } else if (frameNumToDraw !== -1) {
+        frameNum.value = frameNumToDraw;
+      }
+      atEndOfPlayback.value = frameNum.value === totalFramesCount - 1;
+      await renderCurrentFrame(true);
+    }
+  }
+};
+
+const firstFrameForTrack = (trackId: number): number => {
+  const frameForTrack = Object.entries(
+    processedTracks.value
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ).find(([_, tracks]) => Object.keys(tracks).map(Number).includes(trackId));
+  return (frameForTrack && Number(frameForTrack[0])) || 0;
+};
+
+const onePastLastFrameForTrack = (trackId: number): number => {
+  const entries = Object.entries(processedTracks.value);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const firstFrameForTrackIndex = entries.findIndex(([_, tracks]) =>
+    Object.keys(tracks).map(Number).includes(trackId)
+  );
+  const fromStartOfTrack = entries.slice(firstFrameForTrackIndex);
+  let onePastLastFrameForTrackIndex = fromStartOfTrack.findIndex(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ([_, tracks]) => !Object.keys(tracks).map(Number).includes(trackId)
+  );
+  if (onePastLastFrameForTrackIndex === -1) {
+    onePastLastFrameForTrackIndex = fromStartOfTrack.length;
+  }
+  const lastFrameForTrack = fromStartOfTrack[onePastLastFrameForTrackIndex - 1];
+  if (totalFrames.value !== null) {
+    return Math.min(
+      totalFrames.value,
+      (lastFrameForTrack && Number(lastFrameForTrack[0])) || 0
+    );
+  } else {
+    return (lastFrameForTrack && Number(lastFrameForTrack[0])) || 0;
+  }
+};
+
+const selectTrack = (force = false, shouldPlay = false) => {
+  if (currentTrack && (!playing.value || force)) {
+    if (processedTracks.value) {
+      cancelAnimationFrame(animationFrame.value);
+      animationTick.value = 0;
+      setTimeAndRedraw(-1, firstFrameForTrack(currentTrack.id));
+      if (shouldPlay) {
+        play();
+      }
+    }
+
+    // This is used when a user selects a track from the TrackInfo panel.
+    // In that case we don't want it selecting another track as it plays on from
+    // the selected track, since the user likely wants to tag the track they selected.
+
+    // Any other further user interaction should unset stopAtTime.
+    stopAtFrame.value = onePastLastFrameForTrack(currentTrack.id);
+  }
+};
 
 const requestPrevRecording = () => {
   if (canGoBackwards.value) {
@@ -126,7 +244,7 @@ const requestNextRecording = () => {
 };
 
 const hasVideo = computed<boolean>(() => {
-  return false;
+  return cptvUrl !== undefined;
 });
 const hasBackgroundFrame = computed<boolean>(() => {
   return (header.value?.hasBackgroundFrame as boolean) || false;
@@ -172,7 +290,8 @@ const renderCurrentFrame = async (
   frameNumToRender?: number
 ): Promise<boolean> => {
   if (header.value) {
-    loadProgress.value = 1; //await cptvDecoder.getLoadProgress();
+    loadProgress.value = 1;
+    await cptvDecoder.getLoadProgress();
     if (frameNumToRender === undefined) {
       frameNumToRender = frameNum.value;
     }
@@ -182,26 +301,26 @@ const renderCurrentFrame = async (
 
     while (loadedFrames.value <= frameNumToRender && !totalFrames.value) {
       seekingInProgress.value = true;
-      const frame = null; //await cptvDecoder.getNextFrame();
+      const frame = await cptvDecoder.getNextFrame();
       console.assert(frame !== null);
       if (frame === null) {
         // Poll again so that we can read out totalFrames
-        // await cptvDecoder.getNextFrame();
+        await cptvDecoder.getNextFrame();
       }
       if (header.value.totalFrames) {
         knownDurationInternal.value =
           header.value.totalFrames / header.value.fps;
       }
-      totalFrames.value = 0; //await cptvDecoder.getTotalFrames();
+      totalFrames.value = await cptvDecoder.getTotalFrames();
       totalFrames.value =
         totalFrames.value &&
         totalFrames.value + (header.value.hasBackgroundFrame ? 1 : 0);
       if (frame === null) {
-        // if (await cptvDecoder.hasStreamError()) {
-        //   streamLoadError.value = null;//await cptvDecoder.getStreamError();
-        //   await cptvDecoder.free();
-        //   totalFrames.value = frames.length;
-        // }
+        if (await cptvDecoder.hasStreamError()) {
+          streamLoadError.value = await cptvDecoder.getStreamError();
+          await cptvDecoder.free();
+          totalFrames.value = frames.length;
+        }
         break;
       }
       if (!totalFrames.value) {
@@ -483,7 +602,7 @@ const drawRectWithText = (
   if (!header.value) {
     return;
   }
-  const selected = currentTrack === trackId || isExporting;
+  const selected = currentTrack?.id === trackId || isExporting;
   const trackIndex =
     recording?.tracks.findIndex((track) => track.id === trackId) || 0;
   const lineWidth = selected ? 2 : 1;
@@ -572,14 +691,14 @@ const renderOverlay = (
     ) {
       const trackId = Number(frameTracks[0][0]);
       // If the track is the only track at this time offset, make it the selected track.
-      if (currentTrack !== trackId) {
+      if (currentTrack.id !== trackId) {
         emit("track-selected", { trackId });
       }
     }
 
     if (currentTrack && (!showOverlaysForCurrentTrackOnly || isExporting)) {
       for (const [trackId, trackBox] of frameTracks) {
-        if (currentTrack !== Number(trackId)) {
+        if (currentTrack.id !== Number(trackId)) {
           if (
             !trackExportOptions ||
             trackExportOptions.find(
@@ -600,7 +719,7 @@ const renderOverlay = (
     }
     // Always draw selected track last, so it sits on top of any overlapping tracks.
     for (const [trackId, trackBox] of frameTracks) {
-      if (currentTrack === Number(trackId)) {
+      if (currentTrack && currentTrack.id === Number(trackId)) {
         if (
           !trackExportOptions ||
           trackExportOptions.find(
@@ -733,7 +852,6 @@ const drawFrame = async (
     if (context && (shouldRedraw || force)) {
       setFrameInfo(frameNumToRender);
       //console.log("*** Draw frame to canvas", frameNum);
-      //debugger;
       context.putImageData(imgData, 0, 0);
       if (overlayCanvas.value) {
         const overlayContext = overlayCanvas.value.getContext("2d");
@@ -984,9 +1102,316 @@ const stepForward = async () => {
     atEndOfPlayback.value = false;
   }
 };
+
+const getTrackIdAtPosition = (x: number, y: number): number | null => {
+  const tracks =
+    processedTracks.value[frameNum.value] || ({} as Record<number, TrackBox>);
+  for (const [trackId, trackBox] of Object.entries(tracks)) {
+    const box = trackBox as TrackBox;
+    const [left, top, right, bottom] = box.rect.map((x) => x * scale.value);
+    if (left <= x && right > x && top <= y && bottom > y) {
+      // If the track is already selected, ignore it
+      if (currentTrack && Number(trackId) === currentTrack.id) {
+        continue;
+      }
+      return Number(trackId);
+    }
+  }
+  return null;
+};
+
+const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
+  if (canvas.value && overlayCanvas.value) {
+    const canvasOffset = canvas.value.getBoundingClientRect();
+    const x = event.x - canvasOffset.x;
+    const y = event.y - canvasOffset.y;
+    const trackId = getTrackIdAtPosition(x, y);
+    overlayCanvas.value.style.cursor = trackId !== null ? "pointer" : "default";
+    if (trackId !== null) {
+      await renderCurrentFrame();
+      emit("track-selected", {
+        trackId,
+      });
+    }
+  }
+};
+
+const moveOverOverlayCanvas = (event: MouseEvent) => {
+  if (canvas.value && overlayCanvas.value) {
+    const canvasOffset = canvas.value.getBoundingClientRect();
+    const x = event.x - canvasOffset.x;
+    const y = event.y - canvasOffset.y;
+    const hitTrackIndex = getTrackIdAtPosition(x, y);
+    // set cursor
+    overlayCanvas.value.style.cursor =
+      hitTrackIndex !== null ? "pointer" : "default";
+    if (showValueInfo.value && header.value) {
+      canvas.value.style.cursor = "default";
+      // Map the x,y into canvas size
+      const pX = Math.floor(x / scale.value);
+      const pY = Math.floor(y / scale.value);
+      const frameData = isShowingBackgroundFrame.value
+        ? getFrameAtIndex(-1)
+        : getFrameAtIndex(frameNum.value);
+      valueUnderCursor.value = `(${pX}, ${pY}) ${
+        frameData.data[pY * header.value.width + pX]
+      }`;
+      if (valueTooltip.value) {
+        if (x > canvasOffset.right - canvasOffset.x - 100) {
+          valueTooltip.value.style.left = `${x - 100}px`;
+        } else {
+          valueTooltip.value.style.left = `${x + 2}px`;
+        }
+        if (y < canvasOffset.top - canvasOffset.y + 20) {
+          valueTooltip.value.style.top = `${y + 20}px`;
+        } else {
+          valueTooltip.value.style.top = `${y - 20}px`;
+        }
+      }
+    }
+  }
+};
+
+onMounted(async () => {
+  cptvDecoder = new CptvDecoder();
+  const frameTimes: number[] = [];
+  const pollFrameTimes = () => {
+    if (!polledFps.value) {
+      frameTimes.push(performance.now());
+      if (frameTimes.length < 10) {
+        requestAnimationFrame(pollFrameTimes);
+      } else {
+        const diffs = [];
+        for (let i = 1; i < frameTimes.length; i++) {
+          diffs.push(frameTimes[i] - frameTimes[i - 1]);
+        }
+        let total = 0;
+        for (const val of diffs) {
+          total += val;
+        }
+        // Get the average frame time
+        const multiplier = Math.round(1000 / (total / diffs.length) / 30);
+        if (multiplier === 1) {
+          // 30fps
+          raqFps.value = 30;
+        } else if (multiplier === 2 || multiplier === 3) {
+          // 60fps
+          raqFps.value = 60;
+        } else if (multiplier >= 4) {
+          // 120fps
+          raqFps.value = 120;
+        }
+        polledFps.value = true;
+      }
+    }
+  };
+
+  pollFrameTimes();
+  window.addEventListener("load", pollFrameTimes);
+
+  // This makes button active styles work in safari iOS.
+  document.addEventListener(
+    "touchstart",
+    () => {
+      return;
+    },
+    false
+  );
+
+  if (canvas.value) {
+    canvas.value.width = 160;
+    canvas.value.height = 120;
+  }
+
+  setCanvasDimensions();
+  buffering.value = true;
+  if (canSelectTracks) {
+    overlayCanvas.value?.addEventListener("click", clickOverlayCanvas);
+    overlayCanvas.value?.addEventListener("mousemove", moveOverOverlayCanvas);
+  }
+  if (lastCptvUrl !== cptvUrl) {
+    await initPlayer();
+  } else {
+    clearCanvas();
+  }
+  trackExportOptions.value = exportOptions.value;
+});
+
+watch(
+  () => recording,
+  () => {
+    trackExportOptions.value = exportOptions.value;
+  }
+);
+
+watch(
+  () => cptvUrl,
+  async (url, prevUrl) => {
+    if (prevUrl !== url) {
+      await initPlayer();
+    } else {
+      clearCanvas();
+    }
+  }
+);
+
+const clearCanvas = () => {
+  if (canvas.value) {
+    const context = canvas.value.getContext("2d");
+    context &&
+      context.clearRect(
+        0,
+        0,
+        context.canvas.width * (1 / pixelRatio.value),
+        context.canvas.height * (1 / pixelRatio.value)
+      );
+
+    if (overlayCanvas.value) {
+      const overlayContext = overlayCanvas.value.getContext("2d");
+      overlayContext &&
+        overlayContext.clearRect(
+          0,
+          0,
+          overlayContext.canvas.width * (1 / pixelRatio.value),
+          overlayContext.canvas.height * (1 / pixelRatio.value)
+        );
+    }
+  }
+};
+
+const loadCptvFile = async (
+  localFile: Uint8Array | null = null,
+  playImmediately = true
+) => {
+  if (!localFile) {
+    if (cptvUrl) {
+      console.log("Init with cptvUrl", cptvUrl);
+      loadedStream.value = await cptvDecoder.initWithCptvUrlAndKnownSize(
+        cptvUrl,
+        cptvSize || 0
+      );
+    }
+  } else {
+    loadedStream.value = await cptvDecoder.initWithLocalCptvFile(localFile);
+  }
+  if (typeof loadedStream.value === "string") {
+    if (loadedStream.value === "Failed to verify JWT.") {
+      window.location.reload();
+    } else {
+      streamLoadError.value = loadedStream.value;
+      if (await cptvDecoder.hasStreamError()) {
+        await cptvDecoder.free();
+        frames = [];
+        openUserDefinedCptvFile.value = true;
+        buffering.value = false;
+      }
+    }
+  } else if (loadedStream.value) {
+    lastCptvUrl = cptvUrl;
+    header.value = Object.freeze(await cptvDecoder.getHeader());
+    setFrameInfo(0);
+    scale.value = canvasWidth.value / header.value.width;
+    emit("ready-to-play", header.value);
+    frameBuffer = new Uint8ClampedArray(
+      header.value.width * header.value.height * 4
+    );
+    if (canvas.value) {
+      canvas.value.width = header.value.width;
+      canvas.value.height = header.value.height;
+    }
+    cancelAnimationFrame(animationFrame.value);
+    if (playImmediately) {
+      await fetchRenderAdvanceFrame();
+      buffering.value = false;
+    }
+  }
+};
+
+const initPlayer = async () => {
+  loadedStream.value = false;
+  streamLoadError.value = null;
+  clearCanvas();
+  atEndOfPlayback.value = false;
+  frameNum.value = 0;
+  header.value = null;
+  setFrameInfo(0);
+  ended.value = false;
+  animationTick.value = 0;
+  loadedFrames.value = 0;
+  totalFrames.value = null;
+  loadProgress.value = 0;
+  playing.value = true;
+  wasPaused.value = true;
+  if (canvas.value) {
+    canvas.value.width = 160;
+    canvas.value.height = 120;
+  }
+  minValue.value = Number.MAX_VALUE;
+  maxValue.value = Number.MIN_VALUE;
+  trackExportOptions.value = [];
+  frames = [];
+  cancelAnimationFrame(animationFrame.value);
+  if (cptvUrl) {
+    openUserDefinedCptvFile.value = false;
+    await loadCptvFile();
+  }
+};
+
+const exportOptions = computed<TrackExportOption[]>(() => {
+  return (
+    recording?.tracks.map(({ id }) => ({
+      includeInExportTime: true,
+      displayInExport: true,
+      trackId: id,
+    })) || []
+  );
+});
+
+const setCanvasDimensions = () => {
+  if (canvas.value) {
+    const canvasDimensions = canvas.value.getBoundingClientRect();
+    canvasWidth.value = canvasDimensions.width;
+    scale.value = canvasWidth.value / 160;
+    if (header.value) {
+      scale.value = canvasWidth.value / header.value.width;
+    }
+    canvasHeight.value = canvasDimensions.width * 0.75;
+    if (overlayCanvas.value) {
+      overlayCanvas.value.width = canvasWidth.value * pixelRatio.value;
+      overlayCanvas.value.height = canvasHeight.value * pixelRatio.value;
+      overlayCanvas.value.style.width = `${canvasWidth.value}px`;
+      overlayCanvas.value.style.height = `${canvasHeight.value}px`;
+      const context = overlayCanvas.value.getContext("2d");
+      if (context) {
+        context.scale(pixelRatio.value, pixelRatio.value);
+      }
+    }
+    if (container.value) {
+      //container.value.style.maxHeight = `${canvasHeight.value}px`;
+    }
+    if (header.value) {
+      renderCurrentFrame();
+    }
+  }
+};
+
+const startSeek = () => {
+  wasPaused.value = !playing.value;
+  if (!wasPaused.value) {
+    pause();
+  }
+  isSeeking.value = true;
+};
+
+const endSeek = () => {
+  if (!wasPaused.value) {
+    play();
+  }
+  isSeeking.value = false;
+};
 </script>
 <template>
-  <div :class="['cptv-player', { 'stand-alone': standAlone }]">
+  <div class="cptv-player">
     <div key="container" class="video-container" ref="container">
       <canvas key="base" ref="canvas" :class="['video-canvas', { smoothed }]" />
       <canvas key="overlay" ref="overlayCanvas" class="overlay-canvas" />
@@ -1003,25 +1428,8 @@ const stepForward = async () => {
         >{{ valueUnderCursor }}
       </span>
       <div
-        key="openUserFile"
-        class="playback-controls show"
-        v-if="openUserDefinedCptvFile && userFiles"
-      >
-        <!--        <b-form-file-->
-        <!--          class="cptv-drop-area"-->
-        <!--          accept=".cptv"-->
-        <!--          v-model="userSuppliedFile"-->
-        <!--          :state="userSuppliedFile !== null"-->
-        <!--          placeholder="Choose a CPTV file or drop one here..."-->
-        <!--          drop-placeholder="Drop file here..."-->
-        <!--        />-->
-      </div>
-      <div
         key="buffering"
-        :class="[
-          'playback-controls',
-          { show: isBuffering && (!openUserDefinedCptvFile || !userFiles) },
-        ]"
+        :class="['playback-controls', { show: isBuffering }]"
       >
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
@@ -1030,22 +1438,15 @@ const stepForward = async () => {
         :class="[
           'playback-controls',
           {
-            show: atEndOfPlayback && !extLoading && !openUserDefinedCptvFile,
+            show: atEndOfPlayback && !extLoading,
           },
         ]"
       >
         <button
           @click="requestPrevRecording"
           :class="{ disabled: !canGoBackwards }"
-          v-if="!standAlone"
         >
           <font-awesome-icon icon="backward" class="replay" />
-        </button>
-        <button
-          v-if="standAlone && !cptvUrl"
-          @click="openUserDefinedCptvFile = true"
-        >
-          <font-awesome-icon icon="folder-open" class="replay" />
         </button>
         <button @click="togglePlayback">
           <font-awesome-icon icon="redo-alt" class="replay" rotation="270" />
@@ -1053,7 +1454,6 @@ const stepForward = async () => {
         <button
           @click="requestNextRecording"
           :class="{ disabled: !canGoForwards }"
-          v-if="!standAlone"
         >
           <font-awesome-icon icon="forward" class="replay" />
         </button>
@@ -1232,23 +1632,17 @@ const stepForward = async () => {
         >
           <font-awesome-icon icon="image" />
         </button>
-        <button
-          v-if="standAlone || userSuppliedFile"
-          ref="exportMp4"
-          :disabled="!hasVideo"
-          data-tooltip="Export Mp4"
-          @click="() => exportMp4()"
-        >
-          <font-awesome-icon icon="file-video" />
-        </button>
       </div>
     </div>
     <div class="tracks-container">
       <tracks-scrubber
         class="player-tracks"
         :tracks="recording?.tracks || []"
+        :current-track="currentTrack"
         :duration="recording?.duration || 0"
         @change-playback-time="playbackTimeChanged"
+        @start-scrub="startSeek"
+        @end-scrub="endSeek"
         :playback-time="playbackTime"
       />
     </div>
