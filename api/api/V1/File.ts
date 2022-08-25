@@ -19,11 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { validateFields } from "../middleware";
 import models from "@models";
 import util from "./util";
-import { successResponse } from "./responseUtil";
+import { someResponse, successResponse } from "./responseUtil";
 import config from "@config";
 import jsonwebtoken from "jsonwebtoken";
 import { param, query } from "express-validator";
-import { Application, NextFunction, Request, Response } from "express";
+import { Application, NextFunction, request, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   extractJwtAuthorizedUserOrDevice,
@@ -34,6 +34,9 @@ import { Op } from "sequelize";
 import { idOf } from "@api/validation-middleware";
 import { AuthorizationError } from "@api/customErrors";
 import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
+import { ApiClassificationResponse } from "@typedefs/api/trackTag.d";
+import classification from "../../classifications/classification.json";
+import { HttpStatusCode } from "@/../types/api/consts";
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
@@ -49,6 +52,37 @@ const mapAudiobaitFiles = (files: File[]): ApiAudiobaitFileResponse[] => {
 
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/files`;
+
+  /**
+   * @api {get} /api/v1/files/classification Get classification json file
+   * @apiName GetClassificationJsonFile
+   * @apiGroup Files
+   * @apiDescription Returns the versioned classification json.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiQuery {String} [version] The current version of the classification.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiClassificationResponse} classification.json
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/classifications`,
+    extractJwtAuthorizedUser,
+    validateFields([query("version").optional().isString()]),
+    async (request: Request, response: Response) => {
+      const version = request.query.version as string;
+      if (classification.version === version) {
+        console.log(`Returning classification version ${version}`);
+        return successResponse(response, { version: classification.version });
+      }
+      response.setHeader("Content-Type", "application/json");
+      response.send(classification);
+
+      return successResponse(response, "Retrieved classification.json");
+    }
+  );
 
   /**
    * @api {post} /api/v1/files Adds a new file.

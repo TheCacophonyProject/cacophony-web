@@ -57,6 +57,7 @@ import {
   ApiThermalRecordingMetadataResponse,
   CacophonyIndex,
 } from "@typedefs/api/recording";
+import labelPath from "../classifications/label_paths.json";
 
 type SqlString = string;
 
@@ -87,11 +88,7 @@ interface RecordingQueryBuilder {
   trackTaggedWith: (tags: string[], sql: SqlString) => SqlString;
   notTagOfType: (tags: string[], sql: SqlString) => SqlString;
   tagOfType: (tags: string[], sql: SqlString) => SqlString;
-  selectByTagWhat: (
-    tags: string[],
-    whatName: string,
-    useDetail: boolean
-  ) => any;
+  selectByTag: (tags: string[], useDetail: boolean) => any;
 }
 
 interface RecordingQueryBuilderInstance {
@@ -1008,11 +1005,7 @@ from (
     let sql =
       'SELECT "Recording"."id" FROM "Tags" WHERE  "Tags"."RecordingId" = "Recording".id';
     if (tags) {
-      sql += ` AND (${Recording.queryBuilder.selectByTagWhat(
-        tags,
-        "what",
-        true
-      )})`;
+      sql += ` AND (${Recording.queryBuilder.selectByTag(tags, true)})`;
     }
     if (tagTypeSql) {
       sql += ` AND (${tagTypeSql})`;
@@ -1026,11 +1019,7 @@ from (
   ) => {
     let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags"."archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
     if (tags) {
-      sql += ` AND (${Recording.queryBuilder.selectByTagWhat(
-        tags,
-        "what",
-        false
-      )})`;
+      sql += ` AND (${Recording.queryBuilder.selectByTag(tags, false)})`;
     }
     if (tagTypeSql) {
       sql += ` AND (${tagTypeSql})`;
@@ -1038,11 +1027,11 @@ from (
     return sql;
   };
 
-  Recording.queryBuilder.selectByTagWhat = (
+  Recording.queryBuilder.selectByTag = (
     tags: string[],
-    whatName: string,
     usesDetail: boolean
   ) => {
+    log.info(`selectByTagWhat: ${tags}`);
     if (!tags || tags.length === 0) {
       return null;
     }
@@ -1053,21 +1042,22 @@ from (
       if (tag === "interesting") {
         if (usesDetail) {
           parts.push(
-            `(("Tags"."${whatName}" IS NULL OR "Tags"."${whatName}"!='bird') AND ("Tags"."detail" IS NULL OR "Tags"."detail"!='false positive'))`
+            `(("Tags"."what" IS NULL OR "Tags"."what"!='bird') AND ("Tags"."detail" IS NULL OR "Tags"."detail"!='false positive'))`
           );
         } else {
           parts.push(
-            `("Tags"."${whatName}"!='bird' AND "Tags"."${whatName}"!='false positive')`
+            `("Tags"."what"!='bird' AND "Tags"."what"!='false positive')`
           );
         }
       } else {
-        parts.push(`"Tags"."${whatName}" = '${tag}'`);
+        parts.push(`"Tags".path ~ '${labelPath[tag.toLowerCase()]}.*'`);
         if (usesDetail) {
           // the label could also be the detail field not the what field
           parts.push(`"Tags"."detail" = '${tag}'`);
         }
       }
     }
+
     return parts.join(" OR ");
   };
 

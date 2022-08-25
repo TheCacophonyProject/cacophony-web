@@ -41,7 +41,7 @@
         </b-col>
       </b-form-row>
       <SelectDuration v-if="advanced" v-model="duration" />
-      <SelectTags v-if="advanced" v-model="tagData" />
+      <SelectTags v-show="advanced" v-model="tagData" />
       <b-button :disabled="disabled" block variant="primary" @click="submit">
         <span v-if="!disabled">Search</span>
         <span v-else>Searching...</span>

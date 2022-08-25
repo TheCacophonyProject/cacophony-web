@@ -21,7 +21,7 @@
         </button>
       </div>
       <div v-if="pinnedLabels" class="pinned-labels mt-1">
-        <div v-for="label in pinnedLabels" :key="label">
+        <div class="pinned-label" v-for="label in pinnedLabels" :key="label">
           <div
             @mouseover="
               () => {
@@ -88,35 +88,101 @@
           />
           <span class="tag-name">{{ otherTag.text }}</span>
         </button>
-        <button
-          v-b-modal="'custom-track-tag'"
-          class="btn btn-light btn-tag equal-flex"
-        >
-          <img
-            alt="Add other tag"
-            title="Open form to add other tag"
-            src="/plus.png"
-          />
-          <span class="tag-name">other...</span>
-        </button>
       </div>
+    </div>
+    <div class="tag-category d-flex">
+      <ClassificationsDropdown
+        v-model="selectedValue"
+        @input="addDropdownTag"
+      />
+      <b-button
+        class="ml-2"
+        :variant="pinnedTag ? 'success' : 'primary'"
+        v-b-tooltip.hover
+        title="Pin tag to quick selection"
+        @click="togglePinTag"
+      >
+        <font-awesome-icon icon="thumbtack" size="1x" />
+      </b-button>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import DefaultLabels, { imgSrc } from "../../const";
-export default {
+import DefaultLabels, { imgSrc, TrackLabel } from "../../const";
+import ClassificationsDropdown from "@/components/ClassificationsDropdown.vue";
+import {
+  watch,
+  defineComponent,
+  PropType,
+  ref,
+  computed,
+} from "@vue/composition-api";
+import store from "@/stores";
+import {
+  ApiHumanTrackTagResponse,
+  ApiAutomaticTrackTagResponse,
+} from "@typedefs/api/trackTag";
+export default defineComponent({
   name: "QuickTagTrack",
   props: {
     tags: {
-      type: Array,
+      type: Array as PropType<
+        (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[]
+      >,
       required: true,
     },
     isWallabyProject: {
       type: Boolean,
       default: false,
     },
+  },
+  components: {
+    ClassificationsDropdown,
+  },
+  setup(props, { emit }) {
+    const getUserTag = () => {
+      return props.tags.find(
+        (tag) =>
+          !tag.automatic && tag.userName === store.state.User.userData.userName
+      );
+    };
+    const selectedValue = ref<string | null>(getUserTag()?.what ?? "");
+    const pinnedTag = computed(() => {
+      return selectedValue.value
+        ? store.state.Video.pinnedLabels?.includes(selectedValue.value)
+        : false;
+    });
+    const togglePinTag = () => {
+      store.commit("Video/pinnedLabels", selectedValue.value);
+    };
+
+    const addDropdownTag = () => {
+      const existingTag = getUserTag();
+      if (existingTag && existingTag.what === selectedValue.value) {
+        emit("deleteTag", existingTag);
+        return;
+      }
+
+      const tag: Partial<ApiHumanTrackTagResponse> = {
+        confidence: 0.85,
+        what: selectedValue.value,
+      };
+      emit("addTag", tag);
+    };
+
+    watch(
+      () => props.tags,
+      () => {
+        selectedValue.value = getUserTag()?.what ?? "";
+      }
+    );
+    return {
+      selectedValue,
+      addDropdownTag,
+      pinnedTag,
+      togglePinTag,
+    };
   },
   computed: {
     blankImage() {
@@ -156,7 +222,10 @@ export default {
         !this.pinnedLabels.includes(aiGuess.what) &&
         otherTags.find(({ value }) => value === aiGuess.what) === undefined
       ) {
-        otherTags.unshift({ text: aiGuess.what, value: aiGuess.what });
+        otherTags.unshift({
+          text: aiGuess.what,
+          value: aiGuess.what,
+        } as TrackLabel);
       }
       // Make sure we always show a button for a user tagged track if it's not in the default list:
       const userTag = this.userTags[0];
@@ -167,7 +236,10 @@ export default {
         !this.pinnedLabels.includes(userTag.what) &&
         otherTags.find(({ value }) => value === userTag.what) === undefined
       ) {
-        otherTags.unshift({ text: userTag.what, value: userTag.what });
+        otherTags.unshift({
+          text: userTag.what,
+          value: userTag.what,
+        } as TrackLabel);
       }
       return otherTags;
     },
@@ -187,7 +259,11 @@ export default {
         return;
       }
 
-      const tag = {};
+      const tag: Partial<ApiHumanTrackTagResponse> = {
+        confidence: 0.85,
+        what: what,
+      };
+
       tag.confidence = 0.85;
       tag.what = what;
       this.$emit("addTag", tag);
@@ -220,7 +296,7 @@ export default {
       return buttonClass;
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>
@@ -298,9 +374,15 @@ export default {
     }
   }
 }
+
+.pinned-label {
+  position: relative;
+}
 .pinned-button {
   position: absolute;
-  z-index: 1;
+  top: 0;
+  left: 0;
+  z-index: 0;
   color: #3498db;
 }
 .pinned-button-cross {

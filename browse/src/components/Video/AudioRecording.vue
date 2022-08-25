@@ -42,13 +42,10 @@
         </b-col>
         <b-col>
           <div class="mt-2 mb-2 d-flex align-items-center">
-            <multiselect
+            <ClassificationsDropdown
               v-model="selectedLabel"
               @input="() => addTagToSelectedTrack(selectedLabel)"
-              :options="BirdLabels"
               :disabled="!selectedTrack"
-              :value="selectedLabel"
-              :show-labels="false"
             />
             <div class="button-selectors d-flex">
               <b-button
@@ -208,12 +205,11 @@ import {
   ref,
   onMounted,
 } from "@vue/composition-api";
-import Multiselect from "vue-multiselect";
 
 import api from "@api";
 import store from "@/stores";
 import { useState, UUIDv4 } from "@/utils";
-import DefaultLabels, { TagColours } from "@/const";
+import { TagColours } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
 import TrackList from "../Audio/TrackList.vue";
@@ -231,6 +227,7 @@ import {
 } from "@typedefs/api/trackTag";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { TrackId } from "@typedefs/api/common";
+import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 
 export enum TagClass {
   Automatic = "automatic",
@@ -282,7 +279,7 @@ export default defineComponent({
     CacophonyIndexGraph,
     RecordingProperties,
     LabelButtonGroup,
-    Multiselect,
+    ClassificationsDropdown,
   },
   setup(props) {
     const userName = store.state.User.userData.userName;
@@ -839,7 +836,6 @@ export default defineComponent({
     return {
       url,
       buffer,
-      BirdLabels: DefaultLabels.birdLabels.map(({ value }) => value).sort(),
       labels: buttonLabels,
       cacophonyIndex,
       deleted,
