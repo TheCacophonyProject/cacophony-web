@@ -883,7 +883,7 @@ async function query(
   type: RecordingType,
   hideFiltered: boolean,
   countAll: boolean,
-  exclusive: boolean,
+  exclusive: boolean
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
     where.type = type;
