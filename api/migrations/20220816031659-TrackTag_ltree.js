@@ -12,12 +12,17 @@ module.exports = {
     const paths = require('../classifications/label_paths.json');
     
     try {
-      // add new column to TrackTag for ltree
       await queryInterface.sequelize.query(`ALTER TABLE "TrackTags" ADD "path" ltree`, {transaction});
-      await queryInterface.sequelize.query(`UPDATE "TrackTags" SET "path" = text2ltree(:paths::json->>what)`, { transaction, replacements: {paths: JSON.stringify(paths)} });
+      await queryInterface.sequelize.query(`UPDATE "TrackTags" SET
+                  "path" = (CASE
+                            WHEN :paths::jsonb ? what
+                            THEN text2ltree(:paths::jsonb ->> what)
+                            ELSE 'all'
+                            END)`, { transaction, replacements: {paths: JSON.stringify(paths)} });
       await queryInterface.sequelize.query(`CREATE INDEX "label_idx" ON "TrackTags" USING BTREE (path)`, {transaction});
       await transaction.commit();
     } catch (e) {
+      console.log(e);
       await transaction.rollback();
       throw e; 
     }
@@ -36,6 +41,7 @@ module.exports = {
       await queryInterface.sequelize.query(`DROP INDEX IF EXISTS "label_idx" `, {transaction});
       await transaction.commit();
     } catch (e) {
+      console.log(e);
       await transaction.rollback();
       throw e; 
     }
