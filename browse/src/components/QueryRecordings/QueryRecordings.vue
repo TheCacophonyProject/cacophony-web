@@ -42,7 +42,7 @@
       </b-form-row>
       <SelectDuration v-if="advanced" v-model="duration" />
       <SelectTags v-show="advanced" v-model="tagData" />
-      <b-form-checkbox class="mb-4" v-model="tagData.exclusive"
+      <b-form-checkbox v-if="advanced" class="mb-4" v-model="tagData.exclusive"
         >Exclusive Tag Search</b-form-checkbox
       >
       <b-button :disabled="disabled" block variant="primary" @click="submit">
