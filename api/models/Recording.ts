@@ -81,14 +81,15 @@ interface RecordingQueryBuilder {
     limit?: number,
     order?: any,
     viewAsSuperAdmin?: boolean,
-    filtered?: boolean
+    filtered?: boolean,
+    exclusive?: boolean,
   ) => RecordingQueryBuilderInstance;
-  handleTagMode: (tagMode: TagMode, tagWhatsIn: string[]) => SqlString;
-  recordingTaggedWith: (tagModes: string[], any) => SqlString;
-  trackTaggedWith: (tags: string[], sql: SqlString) => SqlString;
-  notTagOfType: (tags: string[], sql: SqlString) => SqlString;
-  tagOfType: (tags: string[], sql: SqlString) => SqlString;
-  selectByTag: (tags: string[], useDetail: boolean) => any;
+  handleTagMode: (tagMode: TagMode, tagWhatsIn: string[], exclusive: boolean) => SqlString;
+  recordingTaggedWith: (tagModes: string[], sql: SqlString, exclusive: boolean) => SqlString;
+  trackTaggedWith: (tags: string[], sql: SqlString, exclusive: boolean) => SqlString;
+  notTagOfType: (tags: string[], sql: SqlString, exclusive: boolean) => SqlString;
+  tagOfType: (tags: string[], sql: SqlString, exclusive: boolean) => SqlString;
+  selectByTag: (tags: string[], useDetail: boolean, exclusive: boolean) => any;
 }
 
 interface RecordingQueryBuilderInstance {
@@ -726,7 +727,8 @@ from (
     limit?: number,
     order?: any,
     viewAsSuperAdmin?: boolean,
-    hideFiltered?: boolean
+    hideFiltered?: boolean,
+    exclusive?: boolean
   ) {
     if (!where) {
       where = {};
@@ -767,7 +769,7 @@ from (
     const constraints = [];
     constraints.push(where);
     constraints.push(
-      Sequelize.literal(Recording.queryBuilder.handleTagMode(tagMode, tags))
+      Sequelize.literal(Recording.queryBuilder.handleTagMode(tagMode, tags, exclusive))
     );
     const trackWhere = { archivedAt: null };
     const trackRequired = false;
@@ -885,7 +887,8 @@ from (
 
   Recording.queryBuilder.handleTagMode = (
     tagMode: AllTagModes,
-    tagWhatsIn: string[]
+    tagWhatsIn: string[],
+    exclusive: boolean
   ): SqlString => {
     const tagWhats = tagWhatsIn && tagWhatsIn.length > 0 ? tagWhatsIn : null;
     if (!tagMode) {
@@ -900,12 +903,14 @@ from (
     ) {
       let sqlQuery = `(EXISTS (${Recording.queryBuilder.recordingTaggedWith(
         [tagMode],
-        null
+        null,
+        exclusive
       )}))`;
       if (tagWhats) {
         sqlQuery = `${sqlQuery} AND EXISTS(${Recording.queryBuilder.trackTaggedWith(
           tagWhats,
-          null
+          null,
+          exclusive
         )})`;
       }
       return sqlQuery;
@@ -915,35 +920,39 @@ from (
       case "any":
         return "";
       case "untagged":
-        return Recording.queryBuilder.notTagOfType(tagWhats, null);
+        return Recording.queryBuilder.notTagOfType(tagWhats, null, exclusive);
       case "tagged":
-        return Recording.queryBuilder.tagOfType(tagWhats, null);
+        return Recording.queryBuilder.tagOfType(tagWhats, null, exclusive);
       case "human-tagged":
-        return Recording.queryBuilder.tagOfType(tagWhats, humanSQL);
+        return Recording.queryBuilder.tagOfType(tagWhats, humanSQL, exclusive);
       case "automatic-tagged":
-        return Recording.queryBuilder.tagOfType(tagWhats, AISQL);
+        return Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive);
       case "both-tagged":
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
-          humanSQL
-        )} AND ${Recording.queryBuilder.tagOfType(tagWhats, AISQL)}`;
+          humanSQL,
+          exclusive
+        )} AND ${Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive)}`;
       case "no-human":
-        return Recording.queryBuilder.notTagOfType(tagWhats, humanSQL);
+        return Recording.queryBuilder.notTagOfType(tagWhats, humanSQL, exclusive);
       case "automatic-only":
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
-          AISQL
-        )} AND ${Recording.queryBuilder.notTagOfType(tagWhats, humanSQL)}`;
+          AISQL,
+          exclusive
+        )} AND ${Recording.queryBuilder.notTagOfType(tagWhats, humanSQL, exclusive)}`;
       case "human-only":
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
-          humanSQL
-        )} AND ${Recording.queryBuilder.notTagOfType(tagWhats, AISQL)}`;
+          humanSQL,
+          exclusive
+        )} AND ${Recording.queryBuilder.notTagOfType(tagWhats, AISQL, exclusive)}`;
       case "automatic+human":
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
-          humanSQL
-        )} AND ${Recording.queryBuilder.tagOfType(tagWhats, AISQL)}`;
+          humanSQL,
+          exclusive
+        )} AND ${Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive)}`;
       default: {
         throw `invalid tag mode: ${tagMode}`;
       }
@@ -952,11 +961,13 @@ from (
 
   Recording.queryBuilder.tagOfType = (
     tagWhats: string[],
-    tagTypeSql
+    tagTypeSql: SqlString,
+    exclusive: boolean
   ): SqlString => {
     let query = `( EXISTS(${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
-      tagTypeSql
+      tagTypeSql,
+      exclusive
     )})`;
     if (
       !tagWhats ||
@@ -967,7 +978,8 @@ from (
     ) {
       query += ` OR EXISTS (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
-        tagTypeSql
+        tagTypeSql,
+        exclusive
       )})`;
     }
     query += ")";
@@ -976,11 +988,13 @@ from (
 
   Recording.queryBuilder.notTagOfType = (
     tagWhats: string[],
-    tagTypeSql
+    tagTypeSql: SqlString,
+    exclusive: boolean
   ): SqlString => {
     let query = `( NOT EXISTS(${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
-      tagTypeSql
+      tagTypeSql,
+      exclusive
     )})`;
     if (
       !tagWhats ||
@@ -991,7 +1005,8 @@ from (
     ) {
       query += ` AND NOT EXISTS (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
-        tagTypeSql
+        tagTypeSql,
+        exclusive
       )})`;
     }
     query += ")";
@@ -1000,12 +1015,13 @@ from (
 
   Recording.queryBuilder.recordingTaggedWith = (
     tags: (TagMode | AcceptableTag)[],
-    tagTypeSql
+    tagTypeSql: SqlString,
+    exclusive: boolean
   ) => {
     let sql =
       'SELECT "Recording"."id" FROM "Tags" WHERE  "Tags"."RecordingId" = "Recording".id';
     if (tags) {
-      sql += ` AND (${Recording.queryBuilder.selectByTag(tags, true)})`;
+      sql += ` AND (${Recording.queryBuilder.selectByTag(tags, true, exclusive)})`;
     }
     if (tagTypeSql) {
       sql += ` AND (${tagTypeSql})`;
@@ -1015,11 +1031,14 @@ from (
 
   Recording.queryBuilder.trackTaggedWith = (
     tags?: (TagMode | AcceptableTag)[],
-    tagTypeSql?
+    tagTypeSql?: SqlString,
+    exclusive?: boolean
   ) => {
+    log.info(exclusive ? "exclusive" : "inclusive");
+    log.info(`trackTaggedWith: ${exclusive ? "exclusive" : "inclusive"}`);
     let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags"."archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
     if (tags) {
-      sql += ` AND (${Recording.queryBuilder.selectByTag(tags, false)})`;
+      sql += ` AND (${Recording.queryBuilder.selectByTag(tags, false, exclusive)})`;
     }
     if (tagTypeSql) {
       sql += ` AND (${tagTypeSql})`;
@@ -1029,9 +1048,12 @@ from (
 
   Recording.queryBuilder.selectByTag = (
     tags: string[],
-    usesDetail: boolean
+    usesDetail: boolean,
+    exclusive: boolean
   ) => {
-    log.info(`selectByTagWhat: ${tags}`);
+    log.info(`selectByTag: ${exclusive ? "exclusive" : "inclusive"}`);
+    log.info(`sel?ectByTagWhat: ${tags}`);
+    log.info(exclusive ? "exclusive" : "inclusive");
     if (!tags || tags.length === 0) {
       return null;
     }
@@ -1050,7 +1072,13 @@ from (
           );
         }
       } else {
-        parts.push(`"Tags".path ~ '${labelPath[tag.toLowerCase()]}.*'`);
+        const path = labelPath[tag.toLowerCase()];
+        if (path) {
+          parts.push(`"Tags".path ~ '${path}${exclusive ? '' : '.*'}'`);
+        } else {
+          // TODO: this catches tags that may of not been added to classfications but should be added
+          parts.push(`"Tags"."what" = '${tag}'`);
+        }
         if (usesDetail) {
           // the label could also be the detail field not the what field
           parts.push(`"Tags"."detail" = '${tag}'`);

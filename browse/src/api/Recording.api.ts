@@ -170,6 +170,7 @@ export interface RecordingQuery {
   countAll?: boolean;
   order?: any; // TODO - It's not clear what order accepts (it's a sequelize thing), but nobody seems to use it right now.
   where?: string;
+  exclusive?: boolean;
 }
 
 export interface TrackTagRow {
@@ -281,6 +282,9 @@ function makeApiQuery(query: RecordingQuery): any {
   }
   if (query.tagMode) {
     apiParams["tagMode"] = query.tagMode;
+  }
+  if (query.exclusive) {
+    apiParams["exclusive"] = query.exclusive;
   }
   if (query.deleted) {
     apiParams["deleted"] = query.deleted;

@@ -882,11 +882,14 @@ async function query(
   order: any,
   type: RecordingType,
   hideFiltered: boolean,
-  countAll: boolean
+  countAll: boolean,
+  exclusive: boolean,
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
     where.type = type;
   }
+
+  log.info(exclusive ? "exclusive" : "inclusive");
 
   // FIXME - Do this in extract-middleware as bulk recording extractor
   const builder = new models.Recording.queryBuilder().init(
@@ -898,7 +901,8 @@ async function query(
     limit,
     order,
     viewAsSuperUser,
-    hideFiltered
+    hideFiltered,
+    exclusive
   );
   builder.query.distinct = true;
 

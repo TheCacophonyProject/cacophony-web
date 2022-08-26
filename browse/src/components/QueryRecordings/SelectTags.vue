@@ -1,11 +1,11 @@
 }
 <template>
-  <div class="mb-4">
+  <div class="mb-2">
     <b-form-group>
       <label>Tag Type</label>
       <b-form-select
         v-bind:value="value.tagMode"
-        @input="$emit('input', { tagMode: $event, tags: value.tags })"
+        @input="$emit('input', { ...value, tagMode: $event })"
         :options="typeOptions"
         placeholder="any"
         data-cy="tag-select"
@@ -13,7 +13,7 @@
     </b-form-group>
     <ClassificationsDropdown
       v-bind:value="value.tags"
-      @input="$emit('input', { tagMode: value.tagMode, tags: $event })"
+      @input="$emit('input', { ...value, tags: $event })"
     />
   </div>
 </template>
@@ -33,6 +33,7 @@ export default defineComponent({
       type: Object as PropType<{
         tagMode: string;
         tags: string[];
+        exclusive: boolean;
       }>,
       default: () => ({}),
     },
