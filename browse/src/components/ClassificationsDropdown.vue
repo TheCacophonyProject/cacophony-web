@@ -1,5 +1,5 @@
 <template>
-  <div class="classification-container">
+  <div @click="$emit('click', $event)" class="classification-container">
     <LayeredDropdown
       :options="options"
       @input="$emit('input', $event)"

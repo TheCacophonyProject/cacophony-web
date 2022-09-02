@@ -994,7 +994,7 @@ from (
     tagTypeSql: SqlString,
     exclusive: boolean
   ): SqlString => {
-    let query = `( EXISTS(${Recording.queryBuilder.trackTaggedWith(
+    let query = `( ${tagTypeSql || !tagWhats ? "EXISTS" : ""}(${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
       tagTypeSql,
       exclusive
@@ -1021,7 +1021,7 @@ from (
     tagTypeSql: SqlString,
     exclusive: boolean
   ): SqlString => {
-    let query = `( NOT EXISTS(${Recording.queryBuilder.trackTaggedWith(
+    let query = `( NOT ${tagTypeSql || !tagWhats ? "EXISTS" : ""}(${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
       tagTypeSql,
       exclusive
@@ -1033,7 +1033,7 @@ from (
         (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag)
       )
     ) {
-      query += ` AND NOT EXISTS (${Recording.queryBuilder.recordingTaggedWith(
+      query += ` AND NOT ${tagTypeSql || !tagWhats ? "EXISTS" : ""} (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
         tagTypeSql,
         exclusive
@@ -1068,20 +1068,29 @@ from (
     tagTypeSql?: SqlString,
     exclusive?: boolean
   ) => {
-    log.info(exclusive ? "exclusive" : "inclusive");
-    log.info(`trackTaggedWith: ${exclusive ? "exclusive" : "inclusive"}`);
-    let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags"."archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
-    if (tags) {
-      sql += ` AND (${Recording.queryBuilder.selectByTag(
+    let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags".
+    "archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
+    const tagsSql = tags ?  ` AND (${Recording.queryBuilder.selectByTag(
         tags,
         false,
         exclusive
-      )})`;
-    }
-    if (tagTypeSql) {
+      )})` : '';
+    if (!tagTypeSql) {
+      // When we're not filtering by tag type, we want override automatic tags with human tags
+      if (tags) {
+        const notAutomatic = `${sql} AND (NOT "Tags".automatic)`;
+        const humanPreferred = `CASE WHEN EXISTS(${notAutomatic}) THEN EXISTS(${notAutomatic} ${tagsSql}) ELSE EXISTS(${sql} ${tagsSql}) END`;
+        log.info(humanPreferred);
+        return humanPreferred;
+      } else {
+        return sql;
+      }
+      
+    } else {
+      sql += tagsSql;
       sql += ` AND (${tagTypeSql})`;
+      return sql;
     }
-    return sql;
   };
 
   Recording.queryBuilder.selectByTag = (

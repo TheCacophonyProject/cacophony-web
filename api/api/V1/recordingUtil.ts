@@ -888,9 +888,6 @@ async function query(
   if (type) {
     where.type = type;
   }
-
-  log.info(exclusive ? "exclusive" : "inclusive");
-
   // FIXME - Do this in extract-middleware as bulk recording extractor
   const builder = new models.Recording.queryBuilder().init(
     requestUserId,

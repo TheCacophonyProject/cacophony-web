@@ -392,6 +392,8 @@ export default defineComponent({
       const displayTags = getDisplayTags(track);
       return {
         ...track,
+        ...{ start: track.start ? track.start : 0 },
+        ...{ end: track.end ? track.end : 0 },
         colour: TagColours[index % TagColours.length],
         displayTags,
         confirming: false,
@@ -727,7 +729,7 @@ export default defineComponent({
 
     const createButtonLabels = () => {
       const maxBirdButtons = 6;
-      const fixedLabels = ["Bird", "Human", "Unidentified"];
+      const fixedLabels = ["Bird", "Human", "Unknown"];
       const otherLabels = fixedLabels.map((label: string) => ({
         label,
         pinned: false,

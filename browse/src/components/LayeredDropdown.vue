@@ -1,5 +1,9 @@
 <template>
-  <div ref="optionsContainer" class="options-container">
+  <div
+    @click="$emit('click', $event)"
+    ref="optionsContainer"
+    class="options-container"
+  >
     <div v-show="showOptions" class="options-display-container">
       <div ref="optionsList" class="options-list-container">
         <div
@@ -59,7 +63,9 @@
             selectedOptions
           "
         >
-          <div class="selected-option">{{ selectedOptions }}</div>
+          <div class="selected-option">
+            {{ optionsMap.get(selectedOptions.toLowerCase()).display }}
+          </div>
         </div>
         <div
           v-else-if="
@@ -73,7 +79,7 @@
             v-for="option in selectedOptions"
             @click="() => removeSelectedOption(option)"
           >
-            {{ option }}
+            {{ optionsMap.get(option.toLowerCase()).display }}
           </div>
         </div>
       </div>
@@ -118,10 +124,11 @@ export default defineComponent({
     const inputRef = ref(null);
 
     // Options Reactive Variables
-    const options = ref<Option>(props.options);
     const displayedOptions = ref<Option[]>([]);
     const currPath = ref<string[]>([]);
-    const optionsPaths = ref<Map<string, string[]>>(new Map());
+    const optionsMap = ref<Map<string, { display: string; path: string[] }>>(
+      new Map()
+    );
     const showOptions = ref(false);
 
     const selectedOptions = computed({
@@ -173,12 +180,16 @@ export default defineComponent({
     };
 
     const setToPath = (label: string) => {
-      currPath.value = optionsPaths.value.get(label);
+      currPath.value = optionsMap.value.get(label.toLowerCase()).path;
+      console.log(currPath.value);
     };
 
     const createOptionsPaths = (root: Option) => {
       const navigate = (node: Option, path: string[]) => {
-        optionsPaths.value.set(node.label, [...path, node.label]);
+        optionsMap.value.set(node.label, {
+          display: node.display ?? node.label,
+          path: [...path, node.label],
+        });
         if (node.children) {
           node.children.forEach((child) => {
             navigate(child, [...path, node.label]);
@@ -188,22 +199,21 @@ export default defineComponent({
       navigate(root, []);
     };
 
+    createOptionsPaths(props.options);
     watch(
       () => props.options,
       () => {
-        options.value = props.options;
-        createOptionsPaths(options.value);
+        createOptionsPaths(props.options);
         setToPath("all");
       }
     );
 
     watch(searchTerm, () => {
       if (searchTerm.value === "") {
-        currPath.value = ["all"];
         return;
       }
       currPath.value = ["search"];
-      displayedOptions.value = searchOptions(options.value.children);
+      displayedOptions.value = searchOptions(props.options.children);
     });
 
     watch(currPath, () => {
@@ -219,7 +229,7 @@ export default defineComponent({
         );
 
         return children;
-      }, options.value).children;
+      }, props.options).children;
     });
 
     watch(inputRef, () => {
@@ -237,19 +247,34 @@ export default defineComponent({
 
       document.addEventListener("click", (e) => {
         const target = e.target as Element;
-        if (
-          optionsContainer.value?.contains(target) ||
+        const isDropdown = optionsContainer.value?.contains(target);
+        const selectedItem =
+          typeof target.className === "string" &&
+          target.className.includes("options-list") &&
+          typeof selectedOptions.value === "string";
+        const switchedParent =
           target.id.includes("child-button") ||
-          target.parentElement?.id.includes("child-button")
-        ) {
-          showOptions.value = true && !props.disabled;
+          target.parentElement?.id.includes("child-button");
+
+        if (!isDropdown || selectedItem) {
+          if (switchedParent) {
+            showOptions.value = true;
+            searchTerm.value = "";
+            console.log("switched parent");
+          } else {
+            showOptions.value = false;
+            setToPath("all");
+            searchTerm.value = "";
+            console.log("close");
+          }
         } else {
-          showOptions.value = false;
+          showOptions.value = !props.disabled;
         }
       });
     });
 
     return {
+      optionsMap,
       optionsContainer,
       optionsList,
       currPath,
@@ -296,8 +321,8 @@ export default defineComponent({
 
   > div {
     min-height: 2.5em;
-    gap: 10px;
-    padding: 0.6em 0.4em 0.6em 0.4em;
+    col-gap: 10px;
+    padding: 0.4em;
     width: 100%;
     background: white;
     outline: 1px solid #ccc;
@@ -306,6 +331,9 @@ export default defineComponent({
 }
 
 .search-container {
+  display: flex;
+  flex-direction: column;
+  justify-items: center;
   width: 100%;
   > input {
     width: 100%;
@@ -327,19 +355,22 @@ export default defineComponent({
   gap: 0.4em;
   margin-top: 0.2em;
   padding-top: 0.6em;
-  border-top: 1px solid #ccc;
+  border-top: 1px solid rgb(241, 241, 241);
 
   div {
     user-select: none;
     padding: 0.2em 0.6em 0.2em 0.6em;
     background-color: white;
     border-radius: 0.4em;
-    box-shadow: 0px 0px 5px rgba(185, 185, 185, 0.2),
-      0px 0px 10px rgba(112, 112, 112, 0.2);
+    box-shadow: 0px 0px 3px rgba(214, 214, 214, 0.2),
+      0px 0px 3px rgba(138, 138, 138, 0.2);
   }
 }
 
 .selected-option {
+  text-transform: capitalize;
+  display: flex;
+  align-items: center;
   min-height: 26px;
   cursor: pointer;
 }

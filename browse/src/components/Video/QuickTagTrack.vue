@@ -94,16 +94,35 @@
       <ClassificationsDropdown
         v-model="selectedValue"
         @input="addDropdownTag"
+        @click="$emit('openDropdown')"
       />
-      <b-button
-        class="ml-2"
-        :variant="pinnedTag ? 'success' : 'primary'"
-        v-b-tooltip.hover
-        title="Pin tag to quick selection"
-        @click="togglePinTag"
-      >
-        <font-awesome-icon icon="thumbtack" size="1x" />
-      </b-button>
+
+      <div class="button-selectors d-flex">
+        <b-button
+          class="ml-2 tag-pin text-primary"
+          :disabled="!userTags"
+          @click="togglePinTag"
+        >
+          <font-awesome-icon
+            icon="thumbtack"
+            size="1x"
+            v-b-tooltip.hover
+            title="Pin current tag to buttons"
+          />
+        </b-button>
+        <b-button
+          class="ml-2 tag-cross text-danger"
+          :disabled="!userTags"
+          @click="removeTag"
+        >
+          <font-awesome-icon
+            icon="times"
+            size="1x"
+            v-b-tooltip.hover
+            title="Remove Tag from Track"
+          />
+        </b-button>
+      </div>
     </div>
   </div>
 </template>
@@ -154,16 +173,25 @@ export default defineComponent({
         : false;
     });
     const togglePinTag = () => {
+      if (!selectedValue.value) {
+        return;
+      }
       store.commit("Video/pinnedLabels", selectedValue.value);
     };
 
-    const addDropdownTag = () => {
+    const removeTag = () => {
       const existingTag = getUserTag();
       if (existingTag && existingTag.what === selectedValue.value) {
         emit("deleteTag", existingTag);
         return;
       }
+    };
 
+    const addDropdownTag = () => {
+      const existingTag = getUserTag();
+      if (existingTag && existingTag.what === selectedValue.value) {
+        return;
+      }
       const tag: Partial<ApiHumanTrackTagResponse> = {
         confidence: 0.85,
         what: selectedValue.value,
@@ -180,6 +208,7 @@ export default defineComponent({
     return {
       selectedValue,
       addDropdownTag,
+      removeTag,
       pinnedTag,
       togglePinTag,
     };
@@ -256,7 +285,6 @@ export default defineComponent({
       const found = this.getUserTag(what);
       if (found) {
         this.$emit("deleteTag", found);
-        return;
       }
 
       const tag: Partial<ApiHumanTrackTagResponse> = {
@@ -371,6 +399,19 @@ export default defineComponent({
       padding-top: 0.5em;
       padding-bottom: 0.5em;
       width: 100%;
+    }
+  }
+}
+.button-selectors {
+  button {
+    background-color: white;
+    color: #2b333f;
+    border-radius: 0.5em;
+    border: 1px #e8e8e8 solid;
+    box-shadow: 0px 1px 2px 1px #ebebeb70;
+    text-transform: capitalize;
+    &:hover:enabled {
+      color: #7f8c8d;
     }
   }
 }

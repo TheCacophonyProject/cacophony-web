@@ -13,12 +13,11 @@ module.exports = {
     
     try {
       await queryInterface.sequelize.query(`ALTER TABLE "TrackTags" ADD "path" ltree`, {transaction});
-      await queryInterface.sequelize.query(`UPDATE "TrackTags" SET
-                  "path" = (CASE
-                            WHEN :paths::jsonb ? what
-                            THEN text2ltree(:paths::jsonb ->> what)
-                            ELSE 'all'
-                            END)`, { transaction, replacements: {paths: JSON.stringify(paths)} });
+      await queryInterface.sequelize.query(`
+      UPDATE "TrackTags" SET
+      "path" = text2ltree(:paths::jsonb ->> what)
+      WHERE :paths::jsonb ? what
+      `, { transaction, replacements: {paths: JSON.stringify(paths)} });
       await queryInterface.sequelize.query(`CREATE INDEX "label_idx" ON "TrackTags" USING BTREE (path)`, {transaction});
       await transaction.commit();
     } catch (e) {
