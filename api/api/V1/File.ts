@@ -78,7 +78,8 @@ export default (app: Application, baseUrl: string) => {
         return successResponse(response, { version: classification.version });
       }
       response.setHeader("Content-Type", "application/json");
-      response.send(classification);
+      // Add json to header
+      response.json(classification);
 
       return successResponse(response, "Retrieved classification.json");
     }
