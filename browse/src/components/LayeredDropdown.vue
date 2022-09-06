@@ -54,6 +54,7 @@
           ref="inputRef"
           v-model="searchTerm"
           placeholder="Search"
+          @keyup="addSearchTermOnSubmit"
           :disabled="disabled"
         />
         <div
@@ -80,6 +81,7 @@
             @click="() => removeSelectedOption(option)"
           >
             {{ optionsMap.get(option.toLowerCase()).display }}
+            <font-awesome-icon class="selected-option-icon" icon="times" />
           </div>
         </div>
       </div>
@@ -126,9 +128,9 @@ export default defineComponent({
     // Options Reactive Variables
     const displayedOptions = ref<Option[]>([]);
     const currPath = ref<string[]>([]);
-    const optionsMap = ref<Map<string, { display: string; path: string[] }>>(
-      new Map()
-    );
+    const optionsMap = ref<
+      Map<string, { display: string; label: string; path: string[] }>
+    >(new Map([["all", { display: "all", label: "all", path: ["all"] }]]));
     const showOptions = ref(false);
 
     const selectedOptions = computed({
@@ -169,6 +171,22 @@ export default defineComponent({
       selectedOptions.value = [...selectedOptions.value, option.label];
     };
 
+    const addSearchTermOnSubmit = (event: KeyboardEvent | MouseEvent) => {
+      if (event instanceof KeyboardEvent && event.key === "Enter") {
+        if (searchTerm.value === "") {
+          return;
+        }
+        const option = optionsMap.value.get(searchTerm.value.toLowerCase());
+        if (option) {
+          addSelectedOption(option);
+          searchTerm.value = "";
+        } else if (displayedOptions.value.length === 1) {
+          addSelectedOption(displayedOptions.value[0]);
+          searchTerm.value = "";
+        }
+      }
+    };
+
     const removeSelectedOption = (option: string) => {
       if (typeof selectedOptions.value === "string") {
         selectedOptions.value = "";
@@ -181,13 +199,13 @@ export default defineComponent({
 
     const setToPath = (label: string) => {
       currPath.value = optionsMap.value.get(label.toLowerCase()).path;
-      console.log(currPath.value);
     };
 
     const createOptionsPaths = (root: Option) => {
       const navigate = (node: Option, path: string[]) => {
         optionsMap.value.set(node.label, {
           display: node.display ?? node.label,
+          label: node.label,
           path: [...path, node.label],
         });
         if (node.children) {
@@ -199,17 +217,20 @@ export default defineComponent({
       navigate(root, []);
     };
 
-    createOptionsPaths(props.options);
     watch(
       () => props.options,
       () => {
         createOptionsPaths(props.options);
         setToPath("all");
+      },
+      {
+        immediate: true,
       }
     );
 
     watch(searchTerm, () => {
       if (searchTerm.value === "") {
+        setToPath("all");
         return;
       }
       currPath.value = ["search"];
@@ -239,9 +260,22 @@ export default defineComponent({
     });
 
     onMounted(async () => {
+      inputRef.value.addEventListener("focusout", (e) => {
+        // if e was not triggered by clicking on an option, hide the options
+        if (
+          !e.relatedTarget ||
+          !optionsContainer.value.contains(e.relatedTarget as Node)
+        ) {
+          showOptions.value = false;
+          setToPath("all");
+        }
+      });
+
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
           showOptions.value = false;
+          searchTerm.value = "";
+          setToPath("all");
         }
       });
 
@@ -260,12 +294,10 @@ export default defineComponent({
           if (switchedParent) {
             showOptions.value = true;
             searchTerm.value = "";
-            console.log("switched parent");
           } else {
             showOptions.value = false;
             setToPath("all");
             searchTerm.value = "";
-            console.log("close");
           }
         } else {
           showOptions.value = !props.disabled;
@@ -286,6 +318,7 @@ export default defineComponent({
       addSelectedOption,
       removeSelectedOption,
       setToPath,
+      addSearchTermOnSubmit,
     };
   },
 });
@@ -373,6 +406,18 @@ export default defineComponent({
   align-items: center;
   min-height: 26px;
   cursor: pointer;
+}
+.selected-option:hover {
+  .selected-option-icon {
+    transition: color 0.1s ease-in-out;
+    color: rgb(218, 58, 58);
+  }
+}
+
+.selected-option-icon {
+  margin-left: 0.3em;
+  color: rgba(29, 29, 29, 0.2);
+  width: fit-content;
 }
 
 .options-container {
