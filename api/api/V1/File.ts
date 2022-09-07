@@ -79,7 +79,11 @@ export default (app: Application, baseUrl: string) => {
       }
       response.setHeader("Content-Type", "application/json");
 
-      return successResponse(response, "Retrieved classification.json", classification);
+      return successResponse(
+        response,
+        "Retrieved classification.json",
+        classification
+      );
     }
   );
 
