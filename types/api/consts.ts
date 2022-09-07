@@ -51,6 +51,7 @@ export enum AcceptableTag {
   MultipleAnimals = "multiple animals",
   TrappedInTrap = "trapped in trap",
   MissedRecording = "missed recording",
+  DigitalTrigger = "trap triggered",
 }
 
 export enum DeviceType {

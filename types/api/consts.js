@@ -66,6 +66,7 @@ var AcceptableTag;
   AcceptableTag["MultipleAnimals"] = "multiple animals";
   AcceptableTag["TrappedInTrap"] = "trapped in trap";
   AcceptableTag["MissedRecording"] = "missed recording";
+  AcceptableTag["DigitalTrigger"] = "trap triggered";
 })((AcceptableTag = exports.AcceptableTag || (exports.AcceptableTag = {})));
 var DeviceType;
 (function (DeviceType) {

@@ -104,6 +104,7 @@ new TrackLabel(things, "deer");
 new TrackLabel(things, "goat");
 new TrackLabel(things, "vehicle");
 const other = new TrackLabel(things, "other");
+const digitalTrigger = new TrackLabel(descriptors, "trap triggered");
 
 const part = new TrackLabel(descriptors, "part", "part of animal (eg tail)");
 const poorTracking = new TrackLabel(descriptors, "poor tracking");
@@ -205,6 +206,11 @@ const taggingFilters = [
     text: "untagged only",
     specified: false,
   },
+  {
+    value: "trap triggered",
+    text: "trap triggered",
+    specified: true,
+  },
 ];
 
 const searchRecordingBase = [...recordingLabelsBase, ...taggingFilters];
@@ -270,6 +276,7 @@ const DefaultLabels = {
   birdLabel: bird,
   unknownLabel: unknown,
   unidentifiedLabel: undefined,
+  trapLabel: digitalTrigger,
 };
 
 export const TagColours = [

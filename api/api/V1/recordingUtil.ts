@@ -919,6 +919,7 @@ const addTag = async (
 
 async function tracksFromMeta(recording: Recording, metadata: any) {
   try {
+    let trapTriggered = false;
     if (!("tracks" in metadata)) {
       return false;
     }
@@ -932,6 +933,14 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         data: trackMeta,
         AlgorithmId: algorithmDetail.id,
       });
+      if ("trap_triggered" in trackMeta) {
+        if (trackMeta["trap_triggered"] == true) {
+          await track.addTag(AcceptableTag.DigitalTrigger, 1, true, {
+            frame: trackMeta["trigger_frame"],
+          });
+          trapTriggered = true;
+        }
+      }
       if (
         !("predictions" in trackMeta) ||
         trackMeta["predictions"].length == 0
@@ -978,6 +987,13 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
         }
         await track.addTag(tag, prediction["confidence"], true, tag_data);
       }
+    }
+
+    if (trapTriggered) {
+      await addTag(null, recording, {
+        detail: AcceptableTag.DigitalTrigger,
+        confidence: 1,
+      });
     }
   } catch (err) {
     log.error(

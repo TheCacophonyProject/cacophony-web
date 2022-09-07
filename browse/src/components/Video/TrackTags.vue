@@ -27,7 +27,7 @@
               class="tag-img"
               :alt="row.item.what"
             />
-            {{ row.item.what }}
+            {{ tagName(row.item) }}
           </div>
         </template>
 
@@ -53,7 +53,7 @@
         <template v-slot:cell(buttons)="row">
           <button
             v-b-tooltip.hover.left="'Confirm the automatic tag'"
-            v-if="row.item.automatic && !userTagExists(row.item.what)"
+            v-if="canConfirm(row.item)"
             class="btn"
             @click="confirmTag(row.item)"
           >
@@ -204,6 +204,20 @@ export default {
         confidence,
       };
       this.$emit("addTag", tag);
+    },
+    canConfirm: function (item) {
+      return (
+        item.automatic &&
+        !this.userTagExists(item.what) &&
+        item.what != "trap triggered"
+      );
+    },
+    tagName: function (item) {
+      let name = item.what;
+      if (name == "trap triggered") {
+        name = `${name} - ${Math.round(item.data.frame / 10)}s`;
+      }
+      return name;
     },
   },
 };
