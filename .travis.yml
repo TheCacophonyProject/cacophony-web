@@ -29,7 +29,7 @@ script:
   - npm run lint || travis_terminate 1;
   # Run api checks
   - cd ../api
-  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin apidoc-plugin-ts
+  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
   - npm run lint || travis_terminate 1;
   # Run integration checks
   - cd ../integration-tests
@@ -50,7 +50,7 @@ script:
   # - npm run release
   - cd ../api
   # Generate api docs
-  - npm update apidoc-plugin-ts
+  # - npm update apidoc-plugin-ts
   - npm run apidoc || travis_terminate 1;
 
 before_deploy:
