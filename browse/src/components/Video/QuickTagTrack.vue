@@ -36,6 +36,7 @@
             @click="
               () => {
                 $store.commit('Video/pinnedLabels', label);
+                hoveredPinned = null;
               }
             "
             role="button"
@@ -432,6 +433,8 @@ export default defineComponent({
   position: absolute;
   top: 0;
   left: 0;
+  margin-left: 0.2em;
+  margin-top: 0.2em;
   z-index: 0;
   color: #3498db;
 }

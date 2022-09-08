@@ -51,12 +51,12 @@
             showOptions ||
             !selectedOptions
           "
-          @focusout="leaveInput"
+          @keyup="addSearchTermOnSubmit"
           type="text"
           ref="inputRef"
-          v-model="searchTerm"
+          :value="searchTerm"
+          @input="(e) => (searchTerm = e.target.value)"
           placeholder="Search"
-          @keyup="addSearchTermOnSubmit"
           :disabled="disabled"
         />
         <div
@@ -262,16 +262,6 @@ export default defineComponent({
         inputRef.value.focus();
       }
     });
-    const leaveInput = (e) => {
-      // if e was not triggered by clicking on an option, hide the options
-      if (
-        !e.relatedTarget ||
-        !optionsContainerRef.value.contains(e.relatedTarget as Node)
-      ) {
-        showOptions.value = false;
-        setToPath("all");
-      }
-    };
 
     onMounted(() => {
       document.addEventListener("keydown", (e) => {
@@ -320,7 +310,6 @@ export default defineComponent({
       showOptions,
       searchTerm,
       inputRef,
-      leaveInput,
       addSelectedOption,
       removeSelectedOption,
       setToPath,
@@ -423,7 +412,7 @@ export default defineComponent({
 .selected-option-icon {
   margin-left: 0.3em;
   color: rgba(29, 29, 29, 0.2);
-  width: fit-content;
+  width: auto;
 }
 
 .options-container {
@@ -443,7 +432,7 @@ export default defineComponent({
   justify-content: space-between;
   flex-direction: column;
   background-color: white;
-  outline: 0.1rem solid #ccc;
+  outline: 1px solid #ccc;
   border-top-left-radius: 0.2em;
   border-top-right-radius: 0.2em;
   max-height: 10em;
@@ -452,7 +441,6 @@ export default defineComponent({
 
 .options-list-item {
   display: flex;
-  z-index: 1;
   justify-content: space-between;
 
   button {
