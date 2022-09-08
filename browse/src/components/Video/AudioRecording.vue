@@ -46,6 +46,7 @@
               v-model="selectedLabel"
               @input="() => addTagToSelectedTrack(selectedLabel)"
               :disabled="!selectedTrack"
+              :exclude="['part', 'interesting', 'poor tracking']"
             />
             <div class="button-selectors d-flex">
               <b-button

@@ -95,6 +95,7 @@
         v-model="selectedValue"
         @input="addDropdownTag"
         @click="$emit('openDropdown')"
+        :exclude="['interesting']"
       />
 
       <div class="button-selectors d-flex">
@@ -160,10 +161,13 @@ export default defineComponent({
     ClassificationsDropdown,
   },
   setup(props, { emit }) {
+    const uniqueTags = ["part", "interesting", "poor tracking"];
     const getUserTag = () => {
       return props.tags.find(
         (tag) =>
-          !tag.automatic && tag.userName === store.state.User.userData.userName
+          !tag.automatic &&
+          tag.userName === store.state.User.userData.userName &&
+          !uniqueTags.includes(tag.what)
       );
     };
     const selectedValue = ref<string | null>(getUserTag()?.what ?? "");
@@ -257,18 +261,23 @@ export default defineComponent({
         } as TrackLabel);
       }
       // Make sure we always show a button for a user tagged track if it's not in the default list:
-      const userTag = this.userTags[0];
-      if (
-        userTag !== undefined &&
-        userTag.what !== "unknown" &&
-        !this.animals.includes(userTag.what) &&
-        !this.pinnedLabels.includes(userTag.what) &&
-        otherTags.find(({ value }) => value === userTag.what) === undefined
-      ) {
-        otherTags.unshift({
-          text: userTag.what,
-          value: userTag.what,
-        } as TrackLabel);
+      const userTags = this.userTags.filter(
+        (tag) =>
+          ![
+            "unknown",
+            "false positive",
+            ...this.animals,
+            ...this.pinnedLabels,
+            ...otherTags.map((val) => val.value),
+          ].includes(tag.what)
+      );
+      if (userTags) {
+        userTags.forEach((tag) => {
+          otherTags.unshift({
+            text: tag.what,
+            value: tag.what,
+          } as TrackLabel);
+        });
       }
       return otherTags;
     },

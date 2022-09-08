@@ -1,8 +1,9 @@
 <template>
   <div
     @click="$emit('click', $event)"
-    ref="optionsContainer"
+    ref="optionsContainerRef"
     class="options-container"
+    id="options-container"
   >
     <div v-show="showOptions" class="options-display-container">
       <div ref="optionsList" class="options-list-container">
@@ -50,6 +51,7 @@
             showOptions ||
             !selectedOptions
           "
+          @focusout="leaveInput"
           type="text"
           ref="inputRef"
           v-model="searchTerm"
@@ -61,7 +63,8 @@
           v-if="
             typeof selectedOptions === 'string' &&
             !showOptions &&
-            selectedOptions
+            selectedOptions &&
+            optionsMap.has(selectedOptions.toLowerCase())
           "
         >
           <div class="selected-option">
@@ -122,7 +125,7 @@ export default defineComponent({
   setup(props, { emit }) {
     // Elements
     const optionsList = ref<HTMLDivElement>(null);
-    const optionsContainer = ref<HTMLDivElement>(null);
+    const optionsContainerRef = ref<HTMLDivElement>(null);
     const inputRef = ref(null);
 
     // Options Reactive Variables
@@ -230,6 +233,7 @@ export default defineComponent({
 
     watch(searchTerm, () => {
       if (searchTerm.value === "") {
+        showOptions.value = typeof selectedOptions.value !== "string";
         setToPath("all");
         return;
       }
@@ -258,19 +262,18 @@ export default defineComponent({
         inputRef.value.focus();
       }
     });
+    const leaveInput = (e) => {
+      // if e was not triggered by clicking on an option, hide the options
+      if (
+        !e.relatedTarget ||
+        !optionsContainerRef.value.contains(e.relatedTarget as Node)
+      ) {
+        showOptions.value = false;
+        setToPath("all");
+      }
+    };
 
-    onMounted(async () => {
-      inputRef.value.addEventListener("focusout", (e) => {
-        // if e was not triggered by clicking on an option, hide the options
-        if (
-          !e.relatedTarget ||
-          !optionsContainer.value.contains(e.relatedTarget as Node)
-        ) {
-          showOptions.value = false;
-          setToPath("all");
-        }
-      });
-
+    onMounted(() => {
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
           showOptions.value = false;
@@ -281,7 +284,9 @@ export default defineComponent({
 
       document.addEventListener("click", (e) => {
         const target = e.target as Element;
-        const isDropdown = optionsContainer.value?.contains(target);
+        const isDropdown = document
+          .getElementById("options-container")
+          ?.contains(target);
         const selectedItem =
           typeof target.className === "string" &&
           target.className.includes("options-list") &&
@@ -307,7 +312,7 @@ export default defineComponent({
 
     return {
       optionsMap,
-      optionsContainer,
+      optionsContainerRef,
       optionsList,
       currPath,
       displayedOptions,
@@ -315,6 +320,7 @@ export default defineComponent({
       showOptions,
       searchTerm,
       inputRef,
+      leaveInput,
       addSelectedOption,
       removeSelectedOption,
       setToPath,

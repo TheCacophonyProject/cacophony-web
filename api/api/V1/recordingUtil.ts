@@ -1019,7 +1019,8 @@ export async function reportRecordings(
   offset: number,
   limit: number,
   order: any,
-  includeAudiobait: boolean
+  includeAudiobait: boolean,
+  exclusive: boolean
 ) {
   const builder = (
     await new models.Recording.queryBuilder().init(
@@ -1030,7 +1031,9 @@ export async function reportRecordings(
       offset,
       limit,
       order,
-      viewAsSuperUser
+      viewAsSuperUser,
+      false,
+      exclusive 
     )
   )
     .addColumn("comment")

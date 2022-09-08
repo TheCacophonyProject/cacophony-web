@@ -848,6 +848,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse BaseQueryParams
    * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
+   * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
    * @apiParam {boolean} [audiobait] To add audiobait to a recording query set
    * this to true.
    * @apiUse V1ResponseError
@@ -864,6 +865,7 @@ export default (app: Application, baseUrl: string) => {
       query("audiobait").isBoolean().optional(),
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
+      query("exclusive").default(false).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
@@ -910,7 +912,8 @@ export default (app: Application, baseUrl: string) => {
           request.query.offset && parseInt(request.query.offset as string),
           request.query.limit && parseInt(request.query.limit as string),
           response.locals.order,
-          Boolean(request.query.audiobait)
+          Boolean(request.query.audiobait),
+          Boolean(request.query.exclusive)
         );
       }
       response.status(HttpStatusCode.Ok).set({

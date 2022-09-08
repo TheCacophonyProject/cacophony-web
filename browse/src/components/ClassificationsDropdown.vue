@@ -28,11 +28,15 @@ export default defineComponent({
       type: Boolean as PropType<boolean>,
       default: false,
     },
+    exclude: {
+      type: Array as PropType<string[]>,
+      default: () => [],
+    },
   },
   components: {
     LayeredDropdown,
   },
-  setup() {
+  setup(props) {
     const options = ref<Option>({ label: "", children: [] });
 
     const getClassifications = async () => {
@@ -58,6 +62,22 @@ export default defineComponent({
     };
     onMounted(async () => {
       options.value = (await getClassifications()) as Option;
+
+      // classifications is a tree, we want to filter out excluded nodes
+      const filter = (node: Option) => {
+        if (props.exclude.includes(node.label)) {
+          return false;
+        }
+        if (node.children) {
+          node.children = node.children.filter(filter);
+        }
+        return true;
+      };
+
+      options.value = {
+        ...options.value,
+        children: options.value.children.filter(filter),
+      };
     });
     return { options };
   },
