@@ -1033,7 +1033,7 @@ export async function reportRecordings(
       order,
       viewAsSuperUser,
       false,
-      exclusive 
+      exclusive
     )
   )
     .addColumn("comment")
