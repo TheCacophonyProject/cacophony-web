@@ -1,15 +1,8 @@
 import type { CptvFrameHeader } from "@/components/cptv-player/cptv-decoder/decoder";
 import type { ReadableStreamDefaultReader } from "stream/web";
-import type { CptvPlayerContext as PlayerContext } from "@/components/cptv-player/cptv-decoder/decoder/decoder_bg";
-
-let CptvPlayerContext: any;
-
-async function initWasm() {
-  if (!CptvPlayerContext) {
-    CptvPlayerContext = (await import("./decoder/decoder_bg.js"))
-      .CptvPlayerContext;
-  }
-}
+import type { CptvPlayerContext as PlayerContext } from "@/components/cptv-player/cptv-decoder/decoder/decoder";
+import wasmUrl from "./decoder/decoder_bg.wasm?url";
+import init, { CptvPlayerContext } from "./decoder/decoder.js";
 
 class Unlocker {
   fn: (() => void) | null = null;
@@ -69,7 +62,7 @@ class CptvDecoderInterface {
             size = Number(this.response.headers.get("Content-Length")) || 0;
           }
           this.expectedSize = size;
-          await initWasm();
+          await init(wasmUrl);
           this.playerContext = await CptvPlayerContext.newWithStream(
             this.reader
           );
@@ -115,7 +108,7 @@ class CptvDecoderInterface {
     if (this.hasValidContext()) {
       try {
         this.playerContext = await CptvPlayerContext.fetchNextFrame(
-          this.playerContext
+          this.playerContext as PlayerContext
         );
       } catch (e) {
         this.streamError = e as string;

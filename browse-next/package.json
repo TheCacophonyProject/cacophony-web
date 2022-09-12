@@ -24,7 +24,8 @@
     "vue": "^3.2.31",
     "vue-multiselect": "^3.0.0-alpha.2",
     "vue-router": "^4.0.12",
-    "scale-color-perceptual": "^1.1.2"
+    "scale-color-perceptual": "^1.1.2",
+    "h264-mp4-encoder": "^1.0.12"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "^1.1.0",

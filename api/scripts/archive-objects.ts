@@ -65,9 +65,20 @@ const checkOnlyInstanceOfScriptRunning = async () => {
   const processes = lines.filter(
     (i) => i.trim() !== "" && i.trim() !== me.toString()
   );
+
   if (processes.length !== 0) {
-    // Already running
-    process.exit(0);
+    // Make sure the process in question is node
+    const { stdout } = await exec("pgrep -f node");
+    const lines = stdout.split("\n");
+    for (const processId of processes) {
+      const processIsNode = lines.find(
+          (i) => i.trim() === processId.trim()
+      );
+      if (processIsNode) {
+        // Already running
+        process.exit(0);
+      }
+    }
   }
 };
 

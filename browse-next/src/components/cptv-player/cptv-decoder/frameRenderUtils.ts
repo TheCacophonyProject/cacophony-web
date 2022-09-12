@@ -52,8 +52,8 @@ export const renderFrameIntoFrameBuffer = (
   min: number,
   max: number
 ): void => {
-  const range = max - min;
   const frameBufferView = new Uint32Array(targetFrameBuffer.buffer);
+  const range = max - min;
   for (let i = 0; i < targetFrameBuffer.length; i++) {
     const index = ((frame[i] - min) / range) * 255.0;
     const indexUpper = Math.ceil(index);

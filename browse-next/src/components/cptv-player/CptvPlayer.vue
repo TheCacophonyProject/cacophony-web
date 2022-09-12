@@ -2,7 +2,7 @@
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, onMounted, ref, watch } from "vue";
-import type { TrackId } from "@typedefs/api/common";
+import type { Ref } from "vue";
 import type {
   CptvFrame,
   CptvFrameHeader,
@@ -12,81 +12,113 @@ import {
   ColourMaps,
   renderFrameIntoFrameBuffer,
 } from "./cptv-decoder/frameRenderUtils";
-import { useDevicePixelRatio, useWindowSize } from "@vueuse/core";
+import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
 import type { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
 import { CptvDecoder } from "./cptv-decoder/decoder";
-import { TagColours } from "@/consts";
+import type { TrackId } from "@typedefs/api/common";
+import { Mp4Encoder } from "@/components/cptv-player/mp4-export";
+import type {
+  FrameNum,
+  IntermediateTrack,
+  Rectangle,
+  TrackBox,
+  TrackExportOption,
+} from "@/components/cptv-player/cptv-player-types";
+import {
+  accumulateMinMaxForFrame,
+  minMaxForFrame,
+  minMaxForTrack,
+  resetRecordingNormalisation,
+} from "@/components/cptv-player/frame-normalisation";
+import {
+  clearOverlay,
+  drawBottomLeftOverlayLabel,
+  drawBottomRightOverlayLabel,
+  renderOverlay,
+} from "@/components/cptv-player/overlay-canvas";
 const { pixelRatio } = useDevicePixelRatio();
-const { width: windowWidth } = useWindowSize();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {
   recording,
   cptvUrl,
   cptvSize = null,
   currentTrack,
-  extLoading = false,
-  canUseAdvancedControls = true,
   canSelectTracks = true,
-  showOverlaysForCurrentTrackOnly = false,
 } = defineProps<{
   recording: ApiRecordingResponse | null;
   cptvUrl?: string;
   cptvSize?: number | null;
   currentTrack?: ApiTrackResponse;
-  extLoading?: boolean;
-  canUseAdvancedControls?: boolean;
   canSelectTracks?: boolean;
-  showOverlaysForCurrentTrackOnly?: boolean;
 }>();
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
-const playbackTime = ref(0);
 let frames: CptvFrame[] = [];
-let lastCptvUrl: string | undefined = undefined;
+const backgroundFrame = ref<CptvFrame | null>(null);
 let frameBuffer: Uint8ClampedArray;
 let cptvDecoder: CptvDecoder;
-
-watch(windowWidth, () => {
-  animationTick.value = 0;
-  console.log("window width changed");
-  setCanvasDimensions();
-});
 
 watch(pixelRatio, () => {
   animationTick.value = 0;
   console.log("window width changed");
-  setCanvasDimensions();
+  setOverlayCanvasDimensions();
+
+  // If the pixel ratio changed, we might also be on a monitor with a different refresh rate now.
+  polledFps.value = false;
+  pollFrameTimes();
 });
 
 const playbackTimeChanged = (offset: number) => {
-  playbackTime.value = offset;
-  setTimeAndRedraw(offset);
+  setTimeAndRedraw({ timeZeroOne: offset });
 };
+
+const playbackTimeZeroOne = computed<number>(() => {
+  const fractionalFrame =
+    (1 / (totalPlayableFrames.value - 1) / ticksBetweenDraws.value) *
+    animationTick.value;
+  return Math.max(
+    0,
+    Math.min(
+      1,
+      targetFrameNum.value / (totalPlayableFrames.value - 1) + fractionalFrame
+    )
+  );
+});
 
 const emit = defineEmits<{
   (e: "request-prev-recording"): void;
   (e: "request-next-recording"): void;
-  (e: "track-selected", { trackId: TrackId }): void;
+  (e: "track-selected", { trackId }: { trackId: TrackId }): void;
   (e: "ready-to-play", header: CptvHeader): void;
 }>();
+
+// HTML refs
 const canvas = ref<HTMLCanvasElement | null>(null);
+const { width: canvasWidth, height: canvasHeight } = useElementSize(canvas);
+
+watch(canvasWidth, () => {
+  animationTick.value = 0;
+  setOverlayCanvasDimensions();
+});
 const container = ref<HTMLDivElement | null>(null);
 const frameNumField = ref<HTMLDivElement | null>(null);
 const ffcSecsAgo = ref<HTMLDivElement | null>(null);
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
 const valueTooltip = ref<HTMLSpanElement | null>(null);
+
 const playing = ref<boolean>(false);
-const openUserDefinedCptvFile = ref<boolean>(true);
 const header = ref<CptvHeader | null>(null);
 const valueUnderCursor = ref<string | null>(null);
 const playerMessage = ref<string | null>(null);
 const showValueInfo = ref<boolean>(false);
 const buffering = ref<boolean>(false);
-const atEndOfPlayback = ref<boolean>(false);
-const ended = ref<boolean>(false);
+
+// TODO - Make this be computed.
+//const atEndOfPlayback = ref<boolean>(false);
 const showAtEndOfSearch = ref<boolean>(false);
 const frameNum = ref<number>(0);
+const targetFrameNum = ref<number>(0);
 const showAdvancedControls = ref<boolean>(false);
 const animationTick = ref<number>(0);
 const isShowingBackgroundFrame = ref<boolean>(false);
@@ -95,12 +127,52 @@ const animationFrame = ref<number>(0);
 // TODO(jon): Ideally we'd set the frame number and drive everything else off that change, right?
 
 // TODO - Maybe make these preferences be per group per user?
-const smoothed = ref(window.localStorage.getItem("video-smoothing") === "true");
-const showDebugTools = ref<boolean>(
-  localStorage.getItem("show-debug-tools") === "true" || false
+const persistentBooleanPref = (
+  key: string,
+  propertyName: string,
+  forceReRender = false
+): Ref<boolean> => {
+  const variable = ref<boolean>(localStorage.getItem(key) === "true");
+  watch(variable, (nextVal: boolean) => {
+    localStorage.setItem(key, nextVal.toString());
+    setPlayerMessage(`${propertyName} ${nextVal ? "Enabled" : "Disabled"}`);
+    if (forceReRender) {
+      setCurrentFrameAndRender(true);
+    }
+  });
+  return variable;
+};
+
+const showDebugTools = persistentBooleanPref("show-debug-tools", "Debug tools");
+const silhouetteMode = persistentBooleanPref(
+  "silhouette-mode",
+  "Silhouette mode",
+  true
 );
+const polygonEditMode = persistentBooleanPref(
+  "polygon-edit-mode",
+  "Polygon edit mode"
+);
+const motionPathMode = persistentBooleanPref(
+  "motion-path-mode",
+  "Motion paths",
+  true
+);
+const trackHighlightMode = persistentBooleanPref(
+  "track-highlight-mode",
+  "Track focus",
+  true
+);
+const videoSmoothing = persistentBooleanPref(
+  "video-smoothing",
+  "Smoothing",
+  true
+);
+
 const speedMultiplierIndex = ref<number>(
-  Number(localStorage.getItem("video-playback-speed")) || 0
+  PlaybackSpeeds.indexOf(
+    Number(localStorage.getItem("video-playback-speed"))
+  ) || 0
 );
 
 const paletteIndex = ref<number>(
@@ -114,23 +186,17 @@ const messageAnimationFrame = ref<number>(0);
 
 const displayHeaderInfo = ref<boolean>(false);
 
-const loadProgress = ref<number>(0);
-const loadedFrames = ref<number>(0);
 const loadedStream = ref<boolean | string>(false);
 const totalFrames = ref<number | null>(null);
 const seekingInProgress = ref<boolean>(false);
 const streamLoadError = ref<string | null>(null);
-const minValue = ref<number>(Number.MAX_VALUE);
-const maxValue = ref<number>(Number.MIN_VALUE);
+
 const frameHeader = ref<CptvFrameHeader | null>(null);
 const scale = ref<number>(1);
 const raqFps = ref<number>(60);
 const polledFps = ref<boolean>(false);
 const stopAtFrame = ref<number | null>(null);
 const wasPaused = ref<boolean>(false);
-const isSeeking = ref<boolean>(false);
-const canvasWidth = ref<number>(160);
-const canvasHeight = ref<number>(120);
 const trackExportOptions = ref<TrackExportOption[]>([]);
 
 const canGoBackwards = computed<boolean>(() => {
@@ -143,73 +209,63 @@ const canGoForwards = computed<boolean>(() => {
   return false;
 });
 
-const setTimeAndRedraw = async (timeZeroOne = -1, frameNumToDraw = -1) => {
+const setTimeAndRedraw = async ({
+  timeZeroOne,
+  frameNumToDraw,
+}: {
+  timeZeroOne?: number;
+  frameNumToDraw?: number;
+}) => {
+  //console.log(timeZeroOne);
   // If the user is already seeking, don't queue up new seek events until that download progress completes.
   if (!seekingInProgress.value) {
     isShowingBackgroundFrame.value = false;
     if (header.value) {
-      let totalFramesCount =
-        totalFrames.value &&
-        totalFrames.value - (header.value.hasBackgroundFrame ? 1 : 0);
-      if (totalFramesCount === null) {
-        totalFramesCount = Math.floor(actualDuration.value * header.value.fps);
-      }
       animationTick.value = 0;
-      if (timeZeroOne !== -1 && actualDuration.value !== 0) {
-        frameNum.value = Math.floor(
-          Math.min(totalFramesCount, timeZeroOne * totalFramesCount)
+      if (timeZeroOne !== undefined && totalPlayableFrames.value !== 0) {
+        targetFrameNum.value = Math.floor(
+          Math.min(
+            totalPlayableFrames.value - 1,
+            timeZeroOne * (totalPlayableFrames.value - 1)
+          )
         );
-      } else if (frameNumToDraw !== -1) {
-        frameNum.value = frameNumToDraw;
+      } else {
+        targetFrameNum.value = frameNumToDraw || 0;
       }
-      atEndOfPlayback.value = frameNum.value === totalFramesCount - 1;
-      await renderCurrentFrame(true);
+      const gotFrame = await seekToSpecifiedFrameAndRender(
+        true,
+        targetFrameNum.value
+      );
+      if (gotFrame) {
+        frameNum.value = targetFrameNum.value;
+      }
     }
   }
 };
 
-const firstFrameForTrack = (trackId: number): number => {
-  const frameForTrack = Object.entries(
-    processedTracks.value
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ).find(([_, tracks]) => Object.keys(tracks).map(Number).includes(trackId));
-  return (frameForTrack && Number(frameForTrack[0])) || 0;
+const firstFrameNumForTrack = (trackId: number): number => {
+  // If we're calling this, the track definitely exists and has frame positions.
+  return Number(Object.entries(framesByTrack.value[trackId])[0][0]);
 };
 
-const onePastLastFrameForTrack = (trackId: number): number => {
-  const entries = Object.entries(processedTracks.value);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const firstFrameForTrackIndex = entries.findIndex(([_, tracks]) =>
-    Object.keys(tracks).map(Number).includes(trackId)
-  );
-  const fromStartOfTrack = entries.slice(firstFrameForTrackIndex);
-  let onePastLastFrameForTrackIndex = fromStartOfTrack.findIndex(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    ([_, tracks]) => !Object.keys(tracks).map(Number).includes(trackId)
-  );
-  if (onePastLastFrameForTrackIndex === -1) {
-    onePastLastFrameForTrackIndex = fromStartOfTrack.length;
+const onePastLastFrameNumForTrack = (trackId: number): number => {
+  const frames = Object.entries(framesByTrack.value[trackId]);
+  const lastTrackFramePlusOne = Number(frames[frames.length - 1][0]) + 1;
+  if (totalPlayableFrames.value) {
+    return Math.min(totalPlayableFrames.value, lastTrackFramePlusOne);
   }
-  const lastFrameForTrack = fromStartOfTrack[onePastLastFrameForTrackIndex - 1];
-  if (totalFrames.value !== null) {
-    return Math.min(
-      totalFrames.value,
-      (lastFrameForTrack && Number(lastFrameForTrack[0])) || 0
-    );
-  } else {
-    return (lastFrameForTrack && Number(lastFrameForTrack[0])) || 0;
-  }
+  return lastTrackFramePlusOne;
 };
 
 const selectTrack = (force = false, shouldPlay = false) => {
-  if (currentTrack && (!playing.value || force)) {
-    if (processedTracks.value) {
-      cancelAnimationFrame(animationFrame.value);
-      animationTick.value = 0;
-      setTimeAndRedraw(-1, firstFrameForTrack(currentTrack.id));
-      if (shouldPlay) {
-        play();
-      }
+  if (currentTrack && (!playing.value || force) && recording?.tracks.length) {
+    cancelAnimationFrame(animationFrame.value);
+    animationTick.value = 0;
+    setTimeAndRedraw({
+      frameNumToDraw: firstFrameNumForTrack(currentTrack.id),
+    });
+    if (shouldPlay) {
+      playing.value = true;
     }
 
     // This is used when a user selects a track from the TrackInfo panel.
@@ -217,15 +273,17 @@ const selectTrack = (force = false, shouldPlay = false) => {
     // the selected track, since the user likely wants to tag the track they selected.
 
     // Any other further user interaction should unset stopAtTime.
-    stopAtFrame.value = onePastLastFrameForTrack(currentTrack.id);
+    // TODO - should this actually stop at the last frame number for the track, so that another
+    //  track isn't selected?
+    stopAtFrame.value = onePastLastFrameNumForTrack(currentTrack.id);
   }
 };
 
 const requestPrevRecording = () => {
   if (canGoBackwards.value) {
     frameNum.value = 0;
+    targetFrameNum.value = 0;
     buffering.value = true;
-    atEndOfPlayback.value = false;
     emit("request-prev-recording");
   } else {
     showAtEndOfSearch.value = true;
@@ -235,8 +293,8 @@ const requestPrevRecording = () => {
 const requestNextRecording = () => {
   if (canGoForwards.value) {
     frameNum.value = 0;
+    targetFrameNum.value = 0;
     buffering.value = true;
-    atEndOfPlayback.value = false;
     emit("request-next-recording");
   } else {
     showAtEndOfSearch.value = true;
@@ -250,153 +308,263 @@ const hasBackgroundFrame = computed<boolean>(() => {
   return (header.value?.hasBackgroundFrame as boolean) || false;
 });
 
-const isBuffering = computed<boolean>(() => {
-  return extLoading || buffering.value;
-});
-
 const getFrameAtIndex = (i: number): CptvFrame => {
-  const frameIndex = hasBackgroundFrame.value
-    ? Math.min(frames.length - 1, i + 1)
-    : Math.min(frames.length - 1, i);
-  //console.log("Asking for frame index", i);
-  //console.log("Getting actual frame index", frameIndex);
-  const frame = frames[frameIndex];
-  // We keep a running tally of min/max values across the clip for
-  // normalisation purposes.
-  const frameMinValue = frame.meta.imageData.min;
-  const frameMaxValue = frame.meta.imageData.max;
-  // Values within 5 seconds of an FFC event do not contribute to this.
-  const withinFfcTimeout =
-    frame.meta.lastFfcTimeMs &&
-    frame.meta.timeOnMs - frame.meta.lastFfcTimeMs < 5000;
-  if (
-    frameMinValue !== 0 &&
-    (frame.meta.isBackgroundFrame || !withinFfcTimeout)
-  ) {
-    // If the minimum value is zero, it's probably a glitched frame.
-    minValue.value = Math.min(minValue.value, frameMinValue);
-    maxValue.value = Math.max(maxValue.value, frameMaxValue);
-    const AVERAGE_HEADROOM_OVER_BACKGROUND = 300;
-    maxValue.value = Math.max(
-      Math.max(maxValue.value, frameMaxValue),
-      Math.min(1 << 16, minValue.value + AVERAGE_HEADROOM_OVER_BACKGROUND)
-    );
-  }
-  return frame;
+  // We can't ask for more frames than we currently have.
+  // If we try to seek past the end, we'll just get the highest frame that we have.
+  // FIXME - is this the behaviour we want?
+  return frames[Math.min(frames.length - 1, i)];
 };
 
-const renderCurrentFrame = async (
+const addFrame = (frame: CptvFrame) => {
+  if (frame.meta.isBackgroundFrame) {
+    backgroundFrame.value = frame;
+  } else {
+    frames.push(frame);
+  }
+  accumulateMinMaxForFrame(frame);
+};
+
+const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
+  if (frameNumToRender > frames.length + 2 && !totalFrames.value) {
+    buffering.value = true;
+  }
+  while (frames.length <= frameNumToRender && !totalFrames.value) {
+    seekingInProgress.value = true;
+    const frame = await cptvDecoder.getNextFrame();
+    console.assert(frame !== null);
+    if (frame === null) {
+      // Poll again so that we can read out totalFrames
+      await cptvDecoder.getNextFrame();
+    }
+    if (header.value?.totalFrames) {
+      knownDurationInternal.value = header.value.totalFrames / fps.value;
+    }
+    totalFrames.value = await cptvDecoder.getTotalFrames();
+    if (frame === null) {
+      if (await cptvDecoder.hasStreamError()) {
+        streamLoadError.value = await cptvDecoder.getStreamError();
+        await cptvDecoder.free();
+        totalFrames.value = frames.length;
+      }
+      break;
+    }
+    if (!totalFrames.value) {
+      // If we got the total frames, then we're at the end of the stream, and the last
+      // frame has already been pulled out.
+      addFrame(frame);
+    }
+  }
+  seekingInProgress.value = false;
+  buffering.value = false;
+};
+
+const setCurrentFrameAndRender = (
+  force: boolean,
+  frameNumToRender?: number
+) => {
+  if (frameNumToRender === undefined) {
+    frameNumToRender = targetFrameNum.value;
+  }
+  let frameData;
+  if (isShowingBackgroundFrame.value) {
+    frameData = backgroundFrame.value as CptvFrame;
+  } else {
+    frameData = getFrameAtIndex(frameNumToRender);
+  }
+  if (frameData) {
+    frameHeader.value = frameData.meta;
+    renderFrame(frameData, frameNumToRender, force);
+  }
+};
+
+const seekToSpecifiedFrameAndRender = async (
   force = false,
   frameNumToRender?: number
 ): Promise<boolean> => {
+  if (frameNumToRender === undefined) {
+    frameNumToRender = targetFrameNum.value;
+  }
   if (header.value) {
-    loadProgress.value = 1;
+    // FIXME - is this needed?
     await cptvDecoder.getLoadProgress();
-    if (frameNumToRender === undefined) {
-      frameNumToRender = frameNum.value;
+    await makeSureWeHaveTheFrame(frameNumToRender);
+    const gotFrame = frameNumToRender < frames.length;
+    if (gotFrame) {
+      setCurrentFrameAndRender(force, frameNumToRender);
     }
-    if (frameNumToRender > loadedFrames.value + 2 && !totalFrames.value) {
-      buffering.value = true;
-    }
-
-    while (loadedFrames.value <= frameNumToRender && !totalFrames.value) {
-      seekingInProgress.value = true;
-      const frame = await cptvDecoder.getNextFrame();
-      console.assert(frame !== null);
-      if (frame === null) {
-        // Poll again so that we can read out totalFrames
-        await cptvDecoder.getNextFrame();
-      }
-      if (header.value.totalFrames) {
-        knownDurationInternal.value =
-          header.value.totalFrames / header.value.fps;
-      }
-      totalFrames.value = await cptvDecoder.getTotalFrames();
-      totalFrames.value =
-        totalFrames.value &&
-        totalFrames.value + (header.value.hasBackgroundFrame ? 1 : 0);
-      if (frame === null) {
-        if (await cptvDecoder.hasStreamError()) {
-          streamLoadError.value = await cptvDecoder.getStreamError();
-          await cptvDecoder.free();
-          totalFrames.value = frames.length;
-        }
-        break;
-      }
-      if (!totalFrames.value) {
-        // If we got the total frames, then we're at the end of the stream, and the last
-        // frame has already been pulled out.
-        frames.push(frame);
-      }
-      loadedFrames.value = frames.length;
-    }
-    seekingInProgress.value = false;
-    buffering.value = false;
-    const gotFrame = frameNumToRender < loadedFrames.value;
-    const frameData = getFrameAtIndex(frameNumToRender);
-    frameHeader.value = frameData.meta;
-    renderFrame(frameData, frameNumToRender, force);
     return gotFrame;
   }
   return false;
 };
 
-const minMaxForFrame = ({ meta }: CptvFrame): [number, number] => {
-  if (meta.isBackgroundFrame) {
-    return [minValue.value, maxValue.value];
+const loadedFramesForTrack = (trackId: TrackId): CptvFrame[] => {
+  const trackNums = Object.keys(framesByTrack.value[trackId]).map(Number);
+  const framesForTrack = [];
+  for (const num of trackNums) {
+    if (num < frames.length) {
+      framesForTrack.push(frames[num]);
+    }
   }
-  const lastFfcTimeMs = meta.lastFfcTimeMs || 1000000;
-  const timeSinceLastFFC = (meta.timeOnMs - lastFfcTimeMs) / 1000;
-  if (timeSinceLastFFC < 5) {
-    // Use frame local min/max
-    return [meta.imageData.min, meta.imageData.max];
-  }
-  return [minValue.value, maxValue.value];
+  return framesForTrack;
 };
+
+const frameWidth = computed<number>(() => {
+  if (header.value) {
+    return header.value.width;
+  }
+  return 160;
+});
+
+const frameHeight = computed<number>(() => {
+  if (header.value) {
+    return header.value.height;
+  }
+  return 120;
+});
+// FIXME - Refactor to separate frame data drawing from overlay drawing.
 
 const renderFrame = (
   frameData: CptvFrame,
   frameNumToRender: number,
   force = false
 ) => {
-  if (canvas.value && header.value) {
-    const context = canvas.value.getContext("2d");
-    if (!context) {
-      return;
-    }
+  if (canvas.value && header.value && canvasContext.value) {
     let min;
     let max;
-    // FIXME - remove as any when def updated
-    if ((header.value as any).minValue && (header.value as any).maxValue) {
-      min = (header.value as any).minValue;
-      max = (header.value as any).maxValue;
+
+    const numTracks = recording?.tracks.length || 0;
+    if (trackHighlightMode.value) {
+      if (
+        currentTrack &&
+        numTracks > 1 &&
+        framesByTrack.value[currentTrack.id] &&
+        tracksByFrame.value[frameNumToRender]
+      ) {
+        // const trackBox = framesByTrack.value[currentTrack.id][frameNumToRender];
+        // [min, max] = minMaxForTrackBox(trackBox, frameData);
+        // const allTrackBoxes = tracksIntermediate.value.map(
+        //   ({ positions }) => positions
+        // );
+
+        const trackBoxes = Object.values(framesByTrack.value[currentTrack.id]);
+        [min, max] = minMaxForTrack(
+          trackBoxes,
+          loadedFramesForTrack(currentTrack.id)
+        );
+      } else if (numTracks === 1) {
+        // There's only one track, so highlight it all the time.
+        const trackId = recording!.tracks[0].id;
+        if (
+          framesByTrack.value[trackId] &&
+          tracksByFrame.value[frameNumToRender]
+        ) {
+          // const trackBox = framesByTrack.value[trackId][frameNumToRender];
+          // [min, max] = minMaxForTrackBox(trackBox, frameData);
+          const trackBoxes = Object.values(framesByTrack.value[trackId]);
+          [min, max] = minMaxForTrack(
+            trackBoxes,
+            loadedFramesForTrack(trackId)
+          );
+        } else {
+          // Get the min/max for the first frame of the track, or maybe one in the middle.
+          /*
+          const trackFrames = Object.entries(framesByTrack.value[trackId]);
+          const trackFrameToUse =
+            frameNumToRender < Number(trackFrames[0][0])
+              ? 0
+              : trackFrames.length - 1;
+          const trackBox = trackFrames[trackFrameToUse][1];
+          [min, max] = minMaxForTrackBox(trackBox, frameData);
+          */
+          // TODO: If none of the track frames are loaded yet, just use global min/max
+
+          // TODO: Another idea - sample all the track regions on the background/first frame, and exclude any outliers
+          //  that may be overly dark.  Maybe just do that for the MIN value, and allow maxes to rise?
+
+          const trackBoxes = Object.values(framesByTrack.value[trackId]);
+          [min, max] = minMaxForTrack(
+            trackBoxes,
+            loadedFramesForTrack(trackId)
+          );
+        }
+
+        // console.log("minMaxForTrack", min, max, max - min);
+        // const allTrackBoxes = tracksIntermediate.value.map(
+        //     ({ positions }) => positions
+        // );
+        // [min] = minMaxForTracks(allTrackBoxes, frames[0]);
+        // console.log("minMaxForTrackS", min, max, max - min);
+      } else {
+        if (
+          header.value.minValue !== undefined &&
+          header.value.maxValue !== undefined
+        ) {
+          min = header.value.minValue;
+          max = header.value.maxValue;
+        } else {
+          [min, max] = minMaxForFrame(frameData);
+        }
+      }
+    } else if (
+      header.value.minValue !== undefined &&
+      header.value.maxValue !== undefined
+    ) {
+      min = header.value.minValue;
+      max = header.value.maxValue;
     } else {
       [min, max] = minMaxForFrame(frameData);
     }
-
-    const range = max - min;
-    const colourMapToUse = colourMap.value[1];
-    const fd = frameData.data;
-    const frameBufferView = new Uint32Array(frameBuffer.buffer);
-    const len = frameBufferView.length;
-    for (let i = 0; i < len; i++) {
-      const index = ((fd[i] - min) / range) * 255.0;
-      const n = Math.abs(index);
-      const f = n << 0;
-      const ff = f == n ? f : f + 1;
-      frameBufferView[i] = colourMapToUse[ff];
+    if (silhouetteMode.value) {
+      // Example: #1284537 for dynamic range clamping
+      // #1284559 maybe not working?
+      const range = max - min;
+      const colourMapToUse = colourMap.value[1];
+      const fd = frameData.data;
+      const frameBufferView = new Uint32Array(frameBuffer.buffer);
+      const len = frameBufferView.length;
+      for (let i = 0; i < len; i++) {
+        const index = ((fd[i] - min) / range) * 255.0;
+        const n = Math.min(255, Math.max(0, index));
+        const f = n << 0;
+        const ff = f == n ? f : f + 1;
+        frameBufferView[i] = colourMapToUse[ff];
+      }
+    } else {
+      // Render silhouette mode
+      if (backgroundFrame.value) {
+        const [min, max] = minMaxForFrame(backgroundFrame.value);
+        const range = max - min;
+        const colourMapToUse = colourMap.value[1];
+        const fd = frameData.data;
+        const bg = backgroundFrame.value.data;
+        const threshold = 45; // Should be scaled by range.
+        const frameBufferView = new Uint32Array(frameBuffer.buffer);
+        const len = frameBufferView.length;
+        const red =
+          (255 << 24) | ((0 * 255.0) << 16) | ((0 * 255.0) << 8) | (1 * 255.0);
+        for (let i = 0; i < len; i++) {
+          const px = Math.abs(Number(fd[i]) - Number(bg[i]));
+          if (px < threshold) {
+            const index = ((fd[i] - min) / range) * 255.0;
+            const n = Math.min(255, Math.max(0, index));
+            const f = n << 0;
+            const ff = f == n ? f : f + 1;
+            frameBufferView[i] = colourMapToUse[ff];
+          } else {
+            frameBufferView[i] = red;
+          }
+        }
+      }
     }
 
     cancelAnimationFrame(animationFrame.value);
     animationFrame.value = requestAnimationFrame(() => {
-      if (header.value) {
-        drawFrame(
-          context,
-          new ImageData(frameBuffer, header.value.width, header.value.height),
-          frameNumToRender || frameNum.value,
-          force
-        );
-      }
+      drawFrame(
+        canvasContext.value,
+        new ImageData(frameBuffer, frameWidth.value, frameHeight.value),
+        frameNumToRender,
+        force
+      );
     });
   }
 };
@@ -410,10 +578,11 @@ const secondsSinceLastFFC = computed<number | null>(() => {
   return null;
 });
 
-const setFrameInfo = (frameNum: number) => {
+const setDebugFrameInfo = (frameNum: number) => {
+  // TODO: This was set manually/non-reactively because this could be slow on mobile on Vue2 - is it still the case with Vue3?
   if (showDebugTools.value) {
     if (frameNumField.value) {
-      frameNumField.value.innerText = `Frame #${frameNum}`;
+      frameNumField.value.innerText = `Frame #${frameNum + 1}`;
     }
     if (ffcSecsAgo.value && secondsSinceLastFFC.value) {
       ffcSecsAgo.value.innerText = `FFC ${secondsSinceLastFFC.value.toFixed(
@@ -423,10 +592,7 @@ const setFrameInfo = (frameNum: number) => {
   }
 };
 const frameTimeSeconds = computed<number>(() => {
-  if (header.value) {
-    return 1 / (header.value.fps as number);
-  }
-  return 1 / 9;
+  return 1 / fps.value;
 });
 
 const timeAdjustmentForBackgroundFrame = computed<number>(() => {
@@ -437,6 +603,7 @@ const timeAdjustmentForBackgroundFrame = computed<number>(() => {
 });
 
 const knownDurationInternal = ref<number | null>(null);
+
 const knownDuration = computed<number | null>(() => {
   if (knownDurationInternal.value) {
     return knownDurationInternal.value;
@@ -447,40 +614,42 @@ const knownDuration = computed<number | null>(() => {
   return null;
 });
 
-const actualDuration = computed<number>(() => {
+const fps = computed<number>(() => {
   if (header.value) {
-    const fps = header.value.fps;
-    if (header.value.totalFrames) {
-      const totalPlayableFrames =
-        header.value.totalFrames - (header.value.hasBackgroundFrame ? 1 : 0);
-      return totalPlayableFrames / fps;
-    } else {
-      if (totalFrames.value !== null) {
-        return (
-          (totalFrames.value - 1 - (header.value.hasBackgroundFrame ? 1 : 0)) /
-          fps
-        );
-      }
-      if (knownDuration.value === null && loadedFrames.value) {
-        return (loadedFrames.value - 1) / fps;
-      }
-    }
+    return header.value.fps;
   }
-  return Math.max(
-    ...(recording || { tracks: [] }).tracks.map(
-      ({ end }) => end - timeAdjustmentForBackgroundFrame.value
-    ),
-    (knownDuration.value || 0) - timeAdjustmentForBackgroundFrame.value
-  );
+  return 9;
 });
 
-const currentTime = computed<number>(() => {
-  if (header.value) {
-    const totalTime = actualDuration.value;
-    const totalFramesEstimate = totalTime * (header.value.fps as number);
-    return (frameNum.value / totalFramesEstimate) * totalTime;
+const totalPlayableFrames = computed<number>(() => {
+  if (header.value && header.value.totalFrames) {
+    const backgroundAdjust = header.value.hasBackgroundFrame ? 1 : 0;
+    return header.value.totalFrames - backgroundAdjust;
+  } else {
+    if (totalFrames.value !== null) {
+      const backgroundAdjust = header.value?.hasBackgroundFrame ? 1 : 0;
+      return totalFrames.value - backgroundAdjust;
+    }
+    if (header.value) {
+      const backgroundAdjust = header.value.hasBackgroundFrame ? 1 : 0;
+      return Math.max(
+        (header.value.duration || 0) / fps.value - backgroundAdjust,
+        ...(recording || { tracks: [] }).tracks.map(
+          ({ end }) => end / fps.value - backgroundAdjust
+        ),
+        (knownDuration.value || 0) / fps.value - backgroundAdjust
+      );
+    }
   }
   return 0;
+});
+
+const actualDuration = computed<number>(
+  () => totalPlayableFrames.value / fps.value
+);
+
+const currentTime = computed<number>(() => {
+  return (frameNum.value + 1) / fps.value;
 });
 
 const formatTime = (time: number): string => {
@@ -496,18 +665,6 @@ const formatTime = (time: number): string => {
 const elapsedTime = computed<string>(() => {
   return formatTime(currentTime.value);
 });
-
-type Rectangle = [number, number, number, number];
-interface TrackBox {
-  what: string | null;
-  rect: Rectangle;
-}
-
-interface TrackExportOption {
-  includeInExportTime: boolean;
-  displayInExport: boolean;
-  trackId: number;
-}
 
 const getAuthoritativeTagForTrack = (
   trackTags: ApiTrackTagResponse[]
@@ -535,12 +692,12 @@ const getPositions = (
   positions: ApiTrackPosition[],
   timeOffset: number,
   frameTimeSeconds: number
-): [number, Rectangle][] => {
+): [FrameNum, Rectangle][] => {
   const frameAtTime = (time: number) => {
     return Math.round(time / frameTimeSeconds);
   };
   // Add a bit of breathing room around our boxes
-  const padding = 5;
+  const padding = 0; // 5
   return (positions as ApiTrackPosition[]).map((position: ApiTrackPosition) => [
     position.order ||
       (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
@@ -554,268 +711,141 @@ const getPositions = (
   ]);
 };
 
-const getProcessedTracks = (
-  tracks: ApiTrackResponse[],
-  timeOffset: number,
-  frameTimeSeconds: number
-): Record<number, Record<number, TrackBox>> => {
-  return tracks
-    .map(({ positions, tags, id }) => ({
+const tracksIntermediate = computed<IntermediateTrack[]>(() => {
+  return (
+    recording?.tracks.map(({ positions, tags, id }) => ({
       what: (tags && getAuthoritativeTagForTrack(tags)) || null,
       positions: getPositions(
         positions as ApiTrackPosition[],
-        timeOffset,
-        frameTimeSeconds
+        timeAdjustmentForBackgroundFrame.value,
+        frameTimeSeconds.value
       ),
       id,
-    }))
-    .reduce((acc: Record<number, Record<number, TrackBox>>, item) => {
-      for (const position of item.positions) {
-        acc[position[0]] = acc[position[0]] || {};
-        const frame = acc[position[0]];
-        frame[item.id] = {
-          rect: position[1],
-          what: item.what,
-        };
+    })) || []
+  );
+});
+
+const tracksByFrame = computed<Record<FrameNum, [TrackId, TrackBox][]>>(() => {
+  return tracksIntermediate.value.reduce(
+    (acc: Record<FrameNum, [TrackId, TrackBox][]>, item) => {
+      for (const [frameNum, trackBox] of item.positions) {
+        acc[frameNum] = acc[frameNum] || [];
+        acc[frameNum].push([
+          item.id,
+          {
+            rect: trackBox,
+            what: item.what,
+          },
+        ]);
       }
       return acc;
-    }, {});
+    },
+    {}
+  );
+});
+
+// IDEA: collapse tracks that are part of the same overall tracks here, and track all their ids as aliases.
+//  If a user tags one of them, tag all the ids with the same tag.  Easier than consolidating the tracks on the
+//  backend side when they're inserted.  If the AI disagrees for each part of the track, find some way of choosing
+//  which one to display.
+const trackDirection = (trackPositions: Rectangle[]) => {
+  // Get a vector of the track overall direction, so we can compare it to other tracks.
+  // Maybe just during the overlap phase.
+  return;
 };
 
-const processedTracks = computed<Record<number, Record<number, TrackBox>>>(
-  () => {
-    return getProcessedTracks(
-      recording?.tracks || [],
-      timeAdjustmentForBackgroundFrame.value,
-      frameTimeSeconds.value
-    );
-  }
-);
-
-const drawRectWithText = (
-  context: CanvasRenderingContext2D,
-  trackId: number,
-  dims: Rectangle,
-  what: string | null,
-  isExporting: boolean
-) => {
-  if (!header.value) {
-    return;
-  }
-  const selected = currentTrack?.id === trackId || isExporting;
-  const trackIndex =
-    recording?.tracks.findIndex((track) => track.id === trackId) || 0;
-  const lineWidth = selected ? 2 : 1;
-  const outlineWidth = lineWidth + 4;
-  const halfOutlineWidth = outlineWidth / 2;
-  const deviceRatio = isExporting ? 1 : window.devicePixelRatio;
-  const scale = context.canvas.width / header.value.width;
-  const [left, top, right, bottom] = dims.map((x) => x * scale);
-  const rectWidth = right - left;
-  const rectHeight = bottom - top;
-
-  const x =
-    Math.max(halfOutlineWidth, Math.round(left) - halfOutlineWidth) /
-    deviceRatio;
-  const y =
-    Math.max(halfOutlineWidth, Math.round(top) - halfOutlineWidth) /
-    deviceRatio;
-  const width =
-    Math.round(Math.min(context.canvas.width - left, Math.round(rectWidth))) /
-    deviceRatio;
-  const height =
-    Math.round(Math.min(context.canvas.height - top, Math.round(rectHeight))) /
-    deviceRatio;
-  context.lineJoin = "round";
-  context.lineWidth = outlineWidth;
-  context.strokeStyle = `rgba(0, 0, 0, ${selected ? 0.4 : 0.5})`;
-  context.beginPath();
-  context.strokeRect(x, y, width, height);
-  context.strokeStyle = TagColours[trackIndex % TagColours.length].background;
-  context.lineWidth = lineWidth;
-  context.beginPath();
-  context.strokeRect(x, y, width, height);
-  if (selected || isExporting) {
-    // If exporting, show all the best guess animal tags, if not unknown
-    if (what !== null) {
-      const text = what;
-      const textHeight = 9 * deviceRatio;
-      const textWidth = context.measureText(text).width * deviceRatio;
-      const marginX = 2 * deviceRatio;
-      const marginTop = 2 * deviceRatio;
-      let textX = Math.min(context.canvas.width, right) - (textWidth + marginX);
-      let textY = bottom + textHeight + marginTop;
-      // Make sure the text doesn't get clipped off if the box is near the frame edges
-      if (textY + textHeight > context.canvas.height) {
-        textY = top - textHeight;
-      }
-      if (textX < 0) {
-        textX = left + marginX;
-      }
-      context.font = "13px sans-serif";
-      context.lineWidth = 4;
-      context.strokeStyle = "rgba(0, 0, 0, 0.5)";
-      context.strokeText(text, textX / deviceRatio, textY / deviceRatio);
-      context.fillStyle = "white";
-      context.fillText(text, textX / deviceRatio, textY / deviceRatio);
-    }
-  }
+const trackSpeed = (trackPositions: Rectangle[]) => {
+  // Get a metric for the track speed, to be compared with tracks we might want to merge with.
+  // Maybe just during the overlap phase.
+  return;
 };
 
-const renderOverlay = (
-  context: CanvasRenderingContext2D | null,
-  scale: number,
-  timeSinceFFCSeconds: number | null,
-  isExporting: boolean,
-  frameNum: number,
-  trackExportOptions?: TrackExportOption[]
-) => {
-  if (context) {
-    if (!isExporting) {
-      // Clear if we are drawing on the live overlay, but not if we're drawing for export
-      context.clearRect(
-        0,
-        0,
-        context.canvas.width * (1 / pixelRatio.value),
-        context.canvas.height * (1 / pixelRatio.value)
-      );
-    }
-    const tracks =
-      processedTracks.value[frameNum] || ({} as Record<number, TrackBox>);
-    const frameTracks = Object.entries(tracks);
-    if (
-      currentTrack &&
-      !isExporting &&
-      canSelectTracks &&
-      frameTracks.length === 1
-    ) {
-      const trackId = Number(frameTracks[0][0]);
-      // If the track is the only track at this time offset, make it the selected track.
-      if (currentTrack.id !== trackId) {
-        emit("track-selected", { trackId });
-      }
-    }
+const intersects = (a: Rectangle, b: Rectangle): boolean => {
+  return !(a[2] < b[0] || a[0] > b[2] || a[3] < b[1] || a[1] > b[3]);
+};
 
-    if (currentTrack && (!showOverlaysForCurrentTrackOnly || isExporting)) {
-      for (const [trackId, trackBox] of frameTracks) {
-        if (currentTrack.id !== Number(trackId)) {
-          if (
-            !trackExportOptions ||
-            trackExportOptions.find(
-              (options) => options.trackId === Number(trackId)
-            )?.displayInExport
-          ) {
-            const box = trackBox as TrackBox;
-            drawRectWithText(
-              context,
-              Number(trackId),
-              box.rect,
-              box.what,
-              isExporting
-            );
+const intersection = (a: Rectangle, b: Rectangle): Rectangle => {
+  // return the intersection rect of two rects
+  return [
+    Math.max(a[0], b[0]),
+    Math.max(a[1], b[1]),
+    Math.min(a[2], b[2]),
+    Math.min(a[3], b[3]),
+  ];
+};
+
+const union = (a: Rectangle, b: Rectangle): Rectangle => {
+  return [
+    Math.min(a[0], b[0]),
+    Math.min(a[1], b[1]),
+    Math.max(a[2], b[2]),
+    Math.max(a[3], b[3]),
+  ];
+};
+
+// #1296036 Check out this false positive
+
+const mergedTracks = computed(() => {
+  // #1285017 Make sure this example doesn't get merged.
+  // #1295326, Also make sure this doesn't get merged.
+
+  // #1302826 Make sure this one doe
+
+  let mergeCandidates: Record<string, boolean> = {};
+  for (const [frameNum, tracks] of Object.entries(tracksByFrame.value).filter(
+    ([_, tracks]) => tracks.length > 1
+  )) {
+    for (const [trackA, trackABox] of tracks) {
+      for (const [trackId, trackBox] of tracks) {
+        if (trackId !== trackA) {
+          // Check for intersections.
+          if (intersects(trackBox.rect, trackABox.rect)) {
+            if (trackId < trackA) {
+              mergeCandidates[`${trackId}_${trackA}`] = true;
+            } else {
+              mergeCandidates[`${trackA}_${trackId}`] = true;
+            }
           }
         }
       }
     }
-    // Always draw selected track last, so it sits on top of any overlapping tracks.
-    for (const [trackId, trackBox] of frameTracks) {
-      if (currentTrack && currentTrack.id === Number(trackId)) {
-        if (
-          !trackExportOptions ||
-          trackExportOptions.find(
-            (options) => options.trackId === Number(trackId)
-          )?.displayInExport
-        ) {
-          const box = trackBox as TrackBox;
-          drawRectWithText(
-            context,
-            Number(trackId),
-            box.rect,
-            box.what,
-            isExporting
-          );
+  }
+  // TODO - Do the merge in some smart way to the intermediate tracks, and then have the tracksByFrame and framesByTrack
+  //  use those merged tracks.  So we want some intermediate merged product that we can switch to.
+  return mergeCandidates;
+});
+
+const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
+  () => {
+    return tracksIntermediate.value.reduce(
+      (
+        acc: Record<TrackId, Record<FrameNum, TrackBox>>,
+        { id, what, positions }
+      ) => {
+        acc[id] = acc[id] || {};
+        for (const [frameNum, trackBox] of positions) {
+          acc[id][frameNum] = {
+            rect: trackBox,
+            what,
+          };
         }
-      }
-    }
-    if (timeSinceFFCSeconds !== null && timeSinceFFCSeconds < 10) {
-      context.font = "bold 15px Verdana";
-
-      // NOTE: Make opacity of text stronger when the FFC event has just happened, then fade out
-      let a = 1 / (10 - timeSinceFFCSeconds);
-      a = a * a;
-      const alpha = 1 - a;
-      context.fillStyle = `rgba(163, 210, 226, ${alpha})`;
-
-      const text = "Calibrating...";
-      const textWidth = context.measureText(text).width;
-      const deviceRatio = isExporting ? 1 : window.devicePixelRatio;
-      const textX = context.canvas.width / deviceRatio / 2 - textWidth / 2;
-      const textY = 20;
-      context.fillText(text, textX, textY);
-    }
-  }
-};
-
-const exportMp4 = () => {
-  // TODO;
-};
-
-const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
-  overlayContext.font = "13px sans-serif";
-  overlayContext.lineWidth = 4;
-  overlayContext.strokeStyle = "rgba(0, 0, 0, 0.5)";
-  overlayContext.fillStyle = "white";
-};
-
-const drawBottomRightOverlayLabel = (
-  label: string | false,
-  overlayContext: CanvasRenderingContext2D
-) => {
-  if (label) {
-    setLabelFontStyle(overlayContext);
-    const bottomPadding = 10;
-    const sidePadding = 10;
-    const labelWidth =
-      overlayContext.measureText(label).width * pixelRatio.value;
-    overlayContext.strokeText(
-      label,
-      (overlayContext.canvas.width -
-        (labelWidth + sidePadding * pixelRatio.value)) /
-        pixelRatio.value,
-      (overlayContext.canvas.height - bottomPadding * pixelRatio.value) /
-        pixelRatio.value
-    );
-    overlayContext.fillText(
-      label,
-      (overlayContext.canvas.width -
-        (labelWidth + sidePadding * pixelRatio.value)) /
-        pixelRatio.value,
-      (overlayContext.canvas.height - bottomPadding * pixelRatio.value) /
-        pixelRatio.value
+        return acc;
+      },
+      {}
     );
   }
-};
+);
 
-const drawBottomLeftOverlayLabel = (
-  label: string | null,
-  overlayContext: CanvasRenderingContext2D
-) => {
-  if (label) {
-    setLabelFontStyle(overlayContext);
-    const bottomPadding = 10;
-    const sidePadding = 10;
-    overlayContext.strokeText(
-      label,
-      sidePadding,
-      (overlayContext.canvas.height - bottomPadding * pixelRatio.value) /
-        pixelRatio.value
-    );
-    overlayContext.fillText(
-      label,
-      sidePadding,
-      (overlayContext.canvas.height - bottomPadding * pixelRatio.value) /
-        pixelRatio.value
-    );
+const exportMp4 = async () => {
+  if (overlayCanvas.value) {
+    const encoder = new Mp4Encoder();
+    await encoder.init(640, 480, 9);
+    const context = overlayCanvas.value.getContext("2d");
+    if (context) {
+      await encoder.encodeFrame(context.getImageData(0, 0, 640, 480).data);
+    }
+    const uint8Array = await encoder.finish();
+    encoder.close();
   }
 };
 
@@ -826,152 +856,180 @@ const ambientTemperature = computed<string | null>(() => {
   return null;
 });
 
+const updateOverlayCanvas = (frameNumToRender: number) => {
+  // FIXME - Move this somewhere else, like when the frame advances
+
+  if (overlayContext.value) {
+    renderOverlay(
+      overlayContext.value,
+      scale.value,
+      secondsSinceLastFFC.value,
+      false,
+      frameNumToRender,
+      recording?.tracks || [],
+      canSelectTracks,
+      currentTrack,
+      motionPathMode.value,
+      pixelRatio.value,
+      tracksByFrame.value,
+      framesByTrack.value,
+      trackExportOptions.value
+    );
+
+    {
+      const time = `${elapsedTime.value} / ${formatTime(
+        Math.max(currentTime.value, actualDuration.value)
+      )}`;
+      drawBottomRightOverlayLabel(time, overlayContext.value, pixelRatio.value);
+      // Draw time and temperature in
+      // overlayContext.
+      drawBottomLeftOverlayLabel(
+        ambientTemperature.value,
+        overlayContext.value,
+        pixelRatio.value
+      );
+    }
+  }
+};
+
+const ticksBetweenDraws = computed<number>(() => {
+  // One tick represents 1000 / fps * multiplier
+  return Math.max(
+    1,
+    Math.floor(raqFps.value / (fps.value * speedMultiplier.value))
+  );
+});
+
+const shouldRedrawThisTick = computed<boolean>(() => {
+  return (
+    (animationTick.value + (playing.value ? 1 : 0)) %
+      ticksBetweenDraws.value ===
+    0
+  );
+});
+
 const drawFrame = async (
-  context: CanvasRenderingContext2D,
+  context: CanvasRenderingContext2D | null,
   imgData: ImageData,
   frameNumToRender: number,
   force = false
 ): Promise<void> => {
-  if (context && header.value) {
+  if (context) {
     if (force) {
       animationTick.value = 0;
     }
-
-    // FIXME - This breaks on non-60hz screens, so calculate the actual value anytime we detect that the window has been
-    //  moved to a new display?
-
-    // One tick represents 1000 / fps * multiplier
-    const everyXTicks = Math.max(
-      1,
-      Math.floor(raqFps.value / (header.value.fps * speedMultiplier.value))
-    );
     // NOTE: respect fps here, render only when we should.
-    const shouldRedraw =
-      (animationTick.value + (playing.value ? 1 : 0)) % everyXTicks === 0;
-    //console.log("Should redraw", shouldRedraw, this.animationTick, this.playing);
-    if (context && (shouldRedraw || force)) {
-      setFrameInfo(frameNumToRender);
-      //console.log("*** Draw frame to canvas", frameNum);
+    if (shouldRedrawThisTick.value || force) {
+      // Actually draw the frame contents for this requestAnimationFrame tick.
       context.putImageData(imgData, 0, 0);
-      if (overlayCanvas.value) {
-        const overlayContext = overlayCanvas.value.getContext("2d");
-        if (overlayContext) {
-          renderOverlay(
-            overlayContext,
-            scale.value,
-            secondsSinceLastFFC.value,
-            false,
-            frameNumToRender
-          );
+      updateOverlayCanvas(frameNumToRender);
+      setDebugFrameInfo(frameNumToRender);
+      frameNum.value = frameNumToRender;
 
-          {
-            const time = `${elapsedTime.value} / ${formatTime(
-              Math.max(currentTime.value, actualDuration.value)
-            )}`;
-            drawBottomRightOverlayLabel(time, overlayContext);
-            // Draw time and temperature in
-            // overlayContext.
-            drawBottomLeftOverlayLabel(
-              ambientTemperature.value,
-              overlayContext
-            );
-          }
+      if (playing.value && stopAtFrame.value) {
+        if (frameNum.value === stopAtFrame.value) {
+          stopAtFrame.value = null;
+          playing.value = false;
         }
       }
-      let didAdvance = false;
-      if (playing.value) {
-        didAdvance = await fetchRenderAdvanceFrame();
-      }
-      if (didAdvance) {
-        animationTick.value = 0;
-        frameNum.value++;
-      } else {
-        animationTick.value++;
-      }
-      // Check if we're at the end:
-      let totalExcludingBackground;
-      if (header.value && totalFrames.value) {
-        if (header.value.hasBackgroundFrame) {
-          totalExcludingBackground = totalFrames.value - 1;
+
+      {
+        let didAdvance = false;
+        if (playing.value) {
+          // Queue up the next frame.
+          targetFrameNum.value = frameNumToRender + 1;
+          didAdvance = await seekToSpecifiedFrameAndRender(
+            false,
+            targetFrameNum.value
+          );
+        }
+        if (didAdvance) {
+          animationTick.value = 0;
         } else {
-          totalExcludingBackground = totalFrames.value;
+          if (playing.value) {
+            playing.value = false;
+          }
+          frameNum.value = frameNumToRender;
+          animationTick.value++;
         }
       }
-      if (
-        header.value &&
-        totalFrames.value &&
-        frameNum.value == totalExcludingBackground
-      ) {
-        atEndOfPlayback.value = true;
-        pause();
-      }
-    } else if (context) {
+    } else {
+      // We don't draw on this tick, so increment and request again.
       animationTick.value++;
       cancelAnimationFrame(animationFrame.value);
       animationFrame.value = requestAnimationFrame(() =>
         drawFrame(context, imgData, frameNumToRender)
       ) as number;
     }
+  }
+};
 
-    if (playing.value && stopAtFrame.value) {
-      if (frameNum.value === stopAtFrame.value) {
-        stopAtFrame.value = null;
-        pause();
-      }
+watch(playing, async (nextPlaying: boolean) => {
+  if (nextPlaying) {
+    isShowingBackgroundFrame.value = false;
+    targetFrameNum.value = frameNum.value;
+    const didAdvance = await seekToSpecifiedFrameAndRender(false);
+    if (didAdvance) {
+      frameNum.value = targetFrameNum.value;
+    } else if (nextPlaying) {
+      playing.value = false;
+    }
+  } else {
+    cancelAnimationFrame(animationFrame.value);
+  }
+});
+
+watch(frameNum, () => {
+  if (
+    header.value &&
+    totalPlayableFrames.value &&
+    frameNum.value === totalPlayableFrames.value - 1
+  ) {
+    playing.value = false;
+  }
+
+  // If there's only one possible track for this frame, set it to selected.
+  const frameTracks =
+    tracksByFrame.value[frameNum.value] || ([] as [TrackId, TrackBox][]);
+  if (currentTrack && canSelectTracks && frameTracks.length === 1) {
+    const trackId = frameTracks[0][0];
+    // If the track is the only track at this time offset, make it the selected track.
+    if (currentTrack.id !== trackId) {
+      emit("track-selected", { trackId });
     }
   }
-};
+});
 
-const fetchRenderAdvanceFrame = async (): Promise<boolean> => {
-  // Fetch, render, advance
-  const canAdvance = await renderCurrentFrame();
-  if (canAdvance) {
-    return true;
-  } else if (playing.value) {
-    pause();
+const atEndOfPlayback = computed<boolean>(() => {
+  if (header.value) {
+    return frameNum.value === totalPlayableFrames.value - 1;
   }
   return false;
-};
-
-const play = async () => {
-  playing.value = true;
-  isShowingBackgroundFrame.value = false;
-  await fetchRenderAdvanceFrame();
-};
-
-const pause = () => {
-  playing.value = false;
-  cancelAnimationFrame(animationFrame.value);
-};
+});
 
 const togglePlayback = async (): Promise<void> => {
   if (!playing.value) {
     if (atEndOfPlayback.value) {
       frameNum.value = 0;
+      targetFrameNum.value = 0;
       animationTick.value = 0;
-      atEndOfPlayback.value = false;
     }
-    await play();
+    playing.value = true;
   } else {
-    pause();
+    playing.value = false;
   }
 };
 
-const toggleAdvancedControls = () => {
-  showAdvancedControls.value = !showAdvancedControls.value;
-};
-
-const toggleDebugTools = () => {
-  showDebugTools.value = !showDebugTools.value;
-  localStorage.setItem("show-debug-tools", showDebugTools.value.toString());
-};
+watch(showDebugTools, (nextVal: boolean) => {
+  localStorage.setItem("show-debug-tools", nextVal.toString());
+});
 
 const setPlayerMessage = (message: string) => {
   if (messageTimeout.value !== null || playerMessage.value !== null) {
     clearTimeout(messageTimeout.value as number);
     messageTimeout.value = null;
     playerMessage.value = null;
-    cancelAnimationFrame(messageAnimationFrame.value as number);
+    cancelAnimationFrame(messageAnimationFrame.value);
     messageAnimationFrame.value = requestAnimationFrame(() => {
       setPlayerMessage(message);
     });
@@ -984,29 +1042,18 @@ const setPlayerMessage = (message: string) => {
   }
 };
 
-const toggleSmoothing = () => {
-  smoothed.value = !smoothed.value;
-  window.localStorage.setItem("video-smoothing", String(smoothed.value));
-  setPlayerMessage(`Smoothing ${smoothed.value ? "Enabled" : "Disabled"}`);
-};
-
 const incrementPalette = async (): Promise<void> => {
   paletteIndex.value++;
-  if (paletteIndex.value === ColourMaps.length) {
-    paletteIndex.value = 0;
-  }
-  const paletteName = ColourMaps[paletteIndex.value][0];
+  const palette = ColourMaps[paletteIndex.value % ColourMaps.length];
+  const paletteName = palette[0];
   setPlayerMessage(paletteName);
   localStorage.setItem("video-palette", paletteName);
-  colourMap.value = ColourMaps[paletteIndex.value];
-  await renderCurrentFrame();
+  colourMap.value = palette;
+  setCurrentFrameAndRender(true);
 };
 
 const incrementSpeed = () => {
   speedMultiplierIndex.value++;
-  if (speedMultiplierIndex.value === PlaybackSpeeds.length) {
-    speedMultiplierIndex.value = 0;
-  }
   setPlayerMessage(`Speed ${speedMultiplier.value}x`);
   localStorage.setItem(
     "video-playback-speed",
@@ -1015,36 +1062,74 @@ const incrementSpeed = () => {
 };
 
 const speedMultiplier = computed(() => {
-  return PlaybackSpeeds[speedMultiplierIndex.value];
+  return PlaybackSpeeds[speedMultiplierIndex.value % PlaybackSpeeds.length];
+});
+
+const overlayContext = computed<CanvasRenderingContext2D | null>(() => {
+  if (overlayCanvas.value) {
+    const context = overlayCanvas.value.getContext("2d");
+    if (context) {
+      return context;
+    }
+  }
+  return null;
+});
+
+const canvasContext = computed<CanvasRenderingContext2D | null>(() => {
+  if (canvas.value) {
+    const context = canvas.value.getContext("2d");
+    if (context) {
+      return context;
+    }
+  }
+  return null;
 });
 
 const stepBackward = async () => {
   isShowingBackgroundFrame.value = false;
-  pause();
+  playing.value = false;
   animationTick.value = 0;
-  const firstFrame = 0;
-  const couldStep = await renderCurrentFrame(
+  targetFrameNum.value = Math.max(frameNum.value - 1, 0);
+  const couldStep = await seekToSpecifiedFrameAndRender(
     true,
-    Math.max(frameNum.value - 1, firstFrame)
+    Math.max(frameNum.value - 1, 0)
   );
   if (couldStep) {
-    frameNum.value = Math.max(0, frameNum.value - 1);
-    atEndOfPlayback.value = false;
+    // Actually advance
+    frameNum.value = targetFrameNum.value;
+  } else {
+    targetFrameNum.value = frameNum.value;
+  }
+};
+
+const stepForward = async () => {
+  isShowingBackgroundFrame.value = false;
+  playing.value = false;
+  animationTick.value = 0;
+  targetFrameNum.value = frameNum.value + 1;
+  const couldStep = await seekToSpecifiedFrameAndRender(
+    true,
+    targetFrameNum.value
+  );
+  if (couldStep) {
+    // Actually advance
+    frameNum.value = targetFrameNum.value;
+  } else {
+    targetFrameNum.value = frameNum.value;
   }
 };
 
 const toggleBackground = async (): Promise<void> => {
   wasPaused.value = !playing.value;
   if (!isShowingBackgroundFrame.value) {
-    const background = getFrameAtIndex(-1);
+    const background = backgroundFrame.value;
     if (background && header.value) {
       animationTick.value = 0;
       if (playing.value) {
-        pause();
+        playing.value = false;
         wasPaused.value = true;
       }
-      const context = canvas.value?.getContext("2d");
-      if (!context) {
+      if (!canvasContext.value) {
         return;
       }
       const [min, max] = minMaxForFrame(background);
@@ -1055,69 +1140,46 @@ const toggleBackground = async (): Promise<void> => {
         min,
         max
       );
-      context.putImageData(
+      canvasContext.value.putImageData(
         new ImageData(frameBuffer, header.value.width, header.value.height),
         0,
         0
       );
-      // Clear overlay
-      const overlayContext = overlayCanvas.value?.getContext("2d");
-      if (overlayContext) {
-        overlayContext.clearRect(
-          0,
-          0,
-          overlayContext.canvas.width * (1 / pixelRatio.value),
-          overlayContext.canvas.height * (1 / pixelRatio.value)
+      if (clearOverlay(overlayContext.value, pixelRatio.value)) {
+        drawBottomLeftOverlayLabel(
+          "Background frame",
+          overlayContext.value,
+          pixelRatio.value
         );
-
-        drawBottomLeftOverlayLabel("Background frame", overlayContext);
       }
     }
   } else {
     if (!wasPaused.value) {
       wasPaused.value = false;
-      await play();
+      playing.value = true;
     } else {
-      await renderCurrentFrame(true);
+      setCurrentFrameAndRender(true);
     }
   }
   isShowingBackgroundFrame.value = !isShowingBackgroundFrame.value;
 };
 
-const stepForward = async () => {
-  isShowingBackgroundFrame.value = false;
-  pause();
-  animationTick.value = 0;
-  const canAdvance = await renderCurrentFrame(true, frameNum.value + 1);
-  if (canAdvance) {
-    frameNum.value++;
-  }
-  if (header.value && totalFrames.value !== null) {
-    if (header.value.hasBackgroundFrame) {
-      atEndOfPlayback.value = frameNum.value === totalFrames.value - 2;
-    } else {
-      atEndOfPlayback.value = frameNum.value === totalFrames.value - 1;
-    }
-  } else {
-    atEndOfPlayback.value = false;
-  }
-};
-
-const getTrackIdAtPosition = (x: number, y: number): number | null => {
-  const tracks =
-    processedTracks.value[frameNum.value] || ({} as Record<number, TrackBox>);
-  for (const [trackId, trackBox] of Object.entries(tracks)) {
-    const box = trackBox as TrackBox;
-    const [left, top, right, bottom] = box.rect.map((x) => x * scale.value);
-    if (left <= x && right > x && top <= y && bottom > y) {
-      // If the track is already selected, ignore it
-      if (currentTrack && Number(trackId) === currentTrack.id) {
-        continue;
-      }
-      return Number(trackId);
-    }
-  }
-  return null;
+const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
+  // If the track is already selected, ignore it
+  const trackId = (
+    tracksByFrame.value[frameNum.value] || ([] as [TrackId, TrackBox][])
+  )
+    .filter(([trackId]) => trackId !== currentTrack?.id)
+    .find(
+      ([
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _,
+        {
+          rect: [left, top, right, bottom],
+        },
+      ]) => left <= x && right > x && top <= y && bottom > y
+    );
+  return (trackId && trackId[0]) || null;
 };
 
 const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
@@ -1125,10 +1187,13 @@ const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
     const canvasOffset = canvas.value.getBoundingClientRect();
     const x = event.x - canvasOffset.x;
     const y = event.y - canvasOffset.y;
+
+    // FIXME - Do these coords need to be scaled?
     const trackId = getTrackIdAtPosition(x, y);
     overlayCanvas.value.style.cursor = trackId !== null ? "pointer" : "default";
     if (trackId !== null) {
-      await renderCurrentFrame();
+      // FIXME - We really just want to update the overlay here, not render the entire frame
+      setCurrentFrameAndRender(true);
       emit("track-selected", {
         trackId,
       });
@@ -1136,79 +1201,85 @@ const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
   }
 };
 
+const currentVisibleFrame = computed<CptvFrame>(() => {
+  if (isShowingBackgroundFrame.value && backgroundFrame.value) {
+    return backgroundFrame.value;
+  } else {
+    return getFrameAtIndex(frameNum.value);
+  }
+});
+
 const moveOverOverlayCanvas = (event: MouseEvent) => {
   if (canvas.value && overlayCanvas.value) {
     const canvasOffset = canvas.value.getBoundingClientRect();
-    const x = event.x - canvasOffset.x;
-    const y = event.y - canvasOffset.y;
-    const hitTrackIndex = getTrackIdAtPosition(x, y);
+    const { x, y } = event;
+    const offsetX = x - canvasOffset.x;
+    const offsetY = y - canvasOffset.y;
+    const pX = Math.floor(offsetX / scale.value);
+    const pY = Math.floor(offsetY / scale.value);
+    const hitTrackIndex = getTrackIdAtPosition(pX, pY);
     // set cursor
     overlayCanvas.value.style.cursor =
       hitTrackIndex !== null ? "pointer" : "default";
     if (showValueInfo.value && header.value) {
       canvas.value.style.cursor = "default";
       // Map the x,y into canvas size
-      const pX = Math.floor(x / scale.value);
-      const pY = Math.floor(y / scale.value);
-      const frameData = isShowingBackgroundFrame.value
-        ? getFrameAtIndex(-1)
-        : getFrameAtIndex(frameNum.value);
+      const frameData = currentVisibleFrame.value;
       valueUnderCursor.value = `(${pX}, ${pY}) ${
         frameData.data[pY * header.value.width + pX]
       }`;
       if (valueTooltip.value) {
-        if (x > canvasOffset.right - canvasOffset.x - 100) {
-          valueTooltip.value.style.left = `${x - 100}px`;
+        if (offsetX > canvasOffset.right - canvasOffset.x - 100) {
+          valueTooltip.value.style.left = `${offsetX - 100}px`;
         } else {
-          valueTooltip.value.style.left = `${x + 2}px`;
+          valueTooltip.value.style.left = `${offsetX + 2}px`;
         }
-        if (y < canvasOffset.top - canvasOffset.y + 20) {
-          valueTooltip.value.style.top = `${y + 20}px`;
+        if (offsetY < canvasOffset.top - canvasOffset.y + 20) {
+          valueTooltip.value.style.top = `${offsetY + 20}px`;
         } else {
-          valueTooltip.value.style.top = `${y - 20}px`;
+          valueTooltip.value.style.top = `${offsetY - 20}px`;
         }
       }
     }
   }
 };
 
+const frameTimes: number[] = [];
+const pollFrameTimes = () => {
+  if (!polledFps.value) {
+    frameTimes.push(performance.now());
+    if (frameTimes.length < 10) {
+      requestAnimationFrame(pollFrameTimes);
+    } else {
+      const diffs = [];
+      for (let i = 1; i < frameTimes.length; i++) {
+        diffs.push(frameTimes[i] - frameTimes[i - 1]);
+      }
+      let total = 0;
+      for (const val of diffs) {
+        total += val;
+      }
+      // Get the average frame time
+      const multiplier = Math.round(1000 / (total / diffs.length) / 30);
+      if (multiplier === 1) {
+        // 30fps
+        raqFps.value = 30;
+      } else if (multiplier === 2 || multiplier === 3) {
+        // 60fps
+        raqFps.value = 60;
+      } else if (multiplier >= 4) {
+        // 120fps
+        raqFps.value = 120;
+      }
+      polledFps.value = true;
+    }
+  }
+};
+pollFrameTimes();
+window.addEventListener("load", pollFrameTimes);
+
 onMounted(async () => {
   cptvDecoder = new CptvDecoder();
-  const frameTimes: number[] = [];
-  const pollFrameTimes = () => {
-    if (!polledFps.value) {
-      frameTimes.push(performance.now());
-      if (frameTimes.length < 10) {
-        requestAnimationFrame(pollFrameTimes);
-      } else {
-        const diffs = [];
-        for (let i = 1; i < frameTimes.length; i++) {
-          diffs.push(frameTimes[i] - frameTimes[i - 1]);
-        }
-        let total = 0;
-        for (const val of diffs) {
-          total += val;
-        }
-        // Get the average frame time
-        const multiplier = Math.round(1000 / (total / diffs.length) / 30);
-        if (multiplier === 1) {
-          // 30fps
-          raqFps.value = 30;
-        } else if (multiplier === 2 || multiplier === 3) {
-          // 60fps
-          raqFps.value = 60;
-        } else if (multiplier >= 4) {
-          // 120fps
-          raqFps.value = 120;
-        }
-        polledFps.value = true;
-      }
-    }
-  };
-
-  pollFrameTimes();
-  window.addEventListener("load", pollFrameTimes);
-
   // This makes button active styles work in safari iOS.
   document.addEventListener(
     "touchstart",
@@ -1223,137 +1294,107 @@ onMounted(async () => {
     canvas.value.height = 120;
   }
 
-  setCanvasDimensions();
   buffering.value = true;
   if (canSelectTracks) {
     overlayCanvas.value?.addEventListener("click", clickOverlayCanvas);
     overlayCanvas.value?.addEventListener("mousemove", moveOverOverlayCanvas);
   }
-  if (lastCptvUrl !== cptvUrl) {
-    await initPlayer();
-  } else {
-    clearCanvas();
-  }
-  trackExportOptions.value = exportOptions.value;
 });
 
 watch(
   () => recording,
-  () => {
-    trackExportOptions.value = exportOptions.value;
+  (nextRecording: ApiRecordingResponse | null) => {
+    if (nextRecording) {
+      trackExportOptions.value = exportOptions.value;
+    }
   }
 );
 
 watch(
   () => cptvUrl,
-  async (url, prevUrl) => {
-    if (prevUrl !== url) {
-      await initPlayer();
-    } else {
-      clearCanvas();
+  async (nextCptvUrl: string | undefined, prevUrl) => {
+    clearCanvases();
+    if (nextCptvUrl && prevUrl !== nextCptvUrl) {
+      loadedStream.value = false;
+      streamLoadError.value = null;
+      frameNum.value = 0;
+      targetFrameNum.value = 0;
+      header.value = null;
+      setDebugFrameInfo(0);
+      animationTick.value = 0;
+      totalFrames.value = null;
+      playing.value = false;
+      buffering.value = true;
+      wasPaused.value = true;
+      resetRecordingNormalisation();
+      trackExportOptions.value = [];
+      frames = [];
+      cancelAnimationFrame(animationFrame.value);
+
+      console.log(
+        "Can merge",
+        Object.values(framesByTrack.value).length,
+        Object.keys(mergedTracks.value)
+      );
+
+      console.log("Init with cptvUrl", cptvUrl);
+      loadedStream.value = await cptvDecoder.initWithCptvUrlAndKnownSize(
+        nextCptvUrl,
+        cptvSize || 0
+      );
+
+      if (loadedStream.value === true) {
+        header.value = Object.freeze(await cptvDecoder.getHeader());
+        // TODO - Init all the header related info (min/max values etc)
+        setDebugFrameInfo(0);
+        scale.value = canvasWidth.value / header.value.width;
+        // If the header dimensions have changed since the last one, re-init the frameBuffer
+        console.assert(canvas.value);
+        if (
+          canvas.value &&
+          (canvas.value.width !== header.value.width ||
+            canvas.value.height !== header.value.height ||
+            !frameBuffer)
+        ) {
+          frameBuffer = new Uint8ClampedArray(
+            header.value.width * header.value.height * 4
+          );
+          canvas.value.width = header.value.width;
+          canvas.value.height = header.value.height;
+        }
+
+        playing.value = true;
+        emit("ready-to-play", header.value);
+      } else if (typeof loadedStream.value === "string") {
+        if (loadedStream.value === "Failed to verify JWT.") {
+          // FIXME - Don't do this, in fact, don't use JWts for cptv recordings, just pipe them on through.
+          window.location.reload();
+        } else {
+          streamLoadError.value = loadedStream.value;
+          if (await cptvDecoder.hasStreamError()) {
+            await cptvDecoder.free();
+            frames = [];
+            resetRecordingNormalisation();
+            buffering.value = false;
+          }
+        }
+      }
     }
   }
 );
 
-const clearCanvas = () => {
-  if (canvas.value) {
-    const context = canvas.value.getContext("2d");
-    context &&
-      context.clearRect(
-        0,
-        0,
-        context.canvas.width * (1 / pixelRatio.value),
-        context.canvas.height * (1 / pixelRatio.value)
-      );
-
-    if (overlayCanvas.value) {
-      const overlayContext = overlayCanvas.value.getContext("2d");
-      overlayContext &&
-        overlayContext.clearRect(
+const clearCanvases = () => {
+  for (const canvasEl of [canvas.value, overlayCanvas.value]) {
+    if (canvasEl) {
+      const context = canvasEl.getContext("2d");
+      context &&
+        context.clearRect(
           0,
           0,
-          overlayContext.canvas.width * (1 / pixelRatio.value),
-          overlayContext.canvas.height * (1 / pixelRatio.value)
+          context.canvas.width * (1 / pixelRatio.value),
+          context.canvas.height * (1 / pixelRatio.value)
         );
     }
-  }
-};
-
-const loadCptvFile = async (
-  localFile: Uint8Array | null = null,
-  playImmediately = true
-) => {
-  if (!localFile) {
-    if (cptvUrl) {
-      console.log("Init with cptvUrl", cptvUrl);
-      loadedStream.value = await cptvDecoder.initWithCptvUrlAndKnownSize(
-        cptvUrl,
-        cptvSize || 0
-      );
-    }
-  } else {
-    loadedStream.value = await cptvDecoder.initWithLocalCptvFile(localFile);
-  }
-  if (typeof loadedStream.value === "string") {
-    if (loadedStream.value === "Failed to verify JWT.") {
-      window.location.reload();
-    } else {
-      streamLoadError.value = loadedStream.value;
-      if (await cptvDecoder.hasStreamError()) {
-        await cptvDecoder.free();
-        frames = [];
-        openUserDefinedCptvFile.value = true;
-        buffering.value = false;
-      }
-    }
-  } else if (loadedStream.value) {
-    lastCptvUrl = cptvUrl;
-    header.value = Object.freeze(await cptvDecoder.getHeader());
-    setFrameInfo(0);
-    scale.value = canvasWidth.value / header.value.width;
-    emit("ready-to-play", header.value);
-    frameBuffer = new Uint8ClampedArray(
-      header.value.width * header.value.height * 4
-    );
-    if (canvas.value) {
-      canvas.value.width = header.value.width;
-      canvas.value.height = header.value.height;
-    }
-    cancelAnimationFrame(animationFrame.value);
-    if (playImmediately) {
-      await fetchRenderAdvanceFrame();
-      buffering.value = false;
-    }
-  }
-};
-
-const initPlayer = async () => {
-  loadedStream.value = false;
-  streamLoadError.value = null;
-  clearCanvas();
-  atEndOfPlayback.value = false;
-  frameNum.value = 0;
-  header.value = null;
-  setFrameInfo(0);
-  ended.value = false;
-  animationTick.value = 0;
-  loadedFrames.value = 0;
-  totalFrames.value = null;
-  loadProgress.value = 0;
-  playing.value = true;
-  wasPaused.value = true;
-  if (canvas.value) {
-    canvas.value.width = 160;
-    canvas.value.height = 120;
-  }
-  minValue.value = Number.MAX_VALUE;
-  maxValue.value = Number.MIN_VALUE;
-  trackExportOptions.value = [];
-  frames = [];
-  cancelAnimationFrame(animationFrame.value);
-  if (cptvUrl) {
-    openUserDefinedCptvFile.value = false;
-    await loadCptvFile();
   }
 };
 
@@ -1367,59 +1408,44 @@ const exportOptions = computed<TrackExportOption[]>(() => {
   );
 });
 
-const setCanvasDimensions = () => {
-  if (canvas.value) {
-    const canvasDimensions = canvas.value.getBoundingClientRect();
-    canvasWidth.value = canvasDimensions.width;
-    scale.value = canvasWidth.value / 160;
-    if (header.value) {
-      scale.value = canvasWidth.value / header.value.width;
+const setOverlayCanvasDimensions = () => {
+  scale.value = canvasWidth.value / 160;
+  if (header.value) {
+    scale.value = canvasWidth.value / header.value.width;
+  }
+  if (overlayCanvas.value) {
+    overlayCanvas.value.width = canvasWidth.value * pixelRatio.value;
+    overlayCanvas.value.height = canvasHeight.value * pixelRatio.value;
+    if (overlayContext.value) {
+      overlayContext.value.scale(pixelRatio.value, pixelRatio.value);
     }
-    canvasHeight.value = canvasDimensions.width * 0.75;
-    if (overlayCanvas.value) {
-      overlayCanvas.value.width = canvasWidth.value * pixelRatio.value;
-      overlayCanvas.value.height = canvasHeight.value * pixelRatio.value;
-      overlayCanvas.value.style.width = `${canvasWidth.value}px`;
-      overlayCanvas.value.style.height = `${canvasHeight.value}px`;
-      const context = overlayCanvas.value.getContext("2d");
-      if (context) {
-        context.scale(pixelRatio.value, pixelRatio.value);
-      }
-    }
-    if (container.value) {
-      //container.value.style.maxHeight = `${canvasHeight.value}px`;
-    }
-    if (header.value) {
-      renderCurrentFrame();
-    }
+  }
+  if (header.value) {
+    // FIXME - We really just want to update the overlay here
+    setCurrentFrameAndRender(true);
   }
 };
 
 const startSeek = () => {
   wasPaused.value = !playing.value;
-  if (!wasPaused.value) {
-    pause();
-  }
-  isSeeking.value = true;
+  playing.value = false;
 };
 
 const endSeek = () => {
   if (!wasPaused.value) {
-    play();
+    playing.value = true;
   }
-  isSeeking.value = false;
 };
 </script>
 <template>
   <div class="cptv-player">
     <div key="container" class="video-container" ref="container">
-      <canvas key="base" ref="canvas" :class="['video-canvas', { smoothed }]" />
-      <canvas key="overlay" ref="overlayCanvas" class="overlay-canvas" />
-      <span
-        key="messaging"
-        :class="['player-messaging', { show: playerMessage !== null }]"
-        v-html="playerMessage"
+      <canvas
+        key="base"
+        ref="canvas"
+        :class="['video-canvas', { smoothed: videoSmoothing }]"
       />
+      <canvas key="overlay" ref="overlayCanvas" class="overlay-canvas" />
       <span
         key="px-value"
         v-show="showValueInfo"
@@ -1427,10 +1453,12 @@ const endSeek = () => {
         class="value-tooltip"
         >{{ valueUnderCursor }}
       </span>
-      <div
-        key="buffering"
-        :class="['playback-controls', { show: isBuffering }]"
-      >
+      <span
+        key="messaging"
+        :class="['player-messaging', { show: playerMessage !== null }]"
+        v-html="playerMessage"
+      />
+      <div key="buffering" :class="['playback-controls', { show: buffering }]">
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
       <div
@@ -1438,7 +1466,7 @@ const endSeek = () => {
         :class="[
           'playback-controls',
           {
-            show: atEndOfPlayback && !extLoading,
+            show: atEndOfPlayback,
           },
         ]"
       >
@@ -1470,12 +1498,9 @@ const endSeek = () => {
         <font-awesome-icon v-else icon="pause" />
       </button>
       <div class="right-nav">
-        <div
-          :class="['advanced-controls', { open: showAdvancedControls }]"
-          v-if="canUseAdvancedControls"
-        >
+        <div :class="['advanced-controls', { open: showAdvancedControls }]">
           <button
-            @click="toggleAdvancedControls"
+            @click="showAdvancedControls = !showAdvancedControls"
             class="advanced-controls-btn"
             :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
             ref="advancedControlsButton"
@@ -1486,7 +1511,7 @@ const endSeek = () => {
             />
           </button>
           <button
-            @click="toggleDebugTools"
+            @click="showDebugTools = !showDebugTools"
             ref="debugTools"
             data-tooltip="Debug tools"
             :class="{ selected: showDebugTools }"
@@ -1494,13 +1519,15 @@ const endSeek = () => {
             <font-awesome-icon icon="wrench" />
           </button>
           <button
-            @click="toggleSmoothing"
+            @click="videoSmoothing = !videoSmoothing"
             ref="toggleSmoothingButton"
-            :data-tooltip="smoothed ? 'Disable smoothing' : 'Enable smoothing'"
+            :data-tooltip="
+              videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
+            "
             :disabled="!hasVideo"
           >
             <svg
-              v-if="smoothed"
+              v-if="videoSmoothing"
               aria-hidden="true"
               focusable="false"
               viewBox="0 0 18 18"
@@ -1585,14 +1612,6 @@ const endSeek = () => {
         <div ref="frameNumField"></div>
         <div ref="ffcSecsAgo"></div>
       </div>
-      <!--      <button-->
-      <!--        @click="toggleHistogram"-->
-      <!--        ref="toggleHistogramButton"-->
-      <!--        :disabled="!hasVideo"-->
-      <!--        :data-tooltip="showingHistogram ? 'Hide histogram' : 'Show histogram'"-->
-      <!--      >-->
-      <!--        <font-awesome-icon icon="chart-bar" />-->
-      <!--      </button>-->
       <div>
         <button
           @click="stepBackward"
@@ -1619,9 +1638,51 @@ const endSeek = () => {
               ? 'Disable picker'
               : 'Show raw pixel values under cursor'
           "
-          ref="toggleValuePicker"
         >
           <font-awesome-icon icon="eye-dropper" />
+        </button>
+        <button
+          @click="trackHighlightMode = !trackHighlightMode"
+          :disabled="!hasVideo"
+          :class="{ selected: trackHighlightMode }"
+          :data-tooltip="
+            trackHighlightMode
+              ? 'Disable highlight'
+              : 'Highlight selected track'
+          "
+        >
+          <font-awesome-icon icon="highlighter" />
+        </button>
+        <button
+          @click="polygonEditMode = !polygonEditMode"
+          :disabled="!hasVideo"
+          :class="{ selected: polygonEditMode }"
+          :data-tooltip="
+            polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
+          "
+        >
+          <font-awesome-icon icon="draw-polygon" />
+          <!--         draw-polygon, bezier-curve, vector-square -->
+        </button>
+        <button
+          @click="silhouetteMode = !silhouetteMode"
+          :disabled="!hasVideo"
+          :class="{ selected: silhouetteMode }"
+          :data-tooltip="
+            silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
+          "
+        >
+          <font-awesome-icon icon="burst" />
+        </button>
+        <button
+          @click="motionPathMode = !motionPathMode"
+          :disabled="!hasVideo"
+          :class="{ selected: motionPathMode }"
+          :data-tooltip="
+            motionPathMode ? 'Hide motion paths' : 'Show motion paths'
+          "
+        >
+          <font-awesome-icon icon="route" />
         </button>
         <button
           :disabled="!hasVideo || !hasBackgroundFrame"
@@ -1637,13 +1698,13 @@ const endSeek = () => {
     <div class="tracks-container">
       <tracks-scrubber
         class="player-tracks"
-        :tracks="recording?.tracks || []"
+        :tracks="tracksIntermediate"
         :current-track="currentTrack"
-        :duration="recording?.duration || 0"
+        :total-frames="totalPlayableFrames"
         @change-playback-time="playbackTimeChanged"
         @start-scrub="startSeek"
         @end-scrub="endSeek"
-        :playback-time="playbackTime"
+        :playback-time="playbackTimeZeroOne"
       />
     </div>
   </div>
@@ -1675,6 +1736,10 @@ const endSeek = () => {
     position: absolute;
     top: 0;
     left: 0;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
   }
   .time,
   .temp,

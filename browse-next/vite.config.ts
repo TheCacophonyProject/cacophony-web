@@ -18,4 +18,12 @@ export default defineConfig({
       "@typedefs": fileURLToPath(new URL("../types", import.meta.url)),
     },
   },
+  // build: {
+  //   rollupOptions: {
+  //     output: {
+  //       inlineDynamicImports: false,
+  //       format: "iife",
+  //     },
+  //   },
+  // },
 });

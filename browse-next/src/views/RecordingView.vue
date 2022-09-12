@@ -40,6 +40,7 @@ const recordingIds = ref(
 );
 const currentRecordingId = ref<number>(Number(route.params.currentRecordingId));
 const currentStationId = ref<StationId | null>(null);
+const currentTrack = ref<ApiTrackResponse | undefined>(undefined);
 const currentStations = ref<ApiStationResponse[] | null>(stations.value);
 const visitLabel = ref<string>(route.params.visitLabel as string);
 
@@ -48,6 +49,15 @@ watch(
   (nextRecordingId) => {
     currentRecordingId.value = Number(nextRecordingId);
     loadRecording();
+  }
+);
+
+watch(
+  () => route.params.trackId,
+  (nextTrackId) => {
+    currentTrack.value = recording.value?.tracks.find(
+      ({ id }) => id == Number(nextTrackId)
+    );
   }
 );
 
@@ -279,9 +289,15 @@ const loadRecording = async () => {
         // TODO: Handle expiry of this
         downloadJwt: recordingResponse.result.downloadRawJWT || "",
       };
-      console.log("Loaded recording", recordingData.value);
 
-      if ((route.name as string).endsWith("-tracks") && !route.params.trackId) {
+      if (route.params.trackId) {
+        currentTrack.value = recordingData.value?.recording.tracks.find(
+          ({ id }) => id == Number(route.params.trackId)
+        );
+      }
+      console.log("Loaded recording", recordingData.value, currentTrack.value);
+
+      if ((route.name as string).endsWith("-tracks") && !route.params.trackId || (route.params.trackId && !currentTrack.value)) {
         // set the default track if not set
         if (tracks.value.length) {
           await router.replace({
@@ -400,7 +416,7 @@ const activeTabName = computed(() => {
 
 const recordingViewContext = "dashboard-visit";
 
-const cptvUrl = computed<string | null>(() => {
+const cptvUrl = computed<string | undefined>(() => {
   if (recordingData.value) {
     return `https://browse.cacophony.org.nz/api/v1/signedUrl?jwt=${recordingData.value.downloadJwt}`;
   }
@@ -430,7 +446,11 @@ const cptvUrl = computed<string | null>(() => {
     </header>
     <div class="d-flex">
       <div class="player-container">
-        <cptv-player :recording="recording" :cptv-url="cptvUrl" />
+        <cptv-player
+          :recording="recording"
+          :cptv-url="cptvUrl"
+          :current-track="currentTrack"
+        />
       </div>
       <div class="recording-info d-flex flex-column flex-fill">
         <div class="recording-station-info d-flex mb-3 pe-3">

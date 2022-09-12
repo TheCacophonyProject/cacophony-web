@@ -115,7 +115,7 @@ export class CptvDecoder {
 
   /**
    * If the file stream has completed, this gives the total number
-   * of playable frames in the file (excluding any background frame).
+   * of playable frames in the file (including any background frame).
    */
   async getTotalFrames(): Promise<number | null> {
     const type = "getTotalFrames";

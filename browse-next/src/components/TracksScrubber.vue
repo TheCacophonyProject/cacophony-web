@@ -1,23 +1,21 @@
 <script setup lang="ts">
 import ScrubberWrapper from "@/components/ScrubberWrapper.vue";
-import type { ApiTrackResponse } from "@typedefs/api/track";
 import { computed, onMounted, ref, watch } from "vue";
 import { TagColours } from "@/consts";
 import { useDevicePixelRatio } from "@vueuse/core";
+import type { IntermediateTrack } from "@/components/cptv-player/cptv-player-types";
 const { pixelRatio } = useDevicePixelRatio();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {
   tracks = [],
-  duration,
+  totalFrames,
   currentTrack,
-  timeAdjustmentForBackgroundFrame = 0,
   sidePadding = 1,
   playbackTime = 0,
 } = defineProps<{
-  tracks: ApiTrackResponse[];
-  duration: number;
-  currentTrack?: ApiTrackResponse;
-  timeAdjustmentForBackgroundFrame?: number;
+  tracks: IntermediateTrack[];
+  totalFrames: number;
+  currentTrack?: IntermediateTrack;
   sidePadding?: number;
   playbackTime: number;
 }>();
@@ -52,16 +50,9 @@ const heightForTracks = computed((): number => {
   return Math.max(44, heightForTracks + paddingY * 2);
 });
 
-const actualDuration = computed<number>(() => {
-  return Math.max(
-    ...tracks.map(({ end }) => end - timeAdjustmentForBackgroundFrame),
-    duration - timeAdjustmentForBackgroundFrame
-  );
-});
-
 const getOffsetYForTrack = (
   trackIndex: number,
-  tracks: ApiTrackResponse[],
+  tracks: IntermediateTrack[],
   trackDimensions: TrackDimensions[],
   thisLeft: number,
   thisRight: number
@@ -101,17 +92,15 @@ const getOffsetYForTrack = (
   }
   return topOffset;
 };
-const initTrackDimensions = (tracks: ApiTrackResponse[]): void => {
+const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
   // Init track dimensions
   const dimensions = [];
   numUniqueYSlots.value = 0;
   const uniqueYSlots: Record<number, boolean> = {};
   for (let i = 0; i < tracks.length; i++) {
-    const thisLeft =
-      (tracks[i].start - timeAdjustmentForBackgroundFrame) /
-      actualDuration.value;
+    const thisLeft = tracks[i].positions[0][0] / totalFrames;
     const thisRight =
-      (tracks[i].end - timeAdjustmentForBackgroundFrame) / actualDuration.value;
+      tracks[i].positions[tracks[i].positions.length - 1][0] / totalFrames;
     const yOffset = getOffsetYForTrack(
       i,
       tracks,
@@ -137,7 +126,7 @@ onMounted(() => {
 
 watch(
   () => tracks,
-  (nextTracks: ApiTrackResponse[]) => {
+  (nextTracks: IntermediateTrack[]) => {
     initTrackDimensions(nextTracks);
     updatePlayhead(playbackTime, scrubberWidth.value, pixelRatio.value);
   }
@@ -159,6 +148,10 @@ const onChangeWidth = (width: number) => {
   updatePlayhead(playbackTime, width, pixelRatio.value);
 };
 
+const fullWidthMinusPadding = computed<number>(() => {
+  return ((scrubberWidth.value - sidePadding * 2) / scrubberWidth.value) * 100;
+});
+
 const updatePlayhead = (
   offset: number,
   scrubberWidth: number,
@@ -172,6 +165,7 @@ const updatePlayhead = (
     if (playhead.value) {
       playhead.value.width = scrubberWidth * pixelRatio;
       const playheadContext = playhead.value.getContext("2d");
+      const playheadLineWidth = pixelRatio;
       if (playheadContext) {
         playheadContext.fillStyle = "rgba(0, 0, 0, 0.35)";
         playheadContext.clearRect(
@@ -182,9 +176,12 @@ const updatePlayhead = (
         );
         const playheadX = Math.max(
           0,
-          sidePadding * pixelRatio +
-            offset * (playhead.value.width - sidePadding * 2 * pixelRatio)
+          Math.min(
+            playhead.value.width - playheadLineWidth,
+            offset * playhead.value.width - playheadLineWidth
+          )
         );
+
         playheadContext.fillRect(0, 0, playheadX, playhead.value.height);
         playheadContext.lineWidth = pixelRatio;
         playheadContext.strokeStyle = "white";
@@ -207,12 +204,13 @@ const currentTrackIndex = computed<number>(() => {
   }
   return 0;
 });
-
 </script>
 <template>
   <scrubber-wrapper
     @width-change="onChangeWidth"
     @change="setPlaybackTime"
+    @scrub-start="() => emit('start-scrub')"
+    @scrub-end="() => emit('end-scrub')"
     v-slot="{ width }"
   >
     <div
@@ -229,10 +227,10 @@ const currentTrackIndex = computed<number>(() => {
           background: TagColours[(index - 1) % TagColours.length].background,
           opacity: index - 1 === currentTrackIndex ? 1.0 : 0.5,
           right: `calc(${sidePadding}px + ${
-            (1 - trackDimensions[index - 1].right) * 100
+            (1 - trackDimensions[index - 1].right) * fullWidthMinusPadding
           }%)`,
           left: `calc(${sidePadding}px + ${
-            trackDimensions[index - 1].left * 100
+            trackDimensions[index - 1].left * fullWidthMinusPadding
           }%`,
           top: `${
             trackDimensions[index - 1].top -
@@ -249,7 +247,7 @@ const currentTrackIndex = computed<number>(() => {
       height="1"
       :style="{ height: `${heightForTracks}px` }"
     ></canvas>
-      <div class="playhead"></div>
+    <div class="playhead"></div>
   </scrubber-wrapper>
 </template>
 <style scoped lang="less">

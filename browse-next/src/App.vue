@@ -57,6 +57,11 @@ const CurrentUser = computed<LoggedInUser>(() => {
   return fallibleCurrentUser.value as LoggedInUser;
 });
 
+const currentUserName = computed<string>(() => {
+  // Remove spaces.
+  return CurrentUser.value.userName.replace(/ /g, "&nbsp;");
+});
+
 onBeforeMount(() => {
   // Override bootstrap CSS variables.
   // This has to appear after the original bootstrap CSS variable declarations in the DOM to take effect.
@@ -389,7 +394,7 @@ onMounted(() => {
               </svg>
             </span>
           </span>
-          <span>{{ CurrentUser.userName }}</span>
+          <span v-html="currentUserName"></span>
         </router-link>
         <router-link
           :to="{ name: 'sign-out' }"

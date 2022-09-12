@@ -43,6 +43,15 @@ import {
   faWrench,
   faPalette,
   faInfoCircle,
+  faHighlighter,
+  faArrowTrendUp,
+  faDrawPolygon,
+  faKiwiBird,
+  faRoute,
+  faDove,
+  faCrow,
+  faCat,
+  faBurst,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -98,7 +107,16 @@ library.add(
   faAngleRight,
   faWrench,
   faPalette,
-  faInfoCircle
+  faInfoCircle,
+  faHighlighter,
+  faArrowTrendUp,
+  faDrawPolygon,
+  faKiwiBird,
+  faRoute,
+  faDove,
+  faCrow,
+  faCat,
+  faBurst
 );
 
 export default FontAwesomeIcon;
