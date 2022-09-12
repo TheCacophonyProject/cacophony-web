@@ -152,7 +152,11 @@ export default defineComponent({
     const searchOptions = (options: Option[]) => {
       return options.reduce((acc, option) => {
         if (
-          option.label.toLowerCase().includes(searchTerm.value.toLowerCase())
+          option.label.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
+          (option.display &&
+            option.display
+              .toLowerCase()
+              .includes(searchTerm.value.toLowerCase()))
         ) {
           acc.push(option);
         }
