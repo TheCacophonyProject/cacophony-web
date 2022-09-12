@@ -141,6 +141,7 @@ export default defineComponent({
         return props.value;
       },
       set(value) {
+        showOptions.value = typeof selectedOptions.value !== "string";
         emit("input", value);
       },
     });
@@ -237,7 +238,6 @@ export default defineComponent({
 
     watch(searchTerm, () => {
       if (searchTerm.value === "") {
-        showOptions.value = typeof selectedOptions.value !== "string";
         if (currPath.value[0] === "search") {
           setToPath("all");
         }
