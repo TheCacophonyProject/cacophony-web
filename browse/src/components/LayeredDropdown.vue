@@ -238,7 +238,9 @@ export default defineComponent({
     watch(searchTerm, () => {
       if (searchTerm.value === "") {
         showOptions.value = typeof selectedOptions.value !== "string";
-        setToPath("all");
+        if (currPath.value[0] === "search") {
+          setToPath("all");
+        }
         return;
       }
       currPath.value = ["search"];
