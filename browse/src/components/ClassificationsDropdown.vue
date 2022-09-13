@@ -43,13 +43,11 @@ export default defineComponent({
       const cached = localStorage.getItem("classifications");
       if (cached) {
         const parsed = JSON.parse(cached);
-        const res = await api.classifications.getClassifications(
-          parsed.version
-        );
-        if (res.success && res.result.version !== parsed.version) {
-          localStorage.setItem("classifications", JSON.stringify(res.result));
-          return res.result;
-        }
+        api.classifications.getClassifications(parsed.version).then((res) => {
+          if (res.success && res.result.version !== parsed.version) {
+            localStorage.setItem("classifications", JSON.stringify(res.result));
+          }
+        });
         return parsed;
       } else {
         const res = await api.classifications.getClassifications();
