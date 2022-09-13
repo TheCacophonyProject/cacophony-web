@@ -15,7 +15,7 @@ const passwordIsTooShort = computed<boolean>(
   () => userPassword.value.trim().length < 9
 );
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
-  () => (userPassword.touched ? isValidPassword.value : null)
+  () => (userPassword.touched ? isValidPassword.value : undefined)
 );
 const passwordConfirmationMatches = computed<boolean>(
   () => userPasswordConfirmation.value.trim() === userPassword.value.trim()
@@ -24,7 +24,7 @@ const needsValidationAndIsValidPasswordConfirmation =
   computed<FormInputValidationState>(() =>
     userPasswordConfirmation.touched
       ? isValidPassword.value && passwordConfirmationMatches.value
-      : null
+      : undefined
   );
 
 // ---------- password visibility ------------

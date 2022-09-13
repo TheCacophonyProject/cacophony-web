@@ -2,14 +2,8 @@
 import { computed, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
 import { formFieldInputText } from "@/utils";
+import type { FormInputValidationState, FormInputValue } from "@/utils";
 import { resetPassword as sendResetPasswordRequest } from "@api/User";
-
-interface FormInputValue {
-  value: string;
-  touched: boolean;
-}
-
-type FormInputValidationState = boolean | null;
 
 const userEmailAddress: FormInputValue = formFieldInputText();
 const resetErrorMessage = ref<string | false>(false);
@@ -35,7 +29,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    userEmailAddress.touched ? isValidEmailAddress.value : null
+    userEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
 const resetPassword = async () => {

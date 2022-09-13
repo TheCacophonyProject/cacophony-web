@@ -220,7 +220,7 @@ const currentTrackIndex = computed<number>(() => {
       }"
     >
       <div
-        v-for="index in tracks.length"
+        v-for="index in Math.min(tracks.length, trackDimensions.length)"
         :key="index - 1"
         :title="`Track ${index}`"
         :style="{

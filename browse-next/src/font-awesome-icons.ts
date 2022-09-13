@@ -52,6 +52,9 @@ import {
   faCrow,
   faCat,
   faBurst,
+  faThumbsUp as faThumbsUpSolid,
+  faThumbsDown as faThumbsDownSolid,
+  faCheckCircle,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -59,6 +62,8 @@ import {
   faCalendar,
   faFlag,
   faStar,
+  faThumbsUp,
+  faThumbsDown,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(
@@ -116,7 +121,12 @@ library.add(
   faDove,
   faCrow,
   faCat,
-  faBurst
+  faBurst,
+  faThumbsUp,
+  faThumbsUpSolid,
+  faThumbsDown,
+  faThumbsDownSolid,
+  faCheckCircle
 );
 
 export default FontAwesomeIcon;

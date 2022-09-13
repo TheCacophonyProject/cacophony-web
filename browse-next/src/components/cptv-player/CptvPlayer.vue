@@ -37,6 +37,7 @@ import {
   drawBottomRightOverlayLabel,
   renderOverlay,
 } from "@/components/cptv-player/overlay-canvas";
+import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 const { pixelRatio } = useDevicePixelRatio();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {
@@ -101,6 +102,14 @@ watch(canvasWidth, () => {
   animationTick.value = 0;
   setOverlayCanvasDimensions();
 });
+
+watch(
+  () => currentTrack,
+  (nextTrack) => {
+    updateOverlayCanvas(frameNum.value);
+  }
+);
+
 const container = ref<HTMLDivElement | null>(null);
 const frameNumField = ref<HTMLDivElement | null>(null);
 const ffcSecsAgo = ref<HTMLDivElement | null>(null);
@@ -114,8 +123,6 @@ const playerMessage = ref<string | null>(null);
 const showValueInfo = ref<boolean>(false);
 const buffering = ref<boolean>(false);
 
-// TODO - Make this be computed.
-//const atEndOfPlayback = ref<boolean>(false);
 const showAtEndOfSearch = ref<boolean>(false);
 const frameNum = ref<number>(0);
 const targetFrameNum = ref<number>(0);
@@ -170,15 +177,21 @@ const videoSmoothing = persistentBooleanPref(
 );
 
 const speedMultiplierIndex = ref<number>(
-  PlaybackSpeeds.indexOf(
-    Number(localStorage.getItem("video-playback-speed"))
-  ) || 0
+  Math.max(
+    PlaybackSpeeds.indexOf(
+      Number(localStorage.getItem("video-playback-speed"))
+    ),
+    0
+  )
 );
 
 const paletteIndex = ref<number>(
-  ColourMaps.findIndex(
-    ([name]) => name === localStorage.getItem("video-palette")
-  ) || 0
+  Math.max(
+    ColourMaps.findIndex(
+      ([name]) => name === localStorage.getItem("video-palette")
+    ),
+    0
+  )
 );
 const colourMap = ref<[string, Uint32Array]>(ColourMaps[paletteIndex.value]);
 const messageTimeout = ref<number | null>(null);
@@ -331,15 +344,6 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
   while (frames.length <= frameNumToRender && !totalFrames.value) {
     seekingInProgress.value = true;
     const frame = await cptvDecoder.getNextFrame();
-    console.assert(frame !== null);
-    if (frame === null) {
-      // Poll again so that we can read out totalFrames
-      await cptvDecoder.getNextFrame();
-    }
-    if (header.value?.totalFrames) {
-      knownDurationInternal.value = header.value.totalFrames / fps.value;
-    }
-    totalFrames.value = await cptvDecoder.getTotalFrames();
     if (frame === null) {
       if (await cptvDecoder.hasStreamError()) {
         streamLoadError.value = await cptvDecoder.getStreamError();
@@ -348,9 +352,9 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       }
       break;
     }
+    totalFrames.value = await cptvDecoder.getTotalFrames();
     if (!totalFrames.value) {
-      // If we got the total frames, then we're at the end of the stream, and the last
-      // frame has already been pulled out.
+      // If we got total frames, this frame is a duplicate.
       addFrame(frame);
     }
   }
@@ -384,17 +388,12 @@ const seekToSpecifiedFrameAndRender = async (
   if (frameNumToRender === undefined) {
     frameNumToRender = targetFrameNum.value;
   }
-  if (header.value) {
-    // FIXME - is this needed?
-    await cptvDecoder.getLoadProgress();
-    await makeSureWeHaveTheFrame(frameNumToRender);
-    const gotFrame = frameNumToRender < frames.length;
-    if (gotFrame) {
-      setCurrentFrameAndRender(force, frameNumToRender);
-    }
-    return gotFrame;
+  await makeSureWeHaveTheFrame(frameNumToRender);
+  const gotFrame = frameNumToRender < frames.length;
+  if (gotFrame) {
+    setCurrentFrameAndRender(force, frameNumToRender);
   }
-  return false;
+  return gotFrame;
 };
 
 const loadedFramesForTrack = (trackId: TrackId): CptvFrame[] => {
@@ -602,18 +601,6 @@ const timeAdjustmentForBackgroundFrame = computed<number>(() => {
   return 0;
 });
 
-const knownDurationInternal = ref<number | null>(null);
-
-const knownDuration = computed<number | null>(() => {
-  if (knownDurationInternal.value) {
-    return knownDurationInternal.value;
-  }
-  if (recording) {
-    return recording.duration;
-  }
-  return null;
-});
-
 const fps = computed<number>(() => {
   if (header.value) {
     return header.value.fps;
@@ -632,12 +619,13 @@ const totalPlayableFrames = computed<number>(() => {
     }
     if (header.value) {
       const backgroundAdjust = header.value.hasBackgroundFrame ? 1 : 0;
-      return Math.max(
-        (header.value.duration || 0) / fps.value - backgroundAdjust,
-        ...(recording || { tracks: [] }).tracks.map(
-          ({ end }) => end / fps.value - backgroundAdjust
-        ),
-        (knownDuration.value || 0) / fps.value - backgroundAdjust
+      return Math.round(
+        Math.max(
+          ((recording || {}).duration || 0) * fps.value - backgroundAdjust,
+          ...(recording || { tracks: [] }).tracks.map(
+            ({ end }) => end * fps.value - backgroundAdjust
+          )
+        )
       );
     }
   }
@@ -744,52 +732,15 @@ const tracksByFrame = computed<Record<FrameNum, [TrackId, TrackBox][]>>(() => {
   );
 });
 
-// IDEA: collapse tracks that are part of the same overall tracks here, and track all their ids as aliases.
-//  If a user tags one of them, tag all the ids with the same tag.  Easier than consolidating the tracks on the
-//  backend side when they're inserted.  If the AI disagrees for each part of the track, find some way of choosing
-//  which one to display.
-const trackDirection = (trackPositions: Rectangle[]) => {
-  // Get a vector of the track overall direction, so we can compare it to other tracks.
-  // Maybe just during the overlap phase.
-  return;
-};
-
-const trackSpeed = (trackPositions: Rectangle[]) => {
-  // Get a metric for the track speed, to be compared with tracks we might want to merge with.
-  // Maybe just during the overlap phase.
-  return;
-};
-
-const intersects = (a: Rectangle, b: Rectangle): boolean => {
-  return !(a[2] < b[0] || a[0] > b[2] || a[3] < b[1] || a[1] > b[3]);
-};
-
-const intersection = (a: Rectangle, b: Rectangle): Rectangle => {
-  // return the intersection rect of two rects
-  return [
-    Math.max(a[0], b[0]),
-    Math.max(a[1], b[1]),
-    Math.min(a[2], b[2]),
-    Math.min(a[3], b[3]),
-  ];
-};
-
-const union = (a: Rectangle, b: Rectangle): Rectangle => {
-  return [
-    Math.min(a[0], b[0]),
-    Math.min(a[1], b[1]),
-    Math.max(a[2], b[2]),
-    Math.max(a[3], b[3]),
-  ];
-};
-
 // #1296036 Check out this false positive
-
 const mergedTracks = computed(() => {
   // #1285017 Make sure this example doesn't get merged.
   // #1295326, Also make sure this doesn't get merged.
 
-  // #1302826 Make sure this one doe
+  // #1302826 Make sure this one does
+  // And this one #1316684
+
+  // Head/tail merging - how many frames of overlap do we allow?
 
   let mergeCandidates: Record<string, boolean> = {};
   for (const [frameNum, tracks] of Object.entries(tracksByFrame.value).filter(
@@ -799,7 +750,7 @@ const mergedTracks = computed(() => {
       for (const [trackId, trackBox] of tracks) {
         if (trackId !== trackA) {
           // Check for intersections.
-          if (intersects(trackBox.rect, trackABox.rect)) {
+          if (rectanglesIntersect(trackBox.rect, trackABox.rect)) {
             if (trackId < trackA) {
               mergeCandidates[`${trackId}_${trackA}`] = true;
             } else {
@@ -858,7 +809,6 @@ const ambientTemperature = computed<string | null>(() => {
 
 const updateOverlayCanvas = (frameNumToRender: number) => {
   // FIXME - Move this somewhere else, like when the frame advances
-
   if (overlayContext.value) {
     renderOverlay(
       overlayContext.value,
@@ -893,6 +843,10 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
 };
 
 const ticksBetweenDraws = computed<number>(() => {
+  // We only redraw the canvas at 9fps (the frame rate of the recording)
+  // Since actual refresh rate of the requestAnimationFrame loop is
+  // 30 or 60 or 120fps, we need to wait a certain number of ticks
+  // until the right frame comes up for rendering.
   // One tick represents 1000 / fps * multiplier
   return Math.max(
     1,
@@ -907,62 +861,6 @@ const shouldRedrawThisTick = computed<boolean>(() => {
     0
   );
 });
-
-const drawFrame = async (
-  context: CanvasRenderingContext2D | null,
-  imgData: ImageData,
-  frameNumToRender: number,
-  force = false
-): Promise<void> => {
-  if (context) {
-    if (force) {
-      animationTick.value = 0;
-    }
-    // NOTE: respect fps here, render only when we should.
-    if (shouldRedrawThisTick.value || force) {
-      // Actually draw the frame contents for this requestAnimationFrame tick.
-      context.putImageData(imgData, 0, 0);
-      updateOverlayCanvas(frameNumToRender);
-      setDebugFrameInfo(frameNumToRender);
-      frameNum.value = frameNumToRender;
-
-      if (playing.value && stopAtFrame.value) {
-        if (frameNum.value === stopAtFrame.value) {
-          stopAtFrame.value = null;
-          playing.value = false;
-        }
-      }
-
-      {
-        let didAdvance = false;
-        if (playing.value) {
-          // Queue up the next frame.
-          targetFrameNum.value = frameNumToRender + 1;
-          didAdvance = await seekToSpecifiedFrameAndRender(
-            false,
-            targetFrameNum.value
-          );
-        }
-        if (didAdvance) {
-          animationTick.value = 0;
-        } else {
-          if (playing.value) {
-            playing.value = false;
-          }
-          frameNum.value = frameNumToRender;
-          animationTick.value++;
-        }
-      }
-    } else {
-      // We don't draw on this tick, so increment and request again.
-      animationTick.value++;
-      cancelAnimationFrame(animationFrame.value);
-      animationFrame.value = requestAnimationFrame(() =>
-        drawFrame(context, imgData, frameNumToRender)
-      ) as number;
-    }
-  }
-};
 
 watch(playing, async (nextPlaying: boolean) => {
   if (nextPlaying) {
@@ -981,7 +879,6 @@ watch(playing, async (nextPlaying: boolean) => {
 
 watch(frameNum, () => {
   if (
-    header.value &&
     totalPlayableFrames.value &&
     frameNum.value === totalPlayableFrames.value - 1
   ) {
@@ -1001,10 +898,7 @@ watch(frameNum, () => {
 });
 
 const atEndOfPlayback = computed<boolean>(() => {
-  if (header.value) {
-    return frameNum.value === totalPlayableFrames.value - 1;
-  }
-  return false;
+  return frameNum.value === totalPlayableFrames.value - 1;
 });
 
 const togglePlayback = async (): Promise<void> => {
@@ -1019,10 +913,6 @@ const togglePlayback = async (): Promise<void> => {
     playing.value = false;
   }
 };
-
-watch(showDebugTools, (nextVal: boolean) => {
-  localStorage.setItem("show-debug-tools", nextVal.toString());
-});
 
 const setPlayerMessage = (message: string) => {
   if (messageTimeout.value !== null || playerMessage.value !== null) {
@@ -1084,6 +974,11 @@ const canvasContext = computed<CanvasRenderingContext2D | null>(() => {
   }
   return null;
 });
+
+const canStepBackward = computed<boolean>(() => frameNum.value > 0);
+const canStepForward = computed<boolean>(
+  () => frameNum.value < totalPlayableFrames.value - 1
+);
 
 const stepBackward = async () => {
   isShowingBackgroundFrame.value = false;
@@ -1185,15 +1080,12 @@ const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
 const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
   if (canvas.value && overlayCanvas.value) {
     const canvasOffset = canvas.value.getBoundingClientRect();
-    const x = event.x - canvasOffset.x;
-    const y = event.y - canvasOffset.y;
-
-    // FIXME - Do these coords need to be scaled?
-    const trackId = getTrackIdAtPosition(x, y);
+    const pX = Math.floor((event.x - canvasOffset.x) / scale.value);
+    const pY = Math.floor((event.y - canvasOffset.y) / scale.value);
+    const trackId = getTrackIdAtPosition(pX, pY);
     overlayCanvas.value.style.cursor = trackId !== null ? "pointer" : "default";
     if (trackId !== null) {
-      // FIXME - We really just want to update the overlay here, not render the entire frame
-      setCurrentFrameAndRender(true);
+      console.log("Emit track selected", trackId);
       emit("track-selected", {
         trackId,
       });
@@ -1331,11 +1223,13 @@ watch(
       frames = [];
       cancelAnimationFrame(animationFrame.value);
 
-      console.log(
-        "Can merge",
-        Object.values(framesByTrack.value).length,
-        Object.keys(mergedTracks.value)
-      );
+      if ((recording?.tracks || []).length > 1) {
+        console.log(
+          "Can merge",
+          Object.values(framesByTrack.value).length,
+          Object.keys(mergedTracks.value)
+        );
+      }
 
       console.log("Init with cptvUrl", cptvUrl);
       loadedStream.value = await cptvDecoder.initWithCptvUrlAndKnownSize(
@@ -1363,8 +1257,19 @@ watch(
           canvas.value.height = header.value.height;
         }
 
-        playing.value = true;
         emit("ready-to-play", header.value);
+
+        if (currentTrack) {
+          console.log("Should seek to ", currentTrack.id);
+          const firstFrameForTrack = Number(
+            Object.keys(framesByTrack.value[currentTrack.id])[0]
+          );
+          console.log(firstFrameForTrack);
+          targetFrameNum.value = firstFrameForTrack;
+          await seekToSpecifiedFrameAndRender(true, firstFrameForTrack);
+          frameNum.value = firstFrameForTrack;
+        }
+        playing.value = true;
       } else if (typeof loadedStream.value === "string") {
         if (loadedStream.value === "Failed to verify JWT.") {
           // FIXME - Don't do this, in fact, don't use JWts for cptv recordings, just pipe them on through.
@@ -1434,6 +1339,65 @@ const startSeek = () => {
 const endSeek = () => {
   if (!wasPaused.value) {
     playing.value = true;
+  }
+};
+
+const drawFrame = async (
+  context: CanvasRenderingContext2D | null,
+  imgData: ImageData,
+  frameNumToRender: number,
+  force = false
+): Promise<void> => {
+  if (context) {
+    if (force) {
+      animationTick.value = 0;
+    }
+    // NOTE: respect fps here, render only when we should.
+    if (shouldRedrawThisTick.value || force) {
+      // Actually draw the frame contents for this requestAnimationFrame tick.
+      context.putImageData(imgData, 0, 0);
+      updateOverlayCanvas(frameNumToRender);
+      setDebugFrameInfo(frameNumToRender);
+      frameNum.value = frameNumToRender;
+
+      if (playing.value && stopAtFrame.value) {
+        if (frameNum.value === stopAtFrame.value) {
+          stopAtFrame.value = null;
+          playing.value = false;
+        }
+      }
+
+      {
+        let didAdvance = false;
+        if (playing.value) {
+          // Queue up the next frame.
+          targetFrameNum.value = frameNumToRender + 1;
+          didAdvance = await seekToSpecifiedFrameAndRender(
+            false,
+            targetFrameNum.value
+          );
+        }
+        if (didAdvance) {
+          animationTick.value = 0;
+        } else {
+          if (playing.value) {
+            playing.value = false;
+            animationTick.value = 0;
+          }
+          frameNum.value = Math.min(frames.length - 1, frameNumToRender);
+          targetFrameNum.value = frameNum.value;
+          // Draw the final frame.
+          setCurrentFrameAndRender(true, frameNumToRender);
+        }
+      }
+    } else {
+      // We don't draw on this tick, so increment and request again.
+      animationTick.value++;
+      cancelAnimationFrame(animationFrame.value);
+      animationFrame.value = requestAnimationFrame(() =>
+        drawFrame(context, imgData, frameNumToRender)
+      ) as number;
+    }
   }
 };
 </script>
@@ -1617,7 +1581,7 @@ const endSeek = () => {
           @click="stepBackward"
           data-tooltip="Go back one frame"
           ref="stepBackward"
-          :disabled="!hasVideo"
+          :disabled="!hasVideo || !canStepBackward"
         >
           <font-awesome-icon icon="step-backward" />
         </button>
@@ -1625,7 +1589,7 @@ const endSeek = () => {
           @click="stepForward"
           data-tooltip="Go forward one frame"
           ref="stepForward"
-          :disabled="!hasVideo"
+          :disabled="!hasVideo || !canStepForward"
         >
           <font-awesome-icon icon="step-forward" />
         </button>

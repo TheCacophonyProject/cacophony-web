@@ -3,7 +3,12 @@
 import { useRoute } from "vue-router";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
-import type { LatLng, RecordingId, StationId } from "@typedefs/api/common";
+import type {
+  LatLng,
+  RecordingId,
+  StationId,
+  TrackId,
+} from "@typedefs/api/common";
 import {
   timezoneForLocation,
   visitDuration,
@@ -297,22 +302,29 @@ const loadRecording = async () => {
       }
       console.log("Loaded recording", recordingData.value, currentTrack.value);
 
-      if ((route.name as string).endsWith("-tracks") && !route.params.trackId || (route.params.trackId && !currentTrack.value)) {
+      if (
+        ((route.name as string).endsWith("-tracks") && !route.params.trackId) ||
+        (route.params.trackId && !currentTrack.value)
+      ) {
         // set the default track if not set
         if (tracks.value.length) {
-          await router.replace({
-            name: route.name as string,
-            params: {
-              ...route.params,
-              trackId: tracks.value[0].id,
-            },
-          });
+          await selectedTrack(tracks.value[0].id);
         }
       }
     } else {
       // TODO: Handle recording permissions error
     }
   }
+};
+
+const selectedTrack = async (trackId: TrackId) => {
+  await router.replace({
+    name: route.name as string,
+    params: {
+      ...route.params,
+      trackId,
+    },
+  });
 };
 
 const tracks = computed<ApiTrackResponse[]>(() => {
@@ -450,6 +462,7 @@ const cptvUrl = computed<string | undefined>(() => {
           :recording="recording"
           :cptv-url="cptvUrl"
           :current-track="currentTrack"
+          @track-selected="({ trackId }) => selectedTrack(trackId)"
         />
       </div>
       <div class="recording-info d-flex flex-column flex-fill">
@@ -692,4 +705,13 @@ const cptvUrl = computed<string | undefined>(() => {
 .recording-icons {
   color: #666;
 }
+.nav-tabs {
+  .nav-link:not(.active) {
+    color: inherit;
+  }
+  .active {
+    cursor: default;
+  }
+}
+
 </style>

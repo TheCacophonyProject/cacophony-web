@@ -16,7 +16,7 @@ import { useRouter } from "vue-router";
 const newGroupName = formFieldInputText();
 const isValidGroupName = computed<boolean>(() => newGroupName.value !== "");
 const needsValidationAndIsValidGroupName = computed<FormInputValidationState>(
-  () => (newGroupName.touched ? isValidGroupName.value : null)
+  () => (newGroupName.touched ? isValidGroupName.value : undefined)
 );
 
 const submittingCreateRequest = ref(false);

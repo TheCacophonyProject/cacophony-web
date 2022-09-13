@@ -59,22 +59,17 @@ const usedBlocks = async (
 };
 
 const checkOnlyInstanceOfScriptRunning = async () => {
-  const me = process.pid;
+  const me = [process.pid, process.ppid];
   const { stdout } = await exec("pgrep -f archive-objects");
   const lines = stdout.split("\n");
-  const processes = lines.filter(
-    (i) => i.trim() !== "" && i.trim() !== me.toString()
-  );
+  const processes = lines.filter((i) => i.trim() !== "").map((i) => Number(i.trim())).filter(i => !me.includes(i));
 
   if (processes.length !== 0) {
     // Make sure the process in question is node
     const { stdout } = await exec("pgrep -f node");
-    const lines = stdout.split("\n");
+    const lines = stdout.split("\n").filter((i) => i.trim() !== "").map(i => Number(i.trim()));
     for (const processId of processes) {
-      const processIsNode = lines.find(
-          (i) => i.trim() === processId.trim()
-      );
-      if (processIsNode) {
+      if (lines.includes(processId)) {
         // Already running
         process.exit(0);
       }
