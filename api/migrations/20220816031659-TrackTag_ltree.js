@@ -14,8 +14,7 @@ module.exports = {
     try {
       const trackTags = await queryInterface.describeTable("TrackTags");
       if (!trackTags.path) {
-      await queryInterface.sequelize.query(`ALTER TABLE "TrackTags" ADD "path" ltree`, {transaction});
-        return;
+        await queryInterface.sequelize.query(`ALTER TABLE "TrackTags" ADD "path" ltree`, {transaction});
       }
       await queryInterface.sequelize.query(`
       UPDATE "TrackTags" SET
