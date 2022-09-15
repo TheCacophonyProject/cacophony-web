@@ -415,12 +415,12 @@ export const fetchModel =
   ) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
-
     let id;
+
     if (typeof primary === "number") {
       id = primary;
     } else {
-      id = extractValFromRequest(request, primary) as string;
+      id = extractValFromRequest(request, primary);
     }
     if (!id && !required) {
       return next();
@@ -1018,13 +1018,17 @@ const getRecording =
 const getRecordings =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
   (
-    recordingIds: string,
+    recordingIds: string| object,
     unused: string,
     context?: any
   ): Promise<ModelStaticCommon<Recording>[] | ClientError> => {
-    const recordingWhere = {
-      id: { [Op.in]: recordingIds },
-    };
+    const recordingWhere = {} as any;
+    if (typeof recordingIds === "string") {
+      recordingWhere.id= recordingIds;
+    }else{
+      recordingWhere.id= { [Op.in]: recordingIds };
+    }
+    
     if ("deleted" in context) {
       if (context.deleted === true) {
         (recordingWhere as any).deletedAt = { [Op.ne]: null };
@@ -1043,6 +1047,23 @@ const getRecordings =
           getRecordingInclude(recordingWhere, groupWhere, deviceWhere),
           asAdmin
         );
+        if (!getRecordingOptions.where && recordingWhere) {
+          getRecordingOptions = {
+            where: recordingWhere,
+            include: [
+              {
+                model: models.Group,
+                required: true,
+                where: groupWhere,
+              },
+              {
+                model: models.Device,
+                required: true,
+                where: deviceWhere,
+              },
+            ],
+          };
+        }
       } else {
         return Promise.resolve(
           new ClientError("No authorizing user specified")

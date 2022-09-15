@@ -82,7 +82,7 @@ export default (app: Application, baseUrl: string) => {
         .exists()
         .withMessage(expectedTypeOf("RecordingId[]"))
         .bail()
-        .custom(jsonSchemaOf(arrayOf(RecordingIdSchema))),
+        // .custom(jsonSchemaOf(arrayOf(RecordingIdSchema))),
     ]),
     // FIXME - Should we only allow this for admin users?
     fetchAuthorizedRequiredRecordingsByIds(body("recordings")),
