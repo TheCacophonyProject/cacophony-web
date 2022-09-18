@@ -58,6 +58,7 @@
         :is-wallaby-project="isWallabyProject"
         @addTag="addTag($event)"
         @deleteTag="deleteTag($event)"
+        @openDropdown="trackSelected(0, false, true)"
       />
       <AddCustomTrackTag @addTag="addTag($event)" :allow-comment="false" />
       <div>
@@ -276,7 +277,7 @@ export default {
       }
       this.$emit("change-tag", tagToDelete);
     },
-    trackSelected(increment) {
+    trackSelected(increment, gotoStart = true, playToEnd = true) {
       const index = Math.min(
         this.numTracks - 1,
         Math.max(0, this.index + increment)
@@ -284,8 +285,8 @@ export default {
       if (0 <= index && index < this.numTracks) {
         this.$emit("track-selected", {
           trackId: this.tracks[index].id,
-          gotoStart: true,
-          playToEnd: true,
+          gotoStart,
+          playToEnd,
         });
       }
     },

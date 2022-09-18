@@ -561,6 +561,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
    * regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
+   * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
    * @apiQuery {Boolean} [countAll=true] Count all query matches rather than just number of results (as much as the limit parameter)
    * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
@@ -585,6 +586,7 @@ export default (app: Application, baseUrl: string) => {
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
+      query("exclusive").default(false).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
@@ -619,7 +621,8 @@ export default (app: Application, baseUrl: string) => {
         response.locals.order,
         request.query.type as RecordingType,
         request.query.hideFiltered ? true : false,
-        request.query.countAll ? true : false
+        request.query.countAll ? true : false,
+        request.query.exclusive ? true : false
       );
       return successResponse(response, "Completed query.", {
         limit: request.query.limit,
@@ -846,6 +849,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse BaseQueryParams
    * @apiUse RecordingOrder
    * @apiUse MoreQueryParams
+   * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
    * @apiParam {boolean} [audiobait] To add audiobait to a recording query set
    * this to true.
    * @apiUse V1ResponseError
@@ -862,6 +866,7 @@ export default (app: Application, baseUrl: string) => {
       query("audiobait").isBoolean().optional(),
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
+      query("exclusive").default(false).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
@@ -908,7 +913,8 @@ export default (app: Application, baseUrl: string) => {
           request.query.offset && parseInt(request.query.offset as string),
           request.query.limit && parseInt(request.query.limit as string),
           response.locals.order,
-          Boolean(request.query.audiobait)
+          Boolean(request.query.audiobait),
+          Boolean(request.query.exclusive)
         );
       }
       response.status(HttpStatusCode.Ok).set({

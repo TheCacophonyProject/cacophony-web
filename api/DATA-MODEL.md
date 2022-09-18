@@ -45,6 +45,7 @@ model.
     |         Tag         |
     | - id                |
     | - what              |
+    | - path              |
     | - detail            |
     | - confidence        |
     | - startTime         |

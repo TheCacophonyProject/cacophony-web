@@ -1,5 +1,5 @@
 <template>
-  <section class="p-0 w-100">
+  <section class="p-0 w-100" @click="interactWithSpectrogram">
     <div v-if="isLoading" class="loading-spinner text-center text-primary">
       <b-spinner label="Loading Spectrogram..."></b-spinner>
     </div>
@@ -21,6 +21,8 @@
           <div
             id="player-bar-loader-indicator"
             class="player-bar-indicator"
+            @mousedown="onDragStartTime"
+            @touchstart="onDragStartTime"
           ></div>
           <div
             id="zoom-indicator-end"
@@ -341,6 +343,17 @@ export default defineComponent({
       scale: 3,
     });
 
+    const interacted = ref(false);
+    const interactWithSpectrogram = () => {
+      if (interacted.value) {
+        return;
+      }
+      // iOS Safari doesn't support autoplay, so we need to start the audio manually
+      player.value.playPause();
+      player.value.playPause();
+      interacted.value = true;
+    };
+
     const updateZoom = () => {
       if (!overlay.value) {
         return;
@@ -536,10 +549,10 @@ export default defineComponent({
       if (props.selectedTrack.id !== track.id) {
         props.setSelectedTrack(() => track);
       }
-      playAt(track.start, track.end);
+      player.value.play(track.start, track.end);
     };
 
-    const togglePlay = () => {
+    const togglePlay = (e) => {
       if (props.selectedTrack) {
         if (isPlaying.value === true) {
           player.value.pause();
@@ -577,6 +590,7 @@ export default defineComponent({
     const setPlayerTime = (currTime: number) => {
       const curr = secondsToTimeString(currTime);
       if (currTime.toFixed(1) === actualTime.value.toFixed(1)) {
+        //  Added to smooth out the time display
         return;
       }
       actualTime.value = currTime;
@@ -985,11 +999,16 @@ export default defineComponent({
           context.drawImage(canvas, 0, 0);
           context.restore();
         });
+        newOverlay.addEventListener("touch", interactWithSpectrogram);
 
         container.appendChild(overlay.value);
         const startEvent = (e: TouchEvent | MouseEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
+          // iOS safari doesn't support audio playback without user interaction
+          const isiOS =
+            !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
+          if (!interacted.value && isiOS) {
+            return;
+          }
           const { x, y } = getDragCoords(e);
           //check track.value.rect is in overlay
           const rect = overlay.value.querySelector(
@@ -1031,8 +1050,6 @@ export default defineComponent({
           if (!tempTrack.value.active) {
             return;
           }
-          e.preventDefault();
-          e.stopPropagation();
           if (
             Date.now() - tempTrack.value.startDragTime > 100 &&
             tempTrack.value.pos.width > 0.01
@@ -1083,17 +1100,16 @@ export default defineComponent({
         // Add Track Functionality
         overlay.value.addEventListener("mousedown", startEvent);
         overlay.value.addEventListener("touchstart", startEvent);
+        overlay.value.addEventListener("touch", interactWithSpectrogram);
+        overlay.value.addEventListener("click", interactWithSpectrogram);
         document.addEventListener("mousemove", moveEvent);
-        document.addEventListener("touchmove", moveEvent);
+        document.addEventListener("touchmove", moveEvent, {
+          passive: false,
+        });
         document.addEventListener("mouseup", endEvent);
         document.addEventListener("touchend", endEvent);
 
         // Add Player Bar Functionality
-        const playerBarLoader = document.getElementById(
-          "player-bar-loader-indicator"
-        ) as HTMLDivElement;
-        playerBarLoader.addEventListener("mousedown", onDragStartTime);
-        playerBarLoader.addEventListener("touchstart", onDragStartTime);
         document.addEventListener("mousemove", onDragTime);
         document.addEventListener("touchmove", onDragTime);
         document.addEventListener("mouseup", onDragEndTime);
@@ -1135,6 +1151,7 @@ export default defineComponent({
         if (isPlaying.value) {
           playAt(0);
         }
+        setPlayerTime(player.value.getDuration());
         setPlayerTime(0);
         // Due to spectrogram plugin, we need to wait for the canvas to be rendered
         player.value.on("redraw", () => {
@@ -1203,6 +1220,7 @@ export default defineComponent({
       togglePlay,
       playAt,
       playTrack,
+      interactWithSpectrogram,
     };
   },
 });

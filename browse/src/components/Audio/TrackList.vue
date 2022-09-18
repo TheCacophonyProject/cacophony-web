@@ -60,7 +60,7 @@
                       </b-button>
                     </div>
                   </b-row>
-                  <b-row class="mt-1 mb-1">
+                  <b-row class="tags-container">
                     <div
                       v-for="tag in track.displayTags"
                       :key="tag.id"
@@ -398,5 +398,12 @@ export default defineComponent({
   overflow: hidden;
   border: 1px solid #f1f1f1;
   margin-bottom: 1em;
+}
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  gap: 0.3em;
 }
 </style>

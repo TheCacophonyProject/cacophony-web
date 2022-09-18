@@ -24,13 +24,18 @@ import { RecordingId, TrackId } from "@typedefs/api/common";
 import { TrackTagData } from "@/../types/api/trackTag";
 
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
-  filtered: boolean;
-  RecordingId: RecordingId;
-  getTrackTag: (trackTagId: TrackTagId) => Promise<TrackTag>;
   id: TrackId;
+  RecordingId: RecordingId;
   AlgorithmId: number | null;
   data: any;
   automatic: boolean;
+  filtered: boolean;
+  // NOTE: Implicitly created by sequelize associations.
+  getRecording: () => Promise<Recording>;
+  updateIsFiltered: () => any;
+  // Track Tags
+  TrackTags?: TrackTag[];
+  getTrackTag: (trackTagId: TrackTagId) => Promise<TrackTag>;
   addTag: (
     what: string,
     confidence: number,
@@ -38,11 +43,7 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
     data: any,
     userId?: number
   ) => Promise<TrackTag>;
-  // NOTE: Implicitly created by sequelize associations.
-  getRecording: () => Promise<Recording>;
   getTrackTags: (options: FindOptions) => Promise<TrackTag[]>;
-  updateIsFiltered: () => any;
-  TrackTags?: TrackTag[];
   replaceTag: (tag: TrackTag) => Promise<any>;
 }
 export interface TrackStatic extends ModelStaticCommon<Track> {

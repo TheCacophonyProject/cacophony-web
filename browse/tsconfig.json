@@ -1,31 +1,28 @@
 {
-    "compilerOptions": {
-        "target": "es6",
-        "jsx": "preserve",
-        "sourceMap": true,
-        "module": "es2015",
-        "moduleResolution": "node",
-        "experimentalDecorators": true,
-        "skipLibCheck": true,
-        "allowSyntheticDefaultImports": true,
-        "baseUrl": ".",
-        "allowJs": true,
-        "paths": {
-            "@/*": ["./src/*"],
-            "@api/*": ["./src/api/*"],
-            "@api": ["./src/api/index.ts"],
-            "@typedefs/*":  ["../types/*"],
-        },
-    },
-    "vueCompilerOptions": {
-        "experimentalCompatMode": 2,
-        "experimentalTemplateCompilerOptions": {
-          "compatConfig": { "MODE": 2 }
-        }
-    },
-    "include": [
-        "./src/**/*",
-        "../types/**/*.ts"
-    ],
-    "exclude": ["node_modules"]
+  "compilerOptions": {
+    "target": "es6",
+    "jsx": "preserve",
+    "sourceMap": true,
+    "module": "es2015",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "allowJs": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@api/*": ["./src/api/*"],
+      "@api": ["./src/api/index.ts"],
+      "@typedefs/*": ["../types/*"]
+    }
+  },
+  "vueCompilerOptions": {
+    "experimentalCompatMode": 2,
+    "experimentalTemplateCompilerOptions": {
+      "compatConfig": { "MODE": 2 }
+    }
+  },
+  "include": ["./src/**/*", "../types/**/*.ts"],
+  "exclude": ["node_modules"]
 }
