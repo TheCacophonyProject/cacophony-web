@@ -6,10 +6,11 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import store from "./stores";
 import NavBar from "./components/NavBar.vue";
 import GlobalMessaging from "./components/GlobalMessaging.vue";
+import api from "./api";
 
 export default {
   name: "App",
@@ -43,6 +44,18 @@ export default {
         superUserCreds.token !== localStorage.getItem("JWT")
       );
     },
+  },
+  async mounted() {
+    if (this.isLoggedIn) {
+      // Refresh the user's details
+      const res = await api.user.getUserDetails(localStorage.getItem("userId"));
+      if (res.success) {
+        api.user.persistFields({
+          userName: res.result.userData.userName,
+          email: res.result.userData.email,
+        });
+      }
+    }
   },
 };
 </script>

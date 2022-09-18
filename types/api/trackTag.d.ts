@@ -43,3 +43,15 @@ export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
 export interface ApiAutomaticTrackTagResponse extends ApiTrackTagResponse {
   automatic: true;
 }
+
+export type Classification = {
+  label: string;
+  path: string;
+  children?: Classification[];
+};
+export interface ApiClassificationResponse {
+  label: "root";
+  version: number;
+  path: string;
+  children: Classification[];
+}

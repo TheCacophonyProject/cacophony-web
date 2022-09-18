@@ -21,7 +21,7 @@
         </button>
       </div>
       <div v-if="pinnedLabels" class="pinned-labels mt-1">
-        <div v-for="label in pinnedLabels" :key="label">
+        <div class="pinned-label" v-for="label in pinnedLabels" :key="label">
           <div
             @mouseover="
               () => {
@@ -36,6 +36,7 @@
             @click="
               () => {
                 $store.commit('Video/pinnedLabels', label);
+                hoveredPinned = null;
               }
             "
             role="button"
@@ -88,35 +89,134 @@
           />
           <span class="tag-name">{{ otherTag.text }}</span>
         </button>
-        <button
-          v-b-modal="'custom-track-tag'"
-          class="btn btn-light btn-tag equal-flex"
+      </div>
+    </div>
+    <div class="tag-category d-flex">
+      <ClassificationsDropdown
+        v-model="selectedValue"
+        @input="addDropdownTag"
+        @click="$emit('openDropdown')"
+        :exclude="['interesting']"
+      />
+
+      <div class="button-selectors d-flex">
+        <b-button
+          class="ml-2 tag-pin text-primary"
+          :disabled="!userTags"
+          @click="togglePinTag"
         >
-          <img
-            alt="Add other tag"
-            title="Open form to add other tag"
-            src="/plus.png"
+          <font-awesome-icon
+            icon="thumbtack"
+            size="1x"
+            v-b-tooltip.hover
+            title="Pin current tag to buttons"
           />
-          <span class="tag-name">other...</span>
-        </button>
+        </b-button>
+        <b-button
+          class="ml-2 tag-cross text-danger"
+          :disabled="!userTags"
+          @click="removeTag"
+        >
+          <font-awesome-icon
+            icon="times"
+            size="1x"
+            v-b-tooltip.hover
+            title="Remove Tag from Track"
+          />
+        </b-button>
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import DefaultLabels, { imgSrc } from "../../const";
-export default {
+import DefaultLabels, { imgSrc, TrackLabel } from "../../const";
+import ClassificationsDropdown from "@/components/ClassificationsDropdown.vue";
+import {
+  watch,
+  defineComponent,
+  PropType,
+  ref,
+  computed,
+} from "@vue/composition-api";
+import store from "@/stores";
+import {
+  ApiHumanTrackTagResponse,
+  ApiAutomaticTrackTagResponse,
+} from "@typedefs/api/trackTag";
+export default defineComponent({
   name: "QuickTagTrack",
   props: {
     tags: {
-      type: Array,
+      type: Array as PropType<
+        (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[]
+      >,
       required: true,
     },
     isWallabyProject: {
       type: Boolean,
       default: false,
     },
+  },
+  components: {
+    ClassificationsDropdown,
+  },
+  setup(props, { emit }) {
+    const uniqueTags = ["part", "interesting", "poor tracking"];
+    const getUserTag = () => {
+      return props.tags.find(
+        (tag) =>
+          !tag.automatic &&
+          tag.userName === store.state.User.userData.userName &&
+          !uniqueTags.includes(tag.what)
+      );
+    };
+    const selectedValue = ref<string | null>(getUserTag()?.what ?? "");
+    const pinnedTag = computed(() => {
+      return selectedValue.value
+        ? store.state.Video.pinnedLabels?.includes(selectedValue.value)
+        : false;
+    });
+    const togglePinTag = () => {
+      if (!selectedValue.value) {
+        return;
+      }
+      store.commit("Video/pinnedLabels", selectedValue.value);
+    };
+
+    const removeTag = () => {
+      const existingTag = getUserTag();
+      if (existingTag && existingTag.what === selectedValue.value) {
+        emit("deleteTag", existingTag);
+        return;
+      }
+    };
+
+    const addDropdownTag = () => {
+      const existingTag = getUserTag();
+      if (existingTag && existingTag.what === selectedValue.value) {
+        return;
+      }
+      const tag: Partial<ApiHumanTrackTagResponse> = {
+        confidence: 0.85,
+        what: selectedValue.value,
+      };
+      emit("addTag", tag);
+    };
+
+    watch(
+      () => props.tags,
+      () => {
+        selectedValue.value = getUserTag()?.what ?? "";
+      }
+    );
+    return {
+      selectedValue,
+      addDropdownTag,
+      removeTag,
+      pinnedTag,
+      togglePinTag,
+    };
   },
   computed: {
     blankImage() {
@@ -156,18 +256,29 @@ export default {
         !this.pinnedLabels.includes(aiGuess.what) &&
         otherTags.find(({ value }) => value === aiGuess.what) === undefined
       ) {
-        otherTags.unshift({ text: aiGuess.what, value: aiGuess.what });
+        otherTags.unshift({
+          text: aiGuess.what,
+          value: aiGuess.what,
+        } as TrackLabel);
       }
       // Make sure we always show a button for a user tagged track if it's not in the default list:
-      const userTag = this.userTags[0];
-      if (
-        userTag !== undefined &&
-        userTag.what !== "unknown" &&
-        !this.animals.includes(userTag.what) &&
-        !this.pinnedLabels.includes(userTag.what) &&
-        otherTags.find(({ value }) => value === userTag.what) === undefined
-      ) {
-        otherTags.unshift({ text: userTag.what, value: userTag.what });
+      const userTags = this.userTags.filter(
+        (tag) =>
+          ![
+            "unknown",
+            "false positive",
+            ...this.animals,
+            ...this.pinnedLabels,
+            ...otherTags.map((val) => val.value),
+          ].includes(tag.what)
+      );
+      if (userTags) {
+        userTags.forEach((tag) => {
+          otherTags.unshift({
+            text: tag.what,
+            value: tag.what,
+          } as TrackLabel);
+        });
       }
       return otherTags;
     },
@@ -184,10 +295,13 @@ export default {
       const found = this.getUserTag(what);
       if (found) {
         this.$emit("deleteTag", found);
-        return;
       }
 
-      const tag = {};
+      const tag: Partial<ApiHumanTrackTagResponse> = {
+        confidence: 0.85,
+        what: what,
+      };
+
       tag.confidence = 0.85;
       tag.what = what;
       this.$emit("addTag", tag);
@@ -220,7 +334,7 @@ export default {
       return buttonClass;
     },
   },
-};
+});
 </script>
 
 <style lang="scss" scoped>
@@ -298,9 +412,30 @@ export default {
     }
   }
 }
+.button-selectors {
+  button {
+    background-color: white;
+    color: #2b333f;
+    border-radius: 0.5em;
+    border: 1px #e8e8e8 solid;
+    box-shadow: 0px 1px 2px 1px #ebebeb70;
+    text-transform: capitalize;
+    &:hover:enabled {
+      color: #7f8c8d;
+    }
+  }
+}
+
+.pinned-label {
+  position: relative;
+}
 .pinned-button {
   position: absolute;
-  z-index: 1;
+  top: 0;
+  left: 0;
+  margin-left: 0.2em;
+  margin-top: 0.2em;
+  z-index: 0;
   color: #3498db;
 }
 .pinned-button-cross {

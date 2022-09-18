@@ -20,9 +20,11 @@ if ! sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname='test'" | gr
     echo "---- Creating PostgreSQL user test ----"
     sudo -i -u postgres psql -c "CREATE USER test with password 'test'"
     sudo -i -u postgres psql -c "CREATE DATABASE cacophonytest WITH OWNER test;"
-    sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION postgis"
-    sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION citext"
 fi
+
+sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION IF NOT EXISTS postgis"
+sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION IF NOT EXISTS citext"
+sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION IF NOT EXISTS ltree"
 
 
 echo "---- Setting up Minio ----"

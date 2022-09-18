@@ -1,4 +1,5 @@
 import user from "./User.api";
+import classifications from "./Classification.api";
 import groups from "./Groups.api";
 import device from "./Device.api";
 import recording from "./Recording.api";
@@ -9,6 +10,7 @@ import station from "./Station.api";
 
 export default {
   user,
+  classifications,
   groups,
   device,
   recording,

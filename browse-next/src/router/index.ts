@@ -49,14 +49,14 @@ const router = createRouter({
       path: "/setup",
       name: "setup",
       meta: { title: "Group setup", requiresLogin: true },
-      component: () => import("../views/SetupView.vue"),
+      component: () => import("@/views/SetupView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/confirm-account-email/:token",
       name: "confirm-email",
       meta: { title: "Confirm email address", requiresLogin: true },
-      component: () => import("../views/ConfirmEmailView.vue"),
+      component: () => import("@/views/ConfirmEmailView.vue"),
       beforeEnter: cancelPendingRequests,
     },
 
@@ -64,21 +64,21 @@ const router = createRouter({
       path: "/accept-invite/:token",
       name: "accept-group-invite",
       meta: { title: "Accept group invitation", requiresLogin: true },
-      component: () => import("../views/AcceptGroupInvite.vue"),
+      component: () => import("@/views/AcceptGroupInvite.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/confirm-group-membership-request/:token",
       name: "confirm-group-membership-request",
       meta: { title: "Confirm group membership request", requiresLogin: true },
-      component: () => import("../views/ConfirmAddToGroupRequest.vue"),
+      component: () => import("@/views/ConfirmAddToGroupRequest.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName",
       name: "dashboard",
       meta: { title: "Group :stationName :tabName", requiresLogin: true },
-      component: () => import("../views/DashboardView.vue"),
+      component: () => import("@/views/DashboardView.vue"),
       beforeEnter: cancelPendingRequests,
       children: [
         {
@@ -86,14 +86,27 @@ const router = createRouter({
           // when /:groupName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
           path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
           name: "dashboard-visit",
-          component: () => import("../views/RecordingView.vue"),
+          redirect: { name: "dashboard-visit-tracks" }, // Make tracks the default tab
+          component: () => import("@/views/RecordingView.vue"),
+          children: [
+            {
+              path: "labels",
+              name: "dashboard-visit-labels",
+              component: () => import("@/components/RecordingViewLabels.vue"),
+            },
+            {
+              path: "tracks",
+              name: "dashboard-visit-tracks",
+              component: () => import("@/components/RecordingViewTracks.vue"),
+            },
+          ],
         },
         {
           // RecordingView will be rendered inside Dashboards' <router-view>
           // when /:groupName/recordings/:recordingIds is matched
           path: "recording/:currentRecordingId/:recordingIds?",
           name: "dashboard-recording",
-          component: () => import("../views/RecordingView.vue"),
+          component: () => import("@/views/RecordingView.vue"),
         },
       ],
     },
@@ -104,35 +117,35 @@ const router = createRouter({
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
       meta: { requiresLogin: true },
-      component: () => import("../views/StationsView.vue"),
+      component: () => import("@/views/StationsView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/activity",
       name: "activity",
       meta: { requiresLogin: true },
-      component: () => import("../views/ActivitySearchView.vue"),
+      component: () => import("@/views/ActivitySearchView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/devices",
       name: "devices",
       meta: { requiresLogin: true },
-      component: () => import("../views/DevicesView.vue"),
+      component: () => import("@/views/DevicesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/report",
       name: "report",
       meta: { requiresLogin: true },
-      component: () => import("../views/ReportingView.vue"),
+      component: () => import("@/views/ReportingView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/my-settings",
       name: "user-group-settings",
       meta: { requiresLogin: true },
-      component: () => import("../views/UserGroupPreferencesView.vue"),
+      component: () => import("@/views/UserGroupPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
@@ -140,7 +153,7 @@ const router = createRouter({
       name: "group-settings",
       meta: { requiresLogin: true, requiresGroupAdmin: true },
       redirect: { name: "group-users" },
-      component: () => import("../views/ManageGroupView.vue"),
+      component: () => import("@/views/ManageGroupView.vue"),
       beforeEnter: cancelPendingRequests,
       children: [
         {
@@ -148,18 +161,18 @@ const router = createRouter({
           // when /:groupName/settings/users is matched
           name: "group-users",
           path: "users",
-          component: () => import("../views/ManageGroupUsersSubView.vue"),
+          component: () => import("@/views/ManageGroupUsersSubView.vue"),
         },
         {
           name: "group-tag-settings",
           path: "tag-settings",
-          component: () => import("../views/ManageGroupTagSettingsSubView.vue"),
+          component: () => import("@/views/ManageGroupTagSettingsSubView.vue"),
         },
         {
           name: "fix-station-locations",
           path: "fix-station-locations",
           component: () =>
-            import("../views/ManageGroupFixStationLocationsSubView.vue"),
+            import("@/views/ManageGroupFixStationLocationsSubView.vue"),
         },
       ],
     },
@@ -168,14 +181,14 @@ const router = createRouter({
       path: "/my-settings",
       name: "user-settings",
       meta: { requiresLogin: true },
-      component: () => import("../views/UserPreferencesView.vue"),
+      component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/sign-out",
       name: "sign-out",
       meta: { requiresLogin: true },
-      component: () => import("../views/UserPreferencesView.vue"),
+      component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
 
@@ -183,49 +196,49 @@ const router = createRouter({
       path: "/sign-in",
       name: "sign-in",
       meta: { requiresLogin: false },
-      component: () => import("../views/SignInView.vue"),
+      component: () => import("@/views/SignInView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register",
       name: "register",
       meta: { requiresLogin: false },
-      component: () => import("../views/RegisterView.vue"),
+      component: () => import("@/views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register/accept-invite/:token",
       name: "register-with-token",
       meta: { requiresLogin: false },
-      component: () => import("../views/RegisterView.vue"),
+      component: () => import("@/views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/end-user-agreement",
       name: "end-user-agreement",
       meta: { requiresLogin: true },
-      component: () => import("../views/UserPreferencesView.vue"),
+      component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/forgot-password",
       name: "forgot-password",
       meta: { requiresLogin: false },
-      component: () => import("../views/ForgotPasswordView.vue"),
+      component: () => import("@/views/ForgotPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password/:token",
       name: "validate-reset-password",
       meta: { requiresLogin: false },
-      component: () => import("../views/ResetPasswordView.vue"),
+      component: () => import("@/views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password",
       name: "reset-password",
       meta: { requiresLogin: false },
-      component: () => import("../views/ResetPasswordView.vue"),
+      component: () => import("@/views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
   ],

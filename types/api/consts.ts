@@ -66,7 +66,8 @@ export enum UserGlobalPermission {
 export enum HttpStatusCode {
   Ok = 200,
   OkNoContent = 204,
-  NotModified = 301,
+  MovedPermanently = 301,
+  NotModified = 304,
   BadRequest = 400,
   AuthorizationError = 401,
   Forbidden = 403,

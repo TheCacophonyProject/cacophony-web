@@ -20,6 +20,7 @@ import { TrackId, UserId } from "@typedefs/api/common";
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
 import { User } from "./User";
+import LabelPaths from "../classifications/label_paths.json";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
 
@@ -60,6 +61,7 @@ export default function (
 ): TrackTagStatic {
   const TrackTag = sequelize.define("TrackTag", {
     what: DataTypes.STRING,
+    path: DataTypes.STRING, // ltree path
     confidence: DataTypes.FLOAT,
     automatic: DataTypes.BOOLEAN,
     data: DataTypes.JSONB,
@@ -79,6 +81,19 @@ export default function (
   TrackTag.userGetAttributes = Object.freeze(
     TrackTag.apiSettableFields.concat(["id"])
   );
+  const addPath = (trackTag) => {
+    // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
+    const what = (trackTag.what as string).toLowerCase();
+    const path =
+      what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
+    sequelize.query(
+      `UPDATE "TrackTags" SET "path" = text2ltree(:path) WHERE "id" = :id`,
+      { replacements: { path, id: trackTag.id } }
+    );
+  };
+
+  TrackTag.afterUpdate("Add path", addPath);
+  TrackTag.afterCreate("Add path", addPath);
 
   //---------------
   // INSTANCE

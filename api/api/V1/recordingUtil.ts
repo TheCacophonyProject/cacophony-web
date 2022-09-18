@@ -882,12 +882,12 @@ async function query(
   order: any,
   type: RecordingType,
   hideFiltered: boolean,
-  countAll: boolean
+  countAll: boolean,
+  exclusive: boolean
 ): Promise<{ rows: Recording[]; count: number }> {
   if (type) {
     where.type = type;
   }
-
   // FIXME - Do this in extract-middleware as bulk recording extractor
   const builder = new models.Recording.queryBuilder().init(
     requestUserId,
@@ -898,7 +898,8 @@ async function query(
     limit,
     order,
     viewAsSuperUser,
-    hideFiltered
+    hideFiltered,
+    exclusive
   );
   builder.query.distinct = true;
 
@@ -1018,7 +1019,8 @@ export async function reportRecordings(
   offset: number,
   limit: number,
   order: any,
-  includeAudiobait: boolean
+  includeAudiobait: boolean,
+  exclusive: boolean
 ) {
   const builder = (
     await new models.Recording.queryBuilder().init(
@@ -1029,7 +1031,9 @@ export async function reportRecordings(
       offset,
       limit,
       order,
-      viewAsSuperUser
+      viewAsSuperUser,
+      false,
+      exclusive
     )
   )
     .addColumn("comment")

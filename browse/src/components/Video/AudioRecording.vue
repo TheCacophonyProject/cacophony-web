@@ -42,13 +42,11 @@
         </b-col>
         <b-col>
           <div class="mt-2 mb-2 d-flex align-items-center">
-            <multiselect
+            <ClassificationsDropdown
               v-model="selectedLabel"
               @input="() => addTagToSelectedTrack(selectedLabel)"
-              :options="BirdLabels"
               :disabled="!selectedTrack"
-              :value="selectedLabel"
-              :show-labels="false"
+              :exclude="['part', 'interesting', 'poor tracking']"
             />
             <div class="button-selectors d-flex">
               <b-button
@@ -208,12 +206,11 @@ import {
   ref,
   onMounted,
 } from "@vue/composition-api";
-import Multiselect from "vue-multiselect";
 
 import api from "@api";
 import store from "@/stores";
 import { useState, UUIDv4 } from "@/utils";
-import DefaultLabels, { TagColours } from "@/const";
+import { TagColours } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
 import TrackList from "../Audio/TrackList.vue";
@@ -231,6 +228,7 @@ import {
 } from "@typedefs/api/trackTag";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { TrackId } from "@typedefs/api/common";
+import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 
 export enum TagClass {
   Automatic = "automatic",
@@ -282,7 +280,7 @@ export default defineComponent({
     CacophonyIndexGraph,
     RecordingProperties,
     LabelButtonGroup,
-    Multiselect,
+    ClassificationsDropdown,
   },
   setup(props) {
     const userName = store.state.User.userData.userName;
@@ -395,6 +393,8 @@ export default defineComponent({
       const displayTags = getDisplayTags(track);
       return {
         ...track,
+        ...{ start: track.start ? track.start : 0 },
+        ...{ end: track.end ? track.end : 0 },
         colour: TagColours[index % TagColours.length],
         displayTags,
         confirming: false,
@@ -404,10 +404,12 @@ export default defineComponent({
 
     const mappedTracks = (tracks: ApiTrackResponse[]) =>
       new Map(
-        tracks.map((track, index) => {
-          const audioTrack = createAudioTrack(track, index);
-          return [track.id, audioTrack];
-        })
+        tracks
+          .filter((val) => !val.filtered)
+          .map((track, index) => {
+            const audioTrack = createAudioTrack(track, index);
+            return [track.id, audioTrack];
+          })
       );
 
     const [tracks, setTracks] = useState<AudioTracks>(
@@ -728,7 +730,7 @@ export default defineComponent({
 
     const createButtonLabels = () => {
       const maxBirdButtons = 6;
-      const fixedLabels = ["Bird", "Human", "Unidentified"];
+      const fixedLabels = ["Bird", "Human", "Unknown"];
       const otherLabels = fixedLabels.map((label: string) => ({
         label,
         pinned: false,
@@ -837,7 +839,6 @@ export default defineComponent({
     return {
       url,
       buffer,
-      BirdLabels: DefaultLabels.birdLabels.map(({ value }) => value).sort(),
       labels: buttonLabels,
       cacophonyIndex,
       deleted,

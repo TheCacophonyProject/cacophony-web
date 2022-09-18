@@ -41,7 +41,10 @@
         </b-col>
       </b-form-row>
       <SelectDuration v-if="advanced" v-model="duration" />
-      <SelectTags v-if="advanced" v-model="tagData" />
+      <SelectTags v-show="advanced" v-model="tagData" />
+      <b-form-checkbox v-if="advanced" class="mb-4" v-model="tagData.exclusive"
+        >Exclusive Tag Search</b-form-checkbox
+      >
       <b-button :disabled="disabled" block variant="primary" @click="submit">
         <span v-if="!disabled">Search</span>
         <span v-else>Searching...</span>
@@ -157,6 +160,10 @@ export default {
         this.recordingType = routeQuery.type;
       }
 
+      if (routeQuery.hasOwnProperty("exclusive")) {
+        this.tagData.exclusive = routeQuery.exclusive;
+      }
+
       this.dates = {
         days: Number(routeQuery.days),
         to: routeQuery.to,
@@ -184,6 +191,7 @@ export default {
     serialiseQuery() {
       const query = {
         tagMode: this.tagData.tagMode,
+        exclusive: this.tagData.exclusive,
         tag: this.tagData.tags,
         minS: this.duration.minS,
         maxS: this.duration.maxS,
