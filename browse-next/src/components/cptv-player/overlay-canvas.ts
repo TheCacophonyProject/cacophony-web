@@ -4,12 +4,13 @@ import type {
   TrackExportOption,
 } from "@/components/cptv-player/cptv-player-types";
 import { TagColours } from "@/consts";
-import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
+import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import type {
   FrameNum,
   Rectangle,
 } from "@/components/cptv-player/cptv-player-types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
+import { add, mul, perp, sub } from "@/components/cptv-player/motion-paths";
 
 export const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
   overlayContext.font = "13px sans-serif";
@@ -66,15 +67,14 @@ export const drawBottomLeftOverlayLabel = (
 };
 
 export const clearOverlay = (
-  overlayContext: CanvasRenderingContext2D | null,
-  scale: number
+  overlayContext: CanvasRenderingContext2D | null
 ): boolean => {
   if (overlayContext) {
     overlayContext.clearRect(
       0,
       0,
-      overlayContext.canvas.width * (1 / scale),
-      overlayContext.canvas.height * (1 / scale)
+      overlayContext.canvas.width,
+      overlayContext.canvas.height
     );
     return true;
   }
@@ -161,7 +161,7 @@ export const renderOverlay = (
   tracks: ApiTrackResponse[],
   canSelectTracks: boolean,
   currentTrack: ApiTrackResponse | undefined,
-  drawMotionPaths: boolean,
+  motionPaths: MotionPath[],
   pixelRatio: number,
   tracksByFrame: Record<FrameNum, [TrackId, TrackBox][]>,
   framesByTrack: Record<TrackId, Record<FrameNum, TrackBox>>,
@@ -170,7 +170,7 @@ export const renderOverlay = (
   if (context) {
     if (!isExporting) {
       // Clear if we are drawing on the live overlay, but not if we're drawing for export
-      clearOverlay(context, pixelRatio);
+      clearOverlay(context);
     }
     const frameTracks =
       tracksByFrame[frameNum] || ([] as [TrackId, TrackBox][]);
@@ -216,60 +216,14 @@ export const renderOverlay = (
         );
       }
     }
-
     context.save();
-    if (drawMotionPaths) {
-      for (const currentTrack of tracks || []) {
-        // Here's a nice example motion track: #1301155
 
-        // Here's a good example of a track starting late: #1295324
-
-        // TODO - Can we scale the motion path based on how big the track box is
-        //  compared to its min/max sizes.  Area scales quadratically with distance from the camera, right?
-
-        // TODO - Can we try onion-skinning the actual track box bitmaps together?  Basically an average of the entire video?
-
-        const deviceRatio = isExporting ? 1 : window.devicePixelRatio;
-        const trackIndex =
-          tracks.findIndex((track) => track.id === currentTrack.id) || 0;
-        context.strokeStyle =
-          TagColours[trackIndex % TagColours.length].background;
-        context.globalAlpha = 0.6;
-        const path = motionPathForTrack(
-          currentTrack,
-          (context.canvas.width / 160) * deviceRatio
-        );
-        context.beginPath();
-        context.moveTo(path[0].startPoint.x, path[0].startPoint.y);
-        for (const segment of path) {
-          context.bezierCurveTo(
-            segment.controlPoints[0].x,
-            segment.controlPoints[0].y,
-            segment.controlPoints[1].x,
-            segment.controlPoints[1].y,
-            segment.endPoint.x,
-            segment.endPoint.y
-          );
-        }
-        context.stroke();
-
-        // for (const segment of path) {
-        //   context.beginPath();
-        //   context.fillStyle = "white";
-        //   const point = segment.endPoint;
-        //   context.ellipse(point.x, point.y, 2, 2, 0, 0, Math.PI * 2);
-        //   context.fill();
-        // }
-
-        // context.globalAlpha = 0.3;
-        // for (const point of allPoints) {
-        //   context.beginPath();
-        //   context.fillStyle =
-        //     TagColours[trackIndex % TagColours.length].background;
-        //   context.ellipse(point.x, point.y, 2, 2, 0, 0, Math.PI * 2);
-        //   context.fill();
-        // }
-      }
+    for (let i = 0; i < motionPaths.length; i++) {
+      renderMotionPath(
+        context,
+        motionPaths[i],
+        TagColours[i % TagColours.length].background
+      );
     }
     context.restore();
 
@@ -290,4 +244,71 @@ export const renderOverlay = (
       context.fillText(text, textX, textY);
     }
   }
+};
+
+const renderMotionPath = (
+  context: CanvasRenderingContext2D,
+  path: MotionPath,
+  color: string
+) => {
+  // Here's a nice example motion track: #1301155
+
+  // Here's a good example of a track starting late: #1295324
+
+  // TODO - Can we scale the motion path based on how big the track box is
+  //  compared to its min/max sizes.  Area scales quadratically with distance from the camera, right?
+
+  // TODO - Can we try onion-skinning the actual track box bitmaps together?  Basically an average of the entire video?
+  //const trackIndex =
+  //  tracks.findIndex((track) => track.id === trackToDraw.id) || 0;
+
+  const curve = path.curve;
+  context.strokeStyle = color;
+  context.globalAlpha = 0.6;
+  context.beginPath();
+  context.moveTo(curve[0].startPoint.x, curve[0].startPoint.y);
+  for (const segment of curve) {
+    context.bezierCurveTo(
+      segment.controlPoints[0].x,
+      segment.controlPoints[0].y,
+      segment.controlPoints[1].x,
+      segment.controlPoints[1].y,
+      segment.endPoint.x,
+      segment.endPoint.y
+    );
+  }
+
+  context.stroke();
+  // Draw an arrow head at the end.
+  context.beginPath();
+  context.fillStyle = color;
+  const endTangent = path.tangents[1];
+  const endPoint = curve[curve.length - 1].endPoint; //sub(curve[curve.length - 1].endPoint, mul(endTangent, 1));
+
+  context.moveTo(endPoint.x, endPoint.y);
+  const futurePoint = add(endPoint, mul(endTangent, 10));
+  const leftPoint = add(endPoint, mul(perp(endTangent), 5));
+  const rightPoint = add(endPoint, mul(perp(perp(perp(endTangent))), 5));
+  context.moveTo(futurePoint.x, futurePoint.y);
+  context.lineTo(leftPoint.x, leftPoint.y);
+  context.lineTo(rightPoint.x, rightPoint.y);
+  context.lineTo(futurePoint.x, futurePoint.y);
+
+  context.fill();
+  // for (const segment of path) {
+  //   context.beginPath();
+  //   context.fillStyle = "white";
+  //   const point = segment.endPoint;
+  //   context.ellipse(point.x, point.y, 2, 2, 0, 0, Math.PI * 2);
+  //   context.fill();
+  // }
+
+  // context.globalAlpha = 0.3;
+  // for (const point of allPoints) {
+  //   context.beginPath();
+  //   context.fillStyle =
+  //     TagColours[trackIndex % TagColours.length].background;
+  //   context.ellipse(point.x, point.y, 2, 2, 0, 0, Math.PI * 2);
+  //   context.fill();
+  // }
 };

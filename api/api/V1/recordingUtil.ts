@@ -106,14 +106,19 @@ export function latLngApproxDistance(a: LatLng, b: LatLng): number {
 export async function tryToMatchLocationToStationInGroup(
   location: LatLng,
   groupId: GroupId,
-  activeFromDate: Date
+  activeFromDate: Date,
+  lookForwards: boolean,
 ): Promise<Station | null> {
   // Match the recording to any stations that the group might have:
-
-  const stations = await models.Station.activeInGroupAtTime(
-    groupId,
-    activeFromDate
-  );
+  let stations;
+  if (lookForwards) {
+    stations = await models.Station.activeInGroupDuringTimeRange(groupId, activeFromDate, new Date());
+  } else {
+    stations = await models.Station.activeInGroupAtTime(
+        groupId,
+        activeFromDate
+    );
+  }
   const stationDistances = [];
   for (const station of stations) {
     // See if any stations match: Looking at the location distance between this recording and the stations.
@@ -546,12 +551,18 @@ export const maybeUpdateDeviceHistory = async (
       let stationToAssign = await tryToMatchLocationToStationInGroup(
         location,
         device.GroupId,
-        dateTime
+        dateTime,
+        true
       );
       logger.error(
         "Assign to station %s",
         stationToAssign && stationToAssign.id
       );
+      if (stationToAssign && stationToAssign.activeAt > dateTime) {
+        // We matched a future station in this location, so it's likely this is an older recording coming in out
+        // of order.  We want to back-date the existing station to this time.
+        await stationToAssign.update({ activeAt: dateTime });
+      }
       if (!stationToAssign) {
         // Create new automatic station
         stationToAssign = (await models.Station.create({
@@ -565,6 +576,7 @@ export const maybeUpdateDeviceHistory = async (
           GroupId: device.GroupId,
         })) as Station;
       }
+
       (newDeviceHistoryEntry as any).stationId = stationToAssign.id;
       // Insert this location.
 

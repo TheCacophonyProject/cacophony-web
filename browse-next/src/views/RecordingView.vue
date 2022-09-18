@@ -602,7 +602,7 @@ const cptvUrl = computed<string | undefined>(() => {
               >Previous visit</span
             >
             <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-            <span class="fs-9" v-if="previousRecordingIndex"
+            <span class="fs-9" v-if="previousRecordingIndex !== null"
               >{{ previousRecordingIndex + 1 }}/ {{ recordingIds.length }}</span
             >
             <span class="fs-9" v-else-if="previousVisit">
@@ -641,7 +641,7 @@ const cptvUrl = computed<string | undefined>(() => {
               >Next visit</span
             >
             <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-            <span class="fs-9" v-if="nextRecordingIndex"
+            <span class="fs-9" v-if="nextRecordingIndex !== null"
               >{{ nextRecordingIndex + 1 }}/{{ recordingIds.length }}</span
             >
             <span class="fs-9" v-else-if="nextVisit">

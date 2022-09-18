@@ -38,6 +38,9 @@ import {
   renderOverlay,
 } from "@/components/cptv-player/overlay-canvas";
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
+import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
+import type { MotionPath } from "@/components/cptv-player/motion-paths";
+
 const { pixelRatio } = useDevicePixelRatio();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {
@@ -105,7 +108,7 @@ watch(canvasWidth, () => {
 
 watch(
   () => currentTrack,
-  (nextTrack) => {
+  () => {
     updateOverlayCanvas(frameNum.value);
   }
 );
@@ -130,6 +133,18 @@ const showAdvancedControls = ref<boolean>(false);
 const animationTick = ref<number>(0);
 const isShowingBackgroundFrame = ref<boolean>(false);
 const animationFrame = ref<number>(0);
+
+// #1315407 A great example of motion paths
+
+// #1324835 An interesting example for both motion paths and highlight mode.
+//    Illustrates that tracking needs motion vectors.
+
+const motionPaths = computed<MotionPath[]>(() => {
+  return (
+    recording?.tracks.map((track) => motionPathForTrack(track, scale.value)) ||
+    []
+  );
+});
 
 // TODO(jon): Ideally we'd set the frame number and drive everything else off that change, right?
 
@@ -321,13 +336,6 @@ const hasBackgroundFrame = computed<boolean>(() => {
   return (header.value?.hasBackgroundFrame as boolean) || false;
 });
 
-const getFrameAtIndex = (i: number): CptvFrame => {
-  // We can't ask for more frames than we currently have.
-  // If we try to seek past the end, we'll just get the highest frame that we have.
-  // FIXME - is this the behaviour we want?
-  return frames[Math.min(frames.length - 1, i)];
-};
-
 const addFrame = (frame: CptvFrame) => {
   if (frame.meta.isBackgroundFrame) {
     backgroundFrame.value = frame;
@@ -373,7 +381,7 @@ const setCurrentFrameAndRender = (
   if (isShowingBackgroundFrame.value) {
     frameData = backgroundFrame.value as CptvFrame;
   } else {
-    frameData = getFrameAtIndex(frameNumToRender);
+    frameData = frames[Math.min(frames.length - 1, frameNumToRender)];
   }
   if (frameData) {
     frameHeader.value = frameData.meta;
@@ -742,6 +750,8 @@ const mergedTracks = computed(() => {
 
   // Head/tail merging - how many frames of overlap do we allow?
 
+  // #1326858 Complex tracks to merge/not merge
+
   let mergeCandidates: Record<string, boolean> = {};
   for (const [frameNum, tracks] of Object.entries(tracksByFrame.value).filter(
     ([_, tracks]) => tracks.length > 1
@@ -819,7 +829,7 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
       recording?.tracks || [],
       canSelectTracks,
       currentTrack,
-      motionPathMode.value,
+      motionPathMode.value ? motionPaths.value : [],
       pixelRatio.value,
       tracksByFrame.value,
       framesByTrack.value,
@@ -869,7 +879,7 @@ watch(playing, async (nextPlaying: boolean) => {
     const didAdvance = await seekToSpecifiedFrameAndRender(false);
     if (didAdvance) {
       frameNum.value = targetFrameNum.value;
-    } else if (nextPlaying) {
+    } else {
       playing.value = false;
     }
   } else {
@@ -1015,14 +1025,21 @@ const stepForward = async () => {
 };
 
 const toggleBackground = async (): Promise<void> => {
-  wasPaused.value = !playing.value;
+  isShowingBackgroundFrame.value = !isShowingBackgroundFrame.value;
   if (!isShowingBackgroundFrame.value) {
+    if (!wasPaused.value) {
+      playing.value = true;
+    } else {
+      animationTick.value = 0;
+      setCurrentFrameAndRender(true);
+    }
+  } else {
     const background = backgroundFrame.value;
     if (background && header.value) {
       animationTick.value = 0;
+      wasPaused.value = !playing.value;
       if (playing.value) {
         playing.value = false;
-        wasPaused.value = true;
       }
       if (!canvasContext.value) {
         return;
@@ -1040,7 +1057,7 @@ const toggleBackground = async (): Promise<void> => {
         0,
         0
       );
-      if (clearOverlay(overlayContext.value, pixelRatio.value)) {
+      if (clearOverlay(overlayContext.value)) {
         drawBottomLeftOverlayLabel(
           "Background frame",
           overlayContext.value,
@@ -1048,15 +1065,7 @@ const toggleBackground = async (): Promise<void> => {
         );
       }
     }
-  } else {
-    if (!wasPaused.value) {
-      wasPaused.value = false;
-      playing.value = true;
-    } else {
-      setCurrentFrameAndRender(true);
-    }
   }
-  isShowingBackgroundFrame.value = !isShowingBackgroundFrame.value;
 };
 
 const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
@@ -1097,7 +1106,11 @@ const currentVisibleFrame = computed<CptvFrame>(() => {
   if (isShowingBackgroundFrame.value && backgroundFrame.value) {
     return backgroundFrame.value;
   } else {
-    return getFrameAtIndex(frameNum.value);
+    console.assert(
+      frameNum.value <= frames.length - 1,
+      "Tried to read past loaded frames"
+    );
+    return frames[frameNum.value];
   }
 });
 
@@ -1230,8 +1243,6 @@ watch(
           Object.keys(mergedTracks.value)
         );
       }
-
-      console.log("Init with cptvUrl", cptvUrl);
       loadedStream.value = await cptvDecoder.initWithCptvUrlAndKnownSize(
         nextCptvUrl,
         cptvSize || 0
@@ -1260,11 +1271,9 @@ watch(
         emit("ready-to-play", header.value);
 
         if (currentTrack) {
-          console.log("Should seek to ", currentTrack.id);
           const firstFrameForTrack = Number(
             Object.keys(framesByTrack.value[currentTrack.id])[0]
           );
-          console.log(firstFrameForTrack);
           targetFrameNum.value = firstFrameForTrack;
           await seekToSpecifiedFrameAndRender(true, firstFrameForTrack);
           frameNum.value = firstFrameForTrack;
@@ -1293,12 +1302,7 @@ const clearCanvases = () => {
     if (canvasEl) {
       const context = canvasEl.getContext("2d");
       context &&
-        context.clearRect(
-          0,
-          0,
-          context.canvas.width * (1 / pixelRatio.value),
-          context.canvas.height * (1 / pixelRatio.value)
-        );
+        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     }
   }
 };
@@ -1391,12 +1395,15 @@ const drawFrame = async (
         }
       }
     } else {
-      // We don't draw on this tick, so increment and request again.
-      animationTick.value++;
       cancelAnimationFrame(animationFrame.value);
-      animationFrame.value = requestAnimationFrame(() =>
-        drawFrame(context, imgData, frameNumToRender)
-      ) as number;
+      if (playing.value) {
+        // We don't draw on this tick, so increment and request again.
+        animationTick.value++;
+        // NOTE: Don't request a next frame if we're paused.
+        animationFrame.value = requestAnimationFrame(() =>
+          drawFrame(context, imgData, frameNumToRender)
+        ) as number;
+      }
     }
   }
 };

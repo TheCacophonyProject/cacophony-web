@@ -4,20 +4,25 @@ interface Point {
   x: number;
   y: number;
 }
-interface Curve {
+export interface Curve {
   startPoint: Point;
   endPoint: Point;
   controlPoints: [Point, Point];
 }
 
-const sub = (p1: Point, p2: Point): Point => {
+export interface MotionPath {
+  curve: Curve[];
+  tangents: [Point, Point];
+}
+
+export const sub = (p1: Point, p2: Point): Point => {
   return {
     x: p1.x - p2.x,
     y: p1.y - p2.y,
   };
 };
 
-const add = (p1: Point, p2: Point): Point => {
+export const add = (p1: Point, p2: Point): Point => {
   return {
     x: p1.x + p2.x,
     y: p1.y + p2.y,
@@ -37,7 +42,11 @@ const dot = (a: Point, b: Point): number => {
   return a.x * b.x + a.y * b.y;
 };
 
-const mul = (a: Point, mag: number): Point => {
+export const perp = (p: Point): Point => {
+  return { x: -p.y, y: p.x };
+};
+
+export const mul = (a: Point, mag: number): Point => {
   return {
     x: a.x * mag,
     y: a.y * mag,
@@ -423,30 +432,11 @@ export const smoothLine = (points: Point[]): Point[] => {
 };
 
 export const pointsForTrack = ({ positions }: ApiTrackResponse): Point[] => {
-  // TODO - When the box comes from a given side of the frame, also take the centre of the longest edge that's on the frame.
-  // #1295404 A good example of where the track path should extend past the edge.
-
-  const pos = positions as ApiTrackPosition[];
-  const p = pos.map((pos) => {
+  return (positions as ApiTrackPosition[]).map((pos) => {
     const x = pos.x + pos.width / 2;
     const y = pos.y + pos.height / 2;
     return { x, y };
   });
-
-  // FIXME - For bonus points, extrapolate along the current line tangent.
-  const firstPos = pos[0];
-  const lastPos = pos[pos.length - 1];
-  if (firstPos.x === 0) {
-    p.unshift({ x: firstPos.x, y: firstPos.y + firstPos.height / 2 });
-  } else if (firstPos.y === 0) {
-    p.unshift({ x: firstPos.x + firstPos.width / 2, y: firstPos.y });
-  }
-  if (lastPos.x + lastPos.width === 159) {
-    p.push({ x: lastPos.x + lastPos.width, y: lastPos.y + lastPos.height / 2 });
-  } else if (lastPos.y + lastPos.height === 119) {
-    p.push({ x: lastPos.x + lastPos.width / 2, y: lastPos.y + lastPos.height });
-  }
-  return p;
 };
 
 // const motionPathForTrack = (track: ApiTrackResponse): Curve[] => {
@@ -467,7 +457,7 @@ export const pointsForTrack = ({ positions }: ApiTrackResponse): Point[] => {
 export const motionPathForTrack = (
   track: ApiTrackResponse,
   scale: number
-): Curve[] => {
+): MotionPath => {
   const pointsForThisTrack = pointsForTrack(track);
   // Discard points that aren't far enough from the previous point.
   let prevPoint = pointsForThisTrack[0];
@@ -499,5 +489,16 @@ export const motionPathForTrack = (
   //   pointsForThisTrack.map((point) => mul(point, scale))
   // );
 
-  return fitCurve(scaledPoints);
+  return {
+    curve: fitCurve(scaledPoints),
+    tangents: [
+      normalise(sub(scaledPoints[0], scaledPoints[1])),
+      normalise(
+        sub(
+          scaledPoints[scaledPoints.length - 1],
+          scaledPoints[scaledPoints.length - 2]
+        )
+      ),
+    ],
+  };
 };
