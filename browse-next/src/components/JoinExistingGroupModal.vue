@@ -35,7 +35,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    groupAdminEmailAddress.touched ? isValidEmailAddress.value : null
+    groupAdminEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
 onBeforeMount(() => {

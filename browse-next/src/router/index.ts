@@ -317,7 +317,10 @@ router.beforeEach(async (to, from, next) => {
     if (!userIsLoggedIn.value) {
       return next({ name: "sign-in" });
     } else {
-      if (!userHasConfirmedEmailAddress.value || !userHasGroups.value) {
+      if (
+        (to.name !== "setup" && !userHasConfirmedEmailAddress.value) ||
+        !userHasGroups.value
+      ) {
         return next({ name: "setup" });
       } else {
         return next({
@@ -331,6 +334,13 @@ router.beforeEach(async (to, from, next) => {
   } else {
     if (!userIsLoggedIn.value && to.meta.requiresLogin) {
       return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
+    }
+    if (
+      userIsLoggedIn.value &&
+      to.name !== "setup" &&
+      !userHasConfirmedEmailAddress.value
+    ) {
+      return next({ name: "setup" });
     }
     // Check to see if we match the first part of the path to any of our group names:
     let potentialGroupName = to.path
@@ -405,7 +415,7 @@ router.beforeEach(async (to, from, next) => {
     });
   }
 
-  if (to.name === "setup" && userIsLoggedIn.value && userHasGroups.value) {
+  if (to.name === "setup" && userIsLoggedIn.value && userHasGroups.value && userHasConfirmedEmailAddress.value) {
     return next({
       name: "dashboard",
       params: {

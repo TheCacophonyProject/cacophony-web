@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { TagColours } from "@/consts";
 import { useDevicePixelRatio } from "@vueuse/core";
 import type { IntermediateTrack } from "@/components/cptv-player/cptv-player-types";
+import type { ApiTrackResponse } from "@typedefs/api/track";
 const { pixelRatio } = useDevicePixelRatio();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {
@@ -15,7 +16,7 @@ const {
 } = defineProps<{
   tracks: IntermediateTrack[];
   totalFrames: number;
-  currentTrack?: IntermediateTrack;
+  currentTrack?: ApiTrackResponse;
   sidePadding?: number;
   playbackTime: number;
 }>();
@@ -200,7 +201,7 @@ const setPlaybackTime = (offset: number) => {
 
 const currentTrackIndex = computed<number>(() => {
   if (currentTrack) {
-    return tracks.indexOf(currentTrack) || 0;
+    return tracks.findIndex((track) => track.id === currentTrack.id) || 0;
   }
   return 0;
 });

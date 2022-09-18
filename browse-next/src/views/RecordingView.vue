@@ -1,7 +1,14 @@
 <script setup lang="ts">
 // eslint-disable-next-line no-undef
 import { useRoute } from "vue-router";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  defineAsyncComponent,
+  inject,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 import type { ComputedRef, Ref } from "vue";
 import type {
   LatLng,
@@ -28,11 +35,15 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import { truncateLongStationNames } from "@/utils";
-import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
+// import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 const route = useRoute();
 const emit = defineEmits(["close"]);
+
+const CptvPlayer = defineAsyncComponent(
+  () => import("@/components/cptv-player/CptvPlayer.vue")
+);
 
 const stations: Ref<ApiStationResponse[] | null> =
   inject("activeStationsContext") || ref(null);
@@ -713,5 +724,4 @@ const cptvUrl = computed<string | undefined>(() => {
     cursor: default;
   }
 }
-
 </style>

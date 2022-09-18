@@ -521,7 +521,7 @@ const renderFrame = (
     } else {
       [min, max] = minMaxForFrame(frameData);
     }
-    if (silhouetteMode.value) {
+    if (!silhouetteMode.value) {
       // Example: #1284537 for dynamic range clamping
       // #1284559 maybe not working?
       const range = max - min;
@@ -796,7 +796,7 @@ const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
     );
   }
 );
-
+//
 const exportMp4 = async () => {
   if (overlayCanvas.value) {
     const encoder = new Mp4Encoder();
@@ -1587,7 +1587,6 @@ const drawFrame = async (
         <button
           @click="stepBackward"
           data-tooltip="Go back one frame"
-          ref="stepBackward"
           :disabled="!hasVideo || !canStepBackward"
         >
           <font-awesome-icon icon="step-backward" />
@@ -1595,7 +1594,6 @@ const drawFrame = async (
         <button
           @click="stepForward"
           data-tooltip="Go forward one frame"
-          ref="stepForward"
           :disabled="!hasVideo || !canStepForward"
         >
           <font-awesome-icon icon="step-forward" />

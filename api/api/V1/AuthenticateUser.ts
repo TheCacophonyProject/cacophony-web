@@ -44,7 +44,7 @@ import config from "@config";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
 import {
-  sendChangedEmailConfirmationEmail,
+  sendChangedEmailConfirmationEmail, sendEmailConfirmationEmailLegacyUser,
   sendWelcomeEmailConfirmationEmail,
 } from "@/emails/transactionalEmails";
 import { HttpStatusCode } from "@typedefs/api/consts";
@@ -463,6 +463,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/resend-email-confirmation-request`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
+      const browseNextLaunchDate = new Date();// Fix this to a specific date once browse-next goes live.
       const user = await models.User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
@@ -478,11 +479,16 @@ export default function (app: Application, baseUrl: string) {
             emailConfirmationToken,
             user.email
           );
+        } else if (user.createdAt < browseNextLaunchDate) {
+          sendSuccess = await sendEmailConfirmationEmailLegacyUser(
+              emailConfirmationToken,
+              user.email
+          );
         } else {
           // otherwise resend the email change confirmation email.
           sendSuccess = await sendChangedEmailConfirmationEmail(
-            emailConfirmationToken,
-            user.email
+              emailConfirmationToken,
+              user.email
           );
         }
         if (!sendSuccess) {
