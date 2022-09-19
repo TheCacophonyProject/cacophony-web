@@ -5,6 +5,7 @@
       @input="$emit('input', $event)"
       v-bind:value="value"
       :disabled="disabled"
+      placeholder="Search Tags..."
     />
   </div>
 </template>
