@@ -849,8 +849,8 @@ from (
         {
           model: models.Track,
           where: trackWhere,
-          required: trackRequired,
-          separate: true,
+          required: false,
+          seperate: true,
           attributes: [
             "id",
             "filtered",
@@ -858,9 +858,9 @@ from (
               Sequelize.fn(
                 "json_build_object",
                 "start_s",
-                Sequelize.literal(`"Track"."data"#>'{start_s}'`),
+                Sequelize.literal(`"Tracks"."data"#>'{start_s}'`),
                 "end_s",
-                Sequelize.literal(`"Track"."data"#>'{end_s}'`)
+                Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
               ),
               "data",
             ],
@@ -919,17 +919,17 @@ from (
     if (
       (models.Tag as TagStatic).acceptableTags.has(tagMode as AcceptableTag)
     ) {
-      let sqlQuery = `(EXISTS (${Recording.queryBuilder.recordingTaggedWith(
+      let sqlQuery = `((${Recording.queryBuilder.recordingTaggedWith(
         [tagMode],
         null,
         exclusive
-      )}))`;
+      )}) IS NOT NULL)`;
       if (tagWhats) {
-        sqlQuery = `${sqlQuery} AND EXISTS(${Recording.queryBuilder.trackTaggedWith(
+        sqlQuery = `${sqlQuery} AND (${Recording.queryBuilder.trackTaggedWith(
           tagWhats,
           null,
           exclusive
-        )})`;
+        )}) IS NOT NULL`;
       }
       return sqlQuery;
     }
@@ -994,13 +994,11 @@ from (
     tagTypeSql: SqlString,
     exclusive: boolean
   ): SqlString => {
-    let query = `( ${
-      tagTypeSql || !tagWhats ? "EXISTS" : ""
-    }(${Recording.queryBuilder.trackTaggedWith(
+    let query = `((${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
       tagTypeSql,
       exclusive
-    )})`;
+    )}  ${tagTypeSql || !tagWhats ? "LIMIT 1) IS NOT NULL" : ")"}`;
     if (
       !tagWhats ||
       (!tagWhats && tagTypeSql) ||
@@ -1008,11 +1006,11 @@ from (
         (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag)
       )
     ) {
-      query += ` OR EXISTS (${Recording.queryBuilder.recordingTaggedWith(
+      query += ` OR (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
         tagTypeSql,
         exclusive
-      )})`;
+      )} LIMIT 1) IS NOT NULL`;
     }
     query += ")";
     return query;
@@ -1023,13 +1021,11 @@ from (
     tagTypeSql: SqlString,
     exclusive: boolean
   ): SqlString => {
-    let query = `( NOT ${
-      tagTypeSql || !tagWhats ? "EXISTS" : ""
-    }(${Recording.queryBuilder.trackTaggedWith(
+    let query = `((${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
       tagTypeSql,
       exclusive
-    )})`;
+    )} LIMIT 1) ${tagTypeSql || !tagWhats ? "IS NULL" : ""}`;
     if (
       !tagWhats ||
       (!tagWhats && tagTypeSql) ||
@@ -1037,13 +1033,11 @@ from (
         (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag)
       )
     ) {
-      query += ` AND NOT ${
-        tagTypeSql || !tagWhats ? "EXISTS" : ""
-      } (${Recording.queryBuilder.recordingTaggedWith(
+      query += ` AND (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
         tagTypeSql,
         exclusive
-      )})`;
+      )} LIMIT 1)  ${tagTypeSql || !tagWhats ? "IS NULL" : ""}`;
     }
     query += ")";
     return query;
@@ -1083,7 +1077,7 @@ from (
       // When we're not filtering by tag type, we want override automatic tags with human tags
       if (tags) {
         const notAutomatic = `${sql} AND (NOT "Tags".automatic)`;
-        const humanPreferred = `CASE WHEN EXISTS(${notAutomatic}) THEN EXISTS(${notAutomatic} ${tagsSql}) ELSE EXISTS(${sql} ${tagsSql}) END`;
+        const humanPreferred = `CASE WHEN (${notAutomatic} LIMIT 1) IS NOT NULL THEN (${notAutomatic} ${tagsSql} LIMIT 1) IS NOT NULL ELSE (${sql} ${tagsSql} LIMIT 1) IS NOT NULL END`;
         log.info(humanPreferred);
         return humanPreferred;
       } else {
