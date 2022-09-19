@@ -425,7 +425,7 @@ export interface ApiRecordingTag {
 // from api/v1/recordings (post)
 export interface ApiRecordingAlgorithm {
   model_name?: string;
-  tracker_version?: number;
+  tracker_version?: number | string;
 }
 
 // from api/v1/recordings (post)

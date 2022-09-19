@@ -181,7 +181,10 @@ const refreshCredentialsAtIn = (milliseconds: number) => {
   milliseconds = Math.max(1000, milliseconds);
   console.log("Setting refresh in", milliseconds);
   clearTimeout(refreshTimeout);
-  refreshTimeout = setTimeout(refreshCredentials, milliseconds) as unknown as number;
+  refreshTimeout = setTimeout(
+    refreshCredentials,
+    milliseconds
+  ) as unknown as number;
 };
 
 export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {

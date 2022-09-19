@@ -53,9 +53,7 @@ const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
         >{{ masterTag.what }}</span
       >
     </div>
-    <span v-else>
-
-    </span>
+    <span v-else> </span>
   </div>
 </template>
 <style scoped lang="less">

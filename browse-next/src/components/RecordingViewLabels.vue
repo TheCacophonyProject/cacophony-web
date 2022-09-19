@@ -1,12 +1,10 @@
 <script setup lang="ts">
-  import {ref} from "vue";
+import { ref } from "vue";
 
-  const foo = ref("bar");
+const foo = ref("bar");
 </script>
 <template>
-  <div>Labels {{foo}}</div>
+  <div>Labels {{ foo }}</div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

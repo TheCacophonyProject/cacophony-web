@@ -52,9 +52,9 @@ export const visitHasClassification =
       visit.classification === tag) as boolean;
   };
 
-export const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
-  null
-);
+export const currentVisitsFilter = ref<
+  ((visit: ApiVisitResponse) => boolean) | null
+>(null);
 export const currentVisitsFilterComputed = computed<
   (visit: ApiVisitResponse) => boolean
 >(() => {
