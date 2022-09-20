@@ -12,13 +12,16 @@ module.exports = {
     const paths = require('../classifications/label_paths.json');
     
     try {
-      await queryInterface.sequelize.query(`ALTER TABLE "TrackTags" ADD "path" ltree`, {transaction});
+      const trackTags = await queryInterface.describeTable("TrackTags");
+      if (!trackTags.path) {
+        await queryInterface.sequelize.query(`ALTER TABLE "TrackTags" ADD "path" ltree`, {transaction});
+      }
       await queryInterface.sequelize.query(`
       UPDATE "TrackTags" SET
       "path" = text2ltree(:paths::jsonb ->> what)
-      WHERE :paths::jsonb ? what
+      WHERE "path" IS NULL AND :paths::jsonb ? what
       `, { transaction, replacements: {paths: JSON.stringify(paths)} });
-      await queryInterface.sequelize.query(`CREATE INDEX "label_idx" ON "TrackTags" USING BTREE (path)`, {transaction});
+      await queryInterface.sequelize.query(`CREATE INDEX IF NOT EXISTS "label_idx" ON "TrackTags" USING BTREE (path)`, {transaction});
       await transaction.commit();
     } catch (e) {
       console.log(e);
