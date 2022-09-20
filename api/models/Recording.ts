@@ -850,7 +850,7 @@ from (
           model: models.Track,
           where: trackWhere,
           required: false,
-          seperate: true,
+          separate: true,
           attributes: [
             "id",
             "filtered",
