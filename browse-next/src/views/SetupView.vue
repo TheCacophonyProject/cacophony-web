@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import {
-  userDisplayName,
-  userHasConfirmedEmailAddress,
   creatingNewGroup,
-  joiningNewGroup,
   CurrentUser,
+  joiningNewGroup,
   refreshLocallyStoredUserActivation,
   setLoggedInUserData,
+  userDisplayName,
+  userHasConfirmedEmailAddress,
+  userHasGroups,
 } from "@models/LoggedInUser";
 import {
+  changeAccountEmail,
   debugGetEmailConfirmationToken,
   resendAccountActivationEmail as resendEmail,
   validateEmailConfirmationToken,
 } from "@api/User";
-import { ref, onUnmounted } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import type { FormInputValidationState, FormInputValue } from "@/utils";
+import { formFieldInputText } from "@/utils";
 
 // TODO: Stop admins adding users without confirmed email addresses.
 //  Maybe the list users api should only return "active/verified" users.
@@ -22,7 +26,22 @@ import { useRouter } from "vue-router";
 
 const submittingResendActivationRequest = ref(false);
 const resendRequestSent = ref(false);
+const emailAddressUpdated = ref(false);
+const emailUpdateInProgress = ref(false);
 const resendError = ref<null | string>(null);
+const emailUpdateError = ref<string | false>(false);
+const newUserEmailAddress: FormInputValue = formFieldInputText();
+
+const hasError = computed({
+  get: () => {
+    return emailUpdateError.value !== false;
+  },
+  set: (val: boolean) => {
+    if (!val) {
+      emailUpdateError.value = false;
+    }
+  },
+});
 
 const checkForActivatedUser = () => {
   // NOTE: The user can click the email confirmation link, which opens up in another window, and should
@@ -44,6 +63,23 @@ onUnmounted(() => {
   clearInterval(userChecker);
 });
 
+const updateEmailAddress = async () => {
+  emailUpdateInProgress.value = true;
+  const emailUpdateResponse = await changeAccountEmail(
+    newUserEmailAddress.value
+  );
+  if (emailUpdateResponse.success) {
+    emailAddressUpdated.value = true;
+  } else {
+    const err =
+      emailUpdateResponse.result.errors && emailUpdateResponse.result.errors[0];
+    if (err) {
+      emailUpdateError.value = typeof err === "string" ? err : err.msg;
+    }
+  }
+  emailUpdateInProgress.value = false;
+};
+
 const resendAccountActivationEmail = async () => {
   submittingResendActivationRequest.value = true;
   const resendResponse = await resendEmail();
@@ -55,6 +91,17 @@ const resendAccountActivationEmail = async () => {
   }
   submittingResendActivationRequest.value = false;
 };
+
+const isValidEmailAddress = computed<boolean>(() => {
+  const { value } = newUserEmailAddress;
+  const email = value.trim();
+  return !emailUpdateError.value && email.length > 3 && email.includes("@");
+});
+
+const needsValidationAndIsValidEmailAddress =
+  computed<FormInputValidationState>(() =>
+    newUserEmailAddress.touched ? isValidEmailAddress.value : undefined
+  );
 
 const router = useRouter();
 const debugConfirmEmail = async () => {
@@ -86,18 +133,18 @@ const debugConfirmEmail = async () => {
 };
 </script>
 <template>
-  <div class="container-md d-flex flex-column flex-fill" v-if="CurrentUser">
+  <div class="setup-form p-4 pb-3" v-if="CurrentUser">
     <h1>Finish setting up your account</h1>
     <div>
       <span class="h3">
         Kia ora <span>{{ userDisplayName }}</span>
       </span>
     </div>
-    <div v-if="!userHasConfirmedEmailAddress">
-      <p>
-        Welcome to your Cacophony account. You should have received an email
+    <div v-if="!userHasConfirmedEmailAddress && !userHasGroups">
+      <p class="mt-3">
+        Welcome to your new Cacophony account. You should have received an email
         with a link to confirm your email address
-        <em>{{ CurrentUser.email }}</em
+        <strong>{{ CurrentUser?.email }}</strong
         >. Before you can get setup, we need you click the link in that email to
         activate your account.
       </p>
@@ -119,6 +166,100 @@ const debugConfirmEmail = async () => {
         <button class="btn btn-primary" @click="debugConfirmEmail">
           DEBUG validate email.
         </button>
+      </p>
+    </div>
+    <div v-else-if="!userHasConfirmedEmailAddress">
+      <p class="mt-3">Welcome to your Cacophony account.</p>
+      <p>Before you can get setup, we need you confirm your email address.</p>
+      <div v-if="CurrentUser?.email">
+        <p>
+          <strong>{{ CurrentUser?.email }}</strong> is the email address we
+          currently have associated with your account.
+        </p>
+        <hr />
+        <p>
+          <strong
+            >If this is NOT the email address you use, update it now:</strong
+          >
+        </p>
+      </div>
+      <p v-else>
+        There is no email address associated with your account. Please enter
+        one.
+      </p>
+      <div v-if="!emailAddressUpdated">
+        <b-form @submit.stop.prevent="updateEmailAddress" novalidate>
+          <b-alert
+            v-model="emailUpdateError"
+            variant="danger"
+            dismissible
+            class="text-center"
+            @dismissed="hasError = false"
+          >
+            {{ emailUpdateError }}
+          </b-alert>
+          <div class="d-flex">
+            <b-form-input
+              type="email"
+              v-model="newUserEmailAddress.value"
+              @blur="newUserEmailAddress.touched = true"
+              @focus="emailUpdateError = false"
+              :state="needsValidationAndIsValidEmailAddress"
+              aria-label="new email address"
+              placeholder="new email address"
+              :disabled="emailUpdateInProgress"
+            />
+            <button
+              class="btn btn-secondary ms-3"
+              type="submit"
+              :disabled="!isValidEmailAddress || emailUpdateInProgress"
+            >
+              <span v-if="emailUpdateInProgress">
+                <span class="spinner-border spinner-border-sm"></span>
+                <span v-if="CurrentUser?.email">Updating...</span
+                ><span v-else>Adding...</span>
+              </span>
+              <span v-else>
+                <span v-if="CurrentUser?.email">Update</span
+                ><span v-else>Add</span>
+              </span>
+            </button>
+          </div>
+        </b-form>
+        <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
+          Enter a valid email address
+        </b-form-invalid-feedback>
+      </div>
+      <p v-else>
+        Your email address has been changed to
+        <span>{{ CurrentUser?.email }}</span
+        >. You should receive a confirmation email to this address. You'll need
+        to confirm your new email address before your can continue.
+      </p>
+      <hr v-if="!emailAddressUpdated && CurrentUser?.email" />
+      <p v-if="!emailAddressUpdated && CurrentUser?.email" class="mt-3">
+        If <strong>{{ CurrentUser?.email }}</strong> is correct:
+      </p>
+      <p v-if="!emailAddressUpdated" class="mt-3">
+        <button
+          class="btn btn-secondary me-3 mb-3"
+          type="button"
+          @click="resendAccountActivationEmail"
+          :disabled="resendRequestSent || emailUpdateInProgress"
+        >
+          <span v-if="submittingResendActivationRequest">
+            <span class="spinner-border spinner-border-sm"></span> Sending...
+          </span>
+          <span v-else> Send account confirmation email. </span>
+        </button>
+
+        <button class="btn btn-primary" @click="debugConfirmEmail">
+          DEBUG validate email.
+        </button>
+      </p>
+      <p class="alert alert-secondary">
+        NOTE: If you can't find the email we send, make sure to check your spam
+        folder.
       </p>
     </div>
     <div v-else class="flex-fill">
@@ -176,6 +317,14 @@ const debugConfirmEmail = async () => {
 .option-item {
   @media (min-width: 768px) {
     max-width: 50%;
+  }
+}
+.setup-form {
+  background: white;
+  max-width: 360px;
+  width: 100%;
+  @media (min-width: 768px) {
+    border-radius: 0.25rem;
   }
 }
 </style>

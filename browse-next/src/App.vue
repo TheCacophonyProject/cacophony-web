@@ -15,15 +15,15 @@ import {
   isLoggingInAutomatically,
   isFetchingGroups,
   userIsAdminForCurrentSelectedGroup,
+  userHasConfirmedEmailAddress,
   showSwitchGroup,
   creatingNewGroup,
   joiningNewGroup,
   urlNormalisedCurrentGroupName,
   pinSideNav,
   rafFps,
-  type SelectedGroup,
-  type LoggedInUser,
 } from "@/models/LoggedInUser";
+import type { SelectedGroup, LoggedInUser } from "@/models/LoggedInUser";
 import {
   computed,
   defineAsyncComponent,
@@ -130,7 +130,7 @@ onMounted(() => {
       'logged-in',
       { 'has-git-info-bar': hasGitReleaseInfoBar },
     ]"
-    v-else-if="userIsLoggedIn && userHasGroups"
+    v-else-if="userIsLoggedIn && userHasGroups && userHasConfirmedEmailAddress"
   >
     <nav
       id="global-side-nav"
@@ -416,7 +416,12 @@ onMounted(() => {
       </div>
     </section>
   </main>
-  <main v-else-if="userIsLoggedIn && !userHasGroups" class="d-flex flex-column">
+  <main
+    v-else-if="
+      userIsLoggedIn && (!userHasGroups || !userHasConfirmedEmailAddress)
+    "
+    class="d-flex flex-column account-setup justify-content-center align-items-center flex-fill"
+  >
     <!--  This will always be the setup view  -->
     <router-view />
   </main>
@@ -647,6 +652,11 @@ main {
 }
 
 .logged-in {
+}
+.account-setup {
+  @media (min-width: 768px) {
+    background: #95a5a6;
+  }
 }
 .logged-out {
   @media (min-width: 768px) {
