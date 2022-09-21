@@ -22,7 +22,7 @@ import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorizedUser,
+  extractJwtAuthorizedUser, extractValFromRequest,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroupByNameOrId,
@@ -65,6 +65,7 @@ import {
   MIN_STATION_SEPARATION_METERS,
 } from "@api/V1/recordingUtil";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import {urlNormaliseName} from "@/emails/htmlEmailUtils";
 
 const mapGroup = (
   group: Group,
@@ -174,6 +175,15 @@ export default function (app: Application, baseUrl: string) {
       anyOf(validNameOf(body("groupname")), validNameOf(body("groupName"))),
     ]),
     fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (!response.locals.group) {
+        // Check for urlNormalised versions of group name.
+        const groupName = extractValFromRequest(request, body(["groupname", "groupName"]));
+        await fetchUnauthorizedOptionalGroupByNameOrId(urlNormaliseName(groupName))(request, response, next);
+      } else {
+        next();
+      }
+    },
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.group) {
         return next(
@@ -725,10 +735,10 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     async (request: Request, response: Response) => {
-      const group = response.locals.group;
+      const _group = response.locals.group;
       const user = response.locals.user;
-      const makeAdmin = request.body.admin;
-      const requestUser = response.locals.requestUser;
+      const _makeAdmin = request.body.admin;
+      const _requestUser = response.locals.requestUser;
       // TODO - send email to user with token to join group, expiring in 1 week.
 
       if (!user) {

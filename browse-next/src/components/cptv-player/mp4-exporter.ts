@@ -5,7 +5,6 @@ onmessage = async ({ data }) => {
   switch (data.type) {
     case "initEncoder":
       {
-        //const HME = await import("@/assets/h264-mp4-encoder");
         encoder = await HME.createH264MP4Encoder();
         encoder.width = data.data.width;
         encoder.height = data.data.height;

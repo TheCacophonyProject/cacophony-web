@@ -90,7 +90,6 @@ onBeforeMount(async () => {
     );
     if (!validateTokenResponse.success) {
       // Grab the error.
-      debugger;
       invalidResetToken.value = true;
       await router.push({
         name: "reset-password",

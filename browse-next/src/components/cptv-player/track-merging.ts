@@ -4,13 +4,13 @@
 //  which one to display.
 import type { Rectangle } from "@/components/cptv-player/cptv-player-types";
 
-const trackDirection = (trackPositions: Rectangle[]) => {
+const _trackDirection = (_trackPositions: Rectangle[]) => {
   // Get a vector of the track overall direction, so we can compare it to other tracks.
   // Maybe just during the overlap phase.
   return;
 };
 
-const trackSpeed = (trackPositions: Rectangle[]) => {
+const _trackSpeed = (_trackPositions: Rectangle[]) => {
   // Get a metric for the track speed, to be compared with tracks we might want to merge with.
   // Maybe just during the overlap phase.
   return;
@@ -20,7 +20,7 @@ export const rectanglesIntersect = (a: Rectangle, b: Rectangle): boolean => {
   return !(a[2] < b[0] || a[0] > b[2] || a[3] < b[1] || a[1] > b[3]);
 };
 
-const intersection = (a: Rectangle, b: Rectangle): Rectangle => {
+const _intersection = (a: Rectangle, b: Rectangle): Rectangle => {
   // return the intersection rect of two rects
   return [
     Math.max(a[0], b[0]),
@@ -30,7 +30,7 @@ const intersection = (a: Rectangle, b: Rectangle): Rectangle => {
   ];
 };
 
-const union = (a: Rectangle, b: Rectangle): Rectangle => {
+const _union = (a: Rectangle, b: Rectangle): Rectangle => {
   return [
     Math.min(a[0], b[0]),
     Math.min(a[1], b[1]),

@@ -65,7 +65,6 @@ let cptvDecoder: CptvDecoder;
 
 watch(pixelRatio, () => {
   animationTick.value = 0;
-  console.log("window width changed");
   setOverlayCanvasDimensions();
 
   // If the pixel ratio changed, we might also be on a monitor with a different refresh rate now.
@@ -285,7 +284,7 @@ const onePastLastFrameNumForTrack = (trackId: number): number => {
   return lastTrackFramePlusOne;
 };
 
-const selectTrack = (force = false, shouldPlay = false) => {
+const _selectTrack = (force = false, shouldPlay = false) => {
   if (currentTrack && (!playing.value || force) && recording?.tracks.length) {
     cancelAnimationFrame(animationFrame.value);
     animationTick.value = 0;
@@ -547,8 +546,7 @@ const renderFrame = (
         const threshold = 45; // Should be scaled by range.
         const frameBufferView = new Uint32Array(frameBuffer.buffer);
         const len = frameBufferView.length;
-        const red =
-          (255 << 24) | ((0 * 255.0) << 16) | ((0 * 255.0) << 8) | (1 * 255.0);
+        const red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
         for (let i = 0; i < len; i++) {
           const px = Math.abs(Number(fd[i]) - Number(bg[i]));
           if (px < threshold) {
@@ -752,8 +750,8 @@ const mergedTracks = computed(() => {
 
   // #1326858 Complex tracks to merge/not merge
 
-  let mergeCandidates: Record<string, boolean> = {};
-  for (const [frameNum, tracks] of Object.entries(tracksByFrame.value).filter(
+  const mergeCandidates: Record<string, boolean> = {};
+  for (const [_frameNum, tracks] of Object.entries(tracksByFrame.value).filter(
     ([_, tracks]) => tracks.length > 1
   )) {
     for (const [trackA, trackABox] of tracks) {
@@ -797,7 +795,7 @@ const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
   }
 );
 //
-const exportMp4 = async () => {
+const _exportMp4 = async () => {
   if (overlayCanvas.value) {
     const encoder = new Mp4Encoder();
     await encoder.init(640, 480, 9);
@@ -805,7 +803,7 @@ const exportMp4 = async () => {
     if (context) {
       await encoder.encodeFrame(context.getImageData(0, 0, 640, 480).data);
     }
-    const uint8Array = await encoder.finish();
+    const _uint8Array = await encoder.finish();
     encoder.close();
   }
 };
@@ -1094,7 +1092,6 @@ const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
     const trackId = getTrackIdAtPosition(pX, pY);
     overlayCanvas.value.style.cursor = trackId !== null ? "pointer" : "default";
     if (trackId !== null) {
-      console.log("Emit track selected", trackId);
       emit("track-selected", {
         trackId,
       });
@@ -1237,7 +1234,7 @@ watch(
       cancelAnimationFrame(animationFrame.value);
 
       if ((recording?.tracks || []).length > 1) {
-        console.log(
+        console.warn(
           "Can merge",
           Object.values(framesByTrack.value).length,
           Object.keys(mergedTracks.value)

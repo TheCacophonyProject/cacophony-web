@@ -53,12 +53,11 @@ const createNewGroup = async () => {
       creatingNewGroup.enabled = false;
     } else {
       // User groups doesn't exist?
-      debugger;
+      console.error("FIXME");
     }
   } else {
     // Allow latin unicode characters with accents in names, normalise them to ascii for urls.
     createNewGroupError.value = createGroupResponse.result;
-    console.log(createNewGroupError.value);
   }
   submittingCreateRequest.value = false;
 };

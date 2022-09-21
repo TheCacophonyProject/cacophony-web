@@ -44,7 +44,7 @@ import config from "@config";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
 import {
-  sendChangedEmailConfirmationEmail, sendEmailConfirmationEmailLegacyUser,
+  sendChangedEmailConfirmationEmail, sendEmailConfirmationEmailLegacyUser, sendPasswordResetEmail,
   sendWelcomeEmailConfirmationEmail,
 } from "@/emails/transactionalEmails";
 import { HttpStatusCode } from "@typedefs/api/consts";
@@ -366,11 +366,18 @@ export default function (app: Application, baseUrl: string) {
         const user = response.locals.user as User;
         // If we're using the new end-point, make sure the user has confirmed their email address.
         const isNewEndpoint = request.path.endsWith("reset-password");
-        if (isNewEndpoint && !user.emailConfirmed) {
+        if (isNewEndpoint) {
           // Do nothing
+          const token = "";
+          const sendingSuccess = await sendPasswordResetEmail(token, user.email);
+          if (!sendingSuccess) {
+            return next(
+                new FatalError(
+                    "We failed to send your password recovery email, please check that you've entered your email correctly."
+                )
+            );
+          }
         } else {
-          // FIXME - use correct resetPassword emailer
-
           const sendingSuccess = await user.resetPassword();
           if (!sendingSuccess) {
             return next(

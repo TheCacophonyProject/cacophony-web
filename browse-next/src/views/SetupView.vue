@@ -133,7 +133,11 @@ const debugConfirmEmail = async () => {
 };
 </script>
 <template>
-  <div class="setup-form p-4 pb-3" v-if="CurrentUser">
+  <div
+    class="setup-form p-4 pb-3"
+    :class="{ 'groups-setup': userHasConfirmedEmailAddress && !userHasGroups }"
+    v-if="CurrentUser"
+  >
     <h1>Finish setting up your account</h1>
     <div>
       <span class="h3">
@@ -149,8 +153,6 @@ const debugConfirmEmail = async () => {
         activate your account.
       </p>
       <p>
-        If you can't find the email we sent, make sure to check your spam
-        folder.
         <button
           class="btn btn-secondary"
           type="button"
@@ -163,9 +165,13 @@ const debugConfirmEmail = async () => {
           <span v-else> Re-send my confirmation email. </span>
         </button>
 
-        <button class="btn btn-primary" @click="debugConfirmEmail">
+        <button class="btn btn-primary mt-3" @click="debugConfirmEmail">
           DEBUG validate email.
         </button>
+      </p>
+      <p class="alert alert-secondary">
+        NOTE: If you can't find the email we sent, make sure to check your spam
+        folder.
       </p>
     </div>
     <div v-else-if="!userHasConfirmedEmailAddress">
@@ -190,7 +196,7 @@ const debugConfirmEmail = async () => {
       <div v-if="!emailAddressUpdated">
         <b-form @submit.stop.prevent="updateEmailAddress" novalidate>
           <b-alert
-            v-model="emailUpdateError"
+            v-model="hasError"
             variant="danger"
             dismissible
             class="text-center"
@@ -325,6 +331,9 @@ const debugConfirmEmail = async () => {
   width: 100%;
   @media (min-width: 768px) {
     border-radius: 0.25rem;
+  }
+  &.groups-setup {
+    max-width: 768px;
   }
 }
 </style>

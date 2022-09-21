@@ -34,7 +34,6 @@ import {
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
 import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
-import { CurrentViewAbortController } from "@/router";
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
@@ -44,9 +43,9 @@ const CreateGroupModal = defineAsyncComponent(
   () => import("@/components/CreateGroupModal.vue")
 );
 
-const userIsSuperAdmin = false;
-const loggedInAsAnotherUser = false;
-const environmentIsProduction = false;
+const _userIsSuperAdmin = false;
+const _loggedInAsAnotherUser = false;
+const _environmentIsProduction = false;
 const hasGitReleaseInfoBar = ref(false);
 
 const currentSelectedGroup = computed<SelectedGroup>(() => {

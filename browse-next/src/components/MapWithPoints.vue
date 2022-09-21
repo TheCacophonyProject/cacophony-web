@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import {computed, onMounted, ref, unref, watch} from "vue";
+import { computed, onMounted, ref, unref, watch } from "vue";
 import type { Ref } from "vue";
 import { useRouter } from "vue-router";
-import {
-  type CircleMarkerOptions,
-  DomEvent,
-  latLng,
-  type LatLngTuple,
-  Layer,
-  Map as LeafletMap,
-} from "leaflet";
+import type { RouteLocationRaw } from "vue-router";
+import type { CircleMarkerOptions, LatLngTuple } from "leaflet";
+import { DomEvent, latLng, Layer, Map as LeafletMap, Point } from "leaflet";
 import {
   tileLayer,
   latLngBounds,
@@ -48,7 +43,7 @@ const {
   focusedPoint,
   //loading,
 } = defineProps<{
-  navigateToPoint?: (p: NamedPoint) => any;
+  navigateToPoint?: (p: NamedPoint) => RouteLocationRaw;
   points: NamedPoint[];
   highlightedPoint: Ref<NamedPoint | null>;
   activePoints: NamedPoint[];
@@ -61,6 +56,14 @@ const {
   hasAttribution?: boolean;
   //loading: boolean;
 }>();
+
+interface LeafletInternalRawMarker {
+  _radius: number;
+  _point: Point;
+  _path: SVGPathElement;
+  _empty: () => boolean;
+  _map: LeafletMap;
+}
 
 const loading = ref(true);
 const mapEl = ref<HTMLDivElement | null>(null);
@@ -78,7 +81,8 @@ const iLerp = (targetValue: number, currentValue: number): number => {
 const updateMarkerRadius = (marker: CircleMarkerGroup, radius: number) => {
   // Leaflet only allows setting integer radius values, which makes animation stuttery, so we'll just
   // draw it ourselves.
-  const rawMarker = marker.foregroundMarker as any;
+  const rawMarker =
+    marker.foregroundMarker as unknown as LeafletInternalRawMarker;
   {
     rawMarker._radius = radius;
     const p = rawMarker._point,
@@ -114,7 +118,8 @@ const highlightMarker = (marker: CircleMarkerGroup) => {
     const newRadius =
       initialRadius + lerp(enlargeBy, Math.min(1, progress + 1 / numFrames));
     requestAnimationFrame(() => {
-      const rawMarker = marker.foregroundMarker as any;
+      const rawMarker =
+        marker.foregroundMarker as unknown as LeafletInternalRawMarker;
       if (!rawMarker._path.classList.contains("pulse")) {
         rawMarker._path.classList.add("pulse");
       }
@@ -128,7 +133,8 @@ const unHighlightMarker = (marker: CircleMarkerGroup) => {
   const currentRadius = marker.foregroundMarker.getRadius();
   if (currentRadius > 5) {
     requestAnimationFrame(() => {
-      const rawMarker = marker.foregroundMarker as any;
+      const rawMarker =
+        marker.foregroundMarker as unknown as LeafletInternalRawMarker;
       if (rawMarker._path.classList.contains("pulse")) {
         (rawMarker._path as SVGPathElement).classList.remove("pulse");
       }
@@ -151,12 +157,12 @@ watch(
         pointMarker.foregroundMarker.bringToFront();
         highlightMarker(pointMarker);
         pointMarker.foregroundMarker.openTooltip();
-        ((pointMarker.foregroundMarker as any)._map as LeafletMap).panInside(
-          pointMarker.foregroundMarker.getLatLng(),
-          {
-            padding: [100, 30],
-          }
-        );
+        (
+          (pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker)
+            ._map as LeafletMap
+        ).panInside(pointMarker.foregroundMarker.getLatLng(), {
+          padding: [100, 30],
+        });
       }
     }
     if (oldP) {
@@ -213,21 +219,21 @@ const mapBounds = computed<LatLngBounds | null>(() => {
   }
 });
 
-const mapLocationsForRadius = computed<NamedPoint[]>(() => {
+const _mapLocationsForRadius = computed<NamedPoint[]>(() => {
   if (radius !== 0) {
     return points;
   }
   return [];
 });
 
-const hasPoints = computed<boolean>(() => {
+const _hasPoints = computed<boolean>(() => {
   return points && points.length !== 0;
 });
 
 const computedPoints = computed<NamedPoint[]>(() => points);
 const computedLoading = computed<boolean>(() => loading.value);
 
-const navigateToLocation = (point: NamedPoint) => {
+const _navigateToLocation = (point: NamedPoint) => {
   if (navigateToPoint) {
     const router = useRouter();
     router.push(navigateToPoint(point));
@@ -248,10 +254,10 @@ watch(computedLoading, (nextLoadingState: boolean) => {
 
 const markers: Record<string, CircleMarkerGroup> = {};
 // IDEA: Hash the name of the point into a colour for that point?
-const onReady = (map: LeafletMap) => {
+const _onReady = (_map: LeafletMap) => {
   //map.setMaxZoom(17); // Max tile resolution
 };
-const onZoomChange = (zoomLevel: number) => {
+const _onZoomChange = (_zoomLevel: number) => {
   //console.log(e);
 };
 const tileLayers: Record<string, Layer> = {};

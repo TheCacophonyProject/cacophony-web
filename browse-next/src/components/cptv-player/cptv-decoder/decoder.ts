@@ -1,29 +1,38 @@
 interface MessageData {
   type: string;
-  data: any;
+  data: unknown;
 }
-let messageQueue: Record<string, (data: any) => any> = {};
+interface MessageDataMessage extends MessageData {
+  type: "message";
+  data: {
+    type: string;
+    data: unknown;
+  };
+}
+
+let messageQueue: Record<string, (data: unknown) => void> = {};
 let decoder: Worker;
 
 export class CptvDecoder {
   constructor() {
-    this.free();
-    messageQueue = {};
+    this.free().then(() => {
+      messageQueue = {};
+    });
   }
   private inited = false;
   async init() {
     await this.free();
     messageQueue = {};
     if (!this.inited) {
-      const onMessage = (message: MessageData) => {
+      const onMessage = (message: MessageData | MessageDataMessage) => {
         let type;
         let data;
         if (message.type && message.type !== "message") {
           type = message.type;
           data = message.data;
         } else {
-          type = message.data.type;
-          data = message.data.data;
+          type = (message as MessageDataMessage).data.type;
+          data = (message as MessageDataMessage).data.data;
         }
         const resolver = messageQueue[type];
         delete messageQueue[type];
@@ -51,7 +60,7 @@ export class CptvDecoder {
     await this.init();
     const type = "initWithUrlAndSize";
     decoder.postMessage({ type, url, size });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as string | boolean;
   }
 
   /**
@@ -63,7 +72,7 @@ export class CptvDecoder {
     await this.init();
     const type = "initWithUrl";
     decoder.postMessage({ type, url });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as string | boolean;
   }
 
   /**
@@ -77,7 +86,7 @@ export class CptvDecoder {
     await this.init();
     const type = "initWithLocalCptvFile";
     decoder.postMessage({ type, arrayBuffer: fileBytes });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as string | boolean;
   }
 
   /**
@@ -89,7 +98,7 @@ export class CptvDecoder {
     await this.init();
     const type = "getStreamMetadata";
     decoder.postMessage({ type, url });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as CptvHeader;
   }
 
   /**
@@ -101,7 +110,7 @@ export class CptvDecoder {
     await this.init();
     const type = "getBytesMetadata";
     decoder.postMessage({ type, arrayBuffer: fileBytes });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as CptvHeader;
   }
 
   /**
@@ -110,7 +119,7 @@ export class CptvDecoder {
   async getNextFrame(): Promise<CptvFrame | null> {
     const type = "getNextFrame";
     decoder.postMessage({ type });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as CptvFrame | null;
   }
 
   /**
@@ -120,7 +129,7 @@ export class CptvDecoder {
   async getTotalFrames(): Promise<number | null> {
     const type = "getTotalFrames";
     decoder.postMessage({ type });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as number | null;
   }
 
   /**
@@ -149,7 +158,7 @@ export class CptvDecoder {
   async hasStreamError(): Promise<boolean> {
     const type = "hasStreamError";
     decoder.postMessage({ type });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as boolean;
   }
 
   /**
@@ -158,7 +167,7 @@ export class CptvDecoder {
   async getStreamError(): Promise<string | null> {
     const type = "getStreamError";
     decoder.postMessage({ type });
-    return await this.waitForMessage(type);
+    return (await this.waitForMessage(type)) as string | null;
   }
 
   /**
@@ -168,11 +177,11 @@ export class CptvDecoder {
     const type = "freeResources";
     if (decoder) {
       decoder.postMessage({ type });
-      return await this.waitForMessage(type);
+      return (await this.waitForMessage(type)) as void;
     }
   }
 
-  async waitForMessage(messageType: string): Promise<any> {
+  async waitForMessage(messageType: string): Promise<unknown> {
     return new Promise((resolve) => {
       messageQueue[messageType] = resolve;
     });

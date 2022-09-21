@@ -84,7 +84,7 @@ const timezoneForActiveStations = computed<string>(() => {
 
 const dates = computed<DateTime[]>(() => {
   const now = DateTime.now().setZone(timezoneForActiveStations.value);
-  let d = [
+  const d = [
     DateTime.fromISO(startDate.toISOString(), {
       zone: timezoneForActiveStations.value,
     }),

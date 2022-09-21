@@ -4,11 +4,17 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
+import eslintPlugin from "vite-plugin-eslint";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   envDir: ".",
-  plugins: [vue({ reactivityTransform: true }), wasm(), topLevelAwait()],
+  plugins: [
+    vue({ reactivityTransform: true }),
+    wasm(),
+    topLevelAwait(),
+    eslintPlugin(),
+  ],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

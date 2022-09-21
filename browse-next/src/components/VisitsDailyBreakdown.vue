@@ -205,7 +205,6 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
 };
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
-  console.log(visit);
   if (visit.type === "visit") {
     currentlySelectedVisit.value = visit.data;
   }

@@ -169,8 +169,8 @@ export default function (app: Application, baseUrl: string) {
 
       // For now, we don't want to send welcome emails on browse, just browse-next
       if (
-        config.server.browse_url !== "https://browse.cacophony.org.nz" &&
-        config.server.browse_url !== "https://browse-test.cacophony.org.nz"
+        !request.headers.origin.startsWith("https://browse.cacophony.org.nz") &&
+        !request.headers.origin.startsWith("https://browse-test.cacophony.org.nz")
       ) {
         //  && !config.productionEnv
         // NOTE Send a welcome email, with a requirement to validate the email address.
@@ -256,8 +256,8 @@ export default function (app: Application, baseUrl: string) {
         // another confirmation email.
         dataToUpdate.emailConfirmed = false;
         if (
-          config.server.browse_url !== "https://browse.cacophony.org.nz" &&
-          config.server.browse_url !== "https://browse-test.cacophony.org.nz"
+            !request.headers.origin.startsWith("https://browse.cacophony.org.nz") &&
+            !request.headers.origin.startsWith("https://browse-test.cacophony.org.nz")
         ) {
           const emailSuccess = await sendEmailConfirmationEmail(
             requestUser,

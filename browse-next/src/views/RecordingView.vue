@@ -1,14 +1,7 @@
 <script setup lang="ts">
 // eslint-disable-next-line no-undef
 import { useRoute } from "vue-router";
-import {
-  computed,
-  defineAsyncComponent,
-  inject,
-  onMounted,
-  ref,
-  watch,
-} from "vue";
+import { computed, inject, onMounted, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import type {
   LatLng,
@@ -35,15 +28,11 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import { truncateLongStationNames } from "@/utils";
-// import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
+import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 const route = useRoute();
 const emit = defineEmits(["close"]);
-
-const CptvPlayer = defineAsyncComponent(
-  () => import("@/components/cptv-player/CptvPlayer.vue")
-);
 
 const stations: Ref<ApiStationResponse[] | null> =
   inject("activeStationsContext") || ref(null);
@@ -55,7 +44,7 @@ const recordingIds = ref(
   })()
 );
 const currentRecordingId = ref<number>(Number(route.params.currentRecordingId));
-const currentStationId = ref<StationId | null>(null);
+const _currentStationId = ref<StationId | null>(null);
 const currentTrack = ref<ApiTrackResponse | undefined>(undefined);
 const currentStations = ref<ApiStationResponse[] | null>(stations.value);
 const visitLabel = ref<string>(route.params.visitLabel as string);
@@ -268,7 +257,7 @@ const gotoPreviousVisit = () => {
 // TODO - Handle previous visits
 
 const recalculateCurrentVisit = () => {
-  console.log("TODO - recalculate current visit");
+  console.warn("TODO - recalculate current visit");
   // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
   // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
 };
@@ -287,10 +276,9 @@ interface RecordingData {
 
 const recordingData = ref<RecordingData | null>(null);
 
-const recordingIsLoading = computed(() => recordingData.value === null);
+const _recordingIsLoading = computed(() => recordingData.value === null);
 
 const loadRecording = async () => {
-  console.log("Load recording");
   recordingData.value = null;
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
@@ -311,7 +299,7 @@ const loadRecording = async () => {
           ({ id }) => id == Number(route.params.trackId)
         );
       }
-      console.log("Loaded recording", recordingData.value, currentTrack.value);
+      console.warn("Loaded recording", recordingData.value, currentTrack.value);
 
       if (
         ((route.name as string).endsWith("-tracks") && !route.params.trackId) ||

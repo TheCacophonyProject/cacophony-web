@@ -107,7 +107,7 @@ export async function tryToMatchLocationToStationInGroup(
   location: LatLng,
   groupId: GroupId,
   activeFromDate: Date,
-  lookForwards: boolean,
+  lookForwards: boolean = false,
 ): Promise<Station | null> {
   // Match the recording to any stations that the group might have:
   let stations;

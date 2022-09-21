@@ -11,9 +11,12 @@ import { useElementBounding, useElementSize } from "@vueuse/core";
 const getXOffsetForPointerEvent = (
   e: MouseEvent | PointerEvent | TouchEvent
 ): number => {
-  if ((e as any).clientX !== undefined) {
+  if ((e as PointerEvent).clientX !== undefined) {
     return (e as PointerEvent).clientX;
-  } else if ((e as any).touches !== undefined && (e as any).touches.length) {
+  } else if (
+    (e as TouchEvent).touches !== undefined &&
+    (e as TouchEvent).touches.length
+  ) {
     return (e as TouchEvent).touches[0].clientX;
   }
   return 0;

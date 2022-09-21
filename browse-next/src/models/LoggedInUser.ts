@@ -51,7 +51,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
         ) {
           // Update settings on server?
           saveUserSettings(user.settings).then((response) => {
-            console.log("User settings updated", response);
+            console.warn("User settings updated", response);
           });
         }
         // Check to see if new user values have settings changed.
@@ -59,7 +59,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
       }
     } catch (e) {
       // Shouldn't get malformed json errors here.
-      debugger;
+      console.error("Shouldn't get malformed json errors here.", e);
     }
   }
 
@@ -132,7 +132,7 @@ const refreshCredentials = async () => {
     "saved-login-credentials"
   );
   if (rememberedCredentials) {
-    console.log("-- Resuming from saved credentials");
+    console.warn("-- Resuming from saved credentials");
     let currentUser;
     const now = new Date();
     try {
@@ -179,9 +179,12 @@ const refreshCredentials = async () => {
 let refreshTimeout = -1;
 const refreshCredentialsAtIn = (milliseconds: number) => {
   milliseconds = Math.max(1000, milliseconds);
-  console.log("Setting refresh in", milliseconds);
+  console.warn("Setting refresh in", milliseconds);
   clearTimeout(refreshTimeout);
-  refreshTimeout = setTimeout(refreshCredentials, milliseconds) as unknown as number;
+  refreshTimeout = setTimeout(
+    refreshCredentials,
+    milliseconds
+  ) as unknown as number;
 };
 
 export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
@@ -191,7 +194,7 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 };
 
 export const forgetUserOnCurrentDevice = () => {
-  console.log("Signing out");
+  console.warn("Signing out");
   window.localStorage.clear();
   CurrentUser.value = null;
 };
@@ -205,7 +208,7 @@ export const switchCurrentGroup = (newGroup: {
   if (newGroup.id !== loggedInUser.settings?.currentSelectedGroup?.id) {
     if (currentSelectedGroup.value) {
       // Abort requests for the previous group.
-      console.log("!!! Abort requests");
+      console.warn("!!! Abort requests");
       CurrentViewAbortController.newView();
     }
     setLoggedInUserData({

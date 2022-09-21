@@ -410,14 +410,14 @@ export const fetchModel =
     byName: boolean,
     byId: boolean,
     modelGetter: ModelGetter<T> | ModelsGetter<T>,
-    primary: ValidationChain | number,
-    secondary?: ValidationChain
+    primary: ValidationChain | number | string,
+    secondary?: ValidationChain | number | string
   ) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
 
     let id;
-    if (typeof primary === "number") {
+    if (typeof primary === "number" || typeof primary === "string") {
       id = primary;
     } else {
       id = extractValFromRequest(request, primary) as string;
@@ -425,7 +425,12 @@ export const fetchModel =
     if (!id && !required) {
       return next();
     }
-    const id2 = extractValFromRequest(request, secondary);
+    let id2;
+    if (typeof secondary === "number" || typeof secondary === "string") {
+      id2 = secondary;
+    } else {
+      id2 = extractValFromRequest(request, secondary) as string;
+    }
     response.locals.onlyActive = true; // Default to only showing active devices.
     if (
       ("onlyActive" in request.query &&
@@ -520,8 +525,8 @@ export const fetchOptionalModel = <T>(
   byName: boolean,
   byId: boolean,
   modelGetter: ModelGetter<T>,
-  primary: ValidationChain,
-  secondary?: ValidationChain
+  primary: ValidationChain | string | number,
+  secondary?: ValidationChain | string | number,
 ) =>
   fetchModel(modelType, false, byName, byId, modelGetter, primary, secondary);
 
@@ -1409,7 +1414,7 @@ export const fetchUnauthorizedRequiredGroupByNameOrId = (
   );
 
 export const fetchUnauthorizedOptionalGroupByNameOrId = (
-  groupNameOrId: ValidationChain
+  groupNameOrId: ValidationChain | string | number
 ) =>
   fetchOptionalModel(
     models.Group,

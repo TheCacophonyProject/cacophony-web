@@ -66,7 +66,7 @@ onBeforeMount(async () => {
         refreshingToken: false,
       });
 
-      console.log("Redirecting to dashboard");
+      console.warn("Redirecting to dashboard");
       // NOTE: Should redirect to "setup" if user has no groups
       if (UserGroups.value?.length) {
         await router.push({

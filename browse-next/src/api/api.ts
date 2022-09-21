@@ -17,15 +17,14 @@ const fetchJsonWithMethod = async (
   abortable?: boolean
 ) => {
   const payload = {
-    method: method,
+    method,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
     },
-  };
+  } as RequestInit;
   if (body) {
-    (payload as any).body = JSON.stringify(body);
+    payload.body = JSON.stringify(body);
   }
-  console.log(`${API_ROOT}${endpoint}`, payload);
   return fetch(`${API_ROOT}${endpoint}`, payload, abortable);
 };
 
@@ -78,7 +77,7 @@ export default {
    * @returns {Promise<{result: *, success: boolean, status: number}>}
    */
   patch: async (endpoint: string, body: object, abortable?: boolean) =>
-    fetchJsonWithMethod(endpoint, "PATCH", body),
+    fetchJsonWithMethod(endpoint, "PATCH", body, abortable),
 
   /**
    * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.

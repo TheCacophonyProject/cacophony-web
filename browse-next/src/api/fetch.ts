@@ -8,8 +8,6 @@ import { delayMsThen } from "@/utils";
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
 
-const lastApiVersion: string | null = null;
-
 export const INITIAL_RETRY_INTERVAL = 3000;
 export const MAX_RETRY_COUNT = 30;
 
@@ -51,8 +49,8 @@ export async function fetch<T>(
   };
   if (abortable) {
     request.signal = CurrentViewAbortController.controller.signal;
-    request.signal!.addEventListener("onabort", (e) => {
-      console.log("Aborted", e, request.signal);
+    request.signal?.addEventListener("onabort", (e) => {
+      console.warn("Aborted", e, request.signal);
     });
   }
   if (userIsLoggedIn.value) {
@@ -74,7 +72,13 @@ export async function fetch<T>(
     networkConnectionError.hasConnectionError = false;
   } catch (e: Error | unknown) {
     if ((e as Error).name === "AbortError") {
-      console.log("!! Abort, abort", e, (e as Error).name, url, request.signal);
+      console.warn(
+        "!! Abort, abort",
+        e,
+        (e as Error).name,
+        url,
+        request.signal
+      );
       return;
     }
     networkConnectionError.hasConnectionError = true;

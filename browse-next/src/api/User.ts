@@ -148,19 +148,6 @@ export const getEUAVersion = () =>
     FetchResult<{ euaVersion: number }>
   >;
 
-export const token = async () => {
-  // Params must include where (stringified JSON), limit, offset
-  // Params can also include tagMode, tags, order
-
-  // FIXME - does this endpoint exist anymore?
-  const response = (await CacophonyApi.post("/token")) as FetchResult<any>;
-  const { result, success } = response;
-  if (!success) {
-    throw "Failed to get token";
-  }
-  return result.token;
-};
-
 export const getGroupsForGroupAdminByEmail = (
   groupAdminEmail: string,
   abortable = false

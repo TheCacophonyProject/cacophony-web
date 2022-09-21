@@ -280,12 +280,12 @@ router.beforeEach(async (to, from, next) => {
     ) {
       // Grab the users' groups, and select the first one.
       isFetchingGroups.value = true;
-      console.log("Fetching user groups");
+      console.warn("Fetching user groups");
       const NO_ABORT = false;
       const groupsResponse = await getGroups(NO_ABORT);
       if (groupsResponse.success) {
         UserGroups.value = reactive(groupsResponse.result.groups);
-        console.log("Fetched user groups", currentSelectedGroup.value);
+        // console.warn("Fetched user groups", currentSelectedGroup.value);
       }
       isFetchingGroups.value = false;
       if (groupsResponse.status === 401) {
@@ -301,11 +301,11 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     if (userIsLoggedIn.value) {
-      console.log("Resumed session");
+      console.warn("Resumed session");
     } else {
-      console.log("Failed to resume session or no session to resume");
+      console.warn("Failed to resume session or no session to resume");
       if (to.meta.requiresLogin || to.path === "/") {
-        console.log("Redirect to sign-in");
+        console.warn("Redirect to sign-in");
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else {
         return next();
@@ -314,7 +314,7 @@ router.beforeEach(async (to, from, next) => {
     isResumingSession.value = false;
   }
   if (to.path === "/") {
-    if (!userIsLoggedIn.value) {
+    if (!userIsLoggedIn.value && to.name !== "sign-in") {
       return next({ name: "sign-in" });
     } else {
       if (
@@ -347,19 +347,19 @@ router.beforeEach(async (to, from, next) => {
       .split("/")
       .filter((item) => item !== "")
       .shift();
-    if (!UserGroups.value) {
+    if (userIsLoggedIn.value && !UserGroups.value) {
       // Grab the users' groups, and select the first one.
       isFetchingGroups.value = true;
-      console.log("Fetching user groups");
+      // console.warn("Fetching user groups");
       const NO_ABORT = false;
       const groupsResponse = await getGroups(NO_ABORT);
       if (groupsResponse.success) {
         UserGroups.value = reactive(groupsResponse.result.groups);
-        console.log(
-          "Fetched user groups",
-          currentSelectedGroup.value,
-          UserGroups.value?.length
-        );
+        // console.warn(
+        //   "Fetched user groups",
+        //   currentSelectedGroup.value,
+        //   UserGroups.value?.length
+        // );
       }
       isFetchingGroups.value = false;
       if (groupsResponse.status === 401) {
@@ -373,18 +373,12 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     if (potentialGroupName) {
-      // FIXME - we need to check for group name uniqueness on the url-normalised version of the group name,
       potentialGroupName = urlNormaliseGroupName(potentialGroupName);
-      const groupNames = (UserGroups.value as ApiGroupResponse[]).map(
-        ({ groupName }) => urlNormaliseGroupName(groupName)
-      );
-      console.log("looking for group name", potentialGroupName);
-      console.log("Potential group names", groupNames);
       const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
         ({ groupName }) =>
           urlNormaliseGroupName(groupName) === potentialGroupName
       );
-      console.log("Found match", matchedGroup);
+      // console.warn("Found match", matchedGroup);
       if (matchedGroup) {
         // Don't persist the admin property in user settings, since that could change
         switchCurrentGroup({
@@ -406,7 +400,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.requiresGroupAdmin && !userIsAdminForCurrentSelectedGroup.value) {
-    console.log("Trying to access admin only route");
+    console.error("Trying to access admin only route");
     return next({
       name: "dashboard",
       params: {
@@ -415,7 +409,12 @@ router.beforeEach(async (to, from, next) => {
     });
   }
 
-  if (to.name === "setup" && userIsLoggedIn.value && userHasGroups.value && userHasConfirmedEmailAddress.value) {
+  if (
+    to.name === "setup" &&
+    userIsLoggedIn.value &&
+    userHasGroups.value &&
+    userHasConfirmedEmailAddress.value
+  ) {
     return next({
       name: "dashboard",
       params: {
@@ -452,7 +451,6 @@ router.beforeEach(async (to, from, next) => {
       },
     });
   } else {
-    console.log("here", to);
     pinSideNav.value = false;
     return next();
   }

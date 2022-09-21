@@ -10,7 +10,7 @@ import type {
   Rectangle,
 } from "@/components/cptv-player/cptv-player-types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
-import { add, mul, perp, sub } from "@/components/cptv-player/motion-paths";
+import { add, mul, perp } from "@/components/cptv-player/motion-paths";
 
 export const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
   overlayContext.font = "13px sans-serif";
