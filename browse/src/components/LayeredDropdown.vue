@@ -56,7 +56,7 @@
           ref="inputRef"
           :value="searchTerm"
           @input="(e) => (searchTerm = e.target.value)"
-          placeholder="Search"
+          :placeholder="placeholder"
           :disabled="disabled"
         />
         <div
@@ -120,6 +120,10 @@ export default defineComponent({
     disabled: {
       type: Boolean as PropType<boolean>,
       default: false,
+    },
+    placeholder: {
+      type: String as PropType<string>,
+      default: "Search",
     },
   },
   setup(props, { emit }) {
