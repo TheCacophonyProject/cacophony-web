@@ -92,7 +92,7 @@ import recordingUtil, {
   uploadRawRecording,
 } from "./recordingUtil";
 import { successResponse } from "./responseUtil";
-import {streamS3Object} from "@api/V1/signedUrl";
+import { streamS3Object } from "@api/V1/signedUrl";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -965,7 +965,7 @@ export default (app: Application, baseUrl: string) => {
       if (!config.productionEnv) {
         const JsonSchema = new Validator();
         console.assert(
-            JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
+          JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
         );
       }
       if (request.query["requires-signed-url"]) {
@@ -975,23 +975,23 @@ export default (app: Application, baseUrl: string) => {
         let cookedSize;
         if (recordingItem.fileKey) {
           cookedJWT = signedToken(
-              recordingItem.fileKey,
-              recordingItem.getFileName(),
-              recordingItem.fileMimeType
+            recordingItem.fileKey,
+            recordingItem.getFileName(),
+            recordingItem.fileMimeType
           );
           cookedSize =
-              recordingItem.fileSize ||
-              (await util.getS3ObjectFileSize(recordingItem.fileKey));
+            recordingItem.fileSize ||
+            (await util.getS3ObjectFileSize(recordingItem.fileKey));
         }
         if (recordingItem.rawFileKey) {
           rawJWT = signedToken(
-              recordingItem.rawFileKey,
-              recordingItem.getRawFileName(),
-              recordingItem.rawMimeType
+            recordingItem.rawFileKey,
+            recordingItem.getRawFileName(),
+            recordingItem.rawMimeType
           );
           rawSize =
-              recordingItem.rawFileSize ||
-              (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
+            recordingItem.rawFileSize ||
+            (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
         }
         return successResponse(response, {
           recording,
@@ -1002,7 +1002,7 @@ export default (app: Application, baseUrl: string) => {
         });
       } else {
         return successResponse(response, {
-          recording
+          recording,
         });
       }
     }
@@ -1026,42 +1026,51 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.get(
-      `${apiUrl}/raw/:id`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("id")),
-        query("deleted").default(false).isBoolean().toBoolean(),
-      ]),
-      fetchAuthorizedRequiredRecordingById(param("id")),
-      async (request: Request, response: Response, next: NextFunction) => {
-        const recordingItem = response.locals.recording;
-        if (!recordingItem.rawFileKey) {
-          return next(new ClientError("Recording has no raw file key."));
-        }
-        let fileExt: string = "raw";
-        switch (recordingItem.rawMimeType) {
-          case "audio/ogg":
-            fileExt = "ogg";
-            break;
-          case "audio/wav":
-            fileExt = "wav";
-            break;
-          case "audio/mp4":
-            fileExt = "m4a";
-            break;
-          case "video/mp4":
-            fileExt = "m4v";
-            break;
-          case "audio/mpeg":
-            fileExt = "mp3";
-            break;
-          case "application/x-cptv":
-            fileExt = "cptv";
-            break;
-        }
-        const time = recordingItem.recordingDateTime?.toISOString().replace(/:/g, "_").replace(".", "_");
-        return await streamS3Object(request, response, recordingItem.rawFileKey, `${recordingItem.id}@${time}.${fileExt}`, recordingItem.rawMimeType || "application/octet-stream");
+    `${apiUrl}/raw/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("deleted").default(false).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const recordingItem = response.locals.recording;
+      if (!recordingItem.rawFileKey) {
+        return next(new ClientError("Recording has no raw file key."));
       }
+      let fileExt: string = "raw";
+      switch (recordingItem.rawMimeType) {
+        case "audio/ogg":
+          fileExt = "ogg";
+          break;
+        case "audio/wav":
+          fileExt = "wav";
+          break;
+        case "audio/mp4":
+          fileExt = "m4a";
+          break;
+        case "video/mp4":
+          fileExt = "m4v";
+          break;
+        case "audio/mpeg":
+          fileExt = "mp3";
+          break;
+        case "application/x-cptv":
+          fileExt = "cptv";
+          break;
+      }
+      const time = recordingItem.recordingDateTime
+        ?.toISOString()
+        .replace(/:/g, "_")
+        .replace(".", "_");
+      return await streamS3Object(
+        request,
+        response,
+        recordingItem.rawFileKey,
+        `${recordingItem.id}@${time}.${fileExt}`,
+        recordingItem.rawMimeType || "application/octet-stream"
+      );
+    }
   );
 
   /**

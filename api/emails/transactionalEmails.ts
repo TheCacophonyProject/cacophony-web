@@ -58,24 +58,24 @@ export const sendWelcomeEmailConfirmationEmail = async (
 };
 
 export const sendEmailConfirmationEmailLegacyUser = async (
-    emailConfirmationToken: string,
-    userEmailAddress: string
+  emailConfirmationToken: string,
+  userEmailAddress: string
 ): Promise<boolean> => {
   try {
     const common = commonInterpolants();
     const emailConfirmationUrl = `${
-        common.cacophonyBrowseUrl
+      common.cacophonyBrowseUrl
     }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
-        "confirm-email-legacy-user.html",
-        { emailConfirmationUrl, ...commonInterpolants() }
+      "confirm-email-legacy-user.html",
+      { emailConfirmationUrl, ...commonInterpolants() }
     );
     return await sendEmail(
-        html,
-        text,
-        userEmailAddress,
-        "🔧 Confirm your Cacophony Monitoring account email address",
-        await commonAttachments()
+      html,
+      text,
+      userEmailAddress,
+      "🔧 Confirm your Cacophony Monitoring account email address",
+      await commonAttachments()
     );
   } catch (e) {
     logger.error("%s", e);
@@ -92,7 +92,11 @@ export const sendChangedEmailConfirmationEmail = async (
   }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate(
     "confirm-email-change.html",
-    { emailConfirmationUrl, ...commonInterpolants(), newAccountEmailAddress: userEmailAddress }
+    {
+      emailConfirmationUrl,
+      ...commonInterpolants(),
+      newAccountEmailAddress: userEmailAddress,
+    }
   );
   return await sendEmail(
     html,

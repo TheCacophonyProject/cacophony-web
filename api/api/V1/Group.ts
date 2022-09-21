@@ -22,7 +22,8 @@ import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorizedUser, extractValFromRequest,
+  extractJwtAuthorizedUser,
+  extractValFromRequest,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredDevicesInGroup,
   fetchAuthorizedRequiredGroupByNameOrId,
@@ -65,7 +66,7 @@ import {
   MIN_STATION_SEPARATION_METERS,
 } from "@api/V1/recordingUtil";
 import { HttpStatusCode } from "@typedefs/api/consts";
-import {urlNormaliseName} from "@/emails/htmlEmailUtils";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 
 const mapGroup = (
   group: Group,
@@ -178,8 +179,13 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.group) {
         // Check for urlNormalised versions of group name.
-        const groupName = extractValFromRequest(request, body(["groupname", "groupName"]));
-        await fetchUnauthorizedOptionalGroupByNameOrId(urlNormaliseName(groupName))(request, response, next);
+        const groupName = extractValFromRequest(
+          request,
+          body(["groupname", "groupName"])
+        );
+        await fetchUnauthorizedOptionalGroupByNameOrId(
+          urlNormaliseName(groupName)
+        )(request, response, next);
       } else {
         next();
       }

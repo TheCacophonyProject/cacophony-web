@@ -277,7 +277,6 @@ export default function (app: Application) {
         recording.processingEndTime = new Date().toISOString();
         // Process extra data from file processing
         if (result && result.fieldUpdates) {
-
           // TODO(jon): if the previous step was tracking, here would be the best time to consolidate tracks - however,
           //  we need to make sure that the AI is reading these tracks back out to do its classifications:
           //  #1283385 is a great example of why we need this.

@@ -16,7 +16,7 @@ module.exports = {
   },
   parserOptions: {
     ecmaVersion: "latest",
-    lib: ['es2022', 'DOM'],
+    lib: ["es2022", "DOM"],
     sourceType: "module",
     parser: "@typescript-eslint/parser",
   },
@@ -26,21 +26,27 @@ module.exports = {
     quotes: "off",
     semi: ["warn", "always"],
     curly: ["warn", "all"],
-    "no-console": ["warn", { allow: ["warn", "error", "assert"]}],
+    "no-console": ["warn", { allow: ["warn", "error", "assert"] }],
     "no-debugger": ["warn"],
     "no-undef": ["warn"],
-    "@typescript-eslint/no-unused-vars": ["warn", {
-      // Allow unused vars prefaced by an underscore
-      "argsIgnorePattern": "^_",
-      "varsIgnorePattern": "^_",
-      "caughtErrorsIgnorePattern": "^_"
-    }],
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        // Allow unused vars prefaced by an underscore
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+      },
+    ],
     "no-unused-vars": ["off"],
     "brace-style": ["warn"],
     "prefer-const": ["warn"],
-    "vue/no-unused-vars": ["warn", {
-      "ignorePattern": "^_"
-    }],
+    "vue/no-unused-vars": [
+      "warn",
+      {
+        ignorePattern: "^_",
+      },
+    ],
     "@typescript-eslint/no-non-null-assertion": ["off"],
     "vue/no-setup-props-destructure": ["off"],
   },

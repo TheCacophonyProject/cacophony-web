@@ -44,7 +44,9 @@ import config from "@config";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
 import {
-  sendChangedEmailConfirmationEmail, sendEmailConfirmationEmailLegacyUser, sendPasswordResetEmail,
+  sendChangedEmailConfirmationEmail,
+  sendEmailConfirmationEmailLegacyUser,
+  sendPasswordResetEmail,
   sendWelcomeEmailConfirmationEmail,
 } from "@/emails/transactionalEmails";
 import { HttpStatusCode } from "@typedefs/api/consts";
@@ -369,12 +371,15 @@ export default function (app: Application, baseUrl: string) {
         if (isNewEndpoint) {
           // Do nothing
           const token = "";
-          const sendingSuccess = await sendPasswordResetEmail(token, user.email);
+          const sendingSuccess = await sendPasswordResetEmail(
+            token,
+            user.email
+          );
           if (!sendingSuccess) {
             return next(
-                new FatalError(
-                    "We failed to send your password recovery email, please check that you've entered your email correctly."
-                )
+              new FatalError(
+                "We failed to send your password recovery email, please check that you've entered your email correctly."
+              )
             );
           }
         } else {
@@ -470,7 +475,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/resend-email-confirmation-request`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
-      const browseNextLaunchDate = new Date();// Fix this to a specific date once browse-next goes live.
+      const browseNextLaunchDate = new Date(); // Fix this to a specific date once browse-next goes live.
       const user = await models.User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
@@ -488,14 +493,14 @@ export default function (app: Application, baseUrl: string) {
           );
         } else if (user.createdAt < browseNextLaunchDate) {
           sendSuccess = await sendEmailConfirmationEmailLegacyUser(
-              emailConfirmationToken,
-              user.email
+            emailConfirmationToken,
+            user.email
           );
         } else {
           // otherwise resend the email change confirmation email.
           sendSuccess = await sendChangedEmailConfirmationEmail(
-              emailConfirmationToken,
-              user.email
+            emailConfirmationToken,
+            user.email
           );
         }
         if (!sendSuccess) {

@@ -526,7 +526,7 @@ export const fetchOptionalModel = <T>(
   byId: boolean,
   modelGetter: ModelGetter<T>,
   primary: ValidationChain | string | number,
-  secondary?: ValidationChain | string | number,
+  secondary?: ValidationChain | string | number
 ) =>
   fetchModel(modelType, false, byName, byId, modelGetter, primary, secondary);
 
