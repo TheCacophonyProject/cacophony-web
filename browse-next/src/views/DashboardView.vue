@@ -289,13 +289,7 @@ const showVisitsForTag = (tag: string) => {
         class="card d-flex flex-row species-summary-item align-items-center"
         @click="showVisitsForTag(key)"
       >
-        <img
-          width="24"
-          height="auto"
-          class="species-icon ms-3"
-          :alt="key"
-          src=""
-        />
+        <img width="24" height="auto" class="species-icon ms-3" />
         <div class="d-flex justify-content-evenly flex-column ms-3 pe-3">
           <div class="species-count fs-4 lh-sm">{{ val }}</div>
           <div class="species-name fs-6 lh-sm small">{{ key }}</div>
