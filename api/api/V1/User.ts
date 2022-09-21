@@ -128,8 +128,8 @@ export default function (app: Application, baseUrl: string) {
       body("endUserAgreement").isInt().optional(),
     ]),
     fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
-    async (request: Request, Response: Response, next: NextFunction) => {
-      if (!(await models.User.freeEmail(request.body.email))) {
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (response.locals.user) {
         return next(
           new ValidationError([
             { msg: "Email address in use", location: "body", param: "email" },
@@ -139,7 +139,7 @@ export default function (app: Application, baseUrl: string) {
         next();
       }
     },
-    async (request: Request, Response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       if (
         request.body.endUserAgreement &&
         Number(request.body.endUserAgreement) !== config.euaVersion
@@ -166,12 +166,11 @@ export default function (app: Application, baseUrl: string) {
         endUserAgreement: request.body.endUserAgreement,
         lastActiveAt: now,
       });
-
       // For now, we don't want to send welcome emails on browse, just browse-next
       if (
-        !request.headers.origin.startsWith("https://browse.cacophony.org.nz") &&
-        !request.headers.origin.startsWith(
-          "https://browse-test.cacophony.org.nz"
+        !request.headers.host.includes("browse.cacophony.org.nz") &&
+        !request.headers.host.includes(
+          "browse-test.cacophony.org.nz"
         )
       ) {
         //  && !config.productionEnv
@@ -258,11 +257,11 @@ export default function (app: Application, baseUrl: string) {
         // another confirmation email.
         dataToUpdate.emailConfirmed = false;
         if (
-          !request.headers.origin.startsWith(
-            "https://browse.cacophony.org.nz"
+          !request.headers.host.includes(
+            "browse.cacophony.org.nz"
           ) &&
-          !request.headers.origin.startsWith(
-            "https://browse-test.cacophony.org.nz"
+          !request.headers.host.includes(
+            "browse-test.cacophony.org.nz"
           )
         ) {
           const emailSuccess = await sendEmailConfirmationEmail(
