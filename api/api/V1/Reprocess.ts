@@ -82,13 +82,24 @@ export default (app: Application, baseUrl: string) => {
         .exists()
         .withMessage(expectedTypeOf("RecordingId[]"))
         .bail()
+        .toArray()
         .custom(jsonSchemaOf(arrayOf(RecordingIdSchema))),
     ]),
     fetchAuthorizedRequiredRecordingsByIds(body("recordings")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       // FIXME: Anyone who can see a recording can ask for it to be reprocessed
       //  currently, but should be with the exception of users with globalRead permissions?
-      for (const recording of dedupe(response.locals.recordings)) {
+      const recordings = response.locals.recordings;
+      // NOTE: Dedupe array when length checking in case the user specified the same recordingId more than once.
+      if (recordings.length !== dedupe(request.body.recordings).length) {
+        return next(
+          new ClientError(
+            "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",
+            HttpStatusCode.Forbidden
+          )
+        );
+      }
+      for (const recording of recordings) {
         await recording.reprocess();
       }
       return successResponse(response, "Recordings scheduled for reprocessing");

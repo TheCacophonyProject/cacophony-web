@@ -556,7 +556,7 @@ export const maybeUpdateDeviceHistory = async (
         location,
         device.GroupId,
         dateTime,
-        true
+        false
       );
       logger.error(
         "Assign to station %s",

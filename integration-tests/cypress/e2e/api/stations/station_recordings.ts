@@ -233,7 +233,7 @@ describe("Stations: assign recordings to stations", () => {
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
           cy.log(
-            "Upload an earlier recording dated day 2 and check assigned to exsting station"
+            "Upload an earlier recording dated day 2 and check assigned to existing station"
           );
           cy.testUploadRecording(deviceName, {
             ...nearbyLocation,
