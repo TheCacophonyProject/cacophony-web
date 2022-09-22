@@ -1394,7 +1394,8 @@ export default (app: Application, baseUrl: string) => {
     // FIXME - extract valid track for trackId on recording with id
     async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = response.locals.requestUser;
-      const path = request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
+      const path =
+        request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
       const newTag = models.TrackTag.build({
         what: request.body.what,
         confidence: request.body.confidence,
@@ -1402,7 +1403,7 @@ export default (app: Application, baseUrl: string) => {
         data: response.locals.data || "",
         UserId: requestUser.id,
         TrackId: response.locals.track.id,
-        path
+        path,
       }) as TrackTag;
       try {
         const tag = await response.locals.track.replaceTag(newTag);
