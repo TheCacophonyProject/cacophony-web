@@ -17,25 +17,32 @@ export interface EmailImageAttachment {
 function alertBody(
   recording: Recording,
   tag: TrackTag,
-  camera: String,
-  hasThumbnail: boolean
+  hasThumbnail: boolean,
+  camera?: string,
+  station?: string
 ): string[] {
   const dateTime = moment(recording.recordingDateTime)
     .tz(config.timeZone)
     .format("h:mma Do MMM");
-  let html = `<b>${camera} has detected a ${tag.what} - ${dateTime}</b>`;
+  let html = camera
+    ? `<b>${camera} has detected a ${tag.what} - ${dateTime}</b>`
+    : `<b>${tag.what} detected at station ${station} - ${dateTime}</b>`;
   if (hasThumbnail) {
-    html += `<br> <a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId}">`;
+    html += `<br> <a href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">`;
     html += `<img width="200" height ="200" src="cid:thumbnail" alt="recording thumbnail"></a><br>`;
   }
-  html += `<br><a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId}">View Recording</a>`;
+
+  html += `<br><a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">View Recording</a>`;
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
 
-  let text = `${camera} has detected a ${tag.what} - ${dateTime}\r\n`;
-  text += `Go to ${config.server.recording_url_base}/${recording.id}/${tag.TrackId}?device=${recording.DeviceId} to view this recording\r\n`;
+  let text = camera
+    ? `${camera} has detected a ${tag.what} - ${dateTime}\r\n`
+    : `${tag.what} detected at station ${station} - ${dateTime}\r\n`;
+  text += `Go to ${config.server.recording_url_base}/${recording.id}/${tag.TrackId} to view this recording\r\n`;
   text += "Thanks, Cacophony Team";
   return [html, text];
 }
+
 function resetBody(userTitle: string, token: string): string[] {
   const resetUrl = `${config.server.browse_url}/new-password/?token=${token}`;
   let html = `Hello ${userTitle},<br><br>`;

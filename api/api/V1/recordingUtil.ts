@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sharp from "sharp";
 import zlib from "zlib";
 import { Alert, AlertStatic } from "@models/Alert";
-import { AI_MASTER } from "@models/TrackTag";
+import { AI_MASTER, TrackTag } from "@models/TrackTag";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
@@ -73,6 +73,7 @@ import { ApiTrackPosition } from "@typedefs/api/track";
 import { GetObjectOutput, ManagedUpload } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
 import { CptvFrame, CptvHeader } from "cptv-decoder";
+import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 
 let CptvDecoder;
 (async () => {
@@ -1711,6 +1712,7 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
               "automatic",
               "TrackId",
               "confidence",
+              "path",
               [Sequelize.json("data.name"), "data"],
             ],
           },
@@ -1719,6 +1721,10 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
       {
         model: models.Device,
         attributes: ["deviceName", "id"],
+      },
+      {
+        model: models.Station,
+        attributes: ["name", "id"],
       },
     ],
     attributes: [
@@ -1737,11 +1743,14 @@ async function sendAlerts(recId: RecordingId) {
   const recording = await getRecordingForVisit(recId);
   const recVisit = new Visit(recording, 0);
   recVisit.completeVisit();
-  let matchedTrack, matchedTag;
-  // find any ai master tags that match the visit tag
+  let matchedTrack;
+  let matchedTag: TrackTag;
+  // find any ai master tags that match the visit tag.
+
+  // Currently we only send one alert per recording.
   for (const track of recording.Tracks) {
     matchedTag = track.TrackTags.find(
-      (tag) => tag.data == AI_MASTER && recVisit.what == tag.what
+      (tag) => tag.data === AI_MASTER && recVisit.what === tag.what
     );
     if (matchedTag) {
       matchedTrack = track;
@@ -1751,9 +1760,12 @@ async function sendAlerts(recId: RecordingId) {
   if (!matchedTag) {
     return;
   }
+
+  // Find the hierarchy for the matchedTag
   const alerts: Alert[] = await (models.Alert as AlertStatic).getActiveAlerts(
-    recording.DeviceId,
-    matchedTag
+    matchedTag,
+    recording.DeviceId || undefined,
+    recording.StationId || undefined
   );
   if (alerts.length > 0) {
     const thumbnail = await getThumbnail(recording).catch(() => {
@@ -1764,6 +1776,7 @@ async function sendAlerts(recId: RecordingId) {
         recording,
         matchedTrack,
         matchedTag,
+        alert.StationId !== null ? "station" : "device",
         thumbnail && {
           buffer: thumbnail.Body as Buffer,
           cid: "thumbnail",

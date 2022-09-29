@@ -2,6 +2,7 @@ import user from "./User.api";
 import classifications from "./Classification.api";
 import groups from "./Groups.api";
 import device from "./Device.api";
+import alerts from "./Alerts.api";
 import recording from "./Recording.api";
 import tag from "./Tag.api";
 import monitoring from "./Monitoring.api";
@@ -16,6 +17,7 @@ export default {
   recording,
   tag,
   monitoring,
+  alerts,
   schedule,
   station,
 };

@@ -18,6 +18,19 @@ export interface NetworkConnectionErrorSignal {
   control: boolean;
 }
 
+const getScreenOrientation = (): string => {
+  if (window.screen.orientation) {
+    return window.screen.orientation?.type;
+  } else if (typeof window.orientation !== "undefined") {
+    if (Math.abs(window.orientation) == 90) {
+      return "landscape"
+    } else {
+      return "portrait";
+    }
+  }
+  return "unknown screen orientation";
+};
+
 export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
   hasConnectionError: false,
   retryInterval: INITIAL_RETRY_INTERVAL,
@@ -62,7 +75,7 @@ export async function fetch<T>(
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
     (
       request.headers as Record<string, string>
-    ).Viewport = `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio} - ${window.screen.orientation.type}`;
+    ).Viewport = `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio} - ${getScreenOrientation()}`;
   }
   let response;
   try {

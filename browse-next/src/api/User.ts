@@ -14,7 +14,7 @@ const NO_ABORT = false;
 export const login = (userEmail: string, password: string) =>
   CacophonyApi.post("/api/v1/users/authenticate", {
     email: userEmail,
-    password, // Hashed password using some salt known to the client and the server (time-based?)
+    password,
   }) as Promise<
     FetchResult<{
       userData: ApiLoggedInUserResponse;

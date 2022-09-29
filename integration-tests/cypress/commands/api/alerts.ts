@@ -36,8 +36,8 @@ Cypress.Commands.add(
     const deviceId = getCreds(deviceName).id;
     const alertJson = {
       name: getTestName(alertName),
-      conditions: conditions,
-      deviceId: deviceId,
+      conditions,
+      deviceId,
     };
 
     if (frequency !== null) {
@@ -95,18 +95,9 @@ export function createExpectedAlert(
     id: alertId,
     name: alertName,
     alertName: getTestName(alertName),
-    frequencySeconds: frequencySeconds,
-    conditions: conditions,
-    lastAlert: lastAlert,
-    User: {
-      id: getCreds(userName).id,
-      userName: getTestName(userName),
-      email: getTestName(userName).toLowerCase() + "@api.created.com",
-    },
-    Device: {
-      id: getCreds(deviceName).id,
-      deviceName: getTestName(getCreds(deviceName).name),
-    },
+    frequencySeconds,
+    conditions,
+    lastAlert,
   };
 
   return expectedAlert;
@@ -131,8 +122,8 @@ function checkExpectedAlerts(
   response: Cypress.Response<any>,
   expectedAlert: any
 ) {
-  expect(response.body.Alerts.length, `Expected 1 alert`).to.eq(1);
-  const thealert = response.body.Alerts[0];
+  expect(response.body.alerts.length, `Expected 1 alert`).to.eq(1);
+  const thealert = response.body.alerts[0];
 
   expect(thealert.name, `Name should be ${expectedAlert.alertName}`).to.eq(
     expectedAlert.alertName
@@ -154,28 +145,6 @@ function checkExpectedAlerts(
   } else {
     expect(thealert.lastAlert, `should have a lastAlert`).to.not.eq(null);
   }
-  //  expect(
-  //    thealert.User.id,
-  //    `user.id should have been ${expectedAlert.User.id}`
-  //  ).to.eq(expectedAlert.User.id);
-  expect(
-    thealert.User.name,
-    `user.name should have been ${expectedAlert.User.name}`
-  ).to.eq(expectedAlert.User.name);
-  expect(
-    thealert.User.email,
-    `user.email should have been ${expectedAlert.User.email}`
-  ).to.eq(expectedAlert.User.email);
-  expect(
-    thealert.Device.id,
-    `device.id should have been ${expectedAlert.Device.id}`
-  ).to.eq(expectedAlert.Device.id);
-  expect(
-    thealert.Device.deviceName,
-    `device.deviceName should have been ${
-      (expectedAlert.Device as any).deviceName
-    }`
-  ).to.eq((expectedAlert.Device as any).deviceName);
   return response;
 }
 

@@ -11,13 +11,9 @@ export interface ApiAlertResponse {
   frequencySeconds: Seconds;
   conditions: ApiAlertCondition[];
   lastAlert: IsoFormattedDateString;
-  User: {
+  User?: {
     id: UserId;
     userName: string;
     email: string;
-  };
-  Device: {
-    id: DeviceId;
-    deviceName: string;
   };
 }

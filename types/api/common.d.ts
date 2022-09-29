@@ -4,6 +4,7 @@ export type float = number;
 export type FloatZeroToOne = number;
 export type Seconds = number;
 
+export type AlertId = number;
 export type TagId = number;
 export type FileId = number;
 export type UserId = number;

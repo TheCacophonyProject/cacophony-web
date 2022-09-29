@@ -28,6 +28,7 @@ import { Schedule } from "@/models/Schedule";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 import { SuperUsers } from "@/Globals";
+import { Alert, AlertId } from "@models/Alert";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -1286,6 +1287,25 @@ const getUser =
     });
   };
 
+const getAlert =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    alertId: string,
+    unusedParam?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Alert> | ClientError | null> => {
+    if (forRequestUser) {
+      return models.Alert.findOne({
+        where: { id: parseInt(alertId), UserId: context.requestUser.id },
+      });
+    }
+    {
+      return models.Alert.findOne({
+        where: { id: parseInt(alertId) },
+      });
+    }
+  };
+
 const getUnauthorizedGenericModelById =
   <T>(modelType: ModelStaticCommon<T>) =>
   <T>(id: string): Promise<T | ClientError | null> => {
@@ -1625,6 +1645,9 @@ export const fetchAuthorizedRequiredStationById = (
     getStation(true, false),
     stationId
   );
+
+export const fetchAuthorizedRequiredAlertById = (alertId: ValidationChain) =>
+  fetchRequiredModel(models.Alert, false, true, getAlert(true, false), alertId);
 
 export const fetchAdminAuthorizedRequiredStationById = (
   stationId: ValidationChain
