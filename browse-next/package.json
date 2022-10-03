@@ -6,7 +6,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview --port 5050",
     "typecheck": "vue-tsc --noEmit",
-    "lint": "eslint . --ext .vue,.ts --fix --ignore-path .gitignore --ignore-pattern '*.d.ts'"
+    "lint": "./node_modules/.bin/eslint ./ --ext .vue,.ts --fix --ignore-path .gitignore --ignore-pattern '*.d.ts'"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.2.0",
