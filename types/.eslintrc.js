@@ -1,10 +1,8 @@
 module.exports = {
-  plugins: ["@typescript-eslint"],
   root: true,
   extends: [
     "eslint:recommended",
-    "plugin:@typescript-eslint/eslint-recommended",
-    "prettier",
+    "prettier"
   ],
   env: {
     node: true,
@@ -26,7 +24,6 @@ module.exports = {
     "no-undef": ["warn"],
     "no-var": ["error"],
     "no-unused-vars": ["off"],
-    "@typescript-eslint/no-unused-vars": ["warn"],
     "brace-style": ["warn"],
     "prefer-const": ["error"],
   },

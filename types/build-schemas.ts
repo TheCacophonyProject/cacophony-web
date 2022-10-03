@@ -39,7 +39,6 @@ class IntegerFormatter implements SubTypeFormatter {
     return type instanceof IntegerType;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getDefinition(type: IntegerType): Definition {
     // Return a custom schema for the function property.
     return {
@@ -47,7 +46,6 @@ class IntegerFormatter implements SubTypeFormatter {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getChildren(type: IntegerType): BaseType[] {
     return [];
   }
@@ -58,7 +56,6 @@ class IsoFormattedDateStringFormatter implements SubTypeFormatter {
     return type instanceof IsoFormattedDateStringType;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getDefinition(type: IsoFormattedDateStringType): Definition {
     // Return a custom schema for the function property.
     return {
@@ -67,7 +64,6 @@ class IsoFormattedDateStringFormatter implements SubTypeFormatter {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getChildren(type: IsoFormattedDateStringType): BaseType[] {
     return [];
   }
@@ -78,7 +74,6 @@ class FloatZeroOneFormatter implements SubTypeFormatter {
     return type instanceof FloatZeroOneType;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getDefinition(type: FloatZeroOneType): Definition {
     // Return a custom schema for the function property.
     return {
@@ -87,7 +82,6 @@ class FloatZeroOneFormatter implements SubTypeFormatter {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getChildren(type: FloatZeroOneType): BaseType[] {
     return [];
   }
@@ -104,11 +98,8 @@ class TypeAliasParser implements SubNodeParser {
     return false;
   }
   createType(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     node: ts.Node,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     context: Context,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     reference?: ReferenceType
   ): BaseType | undefined {
     return new IntegerType(); // Treat constructors as strings in this example
@@ -126,11 +117,8 @@ class FloatZeroOneParser implements SubNodeParser {
     return false;
   }
   createType(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     node: ts.Node,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     context: Context,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     reference?: ReferenceType
   ): BaseType | undefined {
     return new FloatZeroOneType(); // Treat constructors as strings in this example
@@ -148,11 +136,8 @@ class IsoFormattedDateStringParser implements SubNodeParser {
     return false;
   }
   createType(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     node: ts.Node,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     context: Context,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     reference?: ReferenceType
   ): BaseType | undefined {
     return new IsoFormattedDateStringType(); // Treat constructors as strings in this example
