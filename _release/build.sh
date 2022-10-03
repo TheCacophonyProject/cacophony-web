@@ -34,15 +34,11 @@ cd browse-next
 npm version --no-git-tag-version ${version}
 rm -rf node_modules
 npm install
-# We error on this, to move it temporarily.
-mv ../types/.eslintrc.js ../types/.eslintrc.js.tmp
 npm run build
 rm -rf node_modules
 
 echo "Installing shared type definitions"
 cd ../types
-# Move eslint file back.
-mv .eslintrc.js.tmp .eslintrc.js
 rm -rf node_modules
 npm install
 echo "Compiling TypeScript..."

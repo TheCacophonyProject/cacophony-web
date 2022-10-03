@@ -5,6 +5,7 @@ import vue from "@vitejs/plugin-vue";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
 import eslintPlugin from "vite-plugin-eslint";
+import * as Url from "url";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -13,7 +14,10 @@ export default defineConfig({
     vue({ reactivityTransform: true }),
     wasm(),
     topLevelAwait(),
-    eslintPlugin(),
+    eslintPlugin({
+      failOnError: false,
+      exclude: ["**/consts.ts", "**/node_modules/**"],
+    }),
   ],
   resolve: {
     alias: {
