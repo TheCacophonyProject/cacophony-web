@@ -4,19 +4,15 @@ import {
   CurrentUser,
   joiningNewGroup,
   refreshLocallyStoredUserActivation,
-  setLoggedInUserData,
   userDisplayName,
   userHasConfirmedEmailAddress,
   userHasGroups,
 } from "@models/LoggedInUser";
 import {
   changeAccountEmail,
-  debugGetEmailConfirmationToken,
   resendAccountActivationEmail as resendEmail,
-  validateEmailConfirmationToken,
 } from "@api/User";
 import { computed, onUnmounted, ref } from "vue";
-import { useRouter } from "vue-router";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 import { formFieldInputText } from "@/utils";
 
@@ -103,34 +99,34 @@ const needsValidationAndIsValidEmailAddress =
     newUserEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
-const router = useRouter();
-const debugConfirmEmail = async () => {
-  const tokenResponse = await debugGetEmailConfirmationToken(
-    CurrentUser.value?.email as string
-  );
-  if (tokenResponse.success) {
-    const token = tokenResponse.result.token;
-    const validateTokenResponse = await validateEmailConfirmationToken(token);
-    if (validateTokenResponse.success) {
-      const { userData, token, refreshToken, signOutUser } =
-        validateTokenResponse.result;
-      if (signOutUser) {
-        await router.push({ name: "sign-out" });
-        return;
-      }
-      setLoggedInUserData({
-        ...userData,
-        apiToken: token,
-        refreshToken,
-        refreshingToken: false,
-      });
-
-      await router.push({
-        path: "/",
-      });
-    }
-  }
-};
+// const router = useRouter();
+// const debugConfirmEmail = async () => {
+//   const tokenResponse = await debugGetEmailConfirmationToken(
+//     CurrentUser.value?.email as string
+//   );
+//   if (tokenResponse.success) {
+//     const token = tokenResponse.result.token;
+//     const validateTokenResponse = await validateEmailConfirmationToken(token);
+//     if (validateTokenResponse.success) {
+//       const { userData, token, refreshToken, signOutUser } =
+//         validateTokenResponse.result;
+//       if (signOutUser) {
+//         await router.push({ name: "sign-out" });
+//         return;
+//       }
+//       setLoggedInUserData({
+//         ...userData,
+//         apiToken: token,
+//         refreshToken,
+//         refreshingToken: false,
+//       });
+//
+//       await router.push({
+//         path: "/",
+//       });
+//     }
+//   }
+// };
 </script>
 <template>
   <div
@@ -163,10 +159,6 @@ const debugConfirmEmail = async () => {
             <span class="spinner-border spinner-border-sm"></span> Re-sending...
           </span>
           <span v-else> Re-send my confirmation email. </span>
-        </button>
-
-        <button class="btn btn-primary mt-3" @click="debugConfirmEmail">
-          DEBUG validate email.
         </button>
       </p>
       <p class="alert alert-secondary">
@@ -246,7 +238,10 @@ const debugConfirmEmail = async () => {
       <p v-if="!emailAddressUpdated && CurrentUser?.email" class="mt-3">
         If <strong>{{ CurrentUser?.email }}</strong> is correct:
       </p>
-      <p v-if="!emailAddressUpdated" class="mt-3">
+      <p
+        v-if="!emailAddressUpdated"
+        class="mt-3 d-flex flex-md-row flex-column justify-content-md-between align-items-start"
+      >
         <button
           class="btn btn-secondary me-3 mb-3"
           type="button"
@@ -257,10 +252,6 @@ const debugConfirmEmail = async () => {
             <span class="spinner-border spinner-border-sm"></span> Sending...
           </span>
           <span v-else> Send account confirmation email. </span>
-        </button>
-
-        <button class="btn btn-primary" @click="debugConfirmEmail">
-          DEBUG validate email.
         </button>
       </p>
       <p class="alert alert-secondary">
@@ -327,13 +318,13 @@ const debugConfirmEmail = async () => {
 }
 .setup-form {
   background: white;
-  max-width: 360px;
-  width: 100%;
+  //max-width: 360px;
+  //width: 100%;
   @media (min-width: 768px) {
     border-radius: 0.25rem;
   }
-  &.groups-setup {
-    max-width: 768px;
-  }
+  //&.groups-setup {
+  //  max-width: 768px;
+  //}
 }
 </style>

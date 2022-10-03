@@ -1,6 +1,10 @@
 import { CurrentViewAbortController } from "@/router";
 import type { LoggedInUser } from "@/models/LoggedInUser";
-import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
+import {
+  CurrentUser,
+  forgetUserOnCurrentDevice,
+  userIsLoggedIn,
+} from "@/models/LoggedInUser";
 import type { ErrorResult, FetchResult } from "@api/types";
 import { reactive } from "vue";
 import { delayMsThen } from "@/utils";
@@ -122,7 +126,7 @@ export async function fetch<T>(
     };
   }
   if (response.status === 401) {
-    CurrentUser.value = null;
+    forgetUserOnCurrentDevice();
     return {
       result: {
         errors: ["Unauthorized"],

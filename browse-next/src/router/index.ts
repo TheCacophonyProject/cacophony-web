@@ -48,14 +48,18 @@ const router = createRouter({
     {
       path: "/setup",
       name: "setup",
-      meta: { title: "Group setup", requiresLogin: true },
+      meta: { title: "Group setup", requiresLogin: true, nonMainView: true },
       component: () => import("@/views/SetupView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/confirm-account-email/:token",
       name: "confirm-email",
-      meta: { title: "Confirm email address", requiresLogin: true },
+      meta: {
+        title: "Confirm email address",
+        requiresLogin: true,
+        nonMainView: true,
+      },
       component: () => import("@/views/ConfirmEmailView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -63,14 +67,22 @@ const router = createRouter({
     {
       path: "/accept-invite/:token",
       name: "accept-group-invite",
-      meta: { title: "Accept group invitation", requiresLogin: true },
+      meta: {
+        title: "Accept group invitation",
+        requiresLogin: true,
+        nonMainView: true,
+      },
       component: () => import("@/views/AcceptGroupInvite.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/confirm-group-membership-request/:token",
       name: "confirm-group-membership-request",
-      meta: { title: "Confirm group membership request", requiresLogin: true },
+      meta: {
+        title: "Confirm group membership request",
+        requiresLogin: true,
+        nonMainView: true,
+      },
       component: () => import("@/views/ConfirmAddToGroupRequest.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -187,7 +199,7 @@ const router = createRouter({
     {
       path: "/sign-out",
       name: "sign-out",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, nonMainView: true },
       component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -195,49 +207,49 @@ const router = createRouter({
     {
       path: "/sign-in",
       name: "sign-in",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/SignInView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register",
       name: "register",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register/accept-invite/:token",
       name: "register-with-token",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/end-user-agreement",
       name: "end-user-agreement",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, nonMainView: true },
       component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/forgot-password",
       name: "forgot-password",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/ForgotPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password/:token",
       name: "validate-reset-password",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password",
       name: "reset-password",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -245,6 +257,14 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+  if (to.name === "sign-out") {
+    userIsLoggedIn.value = false;
+    await forgetUserOnCurrentDevice();
+    return next({
+      name: "sign-in",
+    });
+  }
+
   if (to.name === "dashboard") {
     // debugger;
   }
@@ -318,7 +338,9 @@ router.beforeEach(async (to, from, next) => {
       return next({ name: "sign-in" });
     } else {
       if (
-        (to.name !== "setup" && !userHasConfirmedEmailAddress.value) ||
+        (to.name !== "setup" &&
+          to.name !== "confirm-email" &&
+          !userHasConfirmedEmailAddress.value) ||
         !userHasGroups.value
       ) {
         return next({ name: "setup" });
@@ -338,6 +360,7 @@ router.beforeEach(async (to, from, next) => {
     if (
       userIsLoggedIn.value &&
       to.name !== "setup" &&
+      to.name !== "confirm-email" &&
       !userHasConfirmedEmailAddress.value
     ) {
       return next({ name: "setup" });
@@ -365,7 +388,7 @@ router.beforeEach(async (to, from, next) => {
       if (groupsResponse.status === 401) {
         return next({ name: "sign-out" });
       } else if (UserGroups.value?.length === 0) {
-        if (to.name !== "setup") {
+        if (to.name !== "setup" && to.name !== "confirm-email") {
           return next({ name: "setup" });
         } else {
           return next();
@@ -426,13 +449,6 @@ router.beforeEach(async (to, from, next) => {
   // Slight wait so that we can break infinite navigation loops while developing.
   if (to.meta.requiresLogin && !userIsLoggedIn.value) {
     return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-  }
-  if (userIsLoggedIn.value && to.name === "sign-out") {
-    await forgetUserOnCurrentDevice();
-    userIsLoggedIn.value = false;
-    return next({
-      name: "sign-in",
-    });
   }
 
   if (!from.meta.requiresLogin && to.query.nextUrl) {

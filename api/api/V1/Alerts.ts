@@ -95,7 +95,7 @@ export default function (app: Application, baseUrl: string) {
         .withMessage(expectedTypeOf("ApiAlertConditions"))
         .bail()
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
-      validNameOf(body("name")),
+      body("name").exists(),
       integerOfWithDefault(body("frequencySeconds"), DEFAULT_FREQUENCY),
       anyOf(idOf(body("deviceId")), idOf(body("stationId"))),
     ]),

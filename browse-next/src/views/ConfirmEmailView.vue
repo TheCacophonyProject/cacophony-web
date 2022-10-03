@@ -1,11 +1,14 @@
 <script lang="ts" setup>
 import { onBeforeMount, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { validateEmailConfirmationToken } from "@api/User";
 import {
-  debugGetEmailConfirmationToken,
-  validateEmailConfirmationToken,
-} from "@api/User";
-import { setLoggedInUserData, UserGroups } from "@models/LoggedInUser";
+  CurrentUser,
+  setLoggedInUserData,
+  urlNormalisedCurrentGroupName,
+  UserGroups,
+  userIsLoggedIn,
+} from "@models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -22,13 +25,15 @@ const testToken = ref("");
 
 onBeforeMount(async () => {
   // Get an email confirmation token for testing.
-  const tokenResponse = await debugGetEmailConfirmationToken("admin@email.com");
-  if (tokenResponse.success && tokenResponse.status === HttpStatusCode.Ok) {
-    testToken.value = tokenResponse.result.token.replace(/\./g, ":");
-  }
+  // const tokenResponse = await debugGetEmailConfirmationToken("admin@email.com");
+  // if (tokenResponse.success && tokenResponse.status === HttpStatusCode.Ok) {
+  //   testToken.value = tokenResponse.result.token.replace(/\./g, ":");
+  // }
 
   // Get the token, and sent it to the backend.
-  if (params.token) {
+  const alreadyValidated =
+    userIsLoggedIn.value && CurrentUser.value?.emailConfirmed;
+  if (params.token && !alreadyValidated) {
     checkingValidateEmailToken.value = true;
     if (Array.isArray(params.token) && params.token.length) {
       validateToken.value = (params.token.shift() as string).replace(/:/g, ".");
@@ -71,6 +76,9 @@ onBeforeMount(async () => {
       if (UserGroups.value?.length) {
         await router.push({
           name: "dashboard",
+          params: {
+            groupName: urlNormalisedCurrentGroupName.value,
+          },
         });
       } else {
         await router.push({
@@ -80,10 +88,25 @@ onBeforeMount(async () => {
     }
     checkingValidateEmailToken.value = false;
   } else {
-    // No token supplied, redirect to sign-in
-    await router.push({
-      name: "sign-in",
-    });
+    if (userIsLoggedIn.value) {
+      if (UserGroups.value?.length) {
+        await router.push({
+          name: "dashboard",
+          params: {
+            groupName: urlNormalisedCurrentGroupName.value,
+          },
+        });
+      } else {
+        await router.push({
+          name: "setup",
+        });
+      }
+    } else {
+      // No token supplied, redirect to sign-in
+      await router.push({
+        name: "sign-in",
+      });
+    }
   }
 });
 </script>

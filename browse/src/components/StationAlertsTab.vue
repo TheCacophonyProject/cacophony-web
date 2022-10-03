@@ -57,16 +57,14 @@
       <b-form>
         <b-form-group label="Alert name">
           <b-form-input
+            maxlength="45"
             type="text"
             placeholder="Alert name"
             v-model="currentAlert.name"
           ></b-form-input>
         </b-form-group>
         <b-form-group label="Species/tag to alert on">
-          <classifications-dropdown
-            v-model="currentAlert.species"
-            :exclude="['other', 'bird']"
-          />
+          <classifications-dropdown v-model="currentAlert.species" />
         </b-form-group>
       </b-form>
     </b-modal>

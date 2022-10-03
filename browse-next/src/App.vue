@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RouterView, RouterLink } from "vue-router";
+import { RouterView, RouterLink, useRoute } from "vue-router";
 
 // TODO only in dev mode, otherwise we need an info button somewhere for production
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
@@ -60,6 +60,8 @@ const currentUserName = computed<string>(() => {
   // Remove spaces.
   return CurrentUser.value.userName.replace(/ /g, "&nbsp;");
 });
+
+const route = useRoute();
 
 onBeforeMount(() => {
   // Override bootstrap CSS variables.
@@ -410,26 +412,27 @@ onMounted(() => {
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
         <div class="d-flex flex-column router-view">
-          <router-view />
+          <router-view v-if="!route.meta.nonMainView" />
         </div>
       </div>
     </section>
   </main>
   <main
-    v-else-if="
-      userIsLoggedIn && (!userHasGroups || !userHasConfirmedEmailAddress)
-    "
-    class="d-flex flex-column account-setup justify-content-center align-items-center flex-fill"
-  >
-    <!--  This will always be the setup view  -->
-    <router-view />
-  </main>
-  <main
     v-else
-    class="logged-out justify-content-center align-items-center d-flex flex-column flex-fill"
+    :class="[
+      userIsLoggedIn && (!userHasGroups || !userHasConfirmedEmailAddress)
+        ? 'account-setup'
+        : 'logged-out',
+      'd-flex',
+      'flex-column',
+      'account-setup',
+      'justify-content-center',
+      'align-items-center',
+      'flex-fill',
+    ]"
   >
-    <!--  This will always be the sign-in screen, right?  -->
-    <router-view />
+    <!--  When logging out, the existing router view gets re-mounted in here, which we don't want.  -->
+    <router-view v-if="route.meta.nonMainView" />
   </main>
 </template>
 
