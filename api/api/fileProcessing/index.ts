@@ -32,6 +32,7 @@ import {
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
 } from "@api/extract-middleware";
+import logger from "@log";
 
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";
@@ -112,9 +113,12 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/processed`,
-    util.multipartUpload("file", async (uploader, data, key) => {
-      return key;
-    })
+    util.multipartUpload(
+      "file",
+      async (uploader, uploadingDevice, uploadingUser, data, key) => {
+        return key;
+      }
+    )
   );
 
   // Add tracks
@@ -313,7 +317,15 @@ export default function (app: Application) {
               log.error("Reason: %s", (result as Error).message);
             }
           }
-          if (complete && prevState !== RecordingProcessingState.Reprocess) {
+          const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+          const recordingAgeMs =
+            new Date().getTime() - recording.recordingDateTime.getTime();
+          if (
+            complete &&
+            prevState !== RecordingProcessingState.Reprocess &&
+            recording.uploader === "device" &&
+            recordingAgeMs < twentyFourHoursMs
+          ) {
             await recordingUtil.sendAlerts(recording.id);
           }
         }

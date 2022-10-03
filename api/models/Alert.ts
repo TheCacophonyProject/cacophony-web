@@ -202,7 +202,6 @@ export default function (sequelize, DataTypes): AlertStatic {
     thumbnail?: EmailImageAttachment
   ) {
     const subject = `${this.name}  - ${tag.what} Detected`;
-
     const [html, text] = alertBody(
       recording,
       tag,

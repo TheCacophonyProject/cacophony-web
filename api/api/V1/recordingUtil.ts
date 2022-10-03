@@ -559,10 +559,6 @@ export const maybeUpdateDeviceHistory = async (
         dateTime,
         false
       );
-      logger.error(
-        "Assign to station %s",
-        stationToAssign && stationToAssign.id
-      );
       if (stationToAssign && stationToAssign.activeAt > dateTime) {
         // We matched a future station in this location, so it's likely this is an older recording coming in out
         // of order.  We want to back-date the existing station to this time.
@@ -716,7 +712,9 @@ const getDeviceIdAndGroupIdAtRecordingTime = async (
 export const uploadRawRecording = util.multipartUpload(
   "raw",
   async (
+    uploader: "device" | "user",
     uploadingDevice: Device,
+    uploadingUser: User | null,
     data: any, // FIXME - At least partially validate this data
     key: string,
     uploadedFileData: Uint8Array
@@ -732,10 +730,16 @@ export const uploadRawRecording = util.multipartUpload(
     recording.rawFileSize = uploadedFileData.length;
     recording.rawFileKey = key;
     recording.rawMimeType = guessRawMimeType(data.type, data.filename);
-    recording.DeviceId = uploadingDevice.id;
-    if (typeof uploadingDevice.public === "boolean") {
-      recording.public = uploadingDevice.public;
+
+    if (uploader === "device") {
+      recording.DeviceId = uploadingDevice.id;
+      if (typeof uploadingDevice.public === "boolean") {
+        recording.public = uploadingDevice.public;
+      }
     }
+    recording.uploader = uploader;
+    recording.uploaderId =
+      uploader === "device" ? uploadingDevice.id : (uploadingUser as User).id;
     let deviceId: DeviceId;
     let groupId: DeviceId;
     // Check if the file is corrupt and use file metadata if it can be parsed.
@@ -876,10 +880,15 @@ export const uploadRawRecording = util.multipartUpload(
       recording.processingState ===
       models.Recording.finishedState(data.type as RecordingType);
     const promises = [recording.save()] as Promise<any>[];
-
     if (recordingHasFinishedProcessing) {
       // NOTE: Should only occur during testing.
-      promises.push(sendAlerts(recording.id));
+      const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+      const recordingAgeMs =
+        new Date().getTime() - recording.recordingDateTime.getTime();
+      if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
+        // Alerts should only be sent for uploading devices.
+        promises.push(sendAlerts(recording.id));
+      }
     }
     await Promise.all(promises);
     return recording;
@@ -1731,6 +1740,7 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
       "id",
       "recordingDateTime",
       "DeviceId",
+      "StationId",
       "GroupId",
       "rawFileKey",
     ],
@@ -1760,13 +1770,13 @@ async function sendAlerts(recId: RecordingId) {
   if (!matchedTag) {
     return;
   }
-
   // Find the hierarchy for the matchedTag
   const alerts: Alert[] = await (models.Alert as AlertStatic).getActiveAlerts(
     matchedTag,
     recording.DeviceId || undefined,
     recording.StationId || undefined
   );
+
   if (alerts.length > 0) {
     const thumbnail = await getThumbnail(recording).catch(() => {
       log.warning("Alerting without thumbnail for %d", recId);

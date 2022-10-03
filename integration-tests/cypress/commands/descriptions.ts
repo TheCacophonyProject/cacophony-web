@@ -20,6 +20,9 @@ export function logTestDescription(
 }
 
 export function prettyLog(object: any) {
+  if (typeof object === "string") {
+    return object;
+  }
   if (!(object instanceof Array)) {
     const objectCopy: any = Object.assign({}, object);
 

@@ -138,6 +138,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   cacophonyIndex: CacophonyIndex[];
   comment: string;
   public: boolean;
+  uploader: "user" | "device";
+  uploaderId: UserId | DeviceId;
   rawFileKey: string;
   rawMimeType: string;
   rawFileHash: string;
@@ -292,6 +294,10 @@ export default function (
     airplaneModeOn: DataTypes.BOOLEAN,
     processingFailedCount: DataTypes.INTEGER,
     currentStateStartTime: DataTypes.DATE,
+
+    // Uploader info:
+    uploader: DataTypes.ENUM("device", "user"),
+    uploaderId: DataTypes.INTEGER,
   };
 
   const Recording = sequelize.define(

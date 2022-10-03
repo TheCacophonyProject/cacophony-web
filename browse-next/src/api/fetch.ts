@@ -23,7 +23,7 @@ const getScreenOrientation = (): string => {
     return window.screen.orientation?.type;
   } else if (typeof window.orientation !== "undefined") {
     if (Math.abs(window.orientation) == 90) {
-      return "landscape"
+      return "landscape";
     } else {
       return "portrait";
     }
@@ -73,9 +73,11 @@ export async function fetch<T>(
     //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
-    (
-      request.headers as Record<string, string>
-    ).Viewport = `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio} - ${getScreenOrientation()}`;
+    (request.headers as Record<string, string>).Viewport = `${
+      window.screen.width
+    }x${window.screen.height}@${
+      window.devicePixelRatio
+    } - ${getScreenOrientation()}`;
   }
   let response;
   try {

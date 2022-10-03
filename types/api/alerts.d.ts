@@ -1,4 +1,4 @@
-import { DeviceId, IsoFormattedDateString, Seconds, UserId } from "./common";
+import { AlertId, IsoFormattedDateString, Seconds, UserId } from "./common";
 
 export interface ApiAlertCondition {
   tag: string;
@@ -6,7 +6,7 @@ export interface ApiAlertCondition {
 }
 
 export interface ApiAlertResponse {
-  id: DeviceId;
+  id: AlertId;
   name: string;
   frequencySeconds: Seconds;
   conditions: ApiAlertCondition[];

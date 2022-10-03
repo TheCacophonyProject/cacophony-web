@@ -11,10 +11,11 @@ import { logTestDescription } from "../descriptions";
 import { getTestName } from "../names";
 import { testRunOnApi } from "../server";
 import { ApiAlert } from "../types";
-import { ApiAlertCondition } from "@typedefs/api/alerts";
+import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
+import { StationId } from "@typedefs/api/common";
 
 Cypress.Commands.add(
-  "apiAlertAdd",
+  "apiDeviceAlertAdd",
   (
     userName: string,
     alertName: string,
@@ -55,13 +56,61 @@ Cypress.Commands.add(
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
         saveIdOnly(alertName, response.body.id);
+        cy.wrap(response.body.id);
       }
     });
   }
 );
 
 Cypress.Commands.add(
-  "apiAlertCheck",
+  "apiStationAlertAdd",
+  (
+    userName: string,
+    alertName: string,
+    conditions: ApiAlertCondition[],
+    stationId: number,
+    frequency: number | null = null,
+    statusCode: number = 200
+  ) => {
+    logTestDescription(
+      `Create alert ${getTestName(alertName)} for station ${stationId} `,
+      {
+        userName,
+        stationId,
+        conditions,
+        frequency,
+        id: getTestName(alertName),
+      }
+    );
+    const alertJson = {
+      name: getTestName(alertName),
+      conditions,
+      stationId,
+    };
+
+    if (frequency !== null) {
+      alertJson["frequencySeconds"] = frequency;
+    }
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath("alerts"),
+        body: alertJson,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (statusCode === null || statusCode == 200) {
+        saveIdOnly(alertName, response.body.id);
+        cy.wrap(response.body.id);
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiDeviceAlertCheck",
   (
     userName: string,
     deviceName: string,
@@ -73,9 +122,31 @@ Cypress.Commands.add(
       deviceName,
     });
 
-    apiAlertsGet(userName, deviceName, statusCode).then((response) => {
+    apiDeviceAlertsGet(userName, deviceName, statusCode).then((response) => {
       if (statusCode == 200) {
         checkExpectedAlerts(response, expectedAlert);
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiStationAlertCheck",
+  (
+    userName: string,
+    stationId: StationId,
+    expectedAlert: any,
+    statusCode: number = 200
+  ) => {
+    logTestDescription(`Check for expected alert for stationId ${stationId} `, {
+      userName,
+      stationId,
+    });
+
+    apiStationAlertsGet(userName, stationId, statusCode).then((response) => {
+      if (statusCode == 200) {
+        checkExpectedAlerts(response, expectedAlert);
+        cy.wrap(response.body.alerts[0]);
       }
     });
   }
@@ -85,9 +156,8 @@ export function createExpectedAlert(
   alertName: string,
   frequencySeconds: number,
   conditions: ApiAlertCondition[],
-  lastAlert: boolean,
-  userName: string,
-  deviceName: string
+  hasLastAlert: boolean,
+  userName: string
 ): any {
   //alertId will have been saved when we created the alert
   const alertId = getCreds(alertName).id;
@@ -97,13 +167,12 @@ export function createExpectedAlert(
     alertName: getTestName(alertName),
     frequencySeconds,
     conditions,
-    lastAlert,
+    hasLastAlert,
   };
-
   return expectedAlert;
 }
 
-function apiAlertsGet(
+function apiDeviceAlertsGet(
   userName: string,
   deviceName: string,
   statusCode: number
@@ -113,6 +182,20 @@ function apiAlertsGet(
 
   return makeAuthorizedRequestWithStatus(
     { url: v1ApiPath(`alerts/device/${deviceId}`, params) },
+    userName,
+    statusCode
+  );
+}
+
+function apiStationAlertsGet(
+  userName: string,
+  stationId: StationId,
+  statusCode: number
+) {
+  const params = {};
+
+  return makeAuthorizedRequestWithStatus(
+    { url: v1ApiPath(`alerts/station/${stationId}`, params) },
     userName,
     statusCode
   );
@@ -140,7 +223,7 @@ function checkExpectedAlerts(
     thealert.conditions[0].automatic,
     `conditions should have been ${expectedAlert.conditions[0].automatic}`
   ).to.eq(expectedAlert.conditions[0].automatic);
-  if (expectedAlert.lastAlert == false) {
+  if (expectedAlert.hasLastAlert == false) {
     expect(thealert.lastAlert, `lastAlert should have been null `).to.eq(null);
   } else {
     expect(thealert.lastAlert, `should have a lastAlert`).to.not.eq(null);

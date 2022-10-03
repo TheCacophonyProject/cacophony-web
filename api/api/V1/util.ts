@@ -32,6 +32,7 @@ import { RecordingType } from "@typedefs/api/consts";
 import config from "@config";
 import { Op } from "sequelize";
 import { UnprocessableError } from "@api/customErrors";
+import logger from "@log";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -53,7 +54,9 @@ const stream2Buffer = (stream: Stream): Promise<Buffer> => {
 function multipartUpload(
   keyPrefix: string,
   onFileUploadComplete: <T>(
-    uploadingDeviceOrUser: Device | User | null,
+    uploader: "device" | "user",
+    uploadingDevice: Device,
+    uploadingUser: User | null,
     data: any,
     key: string,
     uploadedFileData: Uint8Array,
@@ -68,7 +71,7 @@ function multipartUpload(
     let fileDataPromise;
 
     let uploadingDevice =
-      response.locals.device || response.locals.requestDevice;
+      response.locals.requestDevice || response.locals.device;
     if (uploadingDevice) {
       // If it was the actual device uploading the recording, not a user
       // on the devices' behalf, set the lastConnectionTime for the device.
@@ -278,8 +281,11 @@ function multipartUpload(
 
         data.filename = filename;
         // Store a record for the upload.
+        const uploader = response.locals.requestDevice ? "device" : "user";
         dbRecordOrFileKey = await onFileUploadComplete(
-          uploadingDevice || response.locals.requestUser || null,
+          uploader,
+          uploadingDevice,
+          response.locals.requestUser || null,
           data,
           key,
           fileDataArray,

@@ -8,7 +8,11 @@
       Any time our AI classifies a visit at this station as matching the species
       or tag you specify, you'll receive an email to let you know.<br />
       You won't receive more than one email alert for the same tag within a 30
-      minute period.
+      minute period.<br />
+      Additionally, you will only receive alerts on recordings uploaded by
+      connected devices (not by other means such as the SideKick app).<br />
+      You also won't receive an alert if the recording is more than 24 hours old
+      when it is processed.
     </p>
     <b-table
       v-if="alerts.length"
@@ -17,7 +21,7 @@
       :items="tableAlerts"
       :fields="[
         'name',
-        'alertsOn',
+        { key: 'alertsOn', label: 'Alerts on' },
         { key: 'lastAlert', label: 'Last alerted' },
         { key: 'remove', label: '' },
       ]"
