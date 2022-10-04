@@ -194,7 +194,7 @@ const videoSmoothing = persistentBooleanPref(
 const speedMultiplierIndex = ref<number>(
   Math.max(
     PlaybackSpeeds.indexOf(
-      Number(localStorage.getItem("video-playback-speed"))
+      Number(localStorage.getItem("video-playback-speed")) || 1
     ),
     0
   )
@@ -1673,10 +1673,17 @@ const drawFrame = async (
 </template>
 <style scoped lang="less">
 .video-container {
-  width: 640px;
+  @media screen and (max-width: 1040px) {
+    max-width: 640px;
+  }
+  @media screen and (min-width: 1041px) {
+    width: 640px;
+  }
   aspect-ratio: 4 / 3;
 }
 .cptv-player {
+  background: #202731;
+
   .video-container {
     margin: 0 auto;
     position: relative;

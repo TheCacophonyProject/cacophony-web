@@ -106,6 +106,7 @@ onMounted(() => {
 });
 </script>
 <template>
+  <div class="debug">Logged in? {{ userIsLoggedIn }}</div>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal id="network-issue-modal" />
   <switch-groups-modal
@@ -408,7 +409,7 @@ onMounted(() => {
       </div>
     </nav>
     <section id="main-content">
-      <div class="container p-0">
+      <div class="container-xxl py-0">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
         <div class="d-flex flex-column router-view">
@@ -529,7 +530,7 @@ onMounted(() => {
   }
 
   background: white;
-  position: absolute;
+  position: fixed;
   bottom: 0;
   top: 0;
   left: 0;
@@ -667,6 +668,16 @@ main {
   @media (min-width: 768px) {
     background: #95a5a6;
   }
+}
+
+.debug {
+  display: none;
+  right: 0;
+  bottom: 0;
+  position: absolute;
+  z-index: 10000;
+  background: white;
+  padding: 10px;
 }
 </style>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>

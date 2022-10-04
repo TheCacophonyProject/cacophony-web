@@ -160,9 +160,7 @@ class CptvDecoderInterface {
 
   async fetchNextFrame() {
     if (!this.reader) {
-      console.warn(
-        "You need to initialise the player with the url of a CPTV file"
-      );
+      console.warn("You need to initialise the player with a CPTV file stream");
       return null;
     }
     if (this.consumed) {

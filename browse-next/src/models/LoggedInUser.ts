@@ -63,6 +63,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
     }
   }
 
+  console.log("Setting logged in user data", user);
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
   const apiToken = decodeJWT(CurrentUser.value?.apiToken) as JwtTokenPayload;
@@ -198,7 +199,8 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
   window.localStorage.removeItem("saved-login-credentials");
-  CurrentUser.value = null;
+  debugger;
+  userIsLoggedIn.value = false;
 };
 
 export const switchCurrentGroup = (newGroup: {
@@ -362,6 +364,7 @@ export const rafFps = ref(60);
           JSON.stringify({ ...currentUser, refreshingToken: false })
         );
       } catch (e) {
+        debugger;
         forgetUserOnCurrentDevice();
       }
     }

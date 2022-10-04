@@ -23,10 +23,6 @@ function alertBody(
   camera?: string,
   station?: string
 ): string[] {
-  const serverBase = config.server.recording_url_base.replace(
-    "/recording/",
-    ""
-  );
   const dateTime = moment(recording.recordingDateTime)
     .tz(config.timeZone)
     .format("h:mma Do MMM");
@@ -40,7 +36,7 @@ function alertBody(
 
   html += `<br><a href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">View Recording</a>`;
   if (station) {
-    html += `<br><br><a href="${serverBase}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id}">Remove this alert</a>`;
+    html += `<br><br><a href="${config.server.browse_url}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id}">Remove this alert</a>`;
   }
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
 
@@ -49,7 +45,7 @@ function alertBody(
     : `${tag.what} detected at station ${station} - ${dateTime}\r\n`;
   text += `Go to ${config.server.recording_url_base}/${recording.id}/${tag.TrackId} to view this recording\r\n`;
   if (station) {
-    text += `Go to ${serverBase}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id} to remove this alert\r\n`;
+    text += `Go to ${config.server.browse_url}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id} to remove this alert\r\n`;
   }
   text += "Thanks, Cacophony Team";
   return [html, text];

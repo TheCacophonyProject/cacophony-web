@@ -258,6 +258,7 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   if (to.name === "sign-out") {
+    debugger;
     userIsLoggedIn.value = false;
     await forgetUserOnCurrentDevice();
     return next({

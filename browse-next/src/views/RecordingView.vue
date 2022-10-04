@@ -316,9 +316,6 @@ const selectedTrack = async (trackId: TrackId) => {
     ...route.params,
     trackId,
   };
-  if (currentTrack.value && route.name === "dashboard-visit-tracks") {
-    (params as RouteParamsRaw).trackId = currentTrack.value.id;
-  }
   await router.replace({
     name: route.name as string,
     params,
@@ -451,7 +448,7 @@ const recordingViewContext = "dashboard-visit";
         <font-awesome-icon icon="xmark" />
       </button>
     </header>
-    <div class="d-flex">
+    <div class="player-and-tagging">
       <div class="player-container">
         <cptv-player
           :recording="recording"
@@ -671,6 +668,7 @@ const recordingViewContext = "dashboard-visit";
   border-bottom: 2px solid #e1e1e1;
 }
 .recording-view-footer {
+  background: white;
   .visit-progress {
     height: 2px;
     background: #e1e1e1;
@@ -706,6 +704,29 @@ const recordingViewContext = "dashboard-visit";
   }
   .active {
     cursor: default;
+  }
+}
+.player-and-tagging {
+  display: flex;
+  flex-direction: row;
+  @media screen and (max-width: 1040px) {
+    flex-direction: column;
+  }
+}
+.recording-view {
+  @media screen and (max-width: 1040px) {
+    background: white;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    .recording-view-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
   }
 }
 </style>

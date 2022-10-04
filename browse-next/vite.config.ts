@@ -15,7 +15,7 @@ export default defineConfig({
     topLevelAwait(),
     eslintPlugin({
       failOnError: false,
-      exclude: ["**/consts.ts", "**/node_modules/**"],
+      exclude: ["**/consts.ts", "**/node_modules/**", "**/*.js"],
     }),
   ],
   resolve: {
