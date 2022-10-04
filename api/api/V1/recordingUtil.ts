@@ -1760,7 +1760,7 @@ async function sendAlerts(recId: RecordingId) {
   // Currently we only send one alert per recording.
   for (const track of recording.Tracks) {
     matchedTag = track.TrackTags.find(
-      (tag) => tag.data === AI_MASTER && recVisit.what === tag.what
+      (tag) => tag.data === AI_MASTER && tag.what
     );
     if (matchedTag) {
       matchedTrack = track;

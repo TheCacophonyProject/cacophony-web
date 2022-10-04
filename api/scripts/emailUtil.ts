@@ -7,6 +7,7 @@ import moment from "moment";
 import { User } from "@models/User";
 import { getEmailConfirmationToken, getResetToken } from "@api/auth";
 import { sendEmail } from "@/emails/sendEmail";
+import { Alert } from "@models/Alert";
 
 export interface EmailImageAttachment {
   buffer: Buffer;
@@ -17,6 +18,7 @@ export interface EmailImageAttachment {
 function alertBody(
   recording: Recording,
   tag: TrackTag,
+  alert: Alert,
   hasThumbnail: boolean,
   camera?: string,
   station?: string
@@ -32,13 +34,15 @@ function alertBody(
     html += `<img width="200" height ="200" src="cid:thumbnail" alt="recording thumbnail"></a><br>`;
   }
 
-  html += `<br><a  href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">View Recording</a>`;
+  html += `<br><a href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">View Recording</a>`;
+  html += `<br><br><a href="${config.server.recording_url_base}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id}">Remove this alert</a>`;
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
 
   let text = camera
     ? `${camera} has detected a ${tag.what} - ${dateTime}\r\n`
     : `${tag.what} detected at station ${station} - ${dateTime}\r\n`;
   text += `Go to ${config.server.recording_url_base}/${recording.id}/${tag.TrackId} to view this recording\r\n`;
+  text += `Go to ${config.server.recording_url_base}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id} to remove this alert\r\n`;
   text += "Thanks, Cacophony Team";
   return [html, text];
 }

@@ -54,7 +54,8 @@ export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
 export async function fetch<T>(
   url: string,
   request: RequestInit = {},
-  abortable = true
+  abortable = true,
+  apiToken?: string
 ): Promise<FetchResult<T> | void> {
   request = {
     mode: "cors",
@@ -71,9 +72,8 @@ export async function fetch<T>(
     });
   }
   if (userIsLoggedIn.value) {
-    (request.headers as Record<string, string>).Authorization = (
-      CurrentUser.value as LoggedInUser
-    ).apiToken;
+    (request.headers as Record<string, string>).Authorization =
+      apiToken || (CurrentUser.value as LoggedInUser).apiToken;
     //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes

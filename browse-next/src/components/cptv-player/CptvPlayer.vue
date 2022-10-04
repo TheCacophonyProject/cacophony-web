@@ -16,7 +16,7 @@ import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
 import type { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
 import { CptvDecoder } from "./cptv-decoder/decoder";
-import type { TrackId } from "@typedefs/api/common";
+import type { RecordingId, TrackId } from "@typedefs/api/common";
 import { Mp4Encoder } from "@/components/cptv-player/mp4-export";
 import type {
   FrameNum,
@@ -40,18 +40,19 @@ import {
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
+import { CurrentUser } from "@models/LoggedInUser";
 
 const { pixelRatio } = useDevicePixelRatio();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const {
   recording,
-  cptvUrl,
+  recordingId,
   cptvSize = null,
   currentTrack,
   canSelectTracks = true,
 } = defineProps<{
   recording: ApiRecordingResponse | null;
-  cptvUrl?: string;
+  recordingId: RecordingId;
   cptvSize?: number | null;
   currentTrack?: ApiTrackResponse;
   canSelectTracks?: boolean;
@@ -328,9 +329,6 @@ const requestNextRecording = () => {
   }
 };
 
-const hasVideo = computed<boolean>(() => {
-  return cptvUrl !== undefined;
-});
 const hasBackgroundFrame = computed<boolean>(() => {
   return (header.value?.hasBackgroundFrame as boolean) || false;
 });
@@ -1201,95 +1199,103 @@ onMounted(async () => {
     overlayCanvas.value?.addEventListener("click", clickOverlayCanvas);
     overlayCanvas.value?.addEventListener("mousemove", moveOverOverlayCanvas);
   }
+
+  await loadNextRecording(recordingId);
 });
+
+const loadedNextRecordingData = async () => {
+  if (currentTrack) {
+    const firstFrameForTrack = Number(
+      Object.keys(framesByTrack.value[currentTrack.id])[0]
+    );
+    targetFrameNum.value = firstFrameForTrack;
+    await seekToSpecifiedFrameAndRender(true, firstFrameForTrack);
+    frameNum.value = firstFrameForTrack;
+  }
+};
 
 watch(
   () => recording,
   (nextRecording: ApiRecordingResponse | null) => {
     if (nextRecording) {
       trackExportOptions.value = exportOptions.value;
+      loadedNextRecordingData();
     }
   }
 );
 
-watch(
-  () => cptvUrl,
-  async (nextCptvUrl: string | undefined, prevUrl) => {
-    clearCanvases();
-    if (nextCptvUrl && prevUrl !== nextCptvUrl) {
-      loadedStream.value = false;
-      streamLoadError.value = null;
-      frameNum.value = 0;
-      targetFrameNum.value = 0;
-      header.value = null;
-      setDebugFrameInfo(0);
-      animationTick.value = 0;
-      totalFrames.value = null;
-      playing.value = false;
-      buffering.value = true;
-      wasPaused.value = true;
-      resetRecordingNormalisation();
-      trackExportOptions.value = [];
-      frames = [];
-      cancelAnimationFrame(animationFrame.value);
+const loadNextRecording = async (nextRecordingId: RecordingId) => {
+  loadedStream.value = false;
+  streamLoadError.value = null;
+  frameNum.value = 0;
+  targetFrameNum.value = 0;
+  header.value = null;
+  setDebugFrameInfo(0);
+  animationTick.value = 0;
+  totalFrames.value = null;
+  playing.value = false;
+  buffering.value = true;
+  wasPaused.value = true;
+  resetRecordingNormalisation();
+  trackExportOptions.value = [];
+  frames = [];
+  cancelAnimationFrame(animationFrame.value);
 
-      if ((recording?.tracks || []).length > 1) {
-        console.warn(
-          "Can merge",
-          Object.values(framesByTrack.value).length,
-          Object.keys(mergedTracks.value)
-        );
-      }
-      loadedStream.value = await cptvDecoder.initWithCptvUrlAndKnownSize(
-        nextCptvUrl,
-        cptvSize || 0
+  if ((recording?.tracks || []).length > 1) {
+    console.warn(
+      "Can merge",
+      Object.values(framesByTrack.value).length,
+      Object.keys(mergedTracks.value)
+    );
+  }
+  loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
+    nextRecordingId,
+    cptvSize || 0,
+    CurrentUser.value?.apiToken
+  );
+
+  if (loadedStream.value === true) {
+    header.value = Object.freeze(await cptvDecoder.getHeader());
+    // TODO - Init all the header related info (min/max values etc)
+    setDebugFrameInfo(0);
+    scale.value = canvasWidth.value / header.value.width;
+    // If the header dimensions have changed since the last one, re-init the frameBuffer
+    console.assert(canvas.value);
+    if (
+      canvas.value &&
+      (canvas.value.width !== header.value.width ||
+        canvas.value.height !== header.value.height ||
+        !frameBuffer)
+    ) {
+      frameBuffer = new Uint8ClampedArray(
+        header.value.width * header.value.height * 4
       );
+      canvas.value.width = header.value.width;
+      canvas.value.height = header.value.height;
+    }
 
-      if (loadedStream.value === true) {
-        header.value = Object.freeze(await cptvDecoder.getHeader());
-        // TODO - Init all the header related info (min/max values etc)
-        setDebugFrameInfo(0);
-        scale.value = canvasWidth.value / header.value.width;
-        // If the header dimensions have changed since the last one, re-init the frameBuffer
-        console.assert(canvas.value);
-        if (
-          canvas.value &&
-          (canvas.value.width !== header.value.width ||
-            canvas.value.height !== header.value.height ||
-            !frameBuffer)
-        ) {
-          frameBuffer = new Uint8ClampedArray(
-            header.value.width * header.value.height * 4
-          );
-          canvas.value.width = header.value.width;
-          canvas.value.height = header.value.height;
-        }
+    if (recording && recording.id === recordingId) {
+      await loadedNextRecordingData();
+      emit("ready-to-play", header.value);
+      playing.value = true;
+    }
+  } else if (typeof loadedStream.value === "string") {
+    streamLoadError.value = loadedStream.value;
+    if (await cptvDecoder.hasStreamError()) {
+      await cptvDecoder.free();
+      frames = [];
+      resetRecordingNormalisation();
+      buffering.value = false;
+    }
+  }
+};
 
-        emit("ready-to-play", header.value);
-
-        if (currentTrack) {
-          const firstFrameForTrack = Number(
-            Object.keys(framesByTrack.value[currentTrack.id])[0]
-          );
-          targetFrameNum.value = firstFrameForTrack;
-          await seekToSpecifiedFrameAndRender(true, firstFrameForTrack);
-          frameNum.value = firstFrameForTrack;
-        }
-        playing.value = true;
-      } else if (typeof loadedStream.value === "string") {
-        if (loadedStream.value === "Failed to verify JWT.") {
-          // FIXME - Don't do this, in fact, don't use JWts for cptv recordings, just pipe them on through.
-          window.location.reload();
-        } else {
-          streamLoadError.value = loadedStream.value;
-          if (await cptvDecoder.hasStreamError()) {
-            await cptvDecoder.free();
-            frames = [];
-            resetRecordingNormalisation();
-            buffering.value = false;
-          }
-        }
-      }
+watch(
+  () => recordingId,
+  async (nextRecordingId: RecordingId | undefined, prevRecordingId) => {
+    clearCanvases();
+    if (nextRecordingId && prevRecordingId !== nextRecordingId) {
+      await loadNextRecording(nextRecordingId);
     }
   }
 );
@@ -1439,16 +1445,16 @@ const drawFrame = async (
         ]"
       >
         <button
-          @click="requestPrevRecording"
+          @click.stop.prevent="requestPrevRecording"
           :class="{ disabled: !canGoBackwards }"
         >
           <font-awesome-icon icon="backward" class="replay" />
         </button>
-        <button @click="togglePlayback">
+        <button @click.stop.prevent="togglePlayback">
           <font-awesome-icon icon="redo-alt" class="replay" rotation="270" />
         </button>
         <button
-          @click="requestNextRecording"
+          @click.stop.prevent="requestNextRecording"
           :class="{ disabled: !canGoForwards }"
         >
           <font-awesome-icon icon="forward" class="replay" />
@@ -1457,10 +1463,9 @@ const drawFrame = async (
     </div>
     <div key="playback-nav" class="playback-nav">
       <button
-        @click="togglePlayback"
+        @click.stop.prevent="togglePlayback"
         ref="playPauseButton"
         :data-tooltip="playing ? 'Pause' : 'Play'"
-        :disabled="!hasVideo"
       >
         <font-awesome-icon v-if="!playing" icon="play" />
         <font-awesome-icon v-else icon="pause" />
@@ -1468,7 +1473,7 @@ const drawFrame = async (
       <div class="right-nav">
         <div :class="['advanced-controls', { open: showAdvancedControls }]">
           <button
-            @click="showAdvancedControls = !showAdvancedControls"
+            @click.stop.prevent="showAdvancedControls = !showAdvancedControls"
             class="advanced-controls-btn"
             :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
             ref="advancedControlsButton"
@@ -1479,7 +1484,7 @@ const drawFrame = async (
             />
           </button>
           <button
-            @click="showDebugTools = !showDebugTools"
+            @click.stop.prevent="showDebugTools = !showDebugTools"
             ref="debugTools"
             data-tooltip="Debug tools"
             :class="{ selected: showDebugTools }"
@@ -1487,12 +1492,11 @@ const drawFrame = async (
             <font-awesome-icon icon="wrench" />
           </button>
           <button
-            @click="videoSmoothing = !videoSmoothing"
+            @click.stop.prevent="videoSmoothing = !videoSmoothing"
             ref="toggleSmoothingButton"
             :data-tooltip="
               videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
             "
-            :disabled="!hasVideo"
           >
             <svg
               v-if="videoSmoothing"
@@ -1547,16 +1551,14 @@ const drawFrame = async (
             </svg>
           </button>
           <button
-            @click="incrementPalette"
+            @click.stop.prevent="incrementPalette"
             ref="cyclePalette"
             data-tooltip="Cycle colour map"
-            :disabled="!hasVideo"
           >
             <font-awesome-icon icon="palette" />
           </button>
           <button
-            :disabled="!hasVideo"
-            @click="displayHeaderInfo = true"
+            @click.stop.prevent="displayHeaderInfo = true"
             data-tooltip="Show recording header info"
             :class="{ selected: displayHeaderInfo }"
             ref="showHeader"
@@ -1565,8 +1567,7 @@ const drawFrame = async (
           </button>
         </div>
         <button
-          :disabled="!hasVideo"
-          @click="incrementSpeed"
+          @click.stop.prevent="incrementSpeed"
           ref="cyclePlaybackSpeed"
           class="playback-speed"
           data-tooltip="Cycle playback speed"
@@ -1582,22 +1583,21 @@ const drawFrame = async (
       </div>
       <div>
         <button
-          @click="stepBackward"
+          @click.stop.prevent="stepBackward"
           data-tooltip="Go back one frame"
-          :disabled="!hasVideo || !canStepBackward"
+          :disabled="!canStepBackward"
         >
           <font-awesome-icon icon="step-backward" />
         </button>
         <button
-          @click="stepForward"
+          @click.stop.prevent="stepForward"
           data-tooltip="Go forward one frame"
-          :disabled="!hasVideo || !canStepForward"
+          :disabled="!canStepForward"
         >
           <font-awesome-icon icon="step-forward" />
         </button>
         <button
-          @click="showValueInfo = !showValueInfo"
-          :disabled="!hasVideo"
+          @click.stop.prevent="showValueInfo = !showValueInfo"
           :class="{ selected: showValueInfo }"
           :data-tooltip="
             showValueInfo
@@ -1608,8 +1608,7 @@ const drawFrame = async (
           <font-awesome-icon icon="eye-dropper" />
         </button>
         <button
-          @click="trackHighlightMode = !trackHighlightMode"
-          :disabled="!hasVideo"
+          @click.stop.prevent="trackHighlightMode = !trackHighlightMode"
           :class="{ selected: trackHighlightMode }"
           :data-tooltip="
             trackHighlightMode
@@ -1620,8 +1619,7 @@ const drawFrame = async (
           <font-awesome-icon icon="highlighter" />
         </button>
         <button
-          @click="polygonEditMode = !polygonEditMode"
-          :disabled="!hasVideo"
+          @click.stop.prevent="polygonEditMode = !polygonEditMode"
           :class="{ selected: polygonEditMode }"
           :data-tooltip="
             polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
@@ -1631,8 +1629,7 @@ const drawFrame = async (
           <!--         draw-polygon, bezier-curve, vector-square -->
         </button>
         <button
-          @click="silhouetteMode = !silhouetteMode"
-          :disabled="!hasVideo"
+          @click.stop.prevent="silhouetteMode = !silhouetteMode"
           :class="{ selected: silhouetteMode }"
           :data-tooltip="
             silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
@@ -1641,8 +1638,7 @@ const drawFrame = async (
           <font-awesome-icon icon="burst" />
         </button>
         <button
-          @click="motionPathMode = !motionPathMode"
-          :disabled="!hasVideo"
+          @click.stop.prevent="motionPathMode = !motionPathMode"
           :class="{ selected: motionPathMode }"
           :data-tooltip="
             motionPathMode ? 'Hide motion paths' : 'Show motion paths'
@@ -1651,11 +1647,11 @@ const drawFrame = async (
           <font-awesome-icon icon="route" />
         </button>
         <button
-          :disabled="!hasVideo || !hasBackgroundFrame"
+          :disabled="!hasBackgroundFrame"
           ref="showBackgroundFrame"
           :class="{ selected: isShowingBackgroundFrame }"
           data-tooltip="Press to show background frame"
-          @click="toggleBackground"
+          @click.stop.prevent="toggleBackground"
         >
           <font-awesome-icon icon="image" />
         </button>

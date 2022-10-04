@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // eslint-disable-next-line no-undef
 import { useRoute } from "vue-router";
+import type { RouteParamsRaw } from "vue-router";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import type {
@@ -180,32 +181,14 @@ const gotoNextRecording = () => {
   if (hasNextRecording.value) {
     const nextRecordingId =
       recordingIds.value[nextRecordingIndex.value as number];
-    router.push({
-      name: route.name as string,
-      params: {
-        ...route.params,
-        recordingIds: recordingIds.value.join(","),
-        visitLabel: visitLabel.value,
-        currentRecordingId: nextRecordingId,
-      },
-    });
+    gotoRecording(nextRecordingId);
   }
 };
 
 const gotoNextVisit = () => {
   if (nextVisit.value) {
     selectedVisit.value = nextVisit.value;
-    router.push({
-      name: route.name as string,
-      params: {
-        ...route.params,
-        recordingIds: selectedVisit.value.recordings
-          .map(({ recId }) => recId)
-          .join(","),
-        visitLabel: selectedVisit.value.classification,
-        currentRecordingId: selectedVisit.value.recordings[0].recId,
-      },
-    });
+    gotoVisit(selectedVisit.value, true);
   }
 };
 
@@ -217,40 +200,53 @@ const gotoPreviousRecordingOrVisit = () => {
   }
 };
 
+const gotoRecording = (recordingId: RecordingId) => {
+  const params = {
+    ...route.params,
+    recordingIds: recordingIds.value.join(","),
+    visitLabel: visitLabel.value,
+    currentRecordingId: recordingId,
+  };
+  delete (params as RouteParamsRaw).trackId;
+  router.push({
+    name: route.name as string,
+    params,
+  });
+};
+
+const gotoVisit = (visit: ApiVisitResponse, startOfVisit: boolean) => {
+  let currentRecordingId;
+  if (!startOfVisit) {
+    currentRecordingId = visit.recordings[visit.recordings.length - 1].recId;
+  } else {
+    currentRecordingId = visit.recordings[0].recId;
+  }
+  const recordingIds = visit.recordings.map(({ recId }) => recId).join(",");
+  const params = {
+    ...route.params,
+    visitLabel: visit.classification,
+    recordingIds,
+    currentRecordingId,
+  };
+  delete (params as RouteParamsRaw).trackId;
+  router.push({
+    name: route.name as string,
+    params,
+  });
+};
+
 const gotoPreviousRecording = () => {
   if (hasPreviousRecording.value) {
     const previousRecordingId =
       recordingIds.value[previousRecordingIndex.value as number];
-    router.push({
-      name: route.name as string,
-      params: {
-        ...route.params,
-        recordingIds: recordingIds.value.join(","),
-        visitLabel: visitLabel.value,
-        currentRecordingId: previousRecordingId,
-      },
-    });
+    gotoRecording(previousRecordingId);
   }
 };
 
 const gotoPreviousVisit = () => {
   if (previousVisit.value) {
     selectedVisit.value = previousVisit.value;
-    const currentRecordingId =
-      selectedVisit.value.recordings[selectedVisit.value.recordings.length - 1]
-        .recId;
-    const recordingIds = selectedVisit.value.recordings
-      .map(({ recId }) => recId)
-      .join(",");
-    router.push({
-      name: route.name as string,
-      params: {
-        ...route.params,
-        visitLabel: selectedVisit.value.classification,
-        recordingIds,
-        currentRecordingId,
-      },
-    });
+    gotoVisit(selectedVisit.value, false);
   }
 };
 
@@ -299,7 +295,6 @@ const loadRecording = async () => {
           ({ id }) => id == Number(route.params.trackId)
         );
       }
-      console.warn("Loaded recording", recordingData.value, currentTrack.value);
 
       if (
         ((route.name as string).endsWith("-tracks") && !route.params.trackId) ||
@@ -317,12 +312,16 @@ const loadRecording = async () => {
 };
 
 const selectedTrack = async (trackId: TrackId) => {
+  const params = {
+    ...route.params,
+    trackId,
+  };
+  if (currentTrack.value && route.name === "dashboard-visit-tracks") {
+    (params as RouteParamsRaw).trackId = currentTrack.value.id;
+  }
   await router.replace({
     name: route.name as string,
-    params: {
-      ...route.params,
-      trackId,
-    },
+    params,
   });
 };
 
@@ -426,13 +425,6 @@ const activeTabName = computed(() => {
 });
 
 const recordingViewContext = "dashboard-visit";
-
-const cptvUrl = computed<string | undefined>(() => {
-  if (recordingData.value) {
-    return `https://browse.cacophony.org.nz/api/v1/signedUrl?jwt=${recordingData.value.downloadJwt}`;
-  }
-  return undefined;
-});
 </script>
 <template>
   <div class="recording-view">
@@ -451,7 +443,11 @@ const cptvUrl = computed<string | undefined>(() => {
           />
         </div>
       </div>
-      <button type="button" class="btn" @click="() => emit('close')">
+      <button
+        type="button"
+        class="btn"
+        @click.stop.prevent="() => emit('close')"
+      >
         <font-awesome-icon icon="xmark" />
       </button>
     </header>
@@ -459,7 +455,7 @@ const cptvUrl = computed<string | undefined>(() => {
       <div class="player-container">
         <cptv-player
           :recording="recording"
-          :cptv-url="cptvUrl"
+          :recording-id="currentRecordingId"
           :current-track="currentTrack"
           @track-selected="({ trackId }) => selectedTrack(trackId)"
         />
@@ -591,7 +587,7 @@ const cptvUrl = computed<string | undefined>(() => {
           type="button"
           class="btn d-flex flex-row-reverse align-items-center"
           :disabled="!hasPreviousRecording && !hasPreviousVisit"
-          @click="gotoPreviousRecordingOrVisit"
+          @click.stop.prevent="gotoPreviousRecordingOrVisit"
         >
           <span class="d-none d-md-flex ps-2 flex-column align-items-start">
             <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
@@ -630,7 +626,7 @@ const cptvUrl = computed<string | undefined>(() => {
           type="button"
           class="btn d-flex align-items-center"
           :disabled="!hasNextRecording && !hasNextVisit"
-          @click="gotoNextRecordingOrVisit"
+          @click.stop.prevent="gotoNextRecordingOrVisit"
         >
           <span class="d-none d-md-flex pe-2 flex-column align-items-end">
             <span class="fs-8 fw-bold" v-if="hasNextRecording"

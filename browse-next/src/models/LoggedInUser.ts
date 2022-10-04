@@ -195,7 +195,7 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 
 export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
-  window.localStorage.clear();
+  window.localStorage.removeItem("saved-login-credentials");
   CurrentUser.value = null;
 };
 
@@ -347,19 +347,21 @@ export const pinSideNav = ref(false);
 export const rafFps = ref(60);
 // On load:
 {
-  const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-credentials"
-  );
-  if (rememberedCredentials) {
-    let currentUser;
-    try {
-      currentUser = JSON.parse(rememberedCredentials) as LoggedInUser;
-      window.localStorage.setItem(
-        "saved-login-credentials",
-        JSON.stringify({ ...currentUser, refreshingToken: false })
-      );
-    } catch (e) {
-      forgetUserOnCurrentDevice();
+  if (typeof window !== "undefined") {
+    const rememberedCredentials = window.localStorage.getItem(
+      "saved-login-credentials"
+    );
+    if (rememberedCredentials) {
+      let currentUser;
+      try {
+        currentUser = JSON.parse(rememberedCredentials) as LoggedInUser;
+        window.localStorage.setItem(
+          "saved-login-credentials",
+          JSON.stringify({ ...currentUser, refreshingToken: false })
+        );
+      } catch (e) {
+        forgetUserOnCurrentDevice();
+      }
     }
   }
 }

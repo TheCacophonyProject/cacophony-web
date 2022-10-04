@@ -9,6 +9,8 @@
       or tag you specify, you'll receive an email to let you know.<br />
       You won't receive more than one email alert for the same tag within a 30
       minute period.<br />
+      You'll only receive an alert for the <em>first</em> matching tag in a
+      recording.<br />
       Additionally, you will only receive alerts on recordings uploaded by
       connected devices (not by other means such as the SideKick app).<br />
       You also won't receive an alert if the recording is more than 24 hours old
@@ -31,7 +33,7 @@
           <b-btn
             variant="outline-secondary"
             class="align-self-end"
-            @click="removeAlert(data.item.id)"
+            @click="setDeleteAlert(data.item.id)"
           >
             <font-awesome-icon icon="trash" size="1x" />
           </b-btn>
@@ -46,6 +48,18 @@
         Create a new alert</b-btn
       >
     </div>
+    <b-modal
+      v-model="alertToDelete"
+      hide-header-close
+      :title="`Delete '${alertToDeleteName}'?`"
+      @ok="removeAlert(alertToDeleteId)"
+    >
+      <p>
+        Are you sure you want to no longer get alerts for
+        <strong>{{ alertToDeleteTag }}</strong
+        >?
+      </p>
+    </b-modal>
     <b-modal
       v-model="creatingAlert"
       title="New alert"
@@ -98,6 +112,31 @@ export default {
     };
   },
   computed: {
+    alertToDelete: {
+      get() {
+        const a = this.alerts.length !== 0 && !!this.alertToDeleteId;
+        return a;
+      },
+      set(val) {
+        if (typeof val === "boolean" && val === false) {
+          this.unsetDeleteAlert();
+        }
+      },
+    },
+    alertToDeleteId() {
+      return this.$route.params.deleteItemId;
+    },
+    alertToDeleteItem() {
+      return this.alerts.find(
+        ({ id }) => id === parseInt(this.alertToDeleteId)
+      );
+    },
+    alertToDeleteName() {
+      return this.alertToDeleteItem?.name;
+    },
+    alertToDeleteTag() {
+      return this.alertToDeleteItem?.conditions[0].tag;
+    },
     tableAlerts() {
       return this.alerts.map(({ id, name, conditions, lastAlert }) => {
         return {
@@ -105,15 +144,31 @@ export default {
           name,
           alertsOn: conditions.map(({ tag }) => tag).join(", "),
           lastAlert:
-            lastAlert === null
-              ? "never"
-              : new Date(lastAlert).toLocaleDateString(),
+            lastAlert === null ? "never" : new Date(lastAlert).toLocaleString(),
           remove: "",
         };
       });
     },
   },
   methods: {
+    unsetDeleteAlert() {
+      const params = this.$route.params;
+      delete params.deleteItemId;
+      this.$router.replace({
+        name: this.$route.name,
+        params,
+      });
+    },
+    setDeleteAlert(id: AlertId) {
+      this.$router.replace({
+        name: this.$route.name,
+        params: {
+          ...this.$route.params,
+          deleteItemId: id,
+        },
+      });
+      //alertToDeleteId = data.item.id
+    },
     async removeAlert(id: AlertId) {
       console.log(id);
       const response = await api.alerts.removeAlert(id);

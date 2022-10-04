@@ -1,3 +1,5 @@
+import type { RecordingId } from "@typedefs/api/common";
+
 interface MessageData {
   type: string;
   data: unknown;
@@ -60,6 +62,24 @@ export class CptvDecoder {
     await this.init();
     const type = "initWithUrlAndSize";
     decoder.postMessage({ type, url, size });
+    return (await this.waitForMessage(type)) as string | boolean;
+  }
+
+  /**
+   * Initialises a new player and associated stream reader.
+   * @param id (Number)
+   * @param apiToken (String)
+   * @param size (Number)
+   * @returns True on success, or an error string on failure (String | Boolean)
+   */
+  async initWithRecordingIdAndKnownSize(
+    id: RecordingId,
+    size: number,
+    apiToken?: string
+  ): Promise<string | boolean> {
+    await this.init();
+    const type = "initWithRecordingIdAndSize";
+    decoder.postMessage({ type, id, size, apiToken });
     return (await this.waitForMessage(type)) as string | boolean;
   }
 

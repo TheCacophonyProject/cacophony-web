@@ -3,6 +3,7 @@ import type { ReadableStreamDefaultReader } from "stream/web";
 import type { CptvPlayerContext as PlayerContext } from "@/components/cptv-player/cptv-decoder/decoder/decoder";
 import wasmUrl from "./decoder/decoder_bg.wasm?url";
 import init, { CptvPlayerContext } from "./decoder/decoder.js";
+import type { RecordingId } from "@typedefs/api/common";
 
 class Unlocker {
   fn: (() => void) | null = null;
@@ -12,6 +13,12 @@ class Unlocker {
   unlock() {
     this.fn && this.fn();
   }
+}
+
+export let API_ROOT = import.meta.env.VITE_API;
+if (API_ROOT === "CURRENT_HOST") {
+  // In production, use whatever the current host is, since it should be proxying the api
+  API_ROOT = "";
 }
 
 class CptvDecoderInterface {
@@ -40,6 +47,66 @@ class CptvDecoderInterface {
 
   hasValidContext() {
     return this.playerContext && this.playerContext.ptr;
+  }
+
+  async initWithRecordingIdAndSize(
+    id: RecordingId,
+    apiToken: string,
+    size?: number
+  ): Promise<boolean | string> {
+    this.free();
+    const unlocker = new Unlocker();
+    await this.lockIsUncontended(unlocker);
+    this.locked = true;
+    try {
+      this.consumed = false;
+      const request = {
+        mode: "cors",
+        cache: "no-cache",
+        headers: {
+          Authorization: apiToken,
+        },
+        method: "get",
+      };
+
+      this.response = await fetch(
+        `${API_ROOT}/api/v1/recordings/raw/${id}`,
+        request as RequestInit
+      );
+      if (this.response.status === 200) {
+        if (this.response.body) {
+          this.reader = this.response.body.getReader();
+          if (!size) {
+            size = Number(this.response.headers.get("Content-Length")) || 0;
+          }
+          this.expectedSize = size;
+          await init(wasmUrl);
+          this.playerContext = await CptvPlayerContext.newWithStream(
+            this.reader
+          );
+          unlocker.unlock();
+          this.inited = true;
+          this.locked = false;
+          return true;
+        }
+        return "No body on response";
+      } else {
+        unlocker.unlock();
+        this.locked = false;
+        try {
+          const r = await this.response.json();
+          return (
+            (r.messages && r.messages.pop()) || r.message || "Unknown error"
+          );
+        } catch (e) {
+          return await this.response.text();
+        }
+      }
+    } catch (e) {
+      unlocker.unlock();
+      this.locked = false;
+      return `Failed to load CPTV url ${id}, ${e}`;
+    }
   }
 
   async initWithCptvUrlAndSize(
@@ -280,6 +347,16 @@ self.addEventListener("message", async ({ data }) => {
     case "initWithUrlAndSize":
       {
         const result = await player.initWithCptvUrlAndSize(data.url, data.size);
+        self.postMessage({ type: data.type, data: result });
+      }
+      break;
+    case "initWithRecordingIdAndSize":
+      {
+        const result = await player.initWithRecordingIdAndSize(
+          data.id,
+          data.apiToken,
+          data.size
+        );
         self.postMessage({ type: data.type, data: result });
       }
       break;

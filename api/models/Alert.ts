@@ -156,7 +156,9 @@ export default function (sequelize, DataTypes): AlertStatic {
     if (trackTag) {
       // check that any of the alert conditions are met
       return alerts.filter(({ conditions }) =>
-        conditions.some(({ tag }) => trackTag.path.split(".").includes(tag))
+        conditions.some(({ tag }) =>
+          trackTag.path.split(".").includes(tag.replace(/-/g, ""))
+        )
       );
     }
     return alerts;
@@ -202,9 +204,11 @@ export default function (sequelize, DataTypes): AlertStatic {
     thumbnail?: EmailImageAttachment
   ) {
     const subject = `${this.name}  - ${tag.what} Detected`;
+
     const [html, text] = alertBody(
       recording,
       tag,
+      this,
       !!thumbnail,
       alertOn === "device" ? recording.Device?.deviceName : undefined,
       alertOn === "station" ? recording.Station?.name : undefined

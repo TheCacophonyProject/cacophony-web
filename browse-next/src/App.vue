@@ -462,6 +462,9 @@ onMounted(() => {
 }
 :root {
   --bs-body-font-size: 1rem;
+  --bs-btn-disabled-border-color: transparent;
+  --bs-btn-focus-border-color: transparent;
+  --bs-btn-active-border-color: transparent;
 }
 
 .fs-1 {

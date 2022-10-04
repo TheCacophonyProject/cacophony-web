@@ -14,7 +14,7 @@ export const getAlertsForStation = (
 export const getAlertsForCurrentUser = (): Promise<
   FetchResult<{ alerts: ApiAlertResponse[] }>
 > => {
-  return CacophonyApi.get(`/api/v1/alerts`) as Promise<
+  return CacophonyApi.get(`/api/v1/alerts?view-mode=user`) as Promise<
     FetchResult<{ alerts: ApiAlertResponse[] }>
   >;
 };

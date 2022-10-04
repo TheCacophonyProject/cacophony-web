@@ -53,7 +53,7 @@ function createRouter() {
         beforeEnter: cancelPendingRequests,
       },
       {
-        path: "/groups/:groupName/station/:stationName/:stationId/:tabName?",
+        path: "/groups/:groupName/station/:stationName/:stationId/:tabName?/:deleteItemId?",
         name: "station-id",
         component: StationView,
         meta: { title: "Station :stationName :tabName" },
