@@ -114,8 +114,7 @@ export default {
   computed: {
     alertToDelete: {
       get() {
-        const a = this.alerts.length !== 0 && !!this.alertToDeleteId;
-        return a;
+        return this.alerts.length !== 0 && !!this.alertToDeleteId;
       },
       set(val) {
         if (typeof val === "boolean" && val === false) {

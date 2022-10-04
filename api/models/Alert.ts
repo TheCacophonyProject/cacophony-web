@@ -232,7 +232,6 @@ export default function (sequelize, DataTypes): AlertStatic {
       EventDetailId: detail.id,
       dateTime: alertTime,
     });
-
     await this.update({ lastAlert: alertTime });
   };
 

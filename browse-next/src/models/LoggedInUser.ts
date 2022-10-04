@@ -145,7 +145,9 @@ const refreshCredentials = async () => {
         refreshCredentialsAtIn(
           apiToken.expiresAt.getTime() - now.getTime() - 5000
         );
+        // FIXME - Do we need to update the current user here?
         CurrentUser.value = reactive<LoggedInUser>(currentUser);
+        console.log("Not out of date yet, can use existing user");
         return;
       } else {
         ///setLoggedInUserData({ ...currentUser, refreshingToken: false });

@@ -151,8 +151,9 @@ describe("Devices alerts", () => {
     //upload a recording tagged as rat and  build an expected event using the returned recording details
     cy.testUploadRecording(
       usera.camera,
-      { processingState: RecordingProcessingState.Finished, tags: ["rat"] },
-      "recording1b"
+      { processingState: RecordingProcessingState.Finished, tags: ["rat"], time: oneHourAgo },
+      "recording1b",
+
     ).then(() => {
       const emptyAlert = createExpectedAlert(
         "alert1b",
@@ -189,7 +190,7 @@ describe("Devices alerts", () => {
     //upload a recording tagged as possum against another camera and  build an expected event using the returned recording details
     cy.testUploadRecording(
       camera2,
-      { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
+      { processingState: RecordingProcessingState.Finished, tags: ["possum"], time: oneHourAgo },
       "recording1c"
     ).then(() => {
       const emptyAlert = createExpectedAlert(
@@ -223,12 +224,13 @@ describe("Devices alerts", () => {
       HttpStatusCode.Ok
     );
 
-    //upload a recording tagged as possum and  build an expected event using the returned recording details
+    //upload a recording tagged as possum and build an expected event using the returned recording details
     cy.testUploadRecording(
       usera.camera,
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["rat", "possum", "possum", "possum", "rat"],
+        time: oneHourAgo
       },
       "recording1d"
     ).then(() => {
@@ -277,6 +279,7 @@ describe("Devices alerts", () => {
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["rat", "rat", "possum", "possum", "rat"],
+        time: oneHourAgo
       },
       "recording1d"
     ).then(() => {
@@ -317,6 +320,7 @@ describe("Devices alerts", () => {
         model: "different",
         processingState: RecordingProcessingState.Finished,
         tags: ["possum"],
+        time: oneHourAgo,
       },
       "recording2"
     ).then(() => {
@@ -361,7 +365,7 @@ describe("Devices alerts", () => {
     cy.testUploadRecordingOnBehalfUsingDevice(
       userb.name,
       usera.camera,
-      { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
+      { processingState: RecordingProcessingState.Finished, tags: ["possum"], time: oneHourAgo },
       "recording3"
     ).then(() => {
       const expectedAlert3 = createExpectedAlert(
@@ -410,7 +414,7 @@ describe("Devices alerts", () => {
       userb.name,
       usera.camera,
       usera.group,
-      { processingState: RecordingProcessingState.Finished, tags: ["possum"] },
+      { processingState: RecordingProcessingState.Finished, tags: ["possum"], time: oneHourAgo },
       "recording4"
     ).then(() => {
       const expectedAlert4 = createExpectedAlert(
@@ -488,6 +492,7 @@ describe("Devices alerts", () => {
         {
           processingState: RecordingProcessingState.Finished,
           tags: ["possum"],
+          time: oneHourAgo
         },
         "recording2"
       ).then(() => {
@@ -521,6 +526,7 @@ describe("Devices alerts", () => {
           {
             processingState: RecordingProcessingState.Finished,
             tags: ["possum"],
+            time: oneHourAgo
           },
           "recording3"
         ).then(() => {
