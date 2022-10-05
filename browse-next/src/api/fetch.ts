@@ -1,14 +1,16 @@
 import { CurrentViewAbortController } from "@/router";
 import type { LoggedInUser } from "@/models/LoggedInUser";
-import { CurrentUser, userIsLoggedIn } from "@/models/LoggedInUser";
+import {
+  CurrentUser,
+  forgetUserOnCurrentDevice,
+  userIsLoggedIn,
+} from "@/models/LoggedInUser";
 import type { ErrorResult, FetchResult } from "@api/types";
 import { reactive } from "vue";
 import { delayMsThen } from "@/utils";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
-
-const lastApiVersion: string | null = null;
 
 export const INITIAL_RETRY_INTERVAL = 3000;
 export const MAX_RETRY_COUNT = 30;
@@ -19,6 +21,19 @@ export interface NetworkConnectionErrorSignal {
   retryCount: number;
   control: boolean;
 }
+
+const getScreenOrientation = (): string => {
+  if (window.screen.orientation) {
+    return window.screen.orientation?.type;
+  } else if (typeof window.orientation !== "undefined") {
+    if (Math.abs(window.orientation) == 90) {
+      return "landscape";
+    } else {
+      return "portrait";
+    }
+  }
+  return "unknown screen orientation";
+};
 
 export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
   hasConnectionError: false,
@@ -39,7 +54,8 @@ export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
 export async function fetch<T>(
   url: string,
   request: RequestInit = {},
-  abortable = true
+  abortable = true,
+  apiToken?: string
 ): Promise<FetchResult<T> | void> {
   request = {
     mode: "cors",
@@ -51,20 +67,21 @@ export async function fetch<T>(
   };
   if (abortable) {
     request.signal = CurrentViewAbortController.controller.signal;
-    request.signal!.addEventListener("onabort", (e) => {
-      console.log("Aborted", e, request.signal);
+    request.signal?.addEventListener("onabort", (e) => {
+      console.warn("Aborted", e, request.signal);
     });
   }
   if (userIsLoggedIn.value) {
-    (request.headers as Record<string, string>).Authorization = (
-      CurrentUser.value as LoggedInUser
-    ).apiToken;
+    (request.headers as Record<string, string>).Authorization =
+      apiToken || (CurrentUser.value as LoggedInUser).apiToken;
     //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
-    (
-      request.headers as Record<string, string>
-    ).Viewport = `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio} - ${window.screen.orientation.type}`;
+    (request.headers as Record<string, string>).Viewport = `${
+      window.screen.width
+    }x${window.screen.height}@${
+      window.devicePixelRatio
+    } - ${getScreenOrientation()}`;
   }
   let response;
   try {
@@ -74,7 +91,13 @@ export async function fetch<T>(
     networkConnectionError.hasConnectionError = false;
   } catch (e: Error | unknown) {
     if ((e as Error).name === "AbortError") {
-      console.log("!! Abort, abort", e, (e as Error).name, url, request.signal);
+      console.warn(
+        "!! Abort, abort",
+        e,
+        (e as Error).name,
+        url,
+        request.signal
+      );
       return;
     }
     networkConnectionError.hasConnectionError = true;
@@ -103,7 +126,8 @@ export async function fetch<T>(
     };
   }
   if (response.status === 401) {
-    CurrentUser.value = null;
+    debugger;
+    forgetUserOnCurrentDevice();
     return {
       result: {
         errors: ["Unauthorized"],

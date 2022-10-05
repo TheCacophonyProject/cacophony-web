@@ -31,7 +31,6 @@
         <b-navbar-nav>
           <b-nav-item to="/analysis">Analysis</b-nav-item>
           <b-nav-item to="/recordings">Recordings</b-nav-item>
-          <b-nav-item to="/tagging">Power Tagger</b-nav-item>
         </b-navbar-nav>
 
         <b-navbar-nav class="ml-auto">

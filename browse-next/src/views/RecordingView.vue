@@ -1,9 +1,15 @@
 <script setup lang="ts">
 // eslint-disable-next-line no-undef
 import { useRoute } from "vue-router";
+import type { RouteParamsRaw } from "vue-router";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
-import type { LatLng, RecordingId, StationId } from "@typedefs/api/common";
+import type {
+  LatLng,
+  RecordingId,
+  StationId,
+  TrackId,
+} from "@typedefs/api/common";
 import {
   timezoneForLocation,
   visitDuration,
@@ -23,6 +29,9 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import { truncateLongStationNames } from "@/utils";
+import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
+import type { ApiTrackResponse } from "@typedefs/api/track";
+import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 const route = useRoute();
 const emit = defineEmits(["close"]);
 
@@ -36,7 +45,8 @@ const recordingIds = ref(
   })()
 );
 const currentRecordingId = ref<number>(Number(route.params.currentRecordingId));
-const currentStationId = ref<StationId | null>(null);
+const _currentStationId = ref<StationId | null>(null);
+const currentTrack = ref<ApiTrackResponse | undefined>(undefined);
 const currentStations = ref<ApiStationResponse[] | null>(stations.value);
 const visitLabel = ref<string>(route.params.visitLabel as string);
 
@@ -48,9 +58,17 @@ watch(
   }
 );
 
+watch(
+  () => route.params.trackId,
+  (nextTrackId) => {
+    currentTrack.value = recording.value?.tracks.find(
+      ({ id }) => id == Number(nextTrackId)
+    );
+  }
+);
+
 watch(stations, (nextStations) => {
   if (nextStations) {
-    console.log("Stations", nextStations);
     currentStations.value = nextStations;
   }
 });
@@ -131,7 +149,6 @@ const currentVisitIndex = computed<number | null>(() => {
     if (currentVisitIndex !== -1) {
       return currentVisitIndex;
     }
-    return null;
   }
   return null;
 });
@@ -164,32 +181,14 @@ const gotoNextRecording = () => {
   if (hasNextRecording.value) {
     const nextRecordingId =
       recordingIds.value[nextRecordingIndex.value as number];
-    router.push({
-      name: route.name as string,
-      params: {
-        ...route.params,
-        recordingIds: recordingIds.value.join(","),
-        visitLabel: visitLabel.value,
-        currentRecordingId: nextRecordingId,
-      },
-    });
+    gotoRecording(nextRecordingId);
   }
 };
 
 const gotoNextVisit = () => {
   if (nextVisit.value) {
     selectedVisit.value = nextVisit.value;
-    router.push({
-      name: route.name as string,
-      params: {
-        ...route.params,
-        recordingIds: selectedVisit.value.recordings
-          .map(({ recId }) => recId)
-          .join(","),
-        visitLabel: selectedVisit.value.classification,
-        currentRecordingId: selectedVisit.value.recordings[0].recId,
-      },
-    });
+    gotoVisit(selectedVisit.value, true);
   }
 };
 
@@ -201,47 +200,60 @@ const gotoPreviousRecordingOrVisit = () => {
   }
 };
 
+const gotoRecording = (recordingId: RecordingId) => {
+  const params = {
+    ...route.params,
+    recordingIds: recordingIds.value.join(","),
+    visitLabel: visitLabel.value,
+    currentRecordingId: recordingId,
+  };
+  delete (params as RouteParamsRaw).trackId;
+  router.push({
+    name: route.name as string,
+    params,
+  });
+};
+
+const gotoVisit = (visit: ApiVisitResponse, startOfVisit: boolean) => {
+  let currentRecordingId;
+  if (!startOfVisit) {
+    currentRecordingId = visit.recordings[visit.recordings.length - 1].recId;
+  } else {
+    currentRecordingId = visit.recordings[0].recId;
+  }
+  const recordingIds = visit.recordings.map(({ recId }) => recId).join(",");
+  const params = {
+    ...route.params,
+    visitLabel: visit.classification,
+    recordingIds,
+    currentRecordingId,
+  };
+  delete (params as RouteParamsRaw).trackId;
+  router.push({
+    name: route.name as string,
+    params,
+  });
+};
+
 const gotoPreviousRecording = () => {
   if (hasPreviousRecording.value) {
     const previousRecordingId =
       recordingIds.value[previousRecordingIndex.value as number];
-    router.push({
-      name: route.name as string,
-      params: {
-        ...route.params,
-        recordingIds: recordingIds.value.join(","),
-        visitLabel: visitLabel.value,
-        currentRecordingId: previousRecordingId,
-      },
-    });
+    gotoRecording(previousRecordingId);
   }
 };
 
 const gotoPreviousVisit = () => {
   if (previousVisit.value) {
     selectedVisit.value = previousVisit.value;
-    const currentRecordingId =
-      selectedVisit.value.recordings[selectedVisit.value.recordings.length - 1]
-        .recId;
-    const recordingIds = selectedVisit.value.recordings
-      .map(({ recId }) => recId)
-      .join(",");
-    router.push({
-      name: route.name as string,
-      params: {
-        ...route.params,
-        visitLabel: selectedVisit.value.classification,
-        recordingIds,
-        currentRecordingId,
-      },
-    });
+    gotoVisit(selectedVisit.value, false);
   }
 };
 
 // TODO - Handle previous visits
 
 const recalculateCurrentVisit = () => {
-  console.log("TODO - recalculate current visit");
+  console.warn("TODO - recalculate current visit");
   // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
   // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
 };
@@ -260,10 +272,9 @@ interface RecordingData {
 
 const recordingData = ref<RecordingData | null>(null);
 
-const recordingIsLoading = computed(() => recordingData.value === null);
+const _recordingIsLoading = computed(() => recordingData.value === null);
 
 const loadRecording = async () => {
-  console.log("Load recording");
   recordingData.value = null;
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
@@ -278,12 +289,59 @@ const loadRecording = async () => {
         // TODO: Handle expiry of this
         downloadJwt: recordingResponse.result.downloadRawJWT || "",
       };
-      console.log("Loaded recording", recordingData.value);
+
+      if (route.params.trackId) {
+        currentTrack.value = recordingData.value?.recording.tracks.find(
+          ({ id }) => id == Number(route.params.trackId)
+        );
+      }
+
+      if (
+        ((route.name as string).endsWith("-tracks") && !route.params.trackId) ||
+        (route.params.trackId && !currentTrack.value)
+      ) {
+        // set the default track if not set
+        if (tracks.value.length) {
+          await selectedTrack(tracks.value[0].id);
+        }
+      }
     } else {
       // TODO: Handle recording permissions error
     }
   }
 };
+
+const selectedTrack = async (trackId: TrackId) => {
+  const params = {
+    ...route.params,
+    trackId,
+  };
+  await router.replace({
+    name: route.name as string,
+    params,
+  });
+};
+
+const tracks = computed<ApiTrackResponse[]>(() => {
+  if (recordingData.value) {
+    return recordingData.value.recording.tracks;
+  }
+  return [];
+});
+
+const tags = computed<ApiRecordingTagResponse[]>(() => {
+  if (recordingData.value) {
+    return recordingData.value.recording.tags;
+  }
+  return [];
+});
+
+const recording = computed<ApiRecordingResponse | null>(() => {
+  if (recordingData.value) {
+    return recordingData.value.recording;
+  }
+  return null;
+});
 
 onMounted(async () => {
   await loadRecording();
@@ -313,14 +371,14 @@ const visitDurationString = computed<string>(() => {
 });
 
 const recordingDateTime = computed<DateTime | null>(() => {
-  if (recordingData.value) {
-    if (recordingData.value.recording.location) {
-      const zone = timezoneForLocation(recordingData.value.recording.location);
-      return DateTime.fromISO(recordingData.value.recording.recordingDateTime, {
+  if (recording.value) {
+    if (recording.value.location) {
+      const zone = timezoneForLocation(recording.value.location);
+      return DateTime.fromISO(recording.value.recordingDateTime, {
         zone,
       });
     }
-    return DateTime.fromISO(recordingData.value?.recording.recordingDateTime);
+    return DateTime.fromISO(recording.value.recordingDateTime);
   }
   return null;
 });
@@ -342,18 +400,16 @@ const recordingStartTime = computed<string>(() => {
 });
 
 const currentStationName = computed<string>(() => {
-  return truncateLongStationNames(
-    recordingData.value?.recording.stationName || ""
-  );
+  return truncateLongStationNames(recording.value?.stationName || "");
 });
 
 const mapPointForRecording = computed<NamedPoint[]>(() => {
-  if (recordingData.value && recordingData.value.recording.location) {
+  if (recording.value?.location) {
     return [
       {
         name: currentStationName.value,
-        location: recordingData.value.recording.location,
-        group: recordingData.value.recording.groupName,
+        location: recording.value?.location,
+        group: recording.value?.groupName,
       },
     ] as NamedPoint[];
   }
@@ -384,14 +440,22 @@ const recordingViewContext = "dashboard-visit";
           />
         </div>
       </div>
-      <button type="button" class="btn" @click="() => emit('close')">
+      <button
+        type="button"
+        class="btn"
+        @click.stop.prevent="() => emit('close')"
+      >
         <font-awesome-icon icon="xmark" />
       </button>
     </header>
-    <div class="d-flex">
+    <div class="player-and-tagging">
       <div class="player-container">
-        <div class="player"></div>
-        <div class="player-tracks"></div>
+        <cptv-player
+          :recording="recording"
+          :recording-id="currentRecordingId"
+          :current-track="currentTrack"
+          @track-selected="({ trackId }) => selectedTrack(trackId)"
+        />
       </div>
       <div class="recording-info d-flex flex-column flex-fill">
         <div class="recording-station-info d-flex mb-3 pe-3">
@@ -475,9 +539,7 @@ const recordingViewContext = "dashboard-visit";
             }"
             >Tracks
             <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
-              >({{
-                recordingData && recordingData.recording.tracks.length
-              }})</span
+              >({{ tracks.length }})</span
             ></router-link
           >
           <router-link
@@ -488,18 +550,19 @@ const recordingViewContext = "dashboard-visit";
             title="Labels"
             :to="{
               name: `${recordingViewContext}-labels`,
-              params: route.params,
+              params: {
+                ...route.params,
+                trackId: tracks[0]?.id,
+              },
             }"
             >Labels
             <span v-if="activeTabName !== `${recordingViewContext}-labels`"
-              >({{
-                recordingData && recordingData.recording.tags.length
-              }})</span
+              >({{ tags.length }})</span
             ></router-link
           >
         </ul>
         <router-view
-          :recording="recordingData && recordingData.recording"
+          :recording="recordingData?.recording"
           @trackTagChanged="recalculateCurrentVisit"
         />
       </div>
@@ -521,7 +584,7 @@ const recordingViewContext = "dashboard-visit";
           type="button"
           class="btn d-flex flex-row-reverse align-items-center"
           :disabled="!hasPreviousRecording && !hasPreviousVisit"
-          @click="gotoPreviousRecordingOrVisit"
+          @click.stop.prevent="gotoPreviousRecordingOrVisit"
         >
           <span class="d-none d-md-flex ps-2 flex-column align-items-start">
             <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
@@ -531,7 +594,7 @@ const recordingViewContext = "dashboard-visit";
               >Previous visit</span
             >
             <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-            <span class="fs-9" v-if="previousRecordingIndex"
+            <span class="fs-9" v-if="previousRecordingIndex !== null"
               >{{ previousRecordingIndex + 1 }}/ {{ recordingIds.length }}</span
             >
             <span class="fs-9" v-else-if="previousVisit">
@@ -560,7 +623,7 @@ const recordingViewContext = "dashboard-visit";
           type="button"
           class="btn d-flex align-items-center"
           :disabled="!hasNextRecording && !hasNextVisit"
-          @click="gotoNextRecordingOrVisit"
+          @click.stop.prevent="gotoNextRecordingOrVisit"
         >
           <span class="d-none d-md-flex pe-2 flex-column align-items-end">
             <span class="fs-8 fw-bold" v-if="hasNextRecording"
@@ -570,7 +633,7 @@ const recordingViewContext = "dashboard-visit";
               >Next visit</span
             >
             <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-            <span class="fs-9" v-if="nextRecordingIndex"
+            <span class="fs-9" v-if="nextRecordingIndex !== null"
               >{{ nextRecordingIndex + 1 }}/{{ recordingIds.length }}</span
             >
             <span class="fs-9" v-else-if="nextVisit">
@@ -605,6 +668,7 @@ const recordingViewContext = "dashboard-visit";
   border-bottom: 2px solid #e1e1e1;
 }
 .recording-view-footer {
+  background: white;
   .visit-progress {
     height: 2px;
     background: #e1e1e1;
@@ -618,12 +682,7 @@ const recordingViewContext = "dashboard-visit";
 }
 .recording-info {
 }
-.player {
-  background: #ccc;
-  width: 640px;
-  min-height: 500px;
-  aspect-ratio: 4 / 3;
-}
+
 .recording-location-map {
   width: 120px;
   height: 120px;
@@ -638,5 +697,36 @@ const recordingViewContext = "dashboard-visit";
 }
 .recording-icons {
   color: #666;
+}
+.nav-tabs {
+  .nav-link:not(.active) {
+    color: inherit;
+  }
+  .active {
+    cursor: default;
+  }
+}
+.player-and-tagging {
+  display: flex;
+  flex-direction: row;
+  @media screen and (max-width: 1040px) {
+    flex-direction: column;
+  }
+}
+.recording-view {
+  @media screen and (max-width: 1040px) {
+    background: white;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    .recording-view-footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+  }
 }
 </style>

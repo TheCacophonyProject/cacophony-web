@@ -94,6 +94,7 @@ import recordingUtil, {
   uploadRawRecording,
 } from "./recordingUtil";
 import { successResponse } from "./responseUtil";
+import { streamS3Object } from "@api/V1/signedUrl";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -1061,6 +1062,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} id Id of the recording to get.
    * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
    * recordings.
+   * @apiQuery {Boolean} [requires-signed-url=true] Whether or not to return a signed url with the recording data.
    * @apiSuccess {int} fileSize the number of bytes in recording file.
    * @apiSuccess {int} rawSize the number of bytes in raw recording file.
    * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
@@ -1078,50 +1080,120 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       query("deleted").default(false).isBoolean().toBoolean(),
+      query("requires-signed-url").default(true).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const recordingItem = response.locals.recording;
-      let rawJWT;
-      let cookedJWT;
-      let rawSize;
-      let cookedSize;
-      if (recordingItem.fileKey) {
-        cookedJWT = signedToken(
-          recordingItem.fileKey,
-          recordingItem.getFileName(),
-          recordingItem.fileMimeType
-        );
-        cookedSize =
-          recordingItem.fileSize ||
-          (await util.getS3ObjectFileSize(recordingItem.fileKey));
-      }
-      if (recordingItem.rawFileKey) {
-        rawJWT = signedToken(
-          recordingItem.rawFileKey,
-          recordingItem.getRawFileName(),
-          recordingItem.rawMimeType
-        );
-        rawSize =
-          recordingItem.rawFileSize ||
-          (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
-      }
       const recording = mapRecordingResponse(response.locals.recording);
-
       if (!config.productionEnv) {
         const JsonSchema = new Validator();
         console.assert(
           JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
         );
       }
+      if (request.query["requires-signed-url"]) {
+        let rawJWT;
+        let cookedJWT;
+        let rawSize;
+        let cookedSize;
+        if (recordingItem.fileKey) {
+          cookedJWT = signedToken(
+            recordingItem.fileKey,
+            recordingItem.getFileName(),
+            recordingItem.fileMimeType
+          );
+          cookedSize =
+            recordingItem.fileSize ||
+            (await util.getS3ObjectFileSize(recordingItem.fileKey));
+        }
+        if (recordingItem.rawFileKey) {
+          rawJWT = signedToken(
+            recordingItem.rawFileKey,
+            recordingItem.getRawFileName(),
+            recordingItem.rawMimeType
+          );
+          rawSize =
+            recordingItem.rawFileSize ||
+            (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
+        }
+        return successResponse(response, {
+          recording,
+          rawSize: rawSize,
+          fileSize: cookedSize,
+          downloadFileJWT: cookedJWT,
+          downloadRawJWT: rawJWT,
+        });
+      } else {
+        return successResponse(response, {
+          recording,
+        });
+      }
+    }
+  );
 
-      return successResponse(response, {
-        recording,
-        rawSize: rawSize,
-        fileSize: cookedSize,
-        downloadFileJWT: cookedJWT,
-        downloadRawJWT: rawJWT,
-      });
+  /**
+   * @api {get} /api/v1/recordings/raw/:id Get a raw recording stream
+   * @apiName GetRecordingRawFile
+   * @apiGroup Recordings
+   *
+   * @apiUse MetaDataAndJWT
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiParam {Integer} id Id of the recording to get.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to include deleted
+   * recordings.
+   * @apiSuccess {file} file Raw data stream of the file.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/raw/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("deleted").default(false).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const recordingItem = response.locals.recording;
+      if (!recordingItem.rawFileKey) {
+        return next(new ClientError("Recording has no raw file key."));
+      }
+      let fileExt: string = "raw";
+      switch (recordingItem.rawMimeType) {
+        case "audio/ogg":
+          fileExt = "ogg";
+          break;
+        case "audio/wav":
+          fileExt = "wav";
+          break;
+        case "audio/mp4":
+          fileExt = "m4a";
+          break;
+        case "video/mp4":
+          fileExt = "m4v";
+          break;
+        case "audio/mpeg":
+          fileExt = "mp3";
+          break;
+        case "application/x-cptv":
+          fileExt = "cptv";
+          break;
+      }
+      const time = recordingItem.recordingDateTime
+        ?.toISOString()
+        .replace(/:/g, "_")
+        .replace(".", "_");
+      return await streamS3Object(
+        request,
+        response,
+        recordingItem.rawFileKey,
+        `${recordingItem.id}@${time}.${fileExt}`,
+        recordingItem.rawMimeType || "application/octet-stream"
+      );
     }
   );
 

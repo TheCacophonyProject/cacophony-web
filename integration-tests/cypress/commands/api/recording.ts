@@ -27,6 +27,7 @@ import {
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import { RecordingId } from "@typedefs/api/common";
 
 // 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
@@ -395,6 +396,23 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiRecordingGet",
+  (userName: string, recordingId: RecordingId, statusCode: number = 200) => {
+    const url = v1ApiPath(`recordings/${recordingId}`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      cy.wrap(response);
+    });
+  }
+);
+
+Cypress.Commands.add(
   "apiRecordingCheck",
   (
     userName: string,
@@ -409,39 +427,31 @@ Cypress.Commands.add(
       recordingName: recordingNameOrId,
     });
 
-    let recordingId: string;
+    let recordingId: RecordingId;
     if (additionalChecks["useRawRecordingId"] === true) {
-      recordingId = recordingNameOrId;
+      recordingId = recordingNameOrId as unknown as RecordingId;
     } else {
-      recordingId = getCreds(recordingNameOrId).id.toString();
+      recordingId = getCreds(recordingNameOrId).id;
     }
-    const url = v1ApiPath(`recordings/${recordingId}`);
-
-    makeAuthorizedRequestWithStatus(
-      {
-        method: "GET",
-        url: url,
-        body: additionalParams,
-      },
-      userName,
-      statusCode
-    ).then((response) => {
-      if (statusCode === 200) {
-        expect(response.body.rawSize).to.exist;
-        expect(response.body.downloadRawJWT).to.exist;
-        checkTreeStructuresAreEqualExcept(
-          expectedRecording,
-          response.body.recording,
-          excludeCheckOn
-        );
-      } else {
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"]
+    cy.apiRecordingGet(userName, recordingId as RecordingId, statusCode).then(
+      (response) => {
+        if (statusCode === 200) {
+          expect(response.body.rawSize).to.exist;
+          expect(response.body.downloadRawJWT).to.exist;
+          checkTreeStructuresAreEqualExcept(
+            expectedRecording,
+            response.body.recording,
+            excludeCheckOn
           );
+        } else {
+          if (additionalChecks["message"] !== undefined) {
+            expect(response.body.messages.join("|")).to.include(
+              additionalChecks["message"]
+            );
+          }
         }
       }
-    });
+    );
   }
 );
 

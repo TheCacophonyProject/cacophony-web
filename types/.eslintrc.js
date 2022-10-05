@@ -26,7 +26,6 @@ module.exports = {
     "no-undef": ["warn"],
     "no-var": ["error"],
     "no-unused-vars": ["off"],
-    "@typescript-eslint/no-unused-vars": ["warn"],
     "brace-style": ["warn"],
     "prefer-const": ["error"],
   },

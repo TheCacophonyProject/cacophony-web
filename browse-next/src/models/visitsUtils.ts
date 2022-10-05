@@ -4,7 +4,6 @@ import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
-import { min } from "@popperjs/core/lib/utils/math";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 

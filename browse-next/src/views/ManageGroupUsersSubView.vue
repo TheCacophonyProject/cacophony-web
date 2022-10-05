@@ -26,7 +26,6 @@ onBeforeMount(async () => {
     (currentSelectedGroup.value as { groupName: string; id: GroupId }).id
   );
   if (groupUsersResponse.success) {
-    console.log(groupUsersResponse);
     groupUsers.value = groupUsersResponse.result.users;
   } else {
     // Do something with error.

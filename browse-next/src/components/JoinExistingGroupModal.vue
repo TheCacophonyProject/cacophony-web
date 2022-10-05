@@ -10,7 +10,7 @@ import { requestToJoinGroups } from "@api/User";
 
 const groupAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);
-let groupsChosen = ref(reactive<ApiGroupResponse[]>([]));
+const groupsChosen = ref(reactive<ApiGroupResponse[]>([]));
 const joinableGroups = ref<ApiGroupResponse[] | null>(null);
 const emailIsTooShort = computed<boolean>(
   () => groupAdminEmailAddress.value.trim().length < 3
@@ -35,7 +35,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    groupAdminEmailAddress.touched ? isValidEmailAddress.value : null
+    groupAdminEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
 onBeforeMount(() => {
@@ -53,7 +53,6 @@ const joinExistingGroup = async () => {
   // Once an email address has been added, we should be able to get a list of the groups that
   // that user is an admin for, and list them so that the user can select which groups they want
   // to request permission to join.
-  console.log("Join a group");
   submittingJoinRequest.value = true;
   const joinRequestResponse = await requestToJoinGroups(
     groupAdminEmailAddress.value.trim(),
@@ -85,7 +84,6 @@ const getGroupsForAdmin = async () => {
     }
     if (groups.length === 1) {
       groupsChosen.value = reactive(groups);
-      console.log("Default group chosen");
     }
     joinableGroups.value = groups;
   } else {

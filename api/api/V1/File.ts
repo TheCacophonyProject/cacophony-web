@@ -37,6 +37,7 @@ import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
 import { ApiClassificationResponse } from "@typedefs/api/trackTag.d";
 import classification from "../../classifications/classification.json";
 import { HttpStatusCode } from "@/../types/api/consts";
+import { User } from "@models/User";
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
@@ -108,9 +109,16 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     util.multipartUpload(
       "f",
-      async (uploader, data, key, uploadedFileData): Promise<File> => {
+      async (
+        uploader,
+        uploadingDevice,
+        uploadingUser,
+        data,
+        key,
+        uploadedFileData
+      ): Promise<File> => {
         const dbRecord = models.File.buildSafely(data);
-        dbRecord.UserId = uploader.id;
+        dbRecord.UserId = (uploadingUser as User).id;
         dbRecord.fileKey = key;
         dbRecord.fileSize = uploadedFileData.length;
         await dbRecord.save();

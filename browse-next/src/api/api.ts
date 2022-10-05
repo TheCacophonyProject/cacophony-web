@@ -17,15 +17,14 @@ const fetchJsonWithMethod = async (
   abortable?: boolean
 ) => {
   const payload = {
-    method: method,
+    method,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
     },
-  };
+  } as RequestInit;
   if (body) {
-    (payload as any).body = JSON.stringify(body);
+    payload.body = JSON.stringify(body);
   }
-  console.log(`${API_ROOT}${endpoint}`, payload);
   return fetch(`${API_ROOT}${endpoint}`, payload, abortable);
 };
 
@@ -37,10 +36,11 @@ export default {
    * These fields can easily be resolved using object destructuring to directly assign the required information.
    * @param {string} endpoint - The cacophony API endpoint to target, for example `/api/v1/users`.
    * @param {boolean} [abortable] - Whether this is a request for the current view, and if so should be aborted when the view changes.
+   * @param {boolean} [apiToken] - Optional JWT token for if we're calling this from within a web-worker, and don't have access to localStorage.
    * @returns {Promise<{result: *, success: boolean, status: number}>}
    */
-  get: async (endpoint: string, abortable?: boolean) =>
-    fetch(`${API_ROOT}${endpoint}`, { method: "GET" }, abortable),
+  get: async (endpoint: string, abortable?: boolean, apiToken?: string) =>
+    fetch(`${API_ROOT}${endpoint}`, { method: "GET" }, abortable, apiToken),
 
   /**
    * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.
@@ -78,7 +78,7 @@ export default {
    * @returns {Promise<{result: *, success: boolean, status: number}>}
    */
   patch: async (endpoint: string, body: object, abortable?: boolean) =>
-    fetchJsonWithMethod(endpoint, "PATCH", body),
+    fetchJsonWithMethod(endpoint, "PATCH", body, abortable),
 
   /**
    * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.

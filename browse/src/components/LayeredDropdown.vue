@@ -14,7 +14,7 @@
         >
           <button
             class="options-list-label"
-            @click="() => addSelectedOption(option)"
+            @click="(e) => addSelectedOption(e, option)"
           >
             {{ option.display ? option.display : option.label }}
           </button>
@@ -180,15 +180,18 @@ export default defineComponent({
       }, []);
     };
 
-    const addSelectedOption = (option: Option) => {
+    const addSelectedOption = (event: Event, option: Option) => {
+      event.preventDefault();
       if (typeof selectedOptions.value === "string") {
         selectedOptions.value = option.label;
         return;
       }
-      if (selectedOptions.value.find((o) => o === option.label)) {
-        return;
+      if (Array.isArray(selectedOptions.value)) {
+        if (selectedOptions.value.find((o) => o === option.label)) {
+          return;
+        }
+        selectedOptions.value = [...selectedOptions.value, option.label];
       }
-      selectedOptions.value = [...selectedOptions.value, option.label];
     };
 
     const addSearchTermOnSubmit = (event: KeyboardEvent | MouseEvent) => {
@@ -199,10 +202,10 @@ export default defineComponent({
           }
           const option = optionsMap.value.get(searchTerm.value.toLowerCase());
           if (option) {
-            addSelectedOption(option);
+            addSelectedOption(event, option);
             searchTerm.value = "";
           } else if (displayedOptions.value.length === 1) {
-            addSelectedOption(displayedOptions.value[0]);
+            addSelectedOption(event, displayedOptions.value[0]);
             searchTerm.value = "";
           }
         } else if (event.key === "Tab") {
@@ -214,7 +217,10 @@ export default defineComponent({
     const removeSelectedOption = (option: string) => {
       if (typeof selectedOptions.value === "string") {
         selectedOptions.value = "";
-      } else {
+      } else if (
+        typeof selectedOptions.value === "object" &&
+        Array.isArray(selectedOptions.value)
+      ) {
         selectedOptions.value = selectedOptions.value.filter(
           (o) => o !== option
         );

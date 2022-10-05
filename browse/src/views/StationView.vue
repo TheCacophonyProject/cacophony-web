@@ -88,6 +88,20 @@
             :recordings-query="recordingsQueryFinal"
           />
         </tab-list-item>
+        <tab-list-item lazy>
+          <template #title>
+            <TabTemplate
+              title="Alerts"
+              :isLoading="!loadedStation"
+              :value="alertsCount"
+            />
+          </template>
+          <StationAlertsTab
+            :station="station"
+            :group="group"
+            @alerts-changed="fetchAlertsCount"
+          />
+        </tab-list-item>
       </tab-list>
     </div>
     <div v-else class="container no-tabs">
@@ -100,6 +114,7 @@
       hide-footer
       title="Rename station"
       ok-title="Rename"
+      v-if="station"
       v-model="renaming"
     >
       <label
@@ -133,6 +148,7 @@ import StationLink from "@/components/StationLink.vue";
 import TabList from "@/components/TabList.vue";
 import TabListItem from "@/components/TabListItem.vue";
 import StationReferencePhotosTab from "@/components/StationReferencePhotosTab.vue";
+import StationAlertsTab from "@/components/StationAlertsTab.vue";
 
 // TODO(jon): Implement visits/monitoring page for stations - this will require API changes.
 
@@ -140,6 +156,7 @@ export default {
   name: "StationView",
   components: {
     StationReferencePhotosTab,
+    StationAlertsTab,
     StationLink,
     GroupLink,
     MapWithPoints,
@@ -224,8 +241,10 @@ export default {
       loadedStation: false,
       recordingsCountLoading: false,
       visitsCountLoading: false,
+      alertsCountLoading: false,
       recordingsCount: 0,
       visitsCount: 0,
+      alertsCount: 0,
       recordingsQueryFinal: {},
       visitsQueryFinal: {},
       station: null,
@@ -233,7 +252,7 @@ export default {
       renaming: false,
       stationIsRetired: false,
       group: {},
-      tabNames: ["visits", "reference-photo", "recordings"],
+      tabNames: ["visits", "reference-photo", "recordings", "alerts"],
     };
   },
   async mounted() {
@@ -258,6 +277,7 @@ export default {
     this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
     await this.fetchStation();
     await this.fetchVisitsCount();
+    await this.fetchAlertsCount();
   },
   methods: {
     renameStation() {
@@ -292,6 +312,15 @@ export default {
       }
 
       this.visitsCountLoading = false;
+    },
+    async fetchAlertsCount() {
+      this.alertsCountLoading = true;
+      const alerts = await api.alerts.getAlertsForStation(this.stationId);
+      if (alerts.success) {
+        this.alertsCount = alerts.result.alerts.length;
+      }
+
+      this.alertsCountLoading = false;
     },
     async fetchStation() {
       try {

@@ -17,6 +17,7 @@ import { Track } from "@models/Track";
 import { AI_MASTER } from "@models/TrackTag";
 import moment, { Moment } from "moment";
 import { Event } from "@models/Event";
+import { DeviceId, StationId } from "@typedefs/api/common";
 
 let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;
@@ -346,7 +347,8 @@ class Visit {
   end: Moment;
   start: Moment;
   deviceName: string;
-  deviceId: number;
+  deviceId: DeviceId;
+  stationId: StationId | null;
   groupName: string;
   audioBaitDay: boolean;
   audioBaitVisit: boolean;
@@ -359,6 +361,7 @@ class Visit {
     this.visitID = visitID;
     this.events = [];
     this.deviceId = rec.Device.id;
+    this.stationId = rec.stationId;
     this.deviceName = rec.Device.deviceName;
     this.groupName = rec.Group.groupName;
     this.audioBaitEvents = [];

@@ -134,8 +134,16 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Get a single recording using api/v1/recordings/{id}
-     * Verfiy that the recording data matched the expectedRecording
+    /** Get a single recording response using api/v1/recordings/{id}
+     */
+    apiRecordingGet(
+      userName: string,
+      recordingNameOrId: RecordingId,
+      statusCode?: number
+    ): any;
+
+    /** Get a single recording using api/v1/recordings/{id}
+     * Verify that the recording data matched the expectedRecording
      * Optionally: check for a non-200 statusCode
      * By default function looks up the recording Id using the recordingNameOrId supplied when
      * recording was created
@@ -150,8 +158,8 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Get a single recording that needs tagging using api/v1/recordings/needs-tag
-     * Verfiy that the recording data matches (one of) the expectedRecordings
+    /** Get a single recording that needs tagging using api/v1/recordings/needs-tag
+     * Verify that the recording data matches (one of) the expectedRecordings
      * Optionally: check for a non-200 statusCode
      * Specify a devieNameOrId to bias towards or undefined for no bias
      * By default function looks up the device Id using the deviceNameOrId supplied when
@@ -169,7 +177,7 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Update a single recording using api/v1/recordings/{id} PATCH
+    /** Update a single recording using api/v1/recordings/{id} PATCH
      * Optionally: check for a non-200 statusCode
      * By default function looks up the recording Id using the recordingNameOrId supplied when
      * recording was created
@@ -184,8 +192,8 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Get thumbnail for recording using api/v1/recordings/{id}/thumbnail
-     * Verfiy that the recording returns a file
+    /** Get thumbnail for recording using api/v1/recordings/{id}/thumbnail
+     * Verify that the recording returns a file
      * Optionally: check for a non-200 statusCode
      * By default function looks up the recording Id using the recordingNameOrId supplied when
      * recording was created
@@ -198,8 +206,8 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
-     * Verfiy that the recording data matched the expectedRecordings
+    /** Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
+     * Verify that the recording data matched the expectedRecordings
      * Optionally: check for a non-200 statusCode
      * Optionally: check returned messages for additionalChecks["message"]
      */
@@ -215,7 +223,7 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Query recordings (/api/v1/recordings/report) using where (query["where"]) and optional (query[...]) API parameters
+    /** Query recordings (/api/v1/recordings/report) using where (query["where"]) and optional (query[...]) API parameters
      * Verify that the recording data matched the expectedRecordings
      * Optionally: check for a non-200 statusCode
      * Optionally: check returned messages for additionalChecks["message"]
@@ -229,8 +237,8 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Query recordings count (/api/v1/recordings/count) using where (query["where"]) and optional (query[...]) API parameters
-     * Verfiy that the recording data matched the expectedCount
+    /** Query recordings count (/api/v1/recordings/count) using where (query["where"]) and optional (query[...]) API parameters
+     * Verify that the recording data matched the expectedCount
      * Optionally: check for a non-200 statusCode
      * Optionally: check returned messages for addditionalChecks["message"]
      */
@@ -242,7 +250,7 @@ declare namespace Cypress {
       additionalChecks?: any
     ): Cypress.Chainable<number>;
 
-    /* Delete a single recording using api/v1/recordings/{id} DELETE
+    /** Delete a single recording using api/v1/recordings/{id} DELETE
      * Optionally: check for a non-200 statusCode
      * By default function looks up the recording Id using the recordingNameOrId supplied when
      * recording was created
@@ -256,7 +264,7 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Undelete a single recording using api/v1/recordings/{id}/undelete GET
+    /** Undelete a single recording using api/v1/recordings/{id}/undelete GET
      * Optionally: check for a non-200 statusCode
      * By default function looks up the recording Id using the recordingNameOrId supplied when
      * recording was created
@@ -270,7 +278,7 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /* Mark a list of recordings (recordingIds[]) for reprocessing
+    /** Mark a list of recordings (recordingIds[]) for reprocessing
      * Optionally: check for a non-200 statusCode
      * Optionally: check for a returned error message (additionalChecks["message"])
      */

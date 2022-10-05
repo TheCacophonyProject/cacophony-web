@@ -22,27 +22,31 @@ export const getGroups = (abortable: boolean) =>
     abortable
   ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>;
 
-const addGroupUser = (groupName: string, userName: string, isAdmin: boolean) =>
+export const addGroupUser = (
+  groupName: string,
+  userName: string,
+  isAdmin: boolean
+) =>
   CacophonyApi.post("/api/v1/groups/users", {
     group: groupName,
     userName,
     admin: isAdmin,
   }) as Promise<FetchResult<void>>;
 
-const removeGroupUser = (groupName: string, userName: string) =>
+export const removeGroupUser = (groupName: string, userName: string) =>
   CacophonyApi.delete("/api/v1/groups/users", {
     group: groupName,
     userName,
   }) as Promise<FetchResult<void>>;
 
-const getGroupByName = (groupName: string) =>
+export const getGroupByName = (groupName: string) =>
   CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupName)}${
       shouldViewAsSuperUser.value ? "" : "?view-mode=user"
     }`
   ) as Promise<FetchResult<{ group: ApiGroupResponse }>>;
 
-const getGroupById = (groupId: GroupId) =>
+export const getGroupById = (groupId: GroupId) =>
   CacophonyApi.get(
     `/api/v1/groups/${groupId}${
       shouldViewAsSuperUser.value ? "" : "?view-mode=user"
@@ -54,7 +58,7 @@ export const getUsersForGroup = (groupNameOrId: string | number) =>
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/users`
   ) as Promise<FetchResult<{ users: ApiGroupUserResponse[] }>>;
 
-const getDevicesForGroup = (
+export const getDevicesForGroup = (
   groupNameOrId: string | number,
   activeAndInactive = false
 ) =>
@@ -78,7 +82,7 @@ export const getStationsForGroup = (
     }`
   ) as Promise<FetchResult<{ stations: ApiStationResponse[] }>>;
 
-const getStationByNameInGroup = (
+export const getStationByNameInGroup = (
   groupNameOrId: string | GroupId,
   stationName: string
 ) =>

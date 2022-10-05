@@ -1,7 +1,7 @@
 import type { UserId } from "@typedefs/api/common";
 import type { HttpStatusCode } from "@typedefs/api/consts";
 
-export type JwtToken<T> = string;
+export type JwtToken<_T> = string;
 
 export interface FieldValidationError {
   msg: string;

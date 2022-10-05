@@ -80,18 +80,17 @@ const highlightPoint = (p: NamedPoint | null) => {
         </div>
       </div>
       <map-with-points
-        class="map"
         :points="stationsForMap"
+        :active-points="[]"
         :highlighted-point="() => ref(highlightedPoint)"
         @hover-point="highlightPoint"
         @leave-point="highlightPoint"
         :radius="30"
-        ref="map"
       />
     </div>
   </div>
 </template>
-<style lang="less">
+<style lang="less" scoped>
 .map {
   //width: 100vh;
   height: 400px !important;

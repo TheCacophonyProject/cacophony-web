@@ -46,6 +46,7 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   archivedAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  path: string;
 }
 export const additionalTags = Object.freeze([
   "poor tracking",

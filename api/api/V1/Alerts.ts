@@ -20,22 +20,26 @@ import { expectedTypeOf, validateFields } from "../middleware";
 import models from "@models";
 import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
-import { Application } from "express";
+import { Application, NextFunction } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation";
 import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json";
 import {
   extractJwtAuthorizedUser,
-  fetchAdminAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredAlertById,
   fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredStationById,
   parseJSONField,
 } from "../extract-middleware";
 import {
+  anyOf,
   idOf,
   integerOfWithDefault,
   validNameOf,
 } from "../validation-middleware";
 import { DeviceId, Seconds } from "@typedefs/api/common";
 import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
+import { Alert } from "@models/Alert";
+import { Request, Response } from "express";
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
@@ -56,7 +60,7 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/alerts`;
 
   /**
-   * @api {post} /api/v1/alerts Create a new alert
+   * @api {post} /api/v1/alerts Create a new alert for a device or station
    * @apiName PostAlert
    * @apiGroup Alert
    *
@@ -84,33 +88,46 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    // For authenticated requests, always extract a valid JWT first,
-    // so that we don't leak data in subsequent error messages for an
-    // unauthenticated request.
     extractJwtAuthorizedUser,
-    // Validation: Make sure the request payload is well-formed,
-    // without regard for whether the described entities exist.
     validateFields([
       body("conditions")
         .exists()
         .withMessage(expectedTypeOf("ApiAlertConditions"))
         .bail()
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
-      validNameOf(body("name")),
+      body("name").exists(),
       integerOfWithDefault(body("frequencySeconds"), DEFAULT_FREQUENCY),
-      idOf(body("deviceId")),
+      anyOf(idOf(body("deviceId")), idOf(body("stationId"))),
     ]),
-    // Now extract the items we need from the database.
-    fetchAdminAuthorizedRequiredDeviceById(body("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (request.body.deviceId) {
+        await fetchAuthorizedRequiredDeviceById(body("deviceId"))(
+          request,
+          response,
+          next
+        );
+      } else if (request.body.stationId) {
+        await fetchAuthorizedRequiredStationById(body("stationId"))(
+          request,
+          response,
+          next
+        );
+      }
+    },
     parseJSONField(body("conditions")),
-    async (request, response) => {
-      const { id } = await models.Alert.create({
+    async (request: Request, response: Response) => {
+      const alert = {
         name: request.body.name,
         conditions: response.locals.conditions,
         frequencySeconds: request.body.frequencySeconds,
         UserId: response.locals.requestUser.id,
-        DeviceId: response.locals.device.id,
-      });
+      };
+      if (response.locals.device) {
+        (alert as any).DeviceId = response.locals.device.id;
+      } else if (response.locals.station) {
+        (alert as any).StationId = response.locals.station.id;
+      }
+      const { id } = await models.Alert.create(alert);
       return successResponse(response, "Created new Alert.", { id });
     }
   );
@@ -120,8 +137,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetAlerts
    * @apiGroup Alert
    *
-   * @apiDescription Returns all alerts for a device along with details of the associated user and
-   * device for each alert
+   * @apiDescription Returns all alerts for the requesting user for a device
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -139,21 +155,8 @@ export default function (app: Application, baseUrl: string) {
    * "frequencySeconds":120,
    * "conditions":[{"tag":"cat", "automatic":true}],
    * "lastAlert":"2021-07-21T02:01:05.118Z",
-   * "User":{},
-   * "Device":{}
    * }]
-   * @apiSuccessExample {JSON} User:
-   * {
-   *  "id":456,
-   *  "userName":"user name",
-   *  "email":"email@server.org.nz"
-   * }
-   * @apiSuccessExample {JSON} Device:
-   * {
-   *   "id":1234,
-   *   "deviceName":"device name"
-   * }
-   */
+   * */
   app.get(
     `${apiUrl}/device/:deviceId`,
     extractJwtAuthorizedUser,
@@ -163,19 +166,127 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async (request, response) => {
-      // FIXME - should require device admin, since it lets users see other users
-      //  email addresses.  Otherwise, should just show alerts for requesting user.
-
+    async (request: Request, response: Response) => {
       const alerts = await models.Alert.queryUserDevice(
         response.locals.device.id,
         response.locals.requestUser.id,
         null,
         response.locals.viewAsSuperUser
       );
-      // FIXME validate schema of returned payload,
-      //  Reformat the response to conform to deviceName style etc.
-      return successResponse(response, { Alerts: alerts });
+      return successResponse(response, { alerts });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/alerts/station/:stationId Get Alerts for a station
+   * @apiName GetAlertsForStation
+   * @apiGroup Alert
+   *
+   * @apiDescription Returns all alerts for a station
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {number} stationId stationId of the station to get alerts for
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
+   *
+   * @apiUse V1ResponseError
+   *
+   * @apiSuccessExample {JSON} Alerts:
+   * [{
+   * "id":123,
+   * "name":"alert name",
+   * "frequencySeconds":120,
+   * "conditions":[{"tag":"cat", "automatic":true}],
+   * "lastAlert":"2021-07-21T02:01:05.118Z",
+   * }]
+   */
+  app.get(
+    `${apiUrl}/station/:stationId`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("stationId")),
+      query("view-mode").optional().equals("user"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredStationById(param("stationId")),
+    async (request: Request, response: Response) => {
+      const alerts = await models.Alert.queryUserStation(
+        response.locals.station.id,
+        response.locals.requestUser.id,
+        null,
+        response.locals.viewAsSuperUser
+      );
+      return successResponse(response, { alerts });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/alerts Get all Alerts for current user
+   * @apiName GetAlertsForStation
+   * @apiGroup Alert
+   *
+   * @apiDescription Returns all alerts for the requesting user
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
+   *
+   * @apiUse V1ResponseError
+   *
+   * @apiSuccessExample {JSON} Alerts:
+   * [{
+   * "id":123,
+   * "name":"alert name",
+   * "frequencySeconds":120,
+   * "conditions":[{"tag":"cat", "automatic":true}],
+   * "lastAlert":"2021-07-21T02:01:05.118Z",
+   * }]
+   */
+  app.get(
+    `${apiUrl}`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    async (request: Request, response: Response) => {
+      let alerts: Alert[];
+      if (!response.locals.viewAsSuperUser) {
+        alerts = await models.Alert.findAll({
+          where: { UserId: response.locals.requestUser.id },
+        });
+      } else {
+        alerts = await models.Alert.findAll();
+      }
+      return successResponse(response, { alerts });
+    }
+  );
+
+  /**
+   * @api {delete} /api/v1/alerts Delete an alert by id
+   * @apiName DeleteAlert
+   * @apiGroup Alert
+   *
+   * @apiDescription Delete a single alert by alert id
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {number} alertId alertId of the Alert to delete
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredAlertById(param("id")),
+    async (request: Request, response: Response) => {
+      await response.locals.alert.destroy();
+      return successResponse(response, "Deleted alert");
     }
   );
 }

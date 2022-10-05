@@ -205,7 +205,6 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
 };
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
-  console.log(visit);
   if (visit.type === "visit") {
     currentlySelectedVisit.value = visit.data;
   }
@@ -320,7 +319,6 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
 </template>
 <style scoped lang="less">
 .visits-daily-breakdown {
-  width: 540px;
   background: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
 

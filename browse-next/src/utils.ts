@@ -78,7 +78,7 @@ export const urlNormaliseGroupName = (name: string): string => {
   return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();
 };
 
-export type FormInputValidationState = boolean | null;
+export type FormInputValidationState = boolean | undefined;
 
 export const truncateLongStationNames = (
   str: string,
