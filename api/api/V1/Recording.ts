@@ -34,6 +34,7 @@ import {
   HttpStatusCode,
   RecordingProcessingState,
   RecordingType,
+  TagMode,
 } from "@typedefs/api/consts";
 import {
   ApiAudioRecordingMetadataResponse,
@@ -529,14 +530,18 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
     parseJSONField(query("filterOptions")), // FIXME - this doesn't seem to be used.
     async (request: Request, response: Response) => {
+      const { viewAsSuperUser, where, tags = [] } = response.locals;
+      const { tagMode, offset, limit } = request.query;
       const result = await recordingUtil.queryVisits(
         response.locals.requestUser.id,
-        response.locals.viewAsSuperUser,
-        response.locals.where,
-        request.query.tagMode,
-        response.locals.tags || [],
-        request.query.offset && parseInt(request.query.offset as string),
-        request.query.limit && parseInt(request.query.limit as string)
+        {
+          viewAsSuperUser,
+          where,
+          tagMode: tagMode as TagMode,
+          tags,
+          offset: offset && parseInt(offset as string),
+          limit: limit && parseInt(limit as string),
+        }
       );
       return successResponse(response, "Completed query.", {
         limit: request.query.limit,
@@ -600,10 +605,20 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
 
     async (request: Request, response: Response) => {
-      // FIXME Stop allowing arbitrary where queries
-      const where = response.locals.where || {};
+      const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
+      const {
+        tagMode,
+        limit,
+        offset,
+        type,
+        hideFiltered,
+        countAll,
+        exclusive,
+        deleted,
+      } = request.query;
+
       if (request.query.hasOwnProperty("deleted")) {
-        if (request.query.deleted) {
+        if (deleted) {
           where.deletedAt = { [Op.ne]: null };
         } else {
           where.deletedAt = { [Op.eq]: null };
@@ -612,17 +627,19 @@ export default (app: Application, baseUrl: string) => {
 
       const result = await recordingUtil.query(
         response.locals.requestUser.id,
-        response.locals.viewAsSuperUser,
-        where,
-        request.query.tagMode,
-        response.locals.tags || [],
-        request.query.limit && parseInt(request.query.limit as string),
-        request.query.offset && parseInt(request.query.offset as string),
-        response.locals.order,
-        request.query.type as RecordingType,
-        request.query.hideFiltered ? true : false,
-        request.query.countAll ? true : false,
-        request.query.exclusive ? true : false
+        type as RecordingType,
+        Boolean(countAll),
+        {
+          viewAsSuperUser,
+          where,
+          tags,
+          order,
+          tagMode: tagMode as TagMode,
+          limit: limit && parseInt(limit as string),
+          offset: offset && parseInt(offset as string),
+          hideFiltered: Boolean(hideFiltered),
+          exclusive: Boolean(exclusive),
+        }
       );
       return successResponse(response, "Completed query.", {
         limit: request.query.limit,
@@ -630,6 +647,112 @@ export default (app: Application, baseUrl: string) => {
         count: result.count,
         rows: result.rows.map(mapRecordingResponse),
       });
+    }
+  );
+
+  /**
+   * @api {delete} /api/v1/recordings Deletes Recordings based on query
+   * @apiName QueryRecordings
+   * @apiGroup Recordings
+   *
+   * @apiUse V1UserAuthorizationHeader
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
+   * regular user
+   * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
+   * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
+   * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
+   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
+   * @apiUse BaseQueryParams
+   * @apiUse MoreQueryParams
+   * @apiUse V1ResponseSuccessQuery
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+    apiUrl,
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      query("type").optional().isIn(Object.values(RecordingType)),
+      query("processingState")
+        .optional()
+        .isIn(Object.values(RecordingProcessingState)),
+      query("where").isJSON().optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+      query("order").isJSON().optional(),
+      query("tags").isJSON().optional(),
+      query("exclusive").default(false).isBoolean().toBoolean(),
+      query("tagMode")
+        .optional()
+        .custom((value) => {
+          return models.Recording.isValidTagMode(value);
+        }),
+      query("hideFiltered").default(false).isBoolean().toBoolean(),
+    ]),
+    parseJSONField(query("order")),
+    parseJSONField(query("where")),
+    parseJSONField(query("tags")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
+      const { tagMode, limit, offset, type, hideFiltered, exclusive } =
+        request.query;
+
+      try {
+        const values = await recordingUtil.bulkDelete(
+          response.locals.requestUser.id,
+          type as RecordingType,
+          {
+            viewAsSuperUser,
+            where,
+            tags,
+            order,
+            tagMode: tagMode as TagMode,
+            limit: limit && parseInt(limit as string),
+            offset: offset && parseInt(offset as string),
+            hideFiltered: Boolean(hideFiltered),
+            exclusive: Boolean(exclusive),
+            checkIsGroupAdmin: true,
+          }
+        );
+        return successResponse(
+          response,
+          `Deleted Recordings: ${JSON.stringify(values)}`,
+          { ids: values }
+        );
+      } catch (e) {
+        log.error(e);
+        return next(new ClientError(e.message));
+      }
+    }
+  );
+
+  /**
+   * @api {patch} /api/v1/recordings/undelete Restores previously deleted Recordings.
+   * @apiName QueryRecordings
+   * @apiGroup Recordings
+   *
+   * @apiUse V1UserAuthorizationHeader
+   * @apiBody {String[]} [ids] Array of recording ids to undelete
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/undelete`,
+    extractJwtAuthorizedUser,
+    validateFields([body("ids").isArray()]),
+    parseJSONField(query("ids")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const { ids } = request.body;
+      try {
+        await models.Recording.update(
+          { deletedAt: null, deletedBy: null },
+          { where: { id: ids } }
+        );
+        return successResponse(response, `Recordings Restored: ${ids}`);
+      } catch (e) {
+        log.error(e);
+        return next(new ClientError("Unable to restore recordings"));
+      }
     }
   );
 
@@ -892,29 +1015,29 @@ export default (app: Application, baseUrl: string) => {
 
       // 10 minute timeout because the query can take a while to run
       // when the result set is large.
+      const { viewAsSuperUser, where, order, tags = [] } = response.locals;
+      const { tagMode, offset, limit, audioBait, exclusive } = request.query;
+      const options = {
+        viewAsSuperUser,
+        where,
+        tags,
+        tagMode: tagMode as TagMode,
+        offset: offset && parseInt(offset as string),
+        limit: limit && parseInt(limit as string),
+      };
+
       let rows;
       if (request.query.type == "visits") {
-        rows = await reportVisits(
-          response.locals.requestUser.id,
-          response.locals.viewAsSuperUser,
-          response.locals.where,
-          request.query.tagMode,
-          response.locals.tags || [],
-          request.query.offset && parseInt(request.query.offset as string),
-          request.query.limit && parseInt(request.query.limit as string)
-        );
+        rows = await reportVisits(response.locals.requestUser.id, options);
       } else {
         rows = await reportRecordings(
           response.locals.requestUser.id,
-          response.locals.viewAsSuperUser,
-          response.locals.where,
-          request.query.tagMode,
-          response.locals.tags || [],
-          request.query.offset && parseInt(request.query.offset as string),
-          request.query.limit && parseInt(request.query.limit as string),
-          response.locals.order,
-          Boolean(request.query.audiobait),
-          Boolean(request.query.exclusive)
+          Boolean(audioBait),
+          {
+            ...options,
+            order,
+            exclusive: Boolean(exclusive),
+          }
         );
       }
       response.status(HttpStatusCode.Ok).set({
@@ -1095,7 +1218,7 @@ export default (app: Application, baseUrl: string) => {
         const rawFileKey = recording.rawFileKey;
         const fileKey = recording.fileKey;
         try {
-          await recording.destroy();
+          await recording.destroy({ force: true });
           deleted = true;
         } catch (e) {
           // ..

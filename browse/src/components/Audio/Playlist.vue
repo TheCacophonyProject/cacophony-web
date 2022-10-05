@@ -12,12 +12,21 @@
     <a download="audio_recording.mp3" :href="url">
       <font-awesome-icon icon="download" size="lg" />
     </a>
-    <div @click="deleteRecording" class="text-danger pl-4" role="button">
+    <button
+      :disabled="!isGroupAdmin"
+      @click="deleteRecording"
+      class="delete-button ml-4"
+      :class="{
+        ...(isGroupAdmin ? { 'text-danger': true } : { disabled: true }),
+      }"
+      v-b-tooltip.hover
+      :title="!isGroupAdmin ? 'Deleting recording requires group admin' : ''"
+    >
       <font-awesome-icon icon="trash" />
-    </div>
+    </button>
     <font-awesome-icon
       @click="navigateToNextRecording(QueryDirection.Next)"
-      :disable="nextRecordings.next === null && isLoading"
+      :disabled="nextRecordings.next === null && isLoading"
       :class="{ disabled: nextRecordings.next === null }"
       role="button"
       icon="step-forward"
@@ -55,6 +64,10 @@ export default defineComponent({
     },
     deleteRecording: {
       type: Function as PropType<() => Promise<void>>,
+      required: true,
+    },
+    isGroupAdmin: {
+      type: Boolean,
       required: true,
     },
   },
@@ -194,5 +207,13 @@ export default defineComponent({
     left: 0;
     z-index: 1001;
   }
+}
+.delete-button {
+  // remove the default button styling
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  outline: inherit;
 }
 </style>

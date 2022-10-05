@@ -109,6 +109,10 @@
             variant="danger"
             block
             @click="deleteRecording()"
+            v-b-tooltip.hover
+            :title="
+              deleteDisabled ? 'Deleting recording requires group admin' : ''
+            "
           >
             <font-awesome-icon
               icon="exclamation-triangle"
@@ -148,6 +152,7 @@
 <script>
 import api from "@api";
 import Comment from "./Comment.vue";
+import { shouldViewAsSuperUser } from "@/utils";
 
 export default {
   name: "RecordingControls",
@@ -158,6 +163,10 @@ export default {
       required: true,
     },
     comment: {
+      type: String,
+      default: "",
+    },
+    groupId: {
       type: String,
       default: "",
     },
@@ -182,12 +191,35 @@ export default {
           tdClass: "tags-table-buttons",
         },
       ],
-      deleteDisabled: false,
+      deleteDisabled: true,
+      isGroupAdmin: false,
     };
   },
-  watch: {
-    items: function () {
+  async mounted() {
+    if (shouldViewAsSuperUser()) {
       this.deleteDisabled = false;
+    } else {
+      const response = await api.groups.getGroupById(this.groupId);
+      if (response.success) {
+        this.deleteDisabled = !response.result.group.admin;
+      } else {
+        this.deleteDisabled = true;
+      }
+    }
+  },
+  watch: {
+    items: async function () {
+      debugger;
+      if (shouldViewAsSuperUser()) {
+        this.deleteDisabled = false;
+      } else {
+        const response = await api.groups.getGroupById(this.groupId);
+        if (response.success) {
+          this.deleteDisabled = !response.result.group.admin;
+        } else {
+          throw response.result;
+        }
+      }
     },
   },
   methods: {

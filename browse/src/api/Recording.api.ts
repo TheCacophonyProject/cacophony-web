@@ -198,6 +198,20 @@ function query(
   );
 }
 
+function bulkDelete(
+  queryParams: RecordingQuery
+): Promise<FetchResult<{ ids: string[] }>> {
+  return CacophonyApi.delete(
+    `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
+  );
+}
+
+function bulkUndelete(ids: RecordingId[]): Promise<FetchResult<any>> {
+  return CacophonyApi.patch(`${apiPath}/undelete`, {
+    ids,
+  });
+}
+
 function queryTrackTags(
   params: TrackTagQuery
 ): Promise<FetchResult<QueryResult<TrackTagRow>>> {
@@ -564,6 +578,8 @@ export default {
   queryTrackTags,
   queryVisits,
   queryCount,
+  bulkDelete,
+  bulkUndelete,
   id,
   thumbnail,
   comment,

@@ -52,6 +52,14 @@
             !selectedOptions
           "
           @keyup="addSearchTermOnSubmit"
+          @keydown="
+            (event) => {
+              if (event.key === 'Tab') {
+                showOptions = false;
+                searchTerm = '';
+              }
+            }
+          "
           type="text"
           ref="inputRef"
           :value="searchTerm"
@@ -184,17 +192,21 @@ export default defineComponent({
     };
 
     const addSearchTermOnSubmit = (event: KeyboardEvent | MouseEvent) => {
-      if (event instanceof KeyboardEvent && event.key === "Enter") {
-        if (searchTerm.value === "") {
-          return;
-        }
-        const option = optionsMap.value.get(searchTerm.value.toLowerCase());
-        if (option) {
-          addSelectedOption(option);
-          searchTerm.value = "";
-        } else if (displayedOptions.value.length === 1) {
-          addSelectedOption(displayedOptions.value[0]);
-          searchTerm.value = "";
+      if (event instanceof KeyboardEvent) {
+        if (event.key === "Enter") {
+          if (searchTerm.value === "") {
+            return;
+          }
+          const option = optionsMap.value.get(searchTerm.value.toLowerCase());
+          if (option) {
+            addSelectedOption(option);
+            searchTerm.value = "";
+          } else if (displayedOptions.value.length === 1) {
+            addSelectedOption(displayedOptions.value[0]);
+            searchTerm.value = "";
+          }
+        } else if (event.key === "Tab") {
+          showOptions.value = !showOptions.value;
         }
       }
     };
