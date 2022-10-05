@@ -15,13 +15,13 @@ const removeAlert = async (alertId: AlertId): Promise<FetchResult<void>> => {
 
 const createAlertForStation = async (
   stationId: StationId,
-  { name, species }: { name: string; species: string }
+  tag: string
 ): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
   return CacophonyApi.post(
     `/api/v1/alerts`,
     {
-      name,
-      conditions: [{ tag: species, automatic: true }],
+      name: tag[0].toUpperCase() + tag.slice(1),
+      conditions: [{ tag, automatic: true }],
       stationId,
     },
     true

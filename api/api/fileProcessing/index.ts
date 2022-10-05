@@ -298,37 +298,37 @@ export default function (app: Application) {
           }
         }
         await recording.save();
-        if (recording.type === RecordingType.ThermalRaw) {
-          if (
-            complete &&
-            recording.additionalMetadata &&
-            "thumbnail_region" in recording.additionalMetadata
-          ) {
-            const region = recording.additionalMetadata["thumbnail_region"];
-            const result = await recordingUtil.saveThumbnailInfo(
-              recording,
-              region
+
+        if (
+          complete &&
+          recording.additionalMetadata &&
+          "thumbnail_region" in recording.additionalMetadata
+        ) {
+          const region = recording.additionalMetadata["thumbnail_region"];
+          const result = await recordingUtil.saveThumbnailInfo(
+            recording,
+            region
+          );
+          if (!result.hasOwnProperty("Key")) {
+            log.warning(
+              "Failed to upload thumbnail for %s",
+              `${recording.rawFileKey}-thumb`
             );
-            if (!result.hasOwnProperty("Key")) {
-              log.warning(
-                "Failed to upload thumbnail for %s",
-                `${recording.rawFileKey}-thumb`
-              );
-              log.error("Reason: %s", (result as Error).message);
-            }
-          }
-          const twentyFourHoursMs = 24 * 60 * 60 * 1000;
-          const recordingAgeMs =
-            new Date().getTime() - recording.recordingDateTime.getTime();
-          if (
-            complete &&
-            prevState !== RecordingProcessingState.Reprocess &&
-            recording.uploader === "device" &&
-            recordingAgeMs < twentyFourHoursMs
-          ) {
-            await recordingUtil.sendAlerts(recording.id);
+            log.error("Reason: %s", (result as Error).message);
           }
         }
+        const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+        const recordingAgeMs =
+          new Date().getTime() - recording.recordingDateTime.getTime();
+        if (
+          complete &&
+          prevState !== RecordingProcessingState.Reprocess &&
+          recording.uploader === "device" &&
+          recordingAgeMs < twentyFourHoursMs
+        ) {
+          await recordingUtil.sendAlerts(recording.id);
+        }
+
         return successResponse(response, "Processing finished.");
       } else {
         recording.processingState =

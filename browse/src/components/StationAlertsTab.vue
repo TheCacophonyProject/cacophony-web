@@ -22,8 +22,7 @@
       hover
       :items="tableAlerts"
       :fields="[
-        'name',
-        { key: 'alertsOn', label: 'Alerts on' },
+        { key: 'alertsOn', label: 'Alert tag' },
         { key: 'lastAlert', label: 'Last alerted' },
         { key: 'remove', label: '' },
       ]"
@@ -64,21 +63,13 @@
       v-model="creatingAlert"
       title="New alert"
       ok-title="Create"
-      @cancel="currentAlert = { name: '', species: '' }"
+      @cancel="currentAlertTag = ''"
       @ok="submitAlert"
-      :ok-disabled="currentAlert.name === '' || currentAlert.species === ''"
+      :ok-disabled="currentAlertTag === ''"
     >
       <b-form>
-        <b-form-group label="Alert name">
-          <b-form-input
-            maxlength="45"
-            type="text"
-            placeholder="Alert name"
-            v-model="currentAlert.name"
-          ></b-form-input>
-        </b-form-group>
         <b-form-group label="Species/tag to alert on">
-          <classifications-dropdown v-model="currentAlert.species" />
+          <classifications-dropdown v-model="currentAlertTag" />
         </b-form-group>
       </b-form>
     </b-modal>
@@ -105,10 +96,7 @@ export default {
     return {
       alerts: [],
       creatingAlert: false,
-      currentAlert: {
-        name: "",
-        species: "",
-      },
+      currentAlertTag: "",
     };
   },
   computed: {
@@ -177,16 +165,13 @@ export default {
       }
     },
     createAlert(e) {
-      this.currentAlert = {
-        name: "",
-        species: "",
-      };
+      this.currentAlertTag = "";
       this.creatingAlert = true;
     },
     async submitAlert() {
       const response = await api.alerts.createAlertForStation(
         this.station.id,
-        this.currentAlert
+        this.currentAlertTag
       );
       if (response.success) {
         this.$emit("alerts-changed");
