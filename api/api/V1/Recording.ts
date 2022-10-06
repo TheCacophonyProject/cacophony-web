@@ -814,6 +814,7 @@ export default (app: Application, baseUrl: string) => {
         hideFiltered,
         exclusive,
         checkIsGroupAdmin,
+        deleted,
       } = request.query;
 
       const options = {
@@ -836,8 +837,15 @@ export default (app: Application, baseUrl: string) => {
       };
 
       if (type && typeof options.where === "object") {
-        options.where = { ...options.where, type };
+        options.where = {
+          ...options.where,
+          type,
+          ...(deleted
+            ? { deletedAt: { [Op.ne]: null } }
+            : { deletedAt: { [Op.eq]: null } }),
+        };
       }
+
       const builder = await new models.Recording.queryBuilder().init(
         user.id,
         options
