@@ -835,17 +835,17 @@ export default (app: Application, baseUrl: string) => {
             : false,
         includeAttributes: false,
       };
-
-      if (type && typeof options.where === "object") {
-        options.where = {
-          ...options.where,
-          type,
-          ...(deleted
-            ? { deletedAt: { [Op.ne]: null } }
-            : { deletedAt: { [Op.eq]: null } }),
-        };
+      if (request.query.hasOwnProperty("deleted")) {
+        if (deleted) {
+          options.where.deletedAt = { [Op.ne]: null };
+        } else {
+          options.where.deletedAt = { [Op.eq]: null };
+        }
       }
 
+      if (type && typeof options.where === "object") {
+        options.where = { ...options.where, type };
+      }
       const builder = await new models.Recording.queryBuilder().init(
         user.id,
         options
