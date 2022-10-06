@@ -766,6 +766,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
    * regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
+   * @apiQuery {Boolean} [checkIsGroupAdmin=false] Check if user is admin of group
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState]
    * Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
@@ -790,6 +791,7 @@ export default (app: Application, baseUrl: string) => {
       query("tags").isJSON().optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
       query("exclusive").default(false).isBoolean().toBoolean(),
+      query("checkIsGroupAdmin").default(true).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
@@ -804,11 +806,9 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response, next: NextFunction) => {
       const user = response.locals.requestUser;
       const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
-      const { tagMode, limit, offset, type, hideFiltered, exclusive } =
+      const { tagMode, limit, offset, type, hideFiltered, exclusive, checkIsGroupAdmin } =
         request.query;
-      const checkIsGroupAdmin =
-        response.locals.viewAsSuperUser && user.hasGlobalRead() ? false : true;
-
+        
       const options = {
         viewAsSuperUser,
         where,
@@ -819,7 +819,7 @@ export default (app: Application, baseUrl: string) => {
         offset: offset && parseInt(offset as string),
         hideFiltered: hideFiltered ? true : false,
         exclusive: exclusive ? true : false,
-        checkIsGroupAdmin,
+        checkIsGroupAdmin: response.locals.viewAsSuperUser && user.hasGlobalRead() ? false : checkIsGroupAdmin ? true : false,
         includeAttributes: false,
       };
 

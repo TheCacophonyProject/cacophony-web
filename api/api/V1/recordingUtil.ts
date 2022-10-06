@@ -29,7 +29,7 @@ import util from "./util";
 import { Recording, RecordingQueryOptions } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
-import Sequelize, { DataTypes, Op } from "sequelize";
+import Sequelize, { Op } from "sequelize";
 import {
   DeviceSummary,
   DeviceVisitMap,
@@ -1371,7 +1371,7 @@ async function queryVisits(
   const requestVisits = options.limit || maxVisitQueryResults;
   const queryMax = maxVisitQueryResults * 2;
   const queryLimit = Math.min(requestVisits * 2, queryMax);
-  options = { ...options, order: null };
+  options = { ...options, order: null, limit: queryLimit };
 
   const builder = await new models.Recording.queryBuilder().init(
     userId,

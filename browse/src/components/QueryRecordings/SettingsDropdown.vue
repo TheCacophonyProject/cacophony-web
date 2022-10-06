@@ -87,7 +87,11 @@ export default defineComponent({
       window.open(url, "_self");
     };
     const bulkDelete = () => {
-      const query = { ...route.value.query, offset: 0 };
+      const query = {
+        ...route.value.query,
+        offset: 0,
+        checkIsGroupAdmin: true,
+      };
       return RecordingApi.bulkDelete(query).then((query) => {
         // refresh the page
         if (query.success) {
