@@ -14,7 +14,11 @@
         Export
       </div>
     </b-dropdown-item>
-    <b-dropdown-item v-b-modal.delete-all variant="danger">
+    <b-dropdown-item
+      v-b-modal.delete-all
+      variant="danger"
+      v-if="showBulkDelete"
+    >
       <div>
         <font-awesome-icon icon="trash" />
         Bulk Delete
@@ -27,7 +31,8 @@
         hide-backdrop
       >
         <p class="text-center">
-          Are you sure you want to delete up to 5000 recordings for this query?
+          Are you sure you want to delete {{ recordingCount }} recordings for
+          this query?
         </p>
         <b-button
           class="mt-3"
@@ -52,8 +57,9 @@ import config from "../../config";
 import userapi from "@api/User.api";
 import querystring from "querystring";
 import recordingsapi from "@api/Recording.api";
-import { defineComponent, PropType } from "@vue/composition-api";
+import { defineComponent, PropType, ref, watch } from "@vue/composition-api";
 import RecordingApi from "@api/Recording.api";
+import api from "@/api";
 
 export default defineComponent({
   name: "SettingsDropdown",
@@ -65,7 +71,9 @@ export default defineComponent({
     },
   },
   setup(props, { emit }) {
+    const showBulkDelete = ref(false);
     const route = useRoute();
+    const recordingCount = ref(0);
     const download = async () => {
       const token = await userapi.token();
       const params = recordingsapi.makeApiQuery(route.value.query);
@@ -79,7 +87,7 @@ export default defineComponent({
       window.open(url, "_self");
     };
     const bulkDelete = () => {
-      const query = { ...route.value.query, offset: 0, limit: 5000 };
+      const query = { ...route.value.query, offset: 0 };
       return RecordingApi.bulkDelete(query).then((query) => {
         // refresh the page
         if (query.success) {
@@ -88,7 +96,14 @@ export default defineComponent({
         emit("submit", route.value.query);
       });
     };
-    return { route, download, bulkDelete };
+    watch(route, async () => {
+      const count = await api.recording.queryCount(route.value.query);
+      if (count.success) {
+        showBulkDelete.value = count.result.count > 0;
+        recordingCount.value = count.result.count;
+      }
+    });
+    return { route, download, bulkDelete, showBulkDelete, recordingCount };
   },
 });
 </script>

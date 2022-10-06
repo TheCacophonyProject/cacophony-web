@@ -209,7 +209,6 @@ export default {
   },
   watch: {
     items: async function () {
-      debugger;
       if (shouldViewAsSuperUser()) {
         this.deleteDisabled = false;
       } else {

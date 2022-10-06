@@ -638,8 +638,8 @@ export default (app: Application, baseUrl: string) => {
           tagMode: tagMode as TagMode,
           limit: limit && parseInt(limit as string),
           offset: offset && parseInt(offset as string),
-          hideFiltered: Boolean(hideFiltered),
-          exclusive: Boolean(exclusive),
+          hideFiltered: hideFiltered ? true : false,
+          exclusive: exclusive ? true : false,
         }
       );
       return successResponse(response, "Completed query.", {
@@ -710,8 +710,8 @@ export default (app: Application, baseUrl: string) => {
             tagMode: tagMode as TagMode,
             limit: limit && parseInt(limit as string),
             offset: offset && parseInt(offset as string),
-            hideFiltered: Boolean(hideFiltered),
-            exclusive: Boolean(exclusive),
+            hideFiltered: hideFiltered ? true : false,
+            exclusive: exclusive ? true : false,
             checkIsGroupAdmin: true,
           }
         );
@@ -789,62 +789,55 @@ export default (app: Application, baseUrl: string) => {
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
+      query("exclusive").default(false).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
           return models.Recording.isValidTagMode(value);
         }),
+      query("hideFiltered").default(false).isBoolean().toBoolean(),
+      query("countAll").default(true).isBoolean().toBoolean(),
     ]),
     parseJSONField(query("order")),
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
     async (request: Request, response: Response, next: NextFunction) => {
       const user = response.locals.requestUser;
+      const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
+      const { tagMode, limit, offset, type, hideFiltered, exclusive } =
+        request.query;
+      const checkIsGroupAdmin =
+        response.locals.viewAsSuperUser && user.hasGlobalRead() ? false : true;
 
-      // FIXME - Is this redundant now?
-      let userWhere = request.query.where || {};
-      if (typeof userWhere === "string") {
-        try {
-          userWhere = JSON.parse(userWhere);
-        } catch (e) {
-          // FIXME - Should this be Unprocessable instead?  Should we use a json schema validator?
-          return next(new ClientError("Malformed JSON"));
-        }
-      }
-      if (request.query.hasOwnProperty("deleted")) {
-        if (request.query.deleted) {
-          (userWhere as any).deletedAt = { [Op.ne]: null };
-        } else {
-          (userWhere as any).deletedAt = { [Op.eq]: null };
-        }
-      }
-      const countQuery = {
-        where: {
-          [Op.and]: [
-            userWhere, // User query
-          ],
-        },
-        include: [
-          {
-            model: models.Group,
-            include: [
-              {
-                model: models.User,
-                where: {
-                  [Op.and]: [{ id: user.id }],
-                },
-              },
-            ],
-            required: true,
-          },
-        ],
+      const options = {
+        viewAsSuperUser,
+        where,
+        tags,
+        order,
+        tagMode: tagMode as TagMode,
+        limit: limit && parseInt(limit as string),
+        offset: offset && parseInt(offset as string),
+        hideFiltered: hideFiltered ? true : false,
+        exclusive: exclusive ? true : false,
+        checkIsGroupAdmin,
+        includeAttributes: false,
       };
-      if (response.locals.viewAsSuperUser && user.hasGlobalRead()) {
-        // Don't filter on user if the user has global read permissions.
-        delete countQuery.include[0].include;
+
+      if (type && typeof options.where === "object") {
+        options.where = { ...options.where, type };
       }
-      const count = await models.Recording.count(countQuery);
-      return successResponse(response, "Completed query.", { count });
+      const builder = await new models.Recording.queryBuilder().init(
+        user.id,
+        options
+      );
+      builder.query.distinct = true;
+      try {
+        const count = await models.Recording.count(builder.get());
+        return successResponse(response, "Completed query.", { count });
+      } catch (e) {
+        log.error(e);
+        return next(new ClientError(e.message));
+      }
     }
   );
 

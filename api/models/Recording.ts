@@ -80,6 +80,7 @@ export type RecordingQueryOptions = Partial<{
   checkIsGroupAdmin: boolean;
   hideFiltered: boolean;
   exclusive: boolean;
+  includeAttributes: boolean;
   attributes: string[];
 }>;
 
@@ -764,6 +765,7 @@ from (
         [Sequelize.col("recordingDateTime"), "DESC"],
         ["id", "DESC"],
       ],
+      includeAttributes = true,
     } = options;
     const where =
       typeof options.where === "string"
@@ -893,6 +895,18 @@ from (
       offset,
       attributes: Recording.queryGetAttributes,
     };
+    if (!includeAttributes) {
+      const recursiveDelete = (obj: any) => {
+        for (const key in obj) {
+          if (key === "attributes") {
+            delete obj[key];
+          } else if (typeof obj[key] === "object") {
+            recursiveDelete(obj[key]);
+          }
+        }
+      };
+      recursiveDelete(this.query);
+    }
     return this;
   };
 

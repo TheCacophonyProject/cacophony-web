@@ -180,13 +180,13 @@ export default function (app: Application, baseUrl: string) {
           getEmailConfirmationToken(user.id, user.email),
           user.email
         );
-        if (!sendEmailSuccess && config.productionEnv) {
-          // In this case, we don't want to create the user.
-          await user.destroy();
-          return next(
-            new FatalError("Failed to send welcome/email confirmation email.")
-          );
-        }
+        // if (!sendEmailSuccess && config.productionEnv) {
+        //   // In this case, we don't want to create the user.
+        //   await user.destroy();
+        //   return next(
+        //     new FatalError("Failed to send welcome/email confirmation email.")
+        //   );
+        // }
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
         user,
