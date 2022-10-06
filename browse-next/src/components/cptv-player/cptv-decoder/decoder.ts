@@ -1,4 +1,6 @@
 import type { RecordingId } from "@typedefs/api/common";
+import { maybeRefreshStaleCredentials } from "@api/fetch";
+import { CurrentUserCreds } from "@models/LoggedInUser";
 
 interface MessageData {
   type: string;
@@ -26,7 +28,7 @@ export class CptvDecoder {
     await this.free();
     messageQueue = {};
     if (!this.inited) {
-      const onMessage = (message: MessageData | MessageDataMessage) => {
+      const onMessage = async (message: MessageData | MessageDataMessage) => {
         let type;
         let data;
         if (message.type && message.type !== "message") {

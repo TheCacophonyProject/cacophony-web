@@ -21,6 +21,7 @@ import { getRecordingById } from "@api/Recording";
 import type { JwtToken } from "@api/types";
 import {
   selectedVisit,
+  currentVisitsFilter,
   maybeFilteredVisitsContext as visitsContext,
 } from "@models/SelectionContext";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";

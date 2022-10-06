@@ -40,7 +40,7 @@ export default {
    * @returns {Promise<{result: *, success: boolean, status: number}>}
    */
   get: async (endpoint: string, abortable?: boolean, apiToken?: string) =>
-    fetch(`${API_ROOT}${endpoint}`, { method: "GET" }, abortable, apiToken),
+    fetch(`${API_ROOT}${endpoint}`, { method: "GET" }, abortable),
 
   /**
    * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.
