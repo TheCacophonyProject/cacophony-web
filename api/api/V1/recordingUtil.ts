@@ -921,15 +921,9 @@ async function query(
   // FIXME: In the UI, when we query recordings, we don't need to get the count every time, just the first time
   //  would be fine!
   if (countAll === true) {
-    return models.Recording.findAndCountAll({
-      ...builder.get(),
-      logging: console.log,
-    });
+    return models.Recording.findAndCountAll(builder.get());
   }
-  const rows = await models.Recording.findAll({
-    ...builder.get(),
-    logging: log.info,
-  });
+  const rows = await models.Recording.findAll(builder.get());
   return { count: rows.length, rows: rows };
 }
 

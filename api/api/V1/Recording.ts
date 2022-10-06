@@ -629,7 +629,7 @@ export default (app: Application, baseUrl: string) => {
       const result = await recordingUtil.query(
         response.locals.requestUser.id,
         type as RecordingType,
-        Boolean(countAll),
+        countAll ? true : false,
         {
           viewAsSuperUser,
           where,
