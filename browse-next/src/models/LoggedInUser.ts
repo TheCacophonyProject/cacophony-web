@@ -11,6 +11,7 @@ import type { ApiGroupResponse } from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
+import { useWindowSize } from "@vueuse/core";
 
 export interface LoggedInUserAuth {
   apiToken: string;
@@ -363,6 +364,17 @@ export const creatingNewGroup = reactive({
 export const joiningNewGroup = reactive({ enabled: false, visible: false });
 export const showSwitchGroup = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);
+
+const windowDimensions = useWindowSize();
+
+export const isWideScreen = computed<boolean>(() => {
+  return windowDimensions.width.value > 1650;
+});
+
+export const sideNavIsPinned = computed<boolean>(() => {
+  return pinSideNav.value || isWideScreen.value;
+});
+
 export const rafFps = ref(60);
 // On load:
 {
