@@ -806,9 +806,16 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response, next: NextFunction) => {
       const user = response.locals.requestUser;
       const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
-      const { tagMode, limit, offset, type, hideFiltered, exclusive, checkIsGroupAdmin } =
-        request.query;
-        
+      const {
+        tagMode,
+        limit,
+        offset,
+        type,
+        hideFiltered,
+        exclusive,
+        checkIsGroupAdmin,
+      } = request.query;
+
       const options = {
         viewAsSuperUser,
         where,
@@ -819,7 +826,12 @@ export default (app: Application, baseUrl: string) => {
         offset: offset && parseInt(offset as string),
         hideFiltered: hideFiltered ? true : false,
         exclusive: exclusive ? true : false,
-        checkIsGroupAdmin: response.locals.viewAsSuperUser && user.hasGlobalRead() ? false : checkIsGroupAdmin ? true : false,
+        checkIsGroupAdmin:
+          response.locals.viewAsSuperUser && user.hasGlobalRead()
+            ? false
+            : checkIsGroupAdmin
+            ? true
+            : false,
         includeAttributes: false,
       };
 
