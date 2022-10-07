@@ -56,7 +56,7 @@ import { useRoute } from "@/utils";
 import config from "../../config";
 import userapi from "@api/User.api";
 import querystring from "querystring";
-import recordingsapi from "@api/Recording.api";
+import recordingsapi, { RecordingQuery } from "@api/Recording.api";
 import { defineComponent, PropType, ref, watch } from "@vue/composition-api";
 import RecordingApi from "@api/Recording.api";
 import api from "@/api";
@@ -87,11 +87,14 @@ export default defineComponent({
       window.open(url, "_self");
     };
     const bulkDelete = () => {
-      const query = {
+      const query: RecordingQuery = {
         ...route.value.query,
         offset: 0,
         checkIsGroupAdmin: true,
       };
+      if (query.limit) {
+        delete query.limit;
+      }
       return RecordingApi.bulkDelete(query).then((query) => {
         // refresh the page
         if (query.success) {

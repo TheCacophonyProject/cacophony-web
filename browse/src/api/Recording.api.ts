@@ -171,6 +171,7 @@ export interface RecordingQuery {
   order?: any; // TODO - It's not clear what order accepts (it's a sequelize thing), but nobody seems to use it right now.
   where?: string;
   exclusive?: boolean;
+  checkIsGroupAdmin?: boolean;
 }
 
 export interface TrackTagRow {
