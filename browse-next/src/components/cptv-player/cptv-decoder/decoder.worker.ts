@@ -60,7 +60,6 @@ class CptvDecoderInterface {
     this.locked = true;
     try {
       this.consumed = false;
-      const now = new Date();
       const request = {
         mode: "cors",
         cache: "no-cache",
