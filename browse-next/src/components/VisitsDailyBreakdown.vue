@@ -5,9 +5,8 @@ import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
   visitTimeAtLocation,
   visitDuration,
-  timezoneForLocation,
 } from "@models/visitsUtils";
-import { DateTime } from "luxon";
+import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/api";
@@ -69,13 +68,10 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         date: new Date(visit.timeStart),
       } as VisitEventItem)
   );
-  const usedSunrise = false;
-  const usedSunset = false;
 
   const now = new Date();
   const startTime = events[0].date;
   const endTime = events[events.length - 1].date;
-  const zone = timezoneForLocation(location);
   {
     // If the startTime is *after* its own sunrise, then use the sunset from it.
     const { sunrise, sunset } = sunCalc.getTimes(
@@ -118,17 +114,26 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       // Otherwise, use the sunrise from the next day.
       const endTimePlusOneDay = new Date(endTime);
       endTimePlusOneDay.setDate(endTimePlusOneDay.getDate() + 1);
-      const { sunrise, sunset } = sunCalc.getTimes(
+      const { sunrise } = sunCalc.getTimes(
         endTimePlusOneDay,
         location.lat,
         location.lng
       );
-      events.push({
-        type: "sun",
-        name: `Sunrise`,
-        timeStart: sunrise.toISOString(),
-        date: sunrise,
-      } as SunEventItem);
+      if (sunrise < now) {
+        events.push({
+          type: "sun",
+          name: `Sunrise`,
+          timeStart: sunrise.toISOString(),
+          date: sunrise,
+        } as SunEventItem);
+      } else {
+        events.push({
+          type: "sun",
+          name: `Now`,
+          timeStart: now.toISOString(),
+          date: now,
+        } as SunEventItem);
+      }
     }
   }
   events.sort((a, b) => {

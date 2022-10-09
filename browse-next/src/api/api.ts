@@ -36,10 +36,9 @@ export default {
    * These fields can easily be resolved using object destructuring to directly assign the required information.
    * @param {string} endpoint - The cacophony API endpoint to target, for example `/api/v1/users`.
    * @param {boolean} [abortable] - Whether this is a request for the current view, and if so should be aborted when the view changes.
-   * @param {boolean} [apiToken] - Optional JWT token for if we're calling this from within a web-worker, and don't have access to localStorage.
    * @returns {Promise<{result: *, success: boolean, status: number}>}
    */
-  get: async (endpoint: string, abortable?: boolean, apiToken?: string) =>
+  get: async (endpoint: string, abortable?: boolean) =>
     fetch(`${API_ROOT}${endpoint}`, { method: "GET" }, abortable),
 
   /**

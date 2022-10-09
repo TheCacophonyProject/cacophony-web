@@ -5,7 +5,7 @@ import type {
 import type { Ref } from "vue";
 import type { ErrorResult, JwtTokenPayload } from "@api/types";
 import { computed, reactive, ref } from "vue";
-import { refreshLogin, login as userLogin, saveUserSettings } from "@api/User";
+import { login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
@@ -195,17 +195,6 @@ const refreshCredentials = async () => {
   }
 };
 
-let refreshTimeout = -1;
-const refreshCredentialsAtIn = (milliseconds: number) => {
-  milliseconds = Math.max(1000, milliseconds);
-  console.warn("Setting refresh in", milliseconds);
-  clearTimeout(refreshTimeout);
-  refreshTimeout = setTimeout(
-    refreshCredentials,
-    milliseconds
-  ) as unknown as number;
-};
-
 export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
   isLoggingIn.value = true;
   await refreshCredentials();
@@ -391,7 +380,6 @@ export const rafFps = ref(60);
           JSON.stringify({ ...currentUser, refreshingToken: false })
         );
       } catch (e) {
-        debugger;
         forgetUserOnCurrentDevice();
       }
     }

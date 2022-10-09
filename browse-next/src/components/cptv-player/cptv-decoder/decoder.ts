@@ -1,6 +1,4 @@
 import type { RecordingId } from "@typedefs/api/common";
-import { maybeRefreshStaleCredentials } from "@api/fetch";
-import { CurrentUserCreds } from "@models/LoggedInUser";
 
 interface MessageData {
   type: string;

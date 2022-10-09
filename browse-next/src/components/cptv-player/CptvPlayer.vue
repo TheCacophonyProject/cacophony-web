@@ -40,7 +40,7 @@ import {
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
-import { CurrentUser, CurrentUserCreds } from "@models/LoggedInUser";
+import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 
 const { pixelRatio } = useDevicePixelRatio();

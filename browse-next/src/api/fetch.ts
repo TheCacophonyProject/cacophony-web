@@ -196,7 +196,6 @@ export async function fetch<T>(
     };
   }
   if (response.status === 401) {
-    debugger;
     forgetUserOnCurrentDevice();
     return {
       result: {
