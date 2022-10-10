@@ -240,7 +240,13 @@ const needsValidationAndIsValidEmailAddress =
       </p>
       <p
         v-if="!emailAddressUpdated"
-        class="mt-3 d-flex flex-md-row flex-column justify-content-md-between align-items-start"
+        class="
+          mt-3
+          d-flex
+          flex-md-row flex-column
+          justify-content-md-between
+          align-items-start
+        "
       >
         <button
           class="btn btn-secondary me-3 mb-3"

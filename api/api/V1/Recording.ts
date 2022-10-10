@@ -1102,8 +1102,8 @@ export default (app: Application, baseUrl: string) => {
         return next(new ClientError("Rec has no raw file key."));
       }
       let trackId;
-      if (request.query.trackId){
-        trackId  = request.query.trackId as unknown as number ;
+      if (request.query.trackId) {
+        trackId = request.query.trackId as unknown as number;
       }
       recordingUtil
         .getThumbnail(rec, trackId)

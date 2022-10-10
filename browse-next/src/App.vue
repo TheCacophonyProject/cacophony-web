@@ -164,10 +164,24 @@ onMounted(() => {
           <span class="visually-hidden">Icon-only</span>
         </router-link>
         <div
-          class="d-flex flex-row group-switcher justify-content-between mt-5 mb-2"
+          class="
+            d-flex
+            flex-row
+            group-switcher
+            justify-content-between
+            mt-5
+            mb-2
+          "
         >
           <button
-            class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
+            class="
+              btn btn-light
+              current-group
+              d-flex
+              flex-fill
+              me-1
+              align-items-center
+            "
             v-if="userHasMultipleGroups"
             @click="showSwitchGroup.visible = true"
           >

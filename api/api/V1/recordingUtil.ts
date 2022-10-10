@@ -199,27 +199,34 @@ export async function tryToMatchRecordingToStation(
   return null;
 }
 
-async function getThumbnail(rec: Recording,trackId?:number) {
- let  thumbKey: string;
- if(trackId){
-    thumbKey  =`${rec.rawFileKey}-${trackId}-thumb`;
- }else{
-  if (rec.Tracks.length > 0){
-    // choose best track based of visit tag and highest score
-    const recVisit = new Visit(rec,0);
-    const commonTag = recVisit.mostCommonTag()
-    const trackIds = recVisit.events.filter((event) => event.trackTag.what == commonTag.what).map((event) => event.trackID);
-    const bestTracks = rec.Tracks.filter((track) => trackIds.includes(track.id));
+async function getThumbnail(rec: Recording, trackId?: number) {
+  let thumbKey: string;
+  if (trackId) {
+    thumbKey = `${rec.rawFileKey}-${trackId}-thumb`;
+  } else {
+    if (rec.Tracks.length > 0) {
+      // choose best track based of visit tag and highest score
+      const recVisit = new Visit(rec, 0);
+      const commonTag = recVisit.mostCommonTag();
+      const trackIds = recVisit.events
+        .filter((event) => event.trackTag.what == commonTag.what)
+        .map((event) => event.trackID);
+      const bestTracks = rec.Tracks.filter((track) =>
+        trackIds.includes(track.id)
+      );
 
-    // sort by area
-    bestTracks.sort(function (a, b) {
-      return a.data.thumbnail.width *a.data.thumbnail.height >   b.data.thumbnail.width *b.data.thumbnail.height ? 1 : -1
-    })
-    thumbKey  =`${rec.rawFileKey}-${ bestTracks[0].id}-thumb`;
-  }else{
-    thumbKey  =`${rec.rawFileKey}-thumb`;
+      // sort by area
+      bestTracks.sort(function (a, b) {
+        return a.data.thumbnail.width * a.data.thumbnail.height >
+          b.data.thumbnail.width * b.data.thumbnail.height
+          ? 1
+          : -1;
+      });
+      thumbKey = `${rec.rawFileKey}-${bestTracks[0].id}-thumb`;
+    } else {
+      thumbKey = `${rec.rawFileKey}-thumb`;
+    }
   }
-}
 
   const s3 = modelsUtil.openS3();
   if (thumbKey.startsWith("a_")) {
@@ -266,7 +273,7 @@ async function getCPTVFrames(
   }
   let finished = false;
   let currentFrame = 0;
-  let frames ={};
+  const frames = {};
   let frame;
   log.info(`Extracting  ${frameNumbers.size} frames for thumbnails `);
   while (!finished) {
@@ -276,11 +283,11 @@ async function getCPTVFrames(
       continue;
     }
     finished = frame === null || (await decoder.getTotalFrames()) !== null;
-    if( frameNumbers.has(currentFrame)){
-        frameNumbers.delete(currentFrame);
-        frames[currentFrame] = frame;
+    if (frameNumbers.has(currentFrame)) {
+      frameNumbers.delete(currentFrame);
+      frames[currentFrame] = frame;
     }
-    if (frameNumbers.size == 0){
+    if (frameNumbers.size == 0) {
       break;
     }
     currentFrame++;
@@ -295,43 +302,54 @@ async function saveThumbnailInfo(
   tracks: Track[],
   clip_thumbnail: TrackFramePosition
 ): Promise<ManagedUpload.SendData[] | Error[]> {
-  let frameNumbers = new Set<number>(tracks.map((track) => track.data.thumbnail.region.frame_number));
-  if(clip_thumbnail){
-    frameNumbers.add(clip_thumbnail.frame_number)
+  const frameNumbers = new Set<number>(
+    tracks.map((track) => track.data.thumbnail.region.frame_number)
+  );
+  if (clip_thumbnail) {
+    frameNumbers.add(clip_thumbnail.frame_number);
   }
-  if (frameNumbers.size ==0){
-    log.warn("No thumbnails to be made for %d", recording.id)
+  if (frameNumbers.size == 0) {
+    log.warn("No thumbnails to be made for %d", recording.id);
     return;
   }
   const frames = await getCPTVFrames(recording, frameNumbers);
-  const frameUploads = []
-  for(const track of tracks){
-    let frame = frames[track.data.thumbnail.region.frame_number]
+  const frameUploads = [];
+  for (const track of tracks) {
+    const frame = frames[track.data.thumbnail.region.frame_number];
     if (!frame) {
-      frameUploads.push(Error(`Failed to extract CPTV frame for track ${track.id}, frame  ${track.data.thumbnail.region.frame_number}`));
+      frameUploads.push(
+        Error(
+          `Failed to extract CPTV frame for track ${track.id}, frame  ${track.data.thumbnail.region.frame_number}`
+        )
+      );
       continue;
     }
     const thumb = await createThumbnail(frame, track.data.thumbnail.region);
-    frameUploads.push(await modelsUtil
-      .openS3()
-      .upload({
-        Key: `${recording.rawFileKey}-${track.id}-thumb`,
-        Body: thumb.data,
-        Metadata: thumb.meta,
-      })
-      .promise()
-      .catch((err) => {
-        return err;
-      }));
-    }
+    frameUploads.push(
+      await modelsUtil
+        .openS3()
+        .upload({
+          Key: `${recording.rawFileKey}-${track.id}-thumb`,
+          Body: thumb.data,
+          Metadata: thumb.meta,
+        })
+        .promise()
+        .catch((err) => {
+          return err;
+        })
+    );
+  }
 
-    if(clip_thumbnail){
-      let frame = frames[clip_thumbnail.frame_number]
-      if (!frame) {
-        frameUploads.push(Error(`Failed to extract CPTV frame ${clip_thumbnail.frame_number}`));
-      }
-      const thumb = await createThumbnail(frame, clip_thumbnail);
-      frameUploads.push(await modelsUtil
+  if (clip_thumbnail) {
+    const frame = frames[clip_thumbnail.frame_number];
+    if (!frame) {
+      frameUploads.push(
+        Error(`Failed to extract CPTV frame ${clip_thumbnail.frame_number}`)
+      );
+    }
+    const thumb = await createThumbnail(frame, clip_thumbnail);
+    frameUploads.push(
+      await modelsUtil
         .openS3()
         .upload({
           Key: `${recording.rawFileKey}-thumb`,
@@ -341,52 +359,62 @@ async function saveThumbnailInfo(
         .promise()
         .catch((err) => {
           return err;
-        }));
-    }
-    return Promise.all(frameUploads);
+        })
+    );
+  }
+  return Promise.all(frameUploads);
 }
 
-function squareRegion(thumbnail: TrackFramePosition,resX:number, resY:number){
+function squareRegion(
+  thumbnail: TrackFramePosition,
+  resX: number,
+  resY: number
+) {
   //  make a square
-  if(thumbnail.width < thumbnail.height){
-    const diff =  thumbnail.height - thumbnail.width
-    const squarePadding = Math.ceil(diff /2);
+  if (thumbnail.width < thumbnail.height) {
+    const diff = thumbnail.height - thumbnail.width;
+    const squarePadding = Math.ceil(diff / 2);
 
-    thumbnail.x -= squarePadding
-    thumbnail.width = thumbnail.height
+    thumbnail.x -= squarePadding;
+    thumbnail.width = thumbnail.height;
     thumbnail.x = Math.max(0, thumbnail.x);
     if (thumbnail.x + thumbnail.width > resX) {
-      thumbnail.x   = resX - thumbnail.width;
+      thumbnail.x = resX - thumbnail.width;
     }
-  }else if(thumbnail.width > thumbnail.height){
-    const diff = thumbnail.width - thumbnail.height
-    const squarePadding = Math.ceil(diff /2);
-    thumbnail.y -= squarePadding
-    thumbnail.height = thumbnail.width
+  } else if (thumbnail.width > thumbnail.height) {
+    const diff = thumbnail.width - thumbnail.height;
+    const squarePadding = Math.ceil(diff / 2);
+    thumbnail.y -= squarePadding;
+    thumbnail.height = thumbnail.width;
     thumbnail.y = Math.max(0, thumbnail.y);
     if (thumbnail.y + thumbnail.height > resY) {
-      thumbnail.y   = resY - thumbnail.height;
+      thumbnail.y = resY - thumbnail.height;
     }
   }
   return thumbnail;
 }
 
-function padRegion(thumbnail: TrackFramePosition,padding:number, resX:number, resY:number){
-  thumbnail.x -= padding
-  thumbnail.width += padding *2
-  thumbnail.y -= padding
-  thumbnail.height += padding *2
+function padRegion(
+  thumbnail: TrackFramePosition,
+  padding: number,
+  resX: number,
+  resY: number
+) {
+  thumbnail.x -= padding;
+  thumbnail.width += padding * 2;
+  thumbnail.y -= padding;
+  thumbnail.height += padding * 2;
 
   thumbnail.x = Math.max(0, thumbnail.x);
   if (thumbnail.x + thumbnail.width > resX) {
-    thumbnail.width  -= (thumbnail.width + thumbnail.x) - resX;
+    thumbnail.width -= thumbnail.width + thumbnail.x - resX;
   }
 
   thumbnail.y = Math.max(0, thumbnail.y);
   if (thumbnail.y + thumbnail.height > resY) {
-    thumbnail.height  -= (thumbnail.height + thumbnail.x) - resY;
+    thumbnail.height -= thumbnail.height + thumbnail.x - resY;
   }
-  return thumbnail
+  return thumbnail;
 }
 
 // Create a png thumbnail image  from this frame with thumbnail info
@@ -410,7 +438,7 @@ async function createThumbnail(
   const size = Math.max(thumbnail.height, thumbnail.width);
   const thumbnailData = new Uint8Array(size * size);
   // thumbnail = padRegion(thumbnail,padding, resX,resY)
-  thumbnail = squareRegion(thumbnail,resX,resY)
+  thumbnail = squareRegion(thumbnail, resX, resY);
   // get min max for normalisation
   let min = 1 << 16;
   let max = 0;
@@ -1866,9 +1894,11 @@ async function sendAlerts(recId: RecordingId) {
   );
 
   if (alerts.length > 0) {
-    const thumbnail = await getThumbnail(recording,matchedTrack.id).catch(() => {
-      log.warning("Alerting without thumbnail for %d", recId);
-    });
+    const thumbnail = await getThumbnail(recording, matchedTrack.id).catch(
+      () => {
+        log.warning("Alerting without thumbnail for %d", recId);
+      }
+    );
     for (const alert of alerts) {
       await alert.sendAlert(
         recording,

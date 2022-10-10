@@ -299,14 +299,14 @@ export default function (app: Application) {
         }
         await recording.save();
 
-        if (  complete ){
-          const tracks = await recording.getTracks()
-            const results = await recordingUtil.saveThumbnailInfo(
+        if (complete) {
+          const tracks = await recording.getTracks();
+          const results = await recordingUtil.saveThumbnailInfo(
             recording,
             tracks,
             recording.additionalMetadata["thumbnail_region"]
           );
-          for(const result of results){
+          for (const result of results) {
             if (result instanceof Error) {
               log.warning(
                 "Failed to upload thumbnail for %s",
