@@ -365,6 +365,7 @@ async function saveThumbnailInfo(
   return Promise.all(frameUploads);
 }
 
+//expands the smallest dimension of the region so that it is a square that fits inside resX and resY
 function squareRegion(
   thumbnail: TrackFramePosition,
   resX: number,
@@ -394,6 +395,7 @@ function squareRegion(
   return thumbnail;
 }
 
+//pad a region such that it still fits in resX and resY (Not used at the moment)
 function padRegion(
   thumbnail: TrackFramePosition,
   padding: number,
@@ -418,8 +420,8 @@ function padRegion(
 }
 
 // Create a png thumbnail image  from this frame with thumbnail info
-// Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
-// width and height
+// Expand the thumbnail region such that it is a square
+// Resize to THUMBNAIL_MIN_SIZE
 //render the png in THUMBNAIL_PALETTE
 //returns {data: buffer, meta: metadata about image}
 async function createThumbnail(
@@ -1896,7 +1898,11 @@ async function sendAlerts(recId: RecordingId) {
   if (alerts.length > 0) {
     const thumbnail = await getThumbnail(recording, matchedTrack.id).catch(
       () => {
-        log.warning("Alerting without thumbnail for %d", recId);
+        log.warning(
+          "Alerting without thumbnail for %d and track %d",
+          recId,
+          matchedTrack.id
+        );
       }
     );
     for (const alert of alerts) {

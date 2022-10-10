@@ -1096,14 +1096,16 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
       const mimeType = "image/png";
-      const filename = `${rec.id}-thumb.png`;
-
       if (!rec.rawFileKey) {
         return next(new ClientError("Rec has no raw file key."));
       }
       let trackId;
+      let filename;
       if (request.query.trackId) {
         trackId = request.query.trackId as unknown as number;
+        filename = `${rec.id}-${trackId}-thumb.png`;
+      } else {
+        filename = `${rec.id}-thumb.png`;
       }
       recordingUtil
         .getThumbnail(rec, trackId)
