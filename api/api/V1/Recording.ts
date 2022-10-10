@@ -1075,7 +1075,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id//thumbnail
+   * @api {get} /api/v1/recordings/:id/thumbnail
    * Gets a thumbnail png for this recording
    * @apiName RecordingThumbnail
    * @apiGroup Recordings
