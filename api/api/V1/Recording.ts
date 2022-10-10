@@ -697,6 +697,8 @@ export default (app: Application, baseUrl: string) => {
       const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
       const { tagMode, limit, offset, type, hideFiltered, exclusive } =
         request.query;
+      const parsedLimit = limit ? parseInt(limit as string) : 1000;
+      const limitInt = Math.min(parsedLimit, 1000);
 
       try {
         const values = await recordingUtil.bulkDelete(
@@ -708,7 +710,7 @@ export default (app: Application, baseUrl: string) => {
             tags,
             order,
             tagMode: tagMode as TagMode,
-            limit: limit && parseInt(limit as string),
+            limit: limitInt,
             offset: offset && parseInt(offset as string),
             hideFiltered: hideFiltered ? true : false,
             exclusive: exclusive ? true : false,

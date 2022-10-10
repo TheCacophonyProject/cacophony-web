@@ -31,8 +31,9 @@
         hide-backdrop
       >
         <p class="text-center">
-          Are you sure you want to delete {{ recordingCount }} recordings for
-          this query?
+          Are you sure you want to delete <br />
+          {{ recordingCount > 1000 ? "1000 of the " : ""
+          }}{{ recordingCount }} recordings found for this query?
         </p>
         <b-button
           class="mt-3"

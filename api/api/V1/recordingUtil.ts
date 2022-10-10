@@ -931,23 +931,28 @@ async function bulkDelete(
   requestUserId: UserId,
   type: RecordingType,
   options: RecordingQueryOptions
-) {
+): Promise<number[]> {
   if (type && typeof options.where === "object") {
     options.where = { ...options.where, type };
   }
 
-  const builder = new models.Recording.queryBuilder().init(requestUserId, {
-    ...options,
-    includeAttributes: false,
-  });
+  const builder = new models.Recording.queryBuilder().init(
+    requestUserId,
+    options
+  );
 
+  const values = await models.Recording.findAll<Recording>(builder.get());
+  if (values.length === 0) {
+    throw new Error("No recordings found to delete");
+  }
   const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
-  const ids = (await models.Recording.update(deletion, {
-    ...(builder.get() as UpdateOptions),
+  const ids = values.map((value) => value.id);
+  const deletedValues = (await models.Recording.update(deletion, {
+    where: { id: ids },
     returning: ["id"],
-  })) as unknown as [number, { id: RecordingId }[]];
-  if (ids[1]) {
-    return ids[1].map((r) => r.id);
+  })) as unknown as Promise<[number, { id: number }[]]>;
+  if (deletedValues[1]) {
+    return deletedValues[1].map((value) => value.id);
   }
   return [];
 }
