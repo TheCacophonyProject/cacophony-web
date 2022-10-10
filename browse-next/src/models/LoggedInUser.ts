@@ -318,7 +318,7 @@ export const shouldViewAsSuperUser = computed<boolean>(() => {
   return false;
 });
 
-// TODO - If viewing other user as super user, return appropriate naem
+// TODO - If viewing other user as super user, return appropriate name
 export const userDisplayName = computed<string>(() => {
   if (userIsLoggedIn.value) {
     return CurrentUser.value?.userName || "";
@@ -359,9 +359,16 @@ const windowDimensions = useWindowSize();
 export const isWideScreen = computed<boolean>(() => {
   return windowDimensions.width.value > 1650;
 });
+export const isSmallScreen = computed<boolean>(() => {
+  return windowDimensions.width.value < 576;
+});
 
 export const sideNavIsPinned = computed<boolean>(() => {
   return pinSideNav.value || isWideScreen.value;
+});
+
+export const showSideNavBg = computed<boolean>(() => {
+  return pinSideNav.value && isSmallScreen.value;
 });
 
 export const rafFps = ref(60);

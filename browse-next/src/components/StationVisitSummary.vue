@@ -66,7 +66,7 @@ const speciesSummary = computed<[string, number][]>(() =>
 </script>
 
 <template>
-  <div class="station-visit-summary">
+  <div class="station-visit-summary mb-3 mb-sm-0">
     <div class="map-container">
       <map-with-points
         :highlighted-point="() => ref(null)"
@@ -81,18 +81,23 @@ const speciesSummary = computed<[string, number][]>(() =>
       >
       </map-with-points>
       <div class="overlay me-1">
-        <div class="station-name mb-1 px-1 fs-6">{{ station.name }}</div>
-        <div class="visit-count px-1 fs-6">{{ visitCount }} visits</div>
+        <div class="station-name mb-1 p-1 px-sm-1 py-sm-0">
+          {{ station.name }}
+        </div>
+        <div class="visit-count p-1 px-sm-1 py-sm-0">
+          {{ visitCount }} visits
+        </div>
       </div>
     </div>
     <div class="visit-species-breakdown d-flex justify-content-between">
       <div class="names my-2">
         <div
-          v-for="([species, _], index) in speciesSummary"
+          v-for="([species, count], index) in speciesSummary"
           :class="['species-count', 'ps-1']"
           :key="index"
         >
-          {{ species }}
+          <strong class="me-1">{{ count }}</strong
+          >{{ species }}
         </div>
       </div>
       <div class="values flex-fill px-2 my-2">
@@ -112,6 +117,8 @@ const speciesSummary = computed<[string, number][]>(() =>
 </template>
 
 <style scoped lang="less">
+@import "../assets/font-sizes.less";
+
 .map {
   height: 150px;
 }
@@ -122,17 +129,28 @@ const speciesSummary = computed<[string, number][]>(() =>
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
   margin-bottom: 2px;
   min-width: 295px;
-  &:not(:first-child) {
-    margin-left: 19px;
+  @media screen and (min-width: 576px) {
+    &:not(:first-child) {
+      margin-left: 19px;
+    }
   }
 }
 .visit-species-breakdown {
   .species-count {
     margin-left: 8px;
+    height: 24px;
+    line-height: 24px;
+  }
+  .names {
+    .fs-7();
+    @media screen and (min-width: 576px) {
+      font-size: unset;
+    }
   }
   .species-value {
     position: relative;
     height: 24px;
+
     &::before {
       position: absolute;
       content: " ";
@@ -177,9 +195,20 @@ const speciesSummary = computed<[string, number][]>(() =>
   .station-name {
     display: block;
     color: #016e9d;
+    font-weight: 500;
+    .fs-7();
   }
   .visit-count {
     display: inline-block;
+    .fs-7();
+  }
+
+  @media screen and (min-width: 576px) {
+    .visit-count,
+    .station-name {
+      .fs-6();
+      font-weight: unset;
+    }
   }
 }
 </style>

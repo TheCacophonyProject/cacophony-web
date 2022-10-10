@@ -22,8 +22,10 @@ import {
   urlNormalisedCurrentGroupName,
   rafFps,
   pinSideNav,
+  showSideNavBg,
   isWideScreen,
   sideNavIsPinned,
+  isSmallScreen,
 } from "@/models/LoggedInUser";
 import type { SelectedGroup, LoggedInUser } from "@/models/LoggedInUser";
 import {
@@ -32,10 +34,13 @@ import {
   onBeforeMount,
   onMounted,
   ref,
+  watch,
 } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
 import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
+
+const globalSideNav = ref<HTMLDivElement>();
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
@@ -102,9 +107,27 @@ const pollFrameTimes = () => {
   }
 };
 
+const hideNavBg = ref<boolean>(true);
+
+watch(pinSideNav, (next) => {
+  if (!next && isSmallScreen.value) {
+    setTimeout(() => {
+      hideNavBg.value = true;
+    }, 300);
+  } else if (next && isSmallScreen.value) {
+    hideNavBg.value = false;
+  }
+});
+
 onMounted(() => {
   // Wait a second so that we know rendering has settled down, then try to work out the display refresh rate.
   setTimeout(pollFrameTimes, 1000);
+  window.addEventListener("click", (e: MouseEvent) => {
+    const navBounds = globalSideNav.value?.getBoundingClientRect();
+    if (navBounds && e.clientX > navBounds?.right && pinSideNav.value) {
+      pinSideNav.value = false;
+    }
+  });
 });
 </script>
 <template>
@@ -138,6 +161,7 @@ onMounted(() => {
   >
     <nav
       id="global-side-nav"
+      ref="globalSideNav"
       :class="[
         'd-flex',
         'flex-column',
@@ -410,6 +434,10 @@ onMounted(() => {
         </router-link>
       </div>
     </nav>
+    <div
+      class="nav-bg"
+      :class="{ visible: showSideNavBg, hidden: hideNavBg }"
+    ></div>
     <section id="main-content" :class="{ 'offset-content': isWideScreen }">
       <div class="container-xxl py-0">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
@@ -470,54 +498,23 @@ onMounted(() => {
   --bs-btn-active-border-color: transparent;
 }
 
-.fs-1 {
-  font-size: calc(var(--bs-body-font-size) * 2.5);
-}
-.fs-2 {
-  font-size: calc(var(--bs-body-font-size) * 2);
-}
-.fs-3 {
-  font-size: calc(var(--bs-body-font-size) * 1.75);
-}
-.fs-4 {
-  font-size: calc(var(--bs-body-font-size) * 1.5);
-}
-.fs-5 {
-  font-size: calc(var(--bs-body-font-size) * 1.25);
-}
-.fs-6 {
-  font-size: calc(var(--bs-body-font-size) * 1);
-}
-.fw-bold {
-  font-weight: 500 !important;
-}
-//.fs-7 {
-//  font-size: calc(var(--bs-body-font-size) * 0.9375); // 14px
-//}
-.fs-7 {
-  font-size: calc(var(--bs-body-font-size) * 0.8125); // 13px
-}
-.fs-8 {
-  font-size: calc(var(--bs-body-font-size) * 0.75); // 12px
-}
-.fs-9 {
-  font-size: calc(var(--bs-body-font-size) * 0.625); // 10px
-}
+@import "./assets/font-sizes.less";
 </style>
 
 <style lang="less" scoped>
+@global-side-nav-collapsed-width: 3.5rem;
+@global-side-nav-expanded-width: 20rem;
 #main-wrapper {
   position: relative;
   @media (min-width: 576px) {
-    padding-left: 3.5rem;
+    padding-left: @global-side-nav-collapsed-width;
   }
   max-height: 100vh;
   &.has-git-info-bar {
     max-height: calc(100vh - 24px);
   }
 }
-@global-side-nav-collapsed-width: 3.5rem;
-@global-side-nav-expanded-width: 20rem;
+
 #main-content {
   background: #f6f6f6;
   width: 100%;
@@ -529,7 +526,24 @@ onMounted(() => {
     );
   }
 }
-
+.nav-bg {
+  opacity: 0;
+  transition: opacity 0.2s;
+  &.hidden {
+    display: none;
+  }
+  &.visible {
+    background: rgba(0, 0, 0, 0.5);
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+    opacity: 1;
+    display: block;
+  }
+}
 #global-side-nav {
   transform: translateX(-@global-side-nav-expanded-width);
   @media (min-width: 576px) {
@@ -543,7 +557,7 @@ onMounted(() => {
   left: 0;
   width: @global-side-nav-collapsed-width;
   overflow: hidden;
-  transition: width 0.2s;
+  transition: width 0.2s, transform 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
   z-index: 1002;
 
@@ -628,7 +642,6 @@ onMounted(() => {
   }
 
   // Expanded menu state
-  &:hover,
   &.pinned {
     transform: translateX(0);
     width: @global-side-nav-expanded-width;
@@ -636,6 +649,20 @@ onMounted(() => {
       background-color: #fafafa;
       .group-switcher {
         opacity: 1;
+      }
+    }
+  }
+
+  @media screen and (min-width: 576px) {
+    &:hover,
+    &.pinned {
+      transform: translateX(0);
+      width: @global-side-nav-expanded-width;
+      .nav-top {
+        background-color: #fafafa;
+        .group-switcher {
+          opacity: 1;
+        }
       }
     }
   }

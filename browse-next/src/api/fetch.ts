@@ -195,7 +195,8 @@ export async function fetch<T>(
       success: false,
     };
   }
-  if (response.status === 401) {
+  if (response.status === HttpStatusCode.AuthorizationError) {
+    debugger;
     forgetUserOnCurrentDevice();
     return {
       result: {
