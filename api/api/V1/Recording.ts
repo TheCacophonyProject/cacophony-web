@@ -1075,16 +1075,14 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id/thumbnail
+   * @api {get} /api/v1/recordings/:id//thumbnail
    * Gets a thumbnail png for this recording
    * @apiName RecordingThumbnail
    * @apiGroup Recordings
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
    *
    * @apiParam {Integer} id Id of the recording to get the thumbnail for.
-   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
-   * recordings.
-   *
+   * @apiParam {Integer} Optional trackId of recording to get thumbnail of.
    * @apiSuccess {file} file Raw data stream of the png.
    * @apiUse V1ResponseError
    */
@@ -1092,7 +1090,7 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/thumbnail`,
     validateFields([
       idOf(param("id")),
-      query("deleted").default(false).isBoolean().toBoolean(),
+      query("trackId").optional().isInt().toInt(),
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -1103,9 +1101,12 @@ export default (app: Application, baseUrl: string) => {
       if (!rec.rawFileKey) {
         return next(new ClientError("Rec has no raw file key."));
       }
-
+      let trackId;
+      if (request.query.trackId){
+        trackId  = request.query.trackId as unknown as number ;
+      }
       recordingUtil
-        .getThumbnail(rec)
+        .getThumbnail(rec, trackId)
         .then((data) => {
           response.setHeader(
             "Content-disposition",

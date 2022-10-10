@@ -299,22 +299,21 @@ export default function (app: Application) {
         }
         await recording.save();
 
-        if (
-          complete &&
-          recording.additionalMetadata &&
-          "thumbnail_region" in recording.additionalMetadata
-        ) {
-          const region = recording.additionalMetadata["thumbnail_region"];
-          const result = await recordingUtil.saveThumbnailInfo(
+        if (  complete ){
+          const tracks = await recording.getTracks()
+            const results = await recordingUtil.saveThumbnailInfo(
             recording,
-            region
+            tracks,
+            recording.additionalMetadata["thumbnail_region"]
           );
-          if (!result.hasOwnProperty("Key")) {
-            log.warning(
-              "Failed to upload thumbnail for %s",
-              `${recording.rawFileKey}-thumb`
-            );
-            log.error("Reason: %s", (result as Error).message);
+          for(const result of results){
+            if (result instanceof Error) {
+              log.warning(
+                "Failed to upload thumbnail for %s",
+                `${recording.rawFileKey}-thumb`
+              );
+              log.error("Reason: %s", result.message);
+            }
           }
         }
         const twentyFourHoursMs = 24 * 60 * 60 * 1000;

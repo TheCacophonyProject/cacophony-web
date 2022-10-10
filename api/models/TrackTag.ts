@@ -42,7 +42,7 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   UserId: UserId;
   User: User;
   confidence: number;
-  data: string | TrackTagData;
+  data:  string | TrackTagData;
   archivedAt: Date;
   createdAt: Date;
   updatedAt: Date;

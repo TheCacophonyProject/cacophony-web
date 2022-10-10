@@ -12,7 +12,7 @@ All tracks of a recording always belong to the same visit
 // FIXME - This file seems to be in the wrong place - this folder is full of API endpoints...
 
 import { Recording } from "@models/Recording";
-import { TrackTag } from "@models/TrackTag";
+import { TrackTag,TrackTagData } from "@models/TrackTag";
 import { Track } from "@models/Track";
 import { AI_MASTER } from "@models/TrackTag";
 import moment, { Moment } from "moment";
@@ -73,7 +73,7 @@ export function getCanonicalTrackTag(
     };
     return conflict as TrackTag;
   }
-  const masterTag = trackTags.filter((tag) => tag.data === AI_MASTER);
+  const masterTag = trackTags.filter((tag) => tag.data === AI_MASTER || (tag.data as TrackTagData).name == AI_MASTER);
   return animalTags.shift() || manualTags.shift() || masterTag.shift();
 }
 
