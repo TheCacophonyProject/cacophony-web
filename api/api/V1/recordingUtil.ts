@@ -204,9 +204,10 @@ async function getThumbnail(rec: Recording, trackId?: number) {
   if (trackId) {
     thumbKey = `${rec.rawFileKey}-${trackId}-thumb`;
   } else {
-    if (rec.Tracks.length > 0) {
+    const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
+    if (thumbedTracks.length > 0) {
       // choose best track based of visit tag and highest score
-      const recVisit = new Visit(rec, 0);
+      const recVisit = new Visit(rec, 0, thumbedTracks);
       const commonTag = recVisit.mostCommonTag();
       const trackIds = recVisit.events
         .filter((event) => event.trackTag.what == commonTag.what)
@@ -302,19 +303,22 @@ async function saveThumbnailInfo(
   tracks: Track[],
   clip_thumbnail: TrackFramePosition
 ): Promise<ManagedUpload.SendData[] | Error[]> {
+  const thumbnailTracks = tracks.filter(
+    (track) => track.data?.thumbnail?.region
+  );
   const frameNumbers = new Set<number>(
-    tracks.map((track) => track.data.thumbnail.region.frame_number)
+    thumbnailTracks.map((track) => track.data.thumbnail?.region?.frame_number)
   );
   if (clip_thumbnail) {
     frameNumbers.add(clip_thumbnail.frame_number);
   }
   if (frameNumbers.size == 0) {
-    log.warn("No thumbnails to be made for %d", recording.id);
+    log.warning(`No thumbnails to be made for ${recording.id}`);
     return;
   }
   const frames = await getCPTVFrames(recording, frameNumbers);
   const frameUploads = [];
-  for (const track of tracks) {
+  for (const track of thumbnailTracks) {
     const frame = frames[track.data.thumbnail.region.frame_number];
     if (!frame) {
       frameUploads.push(
@@ -346,21 +350,23 @@ async function saveThumbnailInfo(
       frameUploads.push(
         Error(`Failed to extract CPTV frame ${clip_thumbnail.frame_number}`)
       );
+    } else {
+      const thumb = await createThumbnail(frame, clip_thumbnail);
+      console.log("saving", `${recording.rawFileKey}-thumb`, thumb);
+      frameUploads.push(
+        await modelsUtil
+          .openS3()
+          .upload({
+            Key: `${recording.rawFileKey}-thumb`,
+            Body: thumb.data,
+            Metadata: thumb.meta,
+          })
+          .promise()
+          .catch((err) => {
+            return err;
+          })
+      );
     }
-    const thumb = await createThumbnail(frame, clip_thumbnail);
-    frameUploads.push(
-      await modelsUtil
-        .openS3()
-        .upload({
-          Key: `${recording.rawFileKey}-thumb`,
-          Body: thumb.data,
-          Metadata: thumb.meta,
-        })
-        .promise()
-        .catch((err) => {
-          return err;
-        })
-    );
   }
   return Promise.all(frameUploads);
 }

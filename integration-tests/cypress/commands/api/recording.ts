@@ -547,11 +547,15 @@ Cypress.Commands.add(
     userName: string,
     recordingNameOrId: string,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
+    trackName?: string
   ) => {
-    logTestDescription(`Check thumbnail for recording ${recordingNameOrId} `, {
-      recordingName: recordingNameOrId,
-    });
+    logTestDescription(
+      `Check thumbnail for recording ${recordingNameOrId} and trackId ${trackName}`,
+      {
+        recordingName: recordingNameOrId,
+      }
+    );
 
     let recordingId: string;
     if (additionalChecks["useRawRecordingId"] === true) {
@@ -559,7 +563,12 @@ Cypress.Commands.add(
     } else {
       recordingId = getCreds(recordingNameOrId).id.toString();
     }
-    const url = v1ApiPath(`recordings/${recordingId}/thumbnail`);
+
+    let url = v1ApiPath(`recordings/${recordingId}/thumbnail`);
+    if (trackName) {
+      const trackId = getCreds(trackName).id.toString();
+      url = `${url}/?trackId=${trackId}`;
+    }
 
     makeAuthorizedRequestWithStatus(
       {

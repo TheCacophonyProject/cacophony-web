@@ -306,13 +306,15 @@ export default function (app: Application) {
             tracks,
             recording.additionalMetadata["thumbnail_region"]
           );
-          for (const result of results) {
-            if (result instanceof Error) {
-              log.warning(
-                "Failed to upload thumbnail for %s",
-                `${recording.rawFileKey}-thumb`
-              );
-              log.error("Reason: %s", result.message);
+          if (results) {
+            for (const result of results) {
+              if (result instanceof Error) {
+                log.warning(
+                  "Failed to upload thumbnail for %s",
+                  `${recording.rawFileKey}-thumb`
+                );
+                log.error("Reason: %s", result.message);
+              }
             }
           }
         }
