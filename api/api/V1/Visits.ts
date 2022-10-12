@@ -73,9 +73,10 @@ export function getCanonicalTrackTag(
     };
     return conflict as TrackTag;
   }
-  const masterTag = trackTags.filter(
-    (tag) =>
-      tag.data === AI_MASTER || (tag.data as TrackTagData).name == AI_MASTER
+  const masterTag = trackTags.filter((tag) =>
+    typeof tag.data === "string"
+      ? tag.data === AI_MASTER
+      : (tag.data as any)?.name == AI_MASTER
   );
   return animalTags.shift() || manualTags.shift() || masterTag.shift();
 }

@@ -1083,6 +1083,8 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiParam {Integer} id Id of the recording to get the thumbnail for.
    * @apiParam {Integer} Optional trackId of recording to get thumbnail of.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
+   * recordings.
    * @apiSuccess {file} file Raw data stream of the png.
    * @apiUse V1ResponseError
    */
@@ -1091,6 +1093,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       query("trackId").optional().isInt().toInt(),
+      query("deleted").default(false).isBoolean().toBoolean(),
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
