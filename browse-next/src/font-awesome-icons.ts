@@ -55,6 +55,7 @@ import {
   faThumbsUp as faThumbsUpSolid,
   faThumbsDown as faThumbsDownSolid,
   faCheckCircle,
+  faAngleDoubleRight,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -126,7 +127,8 @@ library.add(
   faThumbsUpSolid,
   faThumbsDown,
   faThumbsDownSolid,
-  faCheckCircle
+  faCheckCircle,
+  faAngleDoubleRight
 );
 
 export default FontAwesomeIcon;

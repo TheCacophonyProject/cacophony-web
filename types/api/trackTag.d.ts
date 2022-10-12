@@ -46,12 +46,11 @@ export interface ApiAutomaticTrackTagResponse extends ApiTrackTagResponse {
 
 export type Classification = {
   label: string;
-  path: string;
+  display?: string;
   children?: Classification[];
 };
 export interface ApiClassificationResponse {
   label: "root";
   version: number;
-  path: string;
   children: Classification[];
 }

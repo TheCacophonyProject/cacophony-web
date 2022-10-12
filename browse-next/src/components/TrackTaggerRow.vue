@@ -8,6 +8,7 @@ import type {
 } from "@typedefs/api/trackTag";
 import { computed } from "vue";
 import { CurrentUser } from "@models/LoggedInUser";
+import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
@@ -152,6 +153,7 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
       </button>
     </div>
   </div>
+  <hierarchical-tag-select :multiselect="false" />
 </template>
 <style scoped lang="less">
 .track-number {

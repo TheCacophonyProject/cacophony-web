@@ -86,6 +86,17 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         timeStart: sunset.toISOString(),
         date: sunset,
       } as SunEventItem);
+    } else {
+      // startTime is after midnight, so use the sunset from the previous day.
+      const prevDay = new Date(startTime);
+      prevDay.setDate(prevDay.getDate() - 1);
+      const { sunset } = sunCalc.getTimes(prevDay, location.lat, location.lng);
+      events.push({
+        type: "sun",
+        name: `Sunset`,
+        timeStart: sunset.toISOString(),
+        date: sunset,
+      } as SunEventItem);
     }
   }
   {
@@ -246,7 +257,9 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         ]"
         @click="selectedVisit(visit)"
       >
-        <div class="visit-time-duration d-flex flex-column py-2 pe-3">
+        <div
+          class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
+        >
           <span class="pb-1">{{ visitTime(visit.timeStart) }}</span>
           <span
             class="duration fs-8"
@@ -325,7 +338,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
                 />
               </span>
             </div>
-            <span
+            <span class="visit-station-name"
               ><font-awesome-icon
                 icon="map-marker-alt"
                 size="xs"
@@ -421,6 +434,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
     }
   }
   .visit-thumb {
+    min-width: 45px;
     width: 45px;
     height: 45px;
     overflow: hidden;

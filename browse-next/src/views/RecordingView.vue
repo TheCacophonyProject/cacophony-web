@@ -32,6 +32,10 @@ import { truncateLongStationNames } from "@/utils";
 import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
+import { useMediaQuery } from "@vueuse/core";
+import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
+import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
+import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 const route = useRoute();
 const emit = defineEmits(["close"]);
 
@@ -272,7 +276,7 @@ interface RecordingData {
 
 const recordingData = ref<RecordingData | null>(null);
 
-const _recordingIsLoading = computed(() => recordingData.value === null);
+const recordingIsLoading = computed(() => recordingData.value === null);
 
 const loadRecording = async () => {
   recordingData.value = null;
@@ -421,21 +425,28 @@ const activeTabName = computed(() => {
   return route.name;
 });
 
+const mobile = useMediaQuery("min-width: 576px");
+const isMobileView = computed<boolean>(() => {
+  return !mobile.value;
+});
+
 const recordingViewContext = "dashboard-visit";
 </script>
 <template>
   <div class="recording-view">
     <header
-      class="recording-view-header d-flex justify-content-between px-3 py-1"
+      class="recording-view-header d-flex justify-content-between px-sm-3 px-2 py-sm-1"
     >
       <div v-if="isInVisitContext">
-        <span class="text-uppercase fs-8 fw-bold">Visit</span>
-        <div>
-          <span class="fs-5 fw-bold text-capitalize">{{ visitLabel }}</span>
+        <span class="recording-header-type text-uppercase fw-bold">Visit</span>
+        <div class="recording-header-details mb-1 mb-sm-0">
+          <span class="recording-header-label fw-bold text-capitalize">{{
+            visitLabel
+          }}</span>
           <span
             v-if="isInGreaterVisitContext"
             v-html="visitDurationString"
-            class="ms-3 fs-7"
+            class="ms-sm-3 ms-2 recording-header-time"
             style="color: #444"
           />
         </div>
@@ -458,7 +469,10 @@ const recordingViewContext = "dashboard-visit";
         />
       </div>
       <div class="recording-info d-flex flex-column flex-fill">
-        <div class="recording-station-info d-flex mb-3 pe-3">
+        <div
+          class="recording-station-info d-flex mb-3 pe-3"
+          v-if="!isMobileView"
+        >
           <map-with-points
             class="recording-location-map"
             :points="mapPointForRecording"
@@ -500,32 +514,14 @@ const recordingViewContext = "dashboard-visit";
                 <span v-html="recordingStartTime" />
               </div>
             </div>
-            <div
-              class="recording-icons d-flex justify-content-between mt-2 ps-2"
-            >
-              <button type="button" class="btn">
-                <font-awesome-icon icon="tag" color="#666" />
-              </button>
-              <button type="button" class="btn">
-                <font-awesome-icon :icon="['far', 'flag']" color="#666" />
-              </button>
-              <button type="button" class="btn">
-                <font-awesome-icon :icon="['far', 'star']" color="#666" />
-              </button>
-              <button type="button" class="btn">
-                <font-awesome-icon icon="download" color="#666" />
-              </button>
-              <button type="button" class="btn">
-                <font-awesome-icon icon="trash-can" color="#666" />
-              </button>
-              <button type="button" class="btn">
-                <font-awesome-icon icon="link" color="#666" />
-              </button>
-            </div>
+            <recording-view-action-buttons
+              :recording-ready="!recordingIsLoading"
+            />
           </div>
         </div>
         <ul
           class="nav nav-tabs justify-content-md-center justify-content-evenly"
+          v-if="!isMobileView"
         >
           <router-link
             :class="[
@@ -562,9 +558,17 @@ const recordingViewContext = "dashboard-visit";
           >
         </ul>
         <router-view
+          v-if="!isMobileView"
           :recording="recordingData?.recording"
           @trackTagChanged="recalculateCurrentVisit"
         />
+        <div v-else>
+          <recording-view-tracks
+            :recording="recordingData?.recording"
+            @trackTagChanged="recalculateCurrentVisit"
+          />
+          <recording-view-labels :recording="recordingData?.recording" />
+        </div>
       </div>
     </div>
     <footer class="recording-view-footer">
@@ -619,6 +623,10 @@ const recordingViewContext = "dashboard-visit";
             </svg>
           </span>
         </button>
+        <recording-view-action-buttons
+          v-if="isMobileView"
+          :recording-ready="!recordingIsLoading"
+        />
         <button
           type="button"
           class="btn d-flex align-items-center"
@@ -664,8 +672,35 @@ const recordingViewContext = "dashboard-visit";
 </template>
 
 <style scoped lang="less">
+@import "../assets/font-sizes.less";
 .recording-view-header {
   border-bottom: 2px solid #e1e1e1;
+  .recording-header-type {
+    .fs-8();
+  }
+  .recording-header-details {
+    line-height: 1;
+  }
+  .recording-header-label {
+    .fs-6();
+  }
+  .recording-header-time {
+    .fs-8();
+  }
+  @media screen and (min-width: 576px) {
+    .recording-header-type {
+      .fs-8();
+    }
+    .recording-header-details {
+      line-height: unset;
+    }
+    .recording-header-label {
+      .fs-5();
+    }
+    .recording-header-time {
+      .fs-7();
+    }
+  }
 }
 .recording-view-footer {
   background: white;
@@ -695,9 +730,7 @@ const recordingViewContext = "dashboard-visit";
 .recording-date-time {
   color: #444;
 }
-.recording-icons {
-  color: #666;
-}
+
 .nav-tabs {
   .nav-link:not(.active) {
     color: inherit;

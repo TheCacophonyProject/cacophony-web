@@ -42,6 +42,7 @@ import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
+import { delayMs } from "@/utils";
 
 const { pixelRatio } = useDevicePixelRatio();
 // eslint-disable-next-line vue/no-setup-props-destructure
@@ -79,6 +80,9 @@ watch(pixelRatio, () => {
 
   // If the pixel ratio changed, we might also be on a monitor with a different refresh rate now.
   polledFps.value = false;
+  while (frameTimes.length) {
+    frameTimes.pop();
+  }
   pollFrameTimes();
 });
 
@@ -161,9 +165,13 @@ const motionPaths = computed<MotionPath[]>(() => {
 const persistentBooleanPref = (
   key: string,
   propertyName: string,
-  forceReRender = false
+  forceReRender = false,
+  defaultValue = false
 ): Ref<boolean> => {
-  const variable = ref<boolean>(localStorage.getItem(key) === "true");
+  const initValue =
+    (localStorage.getItem(key) && localStorage.getItem(key) === "true") ||
+    defaultValue;
+  const variable = ref<boolean>(initValue);
   watch(variable, (nextVal: boolean) => {
     localStorage.setItem(key, nextVal.toString());
     setPlayerMessage(`${propertyName} ${nextVal ? "Enabled" : "Disabled"}`);
@@ -197,6 +205,7 @@ const trackHighlightMode = persistentBooleanPref(
 const videoSmoothing = persistentBooleanPref(
   "video-smoothing",
   "Smoothing",
+  true,
   true
 );
 
@@ -1157,7 +1166,8 @@ const frameTimes: number[] = [];
 const pollFrameTimes = () => {
   if (!polledFps.value) {
     frameTimes.push(performance.now());
-    if (frameTimes.length < 10) {
+    if (frameTimes.length < 20) {
+      // Safari iOS seems to take a a little while get up to speed with canvas rendering.
       requestAnimationFrame(pollFrameTimes);
     } else {
       const diffs = [];
@@ -1181,11 +1191,10 @@ const pollFrameTimes = () => {
         raqFps.value = 120;
       }
       polledFps.value = true;
+      // alert(`${1000 / (total / diffs.length) / 30}, ${multiplier}, ${raqFps.value}fps`);
     }
   }
 };
-pollFrameTimes();
-window.addEventListener("load", pollFrameTimes);
 
 onMounted(async () => {
   cptvDecoder = new CptvDecoder();
@@ -1210,6 +1219,7 @@ onMounted(async () => {
   }
 
   await loadNextRecording(recordingId);
+  pollFrameTimes();
 });
 
 const loadedNextRecordingData = async () => {
@@ -1284,7 +1294,11 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       canvas.value.width = header.value.width;
       canvas.value.height = header.value.height;
     }
-
+    while (!recording) {
+      // Wait for the recording data to be loaded if it's not,
+      // so that we can seek to the beginning of any track.
+      await delayMs(10);
+    }
     if (recording && recording.id === recordingId) {
       await loadedNextRecordingData();
       emit("ready-to-play", header.value);

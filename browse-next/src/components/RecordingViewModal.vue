@@ -44,7 +44,7 @@ watch(route, (next) => {
     @hidden="closedModal"
     body-class="p-0"
     content-class="recording-view-modal"
-    dialog-class="recording-view-dialog"
+    dialog-class="recording-view-dialog m-0 m-sm-auto modal-fullscreen-sm-down"
   >
     <router-view @close="show = false" />
   </b-modal>
