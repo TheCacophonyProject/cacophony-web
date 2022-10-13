@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
-import { setLoggedInUserData } from "@models/LoggedInUser";
+import {
+  setLoggedInUserCreds,
+  setLoggedInUserData,
+} from "@models/LoggedInUser";
 import { getEUAVersion, register as registerUser } from "@api/User";
 import { formFieldInputText, isValidName } from "@/utils";
 import type { ErrorResult, FieldValidationError } from "@api/types";
@@ -183,6 +186,8 @@ const register = async () => {
     const newUser = newUserResponse.result;
     setLoggedInUserData({
       ...newUser.userData,
+    });
+    setLoggedInUserCreds({
       refreshToken: newUser.refreshToken,
       apiToken: newUser.token,
       refreshingToken: false,

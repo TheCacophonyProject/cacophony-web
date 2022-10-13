@@ -5,23 +5,28 @@ import type {
 import type { Ref } from "vue";
 import type { ErrorResult, JwtTokenPayload } from "@api/types";
 import { computed, reactive, ref } from "vue";
-import { refreshLogin, login as userLogin, saveUserSettings } from "@api/User";
+import { login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
+import { maybeRefreshStaleCredentials } from "@api/fetch";
+import { useWindowSize } from "@vueuse/core";
 
-export interface LoggedInUser extends ApiLoggedInUserResponse {
+export interface LoggedInUserAuth {
   apiToken: string;
   refreshToken: string;
   refreshingToken: boolean;
 }
+
+export type LoggedInUser = ApiLoggedInUserResponse;
 
 export interface PendingRequest {
   requestPending: boolean;
   errors?: ErrorResult;
 }
 
+export const CurrentUserCreds: Ref<LoggedInUserAuth | null> = ref(null);
 export const CurrentUser: Ref<LoggedInUser | null> = ref(null);
 export const UserGroups: Ref<ApiGroupResponse[] | null> = ref(null);
 // TODO - Test opening a whole lot of tabs, print who wins the tokenRefresh race in the page title
@@ -38,6 +43,11 @@ export const userIsLoggedIn = computed<boolean>({
 export const userHasGroups = computed<boolean>(() => {
   return UserGroups.value !== null && UserGroups.value.length !== 0;
 });
+
+export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
+  CurrentUserCreds.value = reactive<LoggedInUserAuth>(creds);
+  persistCreds(CurrentUserCreds.value);
+};
 
 export const setLoggedInUserData = (user: LoggedInUser) => {
   let prevUserData = CurrentUser.value;
@@ -62,16 +72,9 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
       console.error("Shouldn't get malformed json errors here.", e);
     }
   }
-
   console.log("Setting logged in user data", user);
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
-  const apiToken = decodeJWT(CurrentUser.value?.apiToken) as JwtTokenPayload;
-  if (!CurrentUser.value?.refreshingToken) {
-    refreshCredentialsAtIn(
-      apiToken?.expiresAt.getTime() - new Date().getTime() - 5000
-    );
-  }
 };
 export const login = async (
   userEmailAddress: string,
@@ -86,6 +89,8 @@ export const login = async (
     const signedInUser = loggedInUserResponse.result;
     setLoggedInUserData({
       ...signedInUser.userData,
+    });
+    setLoggedInUserCreds({
       apiToken: signedInUser.token,
       refreshToken: signedInUser.refreshToken,
       refreshingToken: false,
@@ -99,20 +104,26 @@ export const login = async (
 export const persistUser = (currentUser: LoggedInUser) => {
   // NOTE: These credentials have already been validated.
   window.localStorage.setItem(
-    "saved-login-credentials",
+    "saved-login-user-data",
     JSON.stringify(currentUser)
   );
 };
 
+export const persistCreds = (creds: LoggedInUserAuth) => {
+  // NOTE: These credentials have already been validated.
+  window.localStorage.setItem("saved-login-credentials", JSON.stringify(creds));
+};
+
 export const refreshLocallyStoredUserActivation = (): boolean => {
   const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-credentials"
+    "saved-login-user-data"
   );
   if (rememberedCredentials) {
     let currentUser;
     try {
       currentUser = JSON.parse(rememberedCredentials);
       if (currentUser.emailConfirmed) {
+        // FIXME - What was this expiry field for?
         currentUser.expiry = new Date(currentUser.expiry);
         setLoggedInUserData({
           ...currentUser,
@@ -126,7 +137,33 @@ export const refreshLocallyStoredUserActivation = (): boolean => {
   return false;
 };
 
+export const refreshLocallyStoredUser = (): boolean => {
+  const rememberedCredentials = window.localStorage.getItem(
+    "saved-login-user-data"
+  );
+  if (rememberedCredentials) {
+    let currentUser;
+    if (JSON.stringify(CurrentUser.value) !== rememberedCredentials) {
+      try {
+        currentUser = JSON.parse(rememberedCredentials);
+        CurrentUser.value = reactive<LoggedInUser>(currentUser);
+        setLoggedInUserData({
+          ...currentUser,
+        });
+        return true;
+      } catch (e) {
+        forgetUserOnCurrentDevice();
+      }
+    } else {
+      return true;
+    }
+  }
+  return false;
+};
+
 const refreshCredentials = async () => {
+  // FIXME - Should also load current user here.
+
   // NOTE: Because this can be shared between browser windows/tabs,
   //  always pull out the localStorage version before refreshing
   const rememberedCredentials = window.localStorage.getItem(
@@ -134,60 +171,28 @@ const refreshCredentials = async () => {
   );
   if (rememberedCredentials) {
     console.warn("-- Resuming from saved credentials");
-    let currentUser;
+    let currentUserCreds;
     const now = new Date();
     try {
-      currentUser = JSON.parse(rememberedCredentials) as LoggedInUser;
-      const currentToken = currentUser.apiToken;
+      currentUserCreds = JSON.parse(rememberedCredentials) as LoggedInUserAuth;
+      const currentToken = currentUserCreds.apiToken;
       const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
       if (apiToken.expiresAt.getTime() > now.getTime() + 5000) {
-        // Use existing credentials, setup refresh timer to refresh just before the token expires, so there's
-        // no noticeable interruption to service.
-        refreshCredentialsAtIn(
-          apiToken.expiresAt.getTime() - now.getTime() - 5000
-        );
-        // FIXME - Do we need to update the current user here?
-        CurrentUser.value = reactive<LoggedInUser>(currentUser);
+        if (JSON.stringify(CurrentUserCreds.value) !== rememberedCredentials) {
+          CurrentUserCreds.value = reactive<LoggedInUserAuth>(currentUserCreds);
+        }
+        refreshLocallyStoredUser();
         console.log("Not out of date yet, can use existing user");
         return;
       } else {
-        ///setLoggedInUserData({ ...currentUser, refreshingToken: false });
-        if (!currentUser.refreshingToken) {
-          //clearTimeout(refreshTimeout);
-          setLoggedInUserData({ ...currentUser, refreshingToken: true });
-          const refreshedUserResult = await refreshLogin(
-            currentUser.refreshToken
-          );
-          if (refreshedUserResult.success) {
-            const refreshedUser = refreshedUserResult.result;
-            setLoggedInUserData({
-              ...currentUser,
-              apiToken: refreshedUser.token,
-              refreshToken: refreshedUser.refreshToken,
-              refreshingToken: false,
-            });
-          } else {
-            // Refresh token wasn't found, so prompt login again
-            forgetUserOnCurrentDevice();
-          }
-        }
+        await maybeRefreshStaleCredentials();
+        refreshLocallyStoredUser();
       }
     } catch (e) {
       // JSON user creds was malformed, so clear it, and prompt login again
       forgetUserOnCurrentDevice();
     }
   }
-};
-
-let refreshTimeout = -1;
-const refreshCredentialsAtIn = (milliseconds: number) => {
-  milliseconds = Math.max(1000, milliseconds);
-  console.warn("Setting refresh in", milliseconds);
-  clearTimeout(refreshTimeout);
-  refreshTimeout = setTimeout(
-    refreshCredentials,
-    milliseconds
-  ) as unknown as number;
 };
 
 export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
@@ -199,7 +204,7 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
   window.localStorage.removeItem("saved-login-credentials");
-  debugger;
+  window.localStorage.removeItem("saved-login-user-data");
   userIsLoggedIn.value = false;
 };
 
@@ -348,6 +353,17 @@ export const creatingNewGroup = reactive({
 export const joiningNewGroup = reactive({ enabled: false, visible: false });
 export const showSwitchGroup = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);
+
+const windowDimensions = useWindowSize();
+
+export const isWideScreen = computed<boolean>(() => {
+  return windowDimensions.width.value > 1650;
+});
+
+export const sideNavIsPinned = computed<boolean>(() => {
+  return pinSideNav.value || isWideScreen.value;
+});
+
 export const rafFps = ref(60);
 // On load:
 {
@@ -364,7 +380,6 @@ export const rafFps = ref(60);
           JSON.stringify({ ...currentUser, refreshingToken: false })
         );
       } catch (e) {
-        debugger;
         forgetUserOnCurrentDevice();
       }
     }

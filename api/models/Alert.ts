@@ -157,7 +157,9 @@ export default function (sequelize, DataTypes): AlertStatic {
       // check that any of the alert conditions are met
       return alerts.filter(({ conditions }) =>
         conditions.some(({ tag }) =>
-          trackTag.path.split(".").includes(tag.replace(/-/g, ""))
+          trackTag.path
+            .split(".")
+            .includes(tag.replace(/-/g, "").replace(/ /g, "_"))
         )
       );
     }

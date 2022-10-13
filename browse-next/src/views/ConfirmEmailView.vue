@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { validateEmailConfirmationToken } from "@api/User";
 import {
   CurrentUser,
+  setLoggedInUserCreds,
   setLoggedInUserData,
   urlNormalisedCurrentGroupName,
   UserGroups,
@@ -66,6 +67,8 @@ onBeforeMount(async () => {
       }
       setLoggedInUserData({
         ...userData,
+      });
+      setLoggedInUserCreds({
         apiToken: token,
         refreshToken,
         refreshingToken: false,

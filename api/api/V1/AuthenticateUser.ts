@@ -169,6 +169,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiDescription Returns a refreshed JWT user auth token for the current user
    * with an updated timeout
    *
+   * @apiBody {String} refreshToken Provide current refreshToken
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiSuccess {String} token JWT string to provide to further API requests

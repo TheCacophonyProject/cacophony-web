@@ -26,7 +26,7 @@ export class CptvDecoder {
     await this.free();
     messageQueue = {};
     if (!this.inited) {
-      const onMessage = (message: MessageData | MessageDataMessage) => {
+      const onMessage = async (message: MessageData | MessageDataMessage) => {
         let type;
         let data;
         if (message.type && message.type !== "message") {

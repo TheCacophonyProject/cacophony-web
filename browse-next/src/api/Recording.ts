@@ -18,16 +18,3 @@ export const getRecordingById = (
       downloadRawJWT?: JwtToken<RecordingId>;
     }>
   >;
-
-export const getRawRecordingById = (
-  id: RecordingId,
-  includeDeletedRecordings = false,
-  apiToken?: string
-) =>
-  CacophonyApi.get(
-    `/api/v1/recordings/raw/${id}${
-      includeDeletedRecordings ? "?deleted=true" : ""
-    }`,
-    true,
-    apiToken
-  ) as unknown as Promise<Response>;

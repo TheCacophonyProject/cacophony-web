@@ -20,8 +20,10 @@ import {
   creatingNewGroup,
   joiningNewGroup,
   urlNormalisedCurrentGroupName,
-  pinSideNav,
   rafFps,
+  pinSideNav,
+  isWideScreen,
+  sideNavIsPinned,
 } from "@/models/LoggedInUser";
 import type { SelectedGroup, LoggedInUser } from "@/models/LoggedInUser";
 import {
@@ -140,7 +142,7 @@ onMounted(() => {
         'd-flex',
         'flex-column',
         'flex-shrink-0',
-        { pinned: pinSideNav },
+        { pinned: sideNavIsPinned },
       ]"
     >
       <div class="nav-top">
@@ -408,7 +410,7 @@ onMounted(() => {
         </router-link>
       </div>
     </nav>
-    <section id="main-content">
+    <section id="main-content" :class="{ 'offset-content': isWideScreen }">
       <div class="container-xxl py-0">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
@@ -514,17 +516,22 @@ onMounted(() => {
     max-height: calc(100vh - 24px);
   }
 }
-
+@global-side-nav-collapsed-width: 3.5rem;
+@global-side-nav-expanded-width: 20rem;
 #main-content {
   background: #f6f6f6;
   width: 100%;
   overflow-y: auto;
+  transition: margin-left 0.2s;
+  &.offset-content {
+    margin-left: calc(
+      @global-side-nav-expanded-width - @global-side-nav-collapsed-width
+    );
+  }
 }
 
 #global-side-nav {
-  @collapsed-width: 3.5rem;
-  @expanded-width: 20rem;
-  transform: translateX(-@expanded-width);
+  transform: translateX(-@global-side-nav-expanded-width);
   @media (min-width: 576px) {
     transform: unset;
   }
@@ -534,7 +541,7 @@ onMounted(() => {
   bottom: 0;
   top: 0;
   left: 0;
-  width: @collapsed-width;
+  width: @global-side-nav-collapsed-width;
   overflow: hidden;
   transition: width 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
@@ -543,7 +550,7 @@ onMounted(() => {
   .nav-icon-wrapper {
     // Keep the icons vertically aligned relative to one-another.
     display: block;
-    width: @collapsed-width;
+    width: @global-side-nav-collapsed-width;
     text-align: center;
   }
 
@@ -597,7 +604,7 @@ onMounted(() => {
     .group-switcher {
       opacity: 0;
       transition: opacity 0.2s;
-      width: @expanded-width;
+      width: @global-side-nav-expanded-width;
       .current-group {
         text-transform: uppercase;
         font-weight: 500;
@@ -624,7 +631,7 @@ onMounted(() => {
   &:hover,
   &.pinned {
     transform: translateX(0);
-    width: @expanded-width;
+    width: @global-side-nav-expanded-width;
     .nav-top {
       background-color: #fafafa;
       .group-switcher {

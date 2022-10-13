@@ -373,6 +373,7 @@ export default function (
           	from
           		"Alerts"
           	where
+          		"StationId" = "Recording"."StationId" or
           		"DeviceId" = "Recording"."DeviceId"
           	limit 1)`),
               "hasAlert",

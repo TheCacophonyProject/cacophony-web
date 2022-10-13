@@ -1,16 +1,19 @@
 import { CurrentViewAbortController } from "@/router";
-import type { LoggedInUser } from "@/models/LoggedInUser";
+import type { LoggedInUserAuth } from "@/models/LoggedInUser";
 import {
-  CurrentUser,
+  CurrentUserCreds,
   forgetUserOnCurrentDevice,
+  refreshLocallyStoredUser,
+  setLoggedInUserCreds,
   userIsLoggedIn,
 } from "@/models/LoggedInUser";
 import type { ErrorResult, FetchResult } from "@api/types";
 import { reactive } from "vue";
-import { delayMsThen } from "@/utils";
+import { decodeJWT, delayMs, delayMsThen } from "@/utils";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
+import { API_ROOT } from "@api/api";
 
 export const INITIAL_RETRY_INTERVAL = 3000;
 export const MAX_RETRY_COUNT = 30;
@@ -35,6 +38,72 @@ const getScreenOrientation = (): string => {
   return "unknown screen orientation";
 };
 
+export const maybeRefreshStaleCredentials = async () => {
+  // NOTE: Check if we need to refresh our apiToken using our refreshToken before making this request.
+  const rememberedCredentials = window.localStorage.getItem(
+    "saved-login-credentials"
+  );
+  if (rememberedCredentials) {
+    try {
+      const currentUserCreds = JSON.parse(
+        rememberedCredentials
+      ) as LoggedInUserAuth;
+      const apiToken = decodeJWT(
+        (currentUserCreds as LoggedInUserAuth).apiToken
+      );
+      const now = new Date();
+      if ((apiToken?.expiresAt as Date).getTime() < now.getTime() + 5000) {
+        if (!currentUserCreds.refreshingToken) {
+          setLoggedInUserCreds({
+            ...currentUserCreds,
+            refreshingToken: true,
+          });
+          const response = await window.fetch(
+            `${API_ROOT}/api/v1/users/refresh-session-token`,
+            {
+              body: JSON.stringify({
+                refreshToken: currentUserCreds.refreshToken,
+              }),
+              headers: {
+                "Content-Type": "application/json; charset=utf-8",
+              },
+              method: "POST",
+            }
+          );
+          const result = await response.json();
+          const refreshedUserResult = {
+            result,
+            status: response.status,
+            success: response.ok,
+          };
+          if (refreshedUserResult.success) {
+            const refreshedUser = refreshedUserResult.result;
+            setLoggedInUserCreds({
+              ...currentUserCreds,
+              apiToken: refreshedUser.token,
+              refreshToken: refreshedUser.refreshToken,
+              refreshingToken: false,
+            });
+            refreshLocallyStoredUser();
+          } else {
+            // Refresh token wasn't found, so prompt login again
+            forgetUserOnCurrentDevice();
+          }
+        } else {
+          await delayMs(10);
+          await maybeRefreshStaleCredentials();
+        }
+      }
+    } catch (e) {
+      // Logout
+      forgetUserOnCurrentDevice();
+    }
+  } else {
+    // Logout
+    forgetUserOnCurrentDevice();
+  }
+};
+
 export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
   hasConnectionError: false,
   retryInterval: INITIAL_RETRY_INTERVAL,
@@ -54,8 +123,7 @@ export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
 export async function fetch<T>(
   url: string,
   request: RequestInit = {},
-  abortable = true,
-  apiToken?: string
+  abortable = true
 ): Promise<FetchResult<T> | void> {
   request = {
     mode: "cors",
@@ -72,8 +140,10 @@ export async function fetch<T>(
     });
   }
   if (userIsLoggedIn.value) {
-    (request.headers as Record<string, string>).Authorization =
-      apiToken || (CurrentUser.value as LoggedInUser).apiToken;
+    await maybeRefreshStaleCredentials();
+    (request.headers as Record<string, string>).Authorization = (
+      CurrentUserCreds.value as LoggedInUserAuth
+    ).apiToken;
     //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
@@ -126,7 +196,6 @@ export async function fetch<T>(
     };
   }
   if (response.status === 401) {
-    debugger;
     forgetUserOnCurrentDevice();
     return {
       result: {

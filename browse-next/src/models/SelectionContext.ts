@@ -9,7 +9,7 @@ export const selectedVisit = ref<ApiVisitResponse | null>(null);
 const onlyShowPredators = ref<boolean>(true);
 
 // TODO: Should this selection context be a single blob of state per group, and get wiped out when groups change?
-//  Should we try to recontruct it from url state?
+//  Should we try to reconstruct it from url state?
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface SelectedVisitsContext {

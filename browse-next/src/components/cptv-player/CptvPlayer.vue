@@ -40,7 +40,8 @@ import {
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
-import { CurrentUser } from "@models/LoggedInUser";
+import { CurrentUserCreds } from "@models/LoggedInUser";
+import { maybeRefreshStaleCredentials } from "@api/fetch";
 
 const { pixelRatio } = useDevicePixelRatio();
 // eslint-disable-next-line vue/no-setup-props-destructure
@@ -63,6 +64,14 @@ let frames: CptvFrame[] = [];
 const backgroundFrame = ref<CptvFrame | null>(null);
 let frameBuffer: Uint8ClampedArray;
 let cptvDecoder: CptvDecoder;
+
+// TODO: Bind left and right keyboard keys to prev/back
+// TODO: Check http://localhost:5173/onawe-field-trip-2022/visit/unknown/1350085/tracks
+// - Unknown vs unidentified?
+// TODO: Tracks - use classifications.json to manage labeling.
+// TODO: Make sure when we log in, we restore the last used group.
+// TODO: If we're logging in for the first time, prefer the group with the most recent activity?
+// TODO: Fix nextUrl redirection on sign-in
 
 watch(pixelRatio, () => {
   animationTick.value = 0;
@@ -1248,10 +1257,12 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       Object.keys(mergedTracks.value)
     );
   }
+  // Our api token could be out of date
+  await maybeRefreshStaleCredentials();
   loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
     nextRecordingId,
     cptvSize || 0,
-    CurrentUser.value?.apiToken
+    CurrentUserCreds.value?.apiToken
   );
 
   if (loadedStream.value === true) {
