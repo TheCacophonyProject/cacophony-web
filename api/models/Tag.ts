@@ -41,9 +41,6 @@ export const AcceptableTags = new Set(Object.values(AcceptableTag));
 export default function (sequelize, DataTypes): TagStatic {
   const name = "Tag";
   const attributes = {
-    what: {
-      type: DataTypes.STRING,
-    },
     detail: {
       type: DataTypes.STRING,
     },
@@ -91,7 +88,6 @@ export default function (sequelize, DataTypes): TagStatic {
 
   Tag.userGetAttributes = Object.freeze([
     "id",
-    "what",
     "detail",
     "confidence",
     "startTime",
@@ -103,7 +99,6 @@ export default function (sequelize, DataTypes): TagStatic {
   ]);
 
   Tag.apiSettableFields = Object.freeze([
-    "what",
     "detail",
     "confidence",
     "startTime",

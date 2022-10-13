@@ -72,7 +72,7 @@
         <button
           type="button"
           class="selected-option btn text-capitalize"
-          :key="option"
+          :key="option.label"
           v-for="option in multipleSelections"
           @click="() => removeSelectedOption(option)"
         >
@@ -84,7 +84,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
 import { onClickOutside } from "@vueuse/core";
 const emit = defineEmits<{
@@ -182,7 +182,6 @@ const addSelectedOption = (option: Classification) => {
   if (!multiselect) {
     singleSelection.value = option;
   } else if (!multipleSelections.value.includes(option)) {
-    // TODO - Might need find
     multipleSelections.value.push(option);
   }
   closeSelect();

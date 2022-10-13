@@ -32,7 +32,7 @@ import { truncateLongStationNames } from "@/utils";
 import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import { useMediaQuery } from "@vueuse/core";
+import { useElementSize, useMediaQuery } from "@vueuse/core";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
@@ -425,15 +425,31 @@ const activeTabName = computed(() => {
   return route.name;
 });
 
-const mobile = useMediaQuery("min-width: 576px");
+const desktop = useMediaQuery("(min-width: 1040px)");
 const isMobileView = computed<boolean>(() => {
-  return !mobile.value;
+  return !desktop.value;
 });
 
 const recordingViewContext = "dashboard-visit";
+
+const recordingInfo = ref<HTMLDivElement>();
+const playerContainer = ref<HTMLDivElement>();
+
+const playerHeight = useElementSize(playerContainer);
+watch(playerHeight.height, (newHeight) => {
+  if (recordingInfo.value) {
+    if (desktop.value) {
+      recordingInfo.value.style.maxHeight = `${newHeight}px`;
+    } else {
+      recordingInfo.value.style.maxHeight = "auto";
+    }
+  }
+});
+
+// TODO: When we scroll down, can we keep the player at the top of the screen for a while, but reduce the height of it?
 </script>
 <template>
-  <div class="recording-view">
+  <div class="recording-view d-flex flex-column">
     <header
       class="recording-view-header d-flex justify-content-between px-sm-3 px-2 py-sm-1"
     >
@@ -459,115 +475,179 @@ const recordingViewContext = "dashboard-visit";
         <font-awesome-icon icon="xmark" />
       </button>
     </header>
-    <div class="player-and-tagging">
-      <div class="player-container">
-        <cptv-player
-          :recording="recording"
-          :recording-id="currentRecordingId"
-          :current-track="currentTrack"
-          @track-selected="({ trackId }) => selectedTrack(trackId)"
-        />
-      </div>
-      <div class="recording-info d-flex flex-column flex-fill">
-        <div
-          class="recording-station-info d-flex mb-3 pe-3"
-          v-if="!isMobileView"
-        >
-          <map-with-points
-            class="recording-location-map"
-            :points="mapPointForRecording"
-            :active-points="mapPointForRecording"
-            :highlighted-point="ref(null)"
-            :is-interactive="false"
-            :markers-are-interactive="false"
-            :has-attribution="false"
-            :can-change-base-map="false"
-            :zoom="false"
-            :radius="30"
+    <div class="player-overflow flex-grow-1">
+      <div class="player-and-tagging d-flex">
+        <div class="player-container" ref="playerContainer">
+          <cptv-player
+            :recording="recording"
+            :recording-id="currentRecordingId"
+            :current-track="currentTrack"
+            @track-selected="({ trackId }) => selectedTrack(trackId)"
           />
-          <div class="flex-fill">
-            <div class="station-name fw-bolder pt-3 px-3">
-              <font-awesome-icon
-                icon="map-marker-alt"
-                size="xs"
-                class="me-2"
-                color="rgba(0, 0, 0, 0.7)"
-              />{{ currentStationName }}
-            </div>
-            <div class="recording-date-time fs-7 d-flex px-3 mt-1">
-              <div>
+        </div>
+        <div
+          class="recording-info d-flex flex-column flex-fill"
+          ref="recordingInfo"
+        >
+          <!-- Desktop view only -->
+          <div
+            class="recording-station-info d-flex mb-3 pe-3"
+            v-if="!isMobileView"
+          >
+            <map-with-points
+              class="recording-location-map"
+              :points="mapPointForRecording"
+              :active-points="mapPointForRecording"
+              :highlighted-point="ref(null)"
+              :is-interactive="false"
+              :markers-are-interactive="false"
+              :has-attribution="false"
+              :can-change-base-map="false"
+              :zoom="false"
+              :radius="30"
+            />
+            <div class="flex-fill">
+              <div class="station-name fw-bolder pt-3 px-3">
                 <font-awesome-icon
-                  :icon="['far', 'calendar']"
-                  size="sm"
-                  class="me-1"
-                  color="rgba(0, 0, 0, 0.5)"
-                />
-                <span v-html="recordingDate" />
+                  icon="map-marker-alt"
+                  size="xs"
+                  class="me-2"
+                  color="rgba(0, 0, 0, 0.7)"
+                />{{ currentStationName }}
               </div>
-              <div class="ms-4">
-                <font-awesome-icon
-                  :icon="['far', 'clock']"
-                  size="sm"
-                  class="me-1"
-                  color="rgba(0, 0, 0, 0.5)"
-                />
-                <span v-html="recordingStartTime" />
+              <div class="recording-date-time fs-7 d-flex px-3 mt-1">
+                <div>
+                  <font-awesome-icon
+                    :icon="['far', 'calendar']"
+                    size="sm"
+                    class="me-1"
+                    color="rgba(0, 0, 0, 0.5)"
+                  />
+                  <span v-html="recordingDate" />
+                </div>
+                <div class="ms-4">
+                  <font-awesome-icon
+                    :icon="['far', 'clock']"
+                    size="sm"
+                    class="me-1"
+                    color="rgba(0, 0, 0, 0.5)"
+                  />
+                  <span v-html="recordingStartTime" />
+                </div>
               </div>
+              <recording-view-action-buttons
+                :recording-ready="!recordingIsLoading"
+              />
             </div>
-            <recording-view-action-buttons
-              :recording-ready="!recordingIsLoading"
+          </div>
+          <ul
+            class="nav nav-tabs justify-content-md-center justify-content-evenly"
+            v-if="!isMobileView"
+          >
+            <router-link
+              :class="[
+                ...navLinkClasses,
+                { active: activeTabName === `${recordingViewContext}-tracks` },
+              ]"
+              title="Tracks"
+              :to="{
+                name: `${recordingViewContext}-tracks`,
+                params: route.params,
+              }"
+              >Tracks
+              <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
+                >({{ tracks.length }})</span
+              ></router-link
+            >
+            <router-link
+              :class="[
+                ...navLinkClasses,
+                { active: activeTabName === `${recordingViewContext}-labels` },
+              ]"
+              title="Labels"
+              :to="{
+                name: `${recordingViewContext}-labels`,
+                params: {
+                  ...route.params,
+                  trackId: tracks[0]?.id,
+                },
+              }"
+              >Labels
+              <span v-if="activeTabName !== `${recordingViewContext}-labels`"
+                >({{ tags.length }})</span
+              ></router-link
+            >
+          </ul>
+          <div class="tags-overflow" v-if="!isMobileView">
+            <router-view
+              :recording="recordingData?.recording"
+              @trackTagChanged="recalculateCurrentVisit"
             />
           </div>
-        </div>
-        <ul
-          class="nav nav-tabs justify-content-md-center justify-content-evenly"
-          v-if="!isMobileView"
-        >
-          <router-link
-            :class="[
-              ...navLinkClasses,
-              { active: activeTabName === `${recordingViewContext}-tracks` },
-            ]"
-            title="Tracks"
-            :to="{
-              name: `${recordingViewContext}-tracks`,
-              params: route.params,
-            }"
-            >Tracks
-            <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
-              >({{ tracks.length }})</span
-            ></router-link
-          >
-          <router-link
-            :class="[
-              ...navLinkClasses,
-              { active: activeTabName === `${recordingViewContext}-labels` },
-            ]"
-            title="Labels"
-            :to="{
-              name: `${recordingViewContext}-labels`,
-              params: {
-                ...route.params,
-                trackId: tracks[0]?.id,
-              },
-            }"
-            >Labels
-            <span v-if="activeTabName !== `${recordingViewContext}-labels`"
-              >({{ tags.length }})</span
-            ></router-link
-          >
-        </ul>
-        <router-view
-          v-if="!isMobileView"
-          :recording="recordingData?.recording"
-          @trackTagChanged="recalculateCurrentVisit"
-        />
-        <div v-else>
+          <!-- Mobile view only -->
           <recording-view-tracks
+            v-if="isMobileView"
             :recording="recordingData?.recording"
+            class="recording-tracks"
             @trackTagChanged="recalculateCurrentVisit"
           />
-          <recording-view-labels :recording="recordingData?.recording" />
+          <div
+            class="recording-info-mobile p-3 flex-grow-1"
+            v-if="isMobileView"
+          >
+            <div
+              class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
+            >
+              <map-with-points
+                class="recording-location-map"
+                :points="mapPointForRecording"
+                :active-points="mapPointForRecording"
+                :highlighted-point="ref(null)"
+                :is-interactive="false"
+                :markers-are-interactive="false"
+                :has-attribution="false"
+                :can-change-base-map="false"
+                :zoom="false"
+                :radius="30"
+              />
+              <div
+                class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
+              >
+                <div class="station-name fw-bolder pe-3">
+                  <font-awesome-icon
+                    icon="map-marker-alt"
+                    size="xs"
+                    class="me-2"
+                    color="rgba(0, 0, 0, 0.7)"
+                  />{{ currentStationName }}
+                </div>
+                <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
+                  <div>
+                    <font-awesome-icon
+                      :icon="['far', 'calendar']"
+                      size="sm"
+                      class="me-1"
+                      color="rgba(0, 0, 0, 0.5)"
+                    />
+                    <span v-html="recordingDate" />
+                  </div>
+                  <div class="ms-4">
+                    <font-awesome-icon
+                      :icon="['far', 'clock']"
+                      size="sm"
+                      class="me-1"
+                      color="rgba(0, 0, 0, 0.5)"
+                    />
+                    <span v-html="recordingStartTime" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <recording-view-labels
+              :recording="recordingData?.recording"
+              v-if="isMobileView"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -583,14 +663,14 @@ const recordingViewContext = "dashboard-visit";
           }"
         ></div>
       </div>
-      <nav class="d-flex py-1 justify-content-between">
+      <nav class="d-flex py-1 footer-nav flex-fill">
         <button
           type="button"
-          class="btn d-flex flex-row-reverse align-items-center"
+          class="btn d-flex flex-row-reverse align-items-center prev-button"
           :disabled="!hasPreviousRecording && !hasPreviousVisit"
           @click.stop.prevent="gotoPreviousRecordingOrVisit"
         >
-          <span class="d-none d-md-flex ps-2 flex-column align-items-start">
+          <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
             <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
               >Previous recording</span
             >
@@ -624,16 +704,17 @@ const recordingViewContext = "dashboard-visit";
           </span>
         </button>
         <recording-view-action-buttons
+          class="action-buttons"
           v-if="isMobileView"
           :recording-ready="!recordingIsLoading"
         />
         <button
           type="button"
-          class="btn d-flex align-items-center"
+          class="btn d-flex align-items-center next-button"
           :disabled="!hasNextRecording && !hasNextVisit"
           @click.stop.prevent="gotoNextRecordingOrVisit"
         >
-          <span class="d-none d-md-flex pe-2 flex-column align-items-end">
+          <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
             <span class="fs-8 fw-bold" v-if="hasNextRecording"
               >Next recording</span
             >
@@ -673,6 +754,44 @@ const recordingViewContext = "dashboard-visit";
 
 <style scoped lang="less">
 @import "../assets/font-sizes.less";
+@import "../assets/mixins.less";
+
+// TODO: When there is overflow, show shadows at top/bottom
+.player-overflow {
+  @media screen and (max-width: 1040px) {
+    overflow-y: scroll;
+  }
+  background: #f6f6f6;
+}
+.tags-overflow {
+  @media screen and (min-width: 1041px) {
+    overflow-y: scroll;
+  }
+}
+.footer-nav {
+  flex-direction: row;
+  justify-content: center;
+  position: relative;
+
+  @media screen and (min-width: 576px) {
+    min-height: 55px;
+  }
+  min-height: 48px;
+}
+.prev-button {
+  position: absolute;
+  left: 0;
+}
+.next-button {
+  position: absolute;
+  right: 0;
+}
+
+.recording-tracks {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+
 .recording-view-header {
   border-bottom: 2px solid #e1e1e1;
   .recording-header-type {
@@ -717,8 +836,17 @@ const recordingViewContext = "dashboard-visit";
 }
 .recording-info {
 }
+.recording-info-mobile {
+}
+.recording-station-info {
+  .standard-shadow();
+}
 
 .recording-location-map {
+  @media screen and (max-width: 1040px) {
+    width: 100%;
+    height: 180px;
+  }
   width: 120px;
   height: 120px;
 }
@@ -740,7 +868,6 @@ const recordingViewContext = "dashboard-visit";
   }
 }
 .player-and-tagging {
-  display: flex;
   flex-direction: row;
   @media screen and (max-width: 1040px) {
     flex-direction: column;
@@ -755,10 +882,10 @@ const recordingViewContext = "dashboard-visit";
     left: 0;
     right: 0;
     .recording-view-footer {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      //position: absolute;
+      //bottom: 0;
+      //left: 0;
+      //right: 0;
     }
   }
 }

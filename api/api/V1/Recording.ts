@@ -185,9 +185,6 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
   if (tag.duration !== null && tag.duration !== undefined) {
     result.duration = tag.duration;
   }
-  if (tag.what) {
-    result.what = tag.what;
-  }
   return result;
 };
 

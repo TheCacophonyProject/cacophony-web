@@ -2,7 +2,7 @@
 const { recordingReady } = defineProps<{ recordingReady: boolean }>();
 </script>
 <template>
-  <div class="recording-icons d-flex justify-content-between mt-sm-2 ps-sm-2">
+  <div class="recording-icons d-flex justify-content-between ps-sm-2">
     <button type="button" class="btn" :disabled="!recordingReady">
       <font-awesome-icon icon="tag" color="#666" />
     </button>
@@ -35,6 +35,11 @@ const { recordingReady } = defineProps<{ recordingReady: boolean }>();
 @media screen and (max-width: 320px) {
   .optional-button {
     display: none;
+  }
+}
+@media screen and (min-width: 1041px) {
+  .recording-icons {
+    margin-top: 0.5rem;
   }
 }
 </style>

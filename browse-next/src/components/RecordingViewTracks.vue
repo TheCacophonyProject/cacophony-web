@@ -40,6 +40,11 @@ onMounted(() => {
   }
 });
 
+const expandedItemIndex = ref<number>(-1);
+const expandedItemChanged = (index: number) => {
+  expandedItemIndex.value = index;
+};
+
 // eslint-disable-next-line vue/no-setup-props-destructure
 </script>
 <template>
@@ -48,7 +53,9 @@ onMounted(() => {
       v-for="(track, index) in recording.tracks"
       :key="index"
       :index="index"
+      @expanded-changed="expandedItemChanged"
       :selected="(currentTrack && currentTrack.id === track.id) || false"
+      :expanded-index="expandedItemIndex"
       :color="TagColours[index % TagColours.length]"
       :track="track"
     />

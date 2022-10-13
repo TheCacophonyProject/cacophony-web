@@ -1,13 +1,11 @@
 <template>
-  <div class="classification-container">
-    <LayeredDropdown
-      :options="options"
-      @input="$emit('input', $event)"
-      :disabled="disabled"
-      :placeholder="placeholder"
-      :multiselect="multiselect"
-    />
-  </div>
+  <LayeredDropdown
+    :options="options"
+    @input="$emit('input', $event)"
+    :disabled="disabled"
+    :placeholder="placeholder"
+    :multiselect="multiselect"
+  />
 </template>
 <script setup lang="ts">
 import { getClassifications as apiGetClassifications } from "@api/Classifications";
@@ -30,6 +28,8 @@ const {
 const options = ref<Classification>({ label: "", children: [] });
 
 // FIXME - We shouldn't really need to request this every single time - perhaps only if the cwVersion has changed?
+// What if we had a list of end-points that should be static within api versions, so we only fetch them once?
+// Then we invalidate that cache if we get a different cwVersion for a non-static request.
 
 const getFreshClassifications = async (): Promise<Classification> => {
   const res = await apiGetClassifications();
@@ -48,6 +48,7 @@ const getFreshClassifications = async (): Promise<Classification> => {
       children,
     };
   }
+  // FIXME - What's the actual error case here that's not caught in fetch?
   throw new Error("Could not get classifications");
 };
 
@@ -91,9 +92,3 @@ onMounted(async () => {
   setClassifications(classifications);
 });
 </script>
-
-<style lang="less" scoped>
-.classification-container {
-  width: 100%;
-}
-</style>

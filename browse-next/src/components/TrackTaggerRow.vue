@@ -6,16 +6,36 @@ import type {
   ApiTrackTagResponse,
   TrackTagData,
 } from "@typedefs/api/trackTag";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { CurrentUser } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
-const { track, index, color, selected } = defineProps<{
+const { track, index, color, selected, expandedIndex } = defineProps<{
   track: ApiTrackResponse;
   index: number;
   color: { foreground: string; background: string };
   selected: boolean;
+  expandedIndex: number;
 }>();
+
+const emit = defineEmits<{
+  (e: "expanded-changed", index: number): void;
+}>();
+
+const expandedInternal = ref<boolean>(false);
+const expanded = computed<boolean>(() => expandedIndex === index);
+watch(expanded, (nextExpanded) => {
+  if (!nextExpanded) {
+    expandedInternal.value = false;
+  }
+});
+
+const maybeToggleExpanded = () => {
+  if (hasUserTag.value) {
+    expandedInternal.value = !expandedInternal.value;
+    emit("expanded-changed", expandedInternal.value ? index : -1);
+  }
+};
 
 const hasUserTag = computed<boolean>(() => {
   return track.tags.some((tag) => !tag.automatic);
@@ -63,11 +83,20 @@ const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(() =>
 const thisUsersTagAgreesWithAiClassification = computed<boolean>(
   () => thisUserTag.value?.what === masterTag.value?.what
 );
+
+const confirmAiSuggestedTag = () => {
+  console.log("Confirm");
+};
+
+const rejectAiSuggestedTag = () => {
+  console.log("Reject");
+};
 </script>
 <template>
   <div
     class="track p-2 fs-8 d-flex align-items-center justify-content-between"
     :class="{ selected }"
+    @click="maybeToggleExpanded"
   >
     <div class="d-flex align-items-center">
       <span
@@ -123,7 +152,11 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
       </span>
     </div>
     <div v-if="!thisUserTag">
-      <button type="button" class="btn fs-7 confirm-button">
+      <button
+        type="button"
+        class="btn fs-7 confirm-button"
+        @click="confirmAiSuggestedTag"
+      >
         <span class="label">Confirm</span>
         <span class="fs-6 icon">
           <font-awesome-icon
@@ -139,6 +172,7 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
         type="button"
         class="btn fs-7 reject-button"
         aria-label="Reject AI classification"
+        @click="rejectAiSuggestedTag"
       >
         <span class="visually-hidden">Reject</span>
         <span class="fs-6 icon">
@@ -149,11 +183,16 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
     <div v-else>
       <button type="button" aria-label="Expand track" class="btn">
         <span class="visually-hidden">Expand track</span>
-        <font-awesome-icon icon="chevron-right" rotation="90" />
+        <font-awesome-icon
+          icon="chevron-right"
+          :rotation="expanded ? 270 : 90"
+        />
       </button>
     </div>
   </div>
-  <hierarchical-tag-select :multiselect="false" />
+  <div v-if="expanded">
+    <hierarchical-tag-select />
+  </div>
 </template>
 <style scoped lang="less">
 .track-number {
