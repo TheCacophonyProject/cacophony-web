@@ -129,7 +129,6 @@ const sequelize = new Sequelize(
       $all: Op.all,
     },
     ...poolOptions,
-    logging: (msg) => log.info(msg),
   }
 );
 
