@@ -319,6 +319,23 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiRecordingGet",
+  (userName: string, recordingId: RecordingId, statusCode: number = 200) => {
+    const url = v1ApiPath(`recordings/${recordingId}`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      cy.wrap(response);
+    });
+  }
+);
+
+Cypress.Commands.add(
   "apiRecordingDelete",
   (
     userName: string,
