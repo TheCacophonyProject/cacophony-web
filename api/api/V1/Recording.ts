@@ -745,8 +745,48 @@ export default (app: Application, baseUrl: string) => {
     validateFields([body("ids").isArray()]),
     parseJSONField(query("ids")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const { ids } = request.body;
+      let { ids } = request.body;
+      const { viewAsSuperUser } = response.locals;
+      const userId = response.locals.requestUser.id;
       try {
+        const requireGroupMembership = viewAsSuperUser
+          ? []
+          : [
+              {
+                model: models.User,
+                attributes: [],
+                required: true,
+                where: { id: userId },
+                through: { where: { admin: true } },
+              },
+            ];
+
+        ids = (
+          await models.Recording.findAll({
+            where: {
+              id: ids,
+              deletedAt: { [Op.ne]: null },
+            },
+            include: [
+              {
+                model: models.Group,
+                attributes: [],
+                required: !viewAsSuperUser,
+                include: requireGroupMembership,
+              },
+            ],
+            attributes: ["id"],
+          })
+        ).map((r) => r.id);
+        if (ids.length === 0) {
+          return next(
+            new ClientError(
+              "No recordings to undelete",
+              HttpStatusCode.Forbidden
+            )
+          );
+        }
+
         await models.Recording.update(
           { deletedAt: null, deletedBy: null },
           { where: { id: ids } }
@@ -754,7 +794,12 @@ export default (app: Application, baseUrl: string) => {
         return successResponse(response, `Recordings Restored: ${ids}`);
       } catch (e) {
         log.error(e);
-        return next(new ClientError("Unable to restore recordings"));
+        return next(
+          new ClientError(
+            "Unable to restore recordings",
+            HttpStatusCode.Unprocessable
+          )
+        );
       }
     }
   );

@@ -65,5 +65,5 @@ export default {
   server,
   euaVersion: 3,
   ...loadedConfig,
-  productionEnv: !loadedConfig.server.isLocalDev,
+  productionEnv: false,
 };
