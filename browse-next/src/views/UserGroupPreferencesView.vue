@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import SectionHeader from "@/components/SectionHeader.vue";
+import type { ApiAlertResponse } from "@typedefs/api/alerts";
+import { getAlertsForCurrentUser } from "@api/Alert";
 
 const selectedLeaveGroup = ref(false);
+const alerts = ref<ApiAlertResponse[]>([]);
+
+onMounted(async () => {
+  const response = await getAlertsForCurrentUser();
+  if (response.success) {
+    alerts.value = response.result.alerts;
+  }
+});
 
 const leaveGroup = () => {
   //  If we're not an admin of the group, or we're an admin but not the *last* admin
@@ -12,6 +22,9 @@ const leaveGroup = () => {
 <template>
   <section-header>My group preferences</section-header>
 
+  <ul v-if="alerts.length">
+    <li v-for="alert in alerts" :key="alert.id">{{ alert }}</li>
+  </ul>
   <div>
     My alert settings. My preferred tags for video, audio. Show audio or video
     by default?

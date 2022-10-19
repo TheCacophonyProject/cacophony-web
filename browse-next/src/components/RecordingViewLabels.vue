@@ -1,12 +1,16 @@
 <script setup lang="ts">
-  import {ref} from "vue";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
 
-  const foo = ref("bar");
+const { recording } = defineProps<{
+  recording?: ApiRecordingResponse;
+}>();
 </script>
 <template>
-  <div>Labels {{foo}}</div>
+  <div v-if="recording">
+    <div v-for="(tag, index) in recording.tags" :key="index">
+      {{ tag.detail }}
+    </div>
+  </div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

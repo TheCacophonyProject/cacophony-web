@@ -46,5 +46,5 @@ export interface ApiTrackDataRequest {
   positions?: any;
   message?: string;
   tag?: string;
-  tracker_version?: number;
+  tracker_version?: number | string;
 }

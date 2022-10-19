@@ -43,6 +43,7 @@ interface EventItem {
   type: "sun" | "visit";
   name: string;
   timeStart: IsoFormattedDateString;
+  date: Date;
 }
 
 interface VisitEventItem extends EventItem {
@@ -57,107 +58,88 @@ interface SunEventItem extends EventItem {
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
-  const events = [];
-  let usedSunrise = false;
-  let usedSunset = false;
+  const events: (VisitEventItem | SunEventItem)[] = visits.map(
+    (visit) =>
+      ({
+        type: "visit",
+        name: visit.classification,
+        timeStart: visit.timeStart,
+        data: visit,
+        date: new Date(visit.timeStart),
+      } as VisitEventItem)
+  );
+
+  const now = new Date();
+  const startTime = events[0].date;
+  const endTime = events[events.length - 1].date;
   {
-    const visit = visits[0];
+    // If the startTime is *after* its own sunrise, then use the sunset from it.
     const { sunrise, sunset } = sunCalc.getTimes(
-      new Date(visit.timeStart),
+      startTime,
       location.lat,
       location.lng
     );
-    const useSunset =
-      sunset > startTime.toJSDate() && sunset < endTime.value.toJSDate();
-    const useSunrise =
-      sunrise > startTime.toJSDate() && sunrise < endTime.value.toJSDate();
-    if (useSunrise && sunrise < new Date(visit.timeStart)) {
+    if (startTime > sunrise) {
       events.push({
         type: "sun",
-        name: "Sunrise",
-        timeStart: sunrise.toISOString(),
-      } as SunEventItem);
-      usedSunrise = true;
-    }
-    if (useSunset && sunset < new Date(visit.timeStart)) {
-      events.push({
-        type: "sun",
-        name: "Sunset",
+        name: `Sunset`,
         timeStart: sunset.toISOString(),
+        date: sunset,
       } as SunEventItem);
     }
-    events.push({
-      type: "visit",
-      name: visit.classification,
-      timeStart: visit.timeStart,
-      data: visit,
-    } as VisitEventItem);
   }
-
-  for (let i = 1; i < visits.length; i++) {
-    const visit = visits[i];
-    const prevVisit = visits[i - 1];
+  {
     const { sunrise, sunset } = sunCalc.getTimes(
-      new Date(visit.timeStart),
+      endTime,
       location.lat,
       location.lng
     );
-    const useSunset =
-      sunset > startTime.toJSDate() && sunset < endTime.value.toJSDate();
-    const useSunrise =
-      sunrise > startTime.toJSDate() && sunrise < endTime.value.toJSDate();
-    if (
-      useSunrise &&
-      sunrise > new Date(prevVisit.timeStart) &&
-      sunrise < new Date(visit.timeStart)
-    ) {
+    if (now < sunrise) {
+      // If we're before sunrise, then use the "Now" placeholder
       events.push({
         type: "sun",
-        name: "Sunrise",
-        timeStart: sunrise.toISOString(),
-      } as SunEventItem);
-      usedSunrise = true;
-    }
-    if (
-      useSunset &&
-      sunset > new Date(prevVisit.timeStart) &&
-      sunset < new Date(visit.timeStart)
-    ) {
-      events.push({
-        type: "sun",
-        name: "Sunset",
-        timeStart: sunset.toISOString(),
-      } as SunEventItem);
-      usedSunset = true;
-    }
-    events.push({
-      type: "visit",
-      name: visit.classification,
-      timeStart: visit.timeStart,
-      data: visit,
-    } as VisitEventItem);
-
-    if (
-      i === visits.length - 1 &&
-      sunrise < now &&
-      (sunrise > new Date(visit.timeStart) || usedSunset) &&
-      !usedSunrise
-    ) {
-      // Add the sunrise at the end if it hasn't been added
-      events.push({
-        type: "sun",
-        name: "Sunrise",
-        timeStart: sunrise.toISOString(),
-      } as SunEventItem);
-    } else if (i === visits.length - 1 && !usedSunrise) {
-      events.push({
-        type: "sun",
-        name: "now",
+        name: `Now`,
         timeStart: now.toISOString(),
+        date: now,
       } as SunEventItem);
+    } else if (endTime < sunrise || (endTime > sunrise && endTime < sunset)) {
+      // If the endTime is *before* its own sunrise, then use the sunrise from it.
+      events.push({
+        type: "sun",
+        name: `Sunrise`,
+        timeStart: sunrise.toISOString(),
+        date: sunrise,
+      } as SunEventItem);
+    } else {
+      // Otherwise, use the sunrise from the next day.
+      const endTimePlusOneDay = new Date(endTime);
+      endTimePlusOneDay.setDate(endTimePlusOneDay.getDate() + 1);
+      const { sunrise } = sunCalc.getTimes(
+        endTimePlusOneDay,
+        location.lat,
+        location.lng
+      );
+      if (sunrise < now) {
+        events.push({
+          type: "sun",
+          name: `Sunrise`,
+          timeStart: sunrise.toISOString(),
+          date: sunrise,
+        } as SunEventItem);
+      } else {
+        events.push({
+          type: "sun",
+          name: `Now`,
+          timeStart: now.toISOString(),
+          date: now,
+        } as SunEventItem);
+      }
     }
   }
-  return events.reverse();
+  events.sort((a, b) => {
+    return b.date.getTime() - a.date.getTime();
+  });
+  return events;
 });
 
 const nightOfRange = computed<string>(() => {
@@ -205,7 +187,6 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
 };
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
-  console.log(visit);
   if (visit.type === "visit") {
     currentlySelectedVisit.value = visit.data;
   }
@@ -251,7 +232,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         </div>
       </div>
     </div>
-    <div v-else class="p-3">
+    <div v-else class="p-1">
       <div
         v-for="(visit, index) in visitEvents"
         :key="index"
@@ -265,7 +246,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         ]"
         @click="selectedVisit(visit)"
       >
-        <div class="visit-time-duration d-flex flex-column py-2 pe-2">
+        <div class="visit-time-duration d-flex flex-column py-2 pe-3">
           <span class="pb-1">{{ visitTime(visit.timeStart) }}</span>
           <span
             class="duration fs-8"
@@ -274,12 +255,51 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
           ></span>
         </div>
         <div class="visit-timeline">
-          <div class="circle"></div>
+          <svg
+            viewBox="0 0 32 36"
+            class="sun-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            v-if="visit.type === 'sun' && visit.name === 'Sunrise'"
+          >
+            <rect x="0" y="0" width="32" height="36" fill="white" />
+            <g transform="matrix(0.151304,0,0,0.151304,-22.1954,-34.6843)">
+              <path
+                fill="currentColor"
+                d="M161.213,434.531L161.213,418.781L194.046,418.781L194.541,415.968C195.47,410.687 197.983,404.084 201.238,398.372L204.49,392.666L181.46,369.671L192.71,358.421L215.841,381.516L219.464,379.197C224.28,376.115 229.455,373.935 235.838,372.298L241.088,370.952L241.492,337.781L257.934,337.781L258.338,370.952L263.588,372.298C269.971,373.935 275.146,376.115 279.962,379.197L283.585,381.516L306.703,358.434L317.973,369.629L294.734,392.906L296.282,395.156C299.306,399.551 302.884,407.739 304.177,413.221L305.487,418.781L338.213,418.781L338.213,434.531L161.213,434.531ZM288.226,414.843C286.39,408.589 283.456,403.805 278.213,398.518C262.19,382.361 237.323,382.358 221.203,398.51C215.98,403.743 213.057,408.516 211.2,414.842L210.044,418.78L289.382,418.78L288.226,414.843Z"
+              />
+              <path
+                fill="currentColor"
+                d="M241.463,322.031L241.463,289.781C241.463,289.781 218.213,289.525 218.213,289.212C218.213,288.899 249.713,257.169 249.713,257.169C249.713,257.169 281.213,288.899 281.213,289.212C281.213,289.525 257.963,289.781 257.963,289.781L257.963,322.031L241.463,322.031Z"
+                style="fill-rule: nonzero"
+              />
+            </g>
+          </svg>
+          <svg
+            viewBox="0 0 32 36"
+            class="sun-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            v-else-if="visit.type === 'sun' && visit.name === 'Sunset'"
+          >
+            <rect x="0" y="0" width="32" height="36" fill="white" />
+            <g transform="matrix(0.151304,0,0,0.151304,-22.1954,-34.6843)">
+              <path
+                fill="currentColor"
+                d="M161.213,434.531L161.213,418.781L194.046,418.781L194.541,415.968C195.47,410.687 197.983,404.084 201.238,398.372L204.49,392.666L181.46,369.671L192.71,358.421L215.841,381.516L219.464,379.197C224.28,376.115 229.455,373.935 235.838,372.298L241.088,370.952L241.492,337.781L257.934,337.781L258.338,370.952L263.588,372.298C269.971,373.935 275.146,376.115 279.962,379.197L283.585,381.516L306.703,358.434L317.973,369.629L294.734,392.906L296.282,395.156C299.306,399.551 302.884,407.739 304.177,413.221L305.487,418.781L338.213,418.781L338.213,434.531L161.213,434.531ZM288.226,414.843C286.39,408.589 283.456,403.805 278.213,398.518C262.19,382.361 237.323,382.358 221.203,398.51C215.98,403.743 213.057,408.516 211.2,414.842L210.044,418.78L289.382,418.78L288.226,414.843Z"
+              />
+              <path
+                fill="currentColor"
+                class="sun-arrow"
+                d="M241.463,322.031L241.463,289.781C241.463,289.781 218.213,289.525 218.213,289.212C218.213,288.899 249.713,257.169 249.713,257.169C249.713,257.169 281.213,288.899 281.213,289.212C281.213,289.525 257.963,289.781 257.963,289.781L257.963,322.031L241.463,322.031Z"
+                style="fill-rule: nonzero"
+              />
+            </g>
+          </svg>
+          <div v-else class="circle"></div>
         </div>
-        <div v-if="visit.type === 'sun'" class="py-2 ps-2">
+        <div v-if="visit.type === 'sun'" class="py-2 ps-3">
           {{ visit.name }}
         </div>
-        <div v-else class="d-flex py-2 ps-2 align-items-center">
+        <div v-else class="d-flex py-2 ps-3 align-items-center">
           <div class="visit-thumb">
             <img
               :src="thumbnailSrcForVisit(visit.data)"
@@ -291,7 +311,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
               visit.data.recordings.length
             }}</span>
           </div>
-          <div class="ps-2 d-flex flex-column">
+          <div class="ps-3 d-flex flex-column">
             <div>
               <span
                 class="visit-species-tag px-1 mb-1 text-capitalize"
@@ -320,7 +340,6 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
 </template>
 <style scoped lang="less">
 .visits-daily-breakdown {
-  width: 540px;
   background: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
 
@@ -425,6 +444,43 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
       background: white;
       transform: translateX(-3.5px);
       border: 1px solid #ddd;
+    }
+    .sun-icon {
+      margin-top: 12px;
+      width: 6px;
+      height: 6px;
+      color: #ccc;
+      background: white;
+      transform: translateX(-3.5px) scale(3.5);
+      .sun-arrow {
+        transform-box: fill-box;
+        transform-origin: center;
+        transform: rotate(180deg);
+      }
+    }
+  }
+  &:first-child,
+  &:last-child {
+    .visit-timeline {
+      position: relative;
+      &::before {
+        position: absolute;
+        display: block;
+        content: " ";
+        height: 50%;
+        width: 1px;
+        left: -1px;
+        border-left: 1px dashed white;
+      }
+    }
+  }
+  &:last-child {
+    .visit-timeline {
+      &::before {
+        top: 15px;
+        height: unset;
+        bottom: 0;
+      }
     }
   }
   .visit-species-tag {

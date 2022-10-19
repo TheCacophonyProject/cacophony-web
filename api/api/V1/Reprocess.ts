@@ -82,9 +82,9 @@ export default (app: Application, baseUrl: string) => {
         .exists()
         .withMessage(expectedTypeOf("RecordingId[]"))
         .bail()
+        .toArray()
         .custom(jsonSchemaOf(arrayOf(RecordingIdSchema))),
     ]),
-    // FIXME - Should we only allow this for admin users?
     fetchAuthorizedRequiredRecordingsByIds(body("recordings")),
     async (request: Request, response: Response, next: NextFunction) => {
       // FIXME: Anyone who can see a recording can ask for it to be reprocessed

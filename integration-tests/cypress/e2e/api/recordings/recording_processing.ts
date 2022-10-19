@@ -78,7 +78,7 @@ describe("Recordings - processing tests", () => {
       cy.apiDeviceAdd("rpCamera1b", "rpGroup");
 
       //Add an alert to the 2nd device
-      cy.apiAlertAdd(
+      cy.apiDeviceAlertAdd(
         "rpGroupAdmin",
         "rpAlert1b",
         POSSUM_ALERT,
@@ -906,10 +906,11 @@ describe("Recordings - processing tests", () => {
 
     //This is a single test to check that alerts are triggered by processing
     //Full tests of the alerts logic are done through the recording upload API
-    it("Alert when desired animal is detected by processing", () => {
+    it.only("Alert when desired animal is detected by processing", () => {
       //Note: camera 1b has an alert for possums
       const recording20 = TestCreateRecordingData(templateRecording);
-
+      // Make the recording recent, so that it will alert
+      recording20.recordingDateTime = new Date().toISOString();
       cy.apiRecordingAdd(
         "rpCamera1b",
         recording20,
@@ -921,8 +922,7 @@ describe("Recordings - processing tests", () => {
           0,
           POSSUM_ALERT,
           true,
-          "rpGroupAdmin",
-          "rpCamera1b"
+          "rpGroupAdmin"
         );
         const expectedEvent20 = createExpectedEvent(
           "rpCamera1b",
@@ -939,7 +939,7 @@ describe("Recordings - processing tests", () => {
           RecordingProcessingState.Tracking;
         expectedProcessing20.hasAlert = true;
 
-        cy.log("Send for processing and check is flagges as hasAlert");
+        cy.log("Send for processing and check is flagged as hasAlert");
         cy.processingApiCheck(
           RecordingType.ThermalRaw,
           RecordingProcessingState.Tracking,
@@ -994,7 +994,7 @@ describe("Recordings - processing tests", () => {
               cy.processingApiPut("rpRecording20", true, {}, undefined).then(
                 () => {
                   cy.log("Check an event was generated");
-                  cy.apiAlertCheck(
+                  cy.apiDeviceAlertCheck(
                     "rpGroupAdmin",
                     "rpCamera1b",
                     expectedAlert20

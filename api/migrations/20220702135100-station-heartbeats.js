@@ -11,7 +11,8 @@ module.exports = {
     await queryInterface.addColumn("Stations", "lastActiveAudioTime", {
       type: Sequelize.DATE,
       allowNull: true,
-      comment: "Last time that an audio device in this station was online and active",
+      comment:
+        "Last time that an audio device in this station was online and active",
     });
   },
 

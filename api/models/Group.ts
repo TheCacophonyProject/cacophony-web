@@ -124,9 +124,11 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
 
   // Get recordings for group starting at date:
   const builder = new models.Recording.queryBuilder().init(authUserId, {
-    // Group id, and after date
-    GroupId: group.id,
-    recordingDateTime: dateRange,
+    where: {
+      // Group id, and after date
+      GroupId: group.id,
+      recordingDateTime: dateRange,
+    },
   });
   builder.query.distinct = true;
   delete builder.query.limit;

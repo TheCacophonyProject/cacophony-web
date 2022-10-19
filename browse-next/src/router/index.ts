@@ -48,14 +48,18 @@ const router = createRouter({
     {
       path: "/setup",
       name: "setup",
-      meta: { title: "Group setup", requiresLogin: true },
+      meta: { title: "Group setup", requiresLogin: true, nonMainView: true },
       component: () => import("@/views/SetupView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/confirm-account-email/:token",
       name: "confirm-email",
-      meta: { title: "Confirm email address", requiresLogin: true },
+      meta: {
+        title: "Confirm email address",
+        requiresLogin: true,
+        nonMainView: true,
+      },
       component: () => import("@/views/ConfirmEmailView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -63,14 +67,22 @@ const router = createRouter({
     {
       path: "/accept-invite/:token",
       name: "accept-group-invite",
-      meta: { title: "Accept group invitation", requiresLogin: true },
+      meta: {
+        title: "Accept group invitation",
+        requiresLogin: true,
+        nonMainView: true,
+      },
       component: () => import("@/views/AcceptGroupInvite.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/confirm-group-membership-request/:token",
       name: "confirm-group-membership-request",
-      meta: { title: "Confirm group membership request", requiresLogin: true },
+      meta: {
+        title: "Confirm group membership request",
+        requiresLogin: true,
+        nonMainView: true,
+      },
       component: () => import("@/views/ConfirmAddToGroupRequest.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -95,7 +107,7 @@ const router = createRouter({
               component: () => import("@/components/RecordingViewLabels.vue"),
             },
             {
-              path: "tracks",
+              path: "tracks/:trackId?",
               name: "dashboard-visit-tracks",
               component: () => import("@/components/RecordingViewTracks.vue"),
             },
@@ -187,7 +199,7 @@ const router = createRouter({
     {
       path: "/sign-out",
       name: "sign-out",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, nonMainView: true },
       component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -195,49 +207,49 @@ const router = createRouter({
     {
       path: "/sign-in",
       name: "sign-in",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/SignInView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register",
       name: "register",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register/accept-invite/:token",
       name: "register-with-token",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/end-user-agreement",
       name: "end-user-agreement",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, nonMainView: true },
       component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/forgot-password",
       name: "forgot-password",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/ForgotPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password/:token",
       name: "validate-reset-password",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password",
       name: "reset-password",
-      meta: { requiresLogin: false },
+      meta: { requiresLogin: false, nonMainView: true },
       component: () => import("@/views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -245,6 +257,14 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+  if (to.name === "sign-out") {
+    userIsLoggedIn.value = false;
+    await forgetUserOnCurrentDevice();
+    return next({
+      name: "sign-in",
+    });
+  }
+
   if (to.name === "dashboard") {
     // debugger;
   }
@@ -280,12 +300,12 @@ router.beforeEach(async (to, from, next) => {
     ) {
       // Grab the users' groups, and select the first one.
       isFetchingGroups.value = true;
-      console.log("Fetching user groups");
+      console.warn("Fetching user groups");
       const NO_ABORT = false;
       const groupsResponse = await getGroups(NO_ABORT);
       if (groupsResponse.success) {
         UserGroups.value = reactive(groupsResponse.result.groups);
-        console.log("Fetched user groups", currentSelectedGroup.value);
+        // console.warn("Fetched user groups", currentSelectedGroup.value);
       }
       isFetchingGroups.value = false;
       if (groupsResponse.status === 401) {
@@ -301,11 +321,11 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     if (userIsLoggedIn.value) {
-      console.log("Resumed session");
+      console.warn("Resumed session");
     } else {
-      console.log("Failed to resume session or no session to resume");
+      console.warn("Failed to resume session or no session to resume");
       if (to.meta.requiresLogin || to.path === "/") {
-        console.log("Redirect to sign-in");
+        console.warn("Redirect to sign-in");
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else {
         return next();
@@ -314,10 +334,15 @@ router.beforeEach(async (to, from, next) => {
     isResumingSession.value = false;
   }
   if (to.path === "/") {
-    if (!userIsLoggedIn.value) {
+    if (!userIsLoggedIn.value && to.name !== "sign-in") {
       return next({ name: "sign-in" });
     } else {
-      if (!userHasConfirmedEmailAddress.value || !userHasGroups.value) {
+      if (
+        (to.name !== "setup" &&
+          to.name !== "confirm-email" &&
+          !userHasConfirmedEmailAddress.value) ||
+        !userHasGroups.value
+      ) {
         return next({ name: "setup" });
       } else {
         return next({
@@ -332,30 +357,38 @@ router.beforeEach(async (to, from, next) => {
     if (!userIsLoggedIn.value && to.meta.requiresLogin) {
       return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
     }
+    if (
+      userIsLoggedIn.value &&
+      to.name !== "setup" &&
+      to.name !== "confirm-email" &&
+      !userHasConfirmedEmailAddress.value
+    ) {
+      return next({ name: "setup" });
+    }
     // Check to see if we match the first part of the path to any of our group names:
     let potentialGroupName = to.path
       .split("/")
       .filter((item) => item !== "")
       .shift();
-    if (!UserGroups.value) {
+    if (userIsLoggedIn.value && !UserGroups.value) {
       // Grab the users' groups, and select the first one.
       isFetchingGroups.value = true;
-      console.log("Fetching user groups");
+      // console.warn("Fetching user groups");
       const NO_ABORT = false;
       const groupsResponse = await getGroups(NO_ABORT);
       if (groupsResponse.success) {
         UserGroups.value = reactive(groupsResponse.result.groups);
-        console.log(
-          "Fetched user groups",
-          currentSelectedGroup.value,
-          UserGroups.value?.length
-        );
+        // console.warn(
+        //   "Fetched user groups",
+        //   currentSelectedGroup.value,
+        //   UserGroups.value?.length
+        // );
       }
       isFetchingGroups.value = false;
       if (groupsResponse.status === 401) {
         return next({ name: "sign-out" });
       } else if (UserGroups.value?.length === 0) {
-        if (to.name !== "setup") {
+        if (to.name !== "setup" && to.name !== "confirm-email") {
           return next({ name: "setup" });
         } else {
           return next();
@@ -363,18 +396,12 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     if (potentialGroupName) {
-      // FIXME - we need to check for group name uniqueness on the url-normalised version of the group name,
       potentialGroupName = urlNormaliseGroupName(potentialGroupName);
-      const groupNames = (UserGroups.value as ApiGroupResponse[]).map(
-        ({ groupName }) => urlNormaliseGroupName(groupName)
-      );
-      console.log("looking for group name", potentialGroupName);
-      console.log("Potential group names", groupNames);
       const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
         ({ groupName }) =>
           urlNormaliseGroupName(groupName) === potentialGroupName
       );
-      console.log("Found match", matchedGroup);
+      // console.warn("Found match", matchedGroup);
       if (matchedGroup) {
         // Don't persist the admin property in user settings, since that could change
         switchCurrentGroup({
@@ -396,7 +423,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.requiresGroupAdmin && !userIsAdminForCurrentSelectedGroup.value) {
-    console.log("Trying to access admin only route");
+    console.error("Trying to access admin only route");
     return next({
       name: "dashboard",
       params: {
@@ -405,7 +432,12 @@ router.beforeEach(async (to, from, next) => {
     });
   }
 
-  if (to.name === "setup" && userIsLoggedIn.value && userHasGroups.value) {
+  if (
+    to.name === "setup" &&
+    userIsLoggedIn.value &&
+    userHasGroups.value &&
+    userHasConfirmedEmailAddress.value
+  ) {
     return next({
       name: "dashboard",
       params: {
@@ -417,13 +449,6 @@ router.beforeEach(async (to, from, next) => {
   // Slight wait so that we can break infinite navigation loops while developing.
   if (to.meta.requiresLogin && !userIsLoggedIn.value) {
     return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-  }
-  if (userIsLoggedIn.value && to.name === "sign-out") {
-    await forgetUserOnCurrentDevice();
-    userIsLoggedIn.value = false;
-    return next({
-      name: "sign-in",
-    });
   }
 
   if (!from.meta.requiresLogin && to.query.nextUrl) {
@@ -442,7 +467,6 @@ router.beforeEach(async (to, from, next) => {
       },
     });
   } else {
-    console.log("here", to);
     pinSideNav.value = false;
     return next();
   }

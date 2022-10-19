@@ -3,16 +3,10 @@ import { computed, reactive, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
 import { login } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
+import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
 
 // TODO Can we parse e.g body.password in the messages into contextual error messages?
-
-interface FormInputValue {
-  value: string;
-  touched: boolean;
-}
-
-type FormInputValidationState = boolean | null;
 
 const showPassword = ref(false);
 const togglePasswordVisibility = () => {
@@ -55,7 +49,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    userEmailAddress.touched ? isValidEmailAddress.value : null
+    userEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
 const isValidPassword = computed<boolean>(
@@ -63,7 +57,7 @@ const isValidPassword = computed<boolean>(
 );
 
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
-  () => (userPassword.touched ? isValidPassword.value : null)
+  () => (userPassword.touched ? isValidPassword.value : undefined)
 );
 
 const signInFormIsFilledAndValid = computed<boolean>(

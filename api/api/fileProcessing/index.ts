@@ -32,6 +32,7 @@ import {
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
 } from "@api/extract-middleware";
+import logger from "@log";
 
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";
@@ -112,9 +113,12 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/processed`,
-    util.multipartUpload("file", async (uploader, data, key) => {
-      return key;
-    })
+    util.multipartUpload(
+      "file",
+      async (uploader, uploadingDevice, uploadingUser, data, key) => {
+        return key;
+      }
+    )
   );
 
   // Add tracks
@@ -277,6 +281,10 @@ export default function (app: Application) {
         recording.processingEndTime = new Date().toISOString();
         // Process extra data from file processing
         if (result && result.fieldUpdates) {
+          // TODO(jon): if the previous step was tracking, here would be the best time to consolidate tracks - however,
+          //  we need to make sure that the AI is reading these tracks back out to do its classifications:
+          //  #1283385 is a great example of why we need this.
+
           // NOTE: We used to re-match stations here if location changed, but really there's no good reason
           //  why file processing should update the location.
           delete result.fieldUpdates.location;
@@ -290,29 +298,37 @@ export default function (app: Application) {
           }
         }
         await recording.save();
-        if (recording.type === RecordingType.ThermalRaw) {
-          if (
-            complete &&
-            recording.additionalMetadata &&
-            "thumbnail_region" in recording.additionalMetadata
-          ) {
-            const region = recording.additionalMetadata["thumbnail_region"];
-            const result = await recordingUtil.saveThumbnailInfo(
-              recording,
-              region
+
+        if (
+          complete &&
+          recording.additionalMetadata &&
+          "thumbnail_region" in recording.additionalMetadata
+        ) {
+          const region = recording.additionalMetadata["thumbnail_region"];
+          const result = await recordingUtil.saveThumbnailInfo(
+            recording,
+            region
+          );
+          if (!result.hasOwnProperty("Key")) {
+            log.warning(
+              "Failed to upload thumbnail for %s",
+              `${recording.rawFileKey}-thumb`
             );
-            if (!result.hasOwnProperty("Key")) {
-              log.warning(
-                "Failed to upload thumbnail for %s",
-                `${recording.rawFileKey}-thumb`
-              );
-              log.error("Reason: %s", (result as Error).message);
-            }
-          }
-          if (complete && prevState !== RecordingProcessingState.Reprocess) {
-            await recordingUtil.sendAlerts(recording.id);
+            log.error("Reason: %s", (result as Error).message);
           }
         }
+        const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+        const recordingAgeMs =
+          new Date().getTime() - recording.recordingDateTime.getTime();
+        if (
+          complete &&
+          prevState !== RecordingProcessingState.Reprocess &&
+          recording.uploader === "device" &&
+          recordingAgeMs < twentyFourHoursMs
+        ) {
+          await recordingUtil.sendAlerts(recording.id);
+        }
+
         return successResponse(response, "Processing finished.");
       } else {
         recording.processingState =

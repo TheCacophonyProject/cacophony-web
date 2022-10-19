@@ -26,7 +26,7 @@ const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
   let max = 0;
   for (const stationVisits of Object.values(visitsByStation(visits))) {
     const visitsCount = visitsCountBySpecies(stationVisits);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
     max = Math.max(...visitsCount.map(([_, count]) => count), max);
   }
   return max;

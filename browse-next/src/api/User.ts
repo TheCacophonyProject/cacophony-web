@@ -6,13 +6,15 @@ import type { UserGlobalPermission } from "@typedefs/api/consts";
 import type { EndUserAgreementVersion } from "@typedefs/api/common";
 import type { ApiUserSettings } from "@typedefs/api/user";
 import type { ApiGroupResponse } from "@typedefs/api/group";
+import { CurrentUser, setLoggedInUserData } from "@models/LoggedInUser";
+import type { LoggedInUser } from "@models/LoggedInUser";
 
 const NO_ABORT = false;
 
 export const login = (userEmail: string, password: string) =>
   CacophonyApi.post("/api/v1/users/authenticate", {
     email: userEmail,
-    password, // Hashed password using some salt known to the client and the server (time-based?)
+    password,
   }) as Promise<
     FetchResult<{
       userData: ApiLoggedInUserResponse;
@@ -79,6 +81,18 @@ export const resendAccountActivationEmail = () =>
     "/api/v1/users/resend-email-confirmation-request"
   ) as Promise<FetchResult<void>>;
 
+export const changeAccountEmail = async (
+  newEmailAddress: string
+): Promise<FetchResult<void>> => {
+  const response = await updateFields({ email: newEmailAddress });
+  if (response.success) {
+    const currentUser = CurrentUser.value as LoggedInUser;
+    currentUser.email = newEmailAddress;
+    setLoggedInUserData(currentUser);
+  }
+  return response;
+};
+
 export const debugGetEmailConfirmationToken = (email: string) =>
   CacophonyApi.post("/api/v1/users/get-email-confirmation-token", {
     email,
@@ -124,25 +138,15 @@ export const saveUserSettings = (settings: ApiUserSettings) =>
 export const updateFields = (
   fields: ApiLoggedInUserUpdates,
   abortable?: boolean
-) => CacophonyApi.patch("/api/v1/users", fields, abortable);
+) =>
+  CacophonyApi.patch("/api/v1/users", fields, abortable) as Promise<
+    FetchResult<void>
+  >;
 
 export const getEUAVersion = () =>
   CacophonyApi.get("/api/v1/end-user-agreement/latest", NO_ABORT) as Promise<
     FetchResult<{ euaVersion: number }>
   >;
-
-export const token = async () => {
-  // Params must include where (stringified JSON), limit, offset
-  // Params can also include tagMode, tags, order
-
-  // FIXME - does this endpoint exist anymore?
-  const response = (await CacophonyApi.post("/token")) as FetchResult<any>;
-  const { result, success } = response;
-  if (!success) {
-    throw "Failed to get token";
-  }
-  return result.token;
-};
 
 export const getGroupsForGroupAdminByEmail = (
   groupAdminEmail: string,

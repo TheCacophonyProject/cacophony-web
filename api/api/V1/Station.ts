@@ -238,6 +238,8 @@ export default function (app: Application, baseUrl: string) {
       "f",
       async (
         uploader,
+        uploadingDevice,
+        uploadingUser,
         data,
         key,
         uploadedFileData,

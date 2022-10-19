@@ -89,7 +89,7 @@ describe("Recordings - reprocessing tests", () => {
       cy.apiGroupUserAdd("rrpGroupAdmin", "rrpGroupMember", "rrpGroup", true);
 
       //Alert on device1
-      cy.apiAlertAdd(
+      cy.apiDeviceAlertAdd(
         "rrpGroupAdmin",
         "rrpAlert1b",
         [{ tag: "possum", automatic: true }],
@@ -681,8 +681,7 @@ describe("Recordings - reprocessing tests", () => {
           0,
           POSSUM_ALERT,
           true,
-          "rrpGroupAdmin",
-          "rrpCamera1b"
+          "rrpGroupAdmin"
         );
         const expectedEvent20 = createExpectedEvent(
           "rrpCamera1b",
@@ -742,7 +741,7 @@ describe("Recordings - reprocessing tests", () => {
               cy.processingApiPut("rrpRecording20", true, {}, undefined).then(
                 () => {
                   cy.log("Check an event was generated");
-                  cy.apiAlertCheck(
+                  cy.apiDeviceAlertCheck(
                     "rrpGroupAdmin",
                     "rrpCamera1b",
                     expectedAlert20

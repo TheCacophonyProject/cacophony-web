@@ -45,6 +45,8 @@ import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
 import {
   sendChangedEmailConfirmationEmail,
+  sendEmailConfirmationEmailLegacyUser,
+  sendPasswordResetEmail,
   sendWelcomeEmailConfirmationEmail,
 } from "@/emails/transactionalEmails";
 import { HttpStatusCode } from "@typedefs/api/consts";
@@ -167,6 +169,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiDescription Returns a refreshed JWT user auth token for the current user
    * with an updated timeout
    *
+   * @apiBody {String} refreshToken Provide current refreshToken
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
@@ -366,11 +369,21 @@ export default function (app: Application, baseUrl: string) {
         const user = response.locals.user as User;
         // If we're using the new end-point, make sure the user has confirmed their email address.
         const isNewEndpoint = request.path.endsWith("reset-password");
-        if (isNewEndpoint && !user.emailConfirmed) {
+        if (isNewEndpoint) {
           // Do nothing
+          const token = "";
+          const sendingSuccess = await sendPasswordResetEmail(
+            token,
+            user.email
+          );
+          if (!sendingSuccess) {
+            return next(
+              new FatalError(
+                "We failed to send your password recovery email, please check that you've entered your email correctly."
+              )
+            );
+          }
         } else {
-          // FIXME - use correct resetPassword emailer
-
           const sendingSuccess = await user.resetPassword();
           if (!sendingSuccess) {
             return next(
@@ -463,6 +476,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/resend-email-confirmation-request`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
+      const browseNextLaunchDate = new Date(); // Fix this to a specific date once browse-next goes live.
       const user = await models.User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
@@ -475,6 +489,11 @@ export default function (app: Application, baseUrl: string) {
         if (!groups.length) {
           // If the user has no groups, re-send the welcome email,
           sendSuccess = await sendWelcomeEmailConfirmationEmail(
+            emailConfirmationToken,
+            user.email
+          );
+        } else if (user.createdAt < browseNextLaunchDate) {
+          sendSuccess = await sendEmailConfirmationEmailLegacyUser(
             emailConfirmationToken,
             user.email
           );

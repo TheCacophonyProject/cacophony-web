@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RouterView, RouterLink } from "vue-router";
+import { RouterView, RouterLink, useRoute } from "vue-router";
 
 // TODO only in dev mode, otherwise we need an info button somewhere for production
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
@@ -15,15 +15,17 @@ import {
   isLoggingInAutomatically,
   isFetchingGroups,
   userIsAdminForCurrentSelectedGroup,
+  userHasConfirmedEmailAddress,
   showSwitchGroup,
   creatingNewGroup,
   joiningNewGroup,
   urlNormalisedCurrentGroupName,
-  pinSideNav,
   rafFps,
-  type SelectedGroup,
-  type LoggedInUser,
+  pinSideNav,
+  isWideScreen,
+  sideNavIsPinned,
 } from "@/models/LoggedInUser";
+import type { SelectedGroup, LoggedInUser } from "@/models/LoggedInUser";
 import {
   computed,
   defineAsyncComponent,
@@ -34,7 +36,6 @@ import {
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
 import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
-import { CurrentViewAbortController } from "@/router";
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
@@ -44,9 +45,9 @@ const CreateGroupModal = defineAsyncComponent(
   () => import("@/components/CreateGroupModal.vue")
 );
 
-const userIsSuperAdmin = false;
-const loggedInAsAnotherUser = false;
-const environmentIsProduction = false;
+const _userIsSuperAdmin = false;
+const _loggedInAsAnotherUser = false;
+const _environmentIsProduction = false;
 const hasGitReleaseInfoBar = ref(false);
 
 const currentSelectedGroup = computed<SelectedGroup>(() => {
@@ -56,6 +57,13 @@ const currentSelectedGroup = computed<SelectedGroup>(() => {
 const CurrentUser = computed<LoggedInUser>(() => {
   return fallibleCurrentUser.value as LoggedInUser;
 });
+
+const currentUserName = computed<string>(() => {
+  // Remove spaces.
+  return CurrentUser.value.userName.replace(/ /g, "&nbsp;");
+});
+
+const route = useRoute();
 
 onBeforeMount(() => {
   // Override bootstrap CSS variables.
@@ -100,6 +108,7 @@ onMounted(() => {
 });
 </script>
 <template>
+  <div class="debug">Logged in? {{ userIsLoggedIn }}</div>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal id="network-issue-modal" />
   <switch-groups-modal
@@ -125,7 +134,7 @@ onMounted(() => {
       'logged-in',
       { 'has-git-info-bar': hasGitReleaseInfoBar },
     ]"
-    v-else-if="userIsLoggedIn && userHasGroups"
+    v-else-if="userIsLoggedIn && userHasGroups && userHasConfirmedEmailAddress"
   >
     <nav
       id="global-side-nav"
@@ -133,7 +142,7 @@ onMounted(() => {
         'd-flex',
         'flex-column',
         'flex-shrink-0',
-        { pinned: pinSideNav },
+        { pinned: sideNavIsPinned },
       ]"
     >
       <div class="nav-top">
@@ -389,7 +398,7 @@ onMounted(() => {
               </svg>
             </span>
           </span>
-          <span>{{ CurrentUser.userName }}</span>
+          <span v-html="currentUserName"></span>
         </router-link>
         <router-link
           :to="{ name: 'sign-out' }"
@@ -401,26 +410,32 @@ onMounted(() => {
         </router-link>
       </div>
     </nav>
-    <section id="main-content">
-      <div class="container p-0">
+    <section id="main-content" :class="{ 'offset-content': isWideScreen }">
+      <div class="container-xxl py-0">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
         <div class="d-flex flex-column router-view">
-          <router-view />
+          <router-view v-if="!route.meta.nonMainView" />
         </div>
       </div>
     </section>
   </main>
-  <main v-else-if="userIsLoggedIn && !userHasGroups" class="d-flex flex-column">
-    <!--  This will always be the setup view  -->
-    <router-view />
-  </main>
   <main
     v-else
-    class="logged-out justify-content-center align-items-center d-flex flex-column flex-fill"
+    :class="[
+      userIsLoggedIn && (!userHasGroups || !userHasConfirmedEmailAddress)
+        ? 'account-setup'
+        : 'logged-out',
+      'd-flex',
+      'flex-column',
+      'account-setup',
+      'justify-content-center',
+      'align-items-center',
+      'flex-fill',
+    ]"
   >
-    <!--  This will always be the sign-in screen, right?  -->
-    <router-view />
+    <!--  When logging out, the existing router view gets re-mounted in here, which we don't want.  -->
+    <router-view v-if="route.meta.nonMainView" />
   </main>
 </template>
 
@@ -450,6 +465,9 @@ onMounted(() => {
 }
 :root {
   --bs-body-font-size: 1rem;
+  --bs-btn-disabled-border-color: transparent;
+  --bs-btn-focus-border-color: transparent;
+  --bs-btn-active-border-color: transparent;
 }
 
 .fs-1 {
@@ -498,27 +516,32 @@ onMounted(() => {
     max-height: calc(100vh - 24px);
   }
 }
-
+@global-side-nav-collapsed-width: 3.5rem;
+@global-side-nav-expanded-width: 20rem;
 #main-content {
   background: #f6f6f6;
   width: 100%;
   overflow-y: auto;
+  transition: margin-left 0.2s;
+  &.offset-content {
+    margin-left: calc(
+      @global-side-nav-expanded-width - @global-side-nav-collapsed-width
+    );
+  }
 }
 
 #global-side-nav {
-  @collapsed-width: 3.5rem;
-  @expanded-width: 20rem;
-  transform: translateX(-@expanded-width);
+  transform: translateX(-@global-side-nav-expanded-width);
   @media (min-width: 576px) {
     transform: unset;
   }
 
   background: white;
-  position: absolute;
+  position: fixed;
   bottom: 0;
   top: 0;
   left: 0;
-  width: @collapsed-width;
+  width: @global-side-nav-collapsed-width;
   overflow: hidden;
   transition: width 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
@@ -527,7 +550,7 @@ onMounted(() => {
   .nav-icon-wrapper {
     // Keep the icons vertically aligned relative to one-another.
     display: block;
-    width: @collapsed-width;
+    width: @global-side-nav-collapsed-width;
     text-align: center;
   }
 
@@ -581,7 +604,7 @@ onMounted(() => {
     .group-switcher {
       opacity: 0;
       transition: opacity 0.2s;
-      width: @expanded-width;
+      width: @global-side-nav-expanded-width;
       .current-group {
         text-transform: uppercase;
         font-weight: 500;
@@ -608,7 +631,7 @@ onMounted(() => {
   &:hover,
   &.pinned {
     transform: translateX(0);
-    width: @expanded-width;
+    width: @global-side-nav-expanded-width;
     .nav-top {
       background-color: #fafafa;
       .group-switcher {
@@ -643,10 +666,25 @@ main {
 
 .logged-in {
 }
+.account-setup {
+  @media (min-width: 768px) {
+    background: #95a5a6;
+  }
+}
 .logged-out {
   @media (min-width: 768px) {
     background: #95a5a6;
   }
+}
+
+.debug {
+  display: none;
+  right: 0;
+  bottom: 0;
+  position: absolute;
+  z-index: 10000;
+  background: white;
+  padding: 10px;
 }
 </style>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>

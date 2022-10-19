@@ -5,7 +5,7 @@
       @input="$emit('input', $event)"
       v-bind:value="value"
       :disabled="disabled"
-      placeholder="Search Tags..."
+      :placeholder="placeholder"
     />
   </div>
 </template>
@@ -32,6 +32,10 @@ export default defineComponent({
     exclude: {
       type: Array as PropType<string[]>,
       default: () => [],
+    },
+    placeholder: {
+      type: String as PropType<string>,
+      default: () => "Search Tags...",
     },
   },
   components: {
@@ -61,7 +65,6 @@ export default defineComponent({
     };
     onMounted(async () => {
       options.value = (await getClassifications()) as Option;
-
       // classifications is a tree, we want to filter out excluded nodes
       const filter = (node: Option) => {
         if (props.exclude.includes(node.label)) {

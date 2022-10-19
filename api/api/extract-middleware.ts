@@ -28,6 +28,7 @@ import { Schedule } from "@/models/Schedule";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 import { SuperUsers } from "@/Globals";
+import { Alert, AlertId } from "@models/Alert";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -410,14 +411,14 @@ export const fetchModel =
     byName: boolean,
     byId: boolean,
     modelGetter: ModelGetter<T> | ModelsGetter<T>,
-    primary: ValidationChain | number,
-    secondary?: ValidationChain
+    primary: ValidationChain | number | string,
+    secondary?: ValidationChain | number | string
   ) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
 
     let id;
-    if (typeof primary === "number") {
+    if (typeof primary === "number" || typeof primary === "string") {
       id = primary;
     } else {
       id = extractValFromRequest(request, primary) as string;
@@ -425,7 +426,12 @@ export const fetchModel =
     if (!id && !required) {
       return next();
     }
-    const id2 = extractValFromRequest(request, secondary);
+    let id2;
+    if (typeof secondary === "number" || typeof secondary === "string") {
+      id2 = secondary;
+    } else {
+      id2 = extractValFromRequest(request, secondary) as string;
+    }
     response.locals.onlyActive = true; // Default to only showing active devices.
     if (
       ("onlyActive" in request.query &&
@@ -520,8 +526,8 @@ export const fetchOptionalModel = <T>(
   byName: boolean,
   byId: boolean,
   modelGetter: ModelGetter<T>,
-  primary: ValidationChain,
-  secondary?: ValidationChain
+  primary: ValidationChain | string | number,
+  secondary?: ValidationChain | string | number
 ) =>
   fetchModel(modelType, false, byName, byId, modelGetter, primary, secondary);
 
@@ -1281,6 +1287,25 @@ const getUser =
     });
   };
 
+const getAlert =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    alertId: string,
+    unusedParam?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Alert> | ClientError | null> => {
+    if (forRequestUser) {
+      return models.Alert.findOne({
+        where: { id: parseInt(alertId), UserId: context.requestUser.id },
+      });
+    }
+    {
+      return models.Alert.findOne({
+        where: { id: parseInt(alertId) },
+      });
+    }
+  };
+
 const getUnauthorizedGenericModelById =
   <T>(modelType: ModelStaticCommon<T>) =>
   <T>(id: string): Promise<T | ClientError | null> => {
@@ -1409,7 +1434,7 @@ export const fetchUnauthorizedRequiredGroupByNameOrId = (
   );
 
 export const fetchUnauthorizedOptionalGroupByNameOrId = (
-  groupNameOrId: ValidationChain
+  groupNameOrId: ValidationChain | string | number
 ) =>
   fetchOptionalModel(
     models.Group,
@@ -1620,6 +1645,9 @@ export const fetchAuthorizedRequiredStationById = (
     getStation(true, false),
     stationId
   );
+
+export const fetchAuthorizedRequiredAlertById = (alertId: ValidationChain) =>
+  fetchRequiredModel(models.Alert, false, true, getAlert(true, false), alertId);
 
 export const fetchAdminAuthorizedRequiredStationById = (
   stationId: ValidationChain

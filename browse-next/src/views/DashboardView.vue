@@ -24,11 +24,13 @@ import {
   visitorIsPredator,
   visitsContext,
 } from "@models/SelectionContext";
+import { useMediaQuery } from "@vueuse/core";
 
 const audioMode = ref<boolean>(false);
 
 const router = useRouter();
 const route = useRoute();
+const isMobileView = useMediaQuery("(max-width: 639px)");
 
 const maybeFilteredDashboardVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
@@ -210,7 +212,7 @@ const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
   return true;
 });
 
-const hasSelectedVisit = computed<boolean>({
+const _hasSelectedVisit = computed<boolean>({
   get: () =>
     (route.name as string).startsWith("dashboard-visit") ||
     (route.name as string).startsWith("dashboard-recording"),
@@ -300,6 +302,7 @@ const showVisitsForTag = (tag: string) => {
   <h2>Visits summary</h2>
   <div class="d-md-flex flex-md-row">
     <group-visits-summary
+      v-if="!isMobileView"
       class="mb-5 flex-md-fill"
       :stations="allStations"
       :active-stations="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"

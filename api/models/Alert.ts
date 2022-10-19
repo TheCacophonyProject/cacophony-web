@@ -22,7 +22,7 @@ import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
 import { alertBody, EmailImageAttachment } from "@/scripts/emailUtil";
-import { DeviceId, UserId } from "@typedefs/api/common";
+import { DeviceId, StationId, UserId } from "@typedefs/api/common";
 import logger from "../logging";
 import { sendEmail } from "@/emails/sendEmail";
 
@@ -38,13 +38,17 @@ export function isAlertCondition(condition: any) {
 
 export interface Alert extends Sequelize.Model, ModelCommon<Alert> {
   id: AlertId;
+  name: string;
   UserId: UserId;
+  StationId: StationId | null;
+  DeviceId: DeviceId | null;
   conditions: AlertCondition[];
   frequencySeconds: number;
   sendAlert: (
     recording: Recording,
     track: Track,
     tag: TrackTag,
+    alertOn: "station" | "device",
     thumbnail?: EmailImageAttachment
   ) => Promise<null>;
 }
@@ -62,8 +66,17 @@ export interface AlertStatic extends ModelStaticCommon<Alert> {
     trackTag?: TrackTag | null,
     asAdmin?: boolean
   ) => Promise<Alert[]>;
-  getFromId: (id: number, user: User) => Promise<Alert>;
-  getActiveAlerts: (deviceId: number, tag: TrackTag) => Promise<Alert[]>;
+  queryUserStation: (
+    stationId: StationId,
+    userId: UserId | null,
+    trackTag?: TrackTag | null,
+    asAdmin?: boolean
+  ) => Promise<Alert[]>;
+  getActiveAlerts: (
+    tag: TrackTag,
+    deviceId?: DeviceId,
+    stationId?: StationId
+  ) => Promise<Alert[]>;
 }
 
 export default function (sequelize, DataTypes): AlertStatic {
@@ -90,29 +103,7 @@ export default function (sequelize, DataTypes): AlertStatic {
   Alert.addAssociations = function (models) {
     models.Alert.belongsTo(models.User);
     models.Alert.belongsTo(models.Device);
-  };
-
-  Alert.getFromId = async function (id: number, user: User) {
-    let userWhere = { id: user.id };
-    if (user.hasGlobalRead()) {
-      userWhere = null;
-    }
-
-    return await models.Alert.findOne({
-      where: { id: id },
-      attributes: ["id", "name", "frequencySeconds", "conditions", "lastAlert"],
-      include: [
-        {
-          model: models.User,
-          attributes: ["id", "userName"],
-          where: userWhere,
-        },
-        {
-          model: models.Device,
-          attributes: ["id", "deviceName"],
-        },
-      ],
-    });
+    models.Alert.belongsTo(models.Station);
   };
 
   Alert.queryUserDevice = async (
@@ -120,8 +111,17 @@ export default function (sequelize, DataTypes): AlertStatic {
     userId: UserId | null,
     trackTag: TrackTag | null = null,
     asAdmin: boolean = false
-  ) => {
+  ): Promise<Alert[]> => {
     return Alert.query({ DeviceId: deviceId }, userId, trackTag, asAdmin);
+  };
+
+  Alert.queryUserStation = async (
+    stationId: StationId,
+    userId: UserId | null,
+    trackTag: TrackTag | null = null,
+    asAdmin: boolean = false
+  ): Promise<Alert[]> => {
+    return Alert.query({ StationId: stationId }, userId, trackTag, asAdmin);
   };
 
   Alert.query = async function (
@@ -129,47 +129,60 @@ export default function (sequelize, DataTypes): AlertStatic {
     userId: UserId | null,
     trackTag: TrackTag | null = null,
     asAdmin: boolean = false
-  ) {
+  ): Promise<Alert[]> {
     if (userId === null && !asAdmin) {
       logger.warning(
         "Alert.query called without userId specified, as non-admin"
       );
       return [];
     }
-    let userWhere = {};
-    if (!asAdmin) {
-      userWhere = { id: userId };
-    }
-    const alerts = await models.Alert.findAll({
+    const whereClause = {
       where,
       attributes: ["id", "name", "frequencySeconds", "conditions", "lastAlert"],
-      include: [
+    };
+    if (userId) {
+      whereClause.where.UserId = userId;
+    }
+    if (asAdmin) {
+      // Only return user details if we're an admin.
+      (whereClause as any).include = [
         {
           model: models.User,
           attributes: ["id", "userName", "email"],
-          where: userWhere,
         },
-        {
-          model: models.Device,
-          attributes: ["id", "deviceName"],
-        },
-      ],
-    });
+      ];
+    }
+    const alerts: Alert[] = await models.Alert.findAll(whereClause);
     if (trackTag) {
       // check that any of the alert conditions are met
       return alerts.filter(({ conditions }) =>
-        conditions.some(({ tag }) => tag === trackTag.what)
+        conditions.some(({ tag }) =>
+          trackTag.path
+            .split(".")
+            .includes(tag.replace(/-/g, "").replace(/ /g, "_"))
+        )
       );
     }
     return alerts;
   };
 
-  // get all alerts for this device that satisfy the what condition and have
+  // get all alerts for this device that satisfy the what condition, or are further up the hierarchy and have
   // not been triggered already (are active)
-  Alert.getActiveAlerts = async function (deviceId: number, tag: TrackTag) {
+  Alert.getActiveAlerts = async function (
+    tag: TrackTag,
+    deviceId?: DeviceId,
+    stationId?: StationId
+  ): Promise<Alert[]> {
+    const deviceOrStation = [];
+    if (deviceId) {
+      deviceOrStation.push({ DeviceId: deviceId });
+    }
+    if (stationId) {
+      deviceOrStation.push({ StationId: stationId });
+    }
     return Alert.query(
       {
-        DeviceId: deviceId,
+        [Op.or]: deviceOrStation,
         lastAlert: {
           [Op.or]: {
             [Op.eq]: null,
@@ -189,14 +202,18 @@ export default function (sequelize, DataTypes): AlertStatic {
     recording: Recording,
     track: Track,
     tag: TrackTag,
+    alertOn: "station" | "device",
     thumbnail?: EmailImageAttachment
   ) {
     const subject = `${this.name}  - ${tag.what} Detected`;
+
     const [html, text] = alertBody(
       recording,
       tag,
-      this.Device.deviceName,
-      !!thumbnail
+      this,
+      !!thumbnail,
+      alertOn === "device" ? recording.Device?.deviceName : undefined,
+      alertOn === "station" ? recording.Station?.name : undefined
     );
     const alertTime = new Date().toISOString();
     const result = await sendEmail(
@@ -213,11 +230,10 @@ export default function (sequelize, DataTypes): AlertStatic {
       success: result,
     });
     await models.Event.create({
-      DeviceId: this.Device.id,
+      DeviceId: recording.Device.id,
       EventDetailId: detail.id,
       dateTime: alertTime,
     });
-
     await this.update({ lastAlert: alertTime });
   };
 

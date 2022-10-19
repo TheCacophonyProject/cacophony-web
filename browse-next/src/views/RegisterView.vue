@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
-import { setLoggedInUserData } from "@models/LoggedInUser";
+import {
+  setLoggedInUserCreds,
+  setLoggedInUserData,
+} from "@models/LoggedInUser";
 import { getEUAVersion, register as registerUser } from "@api/User";
 import { formFieldInputText, isValidName } from "@/utils";
 import type { ErrorResult, FieldValidationError } from "@api/types";
@@ -40,7 +43,7 @@ const isValidUserName = computed<boolean>(() => {
   return isValidName(userName.value.trim());
 });
 const needsValidationAndIsValidUserName = computed<FormInputValidationState>(
-  () => (userName.touched ? isValidUserName.value : null)
+  () => (userName.touched ? isValidUserName.value : undefined)
 );
 
 // ---------- email ------------
@@ -75,7 +78,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    userEmailAddress.touched ? isValidEmailAddress.value : null
+    userEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
 // ---------- password ------------
@@ -86,7 +89,7 @@ const passwordIsTooShort = computed<boolean>(
   () => userPassword.value.trim().length < 8
 );
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
-  () => (userPassword.touched ? isValidPassword.value : null)
+  () => (userPassword.touched ? isValidPassword.value : undefined)
 );
 const passwordConfirmationMatches = computed<boolean>(
   () => userPasswordConfirmation.value.trim() === userPassword.value.trim()
@@ -95,7 +98,7 @@ const needsValidationAndIsValidPasswordConfirmation =
   computed<FormInputValidationState>(() =>
     userPasswordConfirmation.touched
       ? isValidPassword.value && passwordConfirmationMatches.value
-      : null
+      : undefined
   );
 
 // ---------- password visibility ------------
@@ -107,7 +110,7 @@ const togglePasswordVisibility = () => {
 // ---------- acceptedEUA ------------
 const acceptedEUA: FormInputValue = formFieldInputText(false);
 const needsValidationAndAcceptedEUA = computed<FormInputValidationState>(() =>
-  acceptedEUA.touched ? Boolean(acceptedEUA.value) : null
+  acceptedEUA.touched ? Boolean(acceptedEUA.value) : undefined
 );
 
 // ---------- general ------------
@@ -183,6 +186,8 @@ const register = async () => {
     const newUser = newUserResponse.result;
     setLoggedInUserData({
       ...newUser.userData,
+    });
+    setLoggedInUserCreds({
       refreshToken: newUser.refreshToken,
       apiToken: newUser.token,
       refreshingToken: false,

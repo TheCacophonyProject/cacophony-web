@@ -34,6 +34,7 @@ import {
   HttpStatusCode,
   RecordingProcessingState,
   RecordingType,
+  TagMode,
 } from "@typedefs/api/consts";
 import {
   ApiAudioRecordingMetadataResponse,
@@ -93,6 +94,7 @@ import recordingUtil, {
   uploadRawRecording,
 } from "./recordingUtil";
 import { successResponse } from "./responseUtil";
+import { streamS3Object } from "@api/V1/signedUrl";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -529,14 +531,18 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
     parseJSONField(query("filterOptions")), // FIXME - this doesn't seem to be used.
     async (request: Request, response: Response) => {
+      const { viewAsSuperUser, where, tags = [] } = response.locals;
+      const { tagMode, offset, limit } = request.query;
       const result = await recordingUtil.queryVisits(
         response.locals.requestUser.id,
-        response.locals.viewAsSuperUser,
-        response.locals.where,
-        request.query.tagMode,
-        response.locals.tags || [],
-        request.query.offset && parseInt(request.query.offset as string),
-        request.query.limit && parseInt(request.query.limit as string)
+        {
+          viewAsSuperUser,
+          where,
+          tagMode: tagMode as TagMode,
+          tags,
+          offset: offset && parseInt(offset as string),
+          limit: limit && parseInt(limit as string),
+        }
       );
       return successResponse(response, "Completed query.", {
         limit: request.query.limit,
@@ -600,10 +606,20 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("tags")),
 
     async (request: Request, response: Response) => {
-      // FIXME Stop allowing arbitrary where queries
-      const where = response.locals.where || {};
+      const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
+      const {
+        tagMode,
+        limit,
+        offset,
+        type,
+        hideFiltered,
+        countAll,
+        exclusive,
+        deleted,
+      } = request.query;
+
       if (request.query.hasOwnProperty("deleted")) {
-        if (request.query.deleted) {
+        if (deleted) {
           where.deletedAt = { [Op.ne]: null };
         } else {
           where.deletedAt = { [Op.eq]: null };
@@ -612,17 +628,19 @@ export default (app: Application, baseUrl: string) => {
 
       const result = await recordingUtil.query(
         response.locals.requestUser.id,
-        response.locals.viewAsSuperUser,
-        where,
-        request.query.tagMode,
-        response.locals.tags || [],
-        request.query.limit && parseInt(request.query.limit as string),
-        request.query.offset && parseInt(request.query.offset as string),
-        response.locals.order,
-        request.query.type as RecordingType,
-        request.query.hideFiltered ? true : false,
-        request.query.countAll ? true : false,
-        request.query.exclusive ? true : false
+        type as RecordingType,
+        countAll ? true : false,
+        {
+          viewAsSuperUser,
+          where,
+          tags,
+          order,
+          tagMode: tagMode as TagMode,
+          limit: limit && parseInt(limit as string),
+          offset: offset && parseInt(offset as string),
+          hideFiltered: hideFiltered ? true : false,
+          exclusive: exclusive ? true : false,
+        }
       );
       return successResponse(response, "Completed query.", {
         limit: request.query.limit,
@@ -630,6 +648,159 @@ export default (app: Application, baseUrl: string) => {
         count: result.count,
         rows: result.rows.map(mapRecordingResponse),
       });
+    }
+  );
+
+  /**
+   * @api {delete} /api/v1/recordings Deletes Recordings based on query
+   * @apiName QueryRecordings
+   * @apiGroup Recordings
+   *
+   * @apiUse V1UserAuthorizationHeader
+   * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
+   * regular user
+   * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
+   * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
+   * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
+   * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
+   * @apiUse BaseQueryParams
+   * @apiUse MoreQueryParams
+   * @apiUse V1ResponseSuccessQuery
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+    apiUrl,
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("view-mode").optional().equals("user"),
+      query("type").optional().isIn(Object.values(RecordingType)),
+      query("processingState")
+        .optional()
+        .isIn(Object.values(RecordingProcessingState)),
+      query("where").isJSON().optional(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit")).optional(),
+      query("order").isJSON().optional(),
+      query("tags").isJSON().optional(),
+      query("exclusive").default(false).isBoolean().toBoolean(),
+      query("tagMode")
+        .optional()
+        .custom((value) => {
+          return models.Recording.isValidTagMode(value);
+        }),
+      query("hideFiltered").default(false).isBoolean().toBoolean(),
+    ]),
+    parseJSONField(query("order")),
+    parseJSONField(query("where")),
+    parseJSONField(query("tags")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
+      const { tagMode, limit, offset, type, hideFiltered, exclusive } =
+        request.query;
+      const parsedLimit = limit ? parseInt(limit as string) : 1000;
+      const limitInt = Math.min(parsedLimit, 1000);
+
+      try {
+        const values = await recordingUtil.bulkDelete(
+          response.locals.requestUser.id,
+          type as RecordingType,
+          {
+            viewAsSuperUser,
+            where,
+            tags,
+            order,
+            tagMode: tagMode as TagMode,
+            limit: limitInt,
+            offset: offset && parseInt(offset as string),
+            hideFiltered: hideFiltered ? true : false,
+            exclusive: exclusive ? true : false,
+            checkIsGroupAdmin: true,
+          }
+        );
+        return successResponse(
+          response,
+          `Deleted Recordings: ${JSON.stringify(values)}`,
+          { ids: values }
+        );
+      } catch (e) {
+        log.error(e);
+        return next(new ClientError(e.message));
+      }
+    }
+  );
+
+  /**
+   * @api {patch} /api/v1/recordings/undelete Restores previously deleted Recordings.
+   * @apiName QueryRecordings
+   * @apiGroup Recordings
+   *
+   * @apiUse V1UserAuthorizationHeader
+   * @apiBody {String[]} [ids] Array of recording ids to undelete
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/undelete`,
+    extractJwtAuthorizedUser,
+    validateFields([body("ids").isArray()]),
+    parseJSONField(query("ids")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      let { ids } = request.body;
+      const { viewAsSuperUser } = response.locals;
+      const userId = response.locals.requestUser.id;
+      try {
+        const requireGroupMembership = viewAsSuperUser
+          ? []
+          : [
+              {
+                model: models.User,
+                attributes: [],
+                required: true,
+                where: { id: userId },
+                through: { where: { admin: true } },
+              },
+            ];
+
+        ids = (
+          await models.Recording.findAll({
+            where: {
+              id: ids,
+              deletedAt: { [Op.ne]: null },
+            },
+            include: [
+              {
+                model: models.Group,
+                attributes: [],
+                required: !viewAsSuperUser,
+                include: requireGroupMembership,
+              },
+            ],
+            attributes: ["id"],
+          })
+        ).map((r) => r.id);
+        if (ids.length === 0) {
+          return next(
+            new ClientError(
+              "No recordings to undelete",
+              HttpStatusCode.Forbidden
+            )
+          );
+        }
+
+        await models.Recording.update(
+          { deletedAt: null, deletedBy: null },
+          { where: { id: ids } }
+        );
+        return successResponse(response, `Recordings Restored: ${ids}`);
+      } catch (e) {
+        log.error(e);
+        return next(
+          new ClientError(
+            "Unable to restore recordings",
+            HttpStatusCode.Unprocessable
+          )
+        );
+      }
     }
   );
 
@@ -642,6 +813,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
    * regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
+   * @apiQuery {Boolean} [checkIsGroupAdmin=false] Check if user is admin of group
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState]
    * Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
@@ -665,62 +837,74 @@ export default (app: Application, baseUrl: string) => {
       query("order").isJSON().optional(),
       query("tags").isJSON().optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
+      query("exclusive").default(false).isBoolean().toBoolean(),
+      query("checkIsGroupAdmin").default(true).isBoolean().toBoolean(),
       query("tagMode")
         .optional()
         .custom((value) => {
           return models.Recording.isValidTagMode(value);
         }),
+      query("hideFiltered").default(false).isBoolean().toBoolean(),
+      query("countAll").default(true).isBoolean().toBoolean(),
     ]),
     parseJSONField(query("order")),
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
     async (request: Request, response: Response, next: NextFunction) => {
       const user = response.locals.requestUser;
+      const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
+      const {
+        tagMode,
+        limit,
+        offset,
+        type,
+        hideFiltered,
+        exclusive,
+        checkIsGroupAdmin,
+        deleted,
+      } = request.query;
 
-      // FIXME - Is this redundant now?
-      let userWhere = request.query.where || {};
-      if (typeof userWhere === "string") {
-        try {
-          userWhere = JSON.parse(userWhere);
-        } catch (e) {
-          // FIXME - Should this be Unprocessable instead?  Should we use a json schema validator?
-          return next(new ClientError("Malformed JSON"));
-        }
-      }
-      if (request.query.hasOwnProperty("deleted")) {
-        if (request.query.deleted) {
-          (userWhere as any).deletedAt = { [Op.ne]: null };
-        } else {
-          (userWhere as any).deletedAt = { [Op.eq]: null };
-        }
-      }
-      const countQuery = {
-        where: {
-          [Op.and]: [
-            userWhere, // User query
-          ],
-        },
-        include: [
-          {
-            model: models.Group,
-            include: [
-              {
-                model: models.User,
-                where: {
-                  [Op.and]: [{ id: user.id }],
-                },
-              },
-            ],
-            required: true,
-          },
-        ],
+      const options = {
+        viewAsSuperUser,
+        where,
+        tags,
+        order,
+        tagMode: tagMode as TagMode,
+        limit: limit && parseInt(limit as string),
+        offset: offset && parseInt(offset as string),
+        hideFiltered: hideFiltered ? true : false,
+        exclusive: exclusive ? true : false,
+        checkIsGroupAdmin:
+          response.locals.viewAsSuperUser && user.hasGlobalRead()
+            ? false
+            : checkIsGroupAdmin
+            ? true
+            : false,
+        includeAttributes: false,
       };
-      if (response.locals.viewAsSuperUser && user.hasGlobalRead()) {
-        // Don't filter on user if the user has global read permissions.
-        delete countQuery.include[0].include;
+      if (request.query.hasOwnProperty("deleted")) {
+        if (deleted) {
+          options.where.deletedAt = { [Op.ne]: null };
+        } else {
+          options.where.deletedAt = { [Op.eq]: null };
+        }
       }
-      const count = await models.Recording.count(countQuery);
-      return successResponse(response, "Completed query.", { count });
+
+      if (type && typeof options.where === "object") {
+        options.where = { ...options.where, type };
+      }
+      const builder = await new models.Recording.queryBuilder().init(
+        user.id,
+        options
+      );
+      builder.query.distinct = true;
+      try {
+        const count = await models.Recording.count(builder.get());
+        return successResponse(response, "Completed query.", { count });
+      } catch (e) {
+        log.error(e);
+        return next(new ClientError(e.message));
+      }
     }
   );
 
@@ -892,29 +1076,29 @@ export default (app: Application, baseUrl: string) => {
 
       // 10 minute timeout because the query can take a while to run
       // when the result set is large.
+      const { viewAsSuperUser, where, order, tags = [] } = response.locals;
+      const { tagMode, offset, limit, audioBait, exclusive } = request.query;
+      const options = {
+        viewAsSuperUser,
+        where,
+        tags,
+        tagMode: tagMode as TagMode,
+        offset: offset && parseInt(offset as string),
+        limit: limit && parseInt(limit as string),
+      };
+
       let rows;
       if (request.query.type == "visits") {
-        rows = await reportVisits(
-          response.locals.requestUser.id,
-          response.locals.viewAsSuperUser,
-          response.locals.where,
-          request.query.tagMode,
-          response.locals.tags || [],
-          request.query.offset && parseInt(request.query.offset as string),
-          request.query.limit && parseInt(request.query.limit as string)
-        );
+        rows = await reportVisits(response.locals.requestUser.id, options);
       } else {
         rows = await reportRecordings(
           response.locals.requestUser.id,
-          response.locals.viewAsSuperUser,
-          response.locals.where,
-          request.query.tagMode,
-          response.locals.tags || [],
-          request.query.offset && parseInt(request.query.offset as string),
-          request.query.limit && parseInt(request.query.limit as string),
-          response.locals.order,
-          Boolean(request.query.audiobait),
-          Boolean(request.query.exclusive)
+          Boolean(audioBait),
+          {
+            ...options,
+            order,
+            exclusive: Boolean(exclusive),
+          }
         );
       }
       response.status(HttpStatusCode.Ok).set({
@@ -938,6 +1122,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} id Id of the recording to get.
    * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
    * recordings.
+   * @apiQuery {Boolean} [requires-signed-url=true] Whether or not to return a signed url with the recording data.
    * @apiSuccess {int} fileSize the number of bytes in recording file.
    * @apiSuccess {int} rawSize the number of bytes in raw recording file.
    * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
@@ -955,50 +1140,120 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       query("deleted").default(false).isBoolean().toBoolean(),
+      query("requires-signed-url").default(true).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const recordingItem = response.locals.recording;
-      let rawJWT;
-      let cookedJWT;
-      let rawSize;
-      let cookedSize;
-      if (recordingItem.fileKey) {
-        cookedJWT = signedToken(
-          recordingItem.fileKey,
-          recordingItem.getFileName(),
-          recordingItem.fileMimeType
-        );
-        cookedSize =
-          recordingItem.fileSize ||
-          (await util.getS3ObjectFileSize(recordingItem.fileKey));
-      }
-      if (recordingItem.rawFileKey) {
-        rawJWT = signedToken(
-          recordingItem.rawFileKey,
-          recordingItem.getRawFileName(),
-          recordingItem.rawMimeType
-        );
-        rawSize =
-          recordingItem.rawFileSize ||
-          (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
-      }
       const recording = mapRecordingResponse(response.locals.recording);
-
       if (!config.productionEnv) {
         const JsonSchema = new Validator();
         console.assert(
           JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
         );
       }
+      if (request.query["requires-signed-url"]) {
+        let rawJWT;
+        let cookedJWT;
+        let rawSize;
+        let cookedSize;
+        if (recordingItem.fileKey) {
+          cookedJWT = signedToken(
+            recordingItem.fileKey,
+            recordingItem.getFileName(),
+            recordingItem.fileMimeType
+          );
+          cookedSize =
+            recordingItem.fileSize ||
+            (await util.getS3ObjectFileSize(recordingItem.fileKey));
+        }
+        if (recordingItem.rawFileKey) {
+          rawJWT = signedToken(
+            recordingItem.rawFileKey,
+            recordingItem.getRawFileName(),
+            recordingItem.rawMimeType
+          );
+          rawSize =
+            recordingItem.rawFileSize ||
+            (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
+        }
+        return successResponse(response, {
+          recording,
+          rawSize: rawSize,
+          fileSize: cookedSize,
+          downloadFileJWT: cookedJWT,
+          downloadRawJWT: rawJWT,
+        });
+      } else {
+        return successResponse(response, {
+          recording,
+        });
+      }
+    }
+  );
 
-      return successResponse(response, {
-        recording,
-        rawSize: rawSize,
-        fileSize: cookedSize,
-        downloadFileJWT: cookedJWT,
-        downloadRawJWT: rawJWT,
-      });
+  /**
+   * @api {get} /api/v1/recordings/raw/:id Get a raw recording stream
+   * @apiName GetRecordingRawFile
+   * @apiGroup Recordings
+   *
+   * @apiUse MetaDataAndJWT
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiParam {Integer} id Id of the recording to get.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to include deleted
+   * recordings.
+   * @apiSuccess {file} file Raw data stream of the file.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/raw/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("deleted").default(false).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const recordingItem = response.locals.recording;
+      if (!recordingItem.rawFileKey) {
+        return next(new ClientError("Recording has no raw file key."));
+      }
+      let fileExt: string = "raw";
+      switch (recordingItem.rawMimeType) {
+        case "audio/ogg":
+          fileExt = "ogg";
+          break;
+        case "audio/wav":
+          fileExt = "wav";
+          break;
+        case "audio/mp4":
+          fileExt = "m4a";
+          break;
+        case "video/mp4":
+          fileExt = "m4v";
+          break;
+        case "audio/mpeg":
+          fileExt = "mp3";
+          break;
+        case "application/x-cptv":
+          fileExt = "cptv";
+          break;
+      }
+      const time = recordingItem.recordingDateTime
+        ?.toISOString()
+        .replace(/:/g, "_")
+        .replace(".", "_");
+      return await streamS3Object(
+        request,
+        response,
+        recordingItem.rawFileKey,
+        `${recordingItem.id}@${time}.${fileExt}`,
+        recordingItem.rawMimeType || "application/octet-stream"
+      );
     }
   );
 
@@ -1095,7 +1350,7 @@ export default (app: Application, baseUrl: string) => {
         const rawFileKey = recording.rawFileKey;
         const fileKey = recording.fileKey;
         try {
-          await recording.destroy();
+          await recording.destroy({ force: true });
           deleted = true;
         } catch (e) {
           // ..
