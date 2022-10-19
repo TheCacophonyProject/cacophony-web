@@ -258,7 +258,7 @@ async function getRecordings(
   params: MonitoringPageCriteria,
   from: Moment,
   until: Moment,
-  viewAsSuperAdmin: boolean
+  viewAsSuperUser: boolean
 ) {
   const where: any = {
     duration: { [Op.gte]: "0" },
@@ -273,16 +273,12 @@ async function getRecordings(
     where.GroupId = params.groups;
   }
   const order = [["recordingDateTime", "ASC"]];
-  const builder = await new models.Recording.queryBuilder().init(
-    userId,
+  const builder = await new models.Recording.queryBuilder().init(userId, {
     where,
-    null,
-    null,
-    null,
-    RECORDINGS_LIMIT,
+    limit: RECORDINGS_LIMIT,
     order,
-    viewAsSuperAdmin
-  );
+    viewAsSuperUser,
+  });
 
   return models.Recording.findAll(builder.get());
 }

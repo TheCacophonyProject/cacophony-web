@@ -278,7 +278,35 @@ declare namespace Cypress {
       additionalChecks?: any
     ): any;
 
-    /** Mark a list of recordings (recordingIds[]) for reprocessing
+    /* Delete a single recording using api/v1/recordings/{id} DELETE
+     * Optionally: check for a non-200 statusCode
+     * By default function looks up the recording Id using the recordingNameOrId supplied when
+     * recording was created
+     * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+     * Optionally: add additional paramaters to request (additionalChecks["additionalParams"]={...})
+     */
+    apiRecordingBulkDelete(
+      userName: string,
+      query: any,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /* Undelete recording using api/v1/recordings/undelete PATCH
+     * Optionally: check for a non-200 statusCode
+     * By default function looks up the recording Id using the recordingNameOrId supplied when
+     * recording was created
+     * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+     * Optionally: add additional paramaters to request (additionalChecks["additionalParams"]={...})
+     */
+    apiRecordingBulkUndelete(
+      userName: string,
+      recordingIds: number[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /* Mark a list of recordings (recordingIds[]) for reprocessing
      * Optionally: check for a non-200 statusCode
      * Optionally: check for a returned error message (additionalChecks["message"])
      */

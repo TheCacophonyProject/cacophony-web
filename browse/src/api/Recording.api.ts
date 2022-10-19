@@ -171,6 +171,7 @@ export interface RecordingQuery {
   order?: any; // TODO - It's not clear what order accepts (it's a sequelize thing), but nobody seems to use it right now.
   where?: string;
   exclusive?: boolean;
+  checkIsGroupAdmin?: boolean;
 }
 
 export interface TrackTagRow {
@@ -196,6 +197,20 @@ function query(
   return CacophonyApi.get(
     `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
   );
+}
+
+function bulkDelete(
+  queryParams: RecordingQuery
+): Promise<FetchResult<{ ids: string[] }>> {
+  return CacophonyApi.delete(
+    `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
+  );
+}
+
+function bulkUndelete(ids: RecordingId[]): Promise<FetchResult<any>> {
+  return CacophonyApi.patch(`${apiPath}/undelete`, {
+    ids,
+  });
 }
 
 function queryTrackTags(
@@ -564,6 +579,8 @@ export default {
   queryTrackTags,
   queryVisits,
   queryCount,
+  bulkDelete,
+  bulkUndelete,
   id,
   thumbnail,
   comment,

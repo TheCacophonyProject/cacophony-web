@@ -23,23 +23,43 @@
       <div :class="['search-content-wrapper', { 'display-rows': !showCards }]">
         <div class="search-results">
           <div class="results-summary">
-            <div class="float-right">
-              <b-button
-                v-if="screenWidth > 500"
-                variant="light"
-                class="display-toggle btn-sm"
-                @click="toggleResultsDisplayStyle"
-              >
-                Display as {{ showCards ? "rows" : "cards" }}
-              </b-button>
-              <CsvDownload :params="serialisedQuery" />
-            </div>
+            <header class="recordings-header">
+              <h1>Recordings</h1>
+              <div class="recordings-actions">
+                <b-button
+                  v-if="screenWidth > 500"
+                  variant="light"
+                  class="display-toggle btn-sm"
+                  @click="toggleResultsDisplayStyle"
+                >
+                  Display as {{ showCards ? "rows" : "cards" }}
+                </b-button>
+                <SettingsDropdown
+                  @submit="querySubmitted"
+                  :add-deleted-recordings="addDeletedRecordings"
+                />
+              </div>
+            </header>
 
-            <h1>Recordings</h1>
-            <h2 v-if="countMessage">
-              {{ countMessage }}
-            </h2>
-            <h5 v-else>Loading...</h5>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="mb-0" v-if="countMessage">
+                {{ countMessage }}
+              </h2>
+              <h5 v-else>Loading...</h5>
+              <div
+                class="d-flex align-items-center"
+                v-if="deletedRecordings.length > 0"
+              >
+                <b-button
+                  class="mb-0 d-flex align-items-center"
+                  variant="outline-secondary"
+                  @click="undeleteRecordings"
+                >
+                  <font-awesome-icon class="mr-1" icon="undo" size="xs" />
+                  Undo {{ deletedRecordings.length }} recordings deleted
+                </b-button>
+              </div>
+            </div>
             <p class="search-description" v-html="currentQueryDescription" />
           </div>
           <RecordingsList
@@ -62,16 +82,20 @@
 </template>
 <script>
 import QueryRecordings from "../components/QueryRecordings/QueryRecordings.vue";
-import CsvDownload from "../components/QueryRecordings/CsvDownload.vue";
 import RecordingsList from "../components/RecordingsList.vue";
+import SettingsDropdown from "@/components/QueryRecordings/SettingsDropdown.vue";
 import api from "../api";
 
-const LOAD_PER_PAGE_CARDS = 10;
+const LOAD_PER_PAGE_CARDS = 20;
 const LOAD_PER_PAGE_ROWS = 20;
 
 export default {
   name: "RecordingsView",
-  components: { QueryRecordings, CsvDownload, RecordingsList },
+  components: {
+    QueryRecordings,
+    RecordingsList,
+    SettingsDropdown,
+  },
   props: {},
   data() {
     return {
@@ -81,6 +105,7 @@ export default {
       queryPending: false,
       searchPanelIsCollapsed: true,
       recordings: [],
+      deletedRecordings: [],
       count: null,
       countMessage: null,
       showCardsInternal: this.getPreferredResultsDisplayStyle(),
@@ -215,6 +240,19 @@ export default {
           .catch(() => {});
       }
     },
+    addDeletedRecordings(recordingIds) {
+      this.deletedRecordings.push(...recordingIds);
+    },
+    undeleteRecordings() {
+      if (this.deletedRecordings.length > 0) {
+        api.recording.bulkUndelete(this.deletedRecordings).then((val) => {
+          if (val.success) {
+            this.deletedRecordings = [];
+            this.$router.go();
+          }
+        });
+      }
+    },
     querySubmitted(query, first = false) {
       const queryParamsHaveChanged =
         JSON.stringify(query) !== JSON.stringify(this.serialisedQuery);
@@ -345,7 +383,18 @@ $main-content-width: 640px;
     max-height: calc(100vh - var(--navbar-height));
   }
 }
-.display-toggle {
-  margin-right: 5px;
+
+.recordings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recordings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  gap: 1rem;
 }
 </style>

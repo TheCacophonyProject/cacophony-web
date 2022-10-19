@@ -1,3 +1,4 @@
+import { query } from "express-validator";
 /*
 cacophony-api: The Cacophony Project API server
 Copyright (C) 2018  The Cacophony Project
@@ -68,21 +69,28 @@ const validTagModes = new Set([
   ...Object.values(AcceptableTag),
 ]);
 
+export type RecordingQueryOptions = Partial<{
+  where: SqlString | Sequelize.WhereOptions;
+  tagMode: TagMode;
+  tags: string[]; // AcceptableTag[]
+  offset: number;
+  limit: number;
+  order: any;
+  viewAsSuperUser: boolean;
+  checkIsGroupAdmin: boolean;
+  hideFiltered: boolean;
+  exclusive: boolean;
+  includeAttributes: boolean;
+  attributes: string[];
+}>;
+
 const MaxProcessingRetries = 1;
 interface RecordingQueryBuilder {
   new (): RecordingQueryBuilder;
   findInclude: (modelType: ModelStaticCommon<any>) => Includeable[];
   init: (
     user: UserId,
-    where: any,
-    tagMode?: TagMode,
-    tags?: string[], // AcceptableTag[]
-    offset?: number,
-    limit?: number,
-    order?: any,
-    viewAsSuperAdmin?: boolean,
-    filtered?: boolean,
-    exclusive?: boolean
+    options: RecordingQueryOptions
   ) => RecordingQueryBuilderInstance;
   handleTagMode: (
     tagMode: TagMode,
@@ -743,61 +751,41 @@ from (
   //  this will scale better.
   Recording.queryBuilder.prototype.init = function (
     userId: UserId,
-    where: any,
-    tagMode?: TagMode,
-    tags?: string[],
-    offset?: number,
-    limit?: number,
-    order?: any,
-    viewAsSuperAdmin?: boolean,
-    hideFiltered?: boolean,
-    exclusive?: boolean
+    options: RecordingQueryOptions
   ) {
-    if (!where) {
-      where = {};
-    }
-
-    // Don't include deleted recordings
-    where.deletedAt = where.deletedAt || { [Op.eq]: null };
-
-    delete where._tagged; // remove legacy tag mode selector (if included)
-
-    if (!offset) {
-      offset = 0;
-    }
-    if (!limit) {
-      limit = 300;
-    } else {
-      limit = Math.min(limit, maxQueryResults);
-    }
-    if (!order) {
+    const {
+      tagMode,
+      tags,
+      viewAsSuperUser,
+      exclusive,
+      hideFiltered,
+      offset = 0,
       order = [
         // Sort by recordingDatetime but handle the case of the
         // timestamp being missing and fallback to sorting by id.
-        [
-          Sequelize.fn(
-            "COALESCE",
-            Sequelize.col("recordingDateTime"),
-            "1970-01-01"
-          ),
-          "DESC",
-        ],
+        [Sequelize.col("recordingDateTime"), "DESC"],
         ["id", "DESC"],
-      ];
-    }
+      ],
+      includeAttributes = true,
+    } = options;
+    const where =
+      typeof options.where === "string"
+        ? JSON.parse(options.where)
+        : options.where ?? {};
+    const limit = options.limit
+      ? Math.min(options.limit, maxQueryResults)
+      : 300;
 
-    if (typeof where === "string") {
-      where = JSON.parse(where);
-    }
-    const constraints = [];
-    constraints.push(where);
-    constraints.push(
+    // Don't include deleted recordings
+    where.deletedAt = where.deletedAt || { [Op.eq]: null };
+    delete where._tagged; // remove legacy tag mode selector (if included)
+    const constraints = [
+      where,
       Sequelize.literal(
         Recording.queryBuilder.handleTagMode(tagMode, tags, exclusive)
-      )
-    );
-    const trackWhere = { archivedAt: null };
-    const trackRequired = false;
+      ),
+    ];
+    const noArchived = { archivedAt: null };
     if (hideFiltered) {
       const filteredSQL = `(
 		select
@@ -812,7 +800,7 @@ from (
       constraints.push(Sequelize.literal(filteredSQL));
     }
 
-    const requireGroupMembership = viewAsSuperAdmin
+    const requireGroupMembership = viewAsSuperUser
       ? []
       : [
           {
@@ -820,6 +808,9 @@ from (
             attributes: [],
             required: true,
             where: { id: userId },
+            ...(options.checkIsGroupAdmin && {
+              through: { where: { admin: true } },
+            }),
             // If not viewing as super user, make sure the user is a member of the recording group.
             // This may need to change if we start caring about showing everyone all public recordings.
             // However, since we're still going to be showing things as "Group centric"  We'd probably just
@@ -836,7 +827,7 @@ from (
         {
           model: models.Group,
           attributes: ["groupName"],
-          required: !viewAsSuperAdmin,
+          required: !viewAsSuperUser,
           include: requireGroupMembership,
         },
         {
@@ -855,7 +846,7 @@ from (
         },
         {
           model: models.Track,
-          where: trackWhere,
+          where: noArchived,
           required: false,
           separate: true,
           attributes: [
@@ -875,9 +866,7 @@ from (
           include: [
             {
               model: models.TrackTag,
-              where: {
-                archivedAt: null,
-              },
+              where: noArchived,
               attributes: [
                 "id",
                 "what",
@@ -907,6 +896,18 @@ from (
       offset,
       attributes: Recording.queryGetAttributes,
     };
+    if (!includeAttributes) {
+      const recursiveDelete = (obj: any) => {
+        for (const key in obj) {
+          if (key === "attributes") {
+            delete obj[key];
+          } else if (typeof obj[key] === "object") {
+            recursiveDelete(obj[key]);
+          }
+        }
+      };
+      recursiveDelete(this.query);
+    }
     return this;
   };
 
@@ -1081,7 +1082,6 @@ from (
       if (tags) {
         const notAutomatic = `${sql} AND (NOT "Tags".automatic)`;
         const humanPreferred = `CASE WHEN (${notAutomatic} LIMIT 1) IS NOT NULL THEN (${notAutomatic} ${tagsSql} LIMIT 1) IS NOT NULL ELSE (${sql} ${tagsSql} LIMIT 1) IS NOT NULL END`;
-        log.info(humanPreferred);
         return humanPreferred;
       } else {
         return sql;
@@ -1094,9 +1094,6 @@ from (
   };
 
   Recording.queryBuilder.selectByTag = (tags: string[], exclusive: boolean) => {
-    log.info(`selectByTag: ${exclusive ? "exclusive" : "inclusive"}`);
-    log.info(`selectByTagWhat: ${tags}`);
-    log.info(exclusive ? "exclusive" : "inclusive");
     if (!tags || tags.length === 0) {
       return null;
     }

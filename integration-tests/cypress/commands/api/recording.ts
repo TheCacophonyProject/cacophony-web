@@ -319,6 +319,23 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiRecordingGet",
+  (userName: string, recordingId: RecordingId, statusCode: number = 200) => {
+    const url = v1ApiPath(`recordings/${recordingId}`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      cy.wrap(response);
+    });
+  }
+);
+
+Cypress.Commands.add(
   "apiRecordingDelete",
   (
     userName: string,
@@ -396,18 +413,71 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiRecordingGet",
-  (userName: string, recordingId: RecordingId, statusCode: number = 200) => {
-    const url = v1ApiPath(`recordings/${recordingId}`);
+  "apiRecordingBulkDelete",
+  (
+    userName: string,
+    query: any,
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    const params = removeUndefinedParams(query);
+    params["where"] = JSON.stringify(query["where"]);
+
+    logTestDescription(
+      `Query recordings where '${JSON.stringify(params["where"])}'`,
+      { user: userName, params: params }
+    );
+
+    const url = v1ApiPath("recordings", params);
     makeAuthorizedRequestWithStatus(
       {
-        method: "GET",
-        url,
+        method: "DELETE",
+        url: url,
       },
       userName,
       statusCode
     ).then((response) => {
-      cy.wrap(response);
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
+      if (additionalChecks["count"] !== undefined) {
+        expect(response.body.count, "Count should be: ").to.equal(
+          additionalChecks["count"]
+        );
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingBulkUndelete",
+  (
+    userName: string,
+    recordingIds: number[],
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(`Undelete recordings: ${recordingIds} `, {
+      ids: recordingIds,
+    });
+    const url = v1ApiPath(`recordings/undelete`);
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "patch",
+        url: url,
+        body: { ids: recordingIds },
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
     });
   }
 );

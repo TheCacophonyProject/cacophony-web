@@ -175,6 +175,7 @@
         :recording-date-time="recording.recordingDateTime"
         :url="url"
         :delete-recording="deleteRecording"
+        :is-group-admin="isGroupAdmin"
       />
       <h3 class="pt-4">Cacophony Index</h3>
       <CacophonyIndexGraph
@@ -209,7 +210,7 @@ import {
 
 import api from "@api";
 import store from "@/stores";
-import { useState, UUIDv4 } from "@/utils";
+import { shouldViewAsSuperUser, useState, UUIDv4 } from "@/utils";
 import { TagColours } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
@@ -325,6 +326,8 @@ export default defineComponent({
         setDeleted(false);
       }
     };
+
+    const isGroupAdmin = ref(false);
 
     const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
       const automaticTag = track.tags.find((tag) => tag.automatic);
@@ -834,6 +837,16 @@ export default defineComponent({
 
     onMounted(async () => {
       buffer.value = await fetchAudioBuffer(url.value);
+      if (shouldViewAsSuperUser()) {
+        isGroupAdmin.value = true;
+      } else {
+        const response = await api.groups.getGroupById(props.recording.groupId);
+        if (response.success) {
+          isGroupAdmin.value = response.result.group.admin;
+        } else {
+          throw response.result;
+        }
+      }
     });
 
     return {
@@ -843,6 +856,7 @@ export default defineComponent({
       cacophonyIndex,
       deleted,
       tracks,
+      isGroupAdmin,
       selectedTrack,
       selectedLabel,
       usersTag,

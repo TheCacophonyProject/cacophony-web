@@ -26,10 +26,10 @@ import urljoin from "url-join";
 import config from "@config";
 import models from "@models";
 import util from "./util";
-import { Recording } from "@models/Recording";
+import { Recording, RecordingQueryOptions } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
-import Sequelize, { Op } from "sequelize";
+import Sequelize, { Op, UpdateOptions } from "sequelize";
 import {
   DeviceSummary,
   DeviceVisitMap,
@@ -899,33 +899,17 @@ export const uploadRawRecording = util.multipartUpload(
 // request.
 async function query(
   requestUserId: UserId,
-  viewAsSuperUser: boolean,
-  where: any,
-  tagMode: any,
-  tags: string[],
-  limit: number,
-  offset: number,
-  order: any,
   type: RecordingType,
-  hideFiltered: boolean,
   countAll: boolean,
-  exclusive: boolean
+  options: RecordingQueryOptions
 ): Promise<{ rows: Recording[]; count: number }> {
-  if (type) {
-    where.type = type;
+  if (type && typeof options.where === "object") {
+    options.where = { ...options.where, type };
   }
   // FIXME - Do this in extract-middleware as bulk recording extractor
   const builder = new models.Recording.queryBuilder().init(
     requestUserId,
-    where,
-    tagMode,
-    tags,
-    offset,
-    limit,
-    order,
-    viewAsSuperUser,
-    hideFiltered,
-    exclusive
+    options
   );
   builder.query.distinct = true;
 
@@ -943,16 +927,46 @@ async function query(
   return { count: rows.length, rows: rows };
 }
 
+async function bulkDelete(
+  requestUserId: UserId,
+  type: RecordingType,
+  options: RecordingQueryOptions
+): Promise<number[]> {
+  if (type && typeof options.where === "object") {
+    options.where = { ...options.where, type };
+  }
+
+  const builder = new models.Recording.queryBuilder().init(
+    requestUserId,
+    options
+  );
+
+  const values = await models.Recording.findAll<Recording>(builder.get());
+  if (values.length === 0) {
+    throw new Error("No recordings found to delete");
+  }
+  const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
+  const ids = values.map((value) => value.id);
+  const deletedValues = (await models.Recording.update(deletion, {
+    where: { id: ids },
+    returning: ["id"],
+  })) as unknown as Promise<[number, { id: number }[]]>;
+  if (deletedValues[1]) {
+    return deletedValues[1].map((value) => value.id);
+  }
+  return [];
+}
+
 export async function getTrackTags(
   userId: UserId,
-  viewAsSuperAdmin: boolean,
+  viewAsSuperUser: boolean,
   includeAI: boolean,
   recordingType: string,
   excludeTags = [],
   offset?: number,
   limit?: number
 ) {
-  const requireGroupMembership = viewAsSuperAdmin
+  const requireGroupMembership = viewAsSuperUser
     ? []
     : [
         {
@@ -1038,29 +1052,12 @@ export async function getTrackTags(
 // the same parameters as query() above.
 export async function reportRecordings(
   userId: UserId,
-  viewAsSuperUser: boolean,
-  where: any,
-  tagMode: any,
-  tags: any,
-  offset: number,
-  limit: number,
-  order: any,
   includeAudiobait: boolean,
-  exclusive: boolean
+  options: RecordingQueryOptions
 ) {
+  options = { ...options, hideFiltered: false };
   const builder = (
-    await new models.Recording.queryBuilder().init(
-      userId,
-      where,
-      tagMode,
-      tags,
-      offset,
-      limit,
-      order,
-      viewAsSuperUser,
-      false,
-      exclusive
-    )
+    await new models.Recording.queryBuilder().init(userId, options)
   )
     .addColumn("comment")
     .addColumn("additionalMetadata");
@@ -1360,12 +1357,7 @@ async function updateMetadata(recording: any, metadata: any) {
 // request.
 async function queryVisits(
   userId: UserId,
-  viewAsSuperUser: boolean,
-  where: any,
-  tagMode: any,
-  tags: string[],
-  offset: number,
-  limit: number
+  options: RecordingQueryOptions
 ): Promise<{
   visits: Visit[];
   summary: DeviceSummary;
@@ -1376,19 +1368,14 @@ async function queryVisits(
   numVisits: number;
 }> {
   const maxVisitQueryResults = 5000;
-  const requestVisits = limit || maxVisitQueryResults;
+  const requestVisits = options.limit || maxVisitQueryResults;
   const queryMax = maxVisitQueryResults * 2;
   const queryLimit = Math.min(requestVisits * 2, queryMax);
+  options = { ...options, order: null, limit: queryLimit };
 
   const builder = await new models.Recording.queryBuilder().init(
     userId,
-    where,
-    tagMode,
-    tags,
-    offset,
-    queryLimit,
-    null,
-    viewAsSuperUser
+    options
   );
   builder.query.distinct = true;
 
@@ -1415,7 +1402,7 @@ async function queryVisits(
     // for (const rec of recordings) {
     //   rec.filterData(filterOptions);
     // }
-    devSummary.generateVisits(recordings, offset || 0);
+    devSummary.generateVisits(recordings, options.offset || 0);
 
     if (!gotAllRecordings) {
       devSummary.checkForCompleteVisits();
@@ -1550,22 +1537,9 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
 
 export async function reportVisits(
   userId: UserId,
-  viewAsSuperUser: boolean,
-  where: any,
-  tagMode: any,
-  tags: string[],
-  offset: number,
-  limit: number
+  options: RecordingQueryOptions
 ) {
-  const results = await queryVisits(
-    userId,
-    viewAsSuperUser,
-    where,
-    tagMode,
-    tags,
-    offset,
-    limit
-  );
+  const results = await queryVisits(userId, options);
   const out = reportDeviceVisits(results.summary.deviceMap);
   const recordingUrlBase = config.server.recording_url_base || "";
   out.push([]);
@@ -2174,6 +2148,7 @@ export const mapPosition = (position: any): ApiTrackPosition => {
 
 export default {
   query,
+  bulkDelete,
   addTag,
   tracksFromMeta,
   updateMetadata,
