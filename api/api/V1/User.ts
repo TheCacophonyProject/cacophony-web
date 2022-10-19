@@ -177,6 +177,7 @@ export default function (app: Application, baseUrl: string) {
         //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
         //  User alerts and group invitations would not be activated until the user has confirmed their email address.
         const sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
+          request.headers.host,
           getEmailConfirmationToken(user.id, user.email),
           user.email
         );
@@ -561,6 +562,7 @@ export default function (app: Application, baseUrl: string) {
         request.body.groups
       );
       const sendSuccess = await sendGroupMembershipRequestEmail(
+        request.headers.host,
         acceptToGroupRequestToken,
         requestingUser.email,
         joinGroups.map(({ groupName }) => groupName),
@@ -634,6 +636,7 @@ export default function (app: Application, baseUrl: string) {
       await Promise.all(additions);
       // Let the requesting user know that they've now been added to the groups.
       await sendAddedToGroupNotificationEmail(
+        request.headers.host,
         userToGrantMembershipFor.email,
         groupsToAdd.map(({ group: { groupName } }) => groupName)
       );

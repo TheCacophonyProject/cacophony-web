@@ -9,32 +9,35 @@ import type {
 import { computed, ref, watch } from "vue";
 import { CurrentUser } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
+import type { TrackId } from "@typedefs/api/common";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
-const { track, index, color, selected, expandedIndex } = defineProps<{
+const { track, index, color, selected, expandedId } = defineProps<{
   track: ApiTrackResponse;
   index: number;
   color: { foreground: string; background: string };
   selected: boolean;
-  expandedIndex: number;
+  expandedId: TrackId;
 }>();
 
 const emit = defineEmits<{
-  (e: "expanded-changed", index: number): void;
+  (e: "expanded-changed", trackId: TrackId): void;
+  (e: "selected-track-at-index", trackId: TrackId): void;
 }>();
 
 const expandedInternal = ref<boolean>(false);
-const expanded = computed<boolean>(() => expandedIndex === index);
+const expanded = computed<boolean>(() => expandedId === track.id);
 watch(expanded, (nextExpanded) => {
   if (!nextExpanded) {
     expandedInternal.value = false;
   }
 });
 
-const maybeToggleExpanded = () => {
+const selectAndMaybeToggleExpanded = () => {
   if (hasUserTag.value) {
     expandedInternal.value = !expandedInternal.value;
-    emit("expanded-changed", expandedInternal.value ? index : -1);
+    emit("expanded-changed", expandedInternal.value ? track.id : -1);
   }
+  emit("selected-track-at-index", track.id);
 };
 
 const hasUserTag = computed<boolean>(() => {
@@ -96,7 +99,7 @@ const rejectAiSuggestedTag = () => {
   <div
     class="track p-2 fs-8 d-flex align-items-center justify-content-between"
     :class="{ selected }"
-    @click="maybeToggleExpanded"
+    @click="selectAndMaybeToggleExpanded"
   >
     <div class="d-flex align-items-center">
       <span
@@ -151,7 +154,7 @@ const rejectAiSuggestedTag = () => {
         >
       </span>
     </div>
-    <div v-if="!thisUserTag">
+    <div v-if="!thisUserTag && !expanded">
       <button
         type="button"
         class="btn fs-7 confirm-button"

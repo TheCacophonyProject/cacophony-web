@@ -373,6 +373,7 @@ export default function (app: Application, baseUrl: string) {
           // Do nothing
           const token = "";
           const sendingSuccess = await sendPasswordResetEmail(
+            request.headers.host,
             token,
             user.email
           );
@@ -489,17 +490,20 @@ export default function (app: Application, baseUrl: string) {
         if (!groups.length) {
           // If the user has no groups, re-send the welcome email,
           sendSuccess = await sendWelcomeEmailConfirmationEmail(
+            request.headers.host,
             emailConfirmationToken,
             user.email
           );
         } else if (user.createdAt < browseNextLaunchDate) {
           sendSuccess = await sendEmailConfirmationEmailLegacyUser(
+            request.headers.host,
             emailConfirmationToken,
             user.email
           );
         } else {
           // otherwise resend the email change confirmation email.
           sendSuccess = await sendChangedEmailConfirmationEmail(
+            request.headers.host,
             emailConfirmationToken,
             user.email
           );

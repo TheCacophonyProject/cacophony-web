@@ -121,7 +121,16 @@ watch(canvasWidth, () => {
 
 watch(
   () => currentTrack,
-  () => {
+  async (nextTrack, prevTrack) => {
+    if (nextTrack) {
+      if (
+        prevTrack &&
+        (nextTrack as ApiTrackResponse).id !==
+          (prevTrack as ApiTrackResponse).id
+      ) {
+        await selectTrack(nextTrack, true);
+      }
+    }
     updateOverlayCanvas(frameNum.value);
   }
 );
@@ -303,25 +312,37 @@ const onePastLastFrameNumForTrack = (trackId: number): number => {
   return lastTrackFramePlusOne;
 };
 
-const _selectTrack = (force = false, shouldPlay = false) => {
-  if (currentTrack && (!playing.value || force) && recording?.tracks.length) {
+const lastFrameNumForTrack = (trackId: number): number => {
+  const frames = Object.entries(framesByTrack.value[trackId]);
+  const lastTrackFrame = Number(frames[frames.length - 1][0]);
+  if (totalPlayableFrames.value) {
+    return Math.min(totalPlayableFrames.value, lastTrackFrame);
+  }
+  return lastTrackFrame;
+};
+
+const selectTrack = async (
+  track: ApiTrackResponse,
+  force = false,
+  shouldPlay = false
+) => {
+  if ((!playing.value || force) && recording?.tracks.length) {
     cancelAnimationFrame(animationFrame.value);
     animationTick.value = 0;
-    setTimeAndRedraw({
-      frameNumToDraw: firstFrameNumForTrack(currentTrack.id),
+    await setTimeAndRedraw({
+      frameNumToDraw: firstFrameNumForTrack(track.id),
     });
     if (shouldPlay) {
       playing.value = true;
     }
-
     // This is used when a user selects a track from the TrackInfo panel.
     // In that case we don't want it selecting another track as it plays on from
     // the selected track, since the user likely wants to tag the track they selected.
 
     // Any other further user interaction should unset stopAtTime.
-    // TODO - should this actually stop at the last frame number for the track, so that another
-    //  track isn't selected?
-    stopAtFrame.value = onePastLastFrameNumForTrack(currentTrack.id);
+    // Stop at the last frame number for the track, so that another
+    //  track isn't selected.
+    stopAtFrame.value = lastFrameNumForTrack(track.id);
   }
 };
 
@@ -926,6 +947,7 @@ const atEndOfPlayback = computed<boolean>(() => {
 });
 
 const togglePlayback = async (): Promise<void> => {
+  stopAtFrame.value = null;
   if (!playing.value) {
     if (atEndOfPlayback.value) {
       frameNum.value = 0;
@@ -1364,6 +1386,7 @@ const setOverlayCanvasDimensions = () => {
 };
 
 const startSeek = () => {
+  stopAtFrame.value = null;
   wasPaused.value = !playing.value;
   playing.value = false;
 };

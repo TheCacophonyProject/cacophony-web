@@ -20,30 +20,29 @@ const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
   ];
 };
 
-const commonInterpolants = () => {
+const commonInterpolants = (origin: string) => {
   return {
-    cacophonyBrowseUrl: config.server.browse_url,
+    cacophonyBrowseUrl: origin,
     cacophonyDisplayUrl: "browse.cacophony.org.nz",
   };
 };
-
-const cacophonyBrowseUrl = config.server.browse_url;
 // const emailSettingsUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(groupName)}/settings`;
 // const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(groupName)}/station/${urlNormaliseGroupName(stationName)}`;
 // const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(groupName)}/station/${urlNormaliseGroupName(stationName)}/recording/${recordingId}/track/${trackId}`;
 
 export const sendWelcomeEmailConfirmationEmail = async (
+  origin: string,
   emailConfirmationToken: string,
   userEmailAddress: string
 ): Promise<boolean> => {
   try {
-    const common = commonInterpolants();
+    const common = commonInterpolants(origin);
     const emailConfirmationUrl = `${
       common.cacophonyBrowseUrl
     }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
       "welcome-confirm-email.html",
-      { emailConfirmationUrl, ...commonInterpolants() }
+      { emailConfirmationUrl, ...common }
     );
     return await sendEmail(
       html,
@@ -58,17 +57,18 @@ export const sendWelcomeEmailConfirmationEmail = async (
 };
 
 export const sendEmailConfirmationEmailLegacyUser = async (
+  origin: string,
   emailConfirmationToken: string,
   userEmailAddress: string
 ): Promise<boolean> => {
   try {
-    const common = commonInterpolants();
+    const common = commonInterpolants(origin);
     const emailConfirmationUrl = `${
       common.cacophonyBrowseUrl
     }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
       "confirm-email-legacy-user.html",
-      { emailConfirmationUrl, ...commonInterpolants() }
+      { emailConfirmationUrl, ...common }
     );
     return await sendEmail(
       html,
@@ -83,10 +83,11 @@ export const sendEmailConfirmationEmailLegacyUser = async (
 };
 
 export const sendChangedEmailConfirmationEmail = async (
+  origin: string,
   emailConfirmationToken: string,
   userEmailAddress: string
 ) => {
-  const common = commonInterpolants();
+  const common = commonInterpolants(origin);
   const emailConfirmationUrl = `${
     common.cacophonyBrowseUrl
   }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
@@ -94,7 +95,7 @@ export const sendChangedEmailConfirmationEmail = async (
     "confirm-email-change.html",
     {
       emailConfirmationUrl,
-      ...commonInterpolants(),
+      ...common,
       newAccountEmailAddress: userEmailAddress,
     }
   );
@@ -108,12 +109,13 @@ export const sendChangedEmailConfirmationEmail = async (
 };
 
 export const sendGroupInviteExistingMemberEmail = async (
+  origin: string,
   existingAccountJoinGroupToken: string,
   requesterEmailAddress: string,
   requestGroupName: string,
   userEmailAddress: string
 ) => {
-  const common = commonInterpolants();
+  const common = commonInterpolants(origin);
   const existingAccountJoinGroupUrl = `${
     common.cacophonyBrowseUrl
   }/${urlNormaliseName(
@@ -128,7 +130,7 @@ export const sendGroupInviteExistingMemberEmail = async (
       existingAccountJoinGroupUrl,
       requestGroupName,
       requesterEmailAddress,
-      ...commonInterpolants(),
+      ...common,
     }
   );
   return await sendEmail(
@@ -141,12 +143,13 @@ export const sendGroupInviteExistingMemberEmail = async (
 };
 
 export const sendGroupInviteNewMemberEmail = async (
+  origin: string,
   newMemberJoinGroupToken: string,
   requesterEmailAddress: string,
   requestGroupName: string,
   userEmailAddress: string
 ) => {
-  const common = commonInterpolants();
+  const common = commonInterpolants(origin);
   const signupAndJoinGroupUrl = `${
     common.cacophonyBrowseUrl
   }/register/accept-invite/${newMemberJoinGroupToken.replace(/\./g, ":")}`;
@@ -165,7 +168,7 @@ export const sendGroupInviteNewMemberEmail = async (
       existingAccountJoinGroupUrl,
       requestGroupName,
       requesterEmailAddress,
-      ...commonInterpolants(),
+      ...common,
     }
   );
   return await sendEmail(
@@ -177,12 +180,13 @@ export const sendGroupInviteNewMemberEmail = async (
   );
 };
 export const sendAddedToGroupNotificationEmail = async (
+  origin: string,
   userEmailAddress: string,
   groupNamesAdded: string[]
 ) => {
   const { text, html } = await createEmailWithTemplate(
     "added-to-group-notification.html",
-    { groupNamesAdded, ...commonInterpolants() }
+    { groupNamesAdded, ...commonInterpolants(origin) }
   );
   let subject;
   if (groupNamesAdded.length === 1) {
@@ -200,12 +204,13 @@ export const sendAddedToGroupNotificationEmail = async (
 };
 
 export const sendGroupMembershipRequestEmail = async (
+  origin: string,
   acceptToGroupToken: string,
   requesterEmailAddress: string,
   requestGroupNames: string[],
   userEmailAddress: string
 ) => {
-  const common = commonInterpolants();
+  const common = commonInterpolants(origin);
   if (requestGroupNames.length === 1) {
     const requestGroupName = requestGroupNames[0];
     const acceptToGroupUrl = `${
@@ -220,7 +225,7 @@ export const sendGroupMembershipRequestEmail = async (
         acceptToGroupUrl,
         requestGroupName,
         requesterEmailAddress,
-        ...commonInterpolants(),
+        ...common,
       }
     );
     return await sendEmail(
@@ -242,7 +247,7 @@ export const sendGroupMembershipRequestEmail = async (
       {
         acceptToGroupsUrl,
         requesterEmailAddress,
-        ...commonInterpolants(),
+        ...common,
       }
     );
     return await sendEmail(
@@ -256,18 +261,19 @@ export const sendGroupMembershipRequestEmail = async (
 };
 
 export const sendStoppedDevicesReportEmail = async (
+  origin: string,
   groupName: string,
   stoppedDevices: StoppedDevice[],
   userEmailAddress: string
 ) => {
-  const common = commonInterpolants();
+  const common = commonInterpolants(origin);
   // TODO User group settings
   const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
     groupName
   )}/my-settings`;
   const { text, html } = await createEmailWithTemplate(
     "stopped-devices-report.html",
-    { emailSettingsUrl, groupName, stoppedDevices, ...commonInterpolants() }
+    { emailSettingsUrl, groupName, stoppedDevices, ...common }
   );
   return await sendEmail(
     html,
@@ -279,6 +285,7 @@ export const sendStoppedDevicesReportEmail = async (
 };
 
 export const sendAnimalAlertEmail = async (
+  origin: string,
   groupName: string,
   deviceName: string,
   stationName: string,
@@ -288,7 +295,7 @@ export const sendAnimalAlertEmail = async (
   userEmailAddress: string,
   recipientTimeZoneOffset: number
 ) => {
-  const common = commonInterpolants();
+  const common = commonInterpolants(origin);
   const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
     groupName
   )}/my-settings`;
@@ -311,7 +318,7 @@ export const sendAnimalAlertEmail = async (
     groupName,
     recordingUrl,
     stationUrl,
-    ...commonInterpolants(),
+    ...common,
   });
   // FIXME - fetch actual thumbnail
   return await sendEmail(
@@ -331,10 +338,11 @@ export const sendAnimalAlertEmail = async (
 };
 
 export const sendPasswordResetEmail = async (
+  origin: string,
   resetPasswordToken: string,
   userEmailAddress: string
 ) => {
-  const common = commonInterpolants();
+  const common = commonInterpolants(origin);
   const accountEmailAddress = userEmailAddress;
   const passwordResetUrl = `${
     common.cacophonyBrowseUrl
@@ -342,7 +350,7 @@ export const sendPasswordResetEmail = async (
   const { text, html } = await createEmailWithTemplate("reset-password.html", {
     accountEmailAddress,
     passwordResetUrl,
-    ...commonInterpolants(),
+    ...common,
   });
   return await sendEmail(
     html,

@@ -904,7 +904,6 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     order: ["createdAt"],
     attributes: [
       "id",
-      "what",
       "detail",
       "taggerId",
       "automatic",

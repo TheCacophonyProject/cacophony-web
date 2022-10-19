@@ -301,7 +301,7 @@ const loadRecording = async () => {
       }
 
       if (
-        ((route.name as string).endsWith("-tracks") && !route.params.trackId) ||
+        !route.params.trackId ||
         (route.params.trackId && !currentTrack.value)
       ) {
         // set the default track if not set
@@ -553,6 +553,7 @@ watch(playerHeight.height, (newHeight) => {
               :to="{
                 name: `${recordingViewContext}-tracks`,
                 params: route.params,
+                trackId: currentTrack?.id || tracks[0]?.id,
               }"
               >Tracks
               <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
@@ -569,7 +570,7 @@ watch(playerHeight.height, (newHeight) => {
                 name: `${recordingViewContext}-labels`,
                 params: {
                   ...route.params,
-                  trackId: tracks[0]?.id,
+                  trackId: currentTrack?.id || tracks[0]?.id,
                 },
               }"
               >Labels
@@ -581,7 +582,8 @@ watch(playerHeight.height, (newHeight) => {
           <div class="tags-overflow" v-if="!isMobileView">
             <router-view
               :recording="recordingData?.recording"
-              @trackTagChanged="recalculateCurrentVisit"
+              @track-tag-changed="recalculateCurrentVisit"
+              @track-selected="({ trackId }) => selectedTrack(trackId)"
             />
           </div>
           <!-- Mobile view only -->
@@ -589,7 +591,8 @@ watch(playerHeight.height, (newHeight) => {
             v-if="isMobileView"
             :recording="recordingData?.recording"
             class="recording-tracks"
-            @trackTagChanged="recalculateCurrentVisit"
+            @track-tag-changed="recalculateCurrentVisit"
+            @track-selected="({ trackId }) => selectedTrack(trackId)"
           />
           <div
             class="recording-info-mobile p-3 flex-grow-1"

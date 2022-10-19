@@ -9,7 +9,7 @@ import {
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
-import { API_ROOT } from "@api/api";
+import { API_ROOT } from "@api/root";
 import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
 import { truncateLongStationNames } from "@/utils";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.

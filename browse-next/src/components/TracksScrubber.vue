@@ -93,6 +93,7 @@ const getOffsetYForTrack = (
   }
   return topOffset;
 };
+
 const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
   // Init track dimensions
   const dimensions = [];
@@ -129,28 +130,48 @@ watch(
   () => tracks,
   (nextTracks: IntermediateTrack[]) => {
     initTrackDimensions(nextTracks);
-    updatePlayhead(playbackTime, scrubberWidth.value, pixelRatio.value);
+    updatePlayhead(
+      playbackTime,
+      scrubberWidthMinusPaddingPx.value,
+      pixelRatio.value
+    );
   }
 );
 
 watch(
   () => playbackTime,
   (newPlaybackTime) => {
-    updatePlayhead(newPlaybackTime, scrubberWidth.value, pixelRatio.value);
+    updatePlayhead(
+      newPlaybackTime,
+      scrubberWidthMinusPaddingPx.value,
+      pixelRatio.value
+    );
   }
 );
 
 watch(pixelRatio, (newPixelRatio: number) => {
-  updatePlayhead(playbackTime, scrubberWidth.value, newPixelRatio);
+  updatePlayhead(
+    playbackTime,
+    scrubberWidthMinusPaddingPx.value,
+    newPixelRatio
+  );
 });
 
 const onChangeWidth = (width: number) => {
   scrubberWidth.value = width;
-  updatePlayhead(playbackTime, width, pixelRatio.value);
+  updatePlayhead(
+    playbackTime,
+    scrubberWidthMinusPaddingPx.value,
+    pixelRatio.value
+  );
 };
 
 const fullWidthMinusPadding = computed<number>(() => {
-  return ((scrubberWidth.value - sidePadding * 2) / scrubberWidth.value) * 100;
+  return (scrubberWidthMinusPaddingPx.value / scrubberWidth.value) * 100;
+});
+
+const scrubberWidthMinusPaddingPx = computed<number>(() => {
+  return scrubberWidth.value - sidePadding * 2;
 });
 
 const updatePlayhead = (
@@ -176,10 +197,10 @@ const updatePlayhead = (
           playhead.value.height
         );
         const playheadX = Math.max(
-          0,
+          sidePadding,
           Math.min(
-            playhead.value.width - playheadLineWidth,
-            offset * playhead.value.width - playheadLineWidth
+            playhead.value.width - playheadLineWidth + sidePadding,
+            offset * playhead.value.width - playheadLineWidth / 2 + sidePadding
           )
         );
 

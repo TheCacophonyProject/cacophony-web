@@ -13,7 +13,7 @@ import { decodeJWT, delayMs, delayMsThen } from "@/utils";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
-import { API_ROOT } from "@api/api";
+import { API_ROOT } from "@api/root";
 
 export const INITIAL_RETRY_INTERVAL = 3000;
 export const MAX_RETRY_COUNT = 30;

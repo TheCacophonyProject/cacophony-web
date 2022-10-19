@@ -14,6 +14,11 @@ const { recording } = defineProps<{
 
 const currentTrack = ref<ApiTrackResponse | null>(null);
 
+const emit = defineEmits<{
+  (e: "track-tag-changed", trackId: TrackId): void; // TODO
+  (e: "track-selected", track: { trackId: TrackId }): void;
+}>();
+
 const getTrackById = (trackId: TrackId): ApiTrackResponse | null => {
   return recording?.tracks.find(({ id }) => id == trackId) || null;
 };
@@ -40,9 +45,19 @@ onMounted(() => {
   }
 });
 
-const expandedItemIndex = ref<number>(-1);
-const expandedItemChanged = (index: number) => {
-  expandedItemIndex.value = index;
+const expandedTrackId = ref<TrackId>(-1);
+const expandedItemChanged = (trackId: TrackId) => {
+  expandedTrackId.value = trackId;
+};
+
+const selectedTrackAtIndex = (trackId: TrackId) => {
+  if (trackId !== Number(route.params.trackId)) {
+    const track = getTrackById(trackId);
+    if (track) {
+      // Change track.
+      emit("track-selected", { trackId });
+    }
+  }
 };
 
 // eslint-disable-next-line vue/no-setup-props-destructure
@@ -54,8 +69,9 @@ const expandedItemChanged = (index: number) => {
       :key="index"
       :index="index"
       @expanded-changed="expandedItemChanged"
+      @selected-track-at-index="selectedTrackAtIndex"
       :selected="(currentTrack && currentTrack.id === track.id) || false"
-      :expanded-index="expandedItemIndex"
+      :expanded-id="expandedTrackId"
       :color="TagColours[index % TagColours.length]"
       :track="track"
     />
