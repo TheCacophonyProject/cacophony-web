@@ -194,6 +194,11 @@ const rejectAiSuggestedTag = () => {
     </div>
   </div>
   <div v-if="expanded">
+    <h2 class="fs-8 text-uppercase">Your id</h2>
+    <div>
+      Buttons
+    </div>
+    // Other - select and then
     <hierarchical-tag-select />
   </div>
 </template>

@@ -87,9 +87,6 @@
 import { computed, ref } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
 import { onClickOutside } from "@vueuse/core";
-const emit = defineEmits<{
-  (e: "input", value: string | string[]): void;
-}>();
 
 const {
   options,
@@ -187,7 +184,7 @@ const addSelectedOption = (option: Classification) => {
   closeSelect();
 };
 
-const addSearchTermOnSubmit = (event: KeyboardEvent) => {
+const addSearchTermOnSubmit = () => {
   if (searchTerm.value.trim() !== "") {
     const option = optionsMap.value.get(searchTerm.value.toLowerCase());
     if (option) {
@@ -328,8 +325,10 @@ onClickOutside(optionsContainerRef, closeSelect);
 }
 
 .options-display-container {
-  position: absolute;
-  bottom: 100%;
+  @media screen and (max-width: 1040px) {
+    position: absolute;
+  }
+  bottom: 0;
   width: 100%;
   background-color: white;
 }

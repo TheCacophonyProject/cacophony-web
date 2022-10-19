@@ -1,5 +1,5 @@
 <template>
-  <LayeredDropdown
+  <layered-dropdown
     :options="options"
     @input="$emit('input', $event)"
     :disabled="disabled"

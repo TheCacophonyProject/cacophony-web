@@ -303,7 +303,7 @@ const firstFrameNumForTrack = (trackId: number): number => {
   return Number(Object.entries(framesByTrack.value[trackId])[0][0]);
 };
 
-const onePastLastFrameNumForTrack = (trackId: number): number => {
+const _onePastLastFrameNumForTrack = (trackId: number): number => {
   const frames = Object.entries(framesByTrack.value[trackId]);
   const lastTrackFramePlusOne = Number(frames[frames.length - 1][0]) + 1;
   if (totalPlayableFrames.value) {

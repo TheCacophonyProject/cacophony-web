@@ -766,13 +766,13 @@ watch(playerHeight.height, (newHeight) => {
 // TODO: When there is overflow, show shadows at top/bottom
 .player-overflow {
   @media screen and (max-width: 1040px) {
-    overflow-y: scroll;
+    overflow-y: auto;
   }
   background: #f6f6f6;
 }
 .tags-overflow {
   @media screen and (min-width: 1041px) {
-    overflow-y: scroll;
+    overflow-y: auto;
   }
 }
 .footer-nav {
