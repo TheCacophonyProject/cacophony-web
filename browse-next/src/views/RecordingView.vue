@@ -325,6 +325,8 @@ const selectedTrack = async (trackId: TrackId) => {
     params,
   });
 };
+const selectedTrackWrapped = ({ trackId }: { trackId: TrackId }) =>
+  selectedTrack(trackId);
 
 const tracks = computed<ApiTrackResponse[]>(() => {
   if (recordingData.value) {
@@ -552,8 +554,10 @@ watch(playerHeight.height, (newHeight) => {
               title="Tracks"
               :to="{
                 name: `${recordingViewContext}-tracks`,
-                params: route.params,
-                trackId: currentTrack?.id || tracks[0]?.id,
+                params: {
+                  ...route.params,
+                  trackId: currentTrack?.id || tracks[0]?.id,
+                },
               }"
               >Tracks
               <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
@@ -583,7 +587,7 @@ watch(playerHeight.height, (newHeight) => {
             <router-view
               :recording="recordingData?.recording"
               @track-tag-changed="recalculateCurrentVisit"
-              @track-selected="({ trackId }) => selectedTrack(trackId)"
+              @track-selected="selectedTrackWrapped"
             />
           </div>
           <!-- Mobile view only -->
