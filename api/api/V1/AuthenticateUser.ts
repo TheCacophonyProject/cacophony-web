@@ -370,7 +370,6 @@ export default function (app: Application, baseUrl: string) {
         // If we're using the new end-point, make sure the user has confirmed their email address.
         const isNewEndpoint = request.path.endsWith("reset-password");
         if (isNewEndpoint) {
-          // Do nothing
           const token = "";
           const sendingSuccess = await sendPasswordResetEmail(
             request.headers.host,
@@ -490,6 +489,12 @@ export default function (app: Application, baseUrl: string) {
         if (!groups.length) {
           // If the user has no groups, re-send the welcome email,
           sendSuccess = await sendWelcomeEmailConfirmationEmail(
+            request.headers.host,
+            emailConfirmationToken,
+            user.email
+          );
+        } else if (user.createdAt < browseNextLaunchDate) {
+          sendSuccess = await sendEmailConfirmationEmailLegacyUser(
             request.headers.host,
             emailConfirmationToken,
             user.email

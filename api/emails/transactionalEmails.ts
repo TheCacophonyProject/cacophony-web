@@ -82,6 +82,32 @@ export const sendEmailConfirmationEmailLegacyUser = async (
   }
 };
 
+export const sendEmailConfirmationEmailLegacyUser = async (
+  origin: string,
+  emailConfirmationToken: string,
+  userEmailAddress: string
+): Promise<boolean> => {
+  try {
+    const common = commonInterpolants(origin);
+    const emailConfirmationUrl = `${
+      common.cacophonyBrowseUrl
+    }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
+    const { text, html } = await createEmailWithTemplate(
+      "confirm-email-legacy-user.html",
+      { emailConfirmationUrl, ...common }
+    );
+    return await sendEmail(
+      html,
+      text,
+      userEmailAddress,
+      "🔧 Confirm your Cacophony Monitoring account email address",
+      await commonAttachments()
+    );
+  } catch (e) {
+    logger.error("%s", e);
+  }
+};
+
 export const sendChangedEmailConfirmationEmail = async (
   origin: string,
   emailConfirmationToken: string,
