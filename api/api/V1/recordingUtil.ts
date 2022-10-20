@@ -599,6 +599,7 @@ export const maybeUpdateDeviceHistory = async (
           activeAt: existingDeviceHistoryEntry.fromDateTime,
         });
       }
+
       return {
         stationToAssignToRecording: stationToAssign,
         deviceHistoryEntry: existingDeviceHistoryEntry,

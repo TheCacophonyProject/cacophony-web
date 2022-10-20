@@ -6,10 +6,15 @@ import type {
   ApiTrackTagResponse,
   TrackTagData,
 } from "@typedefs/api/trackTag";
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { CurrentUser } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId } from "@typedefs/api/common";
+import {
+  classifications,
+  flatClassifications,
+  getClassifications,
+} from "@api/Classifications";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { track, index, color, selected, expandedId } = defineProps<{
   track: ApiTrackResponse;
@@ -22,6 +27,7 @@ const { track, index, color, selected, expandedId } = defineProps<{
 const emit = defineEmits<{
   (e: "expanded-changed", trackId: TrackId): void;
   (e: "selected-track-at-index", trackId: TrackId): void;
+  (e: "add-user-tag", payload: { trackId: TrackId; tag: string }): void;
 }>();
 
 const expandedInternal = ref<boolean>(false);
@@ -87,13 +93,46 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
   () => thisUserTag.value?.what === masterTag.value?.what
 );
 
+const availableTags = computed<{ label: string; display: string }[]>(() => {
+  // Map these tags to the display names in classifications json.
+  return [
+    "rodent",
+    "hedgehog",
+    "cat",
+    "possum",
+    "bird",
+    "mustelid",
+    "false-positive",
+    "unknown",
+    "other",
+  ].map(
+    (tag) =>
+      flatClassifications.value[tag] || {
+        label: tag,
+        display: `${tag}_not_found`,
+      }
+  );
+});
+
+const toggleTag = (tag: string) => {
+  emit("add-user-tag", { trackId: track.id, tag });
+};
+
 const confirmAiSuggestedTag = () => {
-  console.log("Confirm");
+  if (masterTag.value) {
+    emit("add-user-tag", { trackId: track.id, tag: masterTag.value.what });
+  }
 };
 
 const rejectAiSuggestedTag = () => {
   console.log("Reject");
 };
+
+onMounted(async () => {
+  if (!classifications.value) {
+    await getClassifications();
+  }
+});
 </script>
 <template>
   <div
@@ -158,7 +197,7 @@ const rejectAiSuggestedTag = () => {
       <button
         type="button"
         class="btn fs-7 confirm-button"
-        @click="confirmAiSuggestedTag"
+        @click.stop.prevent="confirmAiSuggestedTag"
       >
         <span class="label">Confirm</span>
         <span class="fs-6 icon">
@@ -193,16 +232,34 @@ const rejectAiSuggestedTag = () => {
       </button>
     </div>
   </div>
-  <div v-if="expanded">
+  <div :class="[{ expanded }]" class="track-details">
     <h2 class="fs-8 text-uppercase">Your id</h2>
     <div>
-      Buttons
+      <button
+        type="button"
+        class="btn btn-secondary"
+        :key="index"
+        v-for="(tag, index) in availableTags"
+        @click="(e) => toggleTag(tag.label)"
+      >
+        {{ tag.display }}
+      </button>
     </div>
     // Other - select and then
     <hierarchical-tag-select />
   </div>
 </template>
 <style scoped lang="less">
+.track-details {
+  height: 0;
+  background: white;
+  overflow: hidden;
+  transition: height 0.2s ease-in-out;
+  &.expanded {
+    height: 200px;
+  }
+}
+
 .track-number {
   background-color: orange;
   color: white;

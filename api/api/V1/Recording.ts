@@ -1602,35 +1602,7 @@ export default (app: Application, baseUrl: string) => {
     }
   );
 
-  /**
-   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replaceTag
-   * Adds/Replaces a Track Tag
-   * @apiDescription Adds or Replaces track tag based off:
-   * if tag already exists for this user, ignore request
-   * Add tag if it is an additional tag e.g. :Part"
-   * Add tag if this user hasn't already tagged this track
-   * Replace existing tag, if user has an existing animal tag
-   * @apiName PostTrackTag
-   * @apiGroup Tracks
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} id Id of the recording
-   * @apiParam {Integer} trackId id of the recording track to tag
-   *
-   * @apiBody {String} what Object/event to tag.
-   * @apiBody {Number} confidence Tag confidence score.
-   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false"
-   * otherwise.
-   * @apiBody {JSON} [data] Data Additional tag data.
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
-   *
-   * @apiUse V1ResponseError
-   */
-  app.post(
-    `${apiUrl}/:id/tracks/:trackId/replaceTag`,
+  const replaceTrackTagParams = [
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
@@ -1643,11 +1615,18 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
-    // FIXME - extract valid track for trackId on recording with id
+    async (request: Request, response: Response, next: NextFunction) => {
+      // Make sure track actually belongs to the recording we have permissions for.
+      if (response.locals.track.RecordingId === response.locals.recording.id) {
+        return next();
+      } else {
+        return next(new FatalError("Track does not belong to specified recording"));
+      }
+    },
     async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = response.locals.requestUser;
       const path =
-        request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
+          request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
       const newTag = models.TrackTag.build({
         what: request.body.what,
         confidence: request.body.confidence,
@@ -1671,6 +1650,43 @@ export default (app: Application, baseUrl: string) => {
         return next(new FatalError("Server error replacing tag."));
       }
     }
+  ];
+
+  /**
+   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replace-tag
+   * Adds/Replaces a Track Tag
+   * @apiDescription Adds or Replaces track tag based off:
+   * if tag already exists for this user, ignore request
+   * Add tag if it is an additional tag e.g. :Part
+   * Add tag if this user hasn't already tagged this track
+   * Replace existing tag, if user has an existing animal tag
+   * @apiName PostTrackTag
+   * @apiGroup Tracks
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   *
+   * @apiBody {String} what Object/event to tag.
+   * @apiBody {Number} confidence Tag confidence score.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false"
+   * otherwise.
+   * @apiBody {JSON} [data] Data Additional tag data.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/replace-tag`,
+      ...replaceTrackTagParams
+  );
+
+  app.post(
+      `${apiUrl}/:id/tracks/:trackId/replaceTag`,
+      ...replaceTrackTagParams
   );
 
   /**
