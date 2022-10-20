@@ -22,7 +22,7 @@ const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
 
 const commonInterpolants = (origin: string) => {
   return {
-    cacophonyBrowseUrl: origin,
+    cacophonyBrowseUrl: `https://${origin}`,
     cacophonyDisplayUrl: "browse.cacophony.org.nz",
   };
 };

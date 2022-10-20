@@ -499,12 +499,6 @@ export default function (app: Application, baseUrl: string) {
             emailConfirmationToken,
             user.email
           );
-        } else if (user.createdAt < browseNextLaunchDate) {
-          sendSuccess = await sendEmailConfirmationEmailLegacyUser(
-            request.headers.host,
-            emailConfirmationToken,
-            user.email
-          );
         } else {
           // otherwise resend the email change confirmation email.
           sendSuccess = await sendChangedEmailConfirmationEmail(

@@ -1626,13 +1626,15 @@ export default (app: Application, baseUrl: string) => {
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         return next();
       } else {
-        return next(new FatalError("Track does not belong to specified recording"));
+        return next(
+          new FatalError("Track does not belong to specified recording")
+        );
       }
     },
     async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = response.locals.requestUser;
       const path =
-          request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
+        request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
       const newTag = models.TrackTag.build({
         what: request.body.what,
         confidence: request.body.confidence,
@@ -1655,7 +1657,7 @@ export default (app: Application, baseUrl: string) => {
       } catch (e) {
         return next(new FatalError("Server error replacing tag."));
       }
-    }
+    },
   ];
 
   /**
@@ -1687,12 +1689,12 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replace-tag`,
-      ...replaceTrackTagParams
+    ...replaceTrackTagParams
   );
 
   app.post(
-      `${apiUrl}/:id/tracks/:trackId/replaceTag`,
-      ...replaceTrackTagParams
+    `${apiUrl}/:id/tracks/:trackId/replaceTag`,
+    ...replaceTrackTagParams
   );
 
   /**
