@@ -12,7 +12,7 @@ All tracks of a recording always belong to the same visit
 // FIXME - This file seems to be in the wrong place - this folder is full of API endpoints...
 
 import { Recording } from "@models/Recording";
-import { TrackTag } from "@models/TrackTag";
+import { TrackTag, TrackTagData } from "@models/TrackTag";
 import { Track } from "@models/Track";
 import { AI_MASTER } from "@models/TrackTag";
 import moment, { Moment } from "moment";
@@ -73,7 +73,11 @@ export function getCanonicalTrackTag(
     };
     return conflict as TrackTag;
   }
-  const masterTag = trackTags.filter((tag) => tag.data === AI_MASTER);
+  const masterTag = trackTags.filter((tag) =>
+    typeof tag.data === "string"
+      ? tag.data === AI_MASTER
+      : (tag.data as any)?.name == AI_MASTER
+  );
   return animalTags.shift() || manualTags.shift() || masterTag.shift();
 }
 
@@ -310,7 +314,7 @@ class DeviceVisits {
     const trackPeriod = new TrackStartEnd(rec, rec.Tracks[0]);
     const currentVisit = this.currentVisit();
     if (currentVisit && currentVisit.isPartOfVisit(trackPeriod.trackStart)) {
-      currentVisit.addRecording(rec);
+      currentVisit.addRecording(rec, rec.Tracks);
       currentVisit.queryOffset = queryOffset;
     } else {
       if (currentVisit) {
@@ -355,7 +359,7 @@ class Visit {
   audioBaitEvents: Event[];
   complete: boolean;
   tagCount: any;
-  constructor(rec: any, public queryOffset: number) {
+  constructor(rec: any, public queryOffset: number, tracks?: Track[]) {
     visitID += 1;
     this.tagCount = {};
     this.visitID = visitID;
@@ -368,7 +372,8 @@ class Visit {
     this.audioBaitVisit = false;
     this.audioBaitDay = false;
     this.complete = false;
-    this.addRecording(rec);
+
+    this.addRecording(rec, tracks ? tracks : rec.Tracks);
   }
 
   mostCommonTag(): TrackTag | null {
@@ -414,8 +419,8 @@ class Visit {
     this.complete = true;
   }
 
-  addRecording(rec: any) {
-    for (const track of rec.Tracks) {
+  addRecording(rec: any, tracks: Track[]) {
+    for (const track of tracks) {
       const taggedAs = getCanonicalTrackTag(track.TrackTags);
       const event = new VisitEvent(rec, track, null, taggedAs);
       this.addEvent(event);
