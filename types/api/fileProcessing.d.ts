@@ -75,8 +75,15 @@ interface RawTrack {
   // Fields used in api when calculating good tracks/tags
   confidence?: FloatZeroToOne;
   message?: string;
+  thumbnail?: ThumbnailInfo;
 }
 
+interface ThumbnailInfo {
+  region: TrackFramePosition;
+  contours: number;
+  median_diff: number;
+  score: number;
+}
 export interface MinimalTrackRequestData {
   tracker_version?: integer | string;
   start_s: Seconds;
@@ -91,6 +98,7 @@ export interface MinimalTrackRequestData {
   // Fields used in api when calculating good tracks/tags
   confidence?: FloatZeroToOne;
   message?: string;
+  thumbnail?: ThumbnailInfo;
 
   id?: number; // FIXME - Why is the processing backend including an id for a track that hasn't been created yet?
 }

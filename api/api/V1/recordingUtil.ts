@@ -199,25 +199,53 @@ export async function tryToMatchRecordingToStation(
   return null;
 }
 
-async function getThumbnail(rec: Recording) {
+async function getThumbnail(rec: Recording, trackId?: number) {
+  let thumbKey: string;
+  if (trackId) {
+    thumbKey = `${rec.rawFileKey}-${trackId}-thumb`;
+  } else {
+    const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
+    if (thumbedTracks.length > 0) {
+      // choose best track based of visit tag and highest score
+      const recVisit = new Visit(rec, 0, thumbedTracks);
+      const commonTag = recVisit.mostCommonTag();
+      const trackIds = recVisit.events
+        .filter((event) => event.trackTag.what == commonTag.what)
+        .map((event) => event.trackID);
+      const bestTracks = rec.Tracks.filter((track) =>
+        trackIds.includes(track.id)
+      );
+
+      // sort by area
+      bestTracks.sort(function (a, b) {
+        return a.data.thumbnail.width * a.data.thumbnail.height >
+          b.data.thumbnail.width * b.data.thumbnail.height
+          ? 1
+          : -1;
+      });
+      thumbKey = `${rec.rawFileKey}-${bestTracks[0].id}-thumb`;
+    } else {
+      thumbKey = `${rec.rawFileKey}-thumb`;
+    }
+  }
+
   const s3 = modelsUtil.openS3();
-  let Key = `${rec.rawFileKey}-thumb`;
-  if (Key.startsWith("a_")) {
-    Key = Key.substr(2);
+  if (thumbKey.startsWith("a_")) {
+    thumbKey = thumbKey.substr(2);
   }
   const params = {
-    Key,
+    Key: thumbKey,
   };
   return s3.getObject(params).promise();
 }
 
-const THUMBNAIL_MIN_SIZE = 64;
+const THUMBNAIL_SIZE = 64;
 const THUMBNAIL_PALETTE = "Viridis";
 // Gets a raw cptv frame from a recording
-async function getCPTVFrame(
+async function getCPTVFrames(
   recording: Recording,
-  frameNumber: number
-): Promise<CptvFrame | undefined> {
+  frameNumbers: Set<number>
+): Promise<any | undefined> {
   const fileData: GetObjectOutput | AWSError = await modelsUtil
     .openS3()
     .getObject({
@@ -246,8 +274,9 @@ async function getCPTVFrame(
   }
   let finished = false;
   let currentFrame = 0;
+  const frames = {};
   let frame;
-  log.info("Extracting frame #%d for thumbnail", frameNumber);
+  log.info(`Extracting  ${frameNumbers.size} frames for thumbnails `);
   while (!finished) {
     frame = await decoder.getNextFrame();
     if (frame && frame.meta.isBackgroundFrame) {
@@ -255,41 +284,150 @@ async function getCPTVFrame(
       continue;
     }
     finished = frame === null || (await decoder.getTotalFrames()) !== null;
-    if (currentFrame == frameNumber) {
+    if (frameNumbers.has(currentFrame)) {
+      frameNumbers.delete(currentFrame);
+      frames[currentFrame] = frame;
+    }
+    if (frameNumbers.size == 0) {
       break;
     }
     currentFrame++;
   }
   decoder.close();
-  return frame;
+  return frames;
 }
 
 // Creates and saves a thumbnail for a recording using specified thumbnail info
 async function saveThumbnailInfo(
   recording: Recording,
-  thumbnail: TrackFramePosition
-): Promise<ManagedUpload.SendData | Error> {
-  const frame = await getCPTVFrame(recording, thumbnail.frame_number);
-  if (!frame) {
-    throw new Error(`Failed to extract CPTV frame ${thumbnail.frame_number}`);
+  tracks: Track[],
+  clip_thumbnail: TrackFramePosition
+): Promise<ManagedUpload.SendData[] | Error[]> {
+  const thumbnailTracks = tracks.filter(
+    (track) => track.data?.thumbnail?.region
+  );
+  const frameNumbers = new Set<number>(
+    thumbnailTracks.map((track) => track.data.thumbnail?.region?.frame_number)
+  );
+  if (clip_thumbnail) {
+    frameNumbers.add(clip_thumbnail.frame_number);
   }
-  const thumb = await createThumbnail(frame, thumbnail);
-  return await modelsUtil
-    .openS3()
-    .upload({
-      Key: `${recording.rawFileKey}-thumb`,
-      Body: thumb.data,
-      Metadata: thumb.meta,
-    })
-    .promise()
-    .catch((err) => {
-      return err;
-    });
+  if (frameNumbers.size == 0) {
+    log.warning(`No thumbnails to be made for ${recording.id}`);
+    return;
+  }
+  const frames = await getCPTVFrames(recording, frameNumbers);
+  const frameUploads = [];
+  for (const track of thumbnailTracks) {
+    const frame = frames[track.data.thumbnail.region.frame_number];
+    if (!frame) {
+      frameUploads.push(
+        Error(
+          `Failed to extract CPTV frame for track ${track.id}, frame  ${track.data.thumbnail.region.frame_number}`
+        )
+      );
+      continue;
+    }
+    const thumb = await createThumbnail(frame, track.data.thumbnail.region);
+    frameUploads.push(
+      await modelsUtil
+        .openS3()
+        .upload({
+          Key: `${recording.rawFileKey}-${track.id}-thumb`,
+          Body: thumb.data,
+          Metadata: thumb.meta,
+        })
+        .promise()
+        .catch((err) => {
+          return err;
+        })
+    );
+  }
+
+  if (clip_thumbnail) {
+    const frame = frames[clip_thumbnail.frame_number];
+    if (!frame) {
+      frameUploads.push(
+        Error(`Failed to extract CPTV frame ${clip_thumbnail.frame_number}`)
+      );
+    } else {
+      const thumb = await createThumbnail(frame, clip_thumbnail);
+      console.log("saving", `${recording.rawFileKey}-thumb`, thumb);
+      frameUploads.push(
+        await modelsUtil
+          .openS3()
+          .upload({
+            Key: `${recording.rawFileKey}-thumb`,
+            Body: thumb.data,
+            Metadata: thumb.meta,
+          })
+          .promise()
+          .catch((err) => {
+            return err;
+          })
+      );
+    }
+  }
+  return Promise.all(frameUploads);
+}
+
+//expands the smallest dimension of the region so that it is a square that fits inside resX and resY
+function squareRegion(
+  thumbnail: TrackFramePosition,
+  resX: number,
+  resY: number
+) {
+  //  make a square
+  if (thumbnail.width < thumbnail.height) {
+    const diff = thumbnail.height - thumbnail.width;
+    const squarePadding = Math.ceil(diff / 2);
+
+    thumbnail.x -= squarePadding;
+    thumbnail.width = thumbnail.height;
+    thumbnail.x = Math.max(0, thumbnail.x);
+    if (thumbnail.x + thumbnail.width > resX) {
+      thumbnail.x = resX - thumbnail.width;
+    }
+  } else if (thumbnail.width > thumbnail.height) {
+    const diff = thumbnail.width - thumbnail.height;
+    const squarePadding = Math.ceil(diff / 2);
+    thumbnail.y -= squarePadding;
+    thumbnail.height = thumbnail.width;
+    thumbnail.y = Math.max(0, thumbnail.y);
+    if (thumbnail.y + thumbnail.height > resY) {
+      thumbnail.y = resY - thumbnail.height;
+    }
+  }
+  return thumbnail;
+}
+
+//pad a region such that it still fits in resX and resY (Not used at the moment)
+function padRegion(
+  thumbnail: TrackFramePosition,
+  padding: number,
+  resX: number,
+  resY: number
+) {
+  thumbnail.x -= padding;
+  thumbnail.width += padding * 2;
+  thumbnail.y -= padding;
+  thumbnail.height += padding * 2;
+
+  thumbnail.x = Math.max(0, thumbnail.x);
+  if (thumbnail.x + thumbnail.width > resX) {
+    thumbnail.width -= thumbnail.width + thumbnail.x - resX;
+  }
+
+  thumbnail.y = Math.max(0, thumbnail.y);
+  if (thumbnail.y + thumbnail.height > resY) {
+    thumbnail.height -= thumbnail.height + thumbnail.x - resY;
+  }
+  return thumbnail;
 }
 
 // Create a png thumbnail image  from this frame with thumbnail info
-// Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
-// width and height
+// Expand the thumbnail region such that it is a square
+// Resize to THUMBNAIL_MIN_SIZE
 //render the png in THUMBNAIL_PALETTE
 //returns {data: buffer, meta: metadata about image}
 async function createThumbnail(
@@ -300,28 +438,15 @@ async function createThumbnail(
   const resX = frameMeta.width;
   const resY = frameMeta.height;
 
-  const size = Math.max(THUMBNAIL_MIN_SIZE, thumbnail.height, thumbnail.width);
+  // // padding already in region so probably dont need
+  // let padding = Math.max(2,Math.floor(thumbnail.height * 0.2), Math.floor(thumbnail.width *0.2));
+  // padding = Math.floor(padding / 2)
+  // const size = Math.max(thumbnail.height+padding*2, thumbnail.width+padding*2);
+
+  const size = Math.max(thumbnail.height, thumbnail.width);
   const thumbnailData = new Uint8Array(size * size);
-
-  //dimensions to it is a square with a minimum size of THUMBNAIL_MIN_SIZE
-  const extraWidth = (size - thumbnail.width) / 2;
-  thumbnail.x -= Math.ceil(extraWidth);
-  thumbnail.x = Math.max(0, thumbnail.x);
-  thumbnail.width = size;
-  if (thumbnail.x + thumbnail.width > resX) {
-    thumbnail.x = resX - thumbnail.width;
-  }
-
-  const extraHeight = (size - thumbnail.height) / 2;
-  // noinspection JSSuspiciousNameCombination
-  thumbnail.y -= Math.ceil(extraHeight);
-  thumbnail.y = Math.max(0, thumbnail.y);
-  thumbnail.height = size;
-  if (thumbnail.y + thumbnail.height > resY) {
-    thumbnail.y = resY - thumbnail.height;
-  }
-
-  // FIXME(jon): Normalise to the thumbnail region, not the entire frame.
+  // thumbnail = padRegion(thumbnail,padding, resX,resY)
+  thumbnail = squareRegion(thumbnail, resX, resY);
   // get min max for normalisation
   let min = 1 << 16;
   let max = 0;
@@ -355,16 +480,16 @@ async function createThumbnail(
     }
   }
   let greyScaleData;
-  if (thumbnail.width != size || thumbnail.height != size) {
+  if (thumbnail.width != THUMBNAIL_SIZE) {
     const resized_thumb = await sharp(thumbnailData, {
       raw: { width: thumbnail.width, height: thumbnail.height, channels: 1 },
     })
       .greyscale()
-      .resize(size, size, { fit: "contain" });
+      .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE);
     greyScaleData = await resized_thumb.toBuffer();
-    const meta = await resized_thumb.metadata();
-    thumbnail.width = meta.width;
-    thumbnail.height = meta.height;
+    // meta width and height doesnt seem to update....
+    thumbnail.width = THUMBNAIL_SIZE;
+    thumbnail.height = THUMBNAIL_SIZE;
   } else {
     greyScaleData = thumbnailData;
   }
@@ -379,7 +504,6 @@ async function createThumbnail(
     }
   }
   renderFrameIntoFrameBuffer(frameBuffer, greyScaleData, palette[1], 0, 255);
-
   const thumbMeta = {
     region: JSON.stringify(thumbnail),
     palette: palette[0],
@@ -1753,9 +1877,15 @@ async function sendAlerts(recId: RecordingId) {
   );
 
   if (alerts.length > 0) {
-    const thumbnail = await getThumbnail(recording).catch(() => {
-      log.warning("Alerting without thumbnail for %d", recId);
-    });
+    const thumbnail = await getThumbnail(recording, matchedTrack.id).catch(
+      () => {
+        log.warning(
+          "Alerting without thumbnail for %d and track %d",
+          recId,
+          matchedTrack.id
+        );
+      }
+    );
     for (const alert of alerts) {
       await alert.sendAlert(
         recording,
@@ -2106,19 +2236,22 @@ export const finishedProcessingRecording = async (
     });
 
   // Save a thumbnail if there was one
-  if (classifierResult.thumbnail_region) {
-    const result = await saveThumbnailInfo(
-      recording,
-      classifierResult.thumbnail_region
-    );
-    if (result instanceof Error) {
-      log.warning(
-        "Failed to upload thumbnail for %s",
-        `${recording.rawFileKey}-thumb`
-      );
-      log.error("Reason: %s", result.message);
-    }
-  }
+  // method typescript will need to change
+  // const results = await saveThumbnailInfo(
+  //   recording,
+  //   classifierResult.tracks,
+  //   classifierResult.thumbnail_region
+  // );
+  // for(const result of results){
+  //   if (result instanceof Error) {
+  //     log.warning(
+  //       "Failed to upload thumbnail for %s",
+  //       `${recording.rawFileKey}-thumb`
+  //     );
+  //     log.error("Reason: %s", result.message);
+  //   }
+  // }
+
   if (prevState !== RecordingProcessingState.Reprocess) {
     await sendAlerts(recording.id);
   }

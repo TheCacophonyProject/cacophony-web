@@ -203,7 +203,8 @@ declare namespace Cypress {
       userName: string,
       recordingNameOrId: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
+      trackName?: string
     ): any;
 
     /** Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters

@@ -187,7 +187,13 @@ onMounted(async () => {
           <span class="strikethrough">{{ masterTag?.what }}</span></span
         >
         <span
-          class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
+          class="
+            classification
+            text-capitalize
+            d-inline-block
+            fw-bold
+            conflicting-tags
+          "
           v-else-if="!consensusUserTag && masterTag"
           >{{ uniqueUserTags.join(", ") }}</span
         >

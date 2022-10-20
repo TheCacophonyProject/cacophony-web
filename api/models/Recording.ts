@@ -189,7 +189,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   // NOTE: Implicitly created by sequelize associations (along with other
   //  potentially undocumented extension methods).
   getTrack: (id: TrackId) => Promise<Track | null>;
-  getTracks: (options: FindOptions) => Promise<Track[]>;
+  getTracks: (options?: FindOptions) => Promise<Track[]>;
   createTrack: ({ data: any, AlgorithmId: DetailSnapshotId }) => Promise<Track>;
   setStation: (station: Station) => Promise<void>;
 
