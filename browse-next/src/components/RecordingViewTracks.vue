@@ -6,7 +6,9 @@ import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { TrackId } from "@typedefs/api/common";
-import { replaceTrackTag } from "@api/Recording";
+import { removeTrackTag, replaceTrackTag } from "@api/Recording";
+import { CurrentUser } from "@models/LoggedInUser";
+import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 const route = useRoute();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { recording } = defineProps<{
@@ -75,42 +77,78 @@ const selectedTrackAtIndex = (trackId: TrackId) => {
   }
 };
 
-const addUserTag = async ({
+const updatingTags = ref<boolean>(false);
+const addOrRemoveUserTag = async ({
   tag,
   trackId,
 }: {
   tag: string;
   trackId: TrackId;
 }) => {
-  if (recording) {
-    // TODO: Update local mutable tags store.
-
-    await replaceTrackTag(
-      {
-        what: tag,
-        confidence: 0.85,
-      },
-      recording.id,
-      trackId
+  if (recording && CurrentUser.value && !updatingTags.value) {
+    updatingTags.value = true;
+    // Remove the current user tag from recordingTracksLocal
+    const track = recordingTracksLocal.value.find(
+      (track) => track.id === trackId
     );
+    if (track) {
+      const thisUserTag = track.tags.find(
+        (tag) => tag.userId === CurrentUser.value?.id
+      );
+      track.tags = track.tags.filter(
+        (tag) => tag.userId !== CurrentUser.value?.id
+      );
+      if (thisUserTag && thisUserTag.what === tag) {
+        // We are removing the current tag.
+        await removeTrackTag(recording.id, trackId, thisUserTag.id);
+      } else {
+        // We are adding or replacing the current tag.
+        const interimTag: ApiHumanTrackTagResponse = {
+          trackId,
+          id: -1,
+          what: tag,
+          userId: CurrentUser.value?.id,
+          userName: CurrentUser.value?.userName,
+          automatic: false,
+          confidence: 0.85,
+        };
+        track.tags.push(interimTag);
+        const newTagResponse = await replaceTrackTag(
+          {
+            what: tag,
+            confidence: 0.85,
+          },
+          recording.id,
+          trackId
+        );
+        if (newTagResponse.success && newTagResponse.result.trackTagId) {
+          interimTag.id = newTagResponse.result.trackTagId;
+        }
+      }
+      // TODO emit trackTagChanged, maybe trigger visit recalculation.
+    }
+    updatingTags.value = false;
 
-    // TODO emit trackTagChanged, maybe trigger visit recalculation.
+    // FIXME - Emit the local changes to tracks to the parent recording view, so that video overlays etc are updated.
+    // Also should reload the dashboard level stuff any time a tag changes.
   }
 };
 
 const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
 
 // eslint-disable-next-line vue/no-setup-props-destructure
+
+// FIXME - replace with b-accordion component.
 </script>
 <template>
-  <div v-if="recording">
+  <div v-if="recording" class="accordion">
     <track-tagger-row
       v-for="(track, index) in recordingTracksLocal"
       :key="index"
       :index="index"
       @expanded-changed="expandedItemChanged"
       @selected-track-at-index="selectedTrackAtIndex"
-      @add-user-tag="addUserTag"
+      @add-or-remove-user-tag="addOrRemoveUserTag"
       :selected="(currentTrack && currentTrack.id === track.id) || false"
       :expanded-id="expandedTrackId"
       :color="TagColours[index % TagColours.length]"

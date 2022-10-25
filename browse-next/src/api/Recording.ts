@@ -4,6 +4,7 @@ import type { FetchResult, JwtToken } from "@api/types";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackTagRequest } from "@typedefs/api/trackTag";
 import type { TrackId } from "@typedefs/api/common";
+import type { TrackTagId } from "@typedefs/api/common";
 
 export const getRecordingById = (
   id: RecordingId,
@@ -36,3 +37,12 @@ export const replaceTrackTag = (
     body
   ) as Promise<FetchResult<{ trackTagId?: number }>>;
 };
+
+export const removeTrackTag = (
+  id: RecordingId,
+  trackId: TrackId,
+  trackTagId: TrackTagId
+) =>
+  CacophonyApi.delete(
+    `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`
+  ) as Promise<FetchResult<void>>;

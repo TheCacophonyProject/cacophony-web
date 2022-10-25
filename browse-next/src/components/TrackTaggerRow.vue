@@ -4,6 +4,7 @@ import type {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
   ApiTrackTagResponse,
+  Classification,
   TrackTagData,
 } from "@typedefs/api/trackTag";
 import { computed, onMounted, ref, watch } from "vue";
@@ -15,6 +16,8 @@ import {
   flatClassifications,
   getClassifications,
 } from "@api/Classifications";
+import CardTable from "@/components/CardTable.vue";
+import type { CardTableItems } from "@/components/CardTableTypes";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { track, index, color, selected, expandedId } = defineProps<{
   track: ApiTrackResponse;
@@ -27,19 +30,46 @@ const { track, index, color, selected, expandedId } = defineProps<{
 const emit = defineEmits<{
   (e: "expanded-changed", trackId: TrackId): void;
   (e: "selected-track-at-index", trackId: TrackId): void;
-  (e: "add-user-tag", payload: { trackId: TrackId; tag: string }): void;
+  (
+    e: "add-or-remove-user-tag",
+    payload: { trackId: TrackId; tag: string }
+  ): void;
 }>();
 
 const expandedInternal = ref<boolean>(false);
+const collapsing = ref<boolean>(false);
+const showClassificationSearch = ref<boolean>(false);
+const showTaggerDetails = ref<boolean>(false);
+const tagSelect = ref<typeof HierarchicalTagSelect>();
+
+const taggerDetails = computed<CardTableItems>(() => {
+  const tags: ApiTrackTagResponse[] = [...humanTags.value];
+  if (masterTag.value) {
+    tags.unshift(masterTag.value);
+  }
+  return {
+    headings: ["tag", "tagger", "created"],
+    values: tags.map(({ what, userName, automatic }) => [
+      what,
+      automatic ? "Cacophony AI" : userName || "",
+      "",
+    ]),
+  };
+});
+
 const expanded = computed<boolean>(() => expandedId === track.id);
 watch(expanded, (nextExpanded) => {
   if (!nextExpanded) {
-    expandedInternal.value = false;
+    collapsing.value = true;
+    setTimeout(() => {
+      expandedInternal.value = false;
+      collapsing.value = false;
+    }, 200);
   }
 });
 
 const selectAndMaybeToggleExpanded = () => {
-  if (hasUserTag.value) {
+  if (hasUserTag.value || expandedInternal.value) {
     expandedInternal.value = !expandedInternal.value;
     emit("expanded-changed", expandedInternal.value ? track.id : -1);
   }
@@ -93,39 +123,123 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
   () => thisUserTag.value?.what === masterTag.value?.what
 );
 
+const defaultTags = [
+  "possum",
+  "rodent",
+  "hedgehog",
+  "cat",
+  "bird",
+  "mustelid",
+  "false-positive",
+  "unknown",
+];
+
+// These are "pinned" tags.
+const userDefinedTags = ref<Record<string, boolean>>({});
+const userDefinedTagLabels = computed<string[]>(() =>
+  Object.keys(userDefinedTags.value)
+);
+
+const uniqueUserTagsAndUserDefinedTags = computed<string[]>(() => {
+  const tags: Record<string, boolean> = {};
+  for (const tag of uniqueUserTags.value) {
+    tags[tag] = true;
+  }
+  return Object.keys({ ...userDefinedTags.value, ...tags });
+});
+
 const availableTags = computed<{ label: string; display: string }[]>(() => {
+  // TODO: These can be changed at a group preferences level my group admins,
+  //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
-  return [
-    "rodent",
-    "hedgehog",
-    "cat",
-    "possum",
-    "bird",
-    "mustelid",
-    "false-positive",
-    "unknown",
-    "other",
+  const tags: Record<string, { label: string; display: string }> = {};
+  for (const tag of [
+    ...defaultTags,
+    ...uniqueUserTagsAndUserDefinedTags.value,
   ].map(
     (tag) =>
       flatClassifications.value[tag] || {
         label: tag,
         display: `${tag}_not_found`,
       }
-  );
+  )) {
+    tags[tag.label] = tag;
+  }
+  return Object.values(tags);
 });
 
+// const specialCaseTags = computed<{ label: string; display: string }[]>(() => {
+//   return ["false-positive", "unknown"]
+//     .map(
+//       (tag) =>
+//         flatClassifications.value[tag] || {
+//           label: tag,
+//           display: `${tag}_not_found`,
+//         }
+//     )
+//     .concat([{ label: "more-classifications", display: "..." }]);
+// });
+
 const toggleTag = (tag: string) => {
-  emit("add-user-tag", { trackId: track.id, tag });
+  if (tag === "more-classifications") {
+    showClassificationSearch.value = !showClassificationSearch.value;
+  } else {
+    if (thisUserTag.value && tag === thisUserTag.value.what) {
+      showClassificationSearch.value = false;
+    } else if (
+      !thisUserTag.value ||
+      (thisUserTag.value && thisUserTag.value.what !== tag)
+    ) {
+      showClassificationSearch.value = !defaultTags.includes(tag);
+    }
+    emit("add-or-remove-user-tag", { trackId: track.id, tag });
+  }
 };
 
 const confirmAiSuggestedTag = () => {
   if (masterTag.value) {
-    emit("add-user-tag", { trackId: track.id, tag: masterTag.value.what });
+    emit("add-or-remove-user-tag", {
+      trackId: track.id,
+      tag: masterTag.value.what,
+    });
   }
 };
 
 const rejectAiSuggestedTag = () => {
-  console.log("Reject");
+  expandedInternal.value = true;
+  emit("expanded-changed", expandedInternal.value ? track.id : -1);
+};
+
+const pinCustomTag = (classification: Classification) => {
+  if (thisUserTag.value && !defaultTags.includes(thisUserTag.value.what)) {
+    if (userDefinedTags.value[classification.label]) {
+      delete userDefinedTags.value[classification.label];
+    } else {
+      userDefinedTags.value[thisUserTag.value.what] = true;
+    }
+  }
+};
+
+const currentlySelectedTagIsPinnable = computed<boolean>(() => {
+  if (!thisUserTag.value) {
+    return false;
+  }
+  return !defaultTags.includes(thisUserTag.value.what);
+});
+
+const setCustomTag = async (classification: Classification | null) => {
+  if (classification) {
+    // Add the tag, remove the current one.
+    emit("add-or-remove-user-tag", {
+      trackId: track.id,
+      tag: classification.label,
+    });
+  }
+};
+
+const addCustomTag = () => {
+  showClassificationSearch.value = true;
+  tagSelect.value && tagSelect.value.open();
 };
 
 onMounted(async () => {
@@ -187,13 +301,7 @@ onMounted(async () => {
           <span class="strikethrough">{{ masterTag?.what }}</span></span
         >
         <span
-          class="
-            classification
-            text-capitalize
-            d-inline-block
-            fw-bold
-            conflicting-tags
-          "
+          class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
           v-else-if="!consensusUserTag && masterTag"
           >{{ uniqueUserTags.join(", ") }}</span
         >
@@ -220,7 +328,7 @@ onMounted(async () => {
         type="button"
         class="btn fs-7 reject-button"
         aria-label="Reject AI classification"
-        @click="rejectAiSuggestedTag"
+        @click.stop.prevent="rejectAiSuggestedTag"
       >
         <span class="visually-hidden">Reject</span>
         <span class="fs-6 icon">
@@ -238,31 +346,142 @@ onMounted(async () => {
       </button>
     </div>
   </div>
-  <div :class="[{ expanded }]" class="track-details">
-    <h2 class="fs-8 text-uppercase">Your id</h2>
-    <div>
+  <div
+    :class="['collapse', { show: expanded }, { collapsing }]"
+    class="track-details px-2 pe-2"
+  >
+    <div class="classification-btns">
       <button
         type="button"
-        class="btn btn-secondary"
+        class="btn classification-btn fs-8 text-capitalize d-flex flex-column align-items-center justify-content-evenly"
+        :class="[
+          tag.label,
+          { selected: thisUserTag && tag.label === thisUserTag.what },
+          { pinned: !!userDefinedTags[tag.label] },
+        ]"
         :key="index"
         v-for="(tag, index) in availableTags"
         @click="(e) => toggleTag(tag.label)"
       >
-        {{ tag.display }}
+        <span v-if="!!userDefinedTags[tag.label]" class="pinned-tag"
+          ><font-awesome-icon icon="thumbtack" />
+        </span>
+        <img src="" width="24" height="24" />
+        <span>{{ tag.display }}</span>
+      </button>
+      <button
+        type="button"
+        class="add-classification-btn btn fs-2"
+        @click="addCustomTag"
+      >
+        <font-awesome-icon icon="plus" />
       </button>
     </div>
-    // Other - select and then
-    <hierarchical-tag-select />
+    <div v-if="showClassificationSearch" class="mt-2 d-flex">
+      <hierarchical-tag-select
+        v-if="currentlySelectedTagIsPinnable || showClassificationSearch"
+        class="flex-grow-1"
+        @change="setCustomTag"
+        @pin="pinCustomTag"
+        ref="tagSelect"
+        :selected-item="thisUserTag && thisUserTag.what"
+        :pinnable="currentlySelectedTagIsPinnable"
+        :pinned-items="userDefinedTagLabels"
+      />
+    </div>
+    <div class="tagger-details mt-2 d-flex justify-content-center flex-column">
+      <button
+        class="fs-8 btn details-toggle-btn"
+        @click="showTaggerDetails = !showTaggerDetails"
+      >
+        <span v-if="!showTaggerDetails">View details</span>
+        <span v-else>Hide details</span>
+        <font-awesome-icon
+          icon="chevron-right"
+          :rotation="showTaggerDetails ? 270 : 90"
+          class="ms-2"
+        />
+      </button>
+      <card-table v-if="showTaggerDetails" :items="taggerDetails"></card-table>
+    </div>
   </div>
 </template>
 <style scoped lang="less">
+@import "../assets/font-sizes.less";
+
+.details-toggle-btn,
+.details-toggle-btn:active,
+.details-toggle-btn:focus {
+  color: #007086;
+  font-weight: 500;
+}
+
 .track-details {
-  height: 0;
   background: white;
-  overflow: hidden;
   transition: height 0.2s ease-in-out;
-  &.expanded {
-    height: 200px;
+  &.collapsing {
+    height: 0;
+    overflow: hidden;
+  }
+  &.collapse {
+    &:not(.show) {
+      display: none;
+    }
+  }
+}
+.classification-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  //justify-items: center;
+  column-gap: 7px;
+  row-gap: 5px;
+}
+.add-classification-btn,
+.add-classification-btn:focus {
+  color: rgba(0, 112, 134, 0.5);
+  border-radius: 8px;
+  border: 4px dashed rgba(0, 112, 134, 0.2);
+  &:active,
+  &:hover {
+    color: rgba(0, 112, 134, 0.8);
+    border: 4px dashed rgba(0, 112, 134, 0.4);
+  }
+}
+.classification-btn {
+  border-radius: 4px;
+  color: #444;
+  gap: 3px;
+  box-shadow: inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
+  background: #f2f2f2;
+  min-height: 72px;
+  &.selected {
+    background: #888;
+    color: white;
+    text-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.7);
+    font-weight: 500;
+    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  }
+  > img {
+    background: transparent;
+    position: relative;
+    &::before {
+      border-radius: 4px;
+      position: absolute;
+      content: "";
+      background: #666;
+      width: 24px;
+      height: 24px;
+      display: inline-block;
+    }
+  }
+  &.pinned {
+    position: relative;
+    .pinned-tag {
+      position: absolute;
+      top: 1px;
+      right: 4px;
+      transform: rotate(30deg);
+    }
   }
 }
 

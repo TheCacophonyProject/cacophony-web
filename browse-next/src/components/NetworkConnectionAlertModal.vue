@@ -66,13 +66,7 @@ watch(
     hide-header
   >
     <div
-      class="
-        bg-danger
-        align-items-center
-        justify-content-center
-        d-flex
-        text-light
-      "
+      class="bg-danger align-items-center justify-content-center d-flex text-light"
     >
       <font-awesome-icon icon="triangle-exclamation" size="lg" class="m-3" />
       <span class="d-md-none">Network Connection Error</span>
@@ -84,12 +78,7 @@ watch(
         issues with your device.
       </p>
       <div
-        class="
-          d-flex
-          flex-md-row flex-column
-          justify-content-between
-          align-items-center
-        "
+        class="d-flex flex-md-row flex-column justify-content-between align-items-center"
       >
         <span v-if="!isManuallyRetrying" style="height: 1rem"
           >Retrying in <strong>{{ countDown }}</strong> seconds...</span

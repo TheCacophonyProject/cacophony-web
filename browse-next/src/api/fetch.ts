@@ -110,6 +110,9 @@ export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
   retryCount: 0,
   control: false,
 });
+
+let hotReloaded = true;
+
 /**
  * Makes a request to the given url with default handling for cors and authentication.
  * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.
@@ -139,11 +142,16 @@ export async function fetch<T>(
       console.warn("Aborted", e, request.signal);
     });
   }
-  if (userIsLoggedIn.value) {
+  if (userIsLoggedIn.value || hotReloaded) {
+    hotReloaded = false;
     await maybeRefreshStaleCredentials();
-    (request.headers as Record<string, string>).Authorization = (
-      CurrentUserCreds.value as LoggedInUserAuth
-    ).apiToken;
+    if (CurrentUserCreds.value) {
+      (request.headers as Record<string, string>).Authorization = (
+        CurrentUserCreds.value as LoggedInUserAuth
+      ).apiToken;
+    } else {
+      debugger;
+    }
     //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes

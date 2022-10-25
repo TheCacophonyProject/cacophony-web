@@ -1,10 +1,13 @@
 <template>
   <layered-dropdown
     :options="options"
-    @input="$emit('input', $event)"
     :disabled="disabled"
+    :pinnable="pinnable"
+    :pinned-items="pinnedItems"
     :placeholder="placeholder"
     :multiselect="multiselect"
+    :selected-item="selectedItem"
+    ref="layeredDropdown"
   />
 </template>
 <script setup lang="ts">
@@ -18,13 +21,20 @@ const {
   exclude = [],
   placeholder = "Search Tags...",
   multiselect = false,
+  pinnable = false,
+  pinnedItems = [],
+  selectedItem,
 } = defineProps<{
   disabled?: boolean;
   exclude?: string[];
   placeholder?: string;
   multiselect?: boolean;
+  pinnable: boolean;
+  pinnedItems?: string[];
+  selectedItem?: string;
 }>();
 
+const layeredDropdown = ref<typeof LayeredDropdown>();
 const options = ref<Classification>({ label: "", children: [] });
 
 const setClassifications = (classifications: Classification) => {
@@ -49,5 +59,11 @@ onMounted(async () => {
     setClassifications
   )) as Classification;
   setClassifications(classifications);
+});
+
+defineExpose({
+  open: () => {
+    layeredDropdown.value && layeredDropdown.value.open();
+  },
 });
 </script>

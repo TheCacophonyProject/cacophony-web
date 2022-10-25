@@ -1,6 +1,61 @@
 <template>
   <div ref="optionsContainerRef" class="options-container">
+    <div class="input-container d-flex flex-column">
+      <input
+        v-if="multiselect || showOptions || (!multiselect && !singleSelection)"
+        @keyup.enter.stop.prevent="addSearchTermOnSubmit"
+        @keydown.esc.stop.prevent="handleEscapeDismiss"
+        @focus="openSelect"
+        type="text"
+        ref="inputRef"
+        v-model="searchTerm"
+        :placeholder="placeholder"
+        :disabled="disabled"
+      />
+      <div v-if="!showOptions && singleSelection" class="d-flex">
+        <button
+          type="button"
+          class="btn selected-option text-start text-capitalize flex-grow-1"
+          @click="openSelect"
+        >
+          {{ singleSelection.display || singleSelection.label }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary ms-2 pin-btn"
+          :class="{ pinned: singleSelectionIsPinned }"
+          v-if="pinnable"
+        >
+          <font-awesome-icon icon="thumbtack" @click="pinCurrentSelection" />
+        </button>
+      </div>
+      <div
+        v-else-if="multiselect && hasSelection"
+        class="selected-container d-flex flex-wrap"
+      >
+        <button
+          type="button"
+          class="selected-option btn text-capitalize"
+          :key="option.label"
+          v-for="option in multipleSelections"
+          @click="() => removeSelectedOption(option)"
+        >
+          {{ option.display || option.label }}
+          <font-awesome-icon class="selected-option-icon" icon="times" />
+        </button>
+      </div>
+    </div>
     <div v-show="showOptions" class="options-display-container">
+      <div v-show="!searchTerm" class="options-path-container">
+        <div
+          class="options-path"
+          :key="path"
+          v-for="path in currPath"
+          @click="() => setToPath(path)"
+        >
+          {{ path }}
+        </div>
+      </div>
       <div
         ref="optionsList"
         class="options-list-container d-flex justify-content-between flex-column"
@@ -34,57 +89,11 @@
           </button>
         </div>
       </div>
-      <div v-show="!searchTerm" class="options-path-container">
-        <div
-          class="options-path"
-          :key="path"
-          v-for="path in currPath"
-          @click="() => setToPath(path)"
-        >
-          {{ path }}
-        </div>
-      </div>
-    </div>
-    <div class="input-container d-flex flex-column">
-      <input
-        v-if="multiselect || showOptions || (!multiselect && !singleSelection)"
-        @keyup.enter.stop.prevent="addSearchTermOnSubmit"
-        @keydown.esc.stop.prevent="handleEscapeDismiss"
-        @focus="openSelect"
-        type="text"
-        ref="inputRef"
-        v-model="searchTerm"
-        :placeholder="placeholder"
-        :disabled="disabled"
-      />
-      <button
-        type="button"
-        class="btn selected-option text-start text-capitalize"
-        @click="openSelect"
-        v-if="!showOptions && singleSelection"
-      >
-        {{ singleSelection.display || singleSelection.label }}
-      </button>
-      <div
-        v-else-if="multiselect && hasSelection"
-        class="selected-container d-flex flex-wrap"
-      >
-        <button
-          type="button"
-          class="selected-option btn text-capitalize"
-          :key="option.label"
-          v-for="option in multipleSelections"
-          @click="() => removeSelectedOption(option)"
-        >
-          {{ option.display || option.label }}
-          <font-awesome-icon class="selected-option-icon" icon="times" />
-        </button>
-      </div>
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
 import { onClickOutside } from "@vueuse/core";
 
@@ -92,12 +101,18 @@ const {
   options,
   disabled = false,
   multiselect = false,
+  pinnable = false,
+  pinnedItems = [],
   placeholder = "Search",
+  selectedItem,
 } = defineProps<{
   options: Classification;
   disabled: boolean;
   multiselect: boolean;
   placeholder: string;
+  pinnable: boolean;
+  pinnedItems: string[];
+  selectedItem?: string;
 }>();
 
 // Elements
@@ -113,10 +128,22 @@ const currPath = ref<string[]>([]);
 const searchTerm = ref("");
 const showOptions = ref<boolean>(false);
 
+const emit = defineEmits<{
+  (e: "change", value: Classification | Classification[] | null): void;
+  (e: "pin", value: Classification | Classification[] | null): void;
+}>();
+
 const openSelect = () => {
   showOptions.value = true;
+  searchTerm.value = "";
   setToPath("all");
-  inputRef.value?.focus();
+  if (!inputRef.value) {
+    nextTick(() => {
+      inputRef.value?.focus();
+    });
+  } else {
+    inputRef.value?.focus();
+  }
 };
 
 const closeSelect = () => {
@@ -124,6 +151,34 @@ const closeSelect = () => {
   searchTerm.value = "";
   setToPath("all");
 };
+
+watch(
+  () => selectedItem,
+  (nextLabel) => {
+    if (nextLabel) {
+      showOptions.value = false;
+      searchTerm.value = (nextLabel as string) || "";
+      addSearchTermOnSubmit();
+      currPath.value =
+        optionsMap.value.get((nextLabel as string).toLowerCase())?.path || [];
+    }
+  }
+);
+
+watch(
+  () => options,
+  () => {
+    if (selectedItem && pinnedItems.includes(selectedItem)) {
+      showOptions.value = false;
+      searchTerm.value = (selectedItem as string) || "";
+      addSearchTermOnSubmit();
+      currPath.value =
+        optionsMap.value.get(selectedItem.toLowerCase())?.path || [];
+    } else {
+      openSelect();
+    }
+  }
+);
 
 // Breadth-first search for options matching the search term and "label" property, and "children" as nodes.
 const searchOptions = (options: Classification[]) => {
@@ -176,16 +231,24 @@ const addSelectedOption = (option: Classification) => {
   if (option.label === "No results") {
     return;
   }
-  if (!multiselect) {
+  if (!multiselect && singleSelection.value !== option) {
     singleSelection.value = option;
+    emit("change", singleSelection.value);
   } else if (!multipleSelections.value.includes(option)) {
     multipleSelections.value.push(option);
+    emit("change", multipleSelections.value);
   }
   closeSelect();
 };
 
+const pinCurrentSelection = (option: Classification) => {
+  if (singleSelection.value) {
+    emit("pin", singleSelection.value);
+  }
+};
+
 const addSearchTermOnSubmit = () => {
-  if (searchTerm.value.trim() !== "") {
+  if (searchTerm.value && searchTerm.value.trim() !== "") {
     const option = optionsMap.value.get(searchTerm.value.toLowerCase());
     if (option) {
       addSelectedOption(option);
@@ -210,13 +273,20 @@ const removeSelectedOption = (option: Classification) => {
   }
 };
 
+const singleSelectionIsPinned = computed<boolean>(
+  () =>
+    singleSelection.value !== null &&
+    pinnedItems.includes(singleSelection.value.label)
+);
+
 const setToPath = (label: string) => {
   searchTerm.value = "";
-  currPath.value = optionsMap.value.get(label.toLowerCase())?.path || [];
+  currPath.value =
+    (label && optionsMap.value.get(label.toLowerCase())?.path) || [] || [];
 };
 
 const displayedOptions = computed<Classification[]>(() => {
-  if (searchTerm.value.trim()) {
+  if (searchTerm.value && searchTerm.value.trim()) {
     // Get all the options that relate to the search term.
     const searchResults = searchOptions(options.children as Classification[]);
     if (searchResults.length !== 0) {
@@ -240,6 +310,9 @@ const displayedOptions = computed<Classification[]>(() => {
   }
 });
 onClickOutside(optionsContainerRef, closeSelect);
+defineExpose({
+  open: openSelect,
+});
 </script>
 <style lang="less" scoped>
 .options-path:hover {
@@ -325,10 +398,10 @@ onClickOutside(optionsContainerRef, closeSelect);
 }
 
 .options-display-container {
-  @media screen and (max-width: 1040px) {
-    position: absolute;
-  }
-  bottom: 0;
+  //@media screen and (max-width: 1040px) {
+  //  position: absolute;
+  //}
+  //bottom: 0;
   width: 100%;
   background-color: white;
 }
@@ -374,5 +447,24 @@ onClickOutside(optionsContainerRef, closeSelect);
   background-color: #f1f1f1;
   //add transition
   transition: background-color 0.2s ease-in-out;
+}
+
+.pin-btn {
+  &:hover,
+  &:active,
+  &:focus {
+    background: transparent;
+    color: #444;
+  }
+  &.pinned {
+    &:hover,
+    &:active,
+    &:focus {
+      outline: 1px solid blue;
+      color: blue;
+    }
+    outline: 1px solid blue;
+    color: blue;
+  }
 }
 </style>
