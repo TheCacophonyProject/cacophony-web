@@ -112,7 +112,7 @@ const selectAndMaybeToggleExpanded = () => {
   }
 };
 
-const hasUserTag = computed<boolean>(() => {
+const _hasUserTag = computed<boolean>(() => {
   return track.tags.some((tag) => !tag.automatic);
 });
 
@@ -217,6 +217,9 @@ const toggleTag = (tag: string) => {
       showClassificationSearch.value = !defaultTags.includes(tag);
     }
     emit("add-or-remove-user-tag", { trackId: track.id, tag });
+    if (showTaggerDetails.value) {
+      resizeDetails();
+    }
   }
 };
 
@@ -288,7 +291,7 @@ onMounted(async () => {
         }"
         >{{ index + 1 }}</span
       >
-      <div v-if="!hasUserTag && masterTag" class="d-flex flex-column">
+      <div v-if="!thisUserTag && masterTag" class="d-flex flex-column">
         <span class="text-uppercase fs-9 fw-bold">AI Classification</span>
         <span
           class="classification text-capitalize d-inline-block fw-bold"
@@ -296,7 +299,7 @@ onMounted(async () => {
           >{{ masterTag.what }}</span
         >
       </div>
-      <span v-else-if="hasUserTag" class="d-flex flex-column">
+      <span v-else-if="thisUserTag" class="d-flex flex-column">
         <span class="text-uppercase fs-9 fw-bold">Manual ID</span>
         <span
           class="classification text-capitalize d-inline-block fw-bold"
@@ -433,6 +436,7 @@ onMounted(async () => {
         v-if="showTaggerDetails"
         :items="taggerDetails"
         class="mb-2"
+        compact
       ></card-table>
     </div>
   </div>
@@ -494,6 +498,10 @@ onMounted(async () => {
   gap: 3px;
   box-shadow: inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
   background: #f2f2f2;
+  &:active,
+  &:focus {
+    background: #f2f2f2;
+  }
   min-height: 72px;
   &.selected {
     background: #888;

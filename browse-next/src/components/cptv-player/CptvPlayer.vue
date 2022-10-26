@@ -52,12 +52,16 @@ const {
   cptvSize = null,
   currentTrack,
   canSelectTracks = true,
+  hasNext = false,
+  hasPrev = false,
 } = defineProps<{
   recording: ApiRecordingResponse | null;
   recordingId: RecordingId;
   cptvSize?: number | null;
   currentTrack?: ApiTrackResponse;
   canSelectTracks?: boolean;
+  hasNext?: boolean;
+  hasPrev?: boolean;
 }>();
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
@@ -254,16 +258,6 @@ const stopAtFrame = ref<number | null>(null);
 const wasPaused = ref<boolean>(false);
 const trackExportOptions = ref<TrackExportOption[]>([]);
 
-const canGoBackwards = computed<boolean>(() => {
-  // TODO
-  return false;
-});
-
-const canGoForwards = computed<boolean>(() => {
-  // TODO
-  return false;
-});
-
 const setTimeAndRedraw = async ({
   timeZeroOne,
   frameNumToDraw,
@@ -347,7 +341,7 @@ const selectTrack = async (
 };
 
 const requestPrevRecording = () => {
-  if (canGoBackwards.value) {
+  if (hasPrev) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -358,7 +352,7 @@ const requestPrevRecording = () => {
 };
 
 const requestNextRecording = () => {
-  if (canGoForwards.value) {
+  if (hasNext) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -1494,7 +1488,7 @@ const drawFrame = async (
       >
         <button
           @click.stop.prevent="requestPrevRecording"
-          :class="{ disabled: !canGoBackwards }"
+          :class="{ disabled: !hasPrev }"
         >
           <font-awesome-icon icon="backward" class="replay" />
         </button>
@@ -1503,7 +1497,7 @@ const drawFrame = async (
         </button>
         <button
           @click.stop.prevent="requestNextRecording"
-          :class="{ disabled: !canGoForwards }"
+          :class="{ disabled: !hasNext }"
         >
           <font-awesome-icon icon="forward" class="replay" />
         </button>

@@ -1,4 +1,4 @@
-import type { RecordingId } from "@typedefs/api/common";
+import type { RecordingId, TagId } from "@typedefs/api/common";
 import CacophonyApi from "@api/api";
 import type { FetchResult, JwtToken } from "@api/types";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
@@ -46,3 +46,15 @@ export const removeTrackTag = (
   CacophonyApi.delete(
     `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`
   ) as Promise<FetchResult<void>>;
+
+export const addRecordingLabel = (id: RecordingId, label: string) =>
+  CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
+    tag: {
+      detail: label,
+      confidence: 0.9,
+    },
+  }) as Promise<FetchResult<{ tagId: TagId }>>;
+export const removeRecordingLabel = (id: RecordingId, tagId: TagId) =>
+  CacophonyApi.delete(`/api/v1/recordings/${id}/tags/${tagId}`) as Promise<
+    FetchResult<void>
+  >;

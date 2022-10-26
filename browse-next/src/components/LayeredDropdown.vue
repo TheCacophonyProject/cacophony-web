@@ -152,7 +152,7 @@ const addSelectedOption = (option: Classification) => {
   closeSelect();
 };
 
-const pinCurrentSelection = (option: Classification) => {
+const pinCurrentSelection = (_option: Classification) => {
   if (singleSelection.value) {
     emit("pin", singleSelection.value);
   }

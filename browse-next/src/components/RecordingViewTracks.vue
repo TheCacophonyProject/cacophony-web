@@ -19,7 +19,7 @@ const { recording } = defineProps<{
 const currentTrack = ref<ApiTrackResponse | null>(null);
 
 const emit = defineEmits<{
-  (e: "track-tag-changed", trackId: TrackId): void; // TODO
+  (e: "track-tag-changed", track: ApiTrackResponse): void;
   (e: "track-selected", track: { trackId: TrackId }): void;
 }>();
 
@@ -104,12 +104,20 @@ const addOrRemoveUserTag = async ({
       const thisUserTag = track.tags.find(
         (tag) => tag.userId === CurrentUser.value?.id
       );
-      track.tags = track.tags.filter(
-        (tag) => tag.userId !== CurrentUser.value?.id
-      );
+      track.tags = track.tags.filter((tag) => tag !== thisUserTag);
       if (thisUserTag && thisUserTag.what === tag) {
         // We are removing the current tag.
-        await removeTrackTag(recording.id, trackId, thisUserTag.id);
+        const removeTagResponse = await removeTrackTag(
+          recording.id,
+          trackId,
+          thisUserTag.id
+        );
+        if (removeTagResponse.success) {
+          emit("track-tag-changed", track);
+        } else {
+          // Add the tag back if failed
+          track.tags.push(thisUserTag);
+        }
       } else {
         // We are adding or replacing the current tag.
         const interimTag: ApiHumanTrackTagResponse = {
@@ -132,14 +140,14 @@ const addOrRemoveUserTag = async ({
         );
         if (newTagResponse.success && newTagResponse.result.trackTagId) {
           interimTag.id = newTagResponse.result.trackTagId;
+          emit("track-tag-changed", track);
+        } else {
+          // Remove the interim tag
+          track.tags.pop();
         }
       }
-      // TODO emit trackTagChanged, maybe trigger visit recalculation.
     }
     updatingTags.value = false;
-
-    // FIXME - Emit the local changes to tracks to the parent recording view, so that video overlays etc are updated.
-    // Also should reload the dashboard level stuff any time a tag changes.
   }
 };
 

@@ -8,6 +8,7 @@ import type {
   LatLng,
   RecordingId,
   StationId,
+  TagId,
   TrackId,
 } from "@typedefs/api/common";
 import {
@@ -258,10 +259,35 @@ const gotoPreviousVisit = () => {
 
 // TODO - Handle previous visits
 
-const recalculateCurrentVisit = () => {
+const recalculateCurrentVisit = async () => {
   console.warn("TODO - recalculate current visit");
   // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
   // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
+};
+
+const trackTagChanged = async (track: ApiTrackResponse) => {
+  if (recordingData.value) {
+    const trackToPatch = recordingData.value.recording.tracks.find(
+      ({ id }) => id === track.id
+    );
+    if (trackToPatch) {
+      trackToPatch.tags = [...track.tags];
+      await recalculateCurrentVisit();
+    }
+  }
+};
+
+const addedRecordingLabel = (label: ApiRecordingTagResponse) => {
+  if (recordingData.value) {
+    recordingData.value.recording.tags.push(label);
+  }
+};
+
+const removedRecordingLabel = (labelId: TagId) => {
+  if (recordingData.value) {
+    recordingData.value.recording.tags =
+      recordingData.value.recording.tags.filter((tag) => tag.id !== labelId);
+  }
 };
 
 const locationContext: ComputedRef<LatLng> | undefined =
@@ -490,6 +516,10 @@ watch(playerHeight.height, (newHeight) => {
             :recording="recording"
             :recording-id="currentRecordingId"
             :current-track="currentTrack"
+            :has-next="hasNextRecording || hasNextVisit"
+            :has-prev="hasPreviousRecording || hasPreviousVisit"
+            @request-next-recording="gotoNextRecordingOrVisit"
+            @request-prev-recording="gotoPreviousRecordingOrVisit"
             @track-selected="({ trackId }) => selectedTrack(trackId)"
           />
         </div>
@@ -592,7 +622,7 @@ watch(playerHeight.height, (newHeight) => {
           <div class="tags-overflow" v-if="!isMobileView">
             <router-view
               :recording="recordingData?.recording"
-              @track-tag-changed="recalculateCurrentVisit"
+              @track-tag-changed="trackTagChanged"
               @track-selected="selectedTrackWrapped"
             />
           </div>
@@ -601,7 +631,7 @@ watch(playerHeight.height, (newHeight) => {
             v-if="isMobileView"
             :recording="recordingData?.recording"
             class="recording-tracks"
-            @track-tag-changed="recalculateCurrentVisit"
+            @track-tag-changed="trackTagChanged"
             @track-selected="({ trackId }) => selectedTrack(trackId)"
           />
           <div
@@ -658,6 +688,8 @@ watch(playerHeight.height, (newHeight) => {
             </div>
             <recording-view-labels
               :recording="recordingData?.recording"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
               v-if="isMobileView"
             />
           </div>
