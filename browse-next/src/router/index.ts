@@ -102,12 +102,12 @@ const router = createRouter({
           component: () => import("@/views/RecordingView.vue"),
           children: [
             {
-              path: "labels/:trackId?", // Labels also needs to maintain current trackId when we switch to it.
+              path: "labels/:trackId?/:detail?", // Labels also needs to maintain current trackId when we switch to it.
               name: "dashboard-visit-labels",
               component: () => import("@/components/RecordingViewLabels.vue"),
             },
             {
-              path: "tracks/:trackId?",
+              path: "tracks/:trackId?/:detail?",
               name: "dashboard-visit-tracks",
               component: () => import("@/components/RecordingViewTracks.vue"),
             },

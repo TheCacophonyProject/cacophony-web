@@ -177,6 +177,11 @@ const toggleVisitsDetail = (e: Event) => {
   e.stopPropagation();
   if (hasVisits.value) {
     showVisitsDetail.value = !showVisitsDetail.value;
+    if (showVisitsDetail.value) {
+      // Expand
+    } else {
+      // Contract
+    }
   }
 };
 const openDetailIfClosed = (e: Event) => {
@@ -227,7 +232,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         :rotation="showVisitsDetail ? 270 : 90"
       />
     </div>
-    <div v-if="!showVisitsDetail">
+    <div v-if="!showVisitsDetail" class="visits-summary">
       <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
       <div v-else class="visits-species-count p-3 pb-1 user-select-none">
         <div
@@ -243,7 +248,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         </div>
       </div>
     </div>
-    <div v-else class="p-1">
+    <div v-else class="p-1 visits-detail">
       <div
         v-for="(visit, index) in visitEvents"
         :key="index"

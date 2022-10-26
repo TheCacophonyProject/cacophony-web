@@ -1,97 +1,3 @@
-<template>
-  <div ref="optionsContainerRef" class="options-container">
-    <div class="input-container d-flex flex-column">
-      <input
-        v-if="multiselect || showOptions || (!multiselect && !singleSelection)"
-        @keyup.enter.stop.prevent="addSearchTermOnSubmit"
-        @keydown.esc.stop.prevent="handleEscapeDismiss"
-        @focus="openSelect"
-        type="text"
-        ref="inputRef"
-        v-model="searchTerm"
-        :placeholder="placeholder"
-        :disabled="disabled"
-      />
-      <div v-if="!showOptions && singleSelection" class="d-flex">
-        <button
-          type="button"
-          class="btn selected-option text-start text-capitalize flex-grow-1"
-          @click="openSelect"
-        >
-          {{ singleSelection.display || singleSelection.label }}
-        </button>
-        <button
-          type="button"
-          class="btn btn-outline-secondary ms-2 pin-btn"
-          :class="{ pinned: singleSelectionIsPinned }"
-          v-if="pinnable"
-        >
-          <font-awesome-icon icon="thumbtack" @click="pinCurrentSelection" />
-        </button>
-      </div>
-      <div
-        v-else-if="multiselect && hasSelection"
-        class="selected-container d-flex flex-wrap"
-      >
-        <button
-          type="button"
-          class="selected-option btn text-capitalize"
-          :key="option.label"
-          v-for="option in multipleSelections"
-          @click="() => removeSelectedOption(option)"
-        >
-          {{ option.display || option.label }}
-          <font-awesome-icon class="selected-option-icon" icon="times" />
-        </button>
-      </div>
-    </div>
-    <div v-show="showOptions" class="options-display-container">
-      <div v-show="!searchTerm" class="options-path-container">
-        <div
-          class="options-path"
-          :key="path"
-          v-for="path in currPath"
-          @click="() => setToPath(path)"
-        >
-          {{ path }}
-        </div>
-      </div>
-      <div
-        ref="optionsList"
-        class="options-list-container d-flex justify-content-between flex-column"
-      >
-        <div
-          class="options-list-item d-flex justify-content-between"
-          :key="option.label"
-          v-for="option in displayedOptions"
-        >
-          <button
-            class="options-list-label btn text-start text-capitalize"
-            v-if="option.label !== 'No results'"
-            @click.prevent="addSelectedOption(option)"
-          >
-            {{ option.display || option.label }}
-          </button>
-          <div v-else class="options-list-label no-results btn">
-            {{ option.label }}
-          </div>
-          <button
-            id="child-button"
-            class="options-list-child align-items-center d-flex justify-content-center btn"
-            v-if="option.children"
-            @click="() => setToPath(option.label)"
-          >
-            <font-awesome-icon
-              id="child-button-icon"
-              icon="angle-double-right"
-              class="fa-1x"
-            />
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
@@ -131,9 +37,12 @@ const showOptions = ref<boolean>(false);
 const emit = defineEmits<{
   (e: "change", value: Classification | Classification[] | null): void;
   (e: "pin", value: Classification | Classification[] | null): void;
+  (e: "options-change"): void; // When the option changes, the height changes, and we may want to let the parent element know about this.
 }>();
 
 const openSelect = () => {
+  // TODO: Make sure when the select opens, it scrolls into view enough to see the bottom of it.
+
   showOptions.value = true;
   searchTerm.value = "";
   setToPath("all");
@@ -144,12 +53,14 @@ const openSelect = () => {
   } else {
     inputRef.value?.focus();
   }
+  emit("options-change");
 };
 
 const closeSelect = () => {
   showOptions.value = false;
   searchTerm.value = "";
   setToPath("all");
+  emit("options-change");
 };
 
 watch(
@@ -309,11 +220,120 @@ const displayedOptions = computed<Classification[]>(() => {
     return node.children || [];
   }
 });
+
+watch(
+  () => displayedOptions.value.length,
+  () => emit("options-change")
+);
+
 onClickOutside(optionsContainerRef, closeSelect);
 defineExpose({
   open: openSelect,
 });
 </script>
+<template>
+  <div ref="optionsContainerRef" class="options-container">
+    <div
+      class="input-container d-flex flex-column fs-6"
+      :class="{ open: showOptions }"
+    >
+      <input
+        v-if="multiselect || showOptions || (!multiselect && !singleSelection)"
+        @keyup.enter.stop.prevent="addSearchTermOnSubmit"
+        @keydown.esc.stop.prevent="handleEscapeDismiss"
+        @focus="openSelect"
+        type="text"
+        ref="inputRef"
+        v-model="searchTerm"
+        :placeholder="placeholder"
+        :disabled="disabled"
+      />
+      <div
+        v-if="!showOptions && singleSelection"
+        class="d-flex single-selection align-items-center"
+      >
+        <button
+          type="button"
+          class="btn selected-option text-start text-capitalize flex-grow-1 px-0"
+          @click="openSelect"
+        >
+          {{ singleSelection.display || singleSelection.label }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary ms-2 pin-btn"
+          :class="{ pinned: singleSelectionIsPinned }"
+          v-if="pinnable"
+        >
+          <font-awesome-icon
+            icon="thumbtack"
+            @click.stop.prevent="pinCurrentSelection"
+          />
+        </button>
+      </div>
+      <div
+        v-else-if="multiselect && hasSelection"
+        class="selected-container d-flex flex-wrap"
+      >
+        <button
+          type="button"
+          class="selected-option btn text-capitalize"
+          :key="option.label"
+          v-for="option in multipleSelections"
+          @click="() => removeSelectedOption(option)"
+        >
+          {{ option.display || option.label }}
+          <font-awesome-icon class="selected-option-icon" icon="times" />
+        </button>
+      </div>
+    </div>
+    <div v-show="showOptions" class="options-display-container fs-6">
+      <div v-show="!searchTerm" class="options-path-container">
+        <div
+          class="options-path"
+          :key="path"
+          v-for="path in currPath"
+          @click="() => setToPath(path)"
+        >
+          {{ path }}
+        </div>
+      </div>
+      <div
+        ref="optionsList"
+        class="options-list-container d-flex justify-content-between flex-column"
+      >
+        <div
+          class="options-list-item d-flex justify-content-between"
+          :key="option.label"
+          v-for="option in displayedOptions"
+        >
+          <button
+            class="options-list-label btn text-start text-capitalize"
+            v-if="option.label !== 'No results'"
+            @click.prevent="addSelectedOption(option)"
+          >
+            {{ option.display || option.label }}
+          </button>
+          <div v-else class="options-list-label no-results btn">
+            {{ option.label }}
+          </div>
+          <button
+            id="child-button"
+            class="options-list-child align-items-center d-flex justify-content-center btn"
+            v-if="option.children"
+            @click="() => setToPath(option.label)"
+          >
+            <font-awesome-icon
+              id="child-button-icon"
+              icon="angle-double-right"
+              class="fa-1x"
+            />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 <style lang="less" scoped>
 .options-path:hover {
   transition: color 0.1s ease-in-out;
@@ -327,7 +347,9 @@ defineExpose({
   padding-left: 0.4em;
   color: rgb(128, 128, 128);
   background: rgb(248, 248, 248);
-  outline: 1px solid #ccc;
+  border: 1px solid #ccc;
+  border-top: 0;
+  border-bottom: 0;
 
   :last-child {
     color: rgb(91, 199, 97);
@@ -342,17 +364,22 @@ defineExpose({
 
 .input-container {
   width: 100%;
-  min-height: 2.5em;
-  padding: 0.4em;
+  height: 2.5rem;
   background: white;
-  outline: 1px solid #ccc;
+  border: 1px solid #ccc;
   border-radius: 0.2em;
+  &.open {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
   > input {
     width: 100%;
     border: none;
     outline: none;
     background: transparent;
     font-size: 1em;
+    line-height: 2.5rem;
+    text-indent: 0.5rem;
     color: rgb(128, 128, 128);
     &:focus {
       color: rgb(46, 46, 46);
@@ -375,6 +402,13 @@ defineExpose({
       0 0 3px rgba(138, 138, 138, 0.2);
   }
 }
+.single-selection {
+  height: 100%;
+  > .selected-option {
+    text-indent: 0.5rem;
+    line-height: 100%;
+  }
+}
 
 .selected-option {
   min-height: 26px;
@@ -393,15 +427,7 @@ defineExpose({
   width: auto;
 }
 
-.options-container {
-  position: relative;
-}
-
 .options-display-container {
-  //@media screen and (max-width: 1040px) {
-  //  position: absolute;
-  //}
-  //bottom: 0;
   width: 100%;
   background-color: white;
 }
@@ -409,9 +435,7 @@ defineExpose({
 .options-list-container {
   width: 100%;
   background-color: white;
-  outline: 1px solid #ccc;
-  border-top-left-radius: 0.2em;
-  border-top-right-radius: 0.2em;
+  border: 1px solid #ccc;
   max-height: 10em;
   overflow-y: auto;
 }
@@ -435,9 +459,6 @@ defineExpose({
 
 .options-list-child:hover {
   background-color: #dfdfdf;
-  //add transition
-  transition: all 0.2s ease-in-out;
-
   svg {
     color: rgb(46, 46, 46);
   }
@@ -445,11 +466,12 @@ defineExpose({
 
 .options-list-item:hover {
   background-color: #f1f1f1;
-  //add transition
   transition: background-color 0.2s ease-in-out;
 }
 
 .pin-btn {
+  outline: none;
+  border: 0;
   &:hover,
   &:active,
   &:focus {
@@ -460,10 +482,8 @@ defineExpose({
     &:hover,
     &:active,
     &:focus {
-      outline: 1px solid blue;
       color: blue;
     }
-    outline: 1px solid blue;
     color: blue;
   }
 }

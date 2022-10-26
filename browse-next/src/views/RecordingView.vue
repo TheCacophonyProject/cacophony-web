@@ -212,6 +212,7 @@ const gotoRecording = (recordingId: RecordingId) => {
     currentRecordingId: recordingId,
   };
   delete (params as RouteParamsRaw).trackId;
+  delete (params as RouteParamsRaw).detail;
   router.push({
     name: route.name as string,
     params,
@@ -233,6 +234,7 @@ const gotoVisit = (visit: ApiVisitResponse, startOfVisit: boolean) => {
     currentRecordingId,
   };
   delete (params as RouteParamsRaw).trackId;
+  delete (params as RouteParamsRaw).detail;
   router.push({
     name: route.name as string,
     params,
@@ -320,6 +322,10 @@ const selectedTrack = async (trackId: TrackId) => {
     ...route.params,
     trackId,
   };
+
+  // TODO: Should this automatically get removed if the selectedTrack has changed due to
+  //  the recording playing onto a new track
+  delete (params as Record<string, string | number>).detail;
   await router.replace({
     name: route.name as string,
     params,
@@ -772,7 +778,8 @@ watch(playerHeight.height, (newHeight) => {
 }
 .tags-overflow {
   @media screen and (min-width: 1041px) {
-    overflow-y: auto;
+    overflow-y: scroll;
+    height: 100%;
   }
 }
 .footer-nav {

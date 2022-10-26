@@ -7,7 +7,7 @@ import type {
   Classification,
   TrackTagData,
 } from "@typedefs/api/trackTag";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { CurrentUser } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId } from "@typedefs/api/common";
@@ -18,18 +18,18 @@ import {
 } from "@api/Classifications";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableItems } from "@/components/CardTableTypes";
+import { useRoute } from "vue-router";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
-const { track, index, color, selected, expandedId } = defineProps<{
+const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
   index: number;
   color: { foreground: string; background: string };
   selected: boolean;
-  expandedId: TrackId;
 }>();
 
 const emit = defineEmits<{
-  (e: "expanded-changed", trackId: TrackId): void;
-  (e: "selected-track-at-index", trackId: TrackId): void;
+  (e: "expanded-changed", trackId: TrackId, expanded: boolean): void;
+  (e: "selected-track", trackId: TrackId): void;
   (
     e: "add-or-remove-user-tag",
     payload: { trackId: TrackId; tag: string }
@@ -37,10 +37,12 @@ const emit = defineEmits<{
 }>();
 
 const expandedInternal = ref<boolean>(false);
-const collapsing = ref<boolean>(false);
 const showClassificationSearch = ref<boolean>(false);
 const showTaggerDetails = ref<boolean>(false);
 const tagSelect = ref<typeof HierarchicalTagSelect>();
+const trackDetails = ref<HTMLDivElement>();
+
+const capitalize = (str: string): string => str[0].toUpperCase() + str.slice(1);
 
 const taggerDetails = computed<CardTableItems>(() => {
   const tags: ApiTrackTagResponse[] = [...humanTags.value];
@@ -50,30 +52,64 @@ const taggerDetails = computed<CardTableItems>(() => {
   return {
     headings: ["tag", "tagger", "created"],
     values: tags.map(({ what, userName, automatic }) => [
-      what,
+      capitalize(what),
       automatic ? "Cacophony AI" : userName || "",
       "",
     ]),
   };
 });
 
-const expanded = computed<boolean>(() => expandedId === track.id);
-watch(expanded, (nextExpanded) => {
-  if (!nextExpanded) {
-    collapsing.value = true;
-    setTimeout(() => {
-      expandedInternal.value = false;
-      collapsing.value = false;
-    }, 200);
-  }
+const route = useRoute();
+
+const expanded = computed<boolean>(() => {
+  return (
+    Number(route.params.trackId) === track.id &&
+    route.params.detail !== "" &&
+    typeof route.params.detail !== "undefined"
+  );
 });
 
-const selectAndMaybeToggleExpanded = () => {
-  if (hasUserTag.value || expandedInternal.value) {
-    expandedInternal.value = !expandedInternal.value;
-    emit("expanded-changed", expandedInternal.value ? track.id : -1);
+const handleExpansion = (isExpanding: boolean) => {
+  if (isExpanding) {
+    if (trackDetails.value) {
+      trackDetails.value.style.height = `${trackDetails.value.scrollHeight}px`;
+    }
+  } else {
+    if (trackDetails.value) {
+      trackDetails.value.style.height = "0";
+    }
   }
-  emit("selected-track-at-index", track.id);
+  expandedInternal.value = isExpanding;
+};
+
+watch(expanded, handleExpansion);
+
+const resizeElementToContents = (el: HTMLElement) => {
+  if (el.childNodes.length && expandedInternal.value) {
+    const top = el.getBoundingClientRect().top;
+    const bottom = (
+      el.childNodes[el.childNodes.length - 1] as HTMLElement
+    ).getBoundingClientRect().bottom;
+    el.style.height = `${bottom - top}px`;
+  }
+};
+
+const resizeDetails = () => {
+  nextTick(() => {
+    trackDetails.value && resizeElementToContents(trackDetails.value);
+  });
+};
+
+watch(showTaggerDetails, resizeDetails);
+watch(showClassificationSearch, resizeDetails);
+
+const selectAndMaybeToggleExpanded = () => {
+  if (thisUserTag.value || expandedInternal.value) {
+    expandedInternal.value = !expandedInternal.value;
+    emit("expanded-changed", track.id, expandedInternal.value);
+  } else {
+    emit("selected-track", track.id);
+  }
 };
 
 const hasUserTag = computed<boolean>(() => {
@@ -168,18 +204,6 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
   return Object.values(tags);
 });
 
-// const specialCaseTags = computed<{ label: string; display: string }[]>(() => {
-//   return ["false-positive", "unknown"]
-//     .map(
-//       (tag) =>
-//         flatClassifications.value[tag] || {
-//           label: tag,
-//           display: `${tag}_not_found`,
-//         }
-//     )
-//     .concat([{ label: "more-classifications", display: "..." }]);
-// });
-
 const toggleTag = (tag: string) => {
   if (tag === "more-classifications") {
     showClassificationSearch.value = !showClassificationSearch.value;
@@ -207,7 +231,7 @@ const confirmAiSuggestedTag = () => {
 
 const rejectAiSuggestedTag = () => {
   expandedInternal.value = true;
-  emit("expanded-changed", expandedInternal.value ? track.id : -1);
+  emit("expanded-changed", track.id, expandedInternal.value);
 };
 
 const pinCustomTag = (classification: Classification) => {
@@ -246,6 +270,7 @@ onMounted(async () => {
   if (!classifications.value) {
     await getClassifications();
   }
+  handleExpansion(expanded.value);
 });
 </script>
 <template>
@@ -347,8 +372,9 @@ onMounted(async () => {
     </div>
   </div>
   <div
-    :class="['collapse', { show: expanded }, { collapsing }]"
+    :class="[{ expanded }]"
     class="track-details px-2 pe-2"
+    ref="trackDetails"
   >
     <div class="classification-btns">
       <button
@@ -383,6 +409,7 @@ onMounted(async () => {
         class="flex-grow-1"
         @change="setCustomTag"
         @pin="pinCustomTag"
+        @options-change="resizeDetails"
         ref="tagSelect"
         :selected-item="thisUserTag && thisUserTag.what"
         :pinnable="currentlySelectedTagIsPinnable"
@@ -402,7 +429,11 @@ onMounted(async () => {
           class="ms-2"
         />
       </button>
-      <card-table v-if="showTaggerDetails" :items="taggerDetails"></card-table>
+      <card-table
+        v-if="showTaggerDetails"
+        :items="taggerDetails"
+        class="mb-2"
+      ></card-table>
     </div>
   </div>
 </template>
@@ -419,20 +450,30 @@ onMounted(async () => {
 .track-details {
   background: white;
   transition: height 0.2s ease-in-out;
-  &.collapsing {
-    height: 0;
-    overflow: hidden;
-  }
-  &.collapse {
-    &:not(.show) {
-      display: none;
-    }
-  }
+  height: 0;
+  overflow: hidden;
 }
 .classification-btns {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-  //justify-items: center;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  @media screen and (min-width: 430px) {
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  }
+  @media screen and (min-width: 530px) {
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+  }
+  @media screen and (min-width: 630px) {
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  }
+  @media screen and (min-width: 730px) {
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  }
+  @media screen and (min-width: 830px) {
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  }
+  @media screen and (min-width: 1041px) {
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  }
   column-gap: 7px;
   row-gap: 5px;
 }
@@ -495,6 +536,7 @@ onMounted(async () => {
 }
 .track {
   height: 48px;
+  user-select: none;
   transition: background-color ease-in-out 0.2s;
   background-color: #f6f6f6;
   border-top: 1px solid white;

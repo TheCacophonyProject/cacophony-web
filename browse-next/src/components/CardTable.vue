@@ -33,6 +33,8 @@
   </div>
 </template>
 <script setup lang="ts">
+// TODO: Pull out table component into simple table, once we know a bit more about how templated buttons get passed in.
+
 import { useMediaQuery } from "@vueuse/core";
 import type { CardTableItems } from "@/components/CardTableTypes";
 import { computed } from "vue";

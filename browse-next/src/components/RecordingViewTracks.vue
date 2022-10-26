@@ -2,14 +2,15 @@
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import TrackTaggerRow from "@/components/TrackTaggerRow.vue";
 import { TagColours } from "@/consts";
-import { onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { TrackId } from "@typedefs/api/common";
 import { removeTrackTag, replaceTrackTag } from "@api/Recording";
 import { CurrentUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 const route = useRoute();
+const router = useRouter();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse;
@@ -25,6 +26,8 @@ const emit = defineEmits<{
 const getTrackById = (trackId: TrackId): ApiTrackResponse | null => {
   return recording?.tracks.find(({ id }) => id == trackId) || null;
 };
+
+const currentTrackId = computed(() => Number(route.params.trackId));
 
 watch(
   () => route.params.trackId,
@@ -50,7 +53,7 @@ watch(
   (nextRecording) => {
     cloneLocalTracks(nextRecording?.tracks || []);
     if (route.params.trackId) {
-      currentTrack.value = getTrackById(Number(route.params.trackId));
+      currentTrack.value = getTrackById(currentTrackId.value);
     }
   }
 );
@@ -58,17 +61,23 @@ watch(
 onMounted(() => {
   cloneLocalTracks(recording?.tracks || []);
   if (route.params.trackId) {
-    currentTrack.value = getTrackById(Number(route.params.trackId));
+    currentTrack.value = getTrackById(currentTrackId.value);
   }
 });
 
-const expandedTrackId = ref<TrackId>(-1);
-const expandedItemChanged = (trackId: TrackId) => {
-  expandedTrackId.value = trackId;
+const expandedItemChanged = (trackId: TrackId, expanded: boolean) => {
+  const params = { ...route.params, trackId, detail: "detail" };
+  if (!expanded) {
+    delete (params as Record<string, string | number>).detail;
+  }
+  router.replace({
+    ...route,
+    params,
+  });
 };
 
-const selectedTrackAtIndex = (trackId: TrackId) => {
-  if (trackId !== Number(route.params.trackId)) {
+const selectedTrack = (trackId: TrackId) => {
+  if (trackId !== currentTrackId.value) {
     const track = getTrackById(trackId);
     if (track) {
       // Change track.
@@ -147,10 +156,9 @@ const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
       :key="index"
       :index="index"
       @expanded-changed="expandedItemChanged"
-      @selected-track-at-index="selectedTrackAtIndex"
+      @selected-track="selectedTrack"
       @add-or-remove-user-tag="addOrRemoveUserTag"
       :selected="(currentTrack && currentTrack.id === track.id) || false"
-      :expanded-id="expandedTrackId"
       :color="TagColours[index % TagColours.length]"
       :track="track"
     />
