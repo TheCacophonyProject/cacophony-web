@@ -13,7 +13,7 @@ const route = useRoute();
 const router = useRouter();
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { recording } = defineProps<{
-  recording?: ApiRecordingResponse;
+  recording?: ApiRecordingResponse | null;
 }>();
 
 const currentTrack = ref<ApiTrackResponse | null>(null);

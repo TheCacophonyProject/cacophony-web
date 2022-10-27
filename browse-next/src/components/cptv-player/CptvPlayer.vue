@@ -830,7 +830,10 @@ const _exportMp4 = async () => {
   if (overlayCanvas.value) {
     const encoder = new Mp4Encoder();
     await encoder.init(640, 480, 9);
-    const context = overlayCanvas.value.getContext("2d");
+    const context = overlayCanvas.value.getContext("2d", {
+      willReadFrequently: true,
+      desynchronized: true,
+    });
     if (context) {
       await encoder.encodeFrame(context.getImageData(0, 0, 640, 480).data);
     }

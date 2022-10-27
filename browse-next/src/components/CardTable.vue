@@ -29,7 +29,7 @@
             class="text-end"
             v-if="isComponent(value)"
             :is="extractComponent(value)"
-            @click.stop.prevent="extractAction(value)"
+            @click.stop.prevent="() => extractAction(value)()"
           />
           <span v-else>{{ value }}</span>
         </td>

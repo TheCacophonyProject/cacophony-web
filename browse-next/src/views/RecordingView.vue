@@ -304,8 +304,6 @@ interface RecordingData {
 
 const recordingData = ref<RecordingData | null>(null);
 
-const recordingIsLoading = computed(() => recordingData.value === null);
-
 const loadRecording = async () => {
   recordingData.value = null;
   if (currentRecordingId.value) {
@@ -574,7 +572,9 @@ watch(playerHeight.height, (newHeight) => {
                 </div>
               </div>
               <recording-view-action-buttons
-                :recording-ready="!recordingIsLoading"
+                :recording="recording"
+                @added-recording-label="addedRecordingLabel"
+                @removed-recording-label="removedRecordingLabel"
               />
             </div>
           </div>
@@ -621,15 +621,17 @@ watch(playerHeight.height, (newHeight) => {
           </ul>
           <div class="tags-overflow" v-if="!isMobileView">
             <router-view
-              :recording="recordingData?.recording"
+              :recording="recording"
               @track-tag-changed="trackTagChanged"
               @track-selected="selectedTrackWrapped"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
             />
           </div>
           <!-- Mobile view only -->
           <recording-view-tracks
             v-if="isMobileView"
-            :recording="recordingData?.recording"
+            :recording="recording"
             class="recording-tracks"
             @track-tag-changed="trackTagChanged"
             @track-selected="({ trackId }) => selectedTrack(trackId)"
@@ -687,7 +689,7 @@ watch(playerHeight.height, (newHeight) => {
               </div>
             </div>
             <recording-view-labels
-              :recording="recordingData?.recording"
+              :recording="recording"
               @added-recording-label="addedRecordingLabel"
               @removed-recording-label="removedRecordingLabel"
               v-if="isMobileView"
@@ -751,7 +753,9 @@ watch(playerHeight.height, (newHeight) => {
         <recording-view-action-buttons
           class="action-buttons"
           v-if="isMobileView"
-          :recording-ready="!recordingIsLoading"
+          :recording="recording"
+          @added-recording-label="addedRecordingLabel"
+          @removed-recording-label="removedRecordingLabel"
         />
         <button
           type="button"

@@ -15,7 +15,7 @@ import type { TagId } from "@typedefs/api/common";
 import DeleteButton from "./DeleteButton.vue";
 
 const { recording } = defineProps<{
-  recording?: ApiRecordingResponse;
+  recording?: ApiRecordingResponse | null;
 }>();
 
 const emit = defineEmits<{
@@ -32,7 +32,10 @@ const tableItems = computed<CardTableItems>(() => {
       when: new Date(tag.createdAt).toLocaleString(),
       _deleteAction: {
         component: DeleteButton,
-        action: () => removeLabel(tag.id),
+        action: () => {
+          console.log("remove label", tag.id);
+          removeLabel(tag.id);
+        },
       },
       __sort: new Date(tag.createdAt),
     }))
@@ -154,7 +157,7 @@ const doAddLabel = async () => {
 };
 </script>
 <template>
-  <div v-if="recording" class="recording-labels">
+  <div v-if="recording" class="recording-labels d-flex flex-column">
     <h2 class="recording-labels-title fs-6">Recording labels</h2>
     <card-table :items="tableItems">
       <template #item="{ label, by, dateTime, _deleteAction: deleteAction }">
@@ -166,14 +169,20 @@ const doAddLabel = async () => {
           </div>
           <component
             :is="extractComponent(deleteAction)"
-            @click.stop.prevent="extractAction(deleteAction)"
+            @click.stop.prevent="() => extractAction(deleteAction)()"
           />
         </div>
       </template>
     </card-table>
-    <button type="button" class="btn btn-outline-secondary" @click="addLabel">
-      <font-awesome-icon icon="plus" /> Add label
-    </button>
+    <div class="d-flex justify-content-end flex-grow-1">
+      <button
+        type="button"
+        class="btn btn-outline-secondary my-2 align-self-end"
+        @click="addLabel"
+      >
+        <font-awesome-icon icon="plus" /> Add label
+      </button>
+    </div>
     <b-modal
       v-model="addingLabel"
       centered
@@ -201,6 +210,12 @@ const doAddLabel = async () => {
   </div>
 </template>
 <style lang="less" scoped>
+.recording-labels {
+  height: 100%;
+  @media screen and (min-width: 1041px) {
+    padding: 0 0.5rem;
+  }
+}
 .recording-labels-title {
   display: none;
   @media screen and (max-width: 1040px) {
