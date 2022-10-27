@@ -413,6 +413,7 @@ onMounted(async () => {
         @change="setCustomTag"
         @pin="pinCustomTag"
         @options-change="resizeDetails"
+        @deselected="showClassificationSearch = false"
         ref="tagSelect"
         :selected-item="thisUserTag && thisUserTag.what"
         :pinnable="currentlySelectedTagIsPinnable"

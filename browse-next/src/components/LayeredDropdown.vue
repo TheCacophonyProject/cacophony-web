@@ -38,6 +38,7 @@ const emit = defineEmits<{
   (e: "change", value: Classification | Classification[] | null): void;
   (e: "pin", value: Classification | Classification[] | null): void;
   (e: "options-change"): void; // When the option changes, the height changes, and we may want to let the parent element know about this.
+  (e: "deselected"): void;
 }>();
 
 const openSelect = () => {
@@ -172,6 +173,7 @@ const addSearchTermOnSubmit = () => {
 const handleEscapeDismiss = () => {
   closeSelect();
   (inputRef.value as HTMLInputElement).blur();
+  emit("deselected");
 };
 
 const removeSelectedOption = (option: Classification) => {
@@ -226,7 +228,10 @@ watch(
   () => emit("options-change")
 );
 
-onClickOutside(optionsContainerRef, closeSelect);
+onClickOutside(optionsContainerRef, () => {
+  closeSelect();
+  emit("deselected");
+});
 defineExpose({
   open: openSelect,
 });

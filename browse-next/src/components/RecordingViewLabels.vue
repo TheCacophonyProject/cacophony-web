@@ -177,10 +177,10 @@ const doAddLabel = async () => {
     <div class="d-flex justify-content-end flex-grow-1">
       <button
         type="button"
-        class="btn btn-outline-secondary my-2 align-self-end"
+        class="btn btn-outline-secondary my-2 align-self-end add-label-btn d-flex align-items-center"
         @click="addLabel"
       >
-        <font-awesome-icon icon="plus" /> Add label
+        <font-awesome-icon icon="plus" /><span> Add label</span>
       </button>
     </div>
     <b-modal
@@ -227,5 +227,20 @@ const doAddLabel = async () => {
 }
 .delete-action {
   color: #bbb;
+}
+.add-label-btn {
+  > span {
+    transition: width 0.2s ease-in-out;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    display: inline-block;
+    text-indent: 10px;
+  }
+  &:hover {
+    > span {
+      width: 80px;
+    }
+  }
 }
 </style>
