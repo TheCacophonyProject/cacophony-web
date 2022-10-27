@@ -4,11 +4,11 @@ services:
 before_install:
   - echo $DOCKERHUB_TOKEN | docker login --username $DOCKERHUB_USER --password-stdin
 
-dist: focal
+dist: bionic
 
 language: node_js
 node_js:
-  - "lts/*"
+  - "17"
 
 env:
   - IS_CI_ENV=true
