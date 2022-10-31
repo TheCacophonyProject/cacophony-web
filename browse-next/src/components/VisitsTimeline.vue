@@ -14,6 +14,7 @@ import {
 } from "@models/visitsUtils";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
 
 const { visits, stations, startDate } = defineProps<{
   visits: ApiVisitResponse[];
@@ -145,7 +146,7 @@ const dateAndDayOfWeek = (date: DateTime): string => {
     >
       <div style="min-width: 100px">
         <span class="p-1 visits-timeline-species text-capitalize">{{
-          species
+          displayLabelForClassificationLabel(species)
         }}</span>
       </div>
       <div class="flex-fill position-relative">

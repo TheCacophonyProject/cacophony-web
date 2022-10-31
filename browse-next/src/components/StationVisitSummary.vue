@@ -6,6 +6,7 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import { visitsByStation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
 
 // eslint-disable-next-line vue/no-setup-props-destructure
 const { station, stations, visits, activeStations } = defineProps<{
@@ -96,8 +97,8 @@ const speciesSummary = computed<[string, number][]>(() =>
           :class="['species-count', 'ps-1']"
           :key="index"
         >
-          <strong class="me-1">{{ count }}</strong
-          >{{ species }}
+          <strong class="me-1 text-capitalize">{{ count }}</strong
+          >{{ displayLabelForClassificationLabel(species) }}
         </div>
       </div>
       <div class="values flex-fill px-2 my-2">

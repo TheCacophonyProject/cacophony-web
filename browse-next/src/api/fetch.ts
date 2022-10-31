@@ -150,7 +150,7 @@ export async function fetch<T>(
         CurrentUserCreds.value as LoggedInUserAuth
       ).apiToken;
     } else {
-      debugger;
+      //debugger;
     }
     //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {

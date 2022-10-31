@@ -40,7 +40,6 @@ export const userIsLoggedIn = computed<boolean>({
   get: () => CurrentUser.value !== null,
   set: (val: boolean) => {
     if (!val) {
-      debugger;
       CurrentUser.value = null;
     }
   },

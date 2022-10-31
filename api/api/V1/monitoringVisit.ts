@@ -80,9 +80,9 @@ class Visit {
   }
 
   calculateTags(aiModel: string) {
-    this.recordings = this.rawRecordings.map((rec) =>
-      this.calculateTrackTags(rec, aiModel)
-    );
+    this.rawRecordings.forEach((rec) => {
+      this.recordings.push(this.calculateTrackTags(rec, aiModel));
+    });
     delete this.rawRecordings;
 
     const allVisitTracks = this.getAllTracks();
