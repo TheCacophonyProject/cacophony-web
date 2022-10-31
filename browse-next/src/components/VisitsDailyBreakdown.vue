@@ -200,7 +200,10 @@ const visitTime = (timeIsoString: string) =>
   visitTimeAtLocation(timeIsoString, location);
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
-  return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+  if (visit.recordings.length) {
+    return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+  }
+  return "";
 };
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {

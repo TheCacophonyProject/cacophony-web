@@ -29,7 +29,7 @@ export const recordingsContext = ref<ApiRecordingResponse[] | null>(null);
 
 const ignored: string[] = [
   //"unknown",
-  "none",
+  //"none",
   //"unidentified",
   //"false-positive",
   "bird",

@@ -9,6 +9,7 @@ import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
 import { Station } from "@models/Station";
 import logger from "@log";
+import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -38,12 +39,11 @@ class Visit {
     recording: Recording
   ) {
     this.recordings = [];
-    this.rawRecordings = [];
     this.tracks = 0;
     this.stationName = stationName ? stationName.name : "";
     this.stationId = stationId || 0;
 
-    this.rawRecordings.push(recording);
+    this.rawRecordings = [recording];
     this.timeStart = moment(recording.recordingDateTime);
     this.timeEnd = moment(this.timeStart).add(recording.duration, "seconds");
   }
@@ -83,14 +83,13 @@ class Visit {
     this.recordings = (this.rawRecordings || []).map((rec) =>
       this.calculateTrackTags(rec, aiModel)
     );
-    delete this.rawRecordings;
+
+    this.rawRecordings.forEach((rec) => {
+      this.recordings.push(this.calculateTrackTags(rec, aiModel));
+    });
 
     const allVisitTracks = this.getAllTracks();
     this.tracks = allVisitTracks.length;
-
-    // FIXME: In the case where a single recording has multiple animals, we have to pick only one tag to be the "visit tag"
-    //  but, in the case where there are multiple recordings near to each other with different user animal tags,
-    //  we should really be splitting those recordings into multiple (possibly overlapping) visits.
     const bestHumanTags = getBestGuessOverall(allVisitTracks, HUMAN_ONLY);
 
     if (bestHumanTags.length > 0) {
@@ -98,7 +97,7 @@ class Visit {
         this.classification = bestHumanTags[0];
         this.classFromUserTag = true;
       } else {
-        return { split: this };
+        return { split: this, rawRecordings: this.rawRecordings };
       }
     } else {
       const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
@@ -106,6 +105,7 @@ class Visit {
       this.classFromUserTag = false;
     }
 
+    delete this.rawRecordings;
     const aiGuess = getBestGuessFromSpecifiedAi(allVisitTracks);
     this.classificationAi = aiGuess.length > 0 ? aiGuess[0] : "none";
 
@@ -120,15 +120,14 @@ class Visit {
     };
     for (const track of (recording as any).Tracks) {
       const bestTag = getCanonicalTrackTag(track.TrackTags);
-      let aiTag = [];
-      if (track.TrackTags) {
-        aiTag = track.TrackTags.filter((tag) => tag.data == aiModel);
-      }
+      const aiTag: ApiTrackTagResponse = (track.TrackTags || []).find(
+        (tag) => tag.data === aiModel && tag.automatic
+      );
 
       newVisitRecording.tracks.push({
         tag: bestTag ? bestTag.what : null,
         isAITagged: bestTag ? bestTag.automatic : false,
-        aiTag: aiTag.length > 0 ? aiTag[0].what : null,
+        aiTag: (aiTag && aiTag.what) || null,
         start: track.data ? track.data.start_s : "",
         end: track.data ? track.data.end_s : "",
       });
@@ -137,11 +136,7 @@ class Visit {
   }
 
   getAllTracks(): VisitTrack[] {
-    const allVisitTracks: VisitTrack[] = [];
-    this.recordings.forEach((recording) => {
-      allVisitTracks.push(...recording.tracks);
-    });
-    return allVisitTracks;
+    return this.recordings.flatMap((recording) => recording.tracks);
   }
 
   markIfPossiblyIncomplete(cutoff: Moment) {
@@ -172,24 +167,21 @@ function getBestGuessOverall(allTracks: VisitTrack[], isAi: boolean): string[] {
   if (!isAi) {
     // Make sure we don't count user false-positive tags, unless that is the *only* user tag.
     // If a user tags one track as a cat, and two tracks as false positive, we should always say the visit was a cat!
-    tracks = allTracks.filter(
-      (track) => track.isAITagged === isAi && track.tag !== "false-positive"
-    );
     const userNonFalsePositiveTags = allTracks.filter(
-      (track) => track.isAITagged === isAi && track.tag !== "false-positive"
+      (track) => !track.isAITagged && track.tag !== "false-positive"
     );
     if (userNonFalsePositiveTags.length === 0) {
-      tracks = allTracks.filter((track) => track.isAITagged === isAi);
+      tracks = allTracks.filter((track) => !track.isAITagged);
     } else {
       tracks = userNonFalsePositiveTags;
     }
   } else {
     // For AI, first prefer non false-positive tags, but if we only have false-positives, then fall back to that.
     tracks = allTracks.filter(
-      (track) => track.isAITagged === isAi && track.tag !== "false-positive"
+      (track) => track.isAITagged && track.tag !== "false-positive"
     );
     if (tracks.length === 0) {
-      tracks = allTracks.filter((track) => track.isAITagged === isAi);
+      tracks = allTracks.filter((track) => track.isAITagged);
     }
   }
 
@@ -324,7 +316,9 @@ export async function generateVisits(
         actualVisits.push(actualVisit);
       }
       for (const aVisit of actualVisits) {
-        aVisit.calculateTags(search.compareAi);
+        if (aVisit.rawRecordings) {
+          aVisit.calculateTags(search.compareAi);
+        }
         aVisit.markIfPossiblyIncomplete(incompleteCutoff);
       }
     } else {
