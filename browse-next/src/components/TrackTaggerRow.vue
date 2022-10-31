@@ -24,7 +24,7 @@ import CardTable from "@/components/CardTable.vue";
 import type { CardTableItems } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
-import {displayLabelForClassificationLabel} from "@api/Classifications";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
@@ -343,7 +343,10 @@ onMounted(async () => {
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-if="
-            consensusUserTag && masterTag && displayLabelForClassificationLabel(masterTag.what) === consensusUserTag
+            consensusUserTag &&
+            masterTag &&
+            displayLabelForClassificationLabel(masterTag.what) ===
+              consensusUserTag
           "
           >{{ consensusUserTag }}
           <font-awesome-icon icon="check-circle" class="icon"
@@ -351,7 +354,10 @@ onMounted(async () => {
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-else-if="
-            consensusUserTag && masterTag && displayLabelForClassificationLabel(masterTag.what) !== consensusUserTag
+            consensusUserTag &&
+            masterTag &&
+            displayLabelForClassificationLabel(masterTag.what) !==
+              consensusUserTag
           "
           >{{ consensusUserTag }}
           <span class="strikethrough">{{ masterTag?.what }}</span></span
@@ -364,13 +370,17 @@ onMounted(async () => {
             masterTag &&
             !uniqueUserTags.includes(masterTag.what)
           "
-          >{{ uniqueUserTags.map(displayLabelForClassificationLabel).join(", ") }}
+          >{{
+            uniqueUserTags.map(displayLabelForClassificationLabel).join(", ")
+          }}
           <span class="strikethrough">{{ masterTag?.what }}</span></span
         >
         <span
           class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
           v-else-if="!consensusUserTag && masterTag"
-          >{{ uniqueUserTags.map(displayLabelForClassificationLabel).join(", ") }}</span
+          >{{
+            uniqueUserTags.map(displayLabelForClassificationLabel).join(", ")
+          }}</span
         >
       </span>
     </div>

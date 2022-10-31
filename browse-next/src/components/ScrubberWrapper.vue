@@ -23,13 +23,13 @@ const getXOffsetForPointerEvent = (
 };
 
 const getYOffsetForPointerEvent = (
-    e: MouseEvent | PointerEvent | TouchEvent
+  e: MouseEvent | PointerEvent | TouchEvent
 ): number => {
   if ((e as PointerEvent).clientY !== undefined) {
     return (e as PointerEvent).clientY;
   } else if (
-      (e as TouchEvent).touches !== undefined &&
-      (e as TouchEvent).touches.length
+    (e as TouchEvent).touches !== undefined &&
+    (e as TouchEvent).touches.length
   ) {
     return (e as TouchEvent).touches[0].clientY;
   }
@@ -96,7 +96,6 @@ const isTouchOrLeftMouse = (e: MouseEvent | TouchEvent): boolean => {
 
 const beginScrub = (e: MouseEvent | TouchEvent) => {
   if (isTouchOrLeftMouse(e)) {
-
     const newYOffset = getYOffsetForPointerEvent(e) - scrubberTopOffset;
     // If the scrub just started, and the y offset is much greater than the x offset,
     // assume we're actually in the middle of a scroll gesture, and don't prevent default.
