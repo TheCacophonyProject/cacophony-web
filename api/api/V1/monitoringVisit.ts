@@ -84,10 +84,6 @@ class Visit {
       this.calculateTrackTags(rec, aiModel)
     );
 
-    this.rawRecordings.forEach((rec) => {
-      this.recordings.push(this.calculateTrackTags(rec, aiModel));
-    });
-
     const allVisitTracks = this.getAllTracks();
     this.tracks = allVisitTracks.length;
     const bestHumanTags = getBestGuessOverall(allVisitTracks, HUMAN_ONLY);

@@ -39,6 +39,8 @@ const getYOffsetForPointerEvent = (
 let xOffset = 0;
 let scrubberLeftOffset = 0;
 let scrubberTopOffset = 0;
+let scrubberStartLeftOffset = 0;
+let scrubberStartTopOffset = 0;
 
 const progressZeroToOne = ref(0);
 const scrubberWidth = ref(0);
@@ -74,18 +76,44 @@ onMounted(() => {
 });
 
 const onScrubMove = (e: MouseEvent | TouchEvent) => {
-  const newXOffset = getXOffsetForPointerEvent(e) - scrubberLeftOffset;
+  const xPos = getXOffsetForPointerEvent(e);
+  const yPos = getYOffsetForPointerEvent(e);
+  const newXOffset = xPos - scrubberLeftOffset;
+  const newYOffset = yPos - scrubberTopOffset;
+  // If the scrub just started, and the y offset is much greater than the x offset,
+  // assume we're actually in the middle of a scroll gesture, and don't prevent default.
+
+  // If the x offset is with 44px of the edge of the screen, prevent default to prevent
+  // horizontal scrubbing triggering the browser back/forward gestures.
+  // Also if we detect significant horizontal motion from the start of the scrub, we want to prevent scrolling.
+  const viewportWidth = window.innerWidth;
+  if (
+    xPos < 44 ||
+    xPos > viewportWidth - 44 ||
+    Math.abs(newXOffset - scrubberStartLeftOffset) > 44
+  ) {
+    e.preventDefault();
+  }
+
   if (xOffset !== newXOffset) {
     xOffset = newXOffset;
-    progressZeroToOne.value = Math.min(
-      1,
-      Math.max(0, xOffset / scrubberWidth.value)
-    );
-    emit("change", progressZeroToOne.value);
+    if (Math.abs(newYOffset - scrubberStartTopOffset) < 44) {
+      progressZeroToOne.value = Math.min(
+        1,
+        Math.max(0, xOffset / scrubberWidth.value)
+      );
+      emit("change", progressZeroToOne.value);
+    } else {
+      // scrolling, so don't process horizontal scrubbing, which is mostly accidental.
+    }
   }
 };
 
 const onScrubStart = (e: MouseEvent | TouchEvent): EventTarget | null => {
+  const xPos = getXOffsetForPointerEvent(e);
+  const yPos = getYOffsetForPointerEvent(e);
+  scrubberStartLeftOffset = xPos - scrubberLeftOffset;
+  scrubberStartTopOffset = yPos - scrubberTopOffset;
   emit("scrub-start", e.target);
   return e.target;
 };
@@ -96,11 +124,6 @@ const isTouchOrLeftMouse = (e: MouseEvent | TouchEvent): boolean => {
 
 const beginScrub = (e: MouseEvent | TouchEvent) => {
   if (isTouchOrLeftMouse(e)) {
-    const newYOffset = getYOffsetForPointerEvent(e) - scrubberTopOffset;
-    // If the scrub just started, and the y offset is much greater than the x offset,
-    // assume we're actually in the middle of a scroll gesture, and don't prevent default.
-
-    e.preventDefault();
     const scrubberBounds = scrubber.value?.getBoundingClientRect();
     if (scrubberBounds) {
       if (scrubberWidth.value !== scrubberBounds.width) {
@@ -108,6 +131,7 @@ const beginScrub = (e: MouseEvent | TouchEvent) => {
         emit("width-change", scrubberWidth.value);
       }
       scrubberLeftOffset = scrubberBounds.left;
+      scrubberTopOffset = scrubberBounds.top;
       window.addEventListener("mousemove", onScrubMove, { passive: false });
       window.addEventListener("touchmove", onScrubMove, { passive: false });
       window.addEventListener("touchend", endScrub, { passive: false });
