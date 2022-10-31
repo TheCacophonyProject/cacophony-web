@@ -22,14 +22,29 @@ const getXOffsetForPointerEvent = (
   return 0;
 };
 
+const getYOffsetForPointerEvent = (
+    e: MouseEvent | PointerEvent | TouchEvent
+): number => {
+  if ((e as PointerEvent).clientY !== undefined) {
+    return (e as PointerEvent).clientY;
+  } else if (
+      (e as TouchEvent).touches !== undefined &&
+      (e as TouchEvent).touches.length
+  ) {
+    return (e as TouchEvent).touches[0].clientY;
+  }
+  return 0;
+};
+
 let xOffset = 0;
 let scrubberLeftOffset = 0;
+let scrubberTopOffset = 0;
 
 const progressZeroToOne = ref(0);
 const scrubberWidth = ref(0);
 const scrubber = ref<HTMLDivElement | null>(null);
 const { width } = useElementSize(scrubber);
-const { left } = useElementBounding(scrubber);
+const { left, top } = useElementBounding(scrubber);
 const emit = defineEmits<{
   (e: "width-change", width: number): void;
   (e: "change", scrubberValue: number): void;
@@ -44,6 +59,9 @@ watch(width, (newWidth) => {
 
 watch(left, (newLeft) => {
   scrubberLeftOffset = newLeft;
+});
+watch(top, (newTop) => {
+  scrubberTopOffset = newTop;
 });
 
 onMounted(() => {
@@ -78,6 +96,11 @@ const isTouchOrLeftMouse = (e: MouseEvent | TouchEvent): boolean => {
 
 const beginScrub = (e: MouseEvent | TouchEvent) => {
   if (isTouchOrLeftMouse(e)) {
+
+    const newYOffset = getYOffsetForPointerEvent(e) - scrubberTopOffset;
+    // If the scrub just started, and the y offset is much greater than the x offset,
+    // assume we're actually in the middle of a scroll gesture, and don't prevent default.
+
     e.preventDefault();
     const scrubberBounds = scrubber.value?.getBoundingClientRect();
     if (scrubberBounds) {
