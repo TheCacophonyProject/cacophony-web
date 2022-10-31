@@ -700,7 +700,13 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("settings")),
     async (request: Request, response: Response) => {
-      await response.locals.group.GroupUsers.update(
+      const groupUser = await models.GroupUsers.findOne({
+        where: {
+          GroupId: response.locals.group.id,
+          UserId: response.locals.requestUser.id,
+        },
+      });
+      await groupUser.update(
         {
           settings: response.locals.settings,
         },
