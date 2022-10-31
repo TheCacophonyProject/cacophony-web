@@ -80,9 +80,9 @@ class Visit {
   }
 
   calculateTags(aiModel: string) {
-    this.rawRecordings.forEach((rec) => {
-      this.recordings.push(this.calculateTrackTags(rec, aiModel));
-    });
+    this.recordings = (this.rawRecordings || []).map((rec) =>
+      this.calculateTrackTags(rec, aiModel)
+    );
     delete this.rawRecordings;
 
     const allVisitTracks = this.getAllTracks();
@@ -323,9 +323,9 @@ export async function generateVisits(
         }
         actualVisits.push(actualVisit);
       }
-      for (const visit of actualVisits) {
-        visit.calculateTags(search.compareAi);
-        visit.markIfPossiblyIncomplete(incompleteCutoff);
+      for (const aVisit of actualVisits) {
+        aVisit.calculateTags(search.compareAi);
+        aVisit.markIfPossiblyIncomplete(incompleteCutoff);
       }
     } else {
       visit.markIfPossiblyIncomplete(incompleteCutoff);
