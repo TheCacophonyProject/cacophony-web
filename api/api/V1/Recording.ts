@@ -1633,6 +1633,9 @@ export default (app: Application, baseUrl: string) => {
     },
     async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = response.locals.requestUser;
+      if (request.body.what === "unknown") {
+        request.body.what = "unidentified";
+      }
       const path =
         request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
       const newTag = models.TrackTag.build({
@@ -1869,7 +1872,9 @@ export default (app: Application, baseUrl: string) => {
       if (track.RecordingId !== request.params.id) {
         return next(new ClientError("Track does not belong to recording"));
       }
-
+      if (request.body.what === "unknown") {
+        request.body.what = "unidentified";
+      }
       const tag = await track.addTag(
         request.body.what,
         request.body.confidence,

@@ -7,11 +7,16 @@ import type { ErrorResult, JwtTokenPayload } from "@api/types";
 import { computed, reactive, ref } from "vue";
 import { login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
-import type { ApiGroupResponse } from "@typedefs/api/group";
+import type {
+  ApiGroupResponse,
+  ApiGroupSettings,
+  ApiGroupUserSettings,
+} from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
+import { saveGroupUserSettings } from "@api/Group";
 
 export interface LoggedInUserAuth {
   apiToken: string;
@@ -48,6 +53,20 @@ export const userHasGroups = computed<boolean>(() => {
 export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
   CurrentUserCreds.value = reactive<LoggedInUserAuth>(creds);
   persistCreds(CurrentUserCreds.value);
+};
+
+export const persistUserGroupSettings = async (
+  userSettings: ApiGroupUserSettings
+) => {
+  if (currentSelectedGroup.value) {
+    const localGroupToUpdate = (UserGroups.value || []).find(
+      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+    );
+    if (localGroupToUpdate) {
+      localGroupToUpdate.userSettings = userSettings;
+      await saveGroupUserSettings(localGroupToUpdate.id, userSettings);
+    }
+  }
 };
 
 export const setLoggedInUserData = (user: LoggedInUser) => {
@@ -255,7 +274,13 @@ export const currentUserSettings = computed<ApiUserSettings | false>(() => {
   return false;
 });
 
-export type SelectedGroup = { groupName: string; id: GroupId; admin?: boolean };
+export type SelectedGroup = {
+  groupName: string;
+  id: GroupId;
+  admin?: boolean;
+  settings?: ApiGroupSettings;
+  userSettings?: ApiGroupUserSettings;
+};
 export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
     if (UserGroups.value && UserGroups.value?.length === 0) {
@@ -282,6 +307,8 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
         UserGroups.value.length !== 0 && {
           id: UserGroups.value[0].id,
           groupName: UserGroups.value[0].groupName,
+          settings: UserGroups.value[0].settings,
+          userSettings: UserGroups.value[0].userSettings,
         }) ||
       false
     );
@@ -291,6 +318,8 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
       UserGroups.value?.length !== 0 && {
         id: UserGroups.value[0].id,
         groupName: UserGroups.value[0].groupName,
+        settings: UserGroups.value[0].settings,
+        userSettings: UserGroups.value[0].userSettings,
       }) ||
     false
   );

@@ -30,7 +30,11 @@ export const flatClassifications = computed<
   Record<string, { label: string; display: string }>
 >(() => {
   if (classifications.value) {
-    return flattenNodes({}, classifications.value);
+    const nodes = flattenNodes({}, classifications.value);
+    if (nodes.unknown) {
+      nodes["unidentified"] = nodes["unknown"];
+    }
+    return nodes;
   }
   return {};
 });
@@ -80,4 +84,9 @@ export const getClassifications = async (
     }
   }
   return classifications.value;
+};
+
+export const displayLabelForClassificationLabel = (label: string) => {
+  const classifications = flatClassifications.value || {};
+  return (classifications[label] && classifications[label].display) || label;
 };

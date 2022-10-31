@@ -5,7 +5,10 @@ import type { FetchResult, JwtToken } from "@api/types";
 import type { UserGlobalPermission } from "@typedefs/api/consts";
 import type { EndUserAgreementVersion } from "@typedefs/api/common";
 import type { ApiUserSettings } from "@typedefs/api/user";
-import type { ApiGroupResponse } from "@typedefs/api/group";
+import type {
+  ApiGroupResponse,
+  ApiGroupUserSettings,
+} from "@typedefs/api/group";
 import { CurrentUser, setLoggedInUserData } from "@models/LoggedInUser";
 import type { LoggedInUser } from "@models/LoggedInUser";
 

@@ -692,6 +692,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/my-settings`,
     extractJwtAuthorizedUser,
     validateFields([
+      nameOrIdOf(param("groupIdOrName")),
       body("settings")
         .exists()
         .custom(jsonSchemaOf(ApiGroupUserSettingsSchema)),
@@ -718,6 +719,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/group-settings`,
     extractJwtAuthorizedUser,
     validateFields([
+      nameOrIdOf(param("groupIdOrName")),
       body("settings").exists().custom(jsonSchemaOf(ApiGroupSettingsSchema)),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
@@ -735,6 +737,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:groupIdOrName/invite-user`,
     extractJwtAuthorizedUser,
     validateFields([
+      nameOrIdOf(param("groupIdOrName")),
       body("email").exists(),
       booleanOf(body("admin")).default(false),
     ]),

@@ -12,6 +12,7 @@ import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/root";
 import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
 import { truncateLongStationNames } from "@/utils";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
@@ -243,7 +244,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         >
           <span class="count text-capitalize">{{ count }}</span>
           <span class="text-capitalize species d-inline-block">
-            {{ classification }}
+            {{ displayLabelForClassificationLabel(classification) }}
           </span>
         </div>
       </div>
@@ -334,7 +335,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
               <span
                 class="visit-species-tag px-1 mb-1 text-capitalize"
                 :class="[visit.name]"
-                >{{ visit.name }}
+                >{{ displayLabelForClassificationLabel(visit.name) }}
                 <font-awesome-icon
                   icon="check"
                   v-if="visit.data.classFromUserTag"

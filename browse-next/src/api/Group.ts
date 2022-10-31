@@ -8,6 +8,7 @@ import type {
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import { shouldViewAsSuperUser } from "@models/LoggedInUser";
+import type { ApiGroupUserSettings } from "@typedefs/api/group";
 
 // FIXME - Move all the super user view mode stuff into the fetch function?
 
@@ -15,6 +16,11 @@ export const addNewGroup = (groupName: string) =>
   CacophonyApi.post("/api/v1/groups", { groupName }) as Promise<
     FetchResult<{ groupId: GroupId }>
   >;
+
+export const saveGroupUserSettings = (
+  id: GroupId,
+  settings: ApiGroupUserSettings
+) => CacophonyApi.patch(`/api/v1/groups/${id}/my-settings`, { settings });
 
 export const getGroups = (abortable: boolean) =>
   CacophonyApi.get(

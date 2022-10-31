@@ -8,6 +8,7 @@ import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
 import { Station } from "@models/Station";
+import logger from "@log";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -79,18 +80,26 @@ class Visit {
   }
 
   calculateTags(aiModel: string) {
-    this.rawRecordings.forEach((rec) => {
-      this.recordings.push(this.calculateTrackTags(rec, aiModel));
-    });
+    this.recordings = this.rawRecordings.map((rec) =>
+      this.calculateTrackTags(rec, aiModel)
+    );
     delete this.rawRecordings;
 
     const allVisitTracks = this.getAllTracks();
     this.tracks = allVisitTracks.length;
+
+    // FIXME: In the case where a single recording has multiple animals, we have to pick only one tag to be the "visit tag"
+    //  but, in the case where there are multiple recordings near to each other with different user animal tags,
+    //  we should really be splitting those recordings into multiple (possibly overlapping) visits.
     const bestHumanTags = getBestGuessOverall(allVisitTracks, HUMAN_ONLY);
 
     if (bestHumanTags.length > 0) {
-      this.classification = bestHumanTags[0];
-      this.classFromUserTag = true;
+      if (bestHumanTags.length === 1) {
+        this.classification = bestHumanTags[0];
+        this.classFromUserTag = true;
+      } else {
+        return { split: this };
+      }
     } else {
       const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
       this.classification = bestAiTags.length > 0 ? bestAiTags[0] : "none";
@@ -99,6 +108,8 @@ class Visit {
 
     const aiGuess = getBestGuessFromSpecifiedAi(allVisitTracks);
     this.classificationAi = aiGuess.length > 0 ? aiGuess[0] : "none";
+
+    return { split: false };
   }
 
   calculateTrackTags(recording, aiModel: string): VisitRecording {
@@ -157,7 +168,30 @@ function getBestGuessFromSpecifiedAi(tracks: VisitTrack[]): string[] {
 }
 
 function getBestGuessOverall(allTracks: VisitTrack[], isAi: boolean): string[] {
-  const tracks = allTracks.filter((track) => track.isAITagged == isAi);
+  let tracks;
+  if (!isAi) {
+    // Make sure we don't count user false-positive tags, unless that is the *only* user tag.
+    // If a user tags one track as a cat, and two tracks as false positive, we should always say the visit was a cat!
+    tracks = allTracks.filter(
+      (track) => track.isAITagged === isAi && track.tag !== "false-positive"
+    );
+    const userNonFalsePositiveTags = allTracks.filter(
+      (track) => track.isAITagged === isAi && track.tag !== "false-positive"
+    );
+    if (userNonFalsePositiveTags.length === 0) {
+      tracks = allTracks.filter((track) => track.isAITagged === isAi);
+    } else {
+      tracks = userNonFalsePositiveTags;
+    }
+  } else {
+    // For AI, first prefer non false-positive tags, but if we only have false-positives, then fall back to that.
+    tracks = allTracks.filter(
+      (track) => track.isAITagged === isAi && track.tag !== "false-positive"
+    );
+    if (tracks.length === 0) {
+      tracks = allTracks.filter((track) => track.isAITagged === isAi);
+    }
+  }
 
   const counts = {};
   tracks.forEach((track) => {
@@ -245,12 +279,61 @@ export async function generateVisits(
     "seconds"
   );
 
-  visits.forEach((visit) => {
-    visit.calculateTags(search.compareAi);
-    visit.markIfPossiblyIncomplete(incompleteCutoff);
-  });
+  const actualVisits = [];
+  for (const visit of visits) {
+    const { split } = visit.calculateTags(search.compareAi);
+    if (split) {
+      // We need to create multiple visits from this visit, since there were multiple user tags for the period.
+      const userVisits = {};
+      for (const recording of (split as Visit).recordings) {
+        const userTag = recording.tracks.filter(
+          (track) =>
+            track.isAITagged === false && track.tag !== "false-positive"
+        );
+        // In the case where there are two user tags on a single recording (multiple different animals) we'll
+        // generate another visit using the same recording.
+        if (userTag.length !== 0) {
+          for (const track of userTag) {
+            userVisits[track.tag] = userVisits[track.tag] || [];
+            userVisits[track.tag].push(recording);
+          }
+        }
+      }
+      for (const recording of (split as Visit).recordings) {
+        const userTag = recording.tracks.filter(
+          (track) => track.isAITagged === false
+        );
+        if (userTag.length === 0) {
+          // Add the ai-only recording to all user visits
+          for (const visit of Object.values(userVisits)) {
+            (visit as VisitRecording[]).push(recording);
+          }
+        }
+      }
+      for (const visitRecordings of Object.values(userVisits)) {
+        const record = recordings.find(
+          (rec) => rec.id === visitRecordings[0].recId
+        );
+        const actualVisit = new Visit(visit.stationId, record.Station, record);
+        for (let i = 1; i < (visitRecordings as VisitRecording[]).length; i++) {
+          const record = recordings.find(
+            (rec) => rec.id === visitRecordings[i].recId
+          );
+          actualVisit.addRecordingIfWithinTimeLimits(record);
+        }
+        actualVisits.push(actualVisit);
+      }
+      for (const visit of actualVisits) {
+        visit.calculateTags(search.compareAi);
+        visit.markIfPossiblyIncomplete(incompleteCutoff);
+      }
+    } else {
+      visit.markIfPossiblyIncomplete(incompleteCutoff);
+      actualVisits.push(visit);
+    }
+  }
 
-  return visits.reverse();
+  return actualVisits.reverse();
 }
 
 async function getRecordings(
@@ -264,7 +347,7 @@ async function getRecordings(
     duration: { [Op.gte]: "0" },
     type: RecordingType.ThermalRaw,
     deletedAt: { [Op.eq]: null },
-    recordingDateTime: { [Op.gt]: from, [Op.lt]: until }, // FIXME - Used to be gte: from
+    recordingDateTime: { [Op.gt]: from, [Op.lt]: until },
   };
   if (params.stations) {
     where.StationId = params.stations;

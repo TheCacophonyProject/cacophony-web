@@ -221,4 +221,170 @@ describe("Monitoring : tracks and tags", () => {
       }
     );
   });
+
+  it("prefer AI animal tags over false-positives", () => {
+    const camera = "ai_tag_precedence";
+    cy.apiDeviceAdd(camera, group);
+    const location13 = { lat: -43.0, lng: 175.7 };
+    cy.testUploadRecording(camera, {
+      time: "2022-10-29T13:42:22.215Z",
+      ...location13,
+      tracks: [
+        {
+          start_s: 4.56,
+          end_s: 6.56,
+          predictions: [
+            {
+              confident_tag: "hedgehog",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+        {
+          start_s: 0,
+          end_s: 16.33,
+          predictions: [
+            {
+              confident_tag: "false-positive",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+      ],
+    });
+
+    cy.testUploadRecording(camera, {
+      time: "2022-10-29T13:50:20.749Z",
+      ...location13,
+      tracks: [
+        {
+          start_s: 0,
+          end_s: 17.22,
+          predictions: [
+            {
+              confident_tag: "unidentified",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+        {
+          start_s: 15.56,
+          end_s: 17.22,
+          predictions: [
+            {
+              confident_tag: "false-positive",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+        {
+          start_s: 0,
+          end_s: 17,
+          predictions: [
+            {
+              confident_tag: "false-positive",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+      ],
+    }).then((recordingId) => {
+      checkRecording(Damian, recordingId, (recording) => {
+        cy.checkMonitoringTags(Damian, recording.stationId, ["hedgehog"]);
+      });
+    });
+  });
+
+  it("user-confirmed false positives shouldn't override other user tags for visit", () => {
+    const camera = "user_tag_precedence";
+    cy.apiDeviceAdd(camera, group);
+    const location14 = { lat: -42.0, lng: 175.7 };
+    cy.testUploadRecording(camera, {
+      time: "2022-10-29T13:42:22.215Z",
+      ...location14,
+      tracks: [
+        {
+          start_s: 4.56,
+          end_s: 6.56,
+          predictions: [
+            {
+              confident_tag: "hedgehog",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+        {
+          start_s: 0,
+          end_s: 16.33,
+          predictions: [
+            {
+              confident_tag: "false-positive",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+      ],
+    }).then((recordingId) => {
+      cy.testUserTagRecording(recordingId, 0, Damian, "hedgehog");
+      cy.testUserTagRecording(recordingId, 1, Damian, "false-positive");
+    });
+
+    cy.testUploadRecording(camera, {
+      time: "2022-10-29T13:50:20.749Z",
+      ...location14,
+      tracks: [
+        {
+          start_s: 0,
+          end_s: 17.22,
+          predictions: [
+            {
+              confident_tag: "unidentified",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+        {
+          start_s: 15.56,
+          end_s: 17.22,
+          predictions: [
+            {
+              confident_tag: "false-positive",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+        {
+          start_s: 0,
+          end_s: 17,
+          predictions: [
+            {
+              confident_tag: "false-positive",
+              model_id: 1,
+              confidence: 0.9,
+            },
+          ],
+        },
+      ],
+    }).then((recordingId) => {
+      cy.testUserTagRecording(recordingId, 0, Damian, "cat");
+      cy.testUserTagRecording(recordingId, 1, Damian, "false-positive");
+      cy.testUserTagRecording(recordingId, 2, Damian, "false-positive");
+
+      checkRecording(Damian, recordingId, (recording) => {
+        cy.checkMonitoringTags(Damian, recording.stationId, [
+          "cat",
+          "hedgehog",
+        ]);
+      });
+    });
+  });
 });

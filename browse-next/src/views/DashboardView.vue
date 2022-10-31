@@ -25,6 +25,11 @@ import {
   visitsContext,
 } from "@models/SelectionContext";
 import { useMediaQuery } from "@vueuse/core";
+import {
+  classifications,
+  getClassifications,
+  displayLabelForClassificationLabel,
+} from "@api/Classifications";
 
 const audioMode = ref<boolean>(false);
 
@@ -95,6 +100,7 @@ const speciesSummary = computed<Record<string, number>>(() => {
     {}
   );
 });
+
 const earliestDate = computed<Date>(() => {
   const now = new Date();
   return new Date(now.setUTCDate(now.getUTCDate() - timePeriodDays.value));
@@ -121,6 +127,12 @@ const reloadDashboard = async () => {
 
 watch(timePeriodDays, loadVisits);
 watch(currentSelectedGroup, reloadDashboard);
+
+onMounted(async () => {
+  if (!classifications.value) {
+    await getClassifications();
+  }
+});
 // I don't think the underlying data changes?
 //watch(visitsOrRecordings, reloadDashboard);
 //watch(speciesOrStations, reloadDashboard);
@@ -320,7 +332,9 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
           class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
         >
           <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
-          <div class="species-name lh-sm small">{{ key }}</div>
+          <div class="species-name lh-sm small text-capitalize">
+            {{ displayLabelForClassificationLabel(key) }}
+          </div>
         </div>
       </div>
     </div>

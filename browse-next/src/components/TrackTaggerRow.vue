@@ -8,7 +8,11 @@ import type {
   TrackTagData,
 } from "@typedefs/api/trackTag";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { CurrentUser } from "@models/LoggedInUser";
+import {
+  currentSelectedGroup,
+  CurrentUser,
+  persistUserGroupSettings,
+} from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId } from "@typedefs/api/common";
 import {
@@ -19,6 +23,7 @@ import {
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableItems } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
+import type { ApiGroupUserSettings } from "@typedefs/api/group";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
@@ -159,40 +164,65 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
   () => thisUserTag.value?.what === masterTag.value?.what
 );
 
-const defaultTags = [
-  "possum",
-  "rodent",
-  "hedgehog",
-  "cat",
-  "bird",
-  "mustelid",
-  "false-positive",
-  "unknown",
-];
+// Default tags is computed from a default list, with overrides coming from the group admin level, and the user group level.
+const defaultTags = computed<string[]>(() => {
+  const tags = [];
+  if (currentSelectedGroup.value) {
+    const groupSettings = currentSelectedGroup.value.settings;
+    if (groupSettings && groupSettings.tags) {
+      tags.push(...groupSettings.tags);
+    } else {
+      // Default base tags if admin hasn't edited them
+      tags.push(
+        ...[
+          "possum",
+          "rodent",
+          "hedgehog",
+          "cat",
+          "bird",
+          "mustelid",
+          "false-positive",
+          "unidentified",
+        ]
+      );
+    }
+    const userSettings = currentSelectedGroup.value.userSettings;
+    if (userSettings && userSettings.tags) {
+      // These are any user-defined "pinned" tags for this group.
+      for (const tag of userSettings.tags) {
+        if (!tags.includes(tag)) {
+          tags.push(tag);
+        }
+      }
+    }
+  }
+  return tags;
+});
 
 // These are "pinned" tags.
-const userDefinedTags = ref<Record<string, boolean>>({});
+const userDefinedTags = computed<Record<string, boolean>>(() => {
+  const tags: Record<string, boolean> = {};
+  if (currentSelectedGroup.value) {
+    const userSettings = currentSelectedGroup.value.userSettings;
+    if (userSettings && userSettings.tags) {
+      // These are any user-defined "pinned" tags for this group.
+      for (const tag of userSettings.tags) {
+        tags[tag] = true;
+      }
+    }
+  }
+  return tags;
+});
 const userDefinedTagLabels = computed<string[]>(() =>
   Object.keys(userDefinedTags.value)
 );
-
-const uniqueUserTagsAndUserDefinedTags = computed<string[]>(() => {
-  const tags: Record<string, boolean> = {};
-  for (const tag of uniqueUserTags.value) {
-    tags[tag] = true;
-  }
-  return Object.keys({ ...userDefinedTags.value, ...tags });
-});
 
 const availableTags = computed<{ label: string; display: string }[]>(() => {
   // TODO: These can be changed at a group preferences level my group admins,
   //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
   const tags: Record<string, { label: string; display: string }> = {};
-  for (const tag of [
-    ...defaultTags,
-    ...uniqueUserTagsAndUserDefinedTags.value,
-  ].map(
+  for (const tag of [...defaultTags.value, ...uniqueUserTags.value].map(
     (tag) =>
       flatClassifications.value[tag] || {
         label: tag,
@@ -214,7 +244,7 @@ const toggleTag = (tag: string) => {
       !thisUserTag.value ||
       (thisUserTag.value && thisUserTag.value.what !== tag)
     ) {
-      showClassificationSearch.value = !defaultTags.includes(tag);
+      showClassificationSearch.value = !defaultTags.value.includes(tag);
     }
     emit("add-or-remove-user-tag", { trackId: track.id, tag });
     if (showTaggerDetails.value) {
@@ -237,13 +267,21 @@ const rejectAiSuggestedTag = () => {
   emit("expanded-changed", track.id, expandedInternal.value);
 };
 
-const pinCustomTag = (classification: Classification) => {
-  if (thisUserTag.value && !defaultTags.includes(thisUserTag.value.what)) {
-    if (userDefinedTags.value[classification.label]) {
-      delete userDefinedTags.value[classification.label];
+const pinCustomTag = async (classification: Classification) => {
+  if (currentSelectedGroup.value) {
+    const userGroupSettings: ApiGroupUserSettings = currentSelectedGroup.value
+      .userSettings || {
+      displayMode: "visits",
+      tags: [],
+    };
+    if (userGroupSettings.tags.includes(classification.label)) {
+      userGroupSettings.tags = userGroupSettings.tags.filter(
+        (tag) => tag !== classification.label
+      );
     } else {
-      userDefinedTags.value[thisUserTag.value.what] = true;
+      userGroupSettings.tags.push(classification.label);
     }
+    await persistUserGroupSettings(userGroupSettings);
   }
 };
 
@@ -251,7 +289,7 @@ const currentlySelectedTagIsPinnable = computed<boolean>(() => {
   if (!thisUserTag.value) {
     return false;
   }
-  return !defaultTags.includes(thisUserTag.value.what);
+  return !defaultTags.value.includes(thisUserTag.value.what);
 });
 
 const setCustomTag = async (classification: Classification | null) => {
