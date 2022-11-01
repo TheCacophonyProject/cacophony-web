@@ -189,7 +189,7 @@ const getGroupInclude = (
         where: {
           ...useAdminAccess,
         },
-        attributes: ["admin"],
+        attributes: ["admin", "settings"],
       },
       where: { id: requestUserId },
     },
@@ -853,13 +853,6 @@ const getGroups =
     } else {
       getGroupOptions = {
         where: {},
-        // include: [
-        //   {
-        //     model: models.Group,
-        //     required: true,
-        //     where: {},
-        //   },
-        // ],
       };
     }
     return models.Group.findAll({

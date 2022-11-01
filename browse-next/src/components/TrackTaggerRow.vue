@@ -48,7 +48,11 @@ const showTaggerDetails = ref<boolean>(false);
 const tagSelect = ref<typeof HierarchicalTagSelect>();
 const trackDetails = ref<HTMLDivElement>();
 
-const capitalize = (str: string): string => str[0].toUpperCase() + str.slice(1);
+const capitalize = (str: string): string =>
+  str
+    .split(" ")
+    .map((p) => p[0].toUpperCase() + p.slice(1))
+    .join(" ");
 
 const taggerDetails = computed<CardTableItems>(() => {
   const tags: ApiTrackTagResponse[] = [...humanTags.value];
@@ -56,11 +60,10 @@ const taggerDetails = computed<CardTableItems>(() => {
     tags.unshift(masterTag.value);
   }
   return {
-    headings: ["tag", "tagger", "created"],
+    headings: ["tag", "tagger"],
     values: tags.map(({ what, userName, automatic }) => [
-      capitalize(what),
+      capitalize(displayLabelForClassificationLabel(what)),
       automatic ? "Cacophony AI" : userName || "",
-      "",
     ]),
   };
 });
@@ -187,15 +190,6 @@ const defaultTags = computed<string[]>(() => {
         ]
       );
     }
-    const userSettings = currentSelectedGroup.value.userSettings;
-    if (userSettings && userSettings.tags) {
-      // These are any user-defined "pinned" tags for this group.
-      for (const tag of userSettings.tags) {
-        if (!tags.includes(tag)) {
-          tags.push(tag);
-        }
-      }
-    }
   }
   return tags;
 });
@@ -223,7 +217,11 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
   //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
   const tags: Record<string, { label: string; display: string }> = {};
-  for (const tag of [...defaultTags.value, ...uniqueUserTags.value].map(
+  const allTags = [...defaultTags.value, ...userDefinedTagLabels.value];
+  if (thisUserTag.value && !allTags.includes(thisUserTag.value.what)) {
+    allTags.push(thisUserTag.value.what);
+  }
+  for (const tag of allTags.map(
     (tag) =>
       flatClassifications.value[tag] || {
         label: tag,

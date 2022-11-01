@@ -37,6 +37,8 @@ import { useElementSize, useMediaQuery } from "@vueuse/core";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
+
 const route = useRoute();
 const emit = defineEmits(["close"]);
 
@@ -489,7 +491,7 @@ watch(playerHeight.height, (newHeight) => {
         <span class="recording-header-type text-uppercase fw-bold">Visit</span>
         <div class="recording-header-details mb-1 mb-sm-0">
           <span class="recording-header-label fw-bold text-capitalize">{{
-            visitLabel
+            displayLabelForClassificationLabel(visitLabel)
           }}</span>
           <span
             v-if="isInGreaterVisitContext"

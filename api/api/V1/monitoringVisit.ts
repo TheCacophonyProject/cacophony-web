@@ -90,8 +90,17 @@ class Visit {
 
     if (bestHumanTags.length > 0) {
       if (bestHumanTags.length === 1) {
-        this.classification = bestHumanTags[0];
-        this.classFromUserTag = true;
+        const classification = bestHumanTags[0];
+        if (!["false-positive"].includes(classification)) {
+          // Only prefer human tags for visit labels if they're not false-positives.
+          this.classification = bestHumanTags[0];
+          this.classFromUserTag = true;
+        } else {
+          // Use AI tags instead for visit.
+          const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
+          this.classification = bestAiTags.length > 0 ? bestAiTags[0] : "none";
+          this.classFromUserTag = false;
+        }
       } else {
         return { split: this, rawRecordings: this.rawRecordings };
       }

@@ -223,7 +223,7 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
   window.localStorage.removeItem("saved-login-credentials");
-  window.localStorage.removeItem("saved-login-user-data");
+  //window.localStorage.removeItem("saved-login-user-data");
   userIsLoggedIn.value = false;
 };
 
@@ -299,18 +299,28 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
         return false;
       }
     }
-
-    return (
-      currentUserSettings.value.currentSelectedGroup ||
-      (UserGroups.value &&
-        UserGroups.value.length !== 0 && {
-          id: UserGroups.value[0].id,
-          groupName: UserGroups.value[0].groupName,
-          settings: UserGroups.value[0].settings,
-          userSettings: UserGroups.value[0].userSettings,
+    if (
+      currentUserSettings.value &&
+      currentUserSettings.value.currentSelectedGroup
+    ) {
+      const group =
+        UserGroups.value &&
+        UserGroups.value?.find(
+          (g) =>
+            g.id ===
+            (currentUserSettings.value as ApiUserSettings).currentSelectedGroup
+              ?.id
+        );
+      return (
+        (group && {
+          id: group.id,
+          groupName: group.groupName,
+          settings: group.settings,
+          userSettings: group.userSettings,
         }) ||
-      false
-    );
+        false
+      );
+    }
   }
   return (
     (UserGroups.value &&
