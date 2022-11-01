@@ -45,12 +45,12 @@ import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { delayMs } from "@/utils";
 
 const { pixelRatio } = useDevicePixelRatio();
-// eslint-disable-next-line vue/no-setup-props-destructure
 const {
   recording,
   recordingId,
   cptvSize = null,
   currentTrack,
+  userSelectedTrack,
   canSelectTracks = true,
   hasNext = false,
   hasPrev = false,
@@ -59,6 +59,7 @@ const {
   recordingId: RecordingId;
   cptvSize?: number | null;
   currentTrack?: ApiTrackResponse;
+  userSelectedTrack?: ApiTrackResponse;
   canSelectTracks?: boolean;
   hasNext?: boolean;
   hasPrev?: boolean;
@@ -110,7 +111,10 @@ const playbackTimeZeroOne = computed<number>(() => {
 const emit = defineEmits<{
   (e: "request-prev-recording"): void;
   (e: "request-next-recording"): void;
-  (e: "track-selected", { trackId }: { trackId: TrackId }): void;
+  (
+    e: "track-selected",
+    { trackId, automatically }: { trackId: TrackId; automatically: boolean }
+  ): void;
   (e: "ready-to-play", header: CptvHeader): void;
 }>();
 
@@ -124,18 +128,28 @@ watch(canvasWidth, () => {
 });
 
 watch(
-  () => currentTrack,
+  () => userSelectedTrack,
   async (nextTrack, prevTrack) => {
     if (nextTrack) {
       if (
-        prevTrack &&
-        (nextTrack as ApiTrackResponse).id !==
-          (prevTrack as ApiTrackResponse).id
+        !prevTrack ||
+        (prevTrack &&
+          (nextTrack as ApiTrackResponse).id !==
+            (prevTrack as ApiTrackResponse).id)
       ) {
-        await selectTrack(nextTrack, true);
+        await selectTrack(nextTrack, true, playing.value, true);
       }
     }
     updateOverlayCanvas(frameNum.value);
+  }
+);
+
+watch(
+  () => currentTrack,
+  () => {
+    if (!playing.value) {
+      updateOverlayCanvas(frameNum.value);
+    }
   }
 );
 
@@ -318,25 +332,21 @@ const lastFrameNumForTrack = (trackId: number): number => {
 const selectTrack = async (
   track: ApiTrackResponse,
   force = false,
-  shouldPlay = false
+  shouldPlay = false,
+  userSelected = false
 ) => {
   if ((!playing.value || force) && recording?.tracks.length) {
     cancelAnimationFrame(animationFrame.value);
     animationTick.value = 0;
-    await setTimeAndRedraw({
-      frameNumToDraw: firstFrameNumForTrack(track.id),
-    });
+    if (userSelected) {
+      await setTimeAndRedraw({
+        frameNumToDraw: firstFrameNumForTrack(track.id),
+      });
+      stopAtFrame.value = lastFrameNumForTrack(track.id);
+    }
     if (shouldPlay) {
       playing.value = true;
     }
-    // This is used when a user selects a track from the TrackInfo panel.
-    // In that case we don't want it selecting another track as it plays on from
-    // the selected track, since the user likely wants to tag the track they selected.
-
-    // Any other further user interaction should unset stopAtTime.
-    // Stop at the last frame number for the track, so that another
-    //  track isn't selected.
-    stopAtFrame.value = lastFrameNumForTrack(track.id);
   }
 };
 
@@ -696,20 +706,21 @@ const getAuthoritativeTagForTrack = (
 ): string | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   if (userTags.length) {
+    // FIXME - There can be more than one conflicting user tag...
+
+    // TODO: Add an option to also include the AI guess, plus the confidence at each frame.
     return userTags[0].what;
   } else {
-    const tag = trackTags.find(
-      (tag) =>
-        (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
-        (typeof tag.data === "object" &&
-          tag.data.name &&
-          tag.data.name === "Master")
+    return (
+      trackTags.find(
+        (tag) =>
+          (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
+          (typeof tag.data === "object" &&
+            tag.data.name &&
+            tag.data.name === "Master")
+      )?.what || null
     );
-    if (tag) {
-      return tag.what;
-    }
   }
-  return null;
 };
 
 // Check if positions is in old format or new and format accordingly
@@ -934,7 +945,7 @@ watch(frameNum, () => {
     const trackId = frameTracks[0][0];
     // If the track is the only track at this time offset, make it the selected track.
     if (currentTrack.id !== trackId) {
-      emit("track-selected", { trackId });
+      emit("track-selected", { trackId, automatically: true });
     }
   }
 });
@@ -1109,7 +1120,6 @@ const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
     .filter(([trackId]) => trackId !== currentTrack?.id)
     .find(
       ([
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _,
         {
           rect: [left, top, right, bottom],
@@ -1129,6 +1139,7 @@ const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
     if (trackId !== null) {
       emit("track-selected", {
         trackId,
+        automatically: !playing.value,
       });
     }
   }

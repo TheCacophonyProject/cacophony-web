@@ -2,7 +2,7 @@
   <layered-dropdown
     :options="options"
     :disabled="disabled"
-    :pinnable="pinnable"
+    :can-be-pinned="canBePinned"
     :pinned-items="pinnedItems"
     :placeholder="placeholder"
     :multiselect="multiselect"
@@ -21,7 +21,7 @@ const {
   exclude = [],
   placeholder = "Search Tags...",
   multiselect = false,
-  pinnable = false,
+  canBePinned = false,
   pinnedItems = [],
   selectedItem,
 } = defineProps<{
@@ -29,7 +29,7 @@ const {
   exclude?: string[];
   placeholder?: string;
   multiselect?: boolean;
-  pinnable: boolean;
+  canBePinned: boolean;
   pinnedItems?: string[];
   selectedItem?: string;
 }>();

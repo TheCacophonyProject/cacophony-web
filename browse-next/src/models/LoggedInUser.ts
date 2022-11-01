@@ -121,7 +121,6 @@ export const login = async (
 };
 
 export const persistUser = (currentUser: LoggedInUser) => {
-  // NOTE: These credentials have already been validated.
   window.localStorage.setItem(
     "saved-login-user-data",
     JSON.stringify(currentUser)

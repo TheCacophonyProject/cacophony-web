@@ -6,7 +6,6 @@ import { useDevicePixelRatio } from "@vueuse/core";
 import type { IntermediateTrack } from "@/components/cptv-player/cptv-player-types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 const { pixelRatio } = useDevicePixelRatio();
-// eslint-disable-next-line vue/no-setup-props-destructure
 const {
   tracks = [],
   totalFrames,
@@ -74,10 +73,7 @@ const getOffsetYForTrack = (
       trackIndex--;
     }
     const orderedSlots = Object.entries(slots)
-      .sort(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        ([a, _a], [b, _b]) => Number(a) - Number(b)
-      )
+      .sort(([a, _a], [b, _b]) => Number(a) - Number(b))
       .reverse();
     let bestSlot = Number(orderedSlots[0][0]) + trackHeight + 1;
     for (let i = 0; i < orderedSlots.length; i++) {

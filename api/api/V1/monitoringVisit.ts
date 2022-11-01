@@ -3,7 +3,7 @@ import models from "@models";
 import { Recording } from "@models/Recording";
 import { getCanonicalTrackTag, UNIDENTIFIED_TAGS } from "./Visits";
 import { ClientError } from "../customErrors";
-import { StationId, UserId } from "@typedefs/api/common";
+import { StationId, TrackId, UserId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
@@ -91,14 +91,15 @@ class Visit {
     if (bestHumanTags.length > 0) {
       if (bestHumanTags.length === 1) {
         const classification = bestHumanTags[0];
-        if (!["false-positive"].includes(classification)) {
+        if (!["false-positive"].includes(classification[0])) {
           // Only prefer human tags for visit labels if they're not false-positives.
-          this.classification = bestHumanTags[0];
+          this.classification = bestHumanTags[0][0];
           this.classFromUserTag = true;
         } else {
           // Use AI tags instead for visit.
           const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
-          this.classification = bestAiTags.length > 0 ? bestAiTags[0] : "none";
+          this.classification =
+            bestAiTags.length > 0 ? bestAiTags[0][0] : "none";
           this.classFromUserTag = false;
         }
       } else {
@@ -106,13 +107,27 @@ class Visit {
       }
     } else {
       const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
-      this.classification = bestAiTags.length > 0 ? bestAiTags[0] : "none";
+      this.classification = bestAiTags.length > 0 ? bestAiTags[0][0] : "none";
       this.classFromUserTag = false;
     }
 
     delete this.rawRecordings;
     const aiGuess = getBestGuessFromSpecifiedAi(allVisitTracks);
-    this.classificationAi = aiGuess.length > 0 ? aiGuess[0] : "none";
+    if (aiGuess.length > 1) {
+      // Tie-break based on the average mass of the track in question.
+      let bestMass = -1;
+      let bestTag;
+      for (const [tag, tracks] of aiGuess) {
+        const mass = tracks.reduce((a, { mass }) => a + mass, 0);
+        if (mass > bestMass) {
+          bestMass = mass;
+          bestTag = tag;
+        }
+      }
+      this.classificationAi = bestTag;
+    } else {
+      this.classificationAi = aiGuess.length > 0 ? aiGuess[0][0] : "none";
+    }
 
     return { split: false };
   }
@@ -135,6 +150,7 @@ class Visit {
         aiTag: (aiTag && aiTag.what) || null,
         start: track.data ? track.data.start_s : "",
         end: track.data ? track.data.end_s : "",
+        mass: track.positions.reduce((a, { mass }) => a + mass || 0, 0),
       });
     }
     return newVisitRecording;
@@ -156,18 +172,24 @@ const COUNT = 1;
 const HUMAN_ONLY = false;
 const AI_ONLY = true;
 
-function getBestGuessFromSpecifiedAi(tracks: VisitTrack[]): string[] {
+function getBestGuessFromSpecifiedAi(
+  tracks: VisitTrack[]
+): [TagName, VisitTrack[]][] {
   const counts = {};
   tracks.forEach((track) => {
     const tag = track.aiTag;
     if (tag) {
-      counts[tag] = counts[tag] ? (counts[tag] += 1) : 1;
+      counts[tag] = counts[tag] || [];
+      counts[tag].push(track);
     }
   });
   return getBestGuess(Object.entries(counts));
 }
 
-function getBestGuessOverall(allTracks: VisitTrack[], isAi: boolean): string[] {
+function getBestGuessOverall(
+  allTracks: VisitTrack[],
+  isAi: boolean
+): [TagName, VisitTrack[]][] {
   let tracks;
   if (!isAi) {
     // Make sure we don't count user false-positive tags, unless that is the *only* user tag.
@@ -194,29 +216,32 @@ function getBestGuessOverall(allTracks: VisitTrack[], isAi: boolean): string[] {
   tracks.forEach((track) => {
     const tag = track.tag;
     if (tag) {
-      counts[tag] = counts[tag] ? (counts[tag] += 1) : 1;
+      counts[tag] = counts[tag] || [];
+      counts[tag].push(track);
     }
   });
 
   return getBestGuess(Object.entries(counts));
 }
 
-function getBestGuess(counts: [TagName, Count][]): TagName[] {
+function getBestGuess(
+  counts: [TagName, VisitTrack[]][]
+): [TagName, VisitTrack[]][] {
   const animalOnlyCounts = counts.filter(
     (tc) => !UNIDENTIFIED_TAGS.includes(tc[TAG])
   );
   if (animalOnlyCounts.length > 0) {
     // there are animal tags
     const maxCount = animalOnlyCounts.reduce(
-      (max, item) => Math.max(max, item[COUNT]),
+      (max, item) => Math.max(max, item[COUNT].length),
       0
     );
-    const tagsWithMaxCount = animalOnlyCounts
-      .filter((tc) => tc[COUNT] === maxCount)
-      .map((tc) => tc[TAG]);
+    const tagsWithMaxCount = animalOnlyCounts.filter(
+      (tc) => tc[COUNT].length === maxCount
+    );
     return tagsWithMaxCount;
   } else {
-    return counts.map((tc) => tc[TAG]);
+    return counts;
   }
 }
 
@@ -235,6 +260,7 @@ interface VisitTrack {
   isAITagged: boolean;
   start: string;
   end: string;
+  mass: number; // For tie-breaking purposes with AI only visits
 }
 
 export async function generateVisits(

@@ -11,7 +11,6 @@ import { CurrentUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 const route = useRoute();
 const router = useRouter();
-// eslint-disable-next-line vue/no-setup-props-destructure
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse | null;
 }>();
@@ -20,7 +19,10 @@ const currentTrack = ref<ApiTrackResponse | null>(null);
 
 const emit = defineEmits<{
   (e: "track-tag-changed", track: ApiTrackResponse): void;
-  (e: "track-selected", track: { trackId: TrackId }): void;
+  (
+    e: "track-selected",
+    track: { trackId: TrackId; automatically: boolean }
+  ): void;
 }>();
 
 const getTrackById = (trackId: TrackId): ApiTrackResponse | null => {
@@ -81,7 +83,7 @@ const selectedTrack = (trackId: TrackId) => {
     const track = getTrackById(trackId);
     if (track) {
       // Change track.
-      emit("track-selected", { trackId });
+      emit("track-selected", { trackId, automatically: false });
     }
   }
 };
@@ -152,8 +154,6 @@ const addOrRemoveUserTag = async ({
 };
 
 const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
-
-// eslint-disable-next-line vue/no-setup-props-destructure
 
 // FIXME - replace with b-accordion component.
 </script>

@@ -25,7 +25,6 @@ import type { CardTableItems } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
   index: number;
@@ -51,7 +50,7 @@ const trackDetails = ref<HTMLDivElement>();
 const capitalize = (str: string): string =>
   str
     .split(" ")
-    .map((p) => p[0].toUpperCase() + p.slice(1))
+    .map((p) => (p[0] || "").toUpperCase() + p.slice(1))
     .join(" ");
 
 const taggerDetails = computed<CardTableItems>(() => {
@@ -113,7 +112,10 @@ watch(showTaggerDetails, resizeDetails);
 watch(showClassificationSearch, resizeDetails);
 
 const selectAndMaybeToggleExpanded = () => {
-  if (thisUserTag.value || expandedInternal.value) {
+  if (hasUserTag.value || expandedInternal.value) {
+    if (!expandedInternal.value) {
+      emit("selected-track", track.id);
+    }
     expandedInternal.value = !expandedInternal.value;
     emit("expanded-changed", track.id, expandedInternal.value);
   } else {
@@ -121,7 +123,7 @@ const selectAndMaybeToggleExpanded = () => {
   }
 };
 
-const _hasUserTag = computed<boolean>(() => {
+const hasUserTag = computed<boolean>(() => {
   return track.tags.some((tag) => !tag.automatic);
 });
 
@@ -137,10 +139,9 @@ const uniqueUserTags = computed<string[]>(() => {
 });
 
 const consensusUserTag = computed<string | null>(() => {
-  if (uniqueUserTags.value.length === 1) {
-    return displayLabelForClassificationLabel(uniqueUserTags.value[0]);
-  }
-  return null;
+  return (
+    displayLabelForClassificationLabel(uniqueUserTags.value[0] || "") || null
+  );
 });
 
 const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
@@ -162,6 +163,12 @@ const humanTags = computed<ApiHumanTrackTagResponse[]>(() => {
 
 const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(() =>
   humanTags.value.find((tag) => tag.userId === CurrentUser.value?.id)
+);
+
+const otherUserTags = computed<string[]>(() =>
+  humanTags.value
+    .filter((tag) => tag.userId !== CurrentUser.value?.id)
+    .map(({ what }) => what)
 );
 
 const thisUsersTagAgreesWithAiClassification = computed<boolean>(
@@ -284,7 +291,7 @@ const pinCustomTag = async (classification: Classification) => {
   }
 };
 
-const currentlySelectedTagIsPinnable = computed<boolean>(() => {
+const currentlySelectedTagCanBePinned = computed<boolean>(() => {
   if (!thisUserTag.value) {
     return false;
   }
@@ -312,6 +319,10 @@ onMounted(async () => {
   }
   handleExpansion(expanded.value);
 });
+
+const handleImageError = (e: ErrorEvent) => {
+  (e.target as HTMLImageElement).classList.add("image-not-found");
+};
 </script>
 <template>
   <div
@@ -328,7 +339,7 @@ onMounted(async () => {
         }"
         >{{ index + 1 }}</span
       >
-      <div v-if="!thisUserTag && masterTag" class="d-flex flex-column">
+      <div v-if="!hasUserTag && masterTag" class="d-flex flex-column">
         <span class="text-uppercase fs-9 fw-bold">AI Classification</span>
         <span
           class="classification text-capitalize d-inline-block fw-bold"
@@ -336,7 +347,7 @@ onMounted(async () => {
           >{{ masterTag.what }}</span
         >
       </div>
-      <span v-else-if="thisUserTag" class="d-flex flex-column">
+      <span v-else-if="hasUserTag" class="d-flex flex-column">
         <span class="text-uppercase fs-9 fw-bold">Manual ID</span>
         <span
           class="classification text-capitalize d-inline-block fw-bold"
@@ -382,7 +393,7 @@ onMounted(async () => {
         >
       </span>
     </div>
-    <div v-if="!thisUserTag && !expanded">
+    <div v-if="!hasUserTag && !expanded">
       <button
         type="button"
         class="btn fs-7 confirm-button"
@@ -433,6 +444,10 @@ onMounted(async () => {
         :class="[
           tag.label,
           { selected: thisUserTag && tag.label === thisUserTag.what },
+          {
+            'selected-by-other-user':
+              otherUserTags.length && otherUserTags.includes(tag.label),
+          },
           { pinned: !!userDefinedTags[tag.label] },
         ]"
         :key="index"
@@ -442,7 +457,13 @@ onMounted(async () => {
         <span v-if="!!userDefinedTags[tag.label]" class="pinned-tag"
           ><font-awesome-icon icon="thumbtack" />
         </span>
-        <img src="" width="24" height="24" />
+        <img
+          src=""
+          width="24"
+          height="24"
+          :alt="tag.display"
+          :onerror="handleImageError"
+        />
         <span>{{ tag.display }}</span>
       </button>
       <button
@@ -455,7 +476,7 @@ onMounted(async () => {
     </div>
     <div v-if="showClassificationSearch" class="mt-2 d-flex">
       <hierarchical-tag-select
-        v-if="currentlySelectedTagIsPinnable || showClassificationSearch"
+        v-if="currentlySelectedTagCanBePinned || showClassificationSearch"
         class="flex-grow-1"
         @change="setCustomTag"
         @pin="pinCustomTag"
@@ -463,7 +484,7 @@ onMounted(async () => {
         @deselected="showClassificationSearch = false"
         ref="tagSelect"
         :selected-item="thisUserTag && thisUserTag.what"
-        :pinnable="currentlySelectedTagIsPinnable"
+        :can-be-pinned="currentlySelectedTagCanBePinned"
         :pinned-items="userDefinedTagLabels"
       />
     </div>
@@ -558,17 +579,30 @@ onMounted(async () => {
     font-weight: 500;
     box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   }
+  &.selected-by-other-user {
+    background: #eee;
+    box-shadow: inset 0 1px 10px 3px rgba(144, 238, 144, 0.4),
+      inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
+  }
   > img {
     background: transparent;
     position: relative;
-    &::before {
+    overflow: hidden;
+    &::after {
       border-radius: 4px;
       position: absolute;
       content: "";
       background: #666;
-      width: 24px;
-      height: 24px;
+      width: 100%;
+      height: 100%;
+      left: 0;
+      top: 0;
       display: inline-block;
+    }
+    &.image-not-found {
+      &::after {
+        border-radius: 0;
+      }
     }
   }
   &.pinned {

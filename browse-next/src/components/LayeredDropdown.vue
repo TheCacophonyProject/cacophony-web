@@ -7,7 +7,7 @@ const {
   options,
   disabled = false,
   multiselect = false,
-  pinnable = false,
+  canBePinned = false,
   pinnedItems = [],
   placeholder = "Search",
   selectedItem,
@@ -16,7 +16,7 @@ const {
   disabled: boolean;
   multiselect: boolean;
   placeholder: string;
-  pinnable: boolean;
+  canBePinned: boolean;
   pinnedItems: string[];
   selectedItem?: string;
 }>();
@@ -268,7 +268,7 @@ defineExpose({
           type="button"
           class="btn btn-outline-secondary ms-2 pin-btn"
           :class="{ pinned: singleSelectionIsPinned }"
-          v-if="pinnable"
+          v-if="canBePinned"
         >
           <font-awesome-icon
             icon="thumbtack"

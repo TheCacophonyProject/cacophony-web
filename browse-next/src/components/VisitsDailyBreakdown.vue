@@ -18,7 +18,6 @@ import { displayLabelForClassificationLabel } from "@api/Classifications";
 //  Of course, we don't currently do this.
 
 const now = new Date();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { visits, startTime, isNocturnal, location } = defineProps<{
   visits: ApiVisitResponse[];
   startTime: DateTime;

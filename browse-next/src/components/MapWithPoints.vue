@@ -28,7 +28,6 @@ const attribution = control.attribution;
 // FIXME - if there are only inactive points, and the points are very spread apart, the points are grey and small
 //  and hard to see.  Maybe make them a minimum size, or give them an outline colour?
 
-// eslint-disable-next-line vue/no-setup-props-destructure
 const {
   points,
   radius = 0,
@@ -41,7 +40,6 @@ const {
   hasAttribution = true,
   activePoints = [],
   focusedPoint,
-  //loading,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => RouteLocationRaw;
   points: NamedPoint[];
@@ -54,7 +52,6 @@ const {
   isInteractive?: boolean;
   markersAreInteractive?: boolean;
   hasAttribution?: boolean;
-  //loading: boolean;
 }>();
 
 interface LeafletInternalRawMarker {
@@ -428,7 +425,6 @@ onMounted(() => {
     const attributionToggle = new Control({
       position: "bottomleft",
     });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     attributionToggle.onAdd = (map: LeafletMap): HTMLElement => {
       const el = document.createElement("div");
       el.classList.add("leaflet-control");

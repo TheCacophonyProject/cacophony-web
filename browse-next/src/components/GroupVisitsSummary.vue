@@ -7,7 +7,6 @@ import type { LatLng } from "leaflet";
 import VisitsTimeline from "@/components/VisitsTimeline.vue";
 import type { NamedPoint } from "@models/mapUtils";
 
-// eslint-disable-next-line vue/no-setup-props-destructure
 const { stations, visits, activeStations, startDate, loading } = defineProps<{
   visits: ApiVisitResponse[];
   stations: ApiStationResponse[];

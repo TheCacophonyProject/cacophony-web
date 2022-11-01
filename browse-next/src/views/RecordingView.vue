@@ -1,8 +1,7 @@
 <script setup lang="ts">
-// eslint-disable-next-line no-undef
 import { useRoute } from "vue-router";
 import type { RouteParamsRaw } from "vue-router";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import type {
   LatLng,
@@ -54,6 +53,7 @@ const recordingIds = ref(
 const currentRecordingId = ref<number>(Number(route.params.currentRecordingId));
 const _currentStationId = ref<StationId | null>(null);
 const currentTrack = ref<ApiTrackResponse | undefined>(undefined);
+const userSelectedTrack = ref<ApiTrackResponse | undefined>(undefined);
 const currentStations = ref<ApiStationResponse[] | null>(stations.value);
 const visitLabel = ref<string>(route.params.visitLabel as string);
 
@@ -334,7 +334,7 @@ const loadRecording = async () => {
       ) {
         // set the default track if not set
         if (tracks.value.length) {
-          await selectedTrack(tracks.value[0].id);
+          await selectedTrack(tracks.value[0].id, true);
         }
       }
     } else {
@@ -343,12 +343,20 @@ const loadRecording = async () => {
   }
 };
 
-const selectedTrack = async (trackId: TrackId) => {
+const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   const params = {
     ...route.params,
     trackId,
   };
 
+  if (!automatically) {
+    // Make the player start playing at the beginning of the selected track,
+    // and stop when it reaches the end of that track.
+    userSelectedTrack.value = tracks.value.find(({ id }) => id === trackId);
+    await nextTick(() => {
+      userSelectedTrack.value = undefined;
+    });
+  }
   // TODO: Should this automatically get removed if the selectedTrack has changed due to
   //  the recording playing onto a new track
   delete (params as Record<string, string | number>).detail;
@@ -357,8 +365,13 @@ const selectedTrack = async (trackId: TrackId) => {
     params,
   });
 };
-const selectedTrackWrapped = ({ trackId }: { trackId: TrackId }) =>
-  selectedTrack(trackId);
+const selectedTrackWrapped = ({
+  trackId,
+  automatically,
+}: {
+  trackId: TrackId;
+  automatically: boolean;
+}) => selectedTrack(trackId, automatically);
 
 const tracks = computed<ApiTrackResponse[]>(() => {
   if (recordingData.value) {
@@ -518,9 +531,13 @@ watch(playerHeight.height, (newHeight) => {
             :current-track="currentTrack"
             :has-next="hasNextRecording || hasNextVisit"
             :has-prev="hasPreviousRecording || hasPreviousVisit"
+            :user-selected-track="userSelectedTrack"
             @request-next-recording="gotoNextRecordingOrVisit"
             @request-prev-recording="gotoPreviousRecordingOrVisit"
-            @track-selected="({ trackId }) => selectedTrack(trackId)"
+            @track-selected="
+              ({ trackId, automatically }) =>
+                selectedTrack(trackId, automatically)
+            "
           />
         </div>
         <div
@@ -636,7 +653,10 @@ watch(playerHeight.height, (newHeight) => {
             :recording="recording"
             class="recording-tracks"
             @track-tag-changed="trackTagChanged"
-            @track-selected="({ trackId }) => selectedTrack(trackId)"
+            @track-selected="
+              ({ trackId, automatically }) =>
+                selectedTrack(trackId, automatically)
+            "
           />
           <div
             class="recording-info-mobile p-3 flex-grow-1"

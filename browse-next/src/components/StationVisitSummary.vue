@@ -8,7 +8,6 @@ import { visitsByStation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 
-// eslint-disable-next-line vue/no-setup-props-destructure
 const { station, stations, visits, activeStations } = defineProps<{
   station: ApiStationResponse;
   stations: ApiStationResponse[] | null;
@@ -27,7 +26,6 @@ const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
   let max = 0;
   for (const stationVisits of Object.values(visitsByStation(visits))) {
     const visitsCount = visitsCountBySpecies(stationVisits);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars,no-unused-vars
     max = Math.max(...visitsCount.map(([_, count]) => count), max);
   }
   return max;
@@ -98,7 +96,9 @@ const speciesSummary = computed<[string, number][]>(() =>
           :key="index"
         >
           <strong class="me-1 text-capitalize">{{ count }}</strong
-          >{{ displayLabelForClassificationLabel(species) }}
+          ><span class="text-capitalize">{{
+            displayLabelForClassificationLabel(species)
+          }}</span>
         </div>
       </div>
       <div class="values flex-fill px-2 my-2">
