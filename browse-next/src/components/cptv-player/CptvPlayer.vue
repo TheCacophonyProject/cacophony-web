@@ -10,6 +10,7 @@ import type {
 } from "./cptv-decoder/decoder";
 import {
   ColourMaps,
+  formatHeaderInfo,
   renderFrameIntoFrameBuffer,
 } from "./cptv-decoder/frameRenderUtils";
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
@@ -56,6 +57,7 @@ const {
   exportRequested,
   hasNext = false,
   hasPrev = false,
+  displayHeaderInfo = false,
 } = defineProps<{
   recording: ApiRecordingResponse | null;
   recordingId: RecordingId;
@@ -65,6 +67,7 @@ const {
   canSelectTracks?: boolean;
   hasNext?: boolean;
   hasPrev?: boolean;
+  displayHeaderInfo?: boolean;
   exportRequested?: boolean | "advanced";
 }>();
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
@@ -137,6 +140,8 @@ const emit = defineEmits<{
   ): void;
   (e: "ready-to-play", header: CptvHeader): void;
   (e: "export-completed"): void;
+  (e: "request-header-info-display"): void;
+  (e: "dismiss-header-info"): void;
 }>();
 
 // HTML refs
@@ -278,8 +283,6 @@ const colourMap = ref<[string, Uint32Array]>(ColourMaps[paletteIndex.value]);
 const messageTimeout = ref<number | null>(null);
 const messageAnimationFrame = ref<number>(0);
 
-const displayHeaderInfo = ref<boolean>(false);
-
 const loadedStream = ref<boolean | string>(false);
 const totalFrames = ref<number | null>(null);
 const seekingInProgress = ref<boolean>(false);
@@ -369,6 +372,10 @@ const selectTrack = async (
       playing.value = true;
     }
   }
+};
+
+const requestHeaderInfoDisplay = () => {
+  emit("request-header-info-display");
 };
 
 const requestPrevRecording = () => {
@@ -721,6 +728,8 @@ const formatTime = (time: number): string => {
 const elapsedTime = computed<string>(() => {
   return formatTime(currentTime.value);
 });
+
+const headerInfo = computed(() => formatHeaderInfo(header.value));
 
 const getAuthoritativeTagForTrack = (
   trackTags: ApiTrackTagResponse[]
@@ -1809,7 +1818,7 @@ const drawFrame = async (
             <font-awesome-icon icon="palette" />
           </button>
           <button
-            @click.stop.prevent="displayHeaderInfo = true"
+            @click.stop.prevent="requestHeaderInfoDisplay"
             data-tooltip="Show recording header info"
             :class="{ selected: displayHeaderInfo }"
             ref="showHeader"
@@ -1921,6 +1930,20 @@ const drawFrame = async (
       />
     </div>
   </div>
+  <teleport v-if="displayHeaderInfo" to="#recording-status-modal">
+    <div class="p-3">
+      <pre v-if="header">{{ headerInfo }}</pre>
+      <div class="d-flex">
+        <button
+          type="button"
+          class="btn btn-outline-secondary mt-2 flex-grow-1"
+          @click="() => emit('dismiss-header-info')"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </teleport>
   <teleport v-if="exportRequested" to="#recording-status-modal">
     <div v-if="exportRequested === 'advanced' && !isExporting" class="p-3">
       <b-form-group label="Include tracks in exported timespan">

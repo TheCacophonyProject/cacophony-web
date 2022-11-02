@@ -601,6 +601,18 @@ const requestedExport = () => {
   });
 };
 
+const showHeaderInfo = ref<boolean>(false);
+const requestedHeaderInfoDisplay = () => {
+  inlineModal.value = true;
+  nextTick(() => {
+    showHeaderInfo.value = true;
+  });
+};
+const dismissHeaderInfo = () => {
+  inlineModal.value = false;
+  showHeaderInfo.value = false;
+};
+
 const exportCompleted = () => {
   inlineModal.value = false;
   exportRequested.value = false;
@@ -716,9 +728,12 @@ const inlineModal = ref<boolean>(false);
             :has-prev="hasPreviousRecording || hasPreviousVisit"
             :user-selected-track="userSelectedTrack"
             :export-requested="exportRequested"
+            :display-header-info="showHeaderInfo"
             @export-completed="exportCompleted"
             @request-next-recording="gotoNextRecordingOrVisit"
             @request-prev-recording="gotoPreviousRecordingOrVisit"
+            @request-header-info-display="requestedHeaderInfoDisplay"
+            @dismiss-header-info="dismissHeaderInfo"
             @track-selected="
               ({ trackId, automatically }) =>
                 selectedTrack(trackId, automatically)
