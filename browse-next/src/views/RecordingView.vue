@@ -18,7 +18,6 @@ import {
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import router from "@/router";
 import { getRecordingById } from "@api/Recording";
-import type { JwtToken } from "@api/types";
 import {
   selectedVisit,
   maybeFilteredVisitsContext as visitsContext,
@@ -269,10 +268,10 @@ const recalculateCurrentVisit = async (
   addedTag?: ApiHumanTrackTagResponse,
   removedTag?: string
 ) => {
-  if (recordingData.value) {
+  if (recording.value) {
     // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
     // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
-    const recordingId = recordingData.value.recording.id;
+    const recordingId = recording.value.id;
     // Find the visit:
     const targetVisit = visitsContext.value.find((visit) =>
       visit.recordings.find(({ recId }) => recId === recordingId)
@@ -292,19 +291,8 @@ const recalculateCurrentVisit = async (
           targetTrack.tag = null;
           // If there are still user tags, then the visit classification becomes the next user tag.
         } else if (addedTag) {
-          // FIXME - There should be a target track, so include the trackId from the backend.
           targetTrack.isAITagged = false;
           targetTrack.tag = addedTag.what;
-          // targetVisitRecording.tracks.push({
-          //   tag: addedTag.what,
-          //   start: track.start,
-          //   end: track.end,
-          //   isAITagged: false,
-          //   aiTag: "none",
-          //   id: track.id,
-          //   mass: (track.positions &&
-          //       track.positions.reduce((a, {mass}) => a + (mass || 0), 0)) || 0
-          // });
         }
 
         // Now, recalculate the visit:
@@ -336,6 +324,14 @@ const recalculateCurrentVisit = async (
           targetVisit.classification = targetVisit.classificationAi;
           targetVisit.classFromUserTag = false;
         }
+        const params = {
+          ...route.params,
+          visitLabel: targetVisit.classification,
+        };
+        await router.replace({
+          name: route.name as string,
+          params,
+        });
         console.warn(
           "recalculate visit",
           targetVisit,
@@ -361,8 +357,8 @@ const trackTagChanged = async ({
   tag: string;
   action: "add" | "remove";
 }) => {
-  if (recordingData.value) {
-    const trackToPatch = recordingData.value.recording.tracks.find(
+  if (recording.value) {
+    const trackToPatch = recording.value.tracks.find(
       ({ id }) => id === track.id
     );
     if (trackToPatch) {
@@ -387,15 +383,16 @@ const trackTagChanged = async ({
 };
 
 const addedRecordingLabel = (label: ApiRecordingTagResponse) => {
-  if (recordingData.value) {
-    recordingData.value.recording.tags.push(label);
+  if (recording.value) {
+    recording.value.tags.push(label);
   }
 };
 
 const removedRecordingLabel = (labelId: TagId) => {
-  if (recordingData.value) {
-    recordingData.value.recording.tags =
-      recordingData.value.recording.tags.filter((tag) => tag.id !== labelId);
+  if (recording.value) {
+    recording.value.tags = recording.value.tags.filter(
+      (tag) => tag.id !== labelId
+    );
   }
 };
 
@@ -406,15 +403,24 @@ const isInGreaterVisitContext = computed<boolean>(() => {
   return !!selectedVisit.value;
 });
 
-interface RecordingData {
-  recording: ApiRecordingResponse;
-  downloadJwt: JwtToken<RecordingId>;
-}
+const recording = ref<ApiRecordingResponse | null>(null);
 
-const recordingData = ref<RecordingData | null>(null);
+const tracks = computed<ApiTrackResponse[]>(() => {
+  if (recording.value) {
+    return recording.value.tracks;
+  }
+  return [];
+});
+
+const tags = computed<ApiRecordingTagResponse[]>(() => {
+  if (recording.value) {
+    return recording.value.tags;
+  }
+  return [];
+});
 
 const loadRecording = async () => {
-  recordingData.value = null;
+  recording.value = null;
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
@@ -422,15 +428,10 @@ const loadRecording = async () => {
 
     if (recordingResponse.success) {
       // NOTE: Only handling RAW recordings here, and assuming they always exist.
-      recordingData.value = {
-        recording: recordingResponse.result.recording,
-
-        // TODO: Handle expiry of this
-        downloadJwt: recordingResponse.result.downloadRawJWT || "",
-      };
+      recording.value = recordingResponse.result.recording;
 
       if (route.params.trackId) {
-        currentTrack.value = recordingData.value?.recording.tracks.find(
+        currentTrack.value = recording.value?.tracks.find(
           ({ id }) => id == Number(route.params.trackId)
         );
       }
@@ -440,8 +441,8 @@ const loadRecording = async () => {
         (route.params.trackId && !currentTrack.value)
       ) {
         // set the default track if not set
-        if (tracks.value.length) {
-          await selectedTrack(tracks.value[0].id, true);
+        if (recording.value.tracks.length) {
+          await selectedTrack(recording.value.tracks[0].id, true);
         }
       }
     } else {
@@ -459,7 +460,9 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   if (!automatically) {
     // Make the player start playing at the beginning of the selected track,
     // and stop when it reaches the end of that track.
-    userSelectedTrack.value = tracks.value.find(({ id }) => id === trackId);
+    userSelectedTrack.value = recording.value?.tracks.find(
+      ({ id }) => id === trackId
+    );
     await nextTick(() => {
       userSelectedTrack.value = undefined;
     });
@@ -479,27 +482,6 @@ const selectedTrackWrapped = ({
   trackId: TrackId;
   automatically: boolean;
 }) => selectedTrack(trackId, automatically);
-
-const tracks = computed<ApiTrackResponse[]>(() => {
-  if (recordingData.value) {
-    return recordingData.value.recording.tracks;
-  }
-  return [];
-});
-
-const tags = computed<ApiRecordingTagResponse[]>(() => {
-  if (recordingData.value) {
-    return recordingData.value.recording.tags;
-  }
-  return [];
-});
-
-const recording = computed<ApiRecordingResponse | null>(() => {
-  if (recordingData.value) {
-    return recordingData.value.recording;
-  }
-  return null;
-});
 
 onMounted(async () => {
   await loadRecording();
