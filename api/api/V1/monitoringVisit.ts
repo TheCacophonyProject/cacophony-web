@@ -87,7 +87,6 @@ class Visit {
     const allVisitTracks = this.getAllTracks();
     this.tracks = allVisitTracks.length;
     const bestHumanTags = getBestGuessOverall(allVisitTracks, HUMAN_ONLY);
-
     if (bestHumanTags.length > 0) {
       if (bestHumanTags.length === 1) {
         const classification = bestHumanTags[0];
@@ -107,7 +106,22 @@ class Visit {
       }
     } else {
       const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
-      this.classification = bestAiTags.length > 0 ? bestAiTags[0][0] : "none";
+      if (bestAiTags.length > 1) {
+        // Tie-break based on the average mass of the track in question.
+        let bestMass = -1;
+        let bestTag;
+        for (const [tag, tracks] of bestAiTags) {
+          const mass = tracks.reduce((a, { mass }) => a + (mass || 0), 0);
+          if (mass > bestMass) {
+            bestMass = mass;
+            bestTag = tag;
+          }
+        }
+        this.classification = bestTag;
+      } else {
+        this.classification = bestAiTags.length > 0 ? bestAiTags[0][0] : "none";
+      }
+
       this.classFromUserTag = false;
     }
 
@@ -118,7 +132,7 @@ class Visit {
       let bestMass = -1;
       let bestTag;
       for (const [tag, tracks] of aiGuess) {
-        const mass = tracks.reduce((a, { mass }) => a + mass, 0);
+        const mass = tracks.reduce((a, { mass }) => a + (mass || 0), 0);
         if (mass > bestMass) {
           bestMass = mass;
           bestTag = tag;
@@ -150,7 +164,10 @@ class Visit {
         aiTag: (aiTag && aiTag.what) || null,
         start: track.data ? track.data.start_s : "",
         end: track.data ? track.data.end_s : "",
-        mass: track.positions.reduce((a, { mass }) => a + mass || 0, 0),
+        mass:
+          (track.positions &&
+            track.positions.reduce((a, { mass }) => a + mass || 0, 0)) ||
+          0,
       });
     }
     return newVisitRecording;
