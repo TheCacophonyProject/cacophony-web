@@ -13,6 +13,10 @@ const { recording } = defineProps<{
 const emit = defineEmits<{
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
   (e: "removed-recording-label", label: TagId): void;
+  (e: "requested-download"): void;
+  (e: "requested-export"): void;
+  (e: "delete-recording"): void;
+  (e: "requested-advanced-export"): void;
 }>();
 
 const addingLabelInProgress = ref<boolean>(false);
@@ -89,6 +93,10 @@ const recordingIsFlagged = computed<boolean>(() => {
   }
   return false;
 });
+
+const notImplemented = () => {
+  alert("Not yet implemented");
+};
 </script>
 <template>
   <div class="recording-icons d-flex justify-content-between ps-sm-2">
@@ -118,22 +126,96 @@ const recordingIsFlagged = computed<boolean>(() => {
         :color="recordingIsStarred ? 'goldenrod' : '#666'"
       />
     </button>
-    <button type="button" class="btn" :disabled="!recordingReady">
-      <font-awesome-icon icon="download" color="#666" />
-    </button>
-    <button type="button" class="btn" :disabled="!recordingReady">
-      <font-awesome-icon icon="trash-can" color="#666" />
-    </button>
-    <button type="button" class="btn" :disabled="!recordingReady">
+    <b-dropdown
+      no-flip
+      dropup
+      auto-close
+      offset="-92, 10"
+      no-caret
+      variant="link"
+      menu-class="dropdown-indicator"
+    >
+      <template #button-content>
+        <font-awesome-icon icon="download" color="#666" />
+      </template>
+      <b-dropdown-item-button @click="() => emit('requested-export')">
+        <font-awesome-icon :icon="['far', 'file-video']" />
+        Export Video
+      </b-dropdown-item-button>
+      <b-dropdown-item-button @click="() => emit('requested-advanced-export')">
+        <font-awesome-icon :icon="['far', 'file-video']" />
+        Export Video (Advanced)
+      </b-dropdown-item-button>
+      <b-dropdown-divider />
+      <b-dropdown-item-button @click="() => emit('requested-download')">
+        <font-awesome-icon :icon="['far', 'file']" />
+        Download CPTV
+      </b-dropdown-item-button>
+    </b-dropdown>
+    <b-dropdown
+      no-flip
+      dropup
+      auto-close
+      offset="-67, 10"
+      no-caret
+      variant="link"
+      menu-class="dropdown-indicator"
+    >
+      <template #button-content>
+        <font-awesome-icon icon="trash-can" color="#666" />
+      </template>
+      <b-dropdown-item-button
+        @click="() => emit('delete-recording')"
+        variant="danger"
+      >
+        <font-awesome-icon icon="exclamation-triangle" />
+        Delete Recording
+      </b-dropdown-item-button>
+    </b-dropdown>
+    <button
+      type="button"
+      class="btn"
+      :disabled="!recordingReady"
+      @click="() => notImplemented()"
+    >
       <font-awesome-icon icon="link" color="#666" />
     </button>
   </div>
 </template>
-
+<style lang="less">
+.dropdown-indicator {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    display: block;
+    bottom: -9px;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid white;
+    left: calc(50% - 10px);
+  }
+  &::before {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    display: block;
+    bottom: -10.5px;
+    border-left: 10.5px solid transparent;
+    border-right: 10.5px solid transparent;
+    border-top: 10.5px solid var(--bs-dropdown-border-color);
+    left: calc(50% - 10.25px);
+  }
+}
+</style>
 <style scoped lang="less">
 .recording-icons {
   color: #666;
 }
+
 @media screen and (max-width: 320px) {
   .optional-button {
     display: none;

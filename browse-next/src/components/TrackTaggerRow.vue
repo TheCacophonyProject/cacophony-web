@@ -20,11 +20,11 @@ import {
   flatClassifications,
   getClassifications,
 } from "@api/Classifications";
-import CardTable from "@/components/CardTable.vue";
 import type { CardTableItems } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
+import SimpleTable from "@/components/SimpleTable.vue";
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
   index: number;
@@ -498,12 +498,12 @@ const handleImageError = (e: ErrorEvent) => {
           class="ms-2"
         />
       </button>
-      <card-table
+      <simple-table
         v-if="showTaggerDetails"
         :items="taggerDetails"
         class="mb-2"
         compact
-      ></card-table>
+      />
     </div>
   </div>
 </template>

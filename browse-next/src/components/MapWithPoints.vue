@@ -425,7 +425,7 @@ onMounted(() => {
     const attributionToggle = new Control({
       position: "bottomleft",
     });
-    attributionToggle.onAdd = (map: LeafletMap): HTMLElement => {
+    attributionToggle.onAdd = (_map: LeafletMap): HTMLElement => {
       const el = document.createElement("div");
       el.classList.add("leaflet-control");
       el.classList.add("leaflet-control-container");

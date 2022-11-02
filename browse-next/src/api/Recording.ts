@@ -58,3 +58,6 @@ export const removeRecordingLabel = (id: RecordingId, tagId: TagId) =>
   CacophonyApi.delete(`/api/v1/recordings/${id}/tags/${tagId}`) as Promise<
     FetchResult<void>
   >;
+
+export const deleteRecording = (id: RecordingId) =>
+  CacophonyApi.delete(`/api/v1/recordings/${id}`) as Promise<FetchResult<void>>;

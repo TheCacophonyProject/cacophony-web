@@ -43,6 +43,7 @@ import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { delayMs } from "@/utils";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
 
 const { pixelRatio } = useDevicePixelRatio();
 const {
@@ -52,6 +53,7 @@ const {
   currentTrack,
   userSelectedTrack,
   canSelectTracks = true,
+  exportRequested,
   hasNext = false,
   hasPrev = false,
 } = defineProps<{
@@ -63,6 +65,7 @@ const {
   canSelectTracks?: boolean;
   hasNext?: boolean;
   hasPrev?: boolean;
+  exportRequested?: boolean | "advanced";
 }>();
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
@@ -91,6 +94,23 @@ watch(pixelRatio, () => {
   pollFrameTimes();
 });
 
+const exportProgressZeroOne = ref<number>(0);
+const exportProgress = computed<number>(
+  () => exportProgressZeroOne.value * 100
+);
+watch(
+  () => exportRequested,
+  async (nextVal) => {
+    if (nextVal) {
+      if (nextVal === true) {
+        await exportMp4();
+      } else if (nextVal === "advanced") {
+        // Wait for user input
+      }
+    }
+  }
+);
+
 const playbackTimeChanged = (offset: number) => {
   setTimeAndRedraw({ timeZeroOne: offset });
 };
@@ -116,6 +136,7 @@ const emit = defineEmits<{
     { trackId, automatically }: { trackId: TrackId; automatically: boolean }
   ): void;
   (e: "ready-to-play", header: CptvHeader): void;
+  (e: "export-completed"): void;
 }>();
 
 // HTML refs
@@ -311,7 +332,7 @@ const firstFrameNumForTrack = (trackId: number): number => {
   return Number(Object.entries(framesByTrack.value[trackId])[0][0]);
 };
 
-const _onePastLastFrameNumForTrack = (trackId: number): number => {
+const onePastLastFrameNumForTrack = (trackId: number): number => {
   const frames = Object.entries(framesByTrack.value[trackId]);
   const lastTrackFramePlusOne = Number(frames[frames.length - 1][0]) + 1;
   if (totalPlayableFrames.value) {
@@ -836,21 +857,195 @@ const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
     );
   }
 );
-//
-const _exportMp4 = async () => {
+
+const isExporting = ref<boolean>(false);
+const doAdvancedExport = () => {
+  exportMp4(trackExportOptions.value);
+  isExporting.value = true;
+};
+const cancelExport = () => {
+  isExporting.value = false;
+  emit("export-completed");
+};
+const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
+  if (!header.value) {
+    isExporting.value = false;
+    return;
+  }
+  playing.value = false;
+  exportProgressZeroOne.value = 0;
+
   if (overlayCanvas.value) {
+    const targetWidth = 640;
+    const targetHeight = 480;
     const encoder = new Mp4Encoder();
-    await encoder.init(640, 480, 9);
-    const context = overlayCanvas.value.getContext("2d", {
+    await encoder.init(targetWidth, targetHeight, 9);
+
+    if (!exportRequested) {
+      // Could have been canceled.
+      encoder.close();
+      isExporting.value = false;
+      return;
+    }
+    const renderCanvas = document.createElement("canvas");
+    renderCanvas.width = targetWidth;
+    renderCanvas.height = targetHeight;
+
+    const renderContext = renderCanvas.getContext("2d", {
       willReadFrequently: true,
       desynchronized: true,
     });
-    if (context) {
-      await encoder.encodeFrame(context.getImageData(0, 0, 640, 480).data);
+    const videoCanvas = document.createElement("canvas");
+    videoCanvas.width = header.value.width;
+    videoCanvas.height = header.value.height;
+    const videoContext = videoCanvas.getContext("2d");
+    if (videoContext === null || renderContext === null) {
+      encoder.close();
+      isExporting.value = false;
+      return;
     }
-    const _uint8Array = await encoder.finish();
+    // Make sure everything is loaded to ensure that we have final min/max numbers for normalisation
+    //await ensureEntireFileIsLoaded();
+    await makeSureWeHaveTheFrame(100000);
+
+    if (await cptvDecoder.hasStreamError()) {
+      emit("export-completed");
+      streamLoadError.value = await cptvDecoder.getStreamError();
+      await cptvDecoder.free();
+      frames = [];
+      encoder.close();
+      isExporting.value = false;
+      return;
+    }
+
+    if (!exportRequested) {
+      // Could have been canceled.
+      encoder.close();
+      isExporting.value = false;
+      return;
+    }
+
+    console.assert(totalFrames.value !== null);
+    const numTotalFrames = totalFrames.value || 0;
+    let startFrame = 0;
+    let onePastLastFrame = numTotalFrames;
+    if (
+      trackExportOptions.value.filter((track) => track.includeInExportTime)
+        .length !== 0
+    ) {
+      startFrame = numTotalFrames;
+      onePastLastFrame = 0;
+      for (const { includeInExportTime, trackId } of trackExportOptions.value) {
+        if (includeInExportTime) {
+          const track = (recording as ApiRecordingResponse).tracks.find(
+            (track) => track.id === trackId
+          );
+          if (track) {
+            firstFrameNumForTrack(trackId);
+            onePastLastFrameNumForTrack(trackId);
+            startFrame = Math.min(startFrame, firstFrameNumForTrack(trackId));
+            onePastLastFrame = Math.max(
+              onePastLastFrame,
+              onePastLastFrameNumForTrack(trackId)
+            );
+          }
+        }
+      }
+    }
+    let frameNum = startFrame;
+    while (frameNum < onePastLastFrame) {
+      const frameData = frames[frameNum];
+      const frameHeader = frameData.meta;
+      const [min, max] = minMaxForFrame(frameData);
+      renderFrameIntoFrameBuffer(
+        frameBuffer,
+        frameData.data,
+        colourMap.value[1],
+        min,
+        max
+      );
+      videoContext.putImageData(
+        new ImageData(frameBuffer, header.value.width, header.value.height),
+        0,
+        0
+      );
+      renderContext.imageSmoothingEnabled = videoSmoothing.value;
+      if (videoSmoothing.value) {
+        renderContext.imageSmoothingQuality = "high";
+      }
+      renderContext.drawImage(
+        videoCanvas,
+        0,
+        0,
+        videoCanvas.width,
+        videoCanvas.height,
+        0,
+        0,
+        renderCanvas.width,
+        renderCanvas.height
+      );
+
+      // Draw the overlay
+      let timeSinceLastFFCSeconds = Number.MAX_SAFE_INTEGER;
+      if (frameHeader.lastFfcTimeMs) {
+        timeSinceLastFFCSeconds =
+          (frameHeader.timeOnMs - frameHeader.lastFfcTimeMs) / 1000;
+      }
+
+      renderOverlay(
+        renderContext,
+        renderCanvas.width / videoCanvas.width,
+        timeSinceLastFFCSeconds,
+        true,
+        frameNum,
+        recording?.tracks || [],
+        canSelectTracks,
+        currentTrack,
+        motionPathMode.value ? motionPaths.value : [],
+        pixelRatio.value,
+        tracksByFrame.value,
+        framesByTrack.value,
+        useExportOptions
+      );
+
+      await encoder.encodeFrame(
+        renderContext.getImageData(0, 0, targetWidth, targetHeight).data
+      );
+      if (!exportRequested) {
+        encoder.close();
+        // Check for cancellation
+        isExporting.value = false;
+        return;
+      }
+      exportProgressZeroOne.value =
+        (frameNum - startFrame) / (onePastLastFrame - startFrame);
+      frameNum++;
+    }
+    const uint8Array = await encoder.finish();
     encoder.close();
+    if (!exportRequested) {
+      // Check for cancellation
+      isExporting.value = false;
+      return;
+    }
+    const recordingIdSuffix = `recording_${recordingId}__`;
+    trackExportOptions.value = exportOptions.value;
+    download(
+      URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
+      `${recordingIdSuffix}${new Date(
+        header.value.timestamp / 1000
+      ).toLocaleString()}`
+    );
+    isExporting.value = false;
+    emit("export-completed");
   }
+};
+
+const download = (url: string, filename: string) => {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename || "download";
+  anchor.click();
 };
 
 const ambientTemperature = computed<string | null>(() => {
@@ -1726,6 +1921,65 @@ const drawFrame = async (
       />
     </div>
   </div>
+  <teleport v-if="exportRequested" to="#recording-status-modal">
+    <div v-if="exportRequested === 'advanced' && !isExporting" class="p-3">
+      <b-form-group label="Include tracks in exported timespan">
+        <b-form-checkbox
+          v-for="(track, index) in trackExportOptions"
+          :key="index"
+          v-model="track.includeInExportTime"
+          >Track {{ index + 1 }} ({{
+            displayLabelForClassificationLabel(
+              framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
+                .what
+            )
+          }})</b-form-checkbox
+        >
+      </b-form-group>
+      <b-form-group label="Display track boxes in export">
+        <b-form-checkbox
+          v-for="(track, index) in trackExportOptions"
+          :key="index"
+          v-model="track.displayInExport"
+          >Track {{ index + 1 }} ({{
+            displayLabelForClassificationLabel(
+              framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
+                .what
+            )
+          }})</b-form-checkbox
+        >
+      </b-form-group>
+      <div class="d-flex flex-column">
+        <button
+          type="button"
+          class="btn btn-outline-secondary mt-2 flex-grow-1"
+          @click="doAdvancedExport"
+        >
+          Export
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-danger mt-2 flex-grow-1"
+          @click="cancelExport"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+    <div v-else class="p-3">
+      <span>Exporting...</span>
+      <b-progress :value="exportProgress" striped animated></b-progress>
+      <div class="d-flex">
+        <button
+          type="button"
+          class="btn btn-outline-danger mt-2 flex-grow-1"
+          @click="cancelExport"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </teleport>
 </template>
 <style scoped lang="less">
 .video-container {

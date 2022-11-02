@@ -36,12 +36,23 @@ import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import { CurrentUser } from "@models/LoggedInUser";
+import { CurrentUser, CurrentUserCreds } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import type { VisitRecordingTag } from "@typedefs/api/monitoring";
+import { API_ROOT } from "@api/root";
+import { deleteRecording as apiDeleteRecording } from "@api/Recording";
 
 const route = useRoute();
 const emit = defineEmits(["close"]);
+const inlineModalEl = ref<HTMLDivElement>();
+
+const { height: inlineModalHeight } = useElementSize(inlineModalEl);
+watch(inlineModalHeight, (newHeight) => {
+  if (inlineModalEl.value) {
+    inlineModalEl.value.style.height = `${newHeight}px`;
+    inlineModalEl.value.style.top = `calc(50% - ${newHeight / 2}px)`;
+  }
+});
 
 const stations: Ref<ApiStationResponse[] | null> =
   inject("activeStationsContext") || ref(null);
@@ -582,10 +593,93 @@ watch(playerHeight.height, (newHeight) => {
   }
 });
 
+const exportRequested = ref<boolean | "advanced">(false);
+const requestedExport = () => {
+  inlineModal.value = true;
+  nextTick(() => {
+    exportRequested.value = true;
+  });
+};
+
+const exportCompleted = () => {
+  inlineModal.value = false;
+  exportRequested.value = false;
+};
+
+const requestedAdvancedExport = () => {
+  inlineModal.value = true;
+  nextTick(() => {
+    exportRequested.value = "advanced";
+  });
+};
+
+const requestedDownload = async () => {
+  if (recording.value) {
+    const request = {
+      mode: "cors",
+      cache: "no-cache",
+      headers: {
+        Authorization: CurrentUserCreds.value?.apiToken,
+      },
+      method: "get",
+    };
+
+    const download = (url: string, filename: string) => {
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename || "download";
+      anchor.click();
+    };
+    const recordingId = recording.value.id;
+    const cptvFileResponse = await window.fetch(
+      `${API_ROOT}/api/v1/recordings/raw/${recordingId}`,
+      request as RequestInit
+    );
+    const cptvUintArray = await cptvFileResponse.blob();
+    download(
+      URL.createObjectURL(
+        new Blob([cptvUintArray], { type: "application/octet-stream" })
+      ),
+      `recording_${recordingId}${new Date(
+        recording.value.recordingDateTime
+      ).toLocaleString()}.cptv`
+    );
+  }
+};
+
+const deleteRecording = async () => {
+  if (recording.value) {
+    // TODO:
+    // this.$emit("recording-updated", { id: recordingId, action: "deleted" });
+    //const deleteResponse = await apiDeleteRecording(recording.value.id);
+
+    // TODO: Change the current context to remove the recording, recalc visit etc.
+
+    if (
+      hasNextRecording.value ||
+      hasNextVisit.value ||
+      hasPreviousRecording.value ||
+      hasPreviousVisit.value
+    ) {
+      if (hasNextRecording.value || hasNextVisit.value) {
+        await gotoNextRecordingOrVisit();
+      } else {
+        await gotoPreviousRecordingOrVisit();
+      }
+    }
+    console.log("Delete recording");
+  }
+};
+
+const inlineModal = ref<boolean>(false);
+
 // TODO: When we scroll down, can we keep the player at the top of the screen for a while, but reduce the height of it?
 </script>
 <template>
-  <div class="recording-view d-flex flex-column">
+  <div
+    class="recording-view d-flex flex-column"
+    :class="{ dimmed: inlineModal }"
+  >
     <header
       class="recording-view-header d-flex justify-content-between px-sm-3 px-2 py-sm-1"
     >
@@ -621,6 +715,8 @@ watch(playerHeight.height, (newHeight) => {
             :has-next="hasNextRecording || hasNextVisit"
             :has-prev="hasPreviousRecording || hasPreviousVisit"
             :user-selected-track="userSelectedTrack"
+            :export-requested="exportRequested"
+            @export-completed="exportCompleted"
             @request-next-recording="gotoNextRecordingOrVisit"
             @request-prev-recording="gotoPreviousRecordingOrVisit"
             @track-selected="
@@ -683,6 +779,10 @@ watch(playerHeight.height, (newHeight) => {
                 :recording="recording"
                 @added-recording-label="addedRecordingLabel"
                 @removed-recording-label="removedRecordingLabel"
+                @requested-export="requestedExport"
+                @requested-advanced-export="requestedAdvancedExport"
+                @requested-download="requestedDownload"
+                @delete-recording="deleteRecording"
               />
             </div>
           </div>
@@ -867,6 +967,10 @@ watch(playerHeight.height, (newHeight) => {
           :recording="recording"
           @added-recording-label="addedRecordingLabel"
           @removed-recording-label="removedRecordingLabel"
+          @requested-export="requestedExport"
+          @requested-advanced-export="requestedAdvancedExport"
+          @requested-download="requestedDownload"
+          @delete-recording="deleteRecording"
         />
         <button
           type="button"
@@ -910,6 +1014,12 @@ watch(playerHeight.height, (newHeight) => {
       </nav>
     </footer>
   </div>
+  <div
+    v-if="inlineModal"
+    class="inline-modal"
+    id="recording-status-modal"
+    ref="inlineModalEl"
+  />
 </template>
 
 <style scoped lang="less">
@@ -1049,5 +1159,36 @@ watch(playerHeight.height, (newHeight) => {
       //right: 0;
     }
   }
+}
+
+.dimmed {
+  user-select: none;
+  position: relative;
+
+  &::after {
+    content: "";
+    display: block;
+    background: rgba(0, 0, 0, 0.2);
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 400;
+  }
+}
+.inline-modal {
+  @width: 400px;
+  @height: auto;
+  width: @width;
+  height: @height;
+  position: absolute;
+  border-radius: 2px;
+  //top: calc(50% - (@height / 2));
+  top: 40%;
+  left: calc(50% - (@width / 2));
+  background: white;
+  z-index: 401;
+  .standard-shadow();
 }
 </style>

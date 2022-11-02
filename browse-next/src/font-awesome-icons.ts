@@ -58,6 +58,7 @@ import {
   faAngleDoubleRight,
   faEllipsis,
   faThumbTack,
+  faExclamationTriangle,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -67,6 +68,8 @@ import {
   faStar,
   faThumbsUp,
   faThumbsDown,
+  faFile,
+  faFileVideo,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(
@@ -132,7 +135,10 @@ library.add(
   faCheckCircle,
   faAngleDoubleRight,
   faEllipsis,
-  faThumbTack
+  faThumbTack,
+  faFile,
+  faFileVideo,
+  faExclamationTriangle
 );
 
 export default FontAwesomeIcon;
