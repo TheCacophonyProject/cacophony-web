@@ -159,6 +159,7 @@ class Visit {
       );
 
       newVisitRecording.tracks.push({
+        id: track.id,
         tag: bestTag ? bestTag.what : null,
         isAITagged: bestTag ? bestTag.automatic : false,
         aiTag: (aiTag && aiTag.what) || null,
@@ -166,7 +167,7 @@ class Visit {
         end: track.data ? track.data.end_s : "",
         mass:
           (track.positions &&
-            track.positions.reduce((a, { mass }) => a + mass || 0, 0)) ||
+            track.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
           0,
       });
     }
@@ -272,6 +273,7 @@ interface VisitTrack {
   // this is the overriding tag that we have given this event
   // e.g. if it was unidentified but grouped under a cat visit
   // assumedTag would be "cat"
+  id: TrackId;
   tag: string;
   aiTag: string;
   isAITagged: boolean;

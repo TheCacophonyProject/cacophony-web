@@ -18,7 +18,10 @@ const { recording } = defineProps<{
 const currentTrack = ref<ApiTrackResponse | null>(null);
 
 const emit = defineEmits<{
-  (e: "track-tag-changed", track: ApiTrackResponse): void;
+  (
+    e: "track-tag-changed",
+    payload: { track: ApiTrackResponse; tag: string; action: "add" | "remove" }
+  ): void;
   (
     e: "track-selected",
     track: { trackId: TrackId; automatically: boolean }
@@ -115,7 +118,7 @@ const addOrRemoveUserTag = async ({
           thisUserTag.id
         );
         if (removeTagResponse.success) {
-          emit("track-tag-changed", track);
+          emit("track-tag-changed", { track, tag, action: "remove" });
         } else {
           // Add the tag back if failed
           track.tags.push(thisUserTag);
@@ -142,7 +145,7 @@ const addOrRemoveUserTag = async ({
         );
         if (newTagResponse.success && newTagResponse.result.trackTagId) {
           interimTag.id = newTagResponse.result.trackTagId;
-          emit("track-tag-changed", track);
+          emit("track-tag-changed", { track, tag, action: "add" });
         } else {
           // Remove the interim tag
           track.tags.pop();

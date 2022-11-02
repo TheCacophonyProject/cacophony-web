@@ -37,6 +37,9 @@ import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { CurrentUser } from "@models/LoggedInUser";
+import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
+import type { VisitRecordingTag } from "@typedefs/api/monitoring";
 
 const route = useRoute();
 const emit = defineEmits(["close"]);
@@ -261,20 +264,124 @@ const gotoPreviousVisit = () => {
 
 // TODO - Handle previous visits
 
-const recalculateCurrentVisit = async () => {
-  console.warn("TODO - recalculate current visit");
-  // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
-  // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
+const recalculateCurrentVisit = async (
+  track: ApiTrackResponse,
+  addedTag?: ApiHumanTrackTagResponse,
+  removedTag?: string
+) => {
+  if (recordingData.value) {
+    // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
+    // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
+    const recordingId = recordingData.value.recording.id;
+    // Find the visit:
+    const targetVisit = visitsContext.value.find((visit) =>
+      visit.recordings.find(({ recId }) => recId === recordingId)
+    );
+    if (targetVisit) {
+      const targetVisitRecording = targetVisit.recordings.find(
+        ({ recId }) => recId === recordingId
+      ) as { recId: number; start: string; tracks: VisitRecordingTag[] };
+      const targetTrack = targetVisitRecording.tracks.find(
+        ({ id }) => id === track.id
+      );
+      if (targetTrack) {
+        if (removedTag) {
+          // If we removed the last human tag from the visit, then the visit classification will fall back to the best
+          // AI tag.
+          targetTrack.isAITagged = true;
+          targetTrack.tag = null;
+          // If there are still user tags, then the visit classification becomes the next user tag.
+        } else if (addedTag) {
+          // FIXME - There should be a target track, so include the trackId from the backend.
+          targetTrack.isAITagged = false;
+          targetTrack.tag = addedTag.what;
+          // targetVisitRecording.tracks.push({
+          //   tag: addedTag.what,
+          //   start: track.start,
+          //   end: track.end,
+          //   isAITagged: false,
+          //   aiTag: "none",
+          //   id: track.id,
+          //   mass: (track.positions &&
+          //       track.positions.reduce((a, {mass}) => a + (mass || 0), 0)) || 0
+          // });
+        }
+
+        // Now, recalculate the visit:
+        // If there are any human tags, pick the most numerous one as the classification.
+        const humanTags: Record<string, number> = {};
+        for (const recording of targetVisit.recordings) {
+          for (const track of recording.tracks) {
+            if (!track.isAITagged) {
+              humanTags[track.tag as string] =
+                humanTags[track.tag as string] || 0;
+              humanTags[track.tag as string] += 1;
+            }
+          }
+        }
+        const humanTagCounts = Object.entries(humanTags);
+        if (humanTagCounts.length) {
+          let bestHumanTagCount = 0;
+          let bestHumanTag;
+          for (const [tag, count] of humanTagCounts) {
+            if (count > bestHumanTagCount) {
+              bestHumanTagCount = count;
+              bestHumanTag = tag;
+            }
+          }
+          targetVisit.classification = bestHumanTag;
+          targetVisit.classFromUserTag = true;
+        } else {
+          // If there are no human tags, pick the most pre-calculated AI one.
+          targetVisit.classification = targetVisit.classificationAi;
+          targetVisit.classFromUserTag = false;
+        }
+        console.warn(
+          "recalculate visit",
+          targetVisit,
+          track,
+          addedTag,
+          removedTag
+        );
+      } else {
+        console.warn("failed to find target track in visit");
+      }
+    } else {
+      console.warn("failed to find visit context to update");
+    }
+  }
 };
 
-const trackTagChanged = async (track: ApiTrackResponse) => {
+const trackTagChanged = async ({
+  track,
+  tag,
+  action,
+}: {
+  track: ApiTrackResponse;
+  tag: string;
+  action: "add" | "remove";
+}) => {
   if (recordingData.value) {
     const trackToPatch = recordingData.value.recording.tracks.find(
       ({ id }) => id === track.id
     );
     if (trackToPatch) {
       trackToPatch.tags = [...track.tags];
-      await recalculateCurrentVisit();
+      if (action === "add") {
+        const changedTag = trackToPatch.tags.find(
+          ({ what, userId }) => what === tag && userId === CurrentUser.value?.id
+        );
+        if (changedTag) {
+          await recalculateCurrentVisit(
+            track,
+            changedTag as ApiHumanTrackTagResponse
+          );
+        } else {
+          console.error("Failed to find changed tag", tag);
+        }
+      } else if (action === "remove") {
+        await recalculateCurrentVisit(track, undefined, tag);
+      }
     }
   }
 };
