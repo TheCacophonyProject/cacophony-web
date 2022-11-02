@@ -96,7 +96,7 @@ const speciesSummary = computed<[string, number][]>(() =>
           :key="index"
         >
           <strong class="me-1 text-capitalize">{{ count }}</strong
-          ><span class="text-capitalize">{{
+          ><span class="text-capitalize d-inline-block">{{
             displayLabelForClassificationLabel(species)
           }}</span>
         </div>

@@ -113,9 +113,6 @@ watch(showClassificationSearch, resizeDetails);
 
 const selectAndMaybeToggleExpanded = () => {
   if (hasUserTag.value || expandedInternal.value) {
-    if (!expandedInternal.value) {
-      emit("selected-track", track.id);
-    }
     expandedInternal.value = !expandedInternal.value;
     emit("expanded-changed", track.id, expandedInternal.value);
   } else {
