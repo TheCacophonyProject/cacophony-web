@@ -1,4 +1,4 @@
-import {GroupId, IsoFormattedDateString, StationId, TrackId} from "./common";
+import { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common";
 
 export interface MonitoringRequest {
   perPage?: number;
