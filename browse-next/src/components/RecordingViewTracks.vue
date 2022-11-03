@@ -174,4 +174,10 @@ const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
       :track="track"
     />
   </div>
+  <div
+    v-else
+    class="d-flex justify-content-center align-items-center loading p-5 h-100"
+  >
+    <b-spinner variant="secondary" />
+  </div>
 </template>

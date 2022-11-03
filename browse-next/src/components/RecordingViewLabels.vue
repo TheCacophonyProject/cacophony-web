@@ -208,6 +208,12 @@ const doAddLabel = async () => {
       </div>
     </b-modal>
   </div>
+  <div
+    v-else
+    class="d-flex justify-content-center align-items-center loading p-5 h-100"
+  >
+    <b-spinner variant="secondary" />
+  </div>
 </template>
 <style lang="less" scoped>
 .recording-labels {
