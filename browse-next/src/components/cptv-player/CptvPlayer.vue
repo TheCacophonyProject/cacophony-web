@@ -1954,7 +1954,7 @@ const drawFrame = async (
           >Track {{ index + 1 }} ({{
             displayLabelForClassificationLabel(
               framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
-                .what
+                .what || ""
             )
           }})</b-form-checkbox
         >
@@ -1967,7 +1967,7 @@ const drawFrame = async (
           >Track {{ index + 1 }} ({{
             displayLabelForClassificationLabel(
               framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
-                .what
+                .what || ""
             )
           }})</b-form-checkbox
         >
