@@ -202,14 +202,15 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/events/thumb Adds a new thumbnail event.
-   * @apiName Post Device Thumbnail
+   * @api {post} /api/v1/events/thumb Adds a new thumbnail + classification event.
+   * @apiName Post Device Thumbnail Classification
    * @apiGroup Events
-   * @apiDescription Upload a thumbnail from a connected edge device.
+   * @apiDescription Upload a thumbnail + classification from a connected edge device.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiBody {File} file Thumbnail for the recording.
+   * @apiBody {JSON} data JSON data in the format { what: string, conf: number, dateTimes?: IsoFormattedDateString[] }
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} success
