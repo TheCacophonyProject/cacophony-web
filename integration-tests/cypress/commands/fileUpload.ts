@@ -30,7 +30,7 @@ export function sendMultipartMessage(
     onComplete(xhr);
   };
   xhr.send(formData);
-  return cy.wait(waitOn, { requestTimeout: 20000 });
+  return cy.wait(waitOn, {requestTimeout: 20000});
 }
 
 // Uploads a file and data in a multipart message
@@ -39,8 +39,8 @@ export function uploadFile(
   url: string,
   credName: string,
   fileName: string,
-  fileType: RecordingType,
-  data: ApiRecordingSet,
+  fileType: RecordingType | string,
+  data: ApiRecordingSet | Record<string, string | string[] | number>,
   waitOn: string,
   statusCode: number = 200
 ): Cypress.Chainable<Interception> {

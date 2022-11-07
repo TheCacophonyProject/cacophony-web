@@ -49,7 +49,6 @@ const inlineModalEl = ref<HTMLDivElement>();
 const { height: inlineModalHeight } = useElementSize(inlineModalEl);
 watch(inlineModalHeight, (newHeight) => {
   if (inlineModalEl.value) {
-    inlineModalEl.value.style.height = `${newHeight}px`;
     inlineModalEl.value.style.top = `calc(50% - ${newHeight / 2}px)`;
   }
 });
@@ -1037,6 +1036,7 @@ const inlineModal = ref<boolean>(false);
   />
 </template>
 
+
 <style scoped lang="less">
 @import "../assets/font-sizes.less";
 @import "../assets/mixins.less";
@@ -1193,13 +1193,13 @@ const inlineModal = ref<boolean>(false);
   }
 }
 .inline-modal {
+  // TODO - Max width for mobile breakpoints
   @width: 400px;
   @height: auto;
   width: @width;
   height: @height;
   position: absolute;
   border-radius: 2px;
-  //top: calc(50% - (@height / 2));
   top: 40%;
   left: calc(50% - (@width / 2));
   background: white;

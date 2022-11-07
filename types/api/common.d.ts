@@ -16,6 +16,7 @@ export type StationId = number;
 export type ScheduleId = number;
 export type SaltId = number;
 export type GroupId = number;
+export type EventId = number;
 export type EndUserAgreementVersion = number;
 
 export interface LatLng {

@@ -10,7 +10,11 @@ import {
 import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
 import log from "../logging";
-import { modelTypeName, modelTypeNamePlural } from "./middleware";
+import {
+  getDetailSnapshotById,
+  modelTypeName,
+  modelTypeNamePlural,
+} from "./middleware";
 import { ValidationChain } from "express-validator";
 import {
   AuthenticationError,
@@ -29,6 +33,7 @@ import { UserGlobalPermission } from "@typedefs/api/consts";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 import { SuperUsers } from "@/Globals";
 import { Alert, AlertId } from "@models/Alert";
+import { Event, EventStatic } from "@models/Event";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -1255,6 +1260,86 @@ const getGroup =
     return models.Group.findOne(getGroupOptions);
   };
 
+const getEvent =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    eventDetailId?: string,
+    unusedParam?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Event> | ClientError | null> => {
+    // @ts-ignore
+    const eventIsId =
+      eventDetailId &&
+      !isNaN(parseInt(eventDetailId)) &&
+      parseInt(eventDetailId).toString() === String(eventDetailId);
+    let eventWhere;
+    if (eventDetailId) {
+      eventWhere = {
+        id: parseInt(eventDetailId),
+      };
+    }
+    let getEventOptions;
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getEventOptions = getIncludeForUser(
+          context,
+          (asAdmin, userId) => {
+            return {
+              attributes: ["dateTime", "id"],
+              include: [
+                {
+                  model: models.DetailSnapshot,
+                  as: "EventDetail",
+                  required: true,
+                  attributes: ["type", "details"],
+                },
+                {
+                  model: models.Device,
+                  attributes: [],
+                  required: true,
+                  include: [
+                    {
+                      model: models.Group,
+                      attributes: [],
+                      required: true,
+                      where: {},
+                      include: [
+                        {
+                          model: models.User,
+                          attributes: [],
+                          required: true,
+                          through: {
+                            where: {
+                              ...asAdmin,
+                            },
+                            attributes: [],
+                          },
+                          where: { id: userId },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            };
+          },
+          asAdmin
+        );
+        getEventOptions.where = eventWhere;
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getEventOptions = {
+        where: eventWhere,
+      };
+    }
+    return models.Event.findOne(getEventOptions);
+  };
+
 const getUser =
   () =>
   (
@@ -1678,6 +1763,9 @@ export const fetchAuthorizedRequiredStationByNameInGroup = (
     groupNameOrId
   );
 
+export const fetchAuthorizedRequiredEventById = (eventId: ValidationChain) =>
+  fetchRequiredModel(models.Event, false, true, getEvent(true, false), eventId);
+
 export const fetchAuthorizedRequiredSchedulesForGroup = (
   groupNameOrId: ValidationChain
 ) =>
@@ -1723,6 +1811,15 @@ export const fetchUnauthorizedRequiredEventDetailSnapshotById = (
     true,
     getUnauthorizedGenericModelById(models.DetailSnapshot),
     detailId
+  );
+
+export const fetchUnauthorizedRequiredEventById = (eventId: ValidationChain) =>
+  fetchRequiredModel(
+    models.Event,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.Event),
+    eventId
   );
 
 export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>

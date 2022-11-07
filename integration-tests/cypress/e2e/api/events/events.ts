@@ -2,8 +2,9 @@
 
 import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
-import { getCreds } from "@commands/server";
+import {getCreds, makeAuthorizedRequestWithStatus, saveIdOnly, v1ApiPath} from "@commands/server";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import {uploadFile} from "@commands/fileUpload";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; //do not check eventId or createdAt time
 
@@ -274,5 +275,44 @@ describe("Events - add event as a device", () => {
       true,
       HttpStatusCode.Unprocessable
     );
+  });
+
+  it("Add and retrieve a thumbnail event", () => {
+    const data: { type: string, what: string, conf: number; dateTimes?: string[] } = {
+      type: "classifier",
+      what: "possum",
+      conf: 99,
+      dateTimes: [new Date().toISOString()]
+    }
+    uploadFile(
+        v1ApiPath(`events/thumbnail`),
+        "evCamera2",
+        "thumb.png",
+        data.type,
+        data,
+        "@addEventThumbnail",
+        HttpStatusCode.Ok
+    ).then((x) => {
+      // Now make sure we can access the event thumbnail:
+      const eventId = x.response.body.id;
+      makeAuthorizedRequestWithStatus(
+          {
+            method: "GET",
+            url: v1ApiPath(`events/${eventId}/thumbnail`),
+          },
+          "evGroupAdmin2",
+          HttpStatusCode.Ok
+      );
+      makeAuthorizedRequestWithStatus(
+          {
+            method: "GET",
+            url: v1ApiPath(`events/${eventId}`),
+          },
+          "evGroupAdmin2",
+          HttpStatusCode.Ok
+      ).then((response) => {
+        cy.log(response.body);
+      });
+    });
   });
 });

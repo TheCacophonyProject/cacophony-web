@@ -33,6 +33,7 @@ import config from "@config";
 import { Op } from "sequelize";
 import { UnprocessableError } from "@api/customErrors";
 import logger from "@log";
+import Event from "@models/Event";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -296,6 +297,11 @@ function multipartUpload(
           if (dbRecordOrFileKey.type === "audioBait") {
             // FIXME - this is pretty nasty.
             responseUtil.validAudiobaitUpload(response, dbRecordOrFileKey.id);
+          } else if (dbRecordOrFileKey instanceof models.Event) {
+            responseUtil.validEventThumbnailUpload(
+              response,
+              (dbRecordOrFileKey as any).id
+            );
           } else {
             responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
           }

@@ -1,1 +1,1826 @@
-{"label":"all","version":"35faf19f-cef2-462b-83ba-d1a921145f1","children":[{"label":"mammal","children":[{"label":"cat"},{"label":"deer"},{"label":"dog"},{"label":"goat"},{"label":"hedgehog"},{"label":"human"},{"label":"leporidae","children":[{"label":"hare"},{"label":"rabbit"}]},{"label":"mustelid","children":[{"label":"ferret"},{"label":"stoat"},{"label":"weasel"}]},{"label":"pig"},{"label":"possum"},{"label":"rodent","children":[{"label":"mouse"},{"label":"rat"}]},{"label":"sealion","display":"sea lion"},{"label":"sheep"},{"label":"wallaby"}]},{"label":"other","children":[{"label":"false-positive","display":"false positive"},{"label":"frog"},{"label":"insect","display":"insect/spider","children":[{"label":"weta"}]},{"label":"interesting"},{"label":"lizard"},{"label":"part","display":"part of an animal"},{"label":"pest"},{"label":"poor tracking"},{"label":"rain","display":"Rain/Water Droplets"},{"label":"static"},{"label":"unidentified","display":"not identifiable"},{"label":"vehicle"},{"label":"water","display":"River/Sea"},{"label":"wind"}]},{"label":"bird","children":[{"label":"albatross","children":[{"label":"antipodean albatross"},{"label":"black-footed albatross"},{"label":"laysan albatross"},{"label":"light-mantled sooty albatross"},{"label":"northern royal albatross"},{"label":"sooty albatross"},{"label":"southern royal albatross"},{"label":"wandering albatross"}]},{"label":"australasian shoveler"},{"label":"australian coot"},{"label":"avocet","children":[{"label":"red-necked avocet"}]},{"label":"bellbird"},{"label":"bittern","children":[{"label":"australasian bittern"},{"label":"little bittern"}]},{"label":"black-tailed native-hen"},{"label":"blackbird","children":[{"label":"eurasian blackbird"}]},{"label":"booby","children":[{"label":"brown booby"},{"label":"masked booby"},{"label":"red-footed booby"}]},{"label":"bulbul","children":[{"label":"red-vented bulbul"}]},{"label":"bunting","children":[{"label":"cirl bunting"}]},{"label":"chaffinch"},{"label":"chatham island taiko"},{"label":"chestnut-breasted shelduck"},{"label":"chukor"},{"label":"cockatoo","children":[{"label":"sulphur-crested cockatoo"}]},{"label":"corncrake"},{"label":"crake","children":[{"label":"australian crake"},{"label":"marsh crake"},{"label":"spotless crake"}]},{"label":"crane"},{"label":"creeper","children":[{"label":"brown creeper"}]},{"label":"cuckoo","children":[{"label":"black-faced cuckoo-shrike"},{"label":"channel-billed cuckoo"},{"label":"fan-tailed cuckoo"},{"label":"long-tailed cuckoo"},{"label":"oriental cuckoo"},{"label":"pallid cuckoo"},{"label":"shining cuckoo"}]},{"label":"curlew","children":[{"label":"bristle-thighed curlew"},{"label":"eastern curlew"}]},{"label":"dabchick","children":[{"label":"new zealand dabchick"}]},{"label":"darter"},{"label":"dollarbird"},{"label":"dotterel","children":[{"label":"banded dotterel"},{"label":"black-fronted dotterel"},{"label":"new zealand dotterel"},{"label":"oriental dotterel"},{"label":"red-kneed dotterel"}]},{"label":"dove","children":[{"label":"barbary dove"},{"label":"rose-crowned fruit-dove"},{"label":"spotted dove"}]},{"label":"dowitcher","children":[{"label":"asiatic dowitcher"}]},{"label":"duck","children":[{"label":"australian white-eyed duck"},{"label":"australian wood duck"},{"label":"blue duck"},{"label":"grey duck"},{"label":"muscovy duck"},{"label":"pink-eared duck"},{"label":"plumed whistling duck"}]},{"label":"dunlin"},{"label":"dunnock"},{"label":"dusky woodswallow"},{"label":"eagle","children":[{"label":"white-bellied sea eagle"}]},{"label":"egret","children":[{"label":"cattle egret"},{"label":"little egret"},{"label":"plumed egret"}]},{"label":"falcon","children":[{"label":"new zealand falcon"}]},{"label":"fantail","children":[{"label":"new zealand fantail"}]},{"label":"fernbird"},{"label":"flycatcher","children":[{"label":"satin flycatcher"}]},{"label":"frigatebird","children":[{"label":"great frigatebird"},{"label":"lesser frigatebird"}]},{"label":"fulmar","children":[{"label":"antarctic fulmar"},{"label":"fulmar prion"},{"label":"northern fulmar"}]},{"label":"galah"},{"label":"gannet","children":[{"label":"australasian gannet"},{"label":"cape gannet"}]},{"label":"godwit","children":[{"label":"bar-tailed godwit"},{"label":"black-tailed godwit"},{"label":"hudsonian godwit"}]},{"label":"golden whistler"},{"label":"goldfinch","children":[{"label":"european goldfinch"}]},{"label":"goose","children":[{"label":"canada goose"},{"label":"cape barren goose"},{"label":"greylag goose"}]},{"label":"grebe","children":[{"label":"australasian crested grebe"},{"label":"australasian little grebe"},{"label":"hoary-headed grebe"}]},{"label":"greenfinch","children":[{"label":"european greenfinch"}]},{"label":"greenshank","children":[{"label":"common greenshank"}]},{"label":"guineafowl","children":[{"label":"helmeted guineafowl"}]},{"label":"gull","children":[{"label":"black-billed gull"},{"label":"franklin's gull"},{"label":"laughing gull"},{"label":"pacific gull"},{"label":"red-billed gull"},{"label":"southern black-backed gull"}]},{"label":"harrier","children":[{"label":"swamp harrier"}]},{"label":"heron","children":[{"label":"grey heron"},{"label":"nankeen night heron"},{"label":"pacific heron"},{"label":"reef heron"},{"label":"white heron"},{"label":"white-faced heron"}]},{"label":"ibis","children":[{"label":"glossy ibis"},{"label":"straw-necked ibis"},{"label":"white ibis"}]},{"label":"kaka"},{"label":"kakapo"},{"label":"kea"},{"label":"kereru"},{"label":"kestrel","children":[{"label":"nankeen kestrel"}]},{"label":"kingfisher","children":[{"label":"sacred kingfisher"}]},{"label":"kite","children":[{"label":"black kite"}]},{"label":"kiwi","children":[{"label":"great spotted kiwi"},{"label":"little spotted kiwi"},{"label":"north island brown kiwi"},{"label":"okarito brown kiwi"},{"label":"southern brown kiwi"}]},{"label":"knot","children":[{"label":"great knot"},{"label":"lesser knot"}]},{"label":"kokako","children":[{"label":"north island kokako"},{"label":"south island kokako"}]},{"label":"kookaburra","children":[{"label":"laughing kookaburra"}]},{"label":"lesser yellowlegs"},{"label":"magpie","children":[{"label":"australian magpie"},{"label":"magpie-lark"}]},{"label":"mallard"},{"label":"martin","children":[{"label":"fairy martin"},{"label":"tree martin"}]},{"label":"mollymawk","children":[{"label":"atlantic yellow-nosed mollymawk"},{"label":"black-browed mollymawk"},{"label":"buller's mollymawk"},{"label":"campbell black-browed mollymawk"},{"label":"chatham island mollymawk"},{"label":"grey-headed mollymawk"},{"label":"indian ocean yellow-nosed mollymawk"},{"label":"salvin's mollymawk"},{"label":"white-capped mollymawk"}]},{"label":"monarch","children":[{"label":"black-faced monarch"}]},{"label":"moorhen","children":[{"label":"common moorhen"},{"label":"dusky moorhen"}]},{"label":"morepork","children":[{"label":"norfolk morepork"}]},{"label":"myna","children":[{"label":"common myna"}]},{"label":"needletail","children":[{"label":"white-throated needletail"}]},{"label":"noddy","children":[{"label":"black noddy"},{"label":"brown noddy"},{"label":"grey noddy"}]},{"label":"norfolk gerygone"},{"label":"norfolk golden whistler"},{"label":"norfolk silkeye"},{"label":"northern shoveler"},{"label":"owl","children":[{"label":"barn owl"},{"label":"little owl"}]},{"label":"oystercatcher","children":[{"label":"chatham island oystercatcher"},{"label":"south island pied oystercatcher"},{"label":"variable oystercatcher"}]},{"label":"paradise shelduck"},{"label":"parakeet","children":[{"label":"antipodes island parakeet"},{"label":"forbes' parakeet"},{"label":"orange-fronted parakeet"},{"label":"red-crowned parakeet"},{"label":"reischek's parakeet"},{"label":"rose-ringed parakeet"},{"label":"yellow-crowned parakeet"}]},{"label":"parrot","children":[{"label":"norfolk parrot"}]},{"label":"partridge","children":[{"label":"red-legged partridge"}]},{"label":"peafowl"},{"label":"pelican","children":[{"label":"australian pelican"}]},{"label":"penguin","children":[{"label":"adelie penguin"},{"label":"chinstrap penguin"},{"label":"eastern rockhopper penguin"},{"label":"emperor penguin"},{"label":"erect-crested penguin"},{"label":"fiordland crested penguin"},{"label":"gentoo penguin"},{"label":"king penguin"},{"label":"little penguin"},{"label":"macaroni penguin"},{"label":"moseley's rockhopper penguin"},{"label":"royal penguin"},{"label":"snares crested penguin"},{"label":"western rockhopper penguin"},{"label":"yellow-eyed penguin"}]},{"label":"petrel","children":[{"label":"antarctic petrel"},{"label":"black petrel"},{"label":"black-bellied storm petrel"},{"label":"black-winged petrel"},{"label":"blue petrel"},{"label":"bulwer's petrel"},{"label":"cape petrel"},{"label":"chatham petrel"},{"label":"collared petrel"},{"label":"common diving petrel"},{"label":"cook's petrel"},{"label":"gould's petrel"},{"label":"grey petrel"},{"label":"grey-backed storm petrel"},{"label":"grey-faced petrel"},{"label":"herald petrel"},{"label":"juan fernandez petrel"},{"label":"kerguelen petrel"},{"label":"kermadec petrel"},{"label":"kermadec storm petrel"},{"label":"leach's storm petrel"},{"label":"mottled petrel"},{"label":"new zealand storm petrel"},{"label":"northern giant petrel"},{"label":"phoenix petrel"},{"label":"providence petrel"},{"label":"pycroft's petrel"},{"label":"snow petrel"},{"label":"soft-plumaged petrel"},{"label":"south georgian diving petrel"},{"label":"southern giant petrel"},{"label":"stejneger's petrel"},{"label":"tahiti petrel"},{"label":"westland petrel"},{"label":"white-bellied storm petrel"},{"label":"white-chinned petrel"},{"label":"white-faced storm petrel"},{"label":"white-headed petrel"},{"label":"white-naped petrel"},{"label":"wilson's storm petrel"}]},{"label":"phalarope","children":[{"label":"grey phalarope"},{"label":"red-necked phalarope"},{"label":"wilson's phalarope"}]},{"label":"pheasant","children":[{"label":"common pheasant"}]},{"label":"pigeon","children":[{"label":"chatham island pigeon"},{"label":"rock pigeon"}]},{"label":"pintail","children":[{"label":"northern pintail"}]},{"label":"pipit","children":[{"label":"new zealand pipit"}]},{"label":"plover","children":[{"label":"american golden plover"},{"label":"greater sand plover"},{"label":"grey plover"},{"label":"lesser sand plover"},{"label":"pacific golden plover"},{"label":"red-capped plover"},{"label":"semipalmated plover"},{"label":"shore plover"},{"label":"spur-winged plover"}]},{"label":"pratincole","children":[{"label":"oriental pratincole"}]},{"label":"prion","children":[{"label":"antarctic prion"},{"label":"broad-billed prion"},{"label":"fairy prion"},{"label":"salvin's prion"},{"label":"thin-billed prion"}]},{"label":"pukeko"},{"label":"purple swamphens"},{"label":"quail","children":[{"label":"brown quail"},{"label":"california quail"}]},{"label":"rail","children":[{"label":"auckland island rail"},{"label":"banded rail"}]},{"label":"rainbow lorikeet"},{"label":"redpoll","children":[{"label":"common redpoll"}]},{"label":"rifleman"},{"label":"robin","children":[{"label":"black robin"},{"label":"norfolk robin"},{"label":"north island robin"},{"label":"south island robin"}]},{"label":"rock wren"},{"label":"rook"},{"label":"rooster"},{"label":"rosella","children":[{"label":"crimson rosella"},{"label":"eastern rosella"}]},{"label":"ruff"},{"label":"saddleback","children":[{"label":"north island saddleback"},{"label":"south island saddleback"}]},{"label":"sanderling"},{"label":"sandpiper","children":[{"label":"baird's sandpiper"},{"label":"broad-billed sandpiper"},{"label":"buff-breasted sandpiper"},{"label":"common sandpiper"},{"label":"curlew sandpiper"},{"label":"least sandpiper"},{"label":"marsh sandpiper"},{"label":"pectoral sandpiper"},{"label":"semipalmated sandpiper"},{"label":"sharp-tailed sandpiper"},{"label":"stilt sandpiper"},{"label":"terek sandpiper"},{"label":"upland sandpiper"},{"label":"western sandpiper"},{"label":"white-rumped sandpiper"}]},{"label":"scaup","children":[{"label":"new zealand scaup"}]},{"label":"shag","children":[{"label":"auckland island shag"},{"label":"black shag"},{"label":"bounty island shag"},{"label":"campbell island shag"},{"label":"chatham island shag"},{"label":"little black shag"},{"label":"little shag"},{"label":"macquarie island shag"},{"label":"new zealand king shag"},{"label":"pied shag"},{"label":"pitt island shag"},{"label":"spotted shag"},{"label":"stewart island shag"}]},{"label":"shearwater","children":[{"label":"buller's shearwater"},{"label":"christmas island shearwater"},{"label":"cory's shearwater"},{"label":"flesh-footed shearwater"},{"label":"fluttering shearwater"},{"label":"great shearwater"},{"label":"hutton's shearwater"},{"label":"little shearwater"},{"label":"manx shearwater"},{"label":"newell's shearwater"},{"label":"pink-footed shearwater"},{"label":"short-tailed shearwater"},{"label":"sooty shearwater"},{"label":"streaked shearwater"},{"label":"subantarctic little shearwater"},{"label":"wedge-tailed shearwater"}]},{"label":"silvereye","children":[{"label":"norfolk silvereye"}]},{"label":"skua","children":[{"label":"arctic skua"},{"label":"long-tailed skua"},{"label":"pomarine skua"},{"label":"south polar skua"},{"label":"subantarctic skua"}]},{"label":"skylark","children":[{"label":"eurasian skylark"}]},{"label":"snipe","children":[{"label":"chatham island snipe"},{"label":"japanese snipe"},{"label":"painted snipe"},{"label":"snares island snipe"},{"label":"subantarctic snipe"}]},{"label":"sparrow","children":[{"label":"house sparrow"}]},{"label":"spoonbill","children":[{"label":"royal spoonbill"},{"label":"yellow-billed spoonbill"}]},{"label":"starling","children":[{"label":"common starling"}]},{"label":"stilt","children":[{"label":"black stilt"},{"label":"pied stilt"}]},{"label":"stint","children":[{"label":"little stint"},{"label":"long-toed stint"},{"label":"red-necked stint"}]},{"label":"stitchbird"},{"label":"swallow","children":[{"label":"welcome swallow"}]},{"label":"swan","children":[{"label":"black swan"},{"label":"mute swan"}]},{"label":"swift","children":[{"label":"fork-tailed swift"}]},{"label":"takahe","children":[{"label":"south island takahe"}]},{"label":"tattler","children":[{"label":"grey-tailed tattler"},{"label":"wandering tattler"}]},{"label":"teal","children":[{"label":"auckland island teal"},{"label":"brown teal"},{"label":"campbell island teal"},{"label":"chestnut teal"},{"label":"grey teal"}]},{"label":"tern","children":[{"label":"antarctic tern"},{"label":"arctic tern"},{"label":"black-fronted tern"},{"label":"bridled tern"},{"label":"caspian tern"},{"label":"common tern"},{"label":"crested tern"},{"label":"fairy tern"},{"label":"grey-backed tern"},{"label":"gull-billed tern"},{"label":"little tern"},{"label":"sooty tern"},{"label":"whiskered tern"},{"label":"white tern"},{"label":"white-fronted tern"},{"label":"white-winged black tern"}]},{"label":"thrush","children":[{"label":"song thrush"}]},{"label":"tomtit"},{"label":"triller","children":[{"label":"white-winged triller"}]},{"label":"tropicbird","children":[{"label":"red-tailed tropicbird"},{"label":"white-tailed tropicbird"}]},{"label":"tui"},{"label":"turkey"},{"label":"turnstone","children":[{"label":"ruddy turnstone"}]},{"label":"wagtail","children":[{"label":"willie wagtail"}]},{"label":"warbler","children":[{"label":"australian reed warbler"},{"label":"chatham island warbler"},{"label":"grey warbler"}]},{"label":"wattlebird","children":[{"label":"red wattlebird"}]},{"label":"weka"},{"label":"whimbrel","children":[{"label":"little whimbrel"}]},{"label":"whitehead"},{"label":"wild turkey"},{"label":"woodswallow","children":[{"label":"masked woodswallow"},{"label":"white-browed woodswallow"}]},{"label":"wrybill"},{"label":"yellowhammer"},{"label":"yellowhead"}]}]}
+{
+    "label": "all",
+    "version": "35faf19f-cef2-462b-83ba-d1a921145f2",
+    "children": [
+        {
+            "label": "mammal",
+            "children": [
+                {
+                    "label": "cat"
+                },
+                {
+                    "label": "deer"
+                },
+                {
+                    "label": "dog"
+                },
+                {
+                    "label": "goat"
+                },
+                {
+                    "label": "hedgehog"
+                },
+                {
+                    "label": "human"
+                },
+                {
+                    "label": "leporidae",
+                    "children": [
+                        {
+                            "label": "hare"
+                        },
+                        {
+                            "label": "rabbit"
+                        }
+                    ]
+                },
+                {
+                    "label": "mustelid",
+                    "children": [
+                        {
+                            "label": "ferret"
+                        },
+                        {
+                            "label": "stoat"
+                        },
+                        {
+                            "label": "weasel"
+                        }
+                    ]
+                },
+                {
+                    "label": "pig"
+                },
+                {
+                    "label": "possum"
+                },
+                {
+                    "label": "rodent",
+                    "children": [
+                        {
+                            "label": "mouse"
+                        },
+                        {
+                            "label": "rat"
+                        }
+                    ]
+                },
+                {
+                    "label": "sealion",
+                    "display": "sea lion"
+                },
+                {
+                    "label": "sheep"
+                },
+                {
+                    "label": "wallaby"
+                }
+            ]
+        },
+        {
+            "label": "other",
+            "children": [
+                {
+                    "label": "false-positive",
+                    "display": "false positive"
+                },
+                {
+                    "label": "frog"
+                },
+                {
+                    "label": "insect",
+                    "display": "insect/spider",
+                    "children": [
+                        {
+                            "label": "weta"
+                        }
+                    ]
+                },
+                {
+                    "label": "interesting"
+                },
+                {
+                    "label": "lizard"
+                },
+                {
+                    "label": "part",
+                    "display": "part of an animal"
+                },
+                {
+                    "label": "pest"
+                },
+                {
+                    "label": "poor tracking"
+                },
+                {
+                    "label": "rain",
+                    "display": "Rain/Water Droplets"
+                },
+                {
+                    "label": "static"
+                },
+                {
+                    "label": "unidentified",
+                    "display": "not identifiable"
+                },
+                {
+                    "label": "vehicle"
+                },
+                {
+                    "label": "water",
+                    "display": "River/Sea"
+                },
+                {
+                    "label": "wind"
+                }
+            ]
+        },
+        {
+            "label": "bird",
+            "children": [
+                {
+                    "label": "albatross",
+                    "children": [
+                        {
+                            "label": "antipodean albatross"
+                        },
+                        {
+                            "label": "black-footed albatross"
+                        },
+                        {
+                            "label": "laysan albatross"
+                        },
+                        {
+                            "label": "light-mantled sooty albatross"
+                        },
+                        {
+                            "label": "northern royal albatross"
+                        },
+                        {
+                            "label": "sooty albatross"
+                        },
+                        {
+                            "label": "southern royal albatross"
+                        },
+                        {
+                            "label": "wandering albatross"
+                        }
+                    ]
+                },
+                {
+                    "label": "australasian shoveler"
+                },
+                {
+                    "label": "australian coot"
+                },
+                {
+                    "label": "avocet",
+                    "children": [
+                        {
+                            "label": "red-necked avocet"
+                        }
+                    ]
+                },
+                {
+                    "label": "bellbird"
+                },
+                {
+                    "label": "bittern",
+                    "children": [
+                        {
+                            "label": "australasian bittern"
+                        },
+                        {
+                            "label": "little bittern"
+                        }
+                    ]
+                },
+                {
+                    "label": "black-tailed native-hen"
+                },
+                {
+                    "label": "blackbird",
+                    "children": [
+                        {
+                            "label": "eurasian blackbird"
+                        }
+                    ]
+                },
+                {
+                    "label": "booby",
+                    "children": [
+                        {
+                            "label": "brown booby"
+                        },
+                        {
+                            "label": "masked booby"
+                        },
+                        {
+                            "label": "red-footed booby"
+                        }
+                    ]
+                },
+                {
+                    "label": "bulbul",
+                    "children": [
+                        {
+                            "label": "red-vented bulbul"
+                        }
+                    ]
+                },
+                {
+                    "label": "bunting",
+                    "children": [
+                        {
+                            "label": "cirl bunting"
+                        }
+                    ]
+                },
+                {
+                    "label": "chaffinch"
+                },
+                {
+                    "label": "chatham island taiko"
+                },
+                {
+                    "label": "chestnut-breasted shelduck"
+                },
+                {
+                    "label": "chukor"
+                },
+                {
+                    "label": "cockatoo",
+                    "children": [
+                        {
+                            "label": "sulphur-crested cockatoo"
+                        }
+                    ]
+                },
+                {
+                    "label": "corncrake"
+                },
+                {
+                    "label": "crake",
+                    "children": [
+                        {
+                            "label": "australian crake"
+                        },
+                        {
+                            "label": "marsh crake"
+                        },
+                        {
+                            "label": "spotless crake"
+                        }
+                    ]
+                },
+                {
+                    "label": "crane"
+                },
+                {
+                    "label": "creeper",
+                    "children": [
+                        {
+                            "label": "brown creeper"
+                        }
+                    ]
+                },
+                {
+                    "label": "cuckoo",
+                    "children": [
+                        {
+                            "label": "black-faced cuckoo-shrike"
+                        },
+                        {
+                            "label": "channel-billed cuckoo"
+                        },
+                        {
+                            "label": "fan-tailed cuckoo"
+                        },
+                        {
+                            "label": "long-tailed cuckoo"
+                        },
+                        {
+                            "label": "oriental cuckoo"
+                        },
+                        {
+                            "label": "pallid cuckoo"
+                        },
+                        {
+                            "label": "shining cuckoo"
+                        }
+                    ]
+                },
+                {
+                    "label": "curlew",
+                    "children": [
+                        {
+                            "label": "bristle-thighed curlew"
+                        },
+                        {
+                            "label": "eastern curlew"
+                        }
+                    ]
+                },
+                {
+                    "label": "dabchick",
+                    "children": [
+                        {
+                            "label": "new zealand dabchick"
+                        }
+                    ]
+                },
+                {
+                    "label": "darter"
+                },
+                {
+                    "label": "dollarbird"
+                },
+                {
+                    "label": "dotterel",
+                    "children": [
+                        {
+                            "label": "banded dotterel"
+                        },
+                        {
+                            "label": "black-fronted dotterel"
+                        },
+                        {
+                            "label": "new zealand dotterel"
+                        },
+                        {
+                            "label": "oriental dotterel"
+                        },
+                        {
+                            "label": "red-kneed dotterel"
+                        }
+                    ]
+                },
+                {
+                    "label": "dove",
+                    "children": [
+                        {
+                            "label": "barbary dove"
+                        },
+                        {
+                            "label": "rose-crowned fruit-dove"
+                        },
+                        {
+                            "label": "spotted dove"
+                        }
+                    ]
+                },
+                {
+                    "label": "dowitcher",
+                    "children": [
+                        {
+                            "label": "asiatic dowitcher"
+                        }
+                    ]
+                },
+                {
+                    "label": "duck",
+                    "children": [
+                        {
+                            "label": "australian white-eyed duck"
+                        },
+                        {
+                            "label": "australian wood duck"
+                        },
+                        {
+                            "label": "blue duck"
+                        },
+                        {
+                            "label": "grey duck"
+                        },
+                        {
+                            "label": "muscovy duck"
+                        },
+                        {
+                            "label": "pink-eared duck"
+                        },
+                        {
+                            "label": "plumed whistling duck"
+                        }
+                    ]
+                },
+                {
+                    "label": "dunlin"
+                },
+                {
+                    "label": "dunnock"
+                },
+                {
+                    "label": "dusky woodswallow"
+                },
+                {
+                    "label": "eagle",
+                    "children": [
+                        {
+                            "label": "white-bellied sea eagle"
+                        }
+                    ]
+                },
+                {
+                    "label": "egret",
+                    "children": [
+                        {
+                            "label": "cattle egret"
+                        },
+                        {
+                            "label": "little egret"
+                        },
+                        {
+                            "label": "plumed egret"
+                        }
+                    ]
+                },
+                {
+                    "label": "falcon",
+                    "children": [
+                        {
+                            "label": "new zealand falcon"
+                        }
+                    ]
+                },
+                {
+                    "label": "fantail",
+                    "children": [
+                        {
+                            "label": "new zealand fantail"
+                        }
+                    ]
+                },
+                {
+                    "label": "fernbird"
+                },
+                {
+                    "label": "flycatcher",
+                    "children": [
+                        {
+                            "label": "satin flycatcher"
+                        }
+                    ]
+                },
+                {
+                    "label": "frigatebird",
+                    "children": [
+                        {
+                            "label": "great frigatebird"
+                        },
+                        {
+                            "label": "lesser frigatebird"
+                        }
+                    ]
+                },
+                {
+                    "label": "fulmar",
+                    "children": [
+                        {
+                            "label": "antarctic fulmar"
+                        },
+                        {
+                            "label": "fulmar prion"
+                        },
+                        {
+                            "label": "northern fulmar"
+                        }
+                    ]
+                },
+                {
+                    "label": "galah"
+                },
+                {
+                    "label": "gannet",
+                    "children": [
+                        {
+                            "label": "australasian gannet"
+                        },
+                        {
+                            "label": "cape gannet"
+                        }
+                    ]
+                },
+                {
+                    "label": "godwit",
+                    "children": [
+                        {
+                            "label": "bar-tailed godwit"
+                        },
+                        {
+                            "label": "black-tailed godwit"
+                        },
+                        {
+                            "label": "hudsonian godwit"
+                        }
+                    ]
+                },
+                {
+                    "label": "golden whistler"
+                },
+                {
+                    "label": "goldfinch",
+                    "children": [
+                        {
+                            "label": "european goldfinch"
+                        }
+                    ]
+                },
+                {
+                    "label": "goose",
+                    "children": [
+                        {
+                            "label": "canada goose"
+                        },
+                        {
+                            "label": "cape barren goose"
+                        },
+                        {
+                            "label": "greylag goose"
+                        }
+                    ]
+                },
+                {
+                    "label": "grebe",
+                    "children": [
+                        {
+                            "label": "australasian crested grebe"
+                        },
+                        {
+                            "label": "australasian little grebe"
+                        },
+                        {
+                            "label": "hoary-headed grebe"
+                        }
+                    ]
+                },
+                {
+                    "label": "greenfinch",
+                    "children": [
+                        {
+                            "label": "european greenfinch"
+                        }
+                    ]
+                },
+                {
+                    "label": "greenshank",
+                    "children": [
+                        {
+                            "label": "common greenshank"
+                        }
+                    ]
+                },
+                {
+                    "label": "guineafowl",
+                    "children": [
+                        {
+                            "label": "helmeted guineafowl"
+                        }
+                    ]
+                },
+                {
+                    "label": "gull",
+                    "children": [
+                        {
+                            "label": "black-billed gull"
+                        },
+                        {
+                            "label": "franklin's gull"
+                        },
+                        {
+                            "label": "laughing gull"
+                        },
+                        {
+                            "label": "pacific gull"
+                        },
+                        {
+                            "label": "red-billed gull"
+                        },
+                        {
+                            "label": "southern black-backed gull"
+                        }
+                    ]
+                },
+                {
+                    "label": "harrier",
+                    "children": [
+                        {
+                            "label": "swamp harrier"
+                        }
+                    ]
+                },
+                {
+                    "label": "heron",
+                    "children": [
+                        {
+                            "label": "grey heron"
+                        },
+                        {
+                            "label": "nankeen night heron"
+                        },
+                        {
+                            "label": "pacific heron"
+                        },
+                        {
+                            "label": "reef heron"
+                        },
+                        {
+                            "label": "white heron"
+                        },
+                        {
+                            "label": "white-faced heron"
+                        }
+                    ]
+                },
+                {
+                    "label": "ibis",
+                    "children": [
+                        {
+                            "label": "glossy ibis"
+                        },
+                        {
+                            "label": "straw-necked ibis"
+                        },
+                        {
+                            "label": "white ibis"
+                        }
+                    ]
+                },
+                {
+                    "label": "kaka"
+                },
+                {
+                    "label": "kakapo"
+                },
+                {
+                    "label": "kea"
+                },
+                {
+                    "label": "kereru"
+                },
+                {
+                    "label": "kestrel",
+                    "children": [
+                        {
+                            "label": "nankeen kestrel"
+                        }
+                    ]
+                },
+                {
+                    "label": "kingfisher",
+                    "children": [
+                        {
+                            "label": "sacred kingfisher"
+                        }
+                    ]
+                },
+                {
+                    "label": "kite",
+                    "children": [
+                        {
+                            "label": "black kite"
+                        }
+                    ]
+                },
+                {
+                    "label": "kiwi",
+                    "children": [
+                        {
+                            "label": "great spotted kiwi"
+                        },
+                        {
+                            "label": "little spotted kiwi"
+                        },
+                        {
+                            "label": "north island brown kiwi"
+                        },
+                        {
+                            "label": "okarito brown kiwi"
+                        },
+                        {
+                            "label": "southern brown kiwi"
+                        }
+                    ]
+                },
+                {
+                    "label": "knot",
+                    "children": [
+                        {
+                            "label": "great knot"
+                        },
+                        {
+                            "label": "lesser knot"
+                        }
+                    ]
+                },
+                {
+                    "label": "kokako",
+                    "children": [
+                        {
+                            "label": "north island kokako"
+                        },
+                        {
+                            "label": "south island kokako"
+                        }
+                    ]
+                },
+                {
+                    "label": "kookaburra",
+                    "children": [
+                        {
+                            "label": "laughing kookaburra"
+                        }
+                    ]
+                },
+                {
+                    "label": "lesser yellowlegs"
+                },
+                {
+                    "label": "magpie",
+                    "children": [
+                        {
+                            "label": "australian magpie"
+                        },
+                        {
+                            "label": "magpie-lark"
+                        }
+                    ]
+                },
+                {
+                    "label": "mallard"
+                },
+                {
+                    "label": "martin",
+                    "children": [
+                        {
+                            "label": "fairy martin"
+                        },
+                        {
+                            "label": "tree martin"
+                        }
+                    ]
+                },
+                {
+                    "label": "mollymawk",
+                    "children": [
+                        {
+                            "label": "atlantic yellow-nosed mollymawk"
+                        },
+                        {
+                            "label": "black-browed mollymawk"
+                        },
+                        {
+                            "label": "buller's mollymawk"
+                        },
+                        {
+                            "label": "campbell black-browed mollymawk"
+                        },
+                        {
+                            "label": "chatham island mollymawk"
+                        },
+                        {
+                            "label": "grey-headed mollymawk"
+                        },
+                        {
+                            "label": "indian ocean yellow-nosed mollymawk"
+                        },
+                        {
+                            "label": "salvin's mollymawk"
+                        },
+                        {
+                            "label": "white-capped mollymawk"
+                        }
+                    ]
+                },
+                {
+                    "label": "monarch",
+                    "children": [
+                        {
+                            "label": "black-faced monarch"
+                        }
+                    ]
+                },
+                {
+                    "label": "moorhen",
+                    "children": [
+                        {
+                            "label": "common moorhen"
+                        },
+                        {
+                            "label": "dusky moorhen"
+                        }
+                    ]
+                },
+                {
+                    "label": "morepork",
+                    "children": [
+                        {
+                            "label": "norfolk morepork"
+                        }
+                    ]
+                },
+                {
+                    "label": "myna",
+                    "children": [
+                        {
+                            "label": "common myna"
+                        }
+                    ]
+                },
+                {
+                    "label": "needletail",
+                    "children": [
+                        {
+                            "label": "white-throated needletail"
+                        }
+                    ]
+                },
+                {
+                    "label": "noddy",
+                    "children": [
+                        {
+                            "label": "black noddy"
+                        },
+                        {
+                            "label": "brown noddy"
+                        },
+                        {
+                            "label": "grey noddy"
+                        }
+                    ]
+                },
+                {
+                    "label": "norfolk gerygone"
+                },
+                {
+                    "label": "norfolk golden whistler"
+                },
+                {
+                    "label": "norfolk silkeye"
+                },
+                {
+                    "label": "northern shoveler"
+                },
+                {
+                    "label": "owl",
+                    "children": [
+                        {
+                            "label": "barn owl"
+                        },
+                        {
+                            "label": "little owl"
+                        }
+                    ]
+                },
+                {
+                    "label": "oystercatcher",
+                    "children": [
+                        {
+                            "label": "chatham island oystercatcher"
+                        },
+                        {
+                            "label": "south island pied oystercatcher"
+                        },
+                        {
+                            "label": "variable oystercatcher"
+                        }
+                    ]
+                },
+                {
+                    "label": "paradise shelduck"
+                },
+                {
+                    "label": "parakeet",
+                    "children": [
+                        {
+                            "label": "antipodes island parakeet"
+                        },
+                        {
+                            "label": "forbes' parakeet"
+                        },
+                        {
+                            "label": "orange-fronted parakeet"
+                        },
+                        {
+                            "label": "red-crowned parakeet"
+                        },
+                        {
+                            "label": "reischek's parakeet"
+                        },
+                        {
+                            "label": "rose-ringed parakeet"
+                        },
+                        {
+                            "label": "yellow-crowned parakeet"
+                        }
+                    ]
+                },
+                {
+                    "label": "parrot",
+                    "children": [
+                        {
+                            "label": "norfolk parrot"
+                        }
+                    ]
+                },
+                {
+                    "label": "partridge",
+                    "children": [
+                        {
+                            "label": "red-legged partridge"
+                        }
+                    ]
+                },
+                {
+                    "label": "peafowl"
+                },
+                {
+                    "label": "pelican",
+                    "children": [
+                        {
+                            "label": "australian pelican"
+                        }
+                    ]
+                },
+                {
+                    "label": "penguin",
+                    "children": [
+                        {
+                            "label": "adelie penguin"
+                        },
+                        {
+                            "label": "chinstrap penguin"
+                        },
+                        {
+                            "label": "eastern rockhopper penguin"
+                        },
+                        {
+                            "label": "emperor penguin"
+                        },
+                        {
+                            "label": "erect-crested penguin"
+                        },
+                        {
+                            "label": "fiordland crested penguin"
+                        },
+                        {
+                            "label": "gentoo penguin"
+                        },
+                        {
+                            "label": "king penguin"
+                        },
+                        {
+                            "label": "little penguin"
+                        },
+                        {
+                            "label": "macaroni penguin"
+                        },
+                        {
+                            "label": "moseley's rockhopper penguin"
+                        },
+                        {
+                            "label": "royal penguin"
+                        },
+                        {
+                            "label": "snares crested penguin"
+                        },
+                        {
+                            "label": "western rockhopper penguin"
+                        },
+                        {
+                            "label": "yellow-eyed penguin"
+                        }
+                    ]
+                },
+                {
+                    "label": "petrel",
+                    "children": [
+                        {
+                            "label": "antarctic petrel"
+                        },
+                        {
+                            "label": "black petrel"
+                        },
+                        {
+                            "label": "black-bellied storm petrel"
+                        },
+                        {
+                            "label": "black-winged petrel"
+                        },
+                        {
+                            "label": "blue petrel"
+                        },
+                        {
+                            "label": "bulwer's petrel"
+                        },
+                        {
+                            "label": "cape petrel"
+                        },
+                        {
+                            "label": "chatham petrel"
+                        },
+                        {
+                            "label": "collared petrel"
+                        },
+                        {
+                            "label": "common diving petrel"
+                        },
+                        {
+                            "label": "cook's petrel"
+                        },
+                        {
+                            "label": "gould's petrel"
+                        },
+                        {
+                            "label": "grey petrel"
+                        },
+                        {
+                            "label": "grey-backed storm petrel"
+                        },
+                        {
+                            "label": "grey-faced petrel"
+                        },
+                        {
+                            "label": "herald petrel"
+                        },
+                        {
+                            "label": "juan fernandez petrel"
+                        },
+                        {
+                            "label": "kerguelen petrel"
+                        },
+                        {
+                            "label": "kermadec petrel"
+                        },
+                        {
+                            "label": "kermadec storm petrel"
+                        },
+                        {
+                            "label": "leach's storm petrel"
+                        },
+                        {
+                            "label": "mottled petrel"
+                        },
+                        {
+                            "label": "new zealand storm petrel"
+                        },
+                        {
+                            "label": "northern giant petrel"
+                        },
+                        {
+                            "label": "phoenix petrel"
+                        },
+                        {
+                            "label": "providence petrel"
+                        },
+                        {
+                            "label": "pycroft's petrel"
+                        },
+                        {
+                            "label": "snow petrel"
+                        },
+                        {
+                            "label": "soft-plumaged petrel"
+                        },
+                        {
+                            "label": "south georgian diving petrel"
+                        },
+                        {
+                            "label": "southern giant petrel"
+                        },
+                        {
+                            "label": "stejneger's petrel"
+                        },
+                        {
+                            "label": "tahiti petrel"
+                        },
+                        {
+                            "label": "westland petrel"
+                        },
+                        {
+                            "label": "white-bellied storm petrel"
+                        },
+                        {
+                            "label": "white-chinned petrel"
+                        },
+                        {
+                            "label": "white-faced storm petrel"
+                        },
+                        {
+                            "label": "white-headed petrel"
+                        },
+                        {
+                            "label": "white-naped petrel"
+                        },
+                        {
+                            "label": "wilson's storm petrel"
+                        }
+                    ]
+                },
+                {
+                    "label": "phalarope",
+                    "children": [
+                        {
+                            "label": "grey phalarope"
+                        },
+                        {
+                            "label": "red-necked phalarope"
+                        },
+                        {
+                            "label": "wilson's phalarope"
+                        }
+                    ]
+                },
+                {
+                    "label": "pheasant",
+                    "children": [
+                        {
+                            "label": "common pheasant"
+                        }
+                    ]
+                },
+                {
+                    "label": "pigeon",
+                    "children": [
+                        {
+                            "label": "chatham island pigeon"
+                        },
+                        {
+                            "label": "rock pigeon"
+                        }
+                    ]
+                },
+                {
+                    "label": "pintail",
+                    "children": [
+                        {
+                            "label": "northern pintail"
+                        }
+                    ]
+                },
+                {
+                    "label": "pipit",
+                    "children": [
+                        {
+                            "label": "new zealand pipit"
+                        }
+                    ]
+                },
+                {
+                    "label": "plover",
+                    "children": [
+                        {
+                            "label": "american golden plover"
+                        },
+                        {
+                            "label": "greater sand plover"
+                        },
+                        {
+                            "label": "grey plover"
+                        },
+                        {
+                            "label": "lesser sand plover"
+                        },
+                        {
+                            "label": "pacific golden plover"
+                        },
+                        {
+                            "label": "red-capped plover"
+                        },
+                        {
+                            "label": "semipalmated plover"
+                        },
+                        {
+                            "label": "shore plover"
+                        },
+                        {
+                            "label": "spur-winged plover"
+                        }
+                    ]
+                },
+                {
+                    "label": "pratincole",
+                    "children": [
+                        {
+                            "label": "oriental pratincole"
+                        }
+                    ]
+                },
+                {
+                    "label": "prion",
+                    "children": [
+                        {
+                            "label": "antarctic prion"
+                        },
+                        {
+                            "label": "broad-billed prion"
+                        },
+                        {
+                            "label": "fairy prion"
+                        },
+                        {
+                            "label": "salvin's prion"
+                        },
+                        {
+                            "label": "thin-billed prion"
+                        }
+                    ]
+                },
+                {
+                    "label": "pukeko"
+                },
+                {
+                    "label": "purple swamphens"
+                },
+                {
+                    "label": "quail",
+                    "children": [
+                        {
+                            "label": "brown quail"
+                        },
+                        {
+                            "label": "california quail"
+                        }
+                    ]
+                },
+                {
+                    "label": "rail",
+                    "children": [
+                        {
+                            "label": "auckland island rail"
+                        },
+                        {
+                            "label": "banded rail"
+                        }
+                    ]
+                },
+                {
+                    "label": "rainbow lorikeet"
+                },
+                {
+                    "label": "redpoll",
+                    "children": [
+                        {
+                            "label": "common redpoll"
+                        }
+                    ]
+                },
+                {
+                    "label": "rifleman"
+                },
+                {
+                    "label": "robin",
+                    "children": [
+                        {
+                            "label": "black robin"
+                        },
+                        {
+                            "label": "norfolk robin"
+                        },
+                        {
+                            "label": "north island robin"
+                        },
+                        {
+                            "label": "south island robin"
+                        }
+                    ]
+                },
+                {
+                    "label": "rock wren"
+                },
+                {
+                    "label": "rook"
+                },
+                {
+                    "label": "rooster"
+                },
+                {
+                    "label": "rosella",
+                    "children": [
+                        {
+                            "label": "crimson rosella"
+                        },
+                        {
+                            "label": "eastern rosella"
+                        }
+                    ]
+                },
+                {
+                    "label": "ruff"
+                },
+                {
+                    "label": "saddleback",
+                    "children": [
+                        {
+                            "label": "north island saddleback"
+                        },
+                        {
+                            "label": "south island saddleback"
+                        }
+                    ]
+                },
+                {
+                    "label": "sanderling"
+                },
+                {
+                    "label": "sandpiper",
+                    "children": [
+                        {
+                            "label": "baird's sandpiper"
+                        },
+                        {
+                            "label": "broad-billed sandpiper"
+                        },
+                        {
+                            "label": "buff-breasted sandpiper"
+                        },
+                        {
+                            "label": "common sandpiper"
+                        },
+                        {
+                            "label": "curlew sandpiper"
+                        },
+                        {
+                            "label": "least sandpiper"
+                        },
+                        {
+                            "label": "marsh sandpiper"
+                        },
+                        {
+                            "label": "pectoral sandpiper"
+                        },
+                        {
+                            "label": "semipalmated sandpiper"
+                        },
+                        {
+                            "label": "sharp-tailed sandpiper"
+                        },
+                        {
+                            "label": "stilt sandpiper"
+                        },
+                        {
+                            "label": "terek sandpiper"
+                        },
+                        {
+                            "label": "upland sandpiper"
+                        },
+                        {
+                            "label": "western sandpiper"
+                        },
+                        {
+                            "label": "white-rumped sandpiper"
+                        }
+                    ]
+                },
+                {
+                    "label": "scaup",
+                    "children": [
+                        {
+                            "label": "new zealand scaup"
+                        }
+                    ]
+                },
+                {
+                    "label": "shag",
+                    "children": [
+                        {
+                            "label": "auckland island shag"
+                        },
+                        {
+                            "label": "black shag"
+                        },
+                        {
+                            "label": "bounty island shag"
+                        },
+                        {
+                            "label": "campbell island shag"
+                        },
+                        {
+                            "label": "chatham island shag"
+                        },
+                        {
+                            "label": "little black shag"
+                        },
+                        {
+                            "label": "little shag"
+                        },
+                        {
+                            "label": "macquarie island shag"
+                        },
+                        {
+                            "label": "new zealand king shag"
+                        },
+                        {
+                            "label": "pied shag"
+                        },
+                        {
+                            "label": "pitt island shag"
+                        },
+                        {
+                            "label": "spotted shag"
+                        },
+                        {
+                            "label": "stewart island shag"
+                        }
+                    ]
+                },
+                {
+                    "label": "shearwater",
+                    "children": [
+                        {
+                            "label": "buller's shearwater"
+                        },
+                        {
+                            "label": "christmas island shearwater"
+                        },
+                        {
+                            "label": "cory's shearwater"
+                        },
+                        {
+                            "label": "flesh-footed shearwater"
+                        },
+                        {
+                            "label": "fluttering shearwater"
+                        },
+                        {
+                            "label": "great shearwater"
+                        },
+                        {
+                            "label": "hutton's shearwater"
+                        },
+                        {
+                            "label": "little shearwater"
+                        },
+                        {
+                            "label": "manx shearwater"
+                        },
+                        {
+                            "label": "newell's shearwater"
+                        },
+                        {
+                            "label": "pink-footed shearwater"
+                        },
+                        {
+                            "label": "short-tailed shearwater"
+                        },
+                        {
+                            "label": "sooty shearwater"
+                        },
+                        {
+                            "label": "streaked shearwater"
+                        },
+                        {
+                            "label": "subantarctic little shearwater"
+                        },
+                        {
+                            "label": "wedge-tailed shearwater"
+                        }
+                    ]
+                },
+                {
+                    "label": "silvereye",
+                    "children": [
+                        {
+                            "label": "norfolk silvereye"
+                        }
+                    ]
+                },
+                {
+                    "label": "skua",
+                    "children": [
+                        {
+                            "label": "arctic skua"
+                        },
+                        {
+                            "label": "long-tailed skua"
+                        },
+                        {
+                            "label": "pomarine skua"
+                        },
+                        {
+                            "label": "south polar skua"
+                        },
+                        {
+                            "label": "subantarctic skua"
+                        }
+                    ]
+                },
+                {
+                    "label": "skylark",
+                    "children": [
+                        {
+                            "label": "eurasian skylark"
+                        }
+                    ]
+                },
+                {
+                    "label": "slender-billed white-eye"
+                },
+                {
+                    "label": "snipe",
+                    "children": [
+                        {
+                            "label": "chatham island snipe"
+                        },
+                        {
+                            "label": "japanese snipe"
+                        },
+                        {
+                            "label": "painted snipe"
+                        },
+                        {
+                            "label": "snares island snipe"
+                        },
+                        {
+                            "label": "subantarctic snipe"
+                        }
+                    ]
+                },
+                {
+                    "label": "sparrow",
+                    "children": [
+                        {
+                            "label": "house sparrow"
+                        }
+                    ]
+                },
+                {
+                    "label": "spoonbill",
+                    "children": [
+                        {
+                            "label": "royal spoonbill"
+                        },
+                        {
+                            "label": "yellow-billed spoonbill"
+                        }
+                    ]
+                },
+                {
+                    "label": "starling",
+                    "children": [
+                        {
+                            "label": "common starling"
+                        }
+                    ]
+                },
+                {
+                    "label": "stilt",
+                    "children": [
+                        {
+                            "label": "black stilt"
+                        },
+                        {
+                            "label": "pied stilt"
+                        }
+                    ]
+                },
+                {
+                    "label": "stint",
+                    "children": [
+                        {
+                            "label": "little stint"
+                        },
+                        {
+                            "label": "long-toed stint"
+                        },
+                        {
+                            "label": "red-necked stint"
+                        }
+                    ]
+                },
+                {
+                    "label": "stitchbird"
+                },
+                {
+                    "label": "swallow",
+                    "children": [
+                        {
+                            "label": "welcome swallow"
+                        }
+                    ]
+                },
+                {
+                    "label": "swan",
+                    "children": [
+                        {
+                            "label": "black swan"
+                        },
+                        {
+                            "label": "mute swan"
+                        }
+                    ]
+                },
+                {
+                    "label": "swift",
+                    "children": [
+                        {
+                            "label": "fork-tailed swift"
+                        }
+                    ]
+                },
+                {
+                    "label": "takahe",
+                    "children": [
+                        {
+                            "label": "south island takahe"
+                        }
+                    ]
+                },
+                {
+                    "label": "tattler",
+                    "children": [
+                        {
+                            "label": "grey-tailed tattler"
+                        },
+                        {
+                            "label": "wandering tattler"
+                        }
+                    ]
+                },
+                {
+                    "label": "teal",
+                    "children": [
+                        {
+                            "label": "auckland island teal"
+                        },
+                        {
+                            "label": "brown teal"
+                        },
+                        {
+                            "label": "campbell island teal"
+                        },
+                        {
+                            "label": "chestnut teal"
+                        },
+                        {
+                            "label": "grey teal"
+                        }
+                    ]
+                },
+                {
+                    "label": "tern",
+                    "children": [
+                        {
+                            "label": "antarctic tern"
+                        },
+                        {
+                            "label": "arctic tern"
+                        },
+                        {
+                            "label": "black-fronted tern"
+                        },
+                        {
+                            "label": "bridled tern"
+                        },
+                        {
+                            "label": "caspian tern"
+                        },
+                        {
+                            "label": "common tern"
+                        },
+                        {
+                            "label": "crested tern"
+                        },
+                        {
+                            "label": "fairy tern"
+                        },
+                        {
+                            "label": "grey-backed tern"
+                        },
+                        {
+                            "label": "gull-billed tern"
+                        },
+                        {
+                            "label": "little tern"
+                        },
+                        {
+                            "label": "sooty tern"
+                        },
+                        {
+                            "label": "whiskered tern"
+                        },
+                        {
+                            "label": "white tern"
+                        },
+                        {
+                            "label": "white-fronted tern"
+                        },
+                        {
+                            "label": "white-winged black tern"
+                        }
+                    ]
+                },
+                {
+                    "label": "thrush",
+                    "children": [
+                        {
+                            "label": "song thrush"
+                        }
+                    ]
+                },
+                {
+                    "label": "tomtit"
+                },
+                {
+                    "label": "triller",
+                    "children": [
+                        {
+                            "label": "white-winged triller"
+                        }
+                    ]
+                },
+                {
+                    "label": "tropicbird",
+                    "children": [
+                        {
+                            "label": "red-tailed tropicbird"
+                        },
+                        {
+                            "label": "white-tailed tropicbird"
+                        }
+                    ]
+                },
+                {
+                    "label": "tui"
+                },
+                {
+                    "label": "turkey"
+                },
+                {
+                    "label": "turnstone",
+                    "children": [
+                        {
+                            "label": "ruddy turnstone"
+                        }
+                    ]
+                },
+                {
+                    "label": "wagtail",
+                    "children": [
+                        {
+                            "label": "willie wagtail"
+                        }
+                    ]
+                },
+                {
+                    "label": "warbler",
+                    "children": [
+                        {
+                            "label": "australian reed warbler"
+                        },
+                        {
+                            "label": "chatham island warbler"
+                        },
+                        {
+                            "label": "grey warbler"
+                        }
+                    ]
+                },
+                {
+                    "label": "wattlebird",
+                    "children": [
+                        {
+                            "label": "red wattlebird"
+                        }
+                    ]
+                },
+                {
+                    "label": "weka"
+                },
+                {
+                    "label": "whimbrel",
+                    "children": [
+                        {
+                            "label": "little whimbrel"
+                        }
+                    ]
+                },
+                {
+                    "label": "whitehead"
+                },
+                {
+                    "label": "wild turkey"
+                },
+                {
+                    "label": "woodswallow",
+                    "children": [
+                        {
+                            "label": "masked woodswallow"
+                        },
+                        {
+                            "label": "white-browed woodswallow"
+                        }
+                    ]
+                },
+                {
+                    "label": "wrybill"
+                },
+                {
+                    "label": "yellowhammer"
+                },
+                {
+                    "label": "yellowhead"
+                }
+            ]
+        }
+    ]
+}

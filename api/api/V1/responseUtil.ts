@@ -89,6 +89,14 @@ function validAudiobaitUpload(response, id, message = "") {
   });
 }
 
+function validEventThumbnailUpload(response, id, message = "") {
+  send(response, {
+    statusCode: HttpStatusCode.Ok,
+    messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
+    id,
+  });
+}
+
 function validFileUpload(response, key) {
   send(response, {
     statusCode: HttpStatusCode.Ok,
@@ -176,5 +184,6 @@ export default {
   validDatapointUpdate,
   validRecordingUpload,
   validAudiobaitUpload,
+  validEventThumbnailUpload,
   validFileRequest,
 };
