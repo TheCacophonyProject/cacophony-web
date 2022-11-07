@@ -30,7 +30,7 @@ export function sendMultipartMessage(
     onComplete(xhr);
   };
   xhr.send(formData);
-  return cy.wait(waitOn, {requestTimeout: 20000});
+  return cy.wait(waitOn, { requestTimeout: 20000 });
 }
 
 // Uploads a file and data in a multipart message
