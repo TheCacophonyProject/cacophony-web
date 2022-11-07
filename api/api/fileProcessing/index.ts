@@ -299,7 +299,7 @@ export default function (app: Application) {
         }
         await recording.save();
 
-        if (complete) {
+        if (complete && recording.type === RecordingType.ThermalRaw) {
           const tracks = await recording.getTracks();
           const results = await recordingUtil.saveThumbnailInfo(
             recording,

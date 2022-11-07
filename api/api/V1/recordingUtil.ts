@@ -352,7 +352,7 @@ async function saveThumbnailInfo(
       );
     } else {
       const thumb = await createThumbnail(frame, clip_thumbnail);
-      console.log("saving", `${recording.rawFileKey}-thumb`, thumb);
+      console.log("saving", `${recording.rawFileKey}-thumb`);
       frameUploads.push(
         await modelsUtil
           .openS3()
@@ -1877,15 +1877,20 @@ async function sendAlerts(recId: RecordingId) {
   );
 
   if (alerts.length > 0) {
-    const thumbnail = await getThumbnail(recording, matchedTrack.id).catch(
-      () => {
+    let thumbnail;
+    try {
+      thumbnail = await getThumbnail(recording, matchedTrack.id);
+    } catch (e) {
+      try {
+        thumbnail = await getThumbnail(recording);
+      } catch (e) {
         log.warning(
           "Alerting without thumbnail for %d and track %d",
           recId,
           matchedTrack.id
         );
       }
-    );
+    }
     for (const alert of alerts) {
       await alert.sendAlert(
         recording,
