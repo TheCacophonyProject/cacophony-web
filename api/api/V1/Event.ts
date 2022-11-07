@@ -293,39 +293,6 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/events/:id Return an event given an event id.
-   * @apiName GetEventById
-   * @apiGroup Events
-   * @apiDescription Get an event given an event id
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:id`,
-    extractJwtAuthorizedUser,
-    validateFields([idOf(param("id"))]),
-    fetchAuthorizedRequiredEventById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      const event = response.locals.event;
-      const details = {
-        ...event.EventDetail.details,
-      };
-      delete details.fileKey;
-      return successResponse(response, "Got event", {
-        event: {
-          id: event.id,
-          details,
-          type: event.EventDetail.type,
-          dateTime: event.dateTime,
-        },
-      });
-    }
-  );
-
-  /**
    * @api {post} /api/v1/events/device/:deviceId Add new events on behalf of device
    * @apiName AddEventOnBehalf
    * @apiGroup Events
@@ -625,6 +592,39 @@ export default function (app: Application, baseUrl: string) {
       });
       return successResponse(response, "Completed query.", {
         events,
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/events/:id Return an event given an event id.
+   * @apiName GetEventById
+   * @apiGroup Events
+   * @apiDescription Get an event given an event id
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredEventById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const event = response.locals.event;
+      const details = {
+        ...event.EventDetail.details,
+      };
+      delete details.fileKey;
+      return successResponse(response, "Got event", {
+        event: {
+          id: event.id,
+          details,
+          type: event.EventDetail.type,
+          dateTime: event.dateTime,
+        },
       });
     }
   );
