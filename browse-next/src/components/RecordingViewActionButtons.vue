@@ -99,7 +99,7 @@ const notImplemented = () => {
 };
 </script>
 <template>
-  <div class="recording-icons d-flex justify-content-between ps-sm-2">
+  <div class="recording-icons d-flex justify-content-between px-sm-2">
     <button
       type="button"
       class="btn"
@@ -126,52 +126,60 @@ const notImplemented = () => {
         :color="recordingIsStarred ? 'goldenrod' : '#666'"
       />
     </button>
-    <b-dropdown
-      no-flip
-      dropup
-      auto-close
-      offset="-92, 10"
-      no-caret
-      variant="link"
-      menu-class="dropdown-indicator"
-    >
-      <template #button-content>
-        <font-awesome-icon icon="download" color="#666" />
-      </template>
-      <b-dropdown-item-button @click="() => emit('requested-export')">
-        <font-awesome-icon :icon="['far', 'file-video']" />
-        Export Video
-      </b-dropdown-item-button>
-      <b-dropdown-item-button @click="() => emit('requested-advanced-export')">
-        <font-awesome-icon :icon="['far', 'file-video']" />
-        Export Video (Advanced)
-      </b-dropdown-item-button>
-      <b-dropdown-divider />
-      <b-dropdown-item-button @click="() => emit('requested-download')">
-        <font-awesome-icon :icon="['far', 'file']" />
-        Download CPTV
-      </b-dropdown-item-button>
-    </b-dropdown>
-    <b-dropdown
-      no-flip
-      dropup
-      auto-close
-      offset="-67, 10"
-      no-caret
-      variant="link"
-      menu-class="dropdown-indicator"
-    >
-      <template #button-content>
-        <font-awesome-icon icon="trash-can" color="#666" />
-      </template>
-      <b-dropdown-item-button
-        @click="() => emit('delete-recording')"
-        variant="danger"
+    <div class="static-dropdown-nesting">
+      <b-dropdown
+        no-flip
+        dropup
+        auto-close
+        offset="-92, 10"
+        no-caret
+        boundary="window"
+        variant="link"
+        menu-class="dropdown-indicator"
       >
-        <font-awesome-icon icon="exclamation-triangle" />
-        Delete Recording
-      </b-dropdown-item-button>
-    </b-dropdown>
+        <template #button-content>
+          <font-awesome-icon icon="download" color="#666" />
+        </template>
+        <b-dropdown-item-button @click="() => emit('requested-export')">
+          <font-awesome-icon :icon="['far', 'file-video']" />
+          Export Video
+        </b-dropdown-item-button>
+        <b-dropdown-item-button
+          @click="() => emit('requested-advanced-export')"
+        >
+          <font-awesome-icon :icon="['far', 'file-video']" />
+          Export Video (Advanced)
+        </b-dropdown-item-button>
+        <b-dropdown-divider />
+        <b-dropdown-item-button @click="() => emit('requested-download')">
+          <font-awesome-icon :icon="['far', 'file']" />
+          Download CPTV
+        </b-dropdown-item-button>
+      </b-dropdown>
+    </div>
+    <div class="static-dropdown-nesting">
+      <b-dropdown
+        no-flip
+        dropup
+        auto-close
+        boundary="window"
+        offset="-67, 10"
+        no-caret
+        variant="link"
+        menu-class="dropdown-indicator"
+      >
+        <template #button-content>
+          <font-awesome-icon icon="trash-can" color="#666" />
+        </template>
+        <b-dropdown-item-button
+          @click="() => emit('delete-recording')"
+          variant="danger"
+        >
+          <font-awesome-icon icon="exclamation-triangle" />
+          Delete Recording
+        </b-dropdown-item-button>
+      </b-dropdown>
+    </div>
     <button
       type="button"
       class="btn"

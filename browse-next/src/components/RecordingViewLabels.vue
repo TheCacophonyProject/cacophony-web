@@ -7,7 +7,11 @@ import type {
   CardTableItems,
   CardTableValue,
 } from "@/components/CardTableTypes";
-import { extractAction, extractComponent } from "@/components/CardTableTypes";
+import {
+  extractComponentAction,
+  extractComponent,
+  isComponent,
+} from "@/components/CardTableTypes";
 import { BModal } from "bootstrap-vue-3";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
 import { CurrentUser } from "@models/LoggedInUser";
@@ -168,8 +172,9 @@ const doAddLabel = async () => {
             <div>{{ dateTime }}</div>
           </div>
           <component
+            v-if="isComponent(deleteAction)"
             :is="extractComponent(deleteAction)"
-            @click.stop.prevent="() => extractAction(deleteAction)()"
+            @click.stop.prevent="() => extractComponentAction(deleteAction)()"
           />
         </div>
       </template>

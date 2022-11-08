@@ -20,7 +20,8 @@
         <td
           :class="[
             compact ? 'py-2 px-3' : 'p-3',
-            { 'text-end': isComponent(value) },
+            { 'text-end': isComponent(value) || isButton(value) },
+            { 'w-100': !(isComponent(value) || isButton(value)) },
           ]"
           v-for="(value, index) in row"
           :key="index"
@@ -29,8 +30,22 @@
             class="text-end"
             v-if="isComponent(value)"
             :is="extractComponent(value)"
-            @click.stop.prevent="() => extractAction(value)()"
+            @click.stop.prevent="() => extractComponentAction(value)()"
           />
+          <button
+            v-else-if="isButton(value)"
+            class="btn"
+            :class="value.classes || []"
+            @click.stop.prevent="() => extractButtonAction(value)()"
+          >
+            <font-awesome-icon
+              :icon="value.icon"
+              v-if="value.icon"
+              :color="value.color || 'inherit'"
+              :rotation="value.rotate || null"
+            />
+            <span v-if="value.label">{{ value.label }}</span>
+          </button>
           <span v-else>{{ value }}</span>
         </td>
       </tr>
@@ -46,8 +61,10 @@ import type {
 } from "@/components/CardTableTypes";
 import {
   isComponent,
+  isButton,
   extractComponent,
-  extractAction,
+  extractComponentAction,
+  extractButtonAction,
 } from "@/components/CardTableTypes";
 
 const { items, compact = false } = defineProps<{

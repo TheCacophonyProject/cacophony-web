@@ -2,11 +2,13 @@
   <layered-dropdown
     :options="options"
     :disabled="disabled"
+    :disabled-tags="disabledTags"
     :can-be-pinned="canBePinned"
     :pinned-items="pinnedItems"
     :placeholder="placeholder"
     :multiselect="multiselect"
     :selected-item="selectedItem"
+    :open-on-mount="openOnMount"
     ref="layeredDropdown"
   />
 </template>
@@ -24,14 +26,18 @@ const {
   canBePinned = false,
   pinnedItems = [],
   selectedItem,
+  openOnMount = true,
+  disabledTags = [],
 } = defineProps<{
   disabled?: boolean;
   exclude?: string[];
   placeholder?: string;
   multiselect?: boolean;
-  canBePinned: boolean;
+  canBePinned?: boolean;
   pinnedItems?: string[];
   selectedItem?: string;
+  openOnMount?: boolean;
+  disabledTags?: string[];
 }>();
 
 const layeredDropdown = ref<typeof LayeredDropdown>();

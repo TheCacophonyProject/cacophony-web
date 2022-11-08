@@ -18,13 +18,15 @@ export interface ApiGroupResponse {
 export interface ApiGroupSettings {
   // Define group-specific tagging preferences.
   // Define if cameras are on 24/7?
-  tags: string[];
+  tags?: string[];
+  audioTags?: string[];
 }
 
 export interface ApiGroupUserSettings {
   // Define user-specific tagging preferences for the group.
   // Maybe define what mode the user wants to see their dashboard in, whether they prefer seeing
   // recordings or visits for that group?
-  displayMode: "recordings" | "visits";
-  tags: string[];
+  displayMode?: "recordings" | "visits";
+  tags?: string[];
+  audioTags?: string[];
 }

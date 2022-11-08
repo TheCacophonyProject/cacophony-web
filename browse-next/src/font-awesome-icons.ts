@@ -59,6 +59,7 @@ import {
   faEllipsis,
   faThumbTack,
   faExclamationTriangle,
+  faArrowUp,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -138,7 +139,8 @@ library.add(
   faThumbTack,
   faFile,
   faFileVideo,
-  faExclamationTriangle
+  faExclamationTriangle,
+  faArrowUp
 );
 
 export default FontAwesomeIcon;

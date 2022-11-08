@@ -50,6 +50,14 @@ const stationsForMap = computed<NamedPoint[]>(() => {
 //  Display in table and on map.
 const highlightedPoint = ref<NamedPoint | null>(null);
 
+// TODO: Add an alert bell next to stations that have alerts for me.
+// Also look at the ability for alerts for me to be at a blanket group level.
+// Rename stations here.
+// Delete stations here?
+
+// Think about station images, but really, I think we want those to be at the device level, and be tracked
+// in DeviceHistory.  Similarly to polygon masks
+
 const highlightPoint = (p: NamedPoint | null) => {
   highlightedPoint.value = p;
 };

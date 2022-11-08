@@ -87,6 +87,7 @@ export const getClassifications = async (
 };
 
 export const displayLabelForClassificationLabel = (label: string) => {
+  label = label.toLowerCase();
   const classifications = flatClassifications.value || {};
   return (classifications[label] && classifications[label].display) || label;
 };

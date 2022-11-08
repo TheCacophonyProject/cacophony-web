@@ -27,7 +27,6 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
-import { truncateLongStationNames } from "@/utils";
 import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
@@ -550,7 +549,11 @@ const recordingStartTime = computed<string>(() => {
 });
 
 const currentStationName = computed<string>(() => {
-  return truncateLongStationNames(recording.value?.stationName || "");
+  return recording.value?.stationName || "";
+});
+
+const currentDeviceName = computed<string>(() => {
+  return recording.value?.deviceName || "";
 });
 
 const mapPointForRecording = computed<NamedPoint[]>(() => {
@@ -740,14 +743,11 @@ const inlineModal = ref<boolean>(false);
           />
         </div>
         <div
-          class="recording-info d-flex flex-column flex-fill"
+          class="recording-info d-flex flex-column flex-fill overflow-hidden"
           ref="recordingInfo"
         >
           <!-- Desktop view only -->
-          <div
-            class="recording-station-info d-flex mb-3 pe-3"
-            v-if="!isMobileView"
-          >
+          <div class="recording-station-info d-flex mb-3" v-if="!isMobileView">
             <map-with-points
               class="recording-location-map"
               :points="mapPointForRecording"
@@ -760,14 +760,30 @@ const inlineModal = ref<boolean>(false);
               :zoom="false"
               :radius="30"
             />
-            <div class="flex-fill">
-              <div class="station-name fw-bolder pt-3 px-3">
-                <font-awesome-icon
-                  icon="map-marker-alt"
-                  size="xs"
-                  class="me-2"
-                  color="rgba(0, 0, 0, 0.7)"
-                />{{ currentStationName }}
+            <div class="flex-fill overflow-hidden">
+              <div class="fw-bolder d-flex">
+                <div class="station-name pt-3 px-3 text-truncate">
+                  <font-awesome-icon
+                    icon="map-marker-alt"
+                    size="xs"
+                    class="me-2"
+                    color="rgba(0, 0, 0, 0.7)"
+                  />
+                  <span class="text-truncate">
+                    {{ currentStationName }}
+                  </span>
+                </div>
+                <div class="device-name pt-3 pe-2 text-truncate">
+                  <font-awesome-icon
+                    icon="microchip"
+                    size="xs"
+                    class="me-2"
+                    color="rgba(0, 0, 0, 0.7)"
+                  />
+                  <span class="text-truncate">
+                    {{ currentDeviceName }}
+                  </span>
+                </div>
               </div>
               <div class="recording-date-time fs-7 d-flex px-3 mt-1">
                 <div>
@@ -883,14 +899,31 @@ const inlineModal = ref<boolean>(false);
               <div
                 class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
               >
-                <div class="station-name fw-bolder pe-3">
-                  <font-awesome-icon
-                    icon="map-marker-alt"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
-                  />{{ currentStationName }}
+                <div class="fw-bolder d-flex">
+                  <div class="station-name pe-3 text-truncate">
+                    <font-awesome-icon
+                      icon="map-marker-alt"
+                      size="xs"
+                      class="me-2"
+                      color="rgba(0, 0, 0, 0.7)"
+                    />
+                    <span class="text-truncate">
+                      {{ currentStationName }}
+                    </span>
+                  </div>
+                  <div class="device-name pe-2 text-truncate">
+                    <font-awesome-icon
+                      icon="microchip"
+                      size="xs"
+                      class="me-2"
+                      color="rgba(0, 0, 0, 0.7)"
+                    />
+                    <span class="text-truncate">
+                      {{ currentDeviceName }}
+                    </span>
+                  </div>
                 </div>
+
                 <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
                   <div>
                     <font-awesome-icon
@@ -1036,7 +1069,6 @@ const inlineModal = ref<boolean>(false);
   />
 </template>
 
-
 <style scoped lang="less">
 @import "../assets/font-sizes.less";
 @import "../assets/mixins.less";
@@ -1135,6 +1167,7 @@ const inlineModal = ref<boolean>(false);
   }
   width: 120px;
   height: 120px;
+  min-width: 120px;
 }
 .nav-item.active {
   background: unset;
@@ -1143,6 +1176,10 @@ const inlineModal = ref<boolean>(false);
 .station-name,
 .recording-date-time {
   color: #444;
+}
+.device-name,
+.station-name {
+  max-width: 100%;
 }
 
 .nav-tabs {

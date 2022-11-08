@@ -25,6 +25,8 @@ import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import SimpleTable from "@/components/SimpleTable.vue";
+import { DEFAULT_TAGS } from "@/consts";
+import { capitalize } from "@/utils";
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
   index: number;
@@ -46,12 +48,6 @@ const showClassificationSearch = ref<boolean>(false);
 const showTaggerDetails = ref<boolean>(false);
 const tagSelect = ref<typeof HierarchicalTagSelect>();
 const trackDetails = ref<HTMLDivElement>();
-
-const capitalize = (str: string): string =>
-  str
-    .split(" ")
-    .map((p) => (p[0] || "").toUpperCase() + p.slice(1))
-    .join(" ");
 
 const taggerDetails = computed<CardTableItems>(() => {
   const tags: ApiTrackTagResponse[] = [...humanTags.value];
@@ -181,18 +177,7 @@ const defaultTags = computed<string[]>(() => {
       tags.push(...groupSettings.tags);
     } else {
       // Default base tags if admin hasn't edited them
-      tags.push(
-        ...[
-          "possum",
-          "rodent",
-          "hedgehog",
-          "cat",
-          "bird",
-          "mustelid",
-          "false-positive",
-          "unidentified",
-        ]
-      );
+      tags.push(...DEFAULT_TAGS);
     }
   }
   return tags;
@@ -277,11 +262,13 @@ const pinCustomTag = async (classification: Classification) => {
       displayMode: "visits",
       tags: [],
     };
-    if (userGroupSettings.tags.includes(classification.label)) {
-      userGroupSettings.tags = userGroupSettings.tags.filter(
+    const tags = userGroupSettings.tags || [];
+    if (tags.includes(classification.label)) {
+      userGroupSettings.tags = tags.filter(
         (tag) => tag !== classification.label
       );
     } else {
+      userGroupSettings.tags = userGroupSettings.tags || [];
       userGroupSettings.tags.push(classification.label);
     }
     await persistUserGroupSettings(userGroupSettings);
@@ -443,7 +430,9 @@ const handleImageError = (e: ErrorEvent) => {
           { selected: thisUserTag && tag.label === thisUserTag.what },
           {
             'selected-by-other-user':
-              otherUserTags.length && otherUserTags.includes(tag.label),
+              !(thisUserTag && tag.label === thisUserTag.what) &&
+              otherUserTags.length &&
+              otherUserTags.includes(tag.label),
           },
           { pinned: !!userDefinedTags[tag.label] },
         ]"

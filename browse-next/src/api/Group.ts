@@ -3,6 +3,7 @@ import type { FetchResult } from "@api/types";
 import type { GroupId } from "@typedefs/api/common";
 import type {
   ApiGroupResponse,
+  ApiGroupSettings,
   ApiGroupUserResponse,
 } from "@typedefs/api/group";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
@@ -21,6 +22,9 @@ export const saveGroupUserSettings = (
   id: GroupId,
   settings: ApiGroupUserSettings
 ) => CacophonyApi.patch(`/api/v1/groups/${id}/my-settings`, { settings });
+
+export const saveGroupSettings = (id: GroupId, settings: ApiGroupSettings) =>
+  CacophonyApi.patch(`/api/v1/groups/${id}/group-settings`, { settings });
 
 export const getGroups = (abortable: boolean) =>
   CacophonyApi.get(

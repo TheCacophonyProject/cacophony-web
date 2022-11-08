@@ -11,14 +11,18 @@ const {
   pinnedItems = [],
   placeholder = "Search",
   selectedItem,
+  openOnMount = true,
+  disabledTags = [],
 } = defineProps<{
   options: Classification;
   disabled: boolean;
+  disabledTags?: string[];
   multiselect: boolean;
   placeholder: string;
   canBePinned: boolean;
   pinnedItems: string[];
   selectedItem?: string;
+  openOnMount?: boolean;
 }>();
 
 // Elements
@@ -73,6 +77,8 @@ watch(
       addSearchTermOnSubmit();
       currPath.value =
         optionsMap.value.get((nextLabel as string).toLowerCase())?.path || [];
+    } else {
+      singleSelection.value = null;
     }
   }
 );
@@ -86,7 +92,7 @@ watch(
       addSearchTermOnSubmit();
       currPath.value =
         optionsMap.value.get(selectedItem.toLowerCase())?.path || [];
-    } else {
+    } else if (openOnMount) {
       openSelect();
     }
   }
@@ -316,6 +322,7 @@ defineExpose({
             class="options-list-label btn text-start text-capitalize"
             v-if="option.label !== 'No results'"
             @click.prevent="addSelectedOption(option)"
+            :disabled="disabledTags.includes(option.label)"
           >
             {{ option.display || option.label }}
           </button>

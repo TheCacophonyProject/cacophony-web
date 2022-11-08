@@ -16,7 +16,7 @@ import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
-import { saveGroupUserSettings } from "@api/Group";
+import { saveGroupSettings, saveGroupUserSettings } from "@api/Group";
 
 export interface LoggedInUserAuth {
   apiToken: string;
@@ -64,6 +64,18 @@ export const persistUserGroupSettings = async (
     if (localGroupToUpdate) {
       localGroupToUpdate.userSettings = userSettings;
       await saveGroupUserSettings(localGroupToUpdate.id, userSettings);
+    }
+  }
+};
+
+export const persistGroupSettings = async (settings: ApiGroupSettings) => {
+  if (currentSelectedGroup.value) {
+    const localGroupToUpdate = (UserGroups.value || []).find(
+      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+    );
+    if (localGroupToUpdate) {
+      localGroupToUpdate.settings = settings;
+      await saveGroupSettings(localGroupToUpdate.id, settings);
     }
   }
 };

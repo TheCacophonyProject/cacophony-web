@@ -14,6 +14,10 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
   <section-header>Manage group</section-header>
   <div class="px-3 p-md-0">
     <p>
+      Administrate group to add or remove users who have access to this group,
+      change the default tags that users of this group see when tagging tracks.
+    </p>
+    <p>
       If I'm the only user, and there are no devices, and no recordings, then we
       should show the setup screen
     </p>
@@ -51,7 +55,7 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       >Fix locations</router-link
     >
   </ul>
-  <div class="p-3 px-md-0">
+  <div class="py-3">
     <router-view />
   </div>
 </template>

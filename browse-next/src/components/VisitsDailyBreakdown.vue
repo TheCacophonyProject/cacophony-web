@@ -11,7 +11,6 @@ import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/root";
 import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
-import { truncateLongStationNames } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
@@ -320,7 +319,10 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         <div v-if="visit.type === 'sun'" class="py-2 ps-3">
           {{ visit.name }}
         </div>
-        <div v-else class="d-flex py-2 ps-3 align-items-center">
+        <div
+          v-else
+          class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden"
+        >
           <div class="visit-thumb">
             <img
               :src="thumbnailSrcForVisit(visit.data)"
@@ -332,7 +334,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
               visit.data.recordings.length
             }}</span>
           </div>
-          <div class="ps-3 d-flex flex-column">
+          <div class="ps-3 d-flex flex-column text-truncate">
             <div>
               <span
                 class="visit-species-tag px-1 mb-1 text-capitalize"
@@ -346,12 +348,12 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
                 />
               </span>
             </div>
-            <span class="visit-station-name"
+            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
               ><font-awesome-icon
                 icon="map-marker-alt"
                 size="xs"
-                class="station-icon pe-1"
-              />{{ truncateLongStationNames(visit.data.stationName) }}</span
+                class="station-icon pe-1 text"
+              />{{ visit.data.stationName }}</span
             >
           </div>
         </div>
@@ -443,6 +445,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   }
   .visit-thumb {
     min-width: 45px;
+    max-width: 45px;
     width: 45px;
     height: 45px;
     overflow: hidden;
