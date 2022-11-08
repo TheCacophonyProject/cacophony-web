@@ -1,35 +1,42 @@
 import type { Component } from "vue";
 
-export type CardTableActionComponent = {
-  component: Component;
+export interface CardTableActionItem {
+  type: string;
   action: () => void;
-};
+}
 
-export type CardTableActionButton = {
+export interface CardTableActionComponent extends CardTableActionItem {
+  type: "component";
+  component: Component;
+}
+
+export interface CardTableActionButton extends CardTableActionItem {
+  type: "button";
   icon?: string;
   classes?: string[];
   color?: string;
   rotate?: number;
   label?: string;
-  action: () => void;
-};
+  disabled?: () => void;
+}
 
-export const extractComponent = (value: CardTableValue): Component =>
-  (value as CardTableActionComponent).component;
-export const extractComponentAction = (value: CardTableValue): (() => void) =>
-  (value as CardTableActionComponent).action;
-export const extractButtonAction = (value: CardTableValue): (() => void) =>
-  (value as CardTableActionButton).action;
+export const extractComponent = (value: CardTableValue): string =>
+  (value as CardTableActionComponent).component as unknown as string;
+export const extractAction = (value: CardTableValue): (() => void) =>
+  (typeof value === "object" && (value as CardTableActionItem).action) ||
+  (() => {
+    return;
+  });
 export const isComponent = (value: CardTableValue) => {
   return (
     typeof value === "object" &&
-    "component" in (value as CardTableActionComponent)
+    (value as CardTableActionItem).type === "component"
   );
 };
 export const isButton = (value: CardTableValue) => {
   return (
     typeof value === "object" &&
-    !("component" in (value as CardTableActionComponent))
+    (value as CardTableActionItem).type === "button"
   );
 };
 
@@ -38,7 +45,8 @@ export type CardTableValue =
   | number
   | Date
   | CardTableActionButton
-  | CardTableActionComponent;
+  | CardTableActionComponent
+  | CardTableActionItem;
 
 export interface CardTableItems {
   headings: string[];

@@ -82,20 +82,25 @@ onMounted(async () => {
 
 const tableItems = computed<CardTableItems>(() => {
   return customTags.value
-    .map((tag: string) => ({
+    .map((tag: string, index: number) => ({
       tag: capitalize(displayLabelForClassificationLabel(tag)),
       _moveUp: {
+        type: "button",
         icon: "arrow-up",
         color: "#444",
+        disabled: () => index === 0,
         action: () => moveTagUp(tag),
       },
       _moveDown: {
+        type: "button",
         icon: "arrow-up",
         rotate: 180,
         color: "#444",
+        disabled: () => index === customTags.value.length - 1,
         action: () => moveTagDown(tag),
       },
       _deleteAction: {
+        type: "button",
         icon: "trash-can",
         color: "#444",
         action: () => removeTag(tag),
@@ -135,8 +140,8 @@ const addPendingTag = async () => {
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
 <template>
-  <h1 class="h5">Manage group tag settings</h1>
-  <div class="d-flex flex-column flex-md-row justify-content-end mb-3">
+  <h1 class="h5 d-none d-md-block">Manage group tag settings</h1>
+  <div class="d-flex flex-column flex-md-row justify-content-md-between mb-3">
     <p>
       Manage the set of default tags that users see for this group. Users can
       also add and pin their own most-used tags via the tagging interface.
@@ -144,7 +149,7 @@ const addPendingTag = async () => {
     <div class="d-flex align-items-end justify-content-end ms-md-5">
       <button
         type="button"
-        class="btn btn-outline-success ms-2"
+        class="btn btn-outline-secondary ms-2"
         @click.stop.prevent="showAddTagModal = true"
       >
         Add
@@ -158,14 +163,15 @@ const addPendingTag = async () => {
       </button>
     </div>
   </div>
-  <simple-table :items="tableItems" />
+  <simple-table :items="tableItems" compact />
   <b-modal
     v-model="showAddTagModal"
-    title="Add tag"
+    title="Add group tag"
     @cancel="() => (pendingTag = null)"
     @ok="addPendingTag"
     ok-title="Add tag"
-    ok-variant="success"
+    ok-variant="secondary"
+    cancel-variant="outline-secondary"
     centered
   >
     <hierarchical-tag-select

@@ -60,6 +60,7 @@ import {
   faThumbTack,
   faExclamationTriangle,
   faArrowUp,
+  faPencilAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -140,7 +141,8 @@ library.add(
   faFile,
   faFileVideo,
   faExclamationTriangle,
-  faArrowUp
+  faArrowUp,
+  faPencilAlt
 );
 
 export default FontAwesomeIcon;

@@ -7,7 +7,7 @@
     <thead>
       <tr>
         <th
-          class="py-2 px-3"
+          class="py-2 px-3 text-nowrap"
           v-for="(heading, index) in displayedItems.headings"
           :key="`${heading}_${index}`"
         >
@@ -30,13 +30,14 @@
             class="text-end"
             v-if="isComponent(value)"
             :is="extractComponent(value)"
-            @click.stop.prevent="() => extractComponentAction(value)()"
+            @click.stop.prevent="() => extractAction(value)()"
           />
           <button
             v-else-if="isButton(value)"
             class="btn"
             :class="value.classes || []"
-            @click.stop.prevent="() => extractButtonAction(value)()"
+            :disabled="value.disabled && value.disabled()"
+            @click.stop.prevent="() => extractAction(value)()"
           >
             <font-awesome-icon
               :icon="value.icon"
@@ -63,8 +64,7 @@ import {
   isComponent,
   isButton,
   extractComponent,
-  extractComponentAction,
-  extractButtonAction,
+  extractAction,
 } from "@/components/CardTableTypes";
 
 const { items, compact = false } = defineProps<{
@@ -83,6 +83,21 @@ const itemsMapped = computed<Record<string, CardTableValue>[]>(() => {
   });
 });
 
+const splitCamelCase = (str: string): string => {
+  const splitPoints = str
+    .split("")
+    .map((char, index) => (char.charCodeAt(0) < 97 ? index : 0))
+    .filter((i) => i !== 0);
+  const words = [];
+  let offset = 0;
+  for (const splitPoint of splitPoints) {
+    words.push(str.slice(offset, splitPoint));
+    offset = splitPoint;
+  }
+  words.push(str.slice(offset, str.length));
+  return words.join(" ");
+};
+
 const displayedItems = computed<{
   headings: string[];
   values: CardTableValue[][];
@@ -93,7 +108,9 @@ const displayedItems = computed<{
   return {
     headings: items.headings
       .filter((heading) => !heading.startsWith("__"))
-      .map((heading) => (heading.startsWith("_") ? "" : heading)),
+      .map((heading) =>
+        heading.startsWith("_") ? "" : splitCamelCase(heading)
+      ),
     values: itemsMapped.value.map((row) =>
       Object.entries(row)
         .filter(([heading, _value]) => !heading.startsWith("__"))
