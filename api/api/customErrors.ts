@@ -59,6 +59,7 @@ function errorHandler(
     );
   }
   return serverErrorResponse(
+    request,
     response,
     err,
     `Internal server error: ${err.name}: ${err.message}`,
