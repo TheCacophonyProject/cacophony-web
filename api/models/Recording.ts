@@ -284,9 +284,11 @@ export default function (
     rawFileKey: DataTypes.STRING,
     rawMimeType: DataTypes.STRING,
     rawFileHash: DataTypes.STRING,
+    rawFileSize: DataTypes.NUMBER,
 
     // Processing fields. Fields set by and for the processing.
     fileKey: DataTypes.STRING,
+    fileSize: DataTypes.NUMBER,
     fileMimeType: DataTypes.STRING,
     processingStartTime: DataTypes.DATE,
     processingEndTime: DataTypes.DATE,
