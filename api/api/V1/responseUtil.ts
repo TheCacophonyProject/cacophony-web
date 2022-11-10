@@ -176,7 +176,7 @@ export const serverErrorResponse = async (
       "SERVER ERROR: %s, %s, %s, %s(%s)",
       error.toString(),
       error.stack,
-      Object.entries(error),
+      Object.entries(error).flat(),
       token._type,
       token.id
     );
