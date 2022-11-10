@@ -15,6 +15,7 @@ import type {
   CardTableItems,
   CardTableValue,
 } from "@/components/CardTableTypes";
+import LeaveGroupModal from "@/components/LeaveGroupModal.vue";
 const groupUsers = ref<ApiGroupUserResponse[]>([]);
 const loadingUsers = ref(false);
 
@@ -42,8 +43,13 @@ onBeforeMount(async () => {
 const editUserAdmin = async (user: ApiGroupUserResponse) => {
   console.log("Edit user admin state");
 };
+const selectedLeaveGroup = ref(false);
 const removeUser = async (user: ApiGroupUserResponse) => {
-  console.log("Remove user from group");
+  if (user.id === CurrentUser.value.id) {
+    selectedLeaveGroup.value = true;
+  } else {
+    console.log("Remove user from group");
+  }
 };
 
 const isLastAdminUser = (user: ApiGroupUserResponse): boolean => {
@@ -56,10 +62,11 @@ const tableItems = computed<CardTableItems>(() => {
   return groupUsers.value
     .map((user: ApiGroupUserResponse) => ({
       userName:
-        user.userName === CurrentUser.value.userName
+        user.id === CurrentUser.value.id
           ? `${user.userName} (you)`
           : user.userName,
-      canAdministrateGroup: user.admin ? "Yes" : "",
+      administrator: user.admin ? "Yes" : "",
+      groupOwner: "No",
       _editAdmin: {
         type: "button",
         icon: "pencil-alt",
@@ -73,10 +80,12 @@ const tableItems = computed<CardTableItems>(() => {
         icon: "trash-can",
         color: "#444",
         align: "right",
-        label: `Remove <strong><em>${user.userName}</em></strong> from group`,
+        label: () =>
+          user.id === CurrentUser.value.id
+            ? "Leave group"
+            : `Remove <strong><em>${user.userName}</em></strong> from group`,
         // TODO: If you try to delete yourself, we should have a modal confirmation, even if there are other admin users?
         //  Actually, that's the same as the "Leave group" functionality.
-
         disabled: () => isLastAdminUser(user),
         action: () => removeUser(user),
       },
@@ -105,6 +114,9 @@ const invitePendingUser = async () => {
   // This means the user can't reuse a link to rejoin a group if they're removed.
   // Another option is just to have an invites table?
 };
+
+// TODO: Billing users - there must be at least one owner/billing user at all times.  For a billing user to be removed
+//  from the group, billing/ownership must be transferred to another user first.
 </script>
 <template>
   <h1 class="d-none d-md-block h5">Users</h1>
@@ -137,6 +149,7 @@ const invitePendingUser = async () => {
       be sent an email with a link that will let them join your group.
     </p>
   </b-modal>
+  <leave-group-modal v-model="selectedLeaveGroup" />
 </template>
 <style lang="less" scoped>
 .thead {
