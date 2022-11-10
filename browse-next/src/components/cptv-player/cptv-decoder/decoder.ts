@@ -41,9 +41,11 @@ export class CptvDecoder {
         delete messageQueue[type];
         resolver && resolver(data);
       };
-      decoder = new Worker(new URL("./decoder.worker.ts", import.meta.url), {
-        type: "module",
-      });
+      if (!decoder) {
+        decoder = new Worker(new URL("./decoder.worker.ts", import.meta.url), {
+          type: "module",
+        });
+      }
       decoder.onmessage = onMessage;
       await this.waitForMessage("init");
       this.inited = true;

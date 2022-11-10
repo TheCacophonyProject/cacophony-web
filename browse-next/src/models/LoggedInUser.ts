@@ -328,6 +328,7 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
           groupName: group.groupName,
           settings: group.settings,
           userSettings: group.userSettings,
+          admin: group.admin,
         }) ||
         false
       );
@@ -340,6 +341,7 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
         groupName: UserGroups.value[0].groupName,
         settings: UserGroups.value[0].settings,
         userSettings: UserGroups.value[0].userSettings,
+        admin: UserGroups.value[0].admin,
       }) ||
     false
   );

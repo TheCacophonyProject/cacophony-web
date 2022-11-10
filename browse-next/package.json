@@ -16,7 +16,7 @@
     "@popperjs/core": "^2.11.6",
     "@vueuse/core": "^9.2.0",
     "bootstrap": "^5.2.1",
-    "bootstrap-vue-3": "^0.3.11",
+    "bootstrap-vue-3": "^0.4.6",
     "leaflet": "^1.8.0",
     "luxon": "^3.0.3",
     "scale-color-perceptual": "^1.1.2",

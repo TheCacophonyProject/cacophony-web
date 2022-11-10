@@ -743,11 +743,15 @@ const inlineModal = ref<boolean>(false);
           />
         </div>
         <div
-          class="recording-info d-flex flex-column flex-fill overflow-hidden"
+          id="clip0"
+          class="recording-info d-flex flex-column"
           ref="recordingInfo"
         >
           <!-- Desktop view only -->
-          <div class="recording-station-info d-flex mb-3" v-if="!isMobileView">
+          <div
+            class="recording-station-info d-inline-flex mb-3"
+            v-if="!isMobileView"
+          >
             <map-with-points
               class="recording-location-map"
               :points="mapPointForRecording"
@@ -760,9 +764,15 @@ const inlineModal = ref<boolean>(false);
               :zoom="false"
               :radius="30"
             />
-            <div class="flex-fill overflow-hidden">
-              <div class="fw-bolder d-flex">
-                <div class="station-name pt-3 px-3 text-truncate">
+            <div
+              class="recording-details d-flex flex-column flex-fill"
+              id="clip1"
+            >
+              <div class="fw-bolder">
+                <div
+                  class="station-name pt-3 px-3 text-truncate d-inline-block"
+                  style="max-width: 50%"
+                >
                   <font-awesome-icon
                     icon="map-marker-alt"
                     size="xs"
@@ -773,7 +783,10 @@ const inlineModal = ref<boolean>(false);
                     {{ currentStationName }}
                   </span>
                 </div>
-                <div class="device-name pt-3 pe-2 text-truncate">
+                <div
+                  class="device-name pt-3 pe-2 text-truncate d-inline-block"
+                  style="max-width: 50%"
+                >
                   <font-awesome-icon
                     icon="microchip"
                     size="xs"
@@ -1073,6 +1086,9 @@ const inlineModal = ref<boolean>(false);
 @import "../assets/font-sizes.less";
 @import "../assets/mixins.less";
 
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
 // TODO: When there is overflow, show shadows at top/bottom
 .player-overflow {
   @media screen and (max-width: 1040px) {
@@ -1159,7 +1175,10 @@ const inlineModal = ref<boolean>(false);
 .recording-station-info {
   .standard-shadow();
 }
-
+.recording-details {
+  //flex: 0.1;
+  //flex-basis: min-content;
+}
 .recording-location-map {
   @media screen and (max-width: 1040px) {
     width: 100%;

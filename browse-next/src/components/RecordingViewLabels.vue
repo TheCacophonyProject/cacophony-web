@@ -8,15 +8,16 @@ import type {
   CardTableValue,
 } from "@/components/CardTableTypes";
 import {
-  extractComponentAction,
+  extractAction,
   extractComponent,
   isComponent,
+  componentIsDisabled,
+  extractLabel,
 } from "@/components/CardTableTypes";
 import { BModal } from "bootstrap-vue-3";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
 import { CurrentUser } from "@models/LoggedInUser";
 import type { TagId } from "@typedefs/api/common";
-import DeleteButton from "./DeleteButton.vue";
 
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse | null;
@@ -35,7 +36,9 @@ const tableItems = computed<CardTableItems>(() => {
       by: tag.taggerName || (tag.automatic ? "Cacophony AI" : "-"),
       when: new Date(tag.createdAt).toLocaleString(),
       _deleteAction: {
-        component: DeleteButton,
+        type: "button",
+        icon: "trash-can",
+        color: "#444",
         action: () => {
           console.log("remove label", tag.id);
           removeLabel(tag.id);
@@ -174,7 +177,9 @@ const doAddLabel = async () => {
           <component
             v-if="isComponent(deleteAction)"
             :is="extractComponent(deleteAction)"
-            @click.stop.prevent="() => extractComponentAction(deleteAction)()"
+            :action="extractAction(deleteAction)"
+            :disabled="componentIsDisabled(deleteAction)"
+            :label="extractLabel(deleteAction)"
           />
         </div>
       </template>

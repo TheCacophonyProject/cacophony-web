@@ -179,7 +179,7 @@ const addPendingTag = async () => {
       @change="(tag) => (pendingTag = tag.label)"
       :open-on-mount="false"
       :disabled-tags="customTags"
-      :selected-item="pendingTag"
+      :selected-item="pendingTag || undefined"
     />
   </b-modal>
 </template>

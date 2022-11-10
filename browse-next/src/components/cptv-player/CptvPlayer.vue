@@ -1470,10 +1470,10 @@ const loadedNextRecordingData = async () => {
 
 watch(
   () => recording,
-  (nextRecording: ApiRecordingResponse | null) => {
+  async (nextRecording: ApiRecordingResponse | null) => {
     if (nextRecording) {
       trackExportOptions.value = exportOptions.value;
-      loadedNextRecordingData();
+      await loadedNextRecordingData();
     }
   }
 );

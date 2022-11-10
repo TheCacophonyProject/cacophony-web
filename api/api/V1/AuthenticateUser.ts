@@ -509,6 +509,7 @@ export default function (app: Application, baseUrl: string) {
         }
         if (!sendSuccess) {
           return serverErrorResponse(
+            request,
             response,
             new ClientError(
               `Failed to send email to ${user.email}`,

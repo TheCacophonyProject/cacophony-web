@@ -5,7 +5,7 @@ import { TagColours } from "@/consts";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { ApiTrackResponse } from "@typedefs/api/track";
-import type { TrackId } from "@typedefs/api/common";
+import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import { removeTrackTag, replaceTrackTag } from "@api/Recording";
 import { CurrentUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
@@ -118,12 +118,20 @@ const addOrRemoveUserTag = async ({
           thisUserTag.id
         );
         if (removeTagResponse.success) {
-          emit("track-tag-changed", { track, tag, action: "remove" });
+          const completelyRemoved = !track.tags.some(
+            (tag) => tag.what === thisUserTag.what
+          );
+          if (completelyRemoved) {
+            emit("track-tag-changed", { track, tag, action: "remove" });
+          }
         } else {
           // Add the tag back if failed
           track.tags.push(thisUserTag);
         }
       } else {
+        const tagAlreadyExists = track.tags.some(
+          (existingTag) => existingTag.what === tag
+        );
         // We are adding or replacing the current tag.
         const interimTag: ApiHumanTrackTagResponse = {
           trackId,
@@ -145,10 +153,57 @@ const addOrRemoveUserTag = async ({
         );
         if (newTagResponse.success && newTagResponse.result.trackTagId) {
           interimTag.id = newTagResponse.result.trackTagId;
-          emit("track-tag-changed", { track, tag, action: "add" });
+          if (!tagAlreadyExists) {
+            emit("track-tag-changed", { track, tag, action: "add" });
+          }
         } else {
           // Remove the interim tag
           track.tags.pop();
+        }
+      }
+    }
+    updatingTags.value = false;
+  }
+};
+
+const removeTag = async ({
+  trackTagId,
+  trackId,
+}: {
+  trackTagId: TrackTagId;
+  trackId: TrackId;
+}) => {
+  if (recording && CurrentUser.value && !updatingTags.value) {
+    updatingTags.value = true;
+    // Remove the current user tag from recordingTracksLocal
+    const track = recordingTracksLocal.value.find(
+      (track) => track.id === trackId
+    );
+    if (track) {
+      const targetTag = track.tags.find((tag) => tag.id === trackTagId);
+      if (targetTag) {
+        track.tags = track.tags.filter((tag) => tag !== targetTag);
+        // We are removing the current tag.
+        const removeTagResponse = await removeTrackTag(
+          recording.id,
+          trackId,
+          targetTag.id
+        );
+        if (removeTagResponse.success) {
+          // Make sure there are no remaining tags with the same what:
+          const completelyRemoved = !track.tags.some(
+            (tag) => tag.what === targetTag.what
+          );
+          if (completelyRemoved) {
+            emit("track-tag-changed", {
+              track,
+              tag: targetTag.what,
+              action: "remove",
+            });
+          }
+        } else {
+          // Add the tag back if failed
+          track.tags.push(targetTag);
         }
       }
     }
@@ -169,6 +224,7 @@ const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
       @expanded-changed="expandedItemChanged"
       @selected-track="selectedTrack"
       @add-or-remove-user-tag="addOrRemoveUserTag"
+      @remove-tag="removeTag"
       :selected="(currentTrack && currentTrack.id === track.id) || false"
       :color="TagColours[index % TagColours.length]"
       :track="track"

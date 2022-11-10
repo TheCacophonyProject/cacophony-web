@@ -76,6 +76,10 @@ watch(
     }
   }
 );
+
+watch(route, () => {
+  loadedRouteName.value = "dashboard";
+});
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
 
@@ -128,7 +132,9 @@ const reloadDashboard = async () => {
 watch(timePeriodDays, loadVisits);
 watch(currentSelectedGroup, reloadDashboard);
 
+const loadedRouteName = ref<string>("");
 onMounted(async () => {
+  loadedRouteName.value = route.name as string;
   if (!classifications.value) {
     await getClassifications();
   }
@@ -358,7 +364,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
     />
   </div>
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Stations summary
+    Stations summary {{ loadedRouteName }}
   </h2>
   <horizontal-overflow-carousel class="mb-5">
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
@@ -387,7 +393,11 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       >
     </div>
   </horizontal-overflow-carousel>
-  <recording-view-modal @close="selectedVisit = null" />
+  <recording-view-modal
+    @close="selectedVisit = null"
+    :fade-in="loadedRouteName === 'dashboard'"
+    @shown="() => (loadedRouteName = 'dashboard')"
+  />
 </template>
 <style lang="less" scoped>
 @import "../assets/font-sizes.less";

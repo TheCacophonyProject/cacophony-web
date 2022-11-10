@@ -30,24 +30,29 @@
             class="text-end"
             v-if="isComponent(value)"
             :is="extractComponent(value)"
-            @click.stop.prevent="() => extractAction(value)()"
+            :action="extractAction(value)"
+            :disabled="componentIsDisabled(value)"
+            :label="castComponent(value).label"
+            :align="castComponent(value).align || 'centered'"
           />
           <button
             v-else-if="isButton(value)"
             class="btn"
-            :class="value.classes || []"
-            :disabled="value.disabled && value.disabled()"
+            :class="castButton(value).classes || []"
+            :disabled="componentIsDisabled(value)"
             @click.stop.prevent="() => extractAction(value)()"
           >
             <font-awesome-icon
-              :icon="value.icon"
-              v-if="value.icon"
-              :color="value.color || 'inherit'"
-              :rotation="value.rotate || null"
+              :icon="castButton(value).icon"
+              v-if="castButton(value).icon"
+              :color="castButton(value).color || 'inherit'"
+              :rotation="castButton(value).rotate || null"
             />
-            <span v-if="value.label">{{ value.label }}</span>
+            <span v-if="castButton(value).label">{{
+              castButton(value).label || ""
+            }}</span>
           </button>
-          <span v-else>{{ value }}</span>
+          <span v-else v-html="value" />
         </td>
       </tr>
     </tbody>
@@ -65,6 +70,9 @@ import {
   isButton,
   extractComponent,
   extractAction,
+  castButton,
+  componentIsDisabled,
+  castComponent,
 } from "@/components/CardTableTypes";
 
 const { items, compact = false } = defineProps<{

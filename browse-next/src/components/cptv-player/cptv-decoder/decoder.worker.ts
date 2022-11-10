@@ -31,6 +31,7 @@ class CptvDecoderInterface {
     this.framesRead = 0;
     this.locked = false;
     this.consumed = false;
+    this.inited = false;
     this.prevFrameHeader = null;
     this.playerContext && this.playerContext.ptr && this.playerContext.free();
     this.reader && this.reader.cancel();
@@ -154,6 +155,9 @@ class CptvDecoderInterface {
   }
 
   async fetchNextFrame() {
+    if (!this.inited) {
+      return null;
+    }
     if (!this.reader) {
       console.warn("You need to initialise the player with a CPTV file stream");
       return null;

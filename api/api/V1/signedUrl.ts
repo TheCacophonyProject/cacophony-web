@@ -38,7 +38,7 @@ export const streamS3Object = async (
 
   s3.getObject(params, function (err, data) {
     if (err) {
-      return serverErrorResponse(response, err);
+      return serverErrorResponse(request, response, err);
     }
 
     if (!request.headers.range) {
@@ -66,8 +66,11 @@ export const streamS3Object = async (
       "Content-type": mimeType,
     };
 
-    response.writeHead(206, headers);
+    // TODO: Work out if we're really "Streaming" this data for billing purposes, or if we're downloading the whole thing
+    //  and then streaming it.  If a user cancels the stream early, can we know how many bytes they've used.
+    // It might be more correct to user getObject().createReadStream() and pipe that?
 
+    response.writeHead(206, headers);
     const bufStream = new stream.PassThrough();
     const b2 = (data.Body as Buffer).slice(start, end + 1);
     bufStream.end(b2);

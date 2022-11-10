@@ -148,7 +148,7 @@ function multipartUpload(
     // Handle any errors. If this is called, the close handler
     // shouldn't be.
     form.on("error", (err) => {
-      return serverErrorResponse(response, err);
+      return serverErrorResponse(request, response, err);
     });
 
     // This gets called once all fields and parts have been read.
@@ -205,7 +205,7 @@ function multipartUpload(
         ]);
         const fileDataArray = new Uint8Array(fileData);
         if (uploadResult instanceof Error) {
-          return serverErrorResponse(response, uploadResult);
+          return serverErrorResponse(request, response, uploadResult);
         }
         log.info("Finished streaming upload to object store. Key: %s", key);
 
@@ -312,7 +312,7 @@ function multipartUpload(
           return;
         }
       } catch (err) {
-        return serverErrorResponse(response, err);
+        return serverErrorResponse(request, response, err);
       }
     });
 

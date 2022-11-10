@@ -13,14 +13,18 @@ import {
   CurrentUser,
   persistUserGroupSettings,
 } from "@models/LoggedInUser";
+import type { SelectedGroup } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
-import type { TrackId } from "@typedefs/api/common";
+import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
   classifications,
   flatClassifications,
   getClassifications,
 } from "@api/Classifications";
-import type { CardTableItems } from "@/components/CardTableTypes";
+import type {
+  CardTableItems,
+  CardTableValue,
+} from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
@@ -41,6 +45,10 @@ const emit = defineEmits<{
     e: "add-or-remove-user-tag",
     payload: { trackId: TrackId; tag: string }
   ): void;
+  (
+    e: "remove-tag",
+    payload: { trackId: TrackId; trackTagId: TrackTagId }
+  ): void;
 }>();
 
 const expandedInternal = ref<boolean>(false);
@@ -54,12 +62,32 @@ const taggerDetails = computed<CardTableItems>(() => {
   if (masterTag.value) {
     tags.unshift(masterTag.value);
   }
+  const userIsGroupAdmin = (currentSelectedGroup.value as SelectedGroup).admin;
+  // NOTE: Delete button gives admins the ability to remove track tags created by other users,
+  //  but not AI tags.
   return {
-    headings: ["tag", "tagger"],
-    values: tags.map(({ what, userName, automatic }) => [
-      capitalize(displayLabelForClassificationLabel(what)),
-      automatic ? "Cacophony AI" : userName || "",
-    ]),
+    headings: ["tag", "tagger"].concat(
+      userIsGroupAdmin ? ["_deleteAction"] : []
+    ),
+    values: tags.map(({ what, userName, automatic, id }) =>
+      (
+        [
+          capitalize(displayLabelForClassificationLabel(what)),
+          (automatic ? "Cacophony AI" : userName || "").replace(" ", "&nbsp;"),
+        ] as CardTableValue[]
+      ).concat(
+        !automatic && userIsGroupAdmin
+          ? [
+              {
+                type: "button",
+                icon: "trash-can",
+                action: () =>
+                  emit("remove-tag", { trackId: track.id, trackTagId: id }),
+              },
+            ]
+          : []
+      )
+    ),
   };
 });
 

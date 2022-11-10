@@ -2,9 +2,11 @@
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, ref } from "vue";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
-import { CurrentUser } from "@models/LoggedInUser";
+import { currentSelectedGroup, CurrentUser } from "@models/LoggedInUser";
+import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
+import TwoStepDeleteButton from "@/components/TwoStepDeleteButton.vue";
 
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse | null;
@@ -94,6 +96,8 @@ const recordingIsFlagged = computed<boolean>(() => {
   return false;
 });
 
+const userIsGroupAdmin = (currentSelectedGroup.value as SelectedGroup).admin;
+
 const notImplemented = () => {
   alert("Not yet implemented");
 };
@@ -126,60 +130,37 @@ const notImplemented = () => {
         :color="recordingIsStarred ? 'goldenrod' : '#666'"
       />
     </button>
-    <div class="static-dropdown-nesting">
-      <b-dropdown
-        no-flip
-        dropup
-        auto-close
-        offset="-92, 10"
-        no-caret
-        boundary="window"
-        variant="link"
-        menu-class="dropdown-indicator"
-      >
-        <template #button-content>
-          <font-awesome-icon icon="download" color="#666" />
-        </template>
-        <b-dropdown-item-button @click="() => emit('requested-export')">
-          <font-awesome-icon :icon="['far', 'file-video']" />
-          Export Video
-        </b-dropdown-item-button>
-        <b-dropdown-item-button
-          @click="() => emit('requested-advanced-export')"
-        >
-          <font-awesome-icon :icon="['far', 'file-video']" />
-          Export Video (Advanced)
-        </b-dropdown-item-button>
-        <b-dropdown-divider />
-        <b-dropdown-item-button @click="() => emit('requested-download')">
-          <font-awesome-icon :icon="['far', 'file']" />
-          Download CPTV
-        </b-dropdown-item-button>
-      </b-dropdown>
-    </div>
-    <div class="static-dropdown-nesting">
-      <b-dropdown
-        no-flip
-        dropup
-        auto-close
-        boundary="window"
-        offset="-67, 10"
-        no-caret
-        variant="link"
-        menu-class="dropdown-indicator"
-      >
-        <template #button-content>
-          <font-awesome-icon icon="trash-can" color="#666" />
-        </template>
-        <b-dropdown-item-button
-          @click="() => emit('delete-recording')"
-          variant="danger"
-        >
-          <font-awesome-icon icon="exclamation-triangle" />
-          Delete Recording
-        </b-dropdown-item-button>
-      </b-dropdown>
-    </div>
+    <b-dropdown
+      no-flip
+      dropup
+      auto-close
+      offset="-92, 7"
+      no-caret
+      variant="link"
+      menu-class="dropdown-indicator"
+    >
+      <template #button-content>
+        <font-awesome-icon icon="download" color="#666" />
+      </template>
+      <b-dropdown-item-button @click="() => emit('requested-export')">
+        <font-awesome-icon :icon="['far', 'file-video']" />
+        Export Video
+      </b-dropdown-item-button>
+      <b-dropdown-item-button @click="() => emit('requested-advanced-export')">
+        <font-awesome-icon :icon="['far', 'file-video']" />
+        Export Video (Advanced)
+      </b-dropdown-item-button>
+      <b-dropdown-divider />
+      <b-dropdown-item-button @click="() => emit('requested-download')">
+        <font-awesome-icon :icon="['far', 'file']" />
+        Download CPTV
+      </b-dropdown-item-button>
+    </b-dropdown>
+    <two-step-delete-button
+      :action="() => emit('delete-recording')"
+      label="Delete Recording"
+      v-if="userIsGroupAdmin"
+    />
     <button
       type="button"
       class="btn"

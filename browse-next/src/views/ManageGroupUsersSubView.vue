@@ -2,6 +2,7 @@
 import {
   currentSelectedGroup as fallibleCurrentSelectedGroup,
   CurrentUser as fallibleCurrentUser,
+  userDisplayName,
 } from "@models/LoggedInUser";
 import type { LoggedInUser, SelectedGroup } from "@models/LoggedInUser";
 import { computed, onBeforeMount, ref } from "vue";
@@ -9,6 +10,7 @@ import { getUsersForGroup } from "@api/Group";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupUserResponse } from "@typedefs/api/group";
 import SimpleTable from "@/components/SimpleTable.vue";
+import TwoStepDeleteButton from "@/components/TwoStepDeleteButton.vue";
 import type {
   CardTableItems,
   CardTableValue,
@@ -44,6 +46,12 @@ const removeUser = async (user: ApiGroupUserResponse) => {
   console.log("Remove user from group");
 };
 
+const isLastAdminUser = (user: ApiGroupUserResponse): boolean => {
+  return (
+    user.admin && groupUsers.value.filter((user) => user.admin).length === 1
+  );
+};
+
 const tableItems = computed<CardTableItems>(() => {
   return groupUsers.value
     .map((user: ApiGroupUserResponse) => ({
@@ -51,7 +59,7 @@ const tableItems = computed<CardTableItems>(() => {
         user.userName === CurrentUser.value.userName
           ? `${user.userName} (you)`
           : user.userName,
-      groupAdministrator: user.admin ? "Yes" : "",
+      canAdministrateGroup: user.admin ? "Yes" : "",
       _editAdmin: {
         type: "button",
         icon: "pencil-alt",
@@ -60,9 +68,16 @@ const tableItems = computed<CardTableItems>(() => {
         // Maybe this should be a component?
       },
       _deleteAction: {
-        type: "button",
+        type: "component",
+        component: TwoStepDeleteButton,
         icon: "trash-can",
         color: "#444",
+        align: "right",
+        label: `Remove <strong><em>${user.userName}</em></strong> from group`,
+        // TODO: If you try to delete yourself, we should have a modal confirmation, even if there are other admin users?
+        //  Actually, that's the same as the "Leave group" functionality.
+
+        disabled: () => isLastAdminUser(user),
         action: () => removeUser(user),
       },
     }))
