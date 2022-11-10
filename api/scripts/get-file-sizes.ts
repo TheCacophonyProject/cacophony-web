@@ -81,25 +81,39 @@ const checkOnlyInstanceOfScriptRunning = async () => {
   const s3 = openS3();
   let run = true;
   while (run) {
-    const result = await client.query(
-      `select id, "rawFileKey"      
+    const result = await client.query(`select id, "rawFileKey"
          from "Recordings"
-         where "rawFileSize" is null 
-         order by id limit 10000`
-    );
+         where "rawFileSize" is null
+        and "rawFileKey" is not null
+         order by id limit 50`);
     if (result.rows.length) {
+      const p = [];
       for (const row of result.rows) {
-        const stat = await s3
-          .headObject({
-            Key: row["rawFileKey"],
-          })
-          .promise();
-        const length = stat.ContentLength;
-        await client.query(`update "Recordings"
-                                    set "rawFileKey" = length
-                                    where id = ${row["id"]}`);
-        log.info("Set rawFileSize %s for %s", length, row["id"]);
+        p.push(
+          s3
+            .headObject({
+              Key: row["rawFileKey"],
+            })
+            .promise()
+        );
       }
+      const stats = await Promise.all(p);
+      const j = [];
+      for (let i = 0; i < stats.length; i++) {
+        const length = stats[i].ContentLength;
+        j.push(
+          client.query(
+            `update "Recordings" set "rawFileSize" = ${length} where id = ${result.rows[i]["id"]}`
+          )
+        );
+        log.info(
+          "Set rawFileSize %s for %s, %s",
+          length,
+          result.rows[i]["id"],
+          result.rows[i]["rawFileKey"]
+        );
+      }
+      await Promise.all(j);
     } else {
       log.notice("No more recordings with rawFileSize unset");
       run = false;

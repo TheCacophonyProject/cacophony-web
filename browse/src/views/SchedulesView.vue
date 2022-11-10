@@ -606,7 +606,7 @@ export default {
       this.assigningTo = id;
       if (this.assignedDevices[id]) {
         this.selectedDevices = this.assignedDevices[id].map(({ id }) =>
-          this.deviceOptions.find((option) => option.id === id)
+          this.audioDeviceOptions.find((option) => option.id === id)
         );
       }
       this.assigningToDevices = true;
