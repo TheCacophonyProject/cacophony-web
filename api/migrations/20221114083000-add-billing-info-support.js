@@ -54,7 +54,7 @@ module.exports = {
     });
 
     // Set all group admins as owners initially, since we don't actually know who owns each group in a billing sense.
-    await queryInterface.query(`update "GroupUsers" set "owner" = true where "admin" = true`);
+    await queryInterface.sequelize.query(`update "GroupUsers" set "owner" = true where "admin" = true`);
   },
   down: async function (queryInterface, Sequelize) {
     await queryInterface.removeColumn("Files", "fileSize");
