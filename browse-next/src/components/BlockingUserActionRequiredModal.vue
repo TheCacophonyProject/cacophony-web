@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { BModal } from "bootstrap-vue-3";
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import {
   hasAcceptedSomeEUA,
   euaIsOutOfDate,
@@ -19,16 +19,23 @@ const acceptEndUserAgreement = async () => {
   await updateFields({
     endUserAgreement: currentEUAVersion.value,
   });
+  submitting.value = false;
+  showModal.value = false;
+};
+const onHidden = () => {
   setLoggedInUserData({
     ...(CurrentUser.value as LoggedInUser),
     endUserAgreement: currentEUAVersion.value,
   });
-  submitting.value = false;
 };
+const showModal = ref<boolean>(false);
+onMounted(() => {
+  showModal.value = true;
+});
 </script>
 <template>
   <b-modal
-    :show="euaIsOutOfDate"
+    v-model="showModal"
     dialog-class="accept-eua-form-wrapper"
     title="End User Agreement"
     centered
@@ -36,6 +43,7 @@ const acceptEndUserAgreement = async () => {
     no-close-on-esc
     hide-footer
     hide-header-close
+    @hidden="onHidden"
   >
     <p v-if="!hasAcceptedSomeEUA">
       Welcome back! It looks like you haven't been here in a while.

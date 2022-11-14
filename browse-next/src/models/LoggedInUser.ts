@@ -398,10 +398,11 @@ export const isLoggingInAutomatically = ref(false);
 export const isFetchingGroups = ref(false);
 
 // Global modal control
-export const creatingNewGroup = reactive({
-  enabled: false,
-  visible: false,
-});
+export const creatingNewGroup = reactive({ enabled: false, visible: false });
+export const showEUAOutOfDate = computed<{
+  enabled: boolean;
+  visible: boolean;
+}>(() => ({ enabled: euaIsOutOfDate.value, visible: false }));
 export const joiningNewGroup = reactive({ enabled: false, visible: false });
 export const showSwitchGroup = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);

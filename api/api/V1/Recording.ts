@@ -1158,7 +1158,9 @@ export default (app: Application, baseUrl: string) => {
           cookedJWT = signedToken(
             recordingItem.fileKey,
             recordingItem.getFileName(),
-            recordingItem.fileMimeType
+            recordingItem.fileMimeType,
+            response.locals.requestUser.id,
+            recordingItem.groupId
           );
           cookedSize =
             recordingItem.fileSize ||
@@ -1168,7 +1170,9 @@ export default (app: Application, baseUrl: string) => {
           rawJWT = signedToken(
             recordingItem.rawFileKey,
             recordingItem.getRawFileName(),
-            recordingItem.rawMimeType
+            recordingItem.rawMimeType,
+            response.locals.requestUser.id,
+            recordingItem.GroupId
           );
           rawSize =
             recordingItem.rawFileSize ||
@@ -1244,12 +1248,15 @@ export default (app: Application, baseUrl: string) => {
         ?.toISOString()
         .replace(/:/g, "_")
         .replace(".", "_");
-      return await streamS3Object(
+      return streamS3Object(
         request,
         response,
         recordingItem.rawFileKey,
         `${recordingItem.id}@${time}.${fileExt}`,
-        recordingItem.rawMimeType || "application/octet-stream"
+        recordingItem.rawMimeType || "application/octet-stream",
+        response.locals.requestUser.id,
+        recordingItem.GroupId,
+        recordingItem.rawFileSize
       );
     }
   );

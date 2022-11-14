@@ -2,7 +2,7 @@
 import { joiningNewGroup, UserGroups } from "@models/LoggedInUser";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
-import { computed, onBeforeMount, reactive, ref } from "vue";
+import { computed, onBeforeMount, onMounted, reactive, ref } from "vue";
 import { getGroupsForGroupAdminByEmail } from "@api/User";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { BFormCheckboxGroup } from "bootstrap-vue-3";
@@ -38,14 +38,14 @@ const needsValidationAndIsValidEmailAddress =
     groupAdminEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
-onBeforeMount(() => {
-  joiningNewGroup.enabled = true;
+onMounted(() => {
+  joiningNewGroup.visible = true;
 });
 
 const resetFormValues = () => {
   groupAdminEmailAddress.touched = false;
   groupAdminEmailAddress.value = "";
-  joiningNewGroup.visible = false;
+  joiningNewGroup.enabled = false;
 };
 
 const joinExistingGroup = async () => {
@@ -90,11 +90,12 @@ const getGroupsForAdmin = async () => {
     // Maybe the user didn't exist, or wasn't an admin user of any groups.
   }
   submittingJoinRequest.value = false;
+  joiningNewGroup.visible = false;
 };
 </script>
 <template>
   <b-modal
-    v-model="joiningNewGroup.enabled"
+    v-model="joiningNewGroup.visible"
     title="Join a group"
     ok-title="Send join request"
     @ok="joinExistingGroup"

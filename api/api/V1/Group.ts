@@ -203,7 +203,8 @@ export default function (app: Application, baseUrl: string) {
         groupName: request.body.groupname || request.body.groupName,
       });
       await newGroup.addUser(response.locals.requestUser.id, {
-        through: { admin: true },
+        // Creating user is set as the group owner by default.
+        through: { admin: true, owner: true },
       });
       return successResponse(response, "Created new group.", {
         groupId: newGroup.id,

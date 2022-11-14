@@ -279,7 +279,7 @@ const needsValidationAndIsValidEmailAddress =
             <button
               class="btn btn-primary"
               type="button"
-              @click="creatingNewGroup.visible = true"
+              @click="creatingNewGroup.enabled = true"
             >
               <font-awesome-icon icon="plus" /> Create a new group
             </button>
@@ -296,7 +296,7 @@ const needsValidationAndIsValidEmailAddress =
             <button
               class="btn btn-secondary"
               type="button"
-              @click="joiningNewGroup.visible = true"
+              @click="joiningNewGroup.enabled = true"
             >
               <font-awesome-icon icon="question" /> Ask to join an existing
               group

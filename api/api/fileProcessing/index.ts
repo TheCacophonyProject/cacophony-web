@@ -32,7 +32,6 @@ import {
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
 } from "@api/extract-middleware";
-import logger from "@log";
 
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";

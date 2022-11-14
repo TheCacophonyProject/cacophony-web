@@ -1359,17 +1359,28 @@ function formatTags(tags) {
   return out.join(";");
 }
 
-export function signedToken(key, file, mimeType) {
-  return jsonwebtoken.sign(
-    {
-      _type: "fileDownload",
-      key: key,
-      filename: file,
-      mimeType: mimeType,
-    },
-    config.server.passportSecret,
-    { expiresIn: 60 * 10 }
-  );
+export function signedToken(
+  key: string,
+  filename: string,
+  mimeType: string,
+  userId?: UserId,
+  groupId?: GroupId
+) {
+  const payload = {
+    _type: "fileDownload",
+    key,
+    filename,
+    mimeType,
+  };
+  if (userId) {
+    (payload as any).userId = userId;
+  }
+  if (groupId) {
+    (payload as any).groupId = groupId;
+  }
+  return jsonwebtoken.sign(payload, config.server.passportSecret, {
+    expiresIn: 60 * 10,
+  });
 }
 
 function guessRawMimeType(type, filename) {

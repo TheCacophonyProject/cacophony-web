@@ -19,6 +19,7 @@ import {
   showSwitchGroup,
   creatingNewGroup,
   joiningNewGroup,
+  showEUAOutOfDate,
   urlNormalisedCurrentGroupName,
   rafFps,
   pinSideNav,
@@ -38,7 +39,6 @@ import {
 } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
-import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
 
 const globalSideNav = ref<HTMLDivElement>();
 
@@ -48,6 +48,10 @@ const BlockingUserActionRequiredModal = defineAsyncComponent(
 
 const CreateGroupModal = defineAsyncComponent(
   () => import("@/components/CreateGroupModal.vue")
+);
+
+const JoinExistingGroupModal = defineAsyncComponent(
+  () => import("@/components/JoinExistingGroupModal.vue")
 );
 
 const _userIsSuperAdmin = false;
@@ -138,9 +142,9 @@ onMounted(() => {
     v-if="showSwitchGroup.visible"
     id="switch-groups-modal"
   />
-  <create-group-modal v-if="creatingNewGroup.visible" id="create-group-modal" />
+  <create-group-modal v-if="creatingNewGroup.enabled" id="create-group-modal" />
   <join-existing-group-modal
-    v-if="joiningNewGroup.visible"
+    v-if="joiningNewGroup.enabled"
     id="join-group-modal"
   />
   <git-release-info-bar v-if="hasGitReleaseInfoBar" id="release-info-modal" />
@@ -225,7 +229,7 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  @click.stop.prevent="creatingNewGroup.visible = true"
+                  @click.stop.prevent="creatingNewGroup.enabled = true"
                 >
                   Create a new group
                 </button>
@@ -234,7 +238,7 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  @click.stop.prevent="joiningNewGroup.visible = true"
+                  @click.stop.prevent="joiningNewGroup.enabled = true"
                 >
                   Join an existing group
                 </button>

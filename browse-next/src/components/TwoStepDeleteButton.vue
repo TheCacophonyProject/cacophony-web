@@ -15,10 +15,15 @@
         <font-awesome-icon icon="trash-can" color="#666" />
       </div>
     </template>
-    <b-dropdown-item-button @click="() => action()" variant="danger">
-      <font-awesome-icon icon="exclamation-triangle" />
-      <span class="ms-2" v-html="computedLabel" />
-    </b-dropdown-item-button>
+    <b-dropdown-group class="px-2" header-class="d-none">
+      <button
+        @click="() => action()"
+        class="btn btn-outline-danger text-nowrap w-100"
+      >
+        <font-awesome-icon icon="exclamation-triangle" />
+        <span class="ms-2" v-html="computedLabel" />
+      </button>
+    </b-dropdown-group>
   </b-dropdown>
 </template>
 <script setup lang="ts">
@@ -42,7 +47,7 @@ const offset = computed<string>(() => {
   if (align === "right") {
     return "5, 7";
   } else if (align === "centered") {
-    return "-67, 7";
+    return "-75, 7";
   }
   return "-5, 7";
 });

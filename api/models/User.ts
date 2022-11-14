@@ -66,6 +66,8 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
   settings?: ApiUserSettings;
+  transferredBytes: number;
+  transferredItems: number;
 }
 
 export interface UserStatic extends ModelStaticCommon<User> {
@@ -115,6 +117,16 @@ export default function (
     settings: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+    transferredItems: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    transferredBytes: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
   };
 

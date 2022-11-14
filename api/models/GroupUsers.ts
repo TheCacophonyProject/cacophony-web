@@ -22,7 +22,11 @@ import { ApiGroupUserSettings } from "@typedefs/api/group";
 
 export interface GroupUsers extends Sequelize.Model, ModelCommon<GroupUsers> {
   admin: boolean;
+  owner: boolean;
   settings?: ApiGroupUserSettings;
+  transferredItems: number;
+  transferredBytes: number;
+  removedAt?: Date;
 }
 export interface GroupUsersStatic extends ModelStaticCommon<GroupUsers> {}
 
@@ -34,8 +38,26 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    owner: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     settings: {
       type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    transferredItems: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    transferredBytes: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    removedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   };

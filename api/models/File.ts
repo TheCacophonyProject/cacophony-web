@@ -49,6 +49,7 @@ export default function (sequelize, DataTypes) {
     type: DataTypes.STRING,
     fileKey: DataTypes.STRING,
     details: DataTypes.JSONB,
+    fileSize: DataTypes.INTEGER,
   };
 
   const File = sequelize.define(name, attributes) as unknown as FileStatic;

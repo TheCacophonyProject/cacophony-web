@@ -179,14 +179,22 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredFileById(param("id")),
     async (request: Request, response: Response) => {
       const file = response.locals.file;
+      const user = response.locals.requestUser;
+      const device = response.locals.requestDevice;
       const downloadFileData = {
         _type: "fileDownload",
         key: file.fileKey,
       };
+      if (user) {
+        (downloadFileData as any).userId = user.id;
+      } else if (device) {
+        (downloadFileData as any).deviceId = device.id;
+      }
 
       return successResponse(response, "", {
         file: mapAudiobaitFile(file),
-        fileSize: await util.getS3ObjectFileSize(file.fileKey),
+        fileSize:
+          file.fileSize || (await util.getS3ObjectFileSize(file.fileKey)),
         jwt: jsonwebtoken.sign(downloadFileData, config.server.passportSecret, {
           expiresIn: 60 * 10,
         }),
