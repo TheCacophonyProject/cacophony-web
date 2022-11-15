@@ -9,6 +9,8 @@ import { HttpStatusCode } from "@typedefs/api/consts";
 describe("Groups - add, check and remove users", () => {
   const ADMIN = true;
   const NOT_ADMIN = false;
+  const OWNER = true;
+  const NOT_OWNER = false;
   let expectedGuAdminUser: ApiGroupUserResponse;
   let expectedGuAdminUser2: ApiGroupUserResponse;
 
@@ -19,6 +21,8 @@ describe("Groups - add, check and remove users", () => {
           userName: getTestName("guGroupAdmin"),
           id: getCreds("guGroupAdmin").id,
           admin: ADMIN,
+          owner: OWNER,
+          pending: null,
         };
       }
     );
@@ -32,6 +36,8 @@ describe("Groups - add, check and remove users", () => {
         userName: getTestName("guGroup2Admin"),
         id: getCreds("guGroup2Admin").id,
         admin: ADMIN,
+        owner: OWNER,
+        pending: null,
       };
     });
 
@@ -44,6 +50,8 @@ describe("Groups - add, check and remove users", () => {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: ADMIN,
+      owner: NOT_OWNER,
+      pending: null,
     };
 
     cy.log("add the user");
@@ -67,6 +75,8 @@ describe("Groups - add, check and remove users", () => {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: NOT_ADMIN,
+      owner: NOT_OWNER,
+      pending: null,
     };
 
     cy.log("add a non admin user (to run the test)");
@@ -217,11 +227,15 @@ describe("Groups - add, check and remove users", () => {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: NOT_ADMIN,
+      owner: NOT_OWNER,
+      pending: null,
     };
     const expectedTestAdminUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: ADMIN,
+      owner: NOT_OWNER,
+      pending: null,
     };
 
     cy.log("add the user");
@@ -261,7 +275,7 @@ describe("Groups - add, check and remove users", () => {
       expectedTestAdminUser,
     ]);
 
-    cy.log("Verfiy that user can now do admin tasks (by removing themselves)");
+    cy.log("Verify that user can now do admin tasks (by removing themselves)");
     cy.apiGroupUserRemove("guTestUser", "guTestUser", "guGroup");
   });
 });

@@ -23,6 +23,7 @@ import { ApiGroupUserSettings } from "@typedefs/api/group";
 export interface GroupUsers extends Sequelize.Model, ModelCommon<GroupUsers> {
   admin: boolean;
   owner: boolean;
+  pending: "requested" | "invited";
   settings?: ApiGroupUserSettings;
   transferredItems: number;
   transferredBytes: number;
@@ -41,6 +42,11 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
     owner: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    pending: {
+      type: DataTypes.ENUM("requested", "invited"),
+      allowNull: true,
+      defaultValue: null,
     },
     settings: {
       type: DataTypes.JSONB,

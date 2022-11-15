@@ -590,8 +590,8 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       // FIXME - make sure all of these JWT tokens have a 'type' field that we can check against,
       // to make sure they can't be reused for other requests.
-      const { id, type, groups } = response.locals.tokenInfo;
-      if (type !== "join-groups") {
+      const { id, _type, groups } = response.locals.tokenInfo;
+      if (_type !== "join-groups") {
         return next(new AuthorizationError("Invalid token type"));
       }
       const userToGrantMembershipFor = await models.User.findByPk(id);
@@ -630,7 +630,13 @@ export default function (app: Application, baseUrl: string) {
       const additions = [];
       for (const { group, admin } of groupsToAdd) {
         additions.push(
-          models.Group.addUserToGroup(group, userToGrantMembershipFor, admin)
+          models.Group.addOrUpdateGroupUser(
+            group,
+            userToGrantMembershipFor,
+            admin,
+            false,
+            null
+          )
         );
       }
       await Promise.all(additions);

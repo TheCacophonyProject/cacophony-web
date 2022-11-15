@@ -182,7 +182,7 @@ function multipartUpload(
             },
           });
         if (existingRecordingWithHashForDevice !== null) {
-          log.error(
+          log.warning(
             "Recording with hash %s for device %s already exists, discarding duplicate",
             data.fileHash,
             uploadingDevice.id
@@ -256,7 +256,7 @@ function multipartUpload(
               },
             });
           if (existingRecordingWithHashForDevice !== null) {
-            log.error(
+            log.warning(
               "Recording with hash %s for device %s already exists, discarding duplicate",
               data.fileHash,
               uploadingDevice.id

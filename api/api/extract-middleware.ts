@@ -194,8 +194,10 @@ const getGroupInclude = (
       through: {
         where: {
           ...useAdminAccess,
+          removedAt: { [Op.eq]: null },
+          pending: { [Op.eq]: null },
         },
-        attributes: ["admin", "settings"],
+        attributes: ["admin", "settings", "owner"],
       },
       where: { id: requestUserId },
     },
@@ -226,6 +228,8 @@ const getDeviceInclude =
             through: {
               where: {
                 ...useAdminAccess,
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
               },
               attributes: ["admin", "UserId"],
             },
@@ -256,6 +260,8 @@ const getStationInclude =
             through: {
               where: {
                 ...useAdminAccess,
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
               },
               attributes: ["UserId"],
             },
@@ -286,6 +292,8 @@ const getScheduleInclude =
             through: {
               where: {
                 ...useAdminAccess,
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
               },
               attributes: ["admin", "UserId"],
             },
@@ -319,6 +327,8 @@ const getRecordingInclude =
             through: {
               where: {
                 ...useAdminAccess,
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
               },
               attributes: ["admin", "UserId"],
             },
@@ -1313,6 +1323,8 @@ const getEvent =
                           through: {
                             where: {
                               ...asAdmin,
+                              removedAt: { [Op.eq]: null },
+                              pending: { [Op.eq]: null },
                             },
                             attributes: [],
                           },
@@ -1553,6 +1565,17 @@ export const fetchUnauthorizedRequiredGroupById = (
     true,
     getGroupUnauthenticated,
     groupNameOrId
+  );
+
+export const fetchUnauthorizedRequiredInvitationById = (
+  invitationId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.GroupInvites,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.GroupInvites),
+    invitationId
   );
 
 export const fetchAuthorizedRequiredGroupById = (

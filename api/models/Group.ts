@@ -30,6 +30,7 @@ import { Device } from "./Device";
 import { GroupId, UserId } from "@typedefs/api/common";
 import { ApiGroupSettings } from "@typedefs/api/group";
 import { locationsAreEqual } from "./util/util";
+import logger from "@log";
 
 export const stationLocationHasChanged = (
   oldStation: Station,
@@ -184,12 +185,26 @@ export interface Group extends Sequelize.Model, ModelCommon<Group> {
   }) => Promise<Station[]>;
 }
 export interface GroupStatic extends ModelStaticCommon<Group> {
-  addUserToGroup: (
+  addOrUpdateGroupUser: (
     group: Group,
     userToAdd: User,
-    admin: boolean
-  ) => Promise<string>;
-  removeUserFromGroup: (group: Group, userToRemove: User) => Promise<boolean>;
+    admin: boolean,
+    owner: boolean,
+    pending: "invited" | "requested" | null
+  ) => Promise<{
+    action: string;
+    added: boolean;
+    permissionChanges: {
+      oldAdmin: boolean;
+      oldOwner: boolean;
+      newAdmin: boolean;
+      newOwner: boolean;
+    };
+  }>;
+  removeUserFromGroup: (
+    group: Group,
+    userToRemove: User
+  ) => Promise<{ removed: boolean; wasPending: boolean }>;
   getFromId: (id: GroupId) => Promise<Group>;
   getIdFromName: (groupName: string) => Promise<GroupId | null>;
 }
@@ -230,13 +245,20 @@ export default function (sequelize, DataTypes): GroupStatic {
     models.Group.belongsToMany(models.User, { through: models.GroupUsers });
     models.Group.hasMany(models.Recording);
     models.Group.hasMany(models.Station);
+    models.Group.hasMany(models.GroupInvites);
   };
 
   /**
    * Adds a user to a Group, if the given user has permission to do so.
    * The user must be a group admin to do this.
    */
-  Group.addUserToGroup = async function (group, userToAdd, admin) {
+  Group.addOrUpdateGroupUser = async function (
+    group,
+    userToAdd,
+    admin,
+    owner,
+    pending
+  ) {
     // Get association if already there and update it.
     const groupUser = await models.GroupUsers.findOne({
       where: {
@@ -244,17 +266,65 @@ export default function (sequelize, DataTypes): GroupStatic {
         UserId: userToAdd.id,
       },
     });
-    if (groupUser !== null) {
-      if (groupUser.admin !== admin) {
-        groupUser.admin = admin; // Update admin value.
-        await groupUser.save();
-        return "Updated, user was made admin for group.";
-      } else {
-        return "No change, user already added.";
+    if (groupUser !== null && groupUser.removedAt === null) {
+      const wasAdmin = groupUser.admin;
+      const wasOwner = groupUser.owner;
+      const permissionChanges = {
+        oldAdmin: wasAdmin,
+        oldOwner: wasOwner,
+        newAdmin: admin,
+        newOwner: owner,
+      };
+      if (wasAdmin !== admin) {
+        groupUser.admin = admin;
       }
+      if (wasOwner !== owner) {
+        groupUser.owner = owner;
+      }
+      if (wasOwner !== owner || wasAdmin !== admin) {
+        await groupUser.save();
+        return {
+          action: "Updated, user was made admin for group.",
+          permissionChanges,
+          added: false,
+        };
+      }
+      return {
+        action: "No change, user already added with identical permissions",
+        permissionChanges,
+        added: false,
+      };
     }
-    await group.addUser(userToAdd, { through: { admin: admin } });
-    return "Added user to group.";
+    if (groupUser && groupUser.removedAt !== null) {
+      // Group user was previously removed, so we pretend we're recreating it.
+      await groupUser.update({
+        admin,
+        owner,
+        pending: null,
+        removedAt: null,
+      });
+      return {
+        action: "Added user to group.",
+        permissionChanges: {
+          oldAdmin: false,
+          oldOwner: false,
+          newAdmin: admin,
+          newOwner: owner,
+        },
+        added: true,
+      };
+    }
+    await group.addUser(userToAdd, { through: { admin, owner, pending } });
+    return {
+      action: "Added user to group.",
+      permissionChanges: {
+        oldAdmin: false,
+        oldOwner: false,
+        newAdmin: admin,
+        newOwner: owner,
+      },
+      added: true,
+    };
   };
 
   /**
@@ -268,11 +338,23 @@ export default function (sequelize, DataTypes): GroupStatic {
         UserId: userToRemove.id,
       },
     });
+
     if (groupUser === null) {
-      return false;
+      return { removed: false, wasPending: false };
     }
-    await groupUser.destroy();
-    return true;
+
+    if (groupUser.pending !== null) {
+      // The group user hadn't yet accepted the invitation to this group, so we don't need to do anything.
+      await groupUser.destroy();
+      return { removed: true, wasPending: true };
+    }
+    // NOTE: We just mark the group user as removed, and will do actual removal at a later date
+    //  (after the next billing cycle - we need to keep this user around until then so that we
+    //   can attribute their resource usage to the group during billing).
+    await groupUser.update({
+      removedAt: new Date(),
+    });
+    return { removed: true, wasPending: false };
   };
 
   Group.getFromId = async function (id) {

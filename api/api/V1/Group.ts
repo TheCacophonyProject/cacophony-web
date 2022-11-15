@@ -23,6 +23,7 @@ import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
+  extractJWTInfo,
   extractValFromRequest,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredDevicesInGroup,
@@ -33,7 +34,10 @@ import {
   fetchAuthorizedRequiredStationsForGroup,
   fetchUnauthorizedOptionalGroupByNameOrId,
   fetchUnauthorizedOptionalUserByEmailOrId,
+  fetchUnauthorizedRequiredGroupById,
+  fetchUnauthorizedRequiredInvitationById,
   fetchUnauthorizedRequiredUserByEmailOrId,
+  fetchUnauthorizedRequiredUserById,
   parseJSONField,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
@@ -49,9 +53,9 @@ import {
   nameOrIdOf,
   validNameOf,
 } from "../validation-middleware";
-import { ClientError } from "../customErrors";
+import { AuthorizationError, ClientError } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
-import { Group } from "@/models/Group";
+import { Group, GroupStatic } from "@/models/Group";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import {
@@ -67,6 +71,18 @@ import {
 } from "@api/V1/recordingUtil";
 import { HttpStatusCode } from "@typedefs/api/consts";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils";
+import { Op } from "sequelize";
+import logger from "@log";
+import {
+  sendGroupInviteExistingMemberEmail,
+  sendGroupInviteNewMemberEmail,
+} from "@/emails/transactionalEmails";
+import {
+  getInviteToGroupToken,
+  getInviteToGroupTokenExistingUser,
+} from "@api/auth";
+import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
+import { GroupInvites, GroupInvitesStatic } from "@models/GroupInvites";
 
 const mapGroup = (
   group: Group,
@@ -76,6 +92,7 @@ const mapGroup = (
     id: group.id,
     groupName: group.groupName,
     admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
+    owner: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.owner,
   };
   if (group.settings) {
     groupData.settings = group.settings;
@@ -355,17 +372,20 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
       query("view-mode").optional().equals("user"),
     ]),
-    // FIXME - should this be only visible to group admins?
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const users = await response.locals.group.getUsers({
         attributes: ["id", "userName"],
+        through: { where: { removedAt: { [Op.eq]: null } } },
       });
+
       return successResponse(response, "Got users for group", {
         users: users.map(({ userName, id, GroupUsers }) => ({
           userName,
           id,
           admin: GroupUsers.admin,
+          owner: GroupUsers.owner,
+          pending: GroupUsers.pending,
         })),
       });
     }
@@ -410,6 +430,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
    * @apiBody {String} email Email address of the user to add to the group.
    * @apiBody {Boolean} admin If the user should be an admin for the group.
+   * @apiBody {Boolean} [owner] If the user should be marked as a group owner.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -423,22 +444,45 @@ export default function (app: Application, baseUrl: string) {
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
       anyOf(body("email").isEmail(), idOf(body("userId"))),
       booleanOf(body("admin")),
+      booleanOf(body("owner")).optional().default(false),
     ]),
     // Extract required resources to validate permissions.
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
     fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request, response) => {
-      const action = await models.Group.addUserToGroup(
-        response.locals.group,
-        response.locals.user,
-        request.body.admin
-      );
+      const { action, permissionChanges, added } =
+        await models.Group.addOrUpdateGroupUser(
+          response.locals.group,
+          response.locals.user,
+          request.body.admin,
+          request.body.owner,
+          null
+        );
+
+      // TODO: Appropriate transactional emails
+      if (permissionChanges.newAdmin && !permissionChanges.oldAdmin) {
+        // User was made admin.
+      } else if (permissionChanges.oldAdmin && !permissionChanges.newAdmin) {
+        // User had admin permissions removed.
+      }
+      if (permissionChanges.newOwner && !permissionChanges.oldOwner) {
+        // User had ownership bestowed.
+      } else if (permissionChanges.oldOwner && !permissionChanges.newOwner) {
+        // User had ownership removed.
+      }
+
+      if (added) {
+        // User was added.
+      } else {
+        // User was updated.
+      }
 
       // TODO(ui-next): send email to user telling them that they've been added to the group, and providing a link to
       //  go to that groups dashboard after logging in.  Should the user have to accept being added?
       //  Adding a user should really be done by email address, not username. Perhaps we need an "invited" state in GroupUsers,
       //  where the user is not quite a real member of the group until they accept.
+
       return successResponse(response, action);
     }
   );
@@ -472,12 +516,16 @@ export default function (app: Application, baseUrl: string) {
     // Extract secondary resource
     fetchUnauthorizedRequiredUserByEmailOrId(body(["userId", "email"])),
     async (request: Request, response: Response, next: NextFunction) => {
-      const removed = await models.Group.removeUserFromGroup(
+      const { removed, wasPending } = await models.Group.removeUserFromGroup(
         response.locals.group,
         response.locals.user
       );
-      if (removed) {
+      if (removed && !wasPending) {
+        // TODO(jon): Email user to let them know they've been removed.
         return successResponse(response, "Removed user from the group.");
+      } else if (removed && wasPending) {
+        // TODO(jon): Email user to let them know their invitation was revoked.
+        return successResponse(response, "Removed user group invitation.");
       } else {
         return next(new ClientError("Failed to remove user from the group."));
       }
@@ -515,8 +563,20 @@ export default function (app: Application, baseUrl: string) {
       if (otherAdmins.length === 0) {
         return next(new ClientError("Can't remove last admin from group."));
       }
+
+      const otherOwners = groupUsers.filter(
+        ({ UserId, owner }) => UserId !== user.id && owner
+      );
+      if (otherOwners.length === 0) {
+        return next(new ClientError("Can't remove last owner from group."));
+      }
+
       const thisGroupUser = groupUsers.find(({ UserId }) => UserId === user.id);
-      await thisGroupUser.destroy();
+
+      // NOTE: Just mark as removed, actually remove at the end of the billing cycle.
+      await thisGroupUser.update({
+        removedAt: new Date(),
+      });
       return successResponse(response, "User left the group.");
     }
   );
@@ -739,7 +799,98 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  // TODO (docs)
+  app.post(
+    `${apiUrl}/accept-invitation`,
+    extractJwtAuthorizedUser,
+    validateFields([body("acceptGroupInviteJWT").exists()]),
+    // Decode the JWT token, get the email, userId for the token.
+    extractJWTInfo(body("acceptGroupInviteJWT")),
+    async (request, response, next) => {
+      if (
+        (response.locals.tokenInfo._type &&
+          response.locals.tokenInfo._type === "invite-new-user") ||
+        response.locals.tokenInfo._type === "invite-existing-user"
+      ) {
+        next();
+      } else {
+        return next(new AuthorizationError("Invalid token type"));
+      }
+    },
+    async (request, response, next) => {
+      await fetchUnauthorizedRequiredGroupById(response.locals.tokenInfo.group)(
+        request,
+        response,
+        next
+      );
+    },
+    async (request, response, next) => {
+      if (response.locals.tokenInfo._type === "invite-new-user") {
+        await fetchUnauthorizedRequiredInvitationById(
+          response.locals.tokenInfo.id
+        )(request, response, next);
+      } else if (response.locals.tokenInfo._type === "invite-existing-user") {
+        if (response.locals.requestUser.id !== response.locals.tokenInfo.id) {
+          return next(
+            new AuthorizationError("Token does not match redeeming user")
+          );
+        }
+        await fetchUnauthorizedRequiredUserById(response.locals.tokenInfo.id)(
+          request,
+          response,
+          next
+        );
+      }
+    },
+    async (request: Request, response: Response, next: NextFunction) => {
+      const actualUser = await models.User.findByPk(
+        response.locals.requestUser.id
+      );
+      const tokenInfo = response.locals.tokenInfo as {
+        _type: "invite-new-user" | "invite-existing-user";
+        id: UserId | GroupInvitationId;
+        group: GroupId;
+      };
+
+      if (tokenInfo._type === "invite-new-user") {
+        const invitation = response.locals.groupinvite as GroupInvites;
+        // TODO: Make sure emails are normalised
+        if (invitation.email !== actualUser.email) {
+          await invitation.destroy();
+          return next(
+            new AuthorizationError(
+              "Invitation was sent to a different email address"
+            )
+          );
+        }
+        // TODO: Can this fail?
+        await (response.locals.group as GroupStatic).addOrUpdateGroupUser(
+          response.locals.group,
+          actualUser,
+          invitation.admin,
+          invitation.owner,
+          null
+        );
+        await invitation.destroy();
+      } else {
+        // Existing user
+        const pendingUser = await models.GroupUsers.findOne({
+          where: {
+            UserId: response.locals.requestUser.id,
+            GroupId: response.locals.group.id,
+            removedAt: { [Op.eq]: null },
+            pending: "invited",
+          },
+        });
+        if (!pendingUser) {
+          return next(new AuthorizationError("Invite no longer exists"));
+        }
+        await pendingUser.update({ pending: null });
+      }
+      return successResponse(response, "Joined group");
+    }
+  );
+
+  // TODO (docs + tests)
   app.post(
     `${apiUrl}/:groupIdOrName/invite-user`,
     extractJwtAuthorizedUser,
@@ -747,19 +898,74 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
       body("email").exists(),
       booleanOf(body("admin")).default(false),
+      booleanOf(body("owner")).default(false),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
-    async (request: Request, response: Response) => {
-      const _group = response.locals.group;
+    async (request: Request, response: Response, next: NextFunction) => {
+      const group = response.locals.group;
       const user = response.locals.user;
-      const _makeAdmin = request.body.admin;
-      const _requestUser = response.locals.requestUser;
+      const makeAdmin = request.body.admin;
+      const makeOwner = request.body.owner;
+      const requestUser = response.locals.requestUser;
       // TODO - send email to user with token to join group, expiring in 1 week.
-
+      const existingGroupUser = await models.GroupUsers.findOne({
+        where: {
+          UserId: user.id,
+          GroupId: group.id,
+        },
+      });
+      if (existingGroupUser && existingGroupUser.pending === null) {
+        return next(new ClientError("User is already a member of group"));
+      }
       if (!user) {
         // If the user isn't a member, email them and invite them to create an account, with a special link to
         // accept which will then add them to the group when the account is created.
+        const invitation = await models.GroupInvites.create({
+          email: request.body.email,
+          invitedBy: requestUser.id,
+          GroupId: group.id,
+          admin: makeAdmin,
+          owner: makeOwner,
+        });
+        const token = getInviteToGroupToken(invitation.id, group.id);
+        const actualRequestUser = await models.User.findByPk(requestUser.id);
+        const sendSuccess = await sendGroupInviteNewMemberEmail(
+          request.headers.host,
+          token,
+          actualRequestUser.email,
+          group.groupName,
+          request.body.email
+        );
+        if (!sendSuccess) {
+          await invitation.destroy();
+          return next(new ClientError("Failed to send group invitation"));
+        }
+        // Should we be able to revoke email invites?
+      } else if (
+        existingGroupUser === null ||
+        (existingGroupUser && existingGroupUser.pending !== null)
+      ) {
+        await models.Group.addOrUpdateGroupUser(
+          group,
+          user,
+          makeAdmin,
+          makeOwner,
+          "invited"
+        );
+        const token = getInviteToGroupTokenExistingUser(user.id, group.id);
+        const actualRequestUser = await models.User.findByPk(requestUser.id);
+        const sendSuccess = await sendGroupInviteExistingMemberEmail(
+          request.headers.host,
+          token,
+          actualRequestUser.email,
+          group.groupName,
+          request.body.email
+        );
+        if (!sendSuccess) {
+          await models.Group.removeUserFromGroup(group, user);
+          return next(new ClientError("Failed to send group invitation"));
+        }
       }
       return successResponse(response, "Invited user to group");
     }

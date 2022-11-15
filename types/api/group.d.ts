@@ -3,6 +3,8 @@ import { ApiUserResponse } from "./user";
 
 export interface ApiGroupUserResponse extends ApiUserResponse {
   admin: boolean; // Is the user an admin of this group?
+  owner: boolean; // Is the user an owner of this group?
+  pending: null | "invited" | "requested"; // Has the user been invited to the group, but not accepted yet?  Has the user requested to join the group?
 }
 
 export interface ApiGroupResponse {
@@ -11,6 +13,7 @@ export interface ApiGroupResponse {
   lastThermalRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of last thermal recording seen for group
   lastAudioRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of last audio recording seen for group
   admin: boolean; // Is the calling user an admin of this group?
+  owner: boolean; // Is the calling user an owner of this group?
   settings?: ApiGroupSettings;
   userSettings?: ApiGroupUserSettings;
 }

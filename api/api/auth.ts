@@ -23,7 +23,7 @@ import customErrors from "./customErrors";
 import models, { ModelCommon } from "../models";
 import { Request } from "express";
 import { User } from "@models/User";
-import { GroupId, UserId } from "@typedefs/api/common";
+import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
 import { HttpStatusCode } from "@typedefs/api/consts";
@@ -95,14 +95,27 @@ export const getJoinGroupRequestToken = (
   );
 };
 
-export const getInviteToGroupsToken = (
-  userId: UserId,
-  groupIds: GroupId[],
-  perms: boolean[]
+export const getInviteToGroupToken = (
+  inviteId: GroupInvitationId,
+  groupId: GroupId
 ): string => {
   // expires in a week
   return jwt.sign(
-    { id: userId, groups: groupIds, perms, _type: "groups-invite" },
+    { id: inviteId, group: groupId, _type: "invite-new-user" },
+    config.server.passportSecret,
+    {
+      expiresIn: 60 * 60 * 24 * 7,
+    }
+  );
+};
+
+export const getInviteToGroupTokenExistingUser = (
+  userId: UserId,
+  groupId: GroupId
+): string => {
+  // expires in a week
+  return jwt.sign(
+    { id: userId, group: groupId, _type: "invite-existing-user" },
     config.server.passportSecret,
     {
       expiresIn: 60 * 60 * 24 * 7,

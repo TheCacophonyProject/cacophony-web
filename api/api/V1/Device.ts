@@ -701,7 +701,10 @@ export default function (app: Application, baseUrl: string) {
     },
     async (request: Request, response: Response) => {
       const users = (
-        await response.locals.group.getUsers({ attributes: ["id", "userName"] })
+        await response.locals.group.getUsers({
+          attributes: ["id", "userName"],
+          through: { where: { removedAt: { [Op.eq]: null } } },
+        })
       ).map((user) => ({
         userName: user.userName,
         id: user.id,

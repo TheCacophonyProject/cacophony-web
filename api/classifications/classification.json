@@ -1,6 +1,6 @@
 {
     "label": "all",
-    "version": "35faf19f-cef2-462b-83ba-d1a921145f2",
+    "version": "35faf19f-cef2-462b-83ba-d1a921145f3",
     "children": [
         {
             "label": "mammal",
@@ -241,6 +241,9 @@
                 },
                 {
                     "label": "chatham island taiko"
+                },
+                {
+                    "label": "chicken"
                 },
                 {
                     "label": "chestnut-breasted shelduck"
