@@ -703,12 +703,15 @@ export default function (app: Application, baseUrl: string) {
       const users = (
         await response.locals.group.getUsers({
           attributes: ["id", "userName"],
-          through: { where: { removedAt: { [Op.eq]: null } } },
+          through: {
+            where: { removedAt: { [Op.eq]: null, pending: { [Op.eq]: null } } },
+          },
         })
       ).map((user) => ({
         userName: user.userName,
         id: user.id,
         admin: (user as any).GroupUsers.admin,
+        owner: (user as any).GroupUsers.admin,
       }));
       return successResponse(response, "OK.", { users });
     }

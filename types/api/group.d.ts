@@ -1,7 +1,9 @@
-import { GroupId, IsoFormattedDateString } from "./common";
+import { GroupId, IsoFormattedDateString, UserId } from "./common";
 import { ApiUserResponse } from "./user";
 
-export interface ApiGroupUserResponse extends ApiUserResponse {
+export interface ApiGroupUserResponse {
+  userName: string; // Full name of user, or email address of invited user.
+  id?: UserId; // Unique id of user, if they're not an invited user.
   admin: boolean; // Is the user an admin of this group?
   owner: boolean; // Is the user an owner of this group?
   pending: null | "invited" | "requested"; // Has the user been invited to the group, but not accepted yet?  Has the user requested to join the group?

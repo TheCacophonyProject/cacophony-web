@@ -359,13 +359,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiGroupUsersResponseSuccess} users List of users associated with the group
    * @apiUse V1ResponseError
-   * @apiSuccessExample {JSON} ApiGroupUser:
-   * {
-   *  "id": 456,
-   *  "userName": "user name",
-   *  "admin": true
-   * }
-   *
    */
   app.get(
     `${apiUrl}/:groupIdOrName/users`,
@@ -380,15 +373,30 @@ export default function (app: Application, baseUrl: string) {
         attributes: ["id", "userName"],
         through: { where: { removedAt: { [Op.eq]: null } } },
       });
-
-      return successResponse(response, "Got users for group", {
-        users: users.map(({ userName, id, GroupUsers }) => ({
+      const existingUsers: ApiGroupUserResponse[] = users.map(
+        ({ userName, id, GroupUsers }) => ({
           userName,
           id,
           admin: GroupUsers.admin,
           owner: GroupUsers.owner,
           pending: GroupUsers.pending,
-        })),
+        })
+      );
+      const invitedUsers = await models.GroupInvites.findAll({
+        where: {
+          GroupId: response.locals.group.id,
+        },
+      });
+      const futureUsers: ApiGroupUserResponse[] = invitedUsers.map(
+        ({ email, admin, owner }) => ({
+          userName: email,
+          admin,
+          owner,
+          pending: "invited",
+        })
+      );
+      return successResponse(response, "Got users for group", {
+        users: [...existingUsers, ...futureUsers],
       });
     }
   );
@@ -911,39 +919,31 @@ export default function (app: Application, baseUrl: string) {
         const makeAdmin = request.body.admin;
         const makeOwner = request.body.owner;
         const requestUser = response.locals.requestUser;
-        const existingGroupUser = await models.GroupUsers.findOne({
-          where: {
-            UserId: user.id,
-            GroupId: group.id,
-          },
-        });
-        if (existingGroupUser && existingGroupUser.pending === null) {
-          return next(new ClientError("User is already a member of group"));
-        }
+        const email = request.body.email.toLowerCase().trim();
         if (!user) {
-          // If the user isn't a member, email them and invite them to create an account, with a special link to
-          // accept which will then add them to the group when the account is created.
-          const invitation = await models.GroupInvites.create({
-            email: request.body.email,
-            invitedBy: requestUser.id,
-            GroupId: group.id,
-            admin: makeAdmin,
-            owner: makeOwner,
+          // If the user isn't a member, there should be an invitation created,
+          // and we want to get the token for that invitation.
+          const existingInvite = await models.GroupInvites.findOne({
+            where: { email },
           });
-          token = getInviteToGroupToken(invitation.id, group.id);
+          if (!existingInvite) {
+            return next(new AuthorizationError("Invite doesn't exist"));
+          }
+          token = getInviteToGroupToken(existingInvite.id, group.id);
           // Should we be able to revoke email invites?
-        } else if (
-          existingGroupUser === null ||
-          (existingGroupUser && existingGroupUser.pending !== null)
-        ) {
-          await models.Group.addOrUpdateGroupUser(
-            group,
-            user,
-            makeAdmin,
-            makeOwner,
-            "invited"
-          );
-          token = getInviteToGroupTokenExistingUser(user.id, group.id);
+        } else {
+          const existingGroupUser = await models.GroupUsers.findOne({
+            where: {
+              UserId: user.id,
+              GroupId: group.id,
+              pending: "invited",
+            },
+          });
+          if (existingGroupUser) {
+            token = getInviteToGroupTokenExistingUser(user.id, group.id);
+          } else {
+            return next(new AuthorizationError("Invite doesn't exist"));
+          }
         }
         return successResponse(response, "Got invite token", {
           token,

@@ -33,7 +33,8 @@ onBeforeMount(async () => {
     (currentSelectedGroup.value as { groupName: string; id: GroupId }).id
   );
   if (groupUsersResponse.success) {
-    groupUsers.value = groupUsersResponse.result.users;
+    // Filter out invited users, non-member or existing member
+    groupUsers.value = groupUsersResponse.result.users.filter(user => user.id !== undefined && user.pending === null);
   } else {
     // Do something with error.
   }
