@@ -78,11 +78,13 @@ import {
   sendGroupInviteNewMemberEmail,
 } from "@/emails/transactionalEmails";
 import {
+  getEmailConfirmationToken,
   getInviteToGroupToken,
   getInviteToGroupTokenExistingUser,
 } from "@api/auth";
 import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
 import { GroupInvites, GroupInvitesStatic } from "@models/GroupInvites";
+import config from "@config";
 
 const mapGroup = (
   group: Group,
@@ -890,6 +892,66 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  if (config.server.loggerLevel === "debug") {
+    app.post(
+      `${apiUrl}/:groupIdOrName/get-invite-user-token`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        nameOrIdOf(param("groupIdOrName")),
+        body("email").exists(),
+        booleanOf(body("admin")).default(false),
+        booleanOf(body("owner")).default(false),
+      ]),
+      fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+      fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
+      async (request: Request, response: Response, next: NextFunction) => {
+        let token;
+        const group = response.locals.group;
+        const user = response.locals.user;
+        const makeAdmin = request.body.admin;
+        const makeOwner = request.body.owner;
+        const requestUser = response.locals.requestUser;
+        const existingGroupUser = await models.GroupUsers.findOne({
+          where: {
+            UserId: user.id,
+            GroupId: group.id,
+          },
+        });
+        if (existingGroupUser && existingGroupUser.pending === null) {
+          return next(new ClientError("User is already a member of group"));
+        }
+        if (!user) {
+          // If the user isn't a member, email them and invite them to create an account, with a special link to
+          // accept which will then add them to the group when the account is created.
+          const invitation = await models.GroupInvites.create({
+            email: request.body.email,
+            invitedBy: requestUser.id,
+            GroupId: group.id,
+            admin: makeAdmin,
+            owner: makeOwner,
+          });
+          token = getInviteToGroupToken(invitation.id, group.id);
+          // Should we be able to revoke email invites?
+        } else if (
+          existingGroupUser === null ||
+          (existingGroupUser && existingGroupUser.pending !== null)
+        ) {
+          await models.Group.addOrUpdateGroupUser(
+            group,
+            user,
+            makeAdmin,
+            makeOwner,
+            "invited"
+          );
+          token = getInviteToGroupTokenExistingUser(user.id, group.id);
+        }
+        return successResponse(response, "Got invite token", {
+          token,
+        });
+      }
+    );
+  }
+
   // TODO (docs + tests)
   app.post(
     `${apiUrl}/:groupIdOrName/invite-user`,
@@ -906,9 +968,10 @@ export default function (app: Application, baseUrl: string) {
       const group = response.locals.group;
       const user = response.locals.user;
       const makeAdmin = request.body.admin;
+      const email = request.body.email.toLowerCase().trim();
       const makeOwner = request.body.owner;
       const requestUser = response.locals.requestUser;
-      // TODO - send email to user with token to join group, expiring in 1 week.
+      // NOTE - send email to user with token to join group, expiring in 1 week.
       const existingGroupUser = await models.GroupUsers.findOne({
         where: {
           UserId: user.id,
@@ -922,7 +985,7 @@ export default function (app: Application, baseUrl: string) {
         // If the user isn't a member, email them and invite them to create an account, with a special link to
         // accept which will then add them to the group when the account is created.
         const invitation = await models.GroupInvites.create({
-          email: request.body.email,
+          email,
           invitedBy: requestUser.id,
           GroupId: group.id,
           admin: makeAdmin,
@@ -935,7 +998,7 @@ export default function (app: Application, baseUrl: string) {
           token,
           actualRequestUser.email,
           group.groupName,
-          request.body.email
+          email
         );
         if (!sendSuccess) {
           await invitation.destroy();
@@ -960,7 +1023,7 @@ export default function (app: Application, baseUrl: string) {
           token,
           actualRequestUser.email,
           group.groupName,
-          request.body.email
+          email
         );
         if (!sendSuccess) {
           await models.Group.removeUserFromGroup(group, user);

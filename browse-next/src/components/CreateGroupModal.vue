@@ -44,6 +44,7 @@ const createNewGroup = async () => {
         groupName,
         id: createGroupResponse.result.groupId,
         admin: true,
+        owner: true,
       });
       UserGroups.value.sort((a, b) => a.groupName.localeCompare(b.groupName));
       switchCurrentGroup({ groupName, id: newGroupId });

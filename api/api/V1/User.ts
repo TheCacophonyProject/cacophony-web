@@ -162,7 +162,7 @@ export default function (app: Application, baseUrl: string) {
       const user: User = await models.User.create({
         userName: request.body.username || request.body.userName,
         password: request.body.password,
-        email: request.body.email,
+        email: request.body.email.toLowerCase().trim(),
         endUserAgreement: request.body.endUserAgreement,
         lastActiveAt: now,
       });
@@ -201,6 +201,20 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+  if (config.server.loggerLevel === "debug") {
+    app.post(
+      `${apiUrl}/get-email-confirmation-token`,
+      extractJwtAuthorizedUser,
+      async (request: Request, response: Response, next: NextFunction) => {
+        const user = await models.User.findByPk(response.locals.requestUser.id);
+        const token = getEmailConfirmationToken(user.id, user.email);
+        return successResponse(response, "Got email confirmation token.", {
+          token,
+        });
+      }
+    );
+  }
 
   /**
    * @api {patch} /api/v1/users Updates the authenticated user's details
