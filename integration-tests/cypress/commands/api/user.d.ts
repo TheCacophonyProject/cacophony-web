@@ -124,6 +124,12 @@ declare namespace Cypress {
     ): any;
 
     /**
+     * Confirm the email address of the user on sign-up and
+     * when the user changes their email address
+     */
+    apiConfirmEmailAddress(token: string): any;
+
+    /**
      * create user group and camera at the same time
      */
     testCreateUserGroupAndDevice(

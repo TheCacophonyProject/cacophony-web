@@ -1,7 +1,6 @@
 /// <reference path="../../../support/index.d.ts" />
 
 import { checkRecording } from "@commands/api/recording-tests";
-import { getCreds } from "@commands/server";
 
 describe("Monitoring : pagings", () => {
   const Veronica = "Veronica_visits";
@@ -47,7 +46,7 @@ describe("Monitoring : pagings", () => {
   it("visits can finish for some cameras beyond the start time for others", () => {
     const Henry = "Henry";
     const group = "visits-two-cams";
-    cy.testCreateUserAndGroup(Henry, group).then(({ userId, groupId }) => {
+    cy.testCreateUserAndGroup(Henry, group).then(({ groupId }) => {
       const camera1 = "cam-1";
       const camera2 = "cam-2";
       const location1 = { lat: -44.0, lng: 172.7 };

@@ -5,7 +5,6 @@ import { getTestName } from "@commands/names";
 import {
   getCreds,
   makeAuthorizedRequestWithStatus,
-  saveIdOnly,
   v1ApiPath,
 } from "@commands/server";
 import { HttpStatusCode } from "@typedefs/api/consts";

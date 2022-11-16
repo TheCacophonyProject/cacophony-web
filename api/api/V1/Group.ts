@@ -35,6 +35,7 @@ import {
   fetchUnauthorizedOptionalGroupByNameOrId,
   fetchUnauthorizedOptionalUserByEmailOrId,
   fetchUnauthorizedRequiredGroupById,
+  fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredInvitationById,
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserById,
@@ -53,7 +54,11 @@ import {
   nameOrIdOf,
   validNameOf,
 } from "../validation-middleware";
-import { AuthorizationError, ClientError } from "../customErrors";
+import {
+  AuthorizationError,
+  ClientError,
+  UnprocessableError,
+} from "../customErrors";
 import { mapDevicesResponse } from "./Device";
 import { Group, GroupStatic } from "@/models/Group";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
@@ -72,19 +77,22 @@ import {
 import { HttpStatusCode } from "@typedefs/api/consts";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 import { Op } from "sequelize";
-import logger from "@log";
 import {
+  sendAddedToGroupNotificationEmail,
   sendGroupInviteExistingMemberEmail,
   sendGroupInviteNewMemberEmail,
+  sendLeftGroupNotificationEmail,
+  sendRemovedFromGroupNotificationEmail,
+  sendRemovedFromInvitedGroupNotificationEmail,
 } from "@/emails/transactionalEmails";
 import {
-  getEmailConfirmationToken,
   getInviteToGroupToken,
   getInviteToGroupTokenExistingUser,
 } from "@api/auth";
 import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
-import { GroupInvites, GroupInvitesStatic } from "@models/GroupInvites";
+import { GroupInvites } from "@models/GroupInvites";
 import config from "@config";
+import logger from "@log";
 
 const mapGroup = (
   group: Group,
@@ -530,11 +538,42 @@ export default function (app: Application, baseUrl: string) {
         response.locals.group,
         response.locals.user
       );
+      if (!removed && request.body.email) {
+        // Check to see if the user was just invited, but not added, in which case we can
+        // just revoke the invitation.
+        const invitation = await models.GroupInvites.findOne({
+          where: {
+            GroupId: response.locals.group.id,
+            email: request.body.email,
+          },
+        });
+        if (invitation) {
+          await invitation.destroy();
+          // This user can't have confirmed their email yet, so just send
+          await sendRemovedFromInvitedGroupNotificationEmail(
+            request.headers.host,
+            response.locals.user.email,
+            response.locals.group.groupName
+          );
+        }
+      }
       if (removed && !wasPending) {
-        // TODO(jon): Email user to let them know they've been removed.
+        if (response.locals.user.emailConfirmed) {
+          await sendRemovedFromGroupNotificationEmail(
+            request.headers.host,
+            response.locals.user.email,
+            response.locals.group.groupName
+          );
+        }
         return successResponse(response, "Removed user from the group.");
       } else if (removed && wasPending) {
-        // TODO(jon): Email user to let them know their invitation was revoked.
+        if (response.locals.user.emailConfirmed) {
+          await sendRemovedFromInvitedGroupNotificationEmail(
+            request.headers.host,
+            response.locals.user.email,
+            response.locals.group.groupName
+          );
+        }
         return successResponse(response, "Removed user group invitation.");
       } else {
         return next(new ClientError("Failed to remove user from the group."));
@@ -582,6 +621,15 @@ export default function (app: Application, baseUrl: string) {
       }
 
       const thisGroupUser = groupUsers.find(({ UserId }) => UserId === user.id);
+
+      const actualUser = await models.User.findByPk(user.id);
+      if (actualUser.emailConfirmed) {
+        await sendLeftGroupNotificationEmail(
+          request.headers.host,
+          actualUser.email,
+          response.locals.group.groupName
+        );
+      }
 
       // NOTE: Just mark as removed, actually remove at the end of the billing cycle.
       await thisGroupUser.update({
@@ -810,28 +858,30 @@ export default function (app: Application, baseUrl: string) {
   );
 
   app.post(
-    `${apiUrl}/accept-invitation`,
+    `${apiUrl}/:groupIdOrName/accept-invitation`,
     extractJwtAuthorizedUser,
-    validateFields([body("acceptGroupInviteJWT").exists()]),
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      body("acceptGroupInviteJWT").exists(),
+      query("existing-member").optional().default(false),
+    ]),
     // Decode the JWT token, get the email, userId for the token.
     extractJWTInfo(body("acceptGroupInviteJWT")),
+    fetchUnauthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request, response, next) => {
       if (
         (response.locals.tokenInfo._type &&
           response.locals.tokenInfo._type === "invite-new-user") ||
         response.locals.tokenInfo._type === "invite-existing-user"
       ) {
+        // Make sure url group matches token group.
+        if (response.locals.group.id !== response.locals.tokenInfo.group) {
+          return next(new AuthorizationError("Token does not match group"));
+        }
         next();
       } else {
         return next(new AuthorizationError("Invalid token type"));
       }
-    },
-    async (request, response, next) => {
-      await fetchUnauthorizedRequiredGroupById(response.locals.tokenInfo.group)(
-        request,
-        response,
-        next
-      );
     },
     async (request, response, next) => {
       if (response.locals.tokenInfo._type === "invite-new-user") {
@@ -863,23 +913,31 @@ export default function (app: Application, baseUrl: string) {
 
       if (tokenInfo._type === "invite-new-user") {
         const invitation = response.locals.groupinvite as GroupInvites;
-        // TODO: Make sure emails are normalised
-        if (invitation.email !== actualUser.email) {
-          await invitation.destroy();
-          return next(
-            new AuthorizationError(
-              "Invitation was sent to a different email address"
-            )
-          );
+        if (!request.query["existing-member"]) {
+          if (invitation.email !== actualUser.email) {
+            await invitation.destroy();
+            return next(
+              new AuthorizationError(
+                "Invitation was sent to a different email address"
+              )
+            );
+          }
         }
         // TODO: Can this fail?
-        await (response.locals.group as GroupStatic).addOrUpdateGroupUser(
+        const { added } = await models.Group.addOrUpdateGroupUser(
           response.locals.group,
           actualUser,
           invitation.admin,
           invitation.owner,
           null
         );
+        if (added && actualUser.emailConfirmed) {
+          await sendAddedToGroupNotificationEmail(
+            request.headers.host,
+            actualUser.email,
+            [response.locals.group.groupName]
+          );
+        }
         await invitation.destroy();
       } else {
         // Existing user
@@ -895,12 +953,20 @@ export default function (app: Application, baseUrl: string) {
           return next(new AuthorizationError("Invite no longer exists"));
         }
         await pendingUser.update({ pending: null });
+        if (actualUser.emailConfirmed) {
+          await sendAddedToGroupNotificationEmail(
+            request.headers.host,
+            actualUser.email,
+            [response.locals.group.groupName]
+          );
+        }
       }
       return successResponse(response, "Joined group");
     }
   );
 
   if (config.server.loggerLevel === "debug") {
+    // For front-end debug purposes
     app.post(
       `${apiUrl}/:groupIdOrName/get-invite-user-token`,
       extractJwtAuthorizedUser,
@@ -972,15 +1038,6 @@ export default function (app: Application, baseUrl: string) {
       const makeOwner = request.body.owner;
       const requestUser = response.locals.requestUser;
       // NOTE - send email to user with token to join group, expiring in 1 week.
-      const existingGroupUser = await models.GroupUsers.findOne({
-        where: {
-          UserId: user.id,
-          GroupId: group.id,
-        },
-      });
-      if (existingGroupUser && existingGroupUser.pending === null) {
-        return next(new ClientError("User is already a member of group"));
-      }
       if (!user) {
         // If the user isn't a member, email them and invite them to create an account, with a special link to
         // accept which will then add them to the group when the account is created.
@@ -1005,29 +1062,54 @@ export default function (app: Application, baseUrl: string) {
           return next(new ClientError("Failed to send group invitation"));
         }
         // Should we be able to revoke email invites?
-      } else if (
-        existingGroupUser === null ||
-        (existingGroupUser && existingGroupUser.pending !== null)
-      ) {
-        await models.Group.addOrUpdateGroupUser(
-          group,
-          user,
-          makeAdmin,
-          makeOwner,
-          "invited"
-        );
-        const token = getInviteToGroupTokenExistingUser(user.id, group.id);
-        const actualRequestUser = await models.User.findByPk(requestUser.id);
-        const sendSuccess = await sendGroupInviteExistingMemberEmail(
-          request.headers.host,
-          token,
-          actualRequestUser.email,
-          group.groupName,
-          email
-        );
-        if (!sendSuccess) {
-          await models.Group.removeUserFromGroup(group, user);
-          return next(new ClientError("Failed to send group invitation"));
+      } else {
+        const existingGroupUser = await models.GroupUsers.findOne({
+          where: {
+            UserId: user.id,
+            GroupId: group.id,
+          },
+        });
+        if (existingGroupUser && existingGroupUser.pending === null) {
+          return next(
+            new UnprocessableError("User is already a member of group")
+          );
+        }
+        if (
+          existingGroupUser === null ||
+          (existingGroupUser && existingGroupUser.pending !== null)
+        ) {
+          await models.Group.addOrUpdateGroupUser(
+            group,
+            user,
+            makeAdmin,
+            makeOwner,
+            "invited"
+          );
+          const token = getInviteToGroupTokenExistingUser(user.id, group.id);
+          const actualRequestUser = await models.User.findByPk(requestUser.id);
+          let sendSuccess;
+          if (actualRequestUser.emailConfirmed) {
+            sendSuccess = await sendGroupInviteExistingMemberEmail(
+              request.headers.host,
+              token,
+              actualRequestUser.email,
+              group.groupName,
+              email
+            );
+          } else {
+            // Still send the user an email, but send it as if they are not a current member.
+            sendSuccess = await sendGroupInviteNewMemberEmail(
+              request.headers.host,
+              token,
+              actualRequestUser.email,
+              group.groupName,
+              email
+            );
+          }
+          if (!sendSuccess) {
+            await models.Group.removeUserFromGroup(group, user);
+            return next(new ClientError("Failed to send group invitation"));
+          }
         }
       }
       return successResponse(response, "Invited user to group");

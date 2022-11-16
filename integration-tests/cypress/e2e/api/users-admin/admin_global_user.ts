@@ -10,25 +10,11 @@ import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 describe("User: manage global access permissions", () => {
   const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
-  let expectedDevice1: ApiDeviceResponse;
   let expectedDevice2: ApiDeviceResponse;
 
   before(() => {
     cy.apiSignInAs(null, superuser, suPassword);
-    cy.testCreateUserGroupAndDevice("gapUser1", "gapGroup1", "gapCamera1").then(
-      () => {
-        expectedDevice1 = {
-          id: getCreds("gapCamera1").id,
-          saltId: getCreds("gapCamera1").id,
-          deviceName: getTestName("gapCamera1"),
-          groupName: getTestName("gapGroup1"),
-          groupId: getCreds("gapGroup1").id,
-          type: DeviceType.Unknown,
-          admin: true,
-          active: true,
-        };
-      }
-    );
+    cy.testCreateUserGroupAndDevice("gapUser1", "gapGroup1", "gapCamera1");
     cy.testCreateUserGroupAndDevice("gapUser2", "gapGroup2", "gapCamera2").then(
       () => {
         expectedDevice2 = {

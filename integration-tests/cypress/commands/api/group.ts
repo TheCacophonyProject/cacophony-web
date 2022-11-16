@@ -65,6 +65,82 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiGroupUserInvite",
+  (
+    groupAdminUser: string,
+    inviteeEmail: string,
+    groupName: string,
+    admin: boolean = false,
+    owner: boolean = false,
+    log: boolean = true,
+    statusCode: number = 200
+  ) => {
+    const fullGroupName = getTestName(groupName);
+    const email = getTestEmail(inviteeEmail);
+
+    const adminStr = admin ? " as admin " : "";
+    const ownerStr = owner ? " as owner " : "";
+    logTestDescription(
+      `${groupAdminUser} Inviting user '${email}' to group '${groupName}'${adminStr}${ownerStr}`,
+      { user: inviteeEmail, groupName, admin, owner },
+      log
+    );
+    const body = {
+      email,
+    };
+    if (admin) {
+      (body as any).admin = true;
+    }
+    if (owner) {
+      (body as any).owner = true;
+    }
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(`groups/${fullGroupName}/invite-user`),
+        body,
+      },
+      groupAdminUser,
+      statusCode
+    );
+  }
+);
+
+Cypress.Commands.add(
+  "apiGroupUserAcceptInvite",
+  (
+    invitedUser: string,
+    groupName: string,
+    token: string,
+    useExistingUser: boolean = false,
+    log: boolean = true,
+    statusCode: number = 200
+  ) => {
+    const fullGroupName = getTestName(groupName);
+    const body = {
+      acceptGroupInviteJWT: token.replace(/:/g, "."),
+    };
+    logTestDescription(
+      `${invitedUser} accepting invitation to group '${groupName}'`,
+      { user: invitedUser, groupName },
+      log
+    );
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(
+          `groups/${fullGroupName}/accept-invitation`,
+          useExistingUser ? { "existing-member": 1 } : {}
+        ),
+        body,
+      },
+      invitedUser,
+      statusCode
+    );
+  }
+);
+
+Cypress.Commands.add(
   "apiGroupUserRemove",
   (
     groupAdminUser: string,

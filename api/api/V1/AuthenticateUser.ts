@@ -405,7 +405,7 @@ export default function (app: Application, baseUrl: string) {
   ];
 
   /**
-   * @api {post} /api/v1/reset-password Sends an email to a user for resetting password
+   * @api {post} /api/v1/users/reset-password Sends an email to a user for resetting password
    * @apiName ResetPassword
    * @apiGroup Authentication
    * @apiBody {String} email Email address of user.

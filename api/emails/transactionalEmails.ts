@@ -203,6 +203,66 @@ export const sendAddedToGroupNotificationEmail = async (
   );
 };
 
+export const sendRemovedFromGroupNotificationEmail = async (
+  origin: string,
+  userEmailAddress: string,
+  groupNameRemoved: string
+) => {
+  const { text, html } = await createEmailWithTemplate(
+    "removed-from-group-notification.html",
+    { groupNameRemoved, ...commonInterpolants(origin) }
+  );
+
+  const subject = `❗️You've been removed from '${groupNameRemoved}'`;
+  return await sendEmail(
+    html,
+    text,
+    userEmailAddress,
+    subject,
+    await commonAttachments()
+  );
+};
+
+export const sendLeftGroupNotificationEmail = async (
+  origin: string,
+  userEmailAddress: string,
+  groupNameRemoved: string
+) => {
+  const { text, html } = await createEmailWithTemplate(
+    "left-group-notification.html",
+    { groupNameRemoved, ...commonInterpolants(origin) }
+  );
+
+  const subject = `❗️You've left '${groupNameRemoved}'`;
+  return await sendEmail(
+    html,
+    text,
+    userEmailAddress,
+    subject,
+    await commonAttachments()
+  );
+};
+
+export const sendRemovedFromInvitedGroupNotificationEmail = async (
+  origin: string,
+  userEmailAddress: string,
+  groupNameRemoved: string
+) => {
+  const { text, html } = await createEmailWithTemplate(
+    "removed-from-invited-group-notification.html",
+    { groupNameRemoved, ...commonInterpolants(origin) }
+  );
+
+  const subject = `❗️You've been uninvited from '${groupNameRemoved}'`;
+  return await sendEmail(
+    html,
+    text,
+    userEmailAddress,
+    subject,
+    await commonAttachments()
+  );
+};
+
 export const sendGroupMembershipRequestEmail = async (
   origin: string,
   acceptToGroupToken: string,

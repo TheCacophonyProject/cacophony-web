@@ -492,7 +492,6 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    const additionalParams = additionalChecks["additionalParams"];
     logTestDescription(`Check recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
     });

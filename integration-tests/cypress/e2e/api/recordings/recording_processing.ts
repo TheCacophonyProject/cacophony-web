@@ -906,7 +906,7 @@ describe("Recordings - processing tests", () => {
 
     //This is a single test to check that alerts are triggered by processing
     //Full tests of the alerts logic are done through the recording upload API
-    it.only("Alert when desired animal is detected by processing", () => {
+    it("Alert when desired animal is detected by processing", () => {
       //Note: camera 1b has an alert for possums
       const recording20 = TestCreateRecordingData(templateRecording);
       // Make the recording recent, so that it will alert
@@ -921,8 +921,7 @@ describe("Recordings - processing tests", () => {
           "rpAlert1b",
           0,
           POSSUM_ALERT,
-          true,
-          "rpGroupAdmin"
+          true
         );
         const expectedEvent20 = createExpectedEvent(
           "rpCamera1b",
@@ -1040,7 +1039,7 @@ describe("Recordings - processing tests", () => {
           previewSecs: null,
         },
       };
-      //NOTE: loction no longer supported
+      //NOTE: location no longer supported
 
       //top level recording data
       const recording17 = TestCreateRecordingData(templateRecording);

@@ -73,8 +73,7 @@ describe("Devices alerts", () => {
         "alert1",
         0,
         POSSUM_ALERT,
-        false,
-        usera.name
+        false
       );
 
       //check we created an alert wth no last alerted time
@@ -113,8 +112,7 @@ describe("Devices alerts", () => {
         "alert1",
         0,
         POSSUM_ALERT,
-        true,
-        usera.name
+        true
       );
       const expectedEvent = createExpectedEvent(
         usera.camera,
@@ -158,13 +156,7 @@ describe("Devices alerts", () => {
       },
       "recording1b"
     ).then(() => {
-      const emptyAlert = createExpectedAlert(
-        "alert1b",
-        0,
-        POSSUM_ALERT,
-        false,
-        usera.name
-      );
+      const emptyAlert = createExpectedAlert("alert1b", 0, POSSUM_ALERT, false);
 
       //check that an alert is present and has no 'last alerted'
       cy.apiDeviceAlertCheck(usera.name, usera.camera, emptyAlert);
@@ -200,13 +192,7 @@ describe("Devices alerts", () => {
       },
       "recording1c"
     ).then(() => {
-      const emptyAlert = createExpectedAlert(
-        "alert1c",
-        0,
-        POSSUM_ALERT,
-        false,
-        usera.name
-      );
+      const emptyAlert = createExpectedAlert("alert1c", 0, POSSUM_ALERT, false);
 
       //check that an alert is present and has no 'last alerted'
       cy.apiDeviceAlertCheck(usera.name, usera.camera, emptyAlert);
@@ -245,8 +231,7 @@ describe("Devices alerts", () => {
         "alert1d",
         0,
         POSSUM_ALERT,
-        true,
-        usera.name
+        true
       );
       const expectedEvent1d = createExpectedEvent(
         usera.camera,
@@ -294,8 +279,7 @@ describe("Devices alerts", () => {
         "alert1d",
         0,
         POSSUM_ALERT,
-        false,
-        usera.name
+        false
       );
 
       //check that an alert is present and has no 'last alerted'
@@ -332,13 +316,7 @@ describe("Devices alerts", () => {
       "recording2"
     ).then(() => {
       //expected alert to compare against (latestEvent is false)
-      const emptyAlert = createExpectedAlert(
-        "alert1",
-        0,
-        POSSUM_ALERT,
-        false,
-        usera.name
-      );
+      const emptyAlert = createExpectedAlert("alert1", 0, POSSUM_ALERT, false);
 
       //check we have an alert with no latestEvent
       cy.apiDeviceAlertCheck(usera.name, usera.camera, emptyAlert);
@@ -383,13 +361,7 @@ describe("Devices alerts", () => {
         "alert3",
         0,
         POSSUM_ALERT,
-        false,
-        usera.name
-      );
-      const expectedEvent3 = createExpectedEvent(
-        usera.camera,
-        "recording3",
-        "alert3"
+        false
       );
 
       //check we have an alert with a latestEvent
@@ -436,13 +408,7 @@ describe("Devices alerts", () => {
         "alert4",
         0,
         POSSUM_ALERT,
-        false,
-        usera.name
-      );
-      const expectedEvent4 = createExpectedEvent(
-        usera.camera,
-        "recording4",
-        "alert4"
+        false
       );
 
       //check alert is present and as expected shows latest event
@@ -481,8 +447,7 @@ describe("Devices alerts", () => {
         "alert1",
         0,
         POSSUM_ALERT,
-        true,
-        usera.name
+        true
       );
       const expectedEvent1 = createExpectedEvent(
         usera.camera,
@@ -515,8 +480,7 @@ describe("Devices alerts", () => {
           "alert1",
           0,
           POSSUM_ALERT,
-          true,
-          usera.name
+          true
         );
         const expectedEvent2 = createExpectedEvent(
           usera.camera,
@@ -549,8 +513,7 @@ describe("Devices alerts", () => {
             "alert1",
             0,
             POSSUM_ALERT,
-            true,
-            usera.name
+            true
           );
           const expectedEvent3 = createExpectedEvent(
             usera.camera,

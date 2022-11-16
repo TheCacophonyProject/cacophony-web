@@ -45,6 +45,35 @@ declare namespace Cypress {
     ): any;
 
     /**
+     * Invite user to group
+     * Optionally check for fail response (statusCode!=200)
+     * By default gropuAdminUser and groupName are converted into unique (for this test run) names.
+     */
+    apiGroupUserInvite(
+      groupAdminUser: string,
+      inviteeEmail: string,
+      groupName: string,
+      admin?: boolean,
+      owner?: boolean,
+      log?: boolean,
+      statusCode?: number
+    ): any;
+
+    /**
+     * Accept group invitation
+     * Optionally check for fail response (statusCode!=200)
+     * By default invitedUser and groupName are converted into unique (for this test run) names.
+     */
+    apiGroupUserAcceptInvite(
+      invitedUser: string,
+      groupName: string,
+      token: string,
+      useExistingUser?: boolean,
+      log?: boolean,
+      statusCode?: number
+    ): any;
+
+    /**
      * Call api/v1/groups/<groupnameorid> and check that returned values match expectedGroups
      * Optionally check for fail response (statusCode!=200)
      * By default userName and groupName are converted into unique (for this test run) names.

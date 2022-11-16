@@ -1,10 +1,16 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "@commands/names";
+import { getTestEmail, getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 
 import { ApiGroupUserResponse } from "@typedefs/api/group";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import {
+  getEmailSubject,
+  getEmailToAddress,
+  startMailServerStub,
+  waitForEmail,
+} from "@commands/emailUtils";
 
 describe("Groups - add, check and remove users", () => {
   const ADMIN = true;

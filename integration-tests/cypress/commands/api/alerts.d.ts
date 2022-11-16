@@ -4,6 +4,7 @@ declare namespace Cypress {
   type ApiAlertCondition = import("@typedefs/api/alerts").ApiAlertCondition;
   type AlertId = import("@typedefs/api/common").AlertId;
   type ApiAlertResponse = import("@typedefs/api/alerts").ApiAlertResponse;
+  type StationIdAlias2 = import("@typedefs/api/common").StationId;
   interface Chainable {
     /**
      * Create an alert for a device. Optioanlly expect to fail with code: failCode
@@ -48,7 +49,7 @@ declare namespace Cypress {
      */
     apiStationAlertCheck(
       userName: string,
-      statinId: StationIdAlias,
+      stationId: StationIdAlias2,
       expectedAlert: any,
       statusCode?: number
     ): Cypress.Chainable<ApiAlertResponse>;
