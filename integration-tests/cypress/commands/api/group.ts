@@ -24,6 +24,7 @@ Cypress.Commands.add(
     userName: string,
     groupName: string,
     admin = false,
+    owner = false,
     log = true,
     statusCode: number = 200,
     additionalChecks: any = {}
@@ -42,21 +43,25 @@ Cypress.Commands.add(
     }
 
     const adminStr = admin ? " as admin " : "";
+    const ownerStr = owner ? " as owner " : "";
     logTestDescription(
-      `${groupAdminUser} Adding user '${userName}' to group '${groupName}' ${adminStr}`,
-      { user: userName, groupName, admin },
+      `${groupAdminUser} Adding user '${userName}' to group '${groupName}' ${adminStr} ${ownerStr}`,
+      { user: userName, groupName, admin, owner },
       log
     );
-
+    const body = {
+      group: fullGroupName,
+      admin: admin.toString(),
+      email: fullName,
+    };
+    if (owner) {
+      (body as any).owner = owner.toString();
+    }
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: v1ApiPath("groups/users"),
-        body: {
-          group: fullGroupName,
-          admin: admin.toString(),
-          email: fullName,
-        },
+        body,
       },
       groupAdminUser,
       statusCode
@@ -135,6 +140,63 @@ Cypress.Commands.add(
         body,
       },
       invitedUser,
+      statusCode
+    );
+  }
+);
+
+Cypress.Commands.add(
+  "apiGroupUserRequestInvite",
+  (
+    groupAdminUserEmail: string,
+    userName: string,
+    groupName: string,
+    log: boolean = true,
+    statusCode: number = 200
+  ) => {
+    logTestDescription(
+      `${userName} requesting access to group '${groupName}' from ${groupAdminUserEmail}`,
+      { user: userName, groupName, groupAdminUserEmail },
+      log
+    );
+    const body = {
+      groupAdminEmail: groupAdminUserEmail,
+      groupId: getCreds(groupName).id,
+    };
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(`users/request-group-membership`),
+        body,
+      },
+      userName,
+      statusCode
+    );
+  }
+);
+
+Cypress.Commands.add(
+  "apiGroupUserAcceptInviteRequest",
+  (
+    groupAdminUser: string,
+    token: string,
+    log: boolean = true,
+    statusCode: number = 200
+  ) => {
+    logTestDescription(
+      `${groupAdminUser} approves access to group`,
+      { user: groupAdminUser },
+      log
+    );
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(`users/validate-group-membership-request`),
+        body: {
+          membershipRequestJWT: token.replace(/:/g, "."),
+        },
+      },
+      groupAdminUser,
       statusCode
     );
   }

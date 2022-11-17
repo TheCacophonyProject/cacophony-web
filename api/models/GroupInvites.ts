@@ -30,10 +30,7 @@ export interface GroupInvites
 
 export interface GroupInvitesStatic extends ModelStaticCommon<GroupInvites> {}
 
-export default function (
-  sequelize: Sequelize.Sequelize,
-  DataTypes
-): GroupInvitesStatic {
+export default function (sequelize: Sequelize.Sequelize): GroupInvitesStatic {
   const name = "GroupInvites";
 
   const attributes = {

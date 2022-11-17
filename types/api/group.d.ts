@@ -6,7 +6,7 @@ export interface ApiGroupUserResponse {
   id?: UserId; // Unique id of user, if they're not an invited user.
   admin: boolean; // Is the user an admin of this group?
   owner: boolean; // Is the user an owner of this group?
-  pending: null | "invited" | "requested"; // Has the user been invited to the group, but not accepted yet?  Has the user requested to join the group?
+  pending?: "invited" | "requested"; // Has the user been invited to the group, but not accepted yet?  Has the user requested to join the group?
 }
 
 export interface ApiGroupResponse {

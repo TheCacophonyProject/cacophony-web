@@ -53,6 +53,8 @@ const joinExistingGroup = async () => {
   // Once an email address has been added, we should be able to get a list of the groups that
   // that user is an admin for, and list them so that the user can select which groups they want
   // to request permission to join.
+
+  // FIXME - Now only allowing one group at a time to be requested.
   submittingJoinRequest.value = true;
   const joinRequestResponse = await requestToJoinGroups(
     groupAdminEmailAddress.value.trim(),

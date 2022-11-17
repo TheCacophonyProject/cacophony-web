@@ -56,6 +56,29 @@ export const sendWelcomeEmailConfirmationEmail = async (
   }
 };
 
+export const sendWelcomeEmailWithGroupsAdded = async (
+  origin: string,
+  userEmailAddress: string,
+  groupNamesAdded: string[]
+): Promise<boolean> => {
+  try {
+    const common = commonInterpolants(origin);
+    const { text, html } = await createEmailWithTemplate(
+      "welcome-with-groups.html",
+      { groupNamesAdded, ...common }
+    );
+    return await sendEmail(
+      html,
+      text,
+      userEmailAddress,
+      "🎉 Welcome to your new Cacophony Monitoring account!",
+      await commonAttachments()
+    );
+  } catch (e) {
+    logger.error("%s", e);
+  }
+};
+
 export const sendEmailConfirmationEmailLegacyUser = async (
   origin: string,
   emailConfirmationToken: string,
@@ -137,7 +160,7 @@ export const sendGroupInviteExistingMemberEmail = async (
     html,
     text,
     userEmailAddress,
-    "You're invited to join a group on Cacophony Monitoring",
+    "You've been invited to join a group on Cacophony Monitoring",
     await commonAttachments()
   );
 };
@@ -175,25 +198,63 @@ export const sendGroupInviteNewMemberEmail = async (
     html,
     text,
     userEmailAddress,
-    "You're invited to join a group on Cacophony Monitoring",
+    "You've been invited to join a group on Cacophony Monitoring",
     await commonAttachments()
   );
 };
+
+const getPermissions = (permissions: { owner?: boolean; admin?: boolean }) => {
+  const madeOwner = typeof permissions.owner === "boolean" && permissions.owner;
+  const removedOwner =
+    typeof permissions.owner === "boolean" && !permissions.owner;
+  const madeAdmin = typeof permissions.admin === "boolean" && permissions.admin;
+  const removedAdmin =
+    typeof permissions.admin === "boolean" && !permissions.admin;
+  return { madeAdmin, madeOwner, removedAdmin, removedOwner };
+};
+
 export const sendAddedToGroupNotificationEmail = async (
   origin: string,
   userEmailAddress: string,
-  groupNamesAdded: string[]
+  groupNameAdded: string,
+  permissions: { owner?: boolean; admin?: boolean }
 ) => {
   const { text, html } = await createEmailWithTemplate(
     "added-to-group-notification.html",
-    { groupNamesAdded, ...commonInterpolants(origin) }
+    {
+      groupNameAdded,
+      ...getPermissions(permissions),
+      ...commonInterpolants(origin),
+      groupUrl: urlNormaliseName(groupNameAdded),
+    }
   );
-  let subject;
-  if (groupNamesAdded.length === 1) {
-    subject = `👌 You've been accepted to '${groupNamesAdded[0]}'`;
-  } else {
-    subject = "👌 You've been accepted to some Cacophony Monitoring groups";
-  }
+  const subject = `👌 You've been accepted to '${groupNameAdded}'`;
+
+  return await sendEmail(
+    html,
+    text,
+    userEmailAddress,
+    subject,
+    await commonAttachments()
+  );
+};
+
+export const sendUpdatedGroupPermissionsNotificationEmail = async (
+  origin: string,
+  userEmailAddress: string,
+  groupName: string,
+  permissions: { owner?: boolean; admin?: boolean }
+) => {
+  const { text, html } = await createEmailWithTemplate(
+    "updated-to-group-permissions-notification.html",
+    {
+      groupName,
+      ...getPermissions(permissions),
+      ...commonInterpolants(origin),
+      groupUrl: urlNormaliseName(groupName),
+    }
+  );
+  const subject = `Your status in the group '${groupName}' has changed`;
   return await sendEmail(
     html,
     text,
@@ -267,57 +328,29 @@ export const sendGroupMembershipRequestEmail = async (
   origin: string,
   acceptToGroupToken: string,
   requesterEmailAddress: string,
-  requestGroupNames: string[],
+  requestGroupName: string,
   userEmailAddress: string
 ) => {
   const common = commonInterpolants(origin);
-  if (requestGroupNames.length === 1) {
-    const requestGroupName = requestGroupNames[0];
-    const acceptToGroupUrl = `${
-      common.cacophonyBrowseUrl
-    }/confirm-group-membership-request/${acceptToGroupToken.replace(
-      /\./g,
-      ":"
-    )}`;
-    const { text, html } = await createEmailWithTemplate(
-      "group-membership-request.html",
-      {
-        acceptToGroupUrl,
-        requestGroupName,
-        requesterEmailAddress,
-        ...common,
-      }
-    );
-    return await sendEmail(
-      html,
-      text,
-      userEmailAddress,
-      `A Cacophony Monitoring user wants to join your '${requestGroupName}' group`,
-      await commonAttachments()
-    );
-  } else {
-    const acceptToGroupsUrl = `${
-      common.cacophonyBrowseUrl
-    }/confirm-group-membership-request/${acceptToGroupToken.replace(
-      /\./g,
-      ":"
-    )}`;
-    const { text, html } = await createEmailWithTemplate(
-      "groups-membership-request.html",
-      {
-        acceptToGroupsUrl,
-        requesterEmailAddress,
-        ...common,
-      }
-    );
-    return await sendEmail(
-      html,
-      text,
-      userEmailAddress,
-      "A Cacophony Monitoring user wants to join some of your groups",
-      await commonAttachments()
-    );
-  }
+  const acceptToGroupUrl = `${
+    common.cacophonyBrowseUrl
+  }/confirm-group-membership-request/${acceptToGroupToken.replace(/\./g, ":")}`;
+  const { text, html } = await createEmailWithTemplate(
+    "group-membership-request.html",
+    {
+      acceptToGroupUrl,
+      requestGroupName,
+      requesterEmailAddress,
+      ...common,
+    }
+  );
+  return await sendEmail(
+    html,
+    text,
+    userEmailAddress,
+    `A Cacophony Monitoring user wants to join your '${requestGroupName}' group`,
+    await commonAttachments()
+  );
 };
 
 export const sendStoppedDevicesReportEmail = async (

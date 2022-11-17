@@ -20,6 +20,7 @@ import middleware, { validateFields } from "../middleware";
 import auth, {
   generateAuthTokensForUser,
   getEmailConfirmationToken,
+  getPasswordResetToken,
   ttlTypes,
 } from "../auth";
 import { body } from "express-validator";
@@ -367,10 +368,9 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         const user = response.locals.user as User;
-        // If we're using the new end-point, make sure the user has confirmed their email address.
         const isNewEndpoint = request.path.endsWith("reset-password");
         if (isNewEndpoint) {
-          const token = "";
+          const token = getPasswordResetToken(user.id, (user as any).password);
           const sendingSuccess = await sendPasswordResetEmail(
             request.headers.host,
             token,
@@ -598,7 +598,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  // NOTE: This is really just for is the user has lost the email that was sent
+  // NOTE: This is really just for if the user has lost the email that was sent
   // /api/v1/users/resend-email-confirmation-request (initial email confirmation request is sent as part of sign-up)
   // /api/v1/users/validate-email-confirmation-request (also needs browse endpoint)
   // /api/v1/users/refresh-session-token

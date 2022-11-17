@@ -34,7 +34,9 @@ onBeforeMount(async () => {
   );
   if (groupUsersResponse.success) {
     // Filter out invited users, non-member or existing member
-    groupUsers.value = groupUsersResponse.result.users.filter(user => user.id !== undefined && user.pending === null);
+    groupUsers.value = groupUsersResponse.result.users.filter(
+      (user) => user.id !== undefined && user.pending === null
+    );
   } else {
     // Do something with error.
   }

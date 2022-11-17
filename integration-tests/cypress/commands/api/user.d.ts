@@ -24,7 +24,8 @@ declare namespace Cypress {
       email?: string,
       endUserAgreement?: number,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
+      inviteToken?: string
     ): Cypress.Chainable<UserId>;
 
     /**
@@ -107,6 +108,18 @@ declare namespace Cypress {
      * Optionally: Use the raw provided username additionalChecks["useRawUserName"]==true
      */
     apiResetPassword(
+      userName: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /**
+     * Request password reset on user by name
+     * Optionally, check for non-200 return statusCode
+     * By default makes the userName unique.
+     * Optionally: Use the raw provided username additionalChecks["useRawUserName"]==true
+     */
+    apiResetPasswordLegacy(
       userName: string,
       statusCode?: number,
       additionalChecks?: any

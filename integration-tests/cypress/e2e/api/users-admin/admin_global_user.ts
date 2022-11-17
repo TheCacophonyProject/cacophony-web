@@ -72,6 +72,7 @@ describe("User: manage global access permissions", () => {
           "gapGroup2",
           false,
           false,
+          false,
           HttpStatusCode.Forbidden
         );
 

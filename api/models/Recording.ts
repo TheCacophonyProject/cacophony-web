@@ -1,4 +1,3 @@
-import { query } from "express-validator";
 /*
 cacophony-api: The Cacophony Project API server
 Copyright (C) 2018  The Cacophony Project
@@ -59,6 +58,7 @@ import {
   CacophonyIndex,
 } from "@typedefs/api/recording";
 import labelPath from "../classifications/label_paths.json";
+import { DetailSnapshotId } from "@models/DetailSnapshot";
 
 type SqlString = string;
 
@@ -190,7 +190,13 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   //  potentially undocumented extension methods).
   getTrack: (id: TrackId) => Promise<Track | null>;
   getTracks: (options?: FindOptions) => Promise<Track[]>;
-  createTrack: ({ data: any, AlgorithmId: DetailSnapshotId }) => Promise<Track>;
+  createTrack: ({
+    data,
+    AlgorithmId,
+  }: {
+    data: any;
+    AlgorithmId: DetailSnapshotId;
+  }) => Promise<Track>;
   setStation: (station: Station) => Promise<void>;
 
   getNextState: () => RecordingProcessingState;

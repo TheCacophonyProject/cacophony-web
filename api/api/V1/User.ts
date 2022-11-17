@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields } from "../middleware";
+import { validateFields } from "../middleware";
 import {
   generateAuthTokensForUser,
   getEmailConfirmationToken,
@@ -37,6 +37,7 @@ import config from "@config";
 import { User } from "@models/User";
 import {
   anyOf,
+  booleanOf,
   idOf,
   integerOf,
   validNameOf,
@@ -46,24 +47,27 @@ import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
   extractJWTInfo,
+  extractOptionalJWTInfo,
+  fetchAdminAuthorizedRequiredGroupById,
   fetchAdminAuthorizedRequiredGroups,
   fetchUnauthorizedOptionalUserByEmailOrId,
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import { arrayOf, jsonSchemaOf } from "@api/schema-validation";
+import { jsonSchemaOf } from "@api/schema-validation";
 import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
-import { sendEmailConfirmationEmail } from "@/scripts/emailUtil";
 import { ApiGroupResponse } from "@typedefs/api/group";
-import GroupIdSchema from "@schemas/api/common/GroupId.schema.json";
 import {
   sendAddedToGroupNotificationEmail,
+  sendChangedEmailConfirmationEmail,
   sendGroupMembershipRequestEmail,
   sendWelcomeEmailConfirmationEmail,
+  sendWelcomeEmailWithGroupsAdded,
 } from "@/emails/transactionalEmails";
 import { CACOPHONY_WEB_VERSION } from "@/Globals";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
@@ -103,6 +107,31 @@ interface ApiChangePasswordRequestBody {
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
 
+  const listUsersOptions = [
+    extractJwtAuthorisedSuperAdminUser,
+    async (request, response) => {
+      const users = await models.User.getAll({});
+      return successResponse(response, { usersList: mapUsers(users, true) });
+    },
+  ];
+
+  /**
+   * @api {get} api/v1/users/list-users List usernames
+   * @apiName ListUsers
+   * @apiGroup User
+   * @apiDescription Given an authenticated super-user, we need to be able to get
+   * a list of all usernames on the system, so that we can switch to viewing
+   * as a given user.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(`${apiUrl}/list-users`, ...listUsersOptions);
+
   /**
    * @api {post} /api/v1/users Register a new user
    * @apiName RegisterUser
@@ -112,6 +141,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {String} password Password for new user.
    * @apiParam {String} email Email for new user.
    * @apiParam {Integer} [endUserAgreement] Version of the end user agreement accepted.
+   * @apiParam {String} [inviteTokenJWT] Optional invite token if signing up via group-invite email.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
@@ -126,8 +156,10 @@ export default function (app: Application, baseUrl: string) {
       body("email").isEmail(),
       validPasswordOf(body("password")),
       body("endUserAgreement").isInt().optional(),
+      body("inviteTokenJWT").optional(),
     ]),
     fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
+    extractOptionalJWTInfo(body("inviteTokenJWT")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         return next(
@@ -171,16 +203,67 @@ export default function (app: Application, baseUrl: string) {
         !request.headers.host.includes("browse.cacophony.org.nz") &&
         !request.headers.host.includes("browse-test.cacophony.org.nz")
       ) {
-        //  && !config.productionEnv
-        // NOTE Send a welcome email, with a requirement to validate the email address.
-        //  We won't send transactional emails until the address has been validated.
-        //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
-        //  User alerts and group invitations would not be activated until the user has confirmed their email address.
-        const sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
-          request.headers.host,
-          getEmailConfirmationToken(user.id, user.email),
-          user.email
-        );
+        // If the user is signing up from an email invitation, and the email
+        // address matches the invite email address, we can mark the user's email as confirmed
+        // and add them to any pending invited groups.
+        let sendEmailSuccess;
+        const token = response.locals.tokenInfo;
+        const isSigningUpFromEmailInvitation =
+          token &&
+          token.exp * 1000 > new Date().getTime() &&
+          token._type === "invite-new-user";
+        const addedToGroups = [];
+        if (isSigningUpFromEmailInvitation) {
+          const oneWeekAgo = new Date(
+            new Date().setDate(new Date().getDate() - 7)
+          );
+          // NOTE: Check if there are any pending non-expired group invites for this email address:
+          const pendingInvites = await models.GroupInvites.findAll({
+            where: {
+              email: user.email,
+              createdAt: { [Op.gt]: oneWeekAgo },
+            },
+          });
+          for (const invitation of pendingInvites) {
+            const group = await models.Group.findByPk(invitation.GroupId);
+            if (group) {
+              const { added } = await models.Group.addOrUpdateGroupUser(
+                group,
+                user,
+                invitation.admin,
+                invitation.owner,
+                null
+              );
+              if (added) {
+                addedToGroups.push(group);
+              }
+            }
+            await invitation.destroy();
+          }
+        }
+        if (addedToGroups.length) {
+          // NOTE: We can now confirm the users' email address, since they signed up via an email.
+          await user.update({ emailConfirmed: true });
+          sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(
+            request.headers.host,
+            user.email,
+            addedToGroups.map(({ groupName }) => groupName)
+          );
+        } else {
+          // NOTE Send a welcome email, with a requirement to validate the email address.
+          //  We won't send transactional emails until the address has been validated.
+          //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
+          //  User alerts and group invitations would not be activated until the user has confirmed their email address.
+          sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
+            request.headers.host,
+            getEmailConfirmationToken(user.id, user.email),
+            user.email
+          );
+        }
+
+        // NOTE: Only destroy users in a production env  if emailing fails, since
+        //  otherwise we'd slow down tests too much by having to process emails for all
+        //  created users.
         if (!sendEmailSuccess && config.productionEnv) {
           // In this case, we don't want to create the user.
           await user.destroy();
@@ -206,7 +289,7 @@ export default function (app: Application, baseUrl: string) {
     app.post(
       `${apiUrl}/get-email-confirmation-token`,
       extractJwtAuthorizedUser,
-      async (request: Request, response: Response, next: NextFunction) => {
+      async (request: Request, response: Response) => {
         const user = await models.User.findByPk(response.locals.requestUser.id);
         const token = getEmailConfirmationToken(user.id, user.email);
         return successResponse(response, "Got email confirmation token.", {
@@ -273,8 +356,13 @@ export default function (app: Application, baseUrl: string) {
           !request.headers.host.includes("browse.cacophony.org.nz") &&
           !request.headers.host.includes("browse-test.cacophony.org.nz")
         ) {
-          const emailSuccess = await sendEmailConfirmationEmail(
-            requestUser,
+          const token = getEmailConfirmationToken(
+            requestUser.id,
+            dataToUpdate.email
+          );
+          const emailSuccess = await sendChangedEmailConfirmationEmail(
+            request.headers.host,
+            token,
             dataToUpdate.email
           );
           if (!emailSuccess && config.productionEnv) {
@@ -332,14 +420,6 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  const listUsersOptions = [
-    extractJwtAuthorisedSuperAdminUser,
-    async (request, response) => {
-      const users = await models.User.getAll({});
-      return successResponse(response, { usersList: mapUsers(users, true) });
-    },
-  ];
-
   /**
    * @api {get} api/v1/listUsers List usernames
    * @apiName ListUsers
@@ -357,23 +437,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(`${baseUrl}/listUsers`, ...listUsersOptions);
-
-  /**
-   * @api {get} api/v1/users/list-users List usernames
-   * @apiName ListUsers
-   * @apiGroup User
-   * @apiDescription Given an authenticated super-user, we need to be able to get
-   * a list of all usernames on the system, so that we can switch to viewing
-   * as a given user.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiInterface {apiSuccess::ApiLoggedInUsersResponseSuccess}
-   * @apiUse V1ResponseSuccess
-   *
-   * @apiUse V1ResponseError
-   */
-  app.get(`${apiUrl}/list-users`, ...listUsersOptions);
 
   const endUserAgreementOptions = [
     async (request, response) => {
@@ -432,8 +495,21 @@ export default function (app: Application, baseUrl: string) {
     validateFields([body("token").exists(), validPasswordOf(body("password"))]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response, next: NextFunction) => {
-      if (response.locals.user.password != response.locals.resetInfo.password) {
-        return next(new ClientError("Your password has already been changed"));
+      if (
+        response.locals.user.password !== response.locals.resetInfo.password
+      ) {
+        return next(
+          new UnprocessableError("Your password has already been changed")
+        );
+      }
+      const newPasswordIsTheSameAsOld =
+        await response.locals.user.comparePassword(request.body.password);
+      if (newPasswordIsTheSameAsOld) {
+        return next(
+          new UnprocessableError(
+            "New password must be different from old password"
+          )
+        );
       }
       const result = await response.locals.user.update({
         password: request.body.password,
@@ -457,7 +533,7 @@ export default function (app: Application, baseUrl: string) {
   ];
 
   /**
-   * @api {patch} /api/v1/user/change-password Updates a users password with reset token authentication
+   * @api {patch} /api/v1/users/change-password Updates a users password with reset token authentication
    * @apiName ChangePassword
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
@@ -468,7 +544,7 @@ export default function (app: Application, baseUrl: string) {
   app.patch(`${apiUrl}/change-password`, ...changePasswordOptions);
 
   /**
-   * @api {patch} /api/v1/user/changePassword Updates a users password with reset token authentication
+   * @api {patch} /api/v1/users/changePassword Updates a users password with reset token authentication
    * @apiName ChangePassword
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
@@ -535,11 +611,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       body("groupAdminEmail").isEmail(),
-      body("groups")
-        .exists()
-        .withMessage(expectedTypeOf("GroupId[]"))
-        .bail()
-        .custom(jsonSchemaOf(arrayOf(GroupIdSchema))),
+      idOf(body("groupId")).exists(),
     ]),
     fetchUnauthorizedRequiredUserByEmailOrId(body("groupAdminEmail")),
     (request: Request, response: Response, next: NextFunction) => {
@@ -548,7 +620,7 @@ export default function (app: Application, baseUrl: string) {
       response.locals.requestUser = response.locals.user;
       return next();
     },
-    fetchAdminAuthorizedRequiredGroups,
+    fetchAdminAuthorizedRequiredGroupById(body("groupId")),
     async (request: Request, response: Response, next: NextFunction) => {
       // Make sure each of the groups requested is found in the group admin users groups that
       // they are admin of:
@@ -558,28 +630,23 @@ export default function (app: Application, baseUrl: string) {
       const requestedOfUser = await models.User.findByPk(
         response.locals.requestUser.id
       );
-      if (!requestedOfUser.emailConfirmed) {
+      if (!requestedOfUser.emailConfirmed || !requestingUser.emailConfirmed) {
         return next(
-          new ClientError("Requested has has not activated their account")
+          new ClientError(
+            "Requested and/or requesting user has not activated their account"
+          )
         );
       }
-      for (const groupId of request.body.groups) {
-        if (!response.locals.groups.find(({ id }) => id === groupId)) {
-          return next(new ClientError("User is not a group admin"));
-        }
-      }
-      const joinGroups = response.locals.groups.filter(({ id }) =>
-        request.body.groups.includes(id)
-      );
+
       const acceptToGroupRequestToken = getJoinGroupRequestToken(
         requestingUser.id,
-        request.body.groups
+        response.locals.group.id
       );
       const sendSuccess = await sendGroupMembershipRequestEmail(
         request.headers.host,
         acceptToGroupRequestToken,
         requestingUser.email,
-        joinGroups.map(({ groupName }) => groupName),
+        response.locals.group.groupName,
         requestedOfUser.email
       );
       if (sendSuccess) {
@@ -596,70 +663,58 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/validate-group-membership-request`,
     extractJwtAuthorizedUser,
     validateFields([
-      body("membershipRequest").exists(),
-      body("admin").isArray().exists(),
+      body("membershipRequestJWT").exists(),
+      booleanOf(body("admin")).optional().default(false),
+      booleanOf(body("owner")).optional().default(false),
     ]),
-    extractJWTInfo(body("membershipRequest")),
-    fetchAdminAuthorizedRequiredGroups,
+    extractJWTInfo(body("membershipRequestJWT")),
+    async (request, response, next) => {
+      await fetchAdminAuthorizedRequiredGroupById(
+        response.locals.tokenInfo.group
+      )(request, response, next);
+    },
     async (request: Request, response: Response, next: NextFunction) => {
-      // FIXME - make sure all of these JWT tokens have a 'type' field that we can check against,
-      // to make sure they can't be reused for other requests.
-      const { id, _type, groups } = response.locals.tokenInfo;
-      if (_type !== "join-groups") {
+      const { id, _type } = response.locals.tokenInfo;
+      if (_type !== "join-group") {
         return next(new AuthorizationError("Invalid token type"));
+      }
+      const existingUserOfGroup = await models.GroupUsers.findOne({
+        where: {
+          UserId: id,
+          GroupId: response.locals.group.id,
+        },
+      });
+      if (existingUserOfGroup) {
+        return next(new UnprocessableError("User already belongs to group"));
       }
       const userToGrantMembershipFor = await models.User.findByPk(id);
       if (!userToGrantMembershipFor) {
         return next(new UnprocessableError("User no longer exists"));
       }
-
-      if (groups.length !== request.body.admin.length) {
-        return next(
-          new UnprocessableError("Mismatched groups and permissions count")
-        );
+      const asAdmin = request.body.admin;
+      const asOwner = request.body.owner;
+      const permissions = {};
+      if (asAdmin) {
+        (permissions as any).admin = true;
       }
-      const groupsWithPermissions = [];
-      for (let i = 0; i < groups.length; i++) {
-        groupsWithPermissions.push({
-          groupId: groups[i],
-          admin: Boolean(request.body.admin[i]),
-        });
+      if (asOwner) {
+        (permissions as any).owner = true;
       }
-
-      // Check that all the groups in the request match groups that the current user is an admin of:
-      const groupsUserIsAdminFor = response.locals.groups.map(({ id }) => id);
-      const groupsToAdd = groupsWithPermissions
-        .filter(({ groupId }) => groupsUserIsAdminFor.includes(groupId))
-        .map(({ groupId, admin }) => ({
-          group: response.locals.groups.find(({ id }) => id === groupId),
-          admin,
-        }));
-      if (groupsToAdd.length === 0) {
-        return next(
-          new ClientError("No longer admin for any of the requested groups")
-        );
-      }
-
-      // Now add the user to the requested groups, with permissions.
-      const additions = [];
-      for (const { group, admin } of groupsToAdd) {
-        additions.push(
-          models.Group.addOrUpdateGroupUser(
-            group,
-            userToGrantMembershipFor,
-            admin,
-            false,
-            null
-          )
-        );
-      }
-      await Promise.all(additions);
-      // Let the requesting user know that they've now been added to the groups.
-      await sendAddedToGroupNotificationEmail(
-        request.headers.host,
-        userToGrantMembershipFor.email,
-        groupsToAdd.map(({ group: { groupName } }) => groupName)
+      await models.Group.addOrUpdateGroupUser(
+        response.locals.group,
+        userToGrantMembershipFor,
+        asAdmin,
+        asOwner,
+        null
       );
+      if (userToGrantMembershipFor.emailConfirmed) {
+        await sendAddedToGroupNotificationEmail(
+          request.headers.host,
+          userToGrantMembershipFor.email,
+          response.locals.group.groupName,
+          permissions
+        );
+      }
       return successResponse(response, "Allowed to add user.", {
         userId: id,
         userName: userToGrantMembershipFor.userName,

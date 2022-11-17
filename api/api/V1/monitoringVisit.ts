@@ -8,7 +8,6 @@ import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
 import { Station } from "@models/Station";
-import logger from "@log";
 import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 
 const MINUTE = 60;

@@ -32,8 +32,6 @@ import { RecordingType } from "@typedefs/api/consts";
 import config from "@config";
 import { Op } from "sequelize";
 import { UnprocessableError } from "@api/customErrors";
-import logger from "@log";
-import Event from "@models/Event";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;

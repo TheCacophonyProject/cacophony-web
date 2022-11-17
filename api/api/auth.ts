@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import config from "../config";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
-import customErrors from "./customErrors";
+import { AuthenticationError } from "./customErrors";
 import models, { ModelCommon } from "../models";
 import { Request } from "express";
 import { User } from "@models/User";
@@ -60,11 +60,18 @@ export interface ResetInfo {
   id: number;
 }
 
-export const getResetToken = (userId: UserId, password: string): string => {
+export const getPasswordResetToken = (
+  userId: UserId,
+  password: string
+): string => {
   // expires in a day
-  return jwt.sign({ id: userId, password }, config.server.passportSecret, {
-    expiresIn: 60 * 60 * 24,
-  });
+  return jwt.sign(
+    { id: userId, password, _type: "reset-password" },
+    config.server.passportSecret,
+    {
+      expiresIn: 60 * 60 * 24,
+    }
+  );
 };
 
 export const getEmailConfirmationToken = (
@@ -83,11 +90,11 @@ export const getEmailConfirmationToken = (
 
 export const getJoinGroupRequestToken = (
   userId: UserId,
-  groupIds: GroupId[]
+  groupId: GroupId
 ): string => {
   // expires in a week
   return jwt.sign(
-    { id: userId, groups: groupIds, _type: "join-groups" },
+    { id: userId, group: groupId, _type: "join-group" },
     config.server.passportSecret,
     {
       expiresIn: 60 * 60 * 24 * 7,
@@ -161,23 +168,22 @@ export const generateAuthTokensForUser = async (
   };
 };
 
-export const getDecodedResetToken = (token: string): ResetInfo => {
-  try {
-    return jwt.verify(token, config.server.passportSecret) as ResetInfo;
-  } catch (e) {
-    throw new customErrors.AuthenticationError("Failed to verify JWT.");
-  }
-};
-
-export const getDecodedToken = (token: string): any => {
+export const getDecodedToken = (
+  token: string,
+  enforceExpiry: boolean = true
+): any => {
   const decodedToken = jwt.decode(token) as JwtPayload | null;
-  if (decodedToken && decodedToken.exp * 1000 < new Date().getTime()) {
-    throw new customErrors.AuthenticationError("JWT token expired.");
+  if (
+    enforceExpiry &&
+    decodedToken &&
+    decodedToken.exp * 1000 < new Date().getTime()
+  ) {
+    throw new AuthenticationError("JWT token expired.");
   }
   try {
     return jwt.verify(token, config.server.passportSecret);
   } catch (e) {
-    throw new customErrors.AuthenticationError(
+    throw new AuthenticationError(
       `Failed to verify JWT for token ${token} - (${
         decodedToken && JSON.stringify(decodedToken)
       })`
@@ -194,12 +200,12 @@ export const getVerifiedJWT = (
     token = request.query.jwt as string;
   }
   if (!token) {
-    throw new customErrors.AuthenticationError("Could not find JWT token.");
+    throw new AuthenticationError("Could not find JWT token.");
   }
   try {
     return jwt.verify(token, config.server.passportSecret);
   } catch (e) {
-    throw new customErrors.AuthenticationError(
+    throw new AuthenticationError(
       `Failed to verify JWT. (${JSON.stringify(jwt.decode(token))})`
     );
   }

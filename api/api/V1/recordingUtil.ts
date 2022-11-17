@@ -29,7 +29,7 @@ import util from "./util";
 import { Recording, RecordingQueryOptions } from "@models/Recording";
 import { Event, QueryOptions } from "@models/Event";
 import { User } from "@models/User";
-import Sequelize, { Op, UpdateOptions } from "sequelize";
+import Sequelize, { Op } from "sequelize";
 import {
   DeviceSummary,
   DeviceVisitMap,
@@ -40,7 +40,6 @@ import {
 import { Station } from "@models/Station";
 import modelsUtil, { locationsAreEqual } from "@models/util/util";
 import { dynamicImportESM } from "@/dynamic-import-esm";
-import { default as log, default as logger } from "@log";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Device } from "@models/Device";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
@@ -72,8 +71,8 @@ import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import { ApiTrackPosition } from "@typedefs/api/track";
 import { GetObjectOutput, ManagedUpload } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
-import { CptvFrame, CptvHeader } from "cptv-decoder";
-import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import { CptvHeader } from "cptv-decoder";
+import log from "@log";
 
 let CptvDecoder;
 (async () => {

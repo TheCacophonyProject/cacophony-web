@@ -12,7 +12,7 @@ All tracks of a recording always belong to the same visit
 // FIXME - This file seems to be in the wrong place - this folder is full of API endpoints...
 
 import { Recording } from "@models/Recording";
-import { TrackTag, TrackTagData } from "@models/TrackTag";
+import { TrackTag } from "@models/TrackTag";
 import { Track } from "@models/Track";
 import { AI_MASTER } from "@models/TrackTag";
 import moment, { Moment } from "moment";

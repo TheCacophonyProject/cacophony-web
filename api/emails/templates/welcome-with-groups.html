@@ -2,22 +2,19 @@
   <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
     <br>
     <div style="font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#DF4726;padding-right:24px">
-      You've been added to the group {{ groupNameAdded }}.
+      Welcome to Cacophony Monitoring.
     </div>
     <br>
     <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333">
-      Hi, your you've been added to the Cacophony Monitoring group '{{ groupNameAdded }}'.
+      Hi, a new account has been created for you on the Cacophony Monitoring platform.
       <br><br>
-      {{#if madeAdmin }}
-      You've also been made a group administrator of '{{ groupNameAdded }}'.<br>
-      {{/if}}
-      {{#if madeOwner }}
-      You've also been made an owner of '{{ groupNameAdded }}'.<br>
-      {{/if}}
+      You'll use this email address to sign in to your Cacophony account, and it's also the email address we'll use to send you emails about your account.
+
       <br><br>
-      <a href="{{ cacophonyBrowseUrl }}/{{ groupUrl }}" style="background-color: #2f67f6;border:none;border-radius:3px;color:#ffffff;cursor:auto;padding:15px 25px;display: inline-block;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
-        Go to the group
-      </a>
+      You've been automatically added to the following monitoring group(s):
+      <br>
+      {{ groupNamesAdded }}
+      TODO - Put links to each of the groups in here, process arrays in handlebars
 
       <br><br>
       &ndash; The Cacophony Team.

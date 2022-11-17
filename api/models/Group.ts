@@ -30,7 +30,6 @@ import { Device } from "./Device";
 import { GroupId, UserId } from "@typedefs/api/common";
 import { ApiGroupSettings } from "@typedefs/api/group";
 import { locationsAreEqual } from "./util/util";
-import logger from "@log";
 
 export const stationLocationHasChanged = (
   oldStation: Station,

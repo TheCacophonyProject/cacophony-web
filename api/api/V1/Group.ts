@@ -34,7 +34,6 @@ import {
   fetchAuthorizedRequiredStationsForGroup,
   fetchUnauthorizedOptionalGroupByNameOrId,
   fetchUnauthorizedOptionalUserByEmailOrId,
-  fetchUnauthorizedRequiredGroupById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredInvitationById,
   fetchUnauthorizedRequiredUserByEmailOrId,
@@ -60,7 +59,7 @@ import {
   UnprocessableError,
 } from "../customErrors";
 import { mapDevicesResponse } from "./Device";
-import { Group, GroupStatic } from "@/models/Group";
+import { Group } from "@/models/Group";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import {
@@ -84,6 +83,7 @@ import {
   sendLeftGroupNotificationEmail,
   sendRemovedFromGroupNotificationEmail,
   sendRemovedFromInvitedGroupNotificationEmail,
+  sendUpdatedGroupPermissionsNotificationEmail,
 } from "@/emails/transactionalEmails";
 import {
   getInviteToGroupToken,
@@ -92,7 +92,6 @@ import {
 import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
 import { GroupInvites } from "@models/GroupInvites";
 import config from "@config";
-import logger from "@log";
 
 const mapGroup = (
   group: Group,
@@ -382,13 +381,18 @@ export default function (app: Application, baseUrl: string) {
         through: { where: { removedAt: { [Op.eq]: null } } },
       });
       const existingUsers: ApiGroupUserResponse[] = users.map(
-        ({ userName, id, GroupUsers }) => ({
-          userName,
-          id,
-          admin: GroupUsers.admin,
-          owner: GroupUsers.owner,
-          pending: GroupUsers.pending,
-        })
+        ({ userName, id, GroupUsers }) => {
+          const user: ApiGroupUserResponse = {
+            userName,
+            id,
+            admin: GroupUsers.admin,
+            owner: GroupUsers.owner,
+          };
+          if (GroupUsers.pending) {
+            user.pending = GroupUsers.pending;
+          }
+          return user;
+        }
       );
       const invitedUsers = await models.GroupInvites.findAll({
         where: {
@@ -469,38 +473,57 @@ export default function (app: Application, baseUrl: string) {
     // Extract secondary resource
     fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request, response) => {
+      const user = response.locals.user;
+      const requestUser = response.locals.requestUser;
+      const group = response.locals.group;
+      const asAdmin = request.body.admin;
+      const asOwner = request.body.owner;
       const { action, permissionChanges, added } =
         await models.Group.addOrUpdateGroupUser(
-          response.locals.group,
-          response.locals.user,
-          request.body.admin,
-          request.body.owner,
+          group,
+          user,
+          asAdmin,
+          asOwner,
           null
         );
 
-      // TODO: Appropriate transactional emails
-      if (permissionChanges.newAdmin && !permissionChanges.oldAdmin) {
-        // User was made admin.
-      } else if (permissionChanges.oldAdmin && !permissionChanges.newAdmin) {
-        // User had admin permissions removed.
-      }
-      if (permissionChanges.newOwner && !permissionChanges.oldOwner) {
-        // User had ownership bestowed.
-      } else if (permissionChanges.oldOwner && !permissionChanges.newOwner) {
-        // User had ownership removed.
-      }
+      if (user.id !== requestUser.id && user.emailConfirmed) {
+        // NOTE: Appropriate transactional email
+        const permissions = {};
+        if (permissionChanges.newAdmin && !permissionChanges.oldAdmin) {
+          // User was made admin.
+          (permissions as any).admin = true;
+        } else if (permissionChanges.oldAdmin && !permissionChanges.newAdmin) {
+          // User had admin permissions removed.
+          (permissions as any).admin = false;
+        }
+        if (permissionChanges.newOwner && !permissionChanges.oldOwner) {
+          // User had ownership bestowed.
+          (permissions as any).owner = true;
+        } else if (permissionChanges.oldOwner && !permissionChanges.newOwner) {
+          // User had ownership removed.
+          (permissions as any).owner = false;
+        }
 
-      if (added) {
-        // User was added.
-      } else {
-        // User was updated.
+        if (added) {
+          // User was added.
+          // NOTE: Going forward, this would really happen via a user accepting a group invite
+          await sendAddedToGroupNotificationEmail(
+            request.headers.host,
+            user.email,
+            group.groupName,
+            permissions
+          );
+        } else {
+          // User was updated.
+          await sendUpdatedGroupPermissionsNotificationEmail(
+            request.headers.host,
+            user.email,
+            group.groupName,
+            permissions
+          );
+        }
       }
-
-      // TODO(ui-next): send email to user telling them that they've been added to the group, and providing a link to
-      //  go to that groups dashboard after logging in.  Should the user have to accept being added?
-      //  Adding a user should really be done by email address, not username. Perhaps we need an "invited" state in GroupUsers,
-      //  where the user is not quite a real member of the group until they accept.
-
       return successResponse(response, action);
     }
   );
@@ -558,7 +581,10 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       if (removed && !wasPending) {
-        if (response.locals.user.emailConfirmed) {
+        if (
+          response.locals.user.emailConfirmed &&
+          response.locals.user.id !== response.locals.requestUser.id
+        ) {
           await sendRemovedFromGroupNotificationEmail(
             request.headers.host,
             response.locals.user.email,
@@ -932,10 +958,18 @@ export default function (app: Application, baseUrl: string) {
           null
         );
         if (added && actualUser.emailConfirmed) {
+          const permissions = {};
+          if (invitation.admin) {
+            (permissions as any).admin = true;
+          }
+          if (invitation.owner) {
+            (permissions as any).owner = true;
+          }
           await sendAddedToGroupNotificationEmail(
             request.headers.host,
             actualUser.email,
-            [response.locals.group.groupName]
+            response.locals.group.groupName,
+            permissions
           );
         }
         await invitation.destroy();
@@ -954,10 +988,18 @@ export default function (app: Application, baseUrl: string) {
         }
         await pendingUser.update({ pending: null });
         if (actualUser.emailConfirmed) {
+          const permissions = {};
+          if (pendingUser.admin) {
+            (permissions as any).admin = true;
+          }
+          if (pendingUser.owner) {
+            (permissions as any).owner = true;
+          }
           await sendAddedToGroupNotificationEmail(
             request.headers.host,
             actualUser.email,
-            [response.locals.group.groupName]
+            response.locals.group.groupName,
+            permissions
           );
         }
       }

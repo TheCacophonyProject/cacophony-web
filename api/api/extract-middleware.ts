@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import {
   checkAccess,
   DecodedJWTToken,
-  getDecodedResetToken,
   getDecodedToken,
   getVerifiedJWT,
   lookupEntity,
@@ -10,11 +9,7 @@ import {
 import models, { ModelStaticCommon } from "../models";
 import logger from "../logging";
 import log from "../logging";
-import {
-  getDetailSnapshotById,
-  modelTypeName,
-  modelTypeNamePlural,
-} from "./middleware";
+import { modelTypeName, modelTypeNamePlural } from "./middleware";
 import { ValidationChain } from "express-validator";
 import {
   AuthenticationError,
@@ -32,8 +27,8 @@ import { Schedule } from "@/models/Schedule";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 import { SuperUsers } from "@/Globals";
-import { Alert, AlertId } from "@models/Alert";
-import { Event, EventStatic } from "@models/Event";
+import { Alert } from "@models/Alert";
+import { Event } from "@models/Event";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -1278,11 +1273,6 @@ const getEvent =
     unusedParam?: string,
     context?: any
   ): Promise<ModelStaticCommon<Event> | ClientError | null> => {
-    // @ts-ignore
-    const eventIsId =
-      eventDetailId &&
-      !isNaN(parseInt(eventDetailId)) &&
-      parseInt(eventDetailId).toString() === String(eventDetailId);
     let eventWhere;
     if (eventDetailId) {
       eventWhere = {
@@ -1378,7 +1368,7 @@ const getUser =
   };
 
 const getAlert =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (forRequestUser: boolean = false) =>
   (
     alertId: string,
     unusedParam?: string,
@@ -1614,20 +1604,36 @@ export const extractJWTInfo =
     next();
   };
 
+export const extractOptionalJWTInfo =
+  (field: ValidationChain) =>
+  async (request: Request, response: Response, next: NextFunction) => {
+    const token = extractValFromRequest(request, field) as string;
+    if (!token) {
+      return next();
+    }
+    let tokenInfo;
+    try {
+      tokenInfo = getDecodedToken(token, false);
+    } catch (e) {
+      return next(e);
+    }
+    response.locals.tokenInfo = tokenInfo;
+    next();
+  };
+
 export const fetchUnauthorizedRequiredUserByResetToken =
   (field: ValidationChain) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const token = extractValFromRequest(request, field) as string;
     let resetInfo;
     try {
-      resetInfo = getDecodedResetToken(token);
+      resetInfo = getDecodedToken(token);
     } catch (e) {
       return next(new AuthenticationError(`Reset token expired`));
     }
     response.locals.resetInfo = resetInfo;
     const user = await models.User.findByPk(response.locals.resetInfo.id);
     if (!user) {
-      // FIXME - Should this be an AuthenticationError?
       return next(
         new AuthorizationError(
           `Could not find a user with id '${response.locals.resetInfo.id}'`
@@ -1748,7 +1754,7 @@ export const fetchAuthorizedRequiredStationById = (
   );
 
 export const fetchAuthorizedRequiredAlertById = (alertId: ValidationChain) =>
-  fetchRequiredModel(models.Alert, false, true, getAlert(true, false), alertId);
+  fetchRequiredModel(models.Alert, false, true, getAlert(true), alertId);
 
 export const fetchAdminAuthorizedRequiredStationById = (
   stationId: ValidationChain

@@ -23,7 +23,6 @@ import { serverErrorResponse } from "./responseUtil";
 import { ClientError } from "../customErrors";
 import { Application, Request, Response } from "express";
 import { GroupId, UserId } from "@typedefs/api/common";
-import logger from "@log";
 import models from "@models";
 import { SuperUsers } from "@/Globals";
 
@@ -38,9 +37,6 @@ export const streamS3Object = async (
   fileSize?: number
 ) => {
   const s3 = modelsUtil.openS3();
-  const params = {
-    Key: key,
-  };
   const s3Request = s3.getObject({
     Key: key,
   });

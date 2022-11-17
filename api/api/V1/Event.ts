@@ -19,21 +19,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { expectedTypeOf, validateFields } from "../middleware";
 import models from "@models";
 import { Event, QueryOptions } from "@models/Event";
-import responseUtil, { successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import { errors, powerEventsPerDevice } from "./eventUtil";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
-  extractJwtAuthorizedUserOrDevice,
   fetchAuthorizedOptionalDeviceById,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredEventById,
-  fetchAuthorizedRequiredStationById,
   fetchUnAuthorizedOptionalEventDetailSnapshotById,
-  fetchUnauthorizedRequiredEventById,
-  fetchUnauthorizedRequiredEventDetailSnapshotById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
 import EventDatesSchema from "@schemas/api/event/EventDates.schema.json";
@@ -48,15 +44,11 @@ import {
   integerOf,
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
-import { EventId, IsoFormattedDateString } from "@typedefs/api/common";
+import { IsoFormattedDateString } from "@typedefs/api/common";
 import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
 import { HttpStatusCode } from "@typedefs/api/consts";
 import util from "@api/V1/util";
-import { File } from "@models/File";
-import { User } from "@models/User";
-import { Station } from "@models/Station";
 import { streamS3Object } from "@api/V1/signedUrl";
-import { DetailSnapShot } from "@models/DetailSnapshot";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -612,7 +604,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredEventById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response) => {
       const event = response.locals.event;
       const details = {
         ...event.EventDetail.details,

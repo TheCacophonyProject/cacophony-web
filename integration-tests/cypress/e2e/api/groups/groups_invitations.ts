@@ -2,6 +2,7 @@ import { HttpStatusCode } from "@typedefs/api/consts";
 import { getTestEmail, getTestName } from "@commands/names";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
 import {
+  ACCEPT_INVITE_PREFIX,
   extractTokenStartingWith,
   startMailServerStub,
   waitForEmail,
@@ -11,7 +12,6 @@ const ADMIN = true;
 const OWNER = true;
 const NOT_ADMIN = false;
 const NOT_OWNER = false;
-const tokenPrelude = "/accept-invite/";
 describe("Groups - user invitations", () => {
   //Do not run against a live server as we don't have a stubbed email server
   if (Cypress.env("running_in_a_dev_environment") == true) {
@@ -37,7 +37,6 @@ describe("Groups - user invitations", () => {
             id: userId,
             admin: true,
             owner: true,
-            pending: null,
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(adminName, invitee, groupName);
@@ -47,7 +46,7 @@ describe("Groups - user invitations", () => {
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          tokenPrelude
+          ACCEPT_INVITE_PREFIX
         );
         expect(payload.group).to.equal(group);
         cy.log(
@@ -71,7 +70,6 @@ describe("Groups - user invitations", () => {
             cy.apiGroupUsersCheck(adminName, groupName, [
               expectedAdminUser,
               {
-                pending: null,
                 id: userId,
                 userName: getTestName(invitee),
                 admin: NOT_ADMIN,
@@ -105,7 +103,6 @@ describe("Groups - user invitations", () => {
             id: userId,
             admin: true,
             owner: true,
-            pending: null,
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(adminName, invitee, groupName);
@@ -115,7 +112,7 @@ describe("Groups - user invitations", () => {
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          tokenPrelude
+          ACCEPT_INVITE_PREFIX
         );
 
         expect(payload.group).to.equal(group);
@@ -149,7 +146,6 @@ describe("Groups - user invitations", () => {
           cy.apiGroupUsersCheck(adminName, groupName, [
             expectedAdminUser,
             {
-              pending: null,
               id: userId,
               userName: getTestName(existingMember),
               admin: false,
@@ -181,7 +177,6 @@ describe("Groups - user invitations", () => {
             id: userId,
             admin: ADMIN,
             owner: OWNER,
-            pending: null,
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(adminName, invitee, groupName, ADMIN);
@@ -191,7 +186,7 @@ describe("Groups - user invitations", () => {
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          tokenPrelude
+          ACCEPT_INVITE_PREFIX
         );
         expect(payload.group).to.equal(group);
         cy.log(
@@ -215,7 +210,6 @@ describe("Groups - user invitations", () => {
             cy.apiGroupUsersCheck(adminName, groupName, [
               expectedAdminUser,
               {
-                pending: null,
                 id: userId,
                 userName: getTestName(invitee),
                 admin: ADMIN,
@@ -248,7 +242,6 @@ describe("Groups - user invitations", () => {
             id: userId,
             admin: ADMIN,
             owner: OWNER,
-            pending: null,
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(
@@ -264,7 +257,7 @@ describe("Groups - user invitations", () => {
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          tokenPrelude
+          ACCEPT_INVITE_PREFIX
         );
         expect(payload.group).to.equal(group);
         cy.log(
@@ -288,7 +281,6 @@ describe("Groups - user invitations", () => {
             cy.apiGroupUsersCheck(adminName, groupName, [
               expectedAdminUser,
               {
-                pending: null,
                 id: userId,
                 userName: getTestName(invitee),
                 admin: NOT_ADMIN,
@@ -329,7 +321,6 @@ describe("Groups - user invitations", () => {
             id: userId,
             admin: ADMIN,
             owner: OWNER,
-            pending: null,
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(
@@ -345,7 +336,7 @@ describe("Groups - user invitations", () => {
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          tokenPrelude
+          ACCEPT_INVITE_PREFIX
         );
         expect(payload.group).to.equal(group);
         cy.log(
@@ -363,9 +354,11 @@ describe("Groups - user invitations", () => {
         cy.log(
           "Check that the user is now listed as a non pending group member with default permissions"
         );
+        const expectedUser = { ...expectedTestUser };
+        delete expectedUser.pending;
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
-          { ...expectedTestUser, pending: null },
+          expectedUser,
         ]);
       });
     });
@@ -399,7 +392,6 @@ describe("Groups - user invitations", () => {
             id: userId,
             admin: ADMIN,
             owner: OWNER,
-            pending: null,
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(
@@ -415,7 +407,7 @@ describe("Groups - user invitations", () => {
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          tokenPrelude
+          ACCEPT_INVITE_PREFIX
         );
         expect(payload.group).to.equal(group);
         cy.log(
@@ -433,9 +425,11 @@ describe("Groups - user invitations", () => {
         cy.log(
           "Check that the user is now listed as a non pending group member with admin permissions"
         );
+        const expectedUser = { ...expectedTestUser };
+        delete expectedUser.pending;
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
-          { ...expectedTestUser, pending: null },
+          expectedUser,
         ]);
       });
     });
@@ -469,7 +463,6 @@ describe("Groups - user invitations", () => {
             id: userId,
             admin: ADMIN,
             owner: OWNER,
-            pending: null,
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(
@@ -485,7 +478,7 @@ describe("Groups - user invitations", () => {
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          tokenPrelude
+          ACCEPT_INVITE_PREFIX
         );
         expect(payload.group).to.equal(group);
         cy.log(
@@ -503,9 +496,11 @@ describe("Groups - user invitations", () => {
         cy.log(
           "Check that the user is now listed as a non pending group member with owner permissions"
         );
+        const expectedUser = { ...expectedTestUser };
+        delete expectedUser.pending;
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
-          { ...expectedTestUser, pending: null },
+          expectedUser,
         ]);
       });
     });
@@ -548,7 +543,6 @@ describe("Groups - user invitations", () => {
           id: userId,
           admin: ADMIN,
           owner: OWNER,
-          pending: null,
         };
         cy.apiUserAdd(user, "_foobar1", getTestEmail(user)).then((userId) => {
           expectedTestUser = {
@@ -556,7 +550,6 @@ describe("Groups - user invitations", () => {
             id: userId,
             admin: NOT_ADMIN,
             owner: NOT_OWNER,
-            pending: null,
           };
           cy.log("Add regular user to group");
           cy.apiGroupUserAdd(adminName, user, groupName);
