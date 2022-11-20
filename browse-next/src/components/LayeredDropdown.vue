@@ -278,7 +278,7 @@ defineExpose({
         >
           <font-awesome-icon
             icon="thumbtack"
-            @click.stop.prevent="pinCurrentSelection"
+            @click.prevent="pinCurrentSelection"
           />
         </button>
       </div>

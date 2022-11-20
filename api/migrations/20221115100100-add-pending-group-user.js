@@ -49,8 +49,16 @@ module.exports = {
       "Groups",
       "strict"
     );
+
+    await queryInterface.addColumn("DeviceHistory", "settings", {
+      allowNull: true,
+      defaultValue: null,
+      type: Sequelize.JSONB,
+      comment: "A place to put device settings that apply only while the device is in a particular location at a particular time."
+    });
   },
   down: async function (queryInterface, Sequelize) {
+    await queryInterface.removeColumn("DeviceHistory", "settings");
     await queryInterface.removeColumn("GroupUsers", "pending");
     await queryInterface.sequelize.query(
       'drop type "enum_GroupUsers_pending"'

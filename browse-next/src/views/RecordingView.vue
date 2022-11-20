@@ -742,11 +742,7 @@ const inlineModal = ref<boolean>(false);
             "
           />
         </div>
-        <div
-          id="clip0"
-          class="recording-info d-flex flex-column"
-          ref="recordingInfo"
-        >
+        <div class="recording-info d-flex flex-column" ref="recordingInfo">
           <!-- Desktop view only -->
           <div
             class="recording-station-info d-inline-flex mb-3"
@@ -764,10 +760,7 @@ const inlineModal = ref<boolean>(false);
               :zoom="false"
               :radius="30"
             />
-            <div
-              class="recording-details d-flex flex-column flex-fill"
-              id="clip1"
-            >
+            <div class="recording-details d-flex flex-column flex-fill">
               <div class="fw-bolder">
                 <div
                   class="station-name pt-3 px-3 text-truncate d-inline-block"
@@ -986,7 +979,7 @@ const inlineModal = ref<boolean>(false);
           type="button"
           class="btn d-flex flex-row-reverse align-items-center prev-button"
           :disabled="!hasPreviousRecording && !hasPreviousVisit"
-          @click.stop.prevent="gotoPreviousRecordingOrVisit"
+          @click.prevent="gotoPreviousRecordingOrVisit"
         >
           <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
             <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
@@ -1036,7 +1029,7 @@ const inlineModal = ref<boolean>(false);
           type="button"
           class="btn d-flex align-items-center next-button"
           :disabled="!hasNextRecording && !hasNextVisit"
-          @click.stop.prevent="gotoNextRecordingOrVisit"
+          @click.prevent="gotoNextRecordingOrVisit"
         >
           <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
             <span class="fs-8 fw-bold" v-if="hasNextRecording"
@@ -1169,6 +1162,7 @@ const inlineModal = ref<boolean>(false);
   }
 }
 .recording-info {
+  width: 100%;
 }
 .recording-info-mobile {
 }

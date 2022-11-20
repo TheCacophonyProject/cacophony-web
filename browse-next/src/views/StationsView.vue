@@ -7,8 +7,13 @@ import { currentSelectedGroup } from "@models/LoggedInUser";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import type { NamedPoint } from "@models/mapUtils";
+import SimpleTable from "@/components/SimpleTable.vue";
+import type {
+  CardTableItems,
+  CardTableValue,
+} from "@/components/CardTableTypes";
 
-const stations = ref<ApiStationResponse[] | null>(null);
+const stations = ref<ApiStationResponse[]>([]);
 const loadingStations = ref(false);
 
 onMounted(async () => {
@@ -26,26 +31,23 @@ onMounted(async () => {
 });
 
 const stationsForMap = computed<NamedPoint[]>(() => {
-  if (stations.value) {
-    // return [
-    //   {
-    //     name: "test",
-    //     group: "test group",
-    //     location: { lat: -43.80795, lng: 172.36845 } as LatLng,
-    //   },
-    //   {
-    //     name: "test2",
-    //     group: "test group",
-    //     location: { lat: -43.80856, lng: 172.36323 } as LatLng,
-    //   },
-    // ];
-    return stations.value.map(({ name, groupName, location }) => ({
-      name,
-      group: groupName,
-      location: location as LatLng,
-    }));
-  }
-  return [];
+  // return [
+  //   {
+  //     name: "test",
+  //     group: "test group",
+  //     location: { lat: -43.80795, lng: 172.36845 } as LatLng,
+  //   },
+  //   {
+  //     name: "test2",
+  //     group: "test group",
+  //     location: { lat: -43.80856, lng: 172.36323 } as LatLng,
+  //   },
+  // ];
+  return stations.value.map(({ name, groupName, location }) => ({
+    name,
+    group: groupName,
+    location: location as LatLng,
+  }));
 });
 //  Display in table and on map.
 const highlightedPoint = ref<NamedPoint | null>(null);
@@ -61,6 +63,26 @@ const highlightedPoint = ref<NamedPoint | null>(null);
 const highlightPoint = (p: NamedPoint | null) => {
   highlightedPoint.value = p;
 };
+
+const tableItems = computed<CardTableItems>(() => {
+  return stations.value
+    .map((station: ApiStationResponse) => ({
+      name: station.name, // Use device name with icon like we do currently?
+    }))
+    .reduce(
+      (acc: CardTableItems, item: Record<string, CardTableValue>) => {
+        if (acc.headings.length === 0) {
+          acc.headings = Object.keys(item);
+        }
+        acc.values.push(Object.values(item));
+        return acc;
+      },
+      {
+        headings: [],
+        values: [],
+      }
+    );
+});
 </script>
 <template>
   <div>
@@ -76,16 +98,28 @@ const highlightPoint = (p: NamedPoint | null) => {
       class="d-flex flex-md-row flex-column-reverse justify-content-between"
       v-else
     >
-      <div class="px-3 p-md-0">
-        <div
-          v-for="p in stationsForMap"
-          :key="p.name"
-          @mouseover="highlightPoint(p)"
-          @mouseout="highlightPoint(null)"
-          @mouseleave="highlightPoint(null)"
-        >
-          {{ p.name }}
-        </div>
+      <div>
+        <h6>Things that need to appear here:</h6>
+        <ul>
+          <li>
+            Hovering table rows should be able to highlight points on the map
+          </li>
+          <li>Rename stations</li>
+          <li>Show active vs inactive stations</li>
+        </ul>
+
+        <!--      <div class="px-3 p-md-0">-->
+        <!--        <div-->
+        <!--          v-for="p in stationsForMap"-->
+        <!--          :key="p.name"-->
+        <!--          @mouseover="highlightPoint(p)"-->
+        <!--          @mouseout="highlightPoint(null)"-->
+        <!--          @mouseleave="highlightPoint(null)"-->
+        <!--        >-->
+        <!--          {{ p.name }}-->
+        <!--        </div>-->
+        <!--      </div>-->
+        <simple-table compact :items="tableItems" />
       </div>
       <map-with-points
         :points="stationsForMap"

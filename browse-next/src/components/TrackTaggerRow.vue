@@ -409,7 +409,7 @@ const handleImageError = (e: ErrorEvent) => {
       <button
         type="button"
         class="btn fs-7 confirm-button"
-        @click.stop.prevent="confirmAiSuggestedTag"
+        @click.prevent="confirmAiSuggestedTag"
       >
         <span class="label">Confirm</span>
         <span class="fs-6 icon">
@@ -426,7 +426,7 @@ const handleImageError = (e: ErrorEvent) => {
         type="button"
         class="btn fs-7 reject-button"
         aria-label="Reject AI classification"
-        @click.stop.prevent="rejectAiSuggestedTag"
+        @click.prevent="rejectAiSuggestedTag"
       >
         <span class="visually-hidden">Reject</span>
         <span class="fs-6 icon">

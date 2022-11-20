@@ -27,6 +27,7 @@ import {
   isWideScreen,
   sideNavIsPinned,
   isSmallScreen,
+  showUnimplementedModal,
 } from "@/models/LoggedInUser";
 import type { SelectedGroup, LoggedInUser } from "@/models/LoggedInUser";
 import {
@@ -122,7 +123,6 @@ watch(pinSideNav, (next) => {
     hideNavBg.value = false;
   }
 });
-
 onMounted(() => {
   // Wait a second so that we know rendering has settled down, then try to work out the display refresh rate.
   setTimeout(pollFrameTimes, 1000);
@@ -138,8 +138,11 @@ onMounted(() => {
   <div class="debug">Logged in? {{ userIsLoggedIn }}</div>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal id="network-issue-modal" />
+  <b-modal id="unimplemented-modal" v-model="showUnimplementedModal" centered>
+    <div>Sorry, this feature is not yet implemented.</div>
+  </b-modal>
   <switch-groups-modal
-    v-if="showSwitchGroup.visible"
+    v-if="showSwitchGroup.enabled"
     id="switch-groups-modal"
   />
   <create-group-modal v-if="creatingNewGroup.enabled" id="create-group-modal" />
@@ -197,7 +200,7 @@ onMounted(() => {
           <button
             class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
             v-if="userHasMultipleGroups"
-            @click="showSwitchGroup.visible = true"
+            @click="() => (showSwitchGroup.enabled = true)"
           >
             {{ currentSelectedGroup.groupName }}
             <span class="switch-label figure ms-1"

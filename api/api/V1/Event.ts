@@ -45,7 +45,10 @@ import {
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { IsoFormattedDateString } from "@typedefs/api/common";
-import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
+import {
+  maybeUpdateDeviceHistory,
+  sendEventAlerts,
+} from "@api/V1/recordingUtil";
 import { HttpStatusCode } from "@typedefs/api/consts";
 import util from "@api/V1/util";
 import { streamS3Object } from "@api/V1/signedUrl";
@@ -194,7 +197,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/events/thumb Adds a new thumbnail + classification event.
+   * @api {post} /api/v1/events/thumbnail Adds a new thumbnail + classification event.
    * @apiName Post Device Thumbnail Classification
    * @apiGroup Events
    * @apiDescription Upload a thumbnail + classification from a connected edge device.
@@ -237,13 +240,18 @@ export default function (app: Application, baseUrl: string) {
           description.type,
           description.details
         );
-        return await models.Event.create({
+        const dateTime =
+          (data.dateTimes && data.dateTimes.length && data.dateTimes[0]) ||
+          new Date().toISOString();
+        const event = await models.Event.create({
           DeviceId: uploadingDevice.id,
           EventDetailId: detail.id,
-          dateTime:
-            (data.dateTimes && data.dateTimes.length && data.dateTimes[0]) ||
-            new Date().toISOString(),
+          dateTime,
         });
+        // TODO:
+        // await sendEventAlerts(data, uploadingDevice, dateTime, uploadedFileData);
+
+        return event;
       }
     )
   );

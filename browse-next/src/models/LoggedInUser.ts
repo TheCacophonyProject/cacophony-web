@@ -277,6 +277,8 @@ export const euaIsOutOfDate = computed<boolean>(() => {
   );
 });
 
+export const showUnimplementedModal = ref<boolean>(false);
+
 export const currentUserSettings = computed<ApiUserSettings | false>(() => {
   if (userIsLoggedIn.value) {
     return (CurrentUser.value as LoggedInUser).settings || false;

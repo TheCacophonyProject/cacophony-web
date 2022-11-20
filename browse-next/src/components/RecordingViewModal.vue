@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { urlNormalisedCurrentGroupName } from "@models/LoggedInUser";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteRecordName } from "vue-router";
@@ -37,6 +37,12 @@ const show = ref(isModalRouteName(route.name as string));
 watch(route, (next) => {
   show.value = !!(next && next.name && isModalRouteName(next.name));
 });
+
+const noFadeInternal = ref<boolean>(!fadeIn);
+const onShown = () => {
+  noFadeInternal.value = false;
+  emit("shown");
+};
 </script>
 <template>
   <router-view v-slot="{ Component }">
@@ -46,11 +52,11 @@ watch(route, (next) => {
       lazy
       hide-footer
       hide-header
-      :no-fade="!fadeIn"
+      :no-fade="noFadeInternal"
       ref="modal"
       @hide="show = false"
       @hidden="closedModal"
-      @shown="() => emit('shown')"
+      @shown="onShown"
       body-class="p-0"
       content-class="recording-view-modal"
       dialog-class="recording-view-dialog m-0 m-sm-auto modal-fullscreen-sm-down"

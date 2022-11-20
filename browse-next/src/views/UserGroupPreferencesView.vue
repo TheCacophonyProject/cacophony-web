@@ -17,13 +17,17 @@ onMounted(async () => {
 </script>
 <template>
   <section-header>My group preferences</section-header>
+
+  <h6>Things that could appear here:</h6>
+  <ul>
+    <li>My group/station alert settings</li>
+    <li>Prefer video or audio views by default?</li>
+    <li>My preferred tags for video, audio</li>
+  </ul>
+
   <ul v-if="alerts.length">
     <li v-for="alert in alerts" :key="alert.id">{{ alert }}</li>
   </ul>
-  <div>
-    My alert settings. My preferred tags for video, audio. Show audio or video
-    by default?
-  </div>
   <leave-group-modal v-model="selectedLeaveGroup" />
   <button
     class="btn btn-outline-danger"

@@ -430,6 +430,59 @@ export const sendAnimalAlertEmail = async (
   );
 };
 
+export const sendAnimalAlertEmailForEvent = async (
+  origin: string,
+  groupName: string,
+  deviceName: string,
+  stationName: string,
+  classification: string,
+  recordingId: number,
+  trackId: number,
+  userEmailAddress: string,
+  recipientTimeZoneOffset: number
+) => {
+  const common = commonInterpolants(origin);
+  const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName
+  )}/my-settings`;
+  const targetSpecies =
+    classification.charAt(0).toUpperCase() + classification.slice(1);
+  const cacophonyBrowseUrl = config.server.browse_url;
+  const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName
+  )}/station/${urlNormaliseName(stationName)}`;
+  const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName
+  )}/station/${urlNormaliseName(
+    stationName
+  )}/recording/${recordingId}/track/${trackId}`;
+
+  const { text, html } = await createEmailWithTemplate("animal-alert.html", {
+    targetSpecies:
+      targetSpecies.charAt(0).toUpperCase() + targetSpecies.slice(1),
+    emailSettingsUrl,
+    groupName,
+    recordingUrl,
+    stationUrl,
+    ...common,
+  });
+  // FIXME - fetch actual thumbnail
+  return await sendEmail(
+    html,
+    text,
+    userEmailAddress,
+    `🎯 ${targetSpecies} alert at '${stationName}'`,
+    [
+      ...(await commonAttachments()),
+      {
+        buffer: await fs.readFile(`${__dirname}/templates/test-thumb.png`),
+        mimeType: "image/png",
+        cid: "thumbnail",
+      },
+    ]
+  );
+};
+
 export const sendPasswordResetEmail = async (
   origin: string,
   resetPasswordToken: string,

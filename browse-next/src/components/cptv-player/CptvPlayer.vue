@@ -1706,16 +1706,16 @@ const drawFrame = async (
         ]"
       >
         <button
-          @click.stop.prevent="requestPrevRecording"
+          @click.prevent="requestPrevRecording"
           :class="{ disabled: !hasPrev }"
         >
           <font-awesome-icon icon="backward" class="replay" />
         </button>
-        <button @click.stop.prevent="togglePlayback">
+        <button @click.prevent="togglePlayback">
           <font-awesome-icon icon="redo-alt" class="replay" rotation="270" />
         </button>
         <button
-          @click.stop.prevent="requestNextRecording"
+          @click.prevent="requestNextRecording"
           :class="{ disabled: !hasNext }"
         >
           <font-awesome-icon icon="forward" class="replay" />
@@ -1724,7 +1724,7 @@ const drawFrame = async (
     </div>
     <div key="playback-nav" class="playback-nav">
       <button
-        @click.stop.prevent="togglePlayback"
+        @click.prevent="togglePlayback"
         ref="playPauseButton"
         :data-tooltip="playing ? 'Pause' : 'Play'"
       >
@@ -1734,7 +1734,7 @@ const drawFrame = async (
       <div class="right-nav">
         <div :class="['advanced-controls', { open: showAdvancedControls }]">
           <button
-            @click.stop.prevent="showAdvancedControls = !showAdvancedControls"
+            @click.prevent="showAdvancedControls = !showAdvancedControls"
             class="advanced-controls-btn"
             :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
             ref="advancedControlsButton"
@@ -1745,7 +1745,7 @@ const drawFrame = async (
             />
           </button>
           <button
-            @click.stop.prevent="showDebugTools = !showDebugTools"
+            @click.prevent="showDebugTools = !showDebugTools"
             ref="debugTools"
             data-tooltip="Debug tools"
             :class="{ selected: showDebugTools }"
@@ -1753,7 +1753,7 @@ const drawFrame = async (
             <font-awesome-icon icon="wrench" />
           </button>
           <button
-            @click.stop.prevent="videoSmoothing = !videoSmoothing"
+            @click.prevent="videoSmoothing = !videoSmoothing"
             ref="toggleSmoothingButton"
             :data-tooltip="
               videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
@@ -1812,14 +1812,14 @@ const drawFrame = async (
             </svg>
           </button>
           <button
-            @click.stop.prevent="incrementPalette"
+            @click.prevent="incrementPalette"
             ref="cyclePalette"
             data-tooltip="Cycle colour map"
           >
             <font-awesome-icon icon="palette" />
           </button>
           <button
-            @click.stop.prevent="requestHeaderInfoDisplay"
+            @click.prevent="requestHeaderInfoDisplay"
             data-tooltip="Show recording header info"
             :class="{ selected: displayHeaderInfo }"
             ref="showHeader"
@@ -1828,7 +1828,7 @@ const drawFrame = async (
           </button>
         </div>
         <button
-          @click.stop.prevent="incrementSpeed"
+          @click.prevent="incrementSpeed"
           ref="cyclePlaybackSpeed"
           class="playback-speed"
           data-tooltip="Cycle playback speed"
@@ -1844,21 +1844,21 @@ const drawFrame = async (
       </div>
       <div>
         <button
-          @click.stop.prevent="stepBackward"
+          @click.prevent="stepBackward"
           data-tooltip="Go back one frame"
           :disabled="!canStepBackward"
         >
           <font-awesome-icon icon="step-backward" />
         </button>
         <button
-          @click.stop.prevent="stepForward"
+          @click.prevent="stepForward"
           data-tooltip="Go forward one frame"
           :disabled="!canStepForward"
         >
           <font-awesome-icon icon="step-forward" />
         </button>
         <button
-          @click.stop.prevent="showValueInfo = !showValueInfo"
+          @click.prevent="showValueInfo = !showValueInfo"
           :class="{ selected: showValueInfo }"
           :data-tooltip="
             showValueInfo
@@ -1869,7 +1869,7 @@ const drawFrame = async (
           <font-awesome-icon icon="eye-dropper" />
         </button>
         <button
-          @click.stop.prevent="trackHighlightMode = !trackHighlightMode"
+          @click.prevent="trackHighlightMode = !trackHighlightMode"
           :class="{ selected: trackHighlightMode }"
           :data-tooltip="
             trackHighlightMode
@@ -1880,7 +1880,7 @@ const drawFrame = async (
           <font-awesome-icon icon="highlighter" />
         </button>
         <button
-          @click.stop.prevent="polygonEditMode = !polygonEditMode"
+          @click.prevent="polygonEditMode = !polygonEditMode"
           :class="{ selected: polygonEditMode }"
           :data-tooltip="
             polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
@@ -1890,7 +1890,7 @@ const drawFrame = async (
           <!--         draw-polygon, bezier-curve, vector-square -->
         </button>
         <button
-          @click.stop.prevent="silhouetteMode = !silhouetteMode"
+          @click.prevent="silhouetteMode = !silhouetteMode"
           :class="{ selected: silhouetteMode }"
           :data-tooltip="
             silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
@@ -1899,7 +1899,7 @@ const drawFrame = async (
           <font-awesome-icon icon="burst" />
         </button>
         <button
-          @click.stop.prevent="motionPathMode = !motionPathMode"
+          @click.prevent="motionPathMode = !motionPathMode"
           :class="{ selected: motionPathMode }"
           :data-tooltip="
             motionPathMode ? 'Hide motion paths' : 'Show motion paths'
@@ -1912,7 +1912,7 @@ const drawFrame = async (
           ref="showBackgroundFrame"
           :class="{ selected: isShowingBackgroundFrame }"
           data-tooltip="Press to show background frame"
-          @click.stop.prevent="toggleBackground"
+          @click.prevent="toggleBackground"
         >
           <font-awesome-icon icon="image" />
         </button>

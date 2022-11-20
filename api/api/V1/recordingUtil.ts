@@ -49,8 +49,10 @@ import {
   DeviceId,
   FileId,
   GroupId,
+  IsoFormattedDateString,
   LatLng,
   RecordingId,
+  StationId,
   TrackTagId,
   UserId,
 } from "@typedefs/api/common";
@@ -73,6 +75,10 @@ import { GetObjectOutput, ManagedUpload } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
 import { CptvHeader } from "cptv-decoder";
 import log from "@log";
+import {
+  sendAnimalAlertEmail,
+  sendAnimalAlertEmailForEvent,
+} from "@/emails/transactionalEmails";
 
 let CptvDecoder;
 (async () => {
@@ -812,10 +818,10 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
   return false;
 };
 
-const getDeviceIdAndGroupIdAtRecordingTime = async (
+const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
   device: Device,
   atTime: Date
-): Promise<{ groupId: GroupId; deviceId: DeviceId }> => {
+): Promise<{ groupId: GroupId; deviceId: DeviceId; stationId?: StationId }> => {
   // NOTE: Use the uuid here, so we can assign old recordings that may be uploaded much later
   //  to the correct group that the device belonged to when the recording was created.
   const deviceHistory = (await models.DeviceHistory.findOne({
@@ -827,7 +833,11 @@ const getDeviceIdAndGroupIdAtRecordingTime = async (
     limit: 1,
   })) as DeviceHistory;
   if (deviceHistory) {
-    return { groupId: deviceHistory.GroupId, deviceId: deviceHistory.DeviceId };
+    return {
+      groupId: deviceHistory.GroupId,
+      deviceId: deviceHistory.DeviceId,
+      stationId: deviceHistory.stationId,
+    };
   }
   log.error("Missing entry in DeviceHistory table for device #%s", device.id);
   return { deviceId: device.id, groupId: device.GroupId };
@@ -912,7 +922,7 @@ export const uploadRawRecording = util.multipartUpload(
     if (!deviceId && !groupId) {
       // Check what group the uploading device (or the device embedded in the recording) was part of at the time the recording was made.
       const { deviceId: d, groupId: g } =
-        await getDeviceIdAndGroupIdAtRecordingTime(
+        await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
           uploadingDevice,
           recording.recordingDateTime
         );
@@ -1881,7 +1891,7 @@ async function sendAlerts(recId: RecordingId) {
   }
   // Find the hierarchy for the matchedTag
   const alerts: Alert[] = await (models.Alert as AlertStatic).getActiveAlerts(
-    matchedTag,
+    matchedTag.path,
     recording.DeviceId || undefined,
     recording.StationId || undefined
   );
@@ -1913,6 +1923,47 @@ async function sendAlerts(recId: RecordingId) {
           mimeType: "image/png",
         }
       );
+    }
+  }
+  return alerts;
+}
+
+export async function sendEventAlerts(
+  data: { what: string; conf: number; dateTimes?: IsoFormattedDateString[] },
+  device: Device,
+  eventDateTime: Date,
+  thumbnail: Uint8Array
+) {
+  // Find the hierarchy for the matchedTag
+  const { stationId } =
+    await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
+      device,
+      eventDateTime
+    );
+  let alerts: Alert[] = [];
+  if (stationId) {
+    alerts = await (models.Alert as AlertStatic).getActiveAlerts(
+      data.what,
+      undefined,
+      stationId
+    );
+    for (const alert of alerts) {
+      // TODO:
+      /*
+      const alertSendSuccess = await sendAnimalAlertEmailForEvent();
+      if (alertSendSuccess) {
+        // Log an email alert event also
+        const detail = await models.DetailSnapshot.getOrCreateMatching("alert", {
+          alertId: alert.id,
+          success: alertSendSuccess,
+        });
+        await models.Event.create({
+          DeviceId: device.id,
+          EventDetailId: detail.id,
+          dateTime: eventDateTime,
+        });
+      }
+       */
     }
   }
   return alerts;

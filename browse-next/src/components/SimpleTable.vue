@@ -40,7 +40,7 @@
             class="btn"
             :class="castButton(value).classes || []"
             :disabled="componentIsDisabled(value)"
-            @click.stop.prevent="() => extractAction(value)()"
+            @click.prevent="() => extractAction(value)()"
           >
             <font-awesome-icon
               :icon="castButton(value).icon"

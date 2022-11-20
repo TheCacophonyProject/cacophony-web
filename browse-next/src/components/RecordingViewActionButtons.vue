@@ -2,7 +2,11 @@
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, ref } from "vue";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
-import { currentSelectedGroup, CurrentUser } from "@models/LoggedInUser";
+import {
+  currentSelectedGroup,
+  CurrentUser,
+  showUnimplementedModal,
+} from "@models/LoggedInUser";
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
@@ -99,7 +103,7 @@ const recordingIsFlagged = computed<boolean>(() => {
 const userIsGroupAdmin = (currentSelectedGroup.value as SelectedGroup).admin;
 
 const notImplemented = () => {
-  alert("Not yet implemented");
+  showUnimplementedModal.value = true;
 };
 </script>
 <template>
@@ -110,7 +114,7 @@ const notImplemented = () => {
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
-      @click.stop.prevent="() => flagRecording()"
+      @click.prevent="() => flagRecording()"
     >
       <font-awesome-icon
         :icon="recordingIsFlagged ? ['fas', 'flag'] : ['far', 'flag']"
@@ -123,7 +127,7 @@ const notImplemented = () => {
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
-      @click.stop.prevent="() => starRecording()"
+      @click.prevent="() => starRecording()"
     >
       <font-awesome-icon
         :icon="recordingIsStarred ? ['fas', 'star'] : ['far', 'star']"

@@ -4,12 +4,13 @@ import { CurrentUser } from "@models/LoggedInUser";
 </script>
 <template>
   <section-header>User preferences</section-header>
-  <p>
-    {{ CurrentUser }}
-  </p>
-  <p>Change my email address</p>
-  <p>Reset/change my password</p>
-  <p>Edit my user name, real name?</p>
-  <p>Review the End User Agreement?</p>
-  <p>Show release info/changelog?</p>
+  <h6>Things that could appear here:</h6>
+  <ul>
+    <li>Change my email address</li>
+    <li>Reset/change my password</li>
+    <li>Edit my user name, real name?</li>
+    <li>Review the End User Agreement?</li>
+    <li>Show release info/changelog?</li>
+    <li>Global transactional email settings</li>
+  </ul>
 </template>
