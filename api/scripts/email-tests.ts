@@ -36,6 +36,7 @@ const _sendTestEmails = async () => {
     origin,
     "FOO",
     "jon@cacophony.org.nz",
+    "Jon Hardie",
     "Your awesome group",
     "jon@hardiesoft.com"
   );
