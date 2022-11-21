@@ -328,6 +328,7 @@ export const sendGroupMembershipRequestEmail = async (
   origin: string,
   acceptToGroupToken: string,
   requesterEmailAddress: string,
+  requesterUserName: string,
   requestGroupName: string,
   userEmailAddress: string
 ) => {
@@ -341,6 +342,7 @@ export const sendGroupMembershipRequestEmail = async (
       acceptToGroupUrl,
       requestGroupName,
       requesterEmailAddress,
+      requesterUserName,
       ...common,
     }
   );

@@ -234,7 +234,8 @@ export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
 export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
   window.localStorage.removeItem("saved-login-credentials");
-  //window.localStorage.removeItem("saved-login-user-data");
+  window.localStorage.removeItem("saved-login-user-data");
+  UserGroups.value = null;
   userIsLoggedIn.value = false;
 };
 

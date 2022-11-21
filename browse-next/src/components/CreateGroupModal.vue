@@ -27,7 +27,6 @@ const resetFormValues = () => {
 };
 
 onMounted(() => {
-  console.log("Mounted");
   creatingNewGroup.visible = true;
 });
 
@@ -77,6 +76,7 @@ const createNewGroup = async () => {
         placeholder="group name"
         v-model="newGroupName.value"
         @blur="newGroupName.touched = true"
+        @input="newGroupName.touched = true"
         :state="needsValidationAndIsValidGroupName"
         :disabled="submittingCreateRequest"
       />
@@ -89,19 +89,22 @@ const createNewGroup = async () => {
           (include macrons)
         </span>
       </b-form-invalid-feedback>
-      <template #footer>
-        <button
-          class="btn btn-primary"
-          type="submit"
-          :disabled="submittingCreateRequest"
-        >
-          <span
-            v-if="submittingCreateRequest"
-            class="spinner-border spinner-border-sm"
-          ></span>
-          {{ submittingCreateRequest ? "Creating group" : "Create group" }}
-        </button>
-      </template>
     </b-form>
+    <template #footer>
+      <button
+        class="btn btn-primary"
+        type="submit"
+        @click.stop.prevent="createNewGroup"
+        :disabled="
+          !needsValidationAndIsValidGroupName || submittingCreateRequest
+        "
+      >
+        <span
+          v-if="submittingCreateRequest"
+          class="spinner-border spinner-border-sm"
+        ></span>
+        {{ submittingCreateRequest ? "Creating group" : "Create group" }}
+      </button>
+    </template>
   </b-modal>
 </template>

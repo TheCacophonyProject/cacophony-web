@@ -159,16 +159,16 @@ export const getGroupsForGroupAdminByEmail = (
     abortable
   ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>;
 
-export const requestToJoinGroups = (
+export const requestToJoinGroup = (
   groupAdminEmail: string,
-  groupIds: GroupId[],
+  groupId: GroupId,
   abortable = false
 ) =>
   CacophonyApi.post(
     `/api/v1/users/request-group-membership`,
     {
       groupAdminEmail,
-      groups: groupIds,
+      groupId,
     },
     abortable
   ) as Promise<FetchResult<void>>;

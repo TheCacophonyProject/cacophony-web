@@ -6,11 +6,11 @@ import { computed, onBeforeMount, onMounted, reactive, ref } from "vue";
 import { getGroupsForGroupAdminByEmail } from "@api/User";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import { BFormCheckboxGroup } from "bootstrap-vue-3";
-import { requestToJoinGroups } from "@api/User";
+import { requestToJoinGroup } from "@api/User";
 
 const groupAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);
-const groupsChosen = ref(reactive<ApiGroupResponse[]>([]));
+const groupChosen = ref<string | null>(null);
 const joinableGroups = ref<ApiGroupResponse[] | null>(null);
 const emailIsTooShort = computed<boolean>(
   () => groupAdminEmailAddress.value.trim().length < 3
@@ -56,9 +56,9 @@ const joinExistingGroup = async () => {
 
   // FIXME - Now only allowing one group at a time to be requested.
   submittingJoinRequest.value = true;
-  const joinRequestResponse = await requestToJoinGroups(
+  const joinRequestResponse = await requestToJoinGroup(
     groupAdminEmailAddress.value.trim(),
-    groupsChosen.value.map(({ id }) => id)
+    Number(groupChosen.value)
   );
   if (joinRequestResponse.success) {
     // TODO Yay
@@ -85,14 +85,14 @@ const getGroupsForAdmin = async () => {
       // Admin user has no groups we can join.
     }
     if (groups.length === 1) {
-      groupsChosen.value = reactive(groups);
+      groupChosen.value = groups[0].id.toString();
     }
     joinableGroups.value = groups;
   } else {
     // Maybe the user didn't exist, or wasn't an admin user of any groups.
   }
   submittingJoinRequest.value = false;
-  joiningNewGroup.visible = false;
+  //joiningNewGroup.visible = false;
 };
 </script>
 <template>
@@ -101,9 +101,7 @@ const getGroupsForAdmin = async () => {
     title="Join a group"
     ok-title="Send join request"
     @ok="joinExistingGroup"
-    :ok-disabled="
-      !isValidEmailAddress || !groupsChosen.length || submittingJoinRequest
-    "
+    :ok-disabled="!isValidEmailAddress || !groupChosen || submittingJoinRequest"
     :cancel-disabled="submittingJoinRequest"
     centered
     @hidden="resetFormValues"
@@ -122,6 +120,7 @@ const getGroupsForAdmin = async () => {
           aria-label="group admin email address"
           placeholder="group admin email address"
           :disabled="submittingJoinRequest"
+          @input="joinableGroups = null"
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
@@ -134,18 +133,23 @@ const getGroupsForAdmin = async () => {
       >
         <button
           class="btn btn-primary"
-          :disabled="!isValidEmailAddress"
+          :disabled="!isValidEmailAddress || submittingJoinRequest"
           @click.stop.prevent="getGroupsForAdmin"
         >
           Next
         </button>
       </div>
+      <div v-else-if="joinableGroups && joinableGroups.length === 0">
+        <p>
+          This user is not the administrator of any groups that you can join.
+        </p>
+      </div>
       <div v-else-if="joinableGroups && joinableGroups.length > 1">
-        <p>Select the group(s) you'd like to join.</p>
+        <p>Select the group you'd like to join.</p>
         <div>
-          <b-form-checkbox-group
+          <b-form-radio-group
             stacked
-            v-model="groupsChosen"
+            v-model="groupChosen"
             :options="joinableGroupsCheckboxOptions"
             id="available-groups"
             name="available-groups"

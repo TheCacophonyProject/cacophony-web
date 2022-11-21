@@ -637,7 +637,13 @@ export default function (app: Application, baseUrl: string) {
           )
         );
       }
-
+      await models.Group.addOrUpdateGroupUser(
+        response.locals.group,
+        requestingUser,
+        false,
+        false,
+        "requested"
+      );
       const acceptToGroupRequestToken = getJoinGroupRequestToken(
         requestingUser.id,
         response.locals.group.id
@@ -646,6 +652,7 @@ export default function (app: Application, baseUrl: string) {
         request.headers.host,
         acceptToGroupRequestToken,
         requestingUser.email,
+        requestingUser.userName,
         response.locals.group.groupName,
         requestedOfUser.email
       );
@@ -682,6 +689,7 @@ export default function (app: Application, baseUrl: string) {
         where: {
           UserId: id,
           GroupId: response.locals.group.id,
+          pending: { [Op.eq]: null },
         },
       });
       if (existingUserOfGroup) {
