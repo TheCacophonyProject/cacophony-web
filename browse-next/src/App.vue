@@ -155,7 +155,12 @@ onMounted(() => {
     class="justify-content-center align-items-center d-flex"
     v-if="isLoggingInAutomatically || isFetchingGroups"
   >
-    <h1 class="h3"><b-spinner /> Signing in...</h1>
+    <div
+      class="d-flex flex-column align-items-center justify-content-center user-select-none"
+    >
+      <b-spinner variant="secondary" />
+      <span class="h3 d-block mt-3"> Signing in...</span>
+    </div>
   </main>
   <main
     id="main-wrapper"

@@ -140,12 +140,19 @@ const invitePendingUser = async () => {
       </button>
     </div>
   </div>
-  <simple-table :items="tableItems" compact />
+  <div
+    v-if="loadingUsers"
+    class="d-flex align-items-center justify-content-center"
+  >
+    <b-spinner variant="secondary" />
+  </div>
+  <simple-table :items="tableItems" compact v-else />
+
   <b-modal
     v-model="showInviteUserModal"
     centered
     @ok="invitePendingUser"
-    ok-title="Invite new user"
+    ok-title="Invite user"
     title="Invite a user"
   >
     <p>

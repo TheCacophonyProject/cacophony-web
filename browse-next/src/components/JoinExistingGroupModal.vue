@@ -10,7 +10,7 @@ import { requestToJoinGroup } from "@api/User";
 
 const groupAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);
-const groupChosen = ref<string | null>(null);
+const groupChosen = ref<string>("");
 const joinableGroups = ref<ApiGroupResponse[] | null>(null);
 const emailIsTooShort = computed<boolean>(
   () => groupAdminEmailAddress.value.trim().length < 3

@@ -140,11 +140,11 @@ const signInFormIsFilledAndValid = computed<boolean>(
         "
       >
         <span v-if="signInInProgress.requestPending">
-          <span
-            class="spinner-border spinner-border-sm"
+          <b-spinner
+            variant="secondary"
             role="status"
             aria-hidden="true"
-          ></span>
+          ></b-spinner>
           Signing in...
         </span>
         <span v-else>Sign in</span>
