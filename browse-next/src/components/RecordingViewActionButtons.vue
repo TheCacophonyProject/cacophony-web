@@ -10,7 +10,8 @@ import {
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
-import TwoStepDeleteButton from "@/components/TwoStepDeleteButton.vue";
+import TwoActionDeleteButton from "@/components/TwoStepActionButton.vue";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse | null;
@@ -160,8 +161,9 @@ const notImplemented = () => {
         Download CPTV
       </b-dropdown-item-button>
     </b-dropdown>
-    <two-step-delete-button
+    <two-step-action-button
       :action="() => emit('delete-recording')"
+      icon="trash-can"
       label="Delete Recording"
       v-if="userIsGroupAdmin"
     />

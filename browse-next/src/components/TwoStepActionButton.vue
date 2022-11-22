@@ -7,21 +7,28 @@
     :offset="offset"
     no-caret
     variant="link"
-    :menu-class="['dropdown-indicator', align]"
+    :menu-class="['dropdown-indicator', alignment]"
     :disabled="disabled"
   >
     <template #button-content>
-      <div ref="iconButton">
-        <font-awesome-icon icon="trash-can" color="#666" />
-      </div>
+      <button type="button" class="btn" ref="iconButton" :class="classes">
+        <font-awesome-icon
+          :icon="icon"
+          v-if="icon"
+          :color="color || 'inherit'"
+          :rotation="rotate || null"
+        />
+        <span v-if="computedLabel" class="ps-2" v-html="computedLabel" />
+      </button>
     </template>
+
     <b-dropdown-group class="px-2" header-class="d-none">
       <button
         @click="() => action()"
         class="btn btn-outline-danger text-nowrap w-100"
       >
         <font-awesome-icon icon="exclamation-triangle" />
-        <span class="ms-2" v-html="computedLabel" />
+        <span class="ms-2" v-html="computedConfirmationLabel" />
       </button>
     </b-dropdown-group>
   </b-dropdown>
@@ -31,22 +38,32 @@ import { computed } from "vue";
 
 const {
   action,
-  label = "Delete",
+  label = "",
+  confirmationLabel = "",
   disabled = false,
-  align = "centered",
+  alignment = "centered",
+  classes = [],
+  icon = "trash-can",
+  color = "inherit",
+  rotate = null,
 } = defineProps<{
   action: () => void;
   label?: string | (() => string);
+  confirmationLabel?: string | (() => string);
   disabled?: boolean;
-  align?: "right" | "centered" | "left";
+  classes?: string[] | string;
+  icon?: string;
+  color?: string;
+  alignment?: "right" | "centered" | "left";
+  rotate?: 90 | 180 | 270 | null;
 }>();
 
 // Ideally we want to center the button and the triangle, but if we're too close to the edge of the viewport,
 // we want to move it to one side.
 const offset = computed<string>(() => {
-  if (align === "right") {
-    return "5, 7";
-  } else if (align === "centered") {
+  if (alignment === "right") {
+    return "-5, 7";
+  } else if (alignment === "centered") {
     return "-75, 7";
   }
   return "-5, 7";
@@ -57,6 +74,13 @@ const computedLabel = computed<string>(() => {
     return label;
   }
   return label();
+});
+
+const computedConfirmationLabel = computed<string>(() => {
+  if (typeof confirmationLabel === "string") {
+    return confirmationLabel;
+  }
+  return confirmationLabel();
 });
 </script>
 <style lang="less">

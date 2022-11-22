@@ -555,12 +555,34 @@ export default function (app: Application, baseUrl: string) {
     // Extract required resources to check permissions
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByEmailOrId(body(["userId", "email"])),
     async (request: Request, response: Response, next: NextFunction) => {
-      const { removed, wasPending } = await models.Group.removeUserFromGroup(
-        response.locals.group,
-        response.locals.user
-      );
+      if (request.body.userId) {
+        await fetchUnauthorizedRequiredUserByEmailOrId(body("userId"))(
+          request,
+          response,
+          next
+        );
+      } else if (request.body.email) {
+        // We're trying to remove an invited user.
+        await fetchUnauthorizedOptionalUserByEmailOrId(body("email"))(
+          request,
+          response,
+          next
+        );
+      }
+    },
+
+    async (request: Request, response: Response, next: NextFunction) => {
+      let removed = false;
+      let wasPending = false;
+      if (response.locals.user) {
+        const success = await models.Group.removeUserFromGroup(
+          response.locals.group,
+          response.locals.user
+        );
+        removed = success.removed;
+        wasPending = success.wasPending;
+      }
       if (!removed && request.body.email) {
         // Check to see if the user was just invited, but not added, in which case we can
         // just revoke the invitation.
@@ -575,7 +597,7 @@ export default function (app: Application, baseUrl: string) {
           // This user can't have confirmed their email yet, so just send
           await sendRemovedFromInvitedGroupNotificationEmail(
             request.headers.host,
-            response.locals.user.email,
+            invitation.email,
             response.locals.group.groupName
           );
         }
@@ -1097,6 +1119,7 @@ export default function (app: Application, baseUrl: string) {
           token,
           actualRequestUser.email,
           group.groupName,
+          actualRequestUser.userName,
           email
         );
         if (!sendSuccess) {
@@ -1136,6 +1159,7 @@ export default function (app: Application, baseUrl: string) {
               token,
               actualRequestUser.email,
               group.groupName,
+              actualRequestUser.userName,
               email
             );
           } else {
@@ -1145,6 +1169,7 @@ export default function (app: Application, baseUrl: string) {
               token,
               actualRequestUser.email,
               group.groupName,
+              actualRequestUser.userName,
               email
             );
           }

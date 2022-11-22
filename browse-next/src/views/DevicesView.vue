@@ -8,7 +8,7 @@ import type { SelectedGroup } from "@models/LoggedInUser";
 import CardTable from "@/components/CardTable.vue";
 import type {
   CardTableItems,
-  CardTableValue,
+  TableCellValue,
 } from "@/components/CardTableTypes";
 import { DateTime } from "luxon";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -32,21 +32,26 @@ onBeforeMount(async () => {
   loadingDevices.value = false;
 });
 
-const tableItems = computed<CardTableItems>(() => {
+const tableItems = computed<CardTableItems<string>>(() => {
   return devices.value
     .map((device: ApiDeviceResponse) => ({
-      deviceName: device.deviceName, // Use device name with icon like we do currently?
-      type: device.type,
-      lastSeen: noWrap(
-        device.lastConnectionTime
-          ? (DateTime.fromJSDate(
-              new Date(device.lastConnectionTime)
-            ).toRelative() as string)
-          : "never (offline device)"
-      ),
+      deviceName: { value: device.deviceName }, // Use device name with icon like we do currently?
+      type: { value: device.type },
+      lastSeen: {
+        value: noWrap(
+          device.lastConnectionTime
+            ? (DateTime.fromJSDate(
+                new Date(device.lastConnectionTime)
+              ).toRelative() as string)
+            : "never (offline device)"
+        ),
+      },
     }))
     .reduce(
-      (acc: CardTableItems, item: Record<string, CardTableValue>) => {
+      (
+        acc: CardTableItems<string>,
+        item: Record<string, TableCellValue<string>>
+      ) => {
         if (acc.headings.length === 0) {
           acc.headings = Object.keys(item);
         }

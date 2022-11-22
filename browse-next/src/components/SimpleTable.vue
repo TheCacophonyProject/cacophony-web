@@ -18,41 +18,13 @@
     <tbody>
       <tr v-for="(row, rowIndex) in displayedItems.values" :key="rowIndex">
         <td
-          :class="[
-            compact ? 'py-2 px-3' : 'p-3',
-            { 'text-end': isComponent(value) || isButton(value) },
-            { 'w-100': !(isComponent(value) || isButton(value)) },
-          ]"
-          v-for="(value, index) in row"
+          :class="[compact ? 'py-2 px-3' : 'p-3', ...(item.cellClasses || [])]"
+          v-for="(item, index) in row"
           :key="index"
         >
-          <component
-            class="text-end"
-            v-if="isComponent(value)"
-            :is="extractComponent(value)"
-            :action="extractAction(value)"
-            :disabled="componentIsDisabled(value)"
-            :label="castComponent(value).label"
-            :align="castComponent(value).align || 'centered'"
-          />
-          <button
-            v-else-if="isButton(value)"
-            class="btn"
-            :class="castButton(value).classes || []"
-            :disabled="componentIsDisabled(value)"
-            @click.prevent="() => extractAction(value)()"
-          >
-            <font-awesome-icon
-              :icon="castButton(value).icon"
-              v-if="castButton(value).icon"
-              :color="castButton(value).color || 'inherit'"
-              :rotation="castButton(value).rotate || null"
-            />
-            <span v-if="castButton(value).label">{{
-              castButton(value).label || ""
-            }}</span>
-          </button>
-          <span v-else v-html="value" />
+          <slot :name="items.headings[index]" v-bind="{ item }">
+            <span v-if="item.value" class="text-nowrap" v-html="item.value" />
+          </slot>
         </td>
       </tr>
     </tbody>
@@ -61,29 +33,18 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type {
-  CardTableItems,
-  CardTableValue,
-} from "@/components/CardTableTypes";
-import {
-  isComponent,
-  isButton,
-  extractComponent,
-  extractAction,
-  castButton,
-  componentIsDisabled,
-  castComponent,
-} from "@/components/CardTableTypes";
+import type { CardTableItems } from "@/components/CardTableTypes";
+type GenericCardTableValue = { cellClasses?: string[]; value: any };
 
 const { items, compact = false } = defineProps<{
   breakPoint?: number;
-  items: CardTableItems;
+  items: CardTableItems<any>;
   compact?: boolean;
 }>();
 
-const itemsMapped = computed<Record<string, CardTableValue>[]>(() => {
+const itemsMapped = computed<Record<string, GenericCardTableValue>[]>(() => {
   return items.values.map((values) => {
-    const item: Record<string, CardTableValue> = {};
+    const item: Record<string, GenericCardTableValue> = {};
     for (let i = 0; i < values.length; i++) {
       item[items.headings[i]] = values[i];
     }
@@ -108,7 +69,7 @@ const splitCamelCase = (str: string): string => {
 
 const displayedItems = computed<{
   headings: string[];
-  values: CardTableValue[][];
+  values: GenericCardTableValue[][];
 }>(() => {
   // If the heading starts with _, it's value is displayed, but we just use "" for the heading.
   // If the heading starts with __, it's not displayed at all.

@@ -23,7 +23,7 @@ import {
 } from "@api/Classifications";
 import type {
   CardTableItems,
-  CardTableValue,
+  TableCellValue,
 } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
@@ -57,39 +57,63 @@ const showTaggerDetails = ref<boolean>(false);
 const tagSelect = ref<typeof HierarchicalTagSelect>();
 const trackDetails = ref<HTMLDivElement>();
 
-const taggerDetails = computed<CardTableItems>(() => {
-  const tags: ApiTrackTagResponse[] = [...humanTags.value];
-  if (masterTag.value) {
-    tags.unshift(masterTag.value);
-  }
-  const userIsGroupAdmin = (currentSelectedGroup.value as SelectedGroup).admin;
-  // NOTE: Delete button gives admins the ability to remove track tags created by other users,
-  //  but not AI tags.
-  return {
-    headings: ["tag", "tagger"].concat(
-      userIsGroupAdmin ? ["_deleteAction"] : []
-    ),
-    values: tags.map(({ what, userName, automatic, id }) =>
-      (
-        [
-          capitalize(displayLabelForClassificationLabel(what)),
-          (automatic ? "Cacophony AI" : userName || "").replace(" ", "&nbsp;"),
-        ] as CardTableValue[]
-      ).concat(
-        !automatic && userIsGroupAdmin
-          ? [
-              {
-                type: "button",
-                icon: "trash-can",
-                action: () =>
-                  emit("remove-tag", { trackId: track.id, trackTagId: id }),
-              },
-            ]
-          : []
-      )
-    ),
-  };
+const userIsGroupAdmin = computed<boolean>(() => {
+  return (
+    (currentSelectedGroup.value &&
+      (currentSelectedGroup.value as SelectedGroup).admin) ||
+    false
+  );
 });
+
+const taggerDetails = computed<CardTableItems<ApiTrackTagResponse | string>>(
+  () => {
+    const tags: ApiTrackTagResponse[] = [...humanTags.value];
+    if (masterTag.value) {
+      tags.unshift(masterTag.value);
+    }
+
+    // NOTE: Delete button gives admins the ability to remove track tags created by other users,
+    //  but not AI tags
+    return tags
+      .map((tag: ApiTrackTagResponse) => {
+        const item: Record<
+          string,
+          TableCellValue<ApiTrackTagResponse | string>
+        > = {
+          tag: {
+            value: capitalize(displayLabelForClassificationLabel(tag.what)),
+          },
+          tagger: {
+            value: (tag.automatic
+              ? "Cacophony AI"
+              : tag.userName || ""
+            ).replace(" ", "&nbsp;"),
+          },
+          __sort: { value: new Date(tag.createdAt || "").getTime().toString() },
+        };
+        if (!tag.automatic && userIsGroupAdmin.value) {
+          item._deleteAction = { value: tag };
+        }
+        return item;
+      })
+      .reduce(
+        (
+          acc: CardTableItems<ApiTrackTagResponse | string>,
+          item: Record<string, TableCellValue<ApiTrackTagResponse | string>>
+        ) => {
+          if (acc.headings.length === 0) {
+            acc.headings = Object.keys(item);
+          }
+          acc.values.push(Object.values(item));
+          return acc;
+        },
+        {
+          headings: [],
+          values: [],
+        }
+      );
+  }
+);
 
 const route = useRoute();
 
@@ -409,7 +433,7 @@ const handleImageError = (e: ErrorEvent) => {
       <button
         type="button"
         class="btn fs-7 confirm-button"
-        @click.prevent="confirmAiSuggestedTag"
+        @click.stop.prevent="confirmAiSuggestedTag"
       >
         <span class="label">Confirm</span>
         <span class="fs-6 icon">
@@ -426,7 +450,7 @@ const handleImageError = (e: ErrorEvent) => {
         type="button"
         class="btn fs-7 reject-button"
         aria-label="Reject AI classification"
-        @click.prevent="rejectAiSuggestedTag"
+        @click.stop.prevent="rejectAiSuggestedTag"
       >
         <span class="visually-hidden">Reject</span>
         <span class="fs-6 icon">
@@ -520,7 +544,23 @@ const handleImageError = (e: ErrorEvent) => {
         :items="taggerDetails"
         class="mb-2"
         compact
-      />
+      >
+        <template #_deleteAction="{ item }">
+          <button
+            v-if="userIsGroupAdmin && !item.value.automatic"
+            class="btn text-secondary"
+            @click.prevent="
+              () =>
+                emit('remove-tag', {
+                  trackId: track.id,
+                  trackTagId: item.value.id,
+                })
+            "
+          >
+            <font-awesome-icon icon="trash-can" />
+          </button>
+        </template>
+      </simple-table>
     </div>
   </div>
 </template>

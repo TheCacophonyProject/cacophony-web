@@ -136,6 +136,7 @@ export const sendGroupInviteExistingMemberEmail = async (
   existingAccountJoinGroupToken: string,
   requesterEmailAddress: string,
   requestGroupName: string,
+  requesterUserName: string,
   userEmailAddress: string
 ) => {
   const common = commonInterpolants(origin);
@@ -152,6 +153,7 @@ export const sendGroupInviteExistingMemberEmail = async (
     {
       existingAccountJoinGroupUrl,
       requestGroupName,
+      requesterUserName,
       requesterEmailAddress,
       ...common,
     }
@@ -170,6 +172,7 @@ export const sendGroupInviteNewMemberEmail = async (
   newMemberJoinGroupToken: string,
   requesterEmailAddress: string,
   requestGroupName: string,
+  requesterUserName: string,
   userEmailAddress: string
 ) => {
   const common = commonInterpolants(origin);
@@ -191,6 +194,7 @@ export const sendGroupInviteNewMemberEmail = async (
       existingAccountJoinGroupUrl,
       requestGroupName,
       requesterEmailAddress,
+      requesterUserName,
       ...common,
     }
   );

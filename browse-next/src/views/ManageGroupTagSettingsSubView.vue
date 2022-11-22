@@ -5,9 +5,11 @@ import {
 } from "@models/LoggedInUser";
 import { computed, onMounted, ref } from "vue";
 import SimpleTable from "@/components/SimpleTable.vue";
-import type { CardTableItems } from "@/components/CardTableTypes";
+import type {
+  CardTableItems,
+  TableCellValue,
+} from "@/components/CardTableTypes";
 import { DEFAULT_TAGS } from "@/consts";
-import type { CardTableValue } from "@/components/CardTableTypes";
 import {
   displayLabelForClassificationLabel,
   getClassifications,
@@ -80,34 +82,35 @@ onMounted(async () => {
   await getClassifications();
 });
 
-const tableItems = computed<CardTableItems>(() => {
+const isFirstTagInList = (tag: string) => {
+  return customTags.value.indexOf(tag) === 0;
+};
+const isLastTagInList = (tag: string) => {
+  return customTags.value.indexOf(tag) === customTags.value.length - 1;
+};
+
+const tableItems = computed<CardTableItems<string>>(() => {
   return customTags.value
     .map((tag: string, index: number) => ({
-      tag: capitalize(displayLabelForClassificationLabel(tag)),
+      tag: {
+        value: capitalize(displayLabelForClassificationLabel(tag)),
+        cellClasses: ["w-100"],
+      },
       _moveUp: {
-        type: "button",
-        icon: "arrow-up",
-        color: "#444",
-        disabled: () => index === 0,
-        action: () => moveTagUp(tag),
+        value: tag,
       },
       _moveDown: {
-        type: "button",
-        icon: "arrow-up",
-        rotate: 180,
-        color: "#444",
-        disabled: () => index === customTags.value.length - 1,
-        action: () => moveTagDown(tag),
+        value: tag,
       },
       _deleteAction: {
-        type: "button",
-        icon: "trash-can",
-        color: "#444",
-        action: () => removeTag(tag),
+        value: tag,
       },
     }))
     .reduce(
-      (acc: CardTableItems, item: Record<string, CardTableValue>) => {
+      (
+        acc: CardTableItems<string>,
+        item: Record<string, TableCellValue<string>>
+      ) => {
         if (acc.headings.length === 0) {
           acc.headings = Object.keys(item);
         }
@@ -163,7 +166,31 @@ const addPendingTag = async () => {
       </button>
     </div>
   </div>
-  <simple-table :items="tableItems" compact />
+  <simple-table :items="tableItems" compact>
+    <template #_moveUp="{ item }">
+      <button
+        class="btn"
+        @click.prevent="() => moveTagUp(item.value)"
+        :disabled="isFirstTagInList(item.value)"
+      >
+        <font-awesome-icon icon="arrow-up" />
+      </button>
+    </template>
+    <template #_moveDown="{ item }">
+      <button
+        class="btn"
+        @click.prevent="() => moveTagDown(item.value)"
+        :disabled="isLastTagInList(item.value)"
+      >
+        <font-awesome-icon icon="arrow-up" rotation="180" />
+      </button>
+    </template>
+    <template #_deleteAction="{ item }">
+      <button class="btn" @click.prevent="() => removeTag(item.value)">
+        <font-awesome-icon icon="trash-can" />
+      </button>
+    </template>
+  </simple-table>
   <b-modal
     v-model="showAddTagModal"
     title="Add group tag"

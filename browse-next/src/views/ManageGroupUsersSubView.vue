@@ -6,16 +6,17 @@ import {
 } from "@models/LoggedInUser";
 import type { LoggedInUser, SelectedGroup } from "@models/LoggedInUser";
 import { computed, onBeforeMount, ref } from "vue";
-import { getUsersForGroup } from "@api/Group";
+import { getUsersForGroup, removeGroupUser } from "@api/Group";
 import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupUserResponse } from "@typedefs/api/group";
 import SimpleTable from "@/components/SimpleTable.vue";
-import TwoStepDeleteButton from "@/components/TwoStepDeleteButton.vue";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import type {
   CardTableItems,
-  CardTableValue,
+  TableCellValue,
 } from "@/components/CardTableTypes";
 import LeaveGroupModal from "@/components/LeaveGroupModal.vue";
+import GroupInviteModal from "@/components/GroupInviteModal.vue";
 const groupUsers = ref<ApiGroupUserResponse[]>([]);
 const loadingUsers = ref(false);
 
@@ -27,100 +28,137 @@ const CurrentUser = computed<LoggedInUser>(() => {
   return fallibleCurrentUser.value as LoggedInUser;
 });
 
-onBeforeMount(async () => {
+const loadGroupUsers = async () => {
   loadingUsers.value = true;
   const groupUsersResponse = await getUsersForGroup(
     (currentSelectedGroup.value as { groupName: string; id: GroupId }).id
   );
   if (groupUsersResponse.success) {
-    // Filter out invited users, non-member or existing member
-    // groupUsers.value = groupUsersResponse.result.users.filter(
-    //   (user) => user.id !== undefined
-    // );
     groupUsers.value = groupUsersResponse.result.users;
   } else {
     // Do something with error.
   }
   loadingUsers.value = false;
+};
+
+onBeforeMount(async () => {
+  await loadGroupUsers();
 });
 
 const editUserAdmin = async (user: ApiGroupUserResponse) => {
   console.log("Edit user admin state");
+};
+
+const acceptPendingUser = async (user: ApiGroupUserResponse) => {
+  console.log("Accept pending user");
 };
 const selectedLeaveGroup = ref(false);
 const removeUser = async (user: ApiGroupUserResponse) => {
   if (user.id === CurrentUser.value.id) {
     selectedLeaveGroup.value = true;
   } else {
-    console.log("Remove user from group");
+    let removeUserResponse;
+    if (user.id) {
+      removeUserResponse = await removeGroupUser(
+        (currentSelectedGroup.value as SelectedGroup).groupName,
+        user.id
+      );
+    } else {
+      // The user is invited, and the userName field is actually the email
+      removeUserResponse = await removeGroupUser(
+        (currentSelectedGroup.value as SelectedGroup).groupName,
+        undefined,
+        user.userName
+      );
+    }
+    if (removeUserResponse.success) {
+      console.log("Removed user from group");
+      await loadGroupUsers();
+    }
   }
 };
 
 const isLastAdminUser = (user: ApiGroupUserResponse): boolean => {
   return (
-    user.admin && groupUsers.value.filter((user) => user.admin).length === 1
+    user.admin &&
+    !user.pending &&
+    groupUsers.value.filter((user) => user.admin && !user.pending).length === 1
   );
 };
 
-const tableItems = computed<CardTableItems>(() => {
-  return groupUsers.value
-    .map((user: ApiGroupUserResponse) => ({
-      userName:
-        user.id === CurrentUser.value.id
-          ? `${user.userName} (you)`
-          : user.userName,
-      administrator: user.admin ? "Yes" : "",
-      groupOwner: "No",
-      _editAdmin: {
-        type: "button",
-        icon: "pencil-alt",
-        color: "#444",
-        action: () => editUserAdmin(user),
-        // Maybe this should be a component?
-      },
-      _deleteAction: {
-        type: "component",
-        component: TwoStepDeleteButton,
-        icon: "trash-can",
-        color: "#444",
-        align: "right",
-        label: () =>
-          user.id === CurrentUser.value.id
-            ? "Leave group"
-            : `Remove <strong><em>${user.userName}</em></strong> from group`,
-        // TODO: If you try to delete yourself, we should have a modal confirmation, even if there are other admin users?
-        //  Actually, that's the same as the "Leave group" functionality.
-        disabled: () => isLastAdminUser(user),
-        action: () => removeUser(user),
-      },
-    }))
-    .reduce(
-      (acc: CardTableItems, item: Record<string, CardTableValue>) => {
-        if (acc.headings.length === 0) {
-          acc.headings = Object.keys(item);
-        }
-        acc.values.push(Object.values(item));
-        return acc;
-      },
-      {
-        headings: [],
-        values: [],
-      }
-    );
-});
-const showInviteUserModal = ref<boolean>(false);
-const pendingUserEmail = ref<string>("");
+// TODO: Should we have one integrated table, or a pending table and a users table?
+// What should the ordering of the users be?
 
-const invitePendingUser = async () => {
-  // If the user doesn't exist, we could create the user as a "pending" user.
-  // If they do exist, we can add the group/user relationship with a "pending" flag?
-  // If the user clicks the link and there's no pending flag waiting, that means the invitation has been revoked.
-  // This means the user can't reuse a link to rejoin a group if they're removed.
-  // Another option is just to have an invites table?
-};
+// User activity summary would be cool: Tagging activity and data usage activity.
+
+const userIsCurrentUser = (user: ApiGroupUserResponse) =>
+  user.id === CurrentUser.value.id;
+
+const anyPendingJoinRequests = computed<boolean>(() => {
+  return groupUsers.value.some((groupUser) => !!groupUser.pending);
+});
+
+const tableItems = computed<CardTableItems<ApiGroupUserResponse | boolean>>(
+  () => {
+    return groupUsers.value
+      .map((value: ApiGroupUserResponse) => {
+        let item: Record<
+          string,
+          TableCellValue<ApiGroupUserResponse | boolean>
+        > = {
+          user: {
+            value,
+            cellClasses: ["w-100"],
+          },
+          permissions: {
+            value: value.admin,
+          },
+          _groupOwner: {
+            value: value.owner,
+          },
+          _editPermissions: {
+            value,
+          },
+          _deleteAction: {
+            value,
+          },
+        };
+        if (anyPendingJoinRequests.value) {
+          item = {
+            user: item.user,
+            joinRequests: {
+              value: value.pending === "requested" ? value : false,
+              cellClasses: ["w-100"],
+            },
+            ...item,
+          };
+        }
+        return item;
+      })
+      .reduce(
+        (
+          acc: CardTableItems<ApiGroupUserResponse | boolean>,
+          item: Record<string, TableCellValue<ApiGroupUserResponse | boolean>>
+        ) => {
+          if (acc.headings.length === 0) {
+            acc.headings = Object.keys(item);
+          }
+          acc.values.push(Object.values(item));
+          return acc;
+        },
+        {
+          headings: [],
+          values: [],
+        }
+      );
+  }
+);
+const showInviteUserModal = ref<boolean>(false);
 
 // TODO: Billing users - there must be at least one owner/billing user at all times.  For a billing user to be removed
 //  from the group, billing/ownership must be transferred to another user first.
+
+//
 </script>
 <template>
   <h1 class="d-none d-md-block h5">Users</h1>
@@ -136,7 +174,8 @@ const invitePendingUser = async () => {
         class="btn btn-outline-secondary ms-2"
         @click.stop.prevent="() => (showInviteUserModal = true)"
       >
-        Invite user
+        <font-awesome-icon icon="envelope" />
+        <span class="ps-2">Invite someone</span>
       </button>
     </div>
   </div>
@@ -146,20 +185,90 @@ const invitePendingUser = async () => {
   >
     <b-spinner variant="secondary" />
   </div>
-  <simple-table :items="tableItems" compact v-else />
-
-  <b-modal
-    v-model="showInviteUserModal"
-    centered
-    @ok="invitePendingUser"
-    ok-title="Invite user"
-    title="Invite a user"
-  >
-    <p>
-      You can invite a user to this group by entering their email here. They'll
-      be sent an email with a link that will let them join your group.
-    </p>
-  </b-modal>
+  <simple-table :items="tableItems" compact v-else>
+    <template #user="{ item }">
+      <div class="d-flex align-items-center">
+        <span>{{ item.value.userName }}</span>
+        <b-badge
+          v-if="userIsCurrentUser(item.value)"
+          variant="secondary"
+          class="ms-2 fs-8"
+          >You</b-badge
+        >
+        <b-badge
+          v-else-if="item.value.pending === 'requested'"
+          variant="primary"
+          class="ms-2 fs-8"
+          >Wants to join</b-badge
+        >
+        <b-badge
+          v-else-if="item.value.pending === 'invited'"
+          class="ms-2 fs-8"
+          variant="warning"
+          >Invited</b-badge
+        >
+      </div>
+    </template>
+    <template #permissions="{ item }">
+      <div
+        class="fs-7 text-secondary d-flex align-items-center"
+        v-if="item.value"
+      >
+        <font-awesome-icon icon="check-circle" class="fs-6" />
+        <span class="ps-2">admin</span>
+      </div>
+    </template>
+    <template #_groupOwner="{ item }">
+      <div
+        class="fs-7 text-secondary d-flex align-items-center"
+        v-if="item.value"
+      >
+        <font-awesome-icon icon="check-circle" class="fs-6" />
+        <span class="ps-2">owner</span>
+      </div>
+    </template>
+    <template #joinRequests="{ item }">
+      <two-step-action-button
+        v-if="item.value.pending"
+        class="text-end"
+        :action="() => acceptPendingUser(item.value)"
+        icon="check"
+        :confirmation-label="`Accept <strong><em>${item.value.userName}</em></strong> into group`"
+        label="Approve request"
+        classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap w-100"
+        alignment="centered"
+      />
+    </template>
+    <template #_deleteAction="{ item }">
+      <two-step-action-button
+        class="text-end"
+        classes="btn-outline-secondary fs-7"
+        :action="() => removeUser(item.value)"
+        icon="trash-can"
+        :disabled="isLastAdminUser(item.value)"
+        :confirmation-label="
+          userIsCurrentUser(item.value)
+            ? 'Leave group'
+            : item.value.pending === 'requested'
+            ? `Deny request from <strong><em>${item.value.userName}</em></strong> to join group`
+            : item.value.pending === 'invited'
+            ? `Revoke invitation to <strong><em>${item.value.userName}</em></strong>`
+            : `Remove <strong><em>${item.value.userName}</em></strong> from group`
+        "
+        alignment="right"
+      />
+    </template>
+    <template #_editPermissions="{ item }">
+      <button
+        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+        @click.prevent="() => editUserAdmin(item.value)"
+      >
+        <font-awesome-icon icon="pencil-alt" />
+        <span class="ps-2">Permissions</span>
+      </button>
+    </template>
+  </simple-table>
+  <group-invite-modal v-model="showInviteUserModal" />
   <leave-group-modal v-model="selectedLeaveGroup" />
 </template>
 <style lang="less" scoped>

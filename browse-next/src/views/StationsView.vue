@@ -10,7 +10,7 @@ import type { NamedPoint } from "@models/mapUtils";
 import SimpleTable from "@/components/SimpleTable.vue";
 import type {
   CardTableItems,
-  CardTableValue,
+  TableCellValue,
 } from "@/components/CardTableTypes";
 
 const stations = ref<ApiStationResponse[]>([]);
@@ -64,13 +64,16 @@ const highlightPoint = (p: NamedPoint | null) => {
   highlightedPoint.value = p;
 };
 
-const tableItems = computed<CardTableItems>(() => {
+const tableItems = computed<CardTableItems<string>>(() => {
   return stations.value
     .map((station: ApiStationResponse) => ({
-      name: station.name, // Use device name with icon like we do currently?
+      name: { value: station.name }, // Use device name with icon like we do currently?
     }))
     .reduce(
-      (acc: CardTableItems, item: Record<string, CardTableValue>) => {
+      (
+        acc: CardTableItems<string>,
+        item: Record<string, TableCellValue<string>>
+      ) => {
         if (acc.headings.length === 0) {
           acc.headings = Object.keys(item);
         }

@@ -23,6 +23,7 @@ const _sendTestEmails = async () => {
     "FOO",
     "jon@hardiesoft.com",
     "My awesome group",
+    "Jon Hardie",
     "jon@cacophony.org.nz"
   );
   await sendGroupInviteExistingMemberEmail(
@@ -30,6 +31,7 @@ const _sendTestEmails = async () => {
     "FOO",
     "jon@hardiesoft.com",
     "My awesome group",
+    "Jon Hardie",
     "jon@cacophony.org.nz"
   );
   await sendGroupMembershipRequestEmail(

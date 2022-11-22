@@ -268,6 +268,7 @@ export default function (sequelize, DataTypes): GroupStatic {
     if (groupUser !== null && groupUser.removedAt === null) {
       const wasAdmin = groupUser.admin;
       const wasOwner = groupUser.owner;
+      const prevPending = groupUser.pending;
       const permissionChanges = {
         oldAdmin: wasAdmin,
         oldOwner: wasOwner,
@@ -279,6 +280,9 @@ export default function (sequelize, DataTypes): GroupStatic {
       }
       if (wasOwner !== owner) {
         groupUser.owner = owner;
+      }
+      if (prevPending !== null && prevPending !== pending) {
+        groupUser.pending = pending;
       }
       if (wasOwner !== owner || wasAdmin !== admin) {
         await groupUser.save();
@@ -313,7 +317,9 @@ export default function (sequelize, DataTypes): GroupStatic {
         added: true,
       };
     }
-    await group.addUser(userToAdd, { through: { admin, owner, pending } });
+    if (groupUser === null) {
+      await group.addUser(userToAdd, { through: { admin, owner, pending } });
+    }
     return {
       action: "Added user to group.",
       permissionChanges: {
