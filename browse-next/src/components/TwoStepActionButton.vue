@@ -8,6 +8,7 @@
     no-caret
     variant="link"
     :menu-class="['dropdown-indicator', alignment]"
+    toggle-class="p-0"
     :disabled="disabled"
   >
     <template #button-content>

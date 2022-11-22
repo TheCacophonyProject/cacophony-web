@@ -18,7 +18,7 @@
     <tbody>
       <tr v-for="(row, rowIndex) in displayedItems.values" :key="rowIndex">
         <td
-          :class="[compact ? 'py-2 px-3' : 'p-3', ...(item.cellClasses || [])]"
+          :class="[compact ? 'py-2 ps-3' : 'py-3 ps-3', { 'pe-3': index === row.length - 1 }, ...(item.cellClasses || [])]"
           v-for="(item, index) in row"
           :key="index"
         >

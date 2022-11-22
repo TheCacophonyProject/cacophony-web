@@ -332,7 +332,7 @@ const permissionsOptions = computed(() => [
         :disabled="isLastOwnerUser(item.value) && isLastAdminUser(item.value)"
       >
         <font-awesome-icon icon="pencil-alt" />
-        <span class="ps-2">Permissions</span>
+        <span class="ps-2">Change permissions</span>
       </button>
     </template>
   </simple-table>

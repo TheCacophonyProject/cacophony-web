@@ -652,6 +652,19 @@ export default function (app: Application, baseUrl: string) {
             invitation.email,
             response.locals.group.groupName
           );
+          return successResponse(response, "Removed user group invitation.");
+        } else {
+          if (!response.locals.user) {
+            return next(
+              new AuthorizationError(
+                `Could not find a user with an email of '${request.body.email}'`
+              )
+            );
+          } else {
+            return next(
+              new ClientError("Failed to remove user from the group.")
+            );
+          }
         }
       }
       if (removed && !wasPending) {

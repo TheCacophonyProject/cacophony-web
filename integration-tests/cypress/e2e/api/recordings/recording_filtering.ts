@@ -809,42 +809,77 @@ describe("Recording filtering", () => {
   });
 
   it("Verify all un-filtered tags are not filtered", () => {
-    const recordings = unfiltered_tags.map((tag) => {
-      const recording: ApiRecordingSet = JSON.parse(
+    // FIXME - Should run faster without serial dependencies
+    // const recordings = unfiltered_tags.map((tag) => {
+    //   const recording: ApiRecordingSet = JSON.parse(
+    //     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    //   );
+    //   recording.metadata.tracks[0].predictions[0].confident_tag = tag;
+    //   return recording;
+    // });
+    // const expectedRecordings = recordings.map((recording) => {
+    //   const expected = TestCreateExpectedRecordingData(
+    //     TEMPLATE_THERMAL_RECORDING_RESPONSE,
+    //     "rfRecording19",
+    //     "rfCamera1",
+    //     "rfGroup",
+    //     null,
+    //     recording
+    //   );
+    //   expected.tracks[0].filtered = false;
+    //   return expected;
+    // });
+    // for (let i = 0; i < recordings.length; i++) {
+    //   const recording = recordings[i];
+    //   const expectedRecording = expectedRecordings[i];
+    //   cy.apiRecordingAdd(
+    //     "rfCamera1",
+    //     recording,
+    //     undefined,
+    //     "rfRecording19"
+    //   ).then(() => {
+    //     cy.apiRecordingCheck(
+    //       "rfGroupAdmin",
+    //       "rfRecording19",
+    //       expectedRecording,
+    //       EXCLUDE_IDS
+    //     );
+    //   });
+    // }
+
+    unfiltered_tags.forEach((thistag) => {
+      //Recording with animal tag
+      cy.log("Checking " + thistag + " NOT filtered");
+      const recording19: ApiRecordingSet = JSON.parse(
         JSON.stringify(TEMPLATE_THERMAL_RECORDING)
       );
-      recording.metadata.tracks[0].predictions[0].confident_tag = tag;
-      return recording;
-    });
-    const expectedRecordings = recordings.map((recording) => {
-      const expected = TestCreateExpectedRecordingData(
-        TEMPLATE_THERMAL_RECORDING_RESPONSE,
-        "rfRecording19",
-        "rfCamera1",
-        "rfGroup",
-        null,
-        recording
-      );
-      expected.tracks[0].filtered = false;
-      return expected;
-    });
-    for (let i = 0; i < recordings.length; i++) {
-      const recording = recordings[i];
-      const expectedRecording = expectedRecordings[i];
+      recording19.metadata.tracks[0].predictions[0].confident_tag = thistag;
+
+      let expectedRecording19: ApiThermalRecordingResponse;
       cy.apiRecordingAdd(
         "rfCamera1",
-        recording,
+        recording19,
         undefined,
         "rfRecording19"
       ).then(() => {
+        expectedRecording19 = TestCreateExpectedRecordingData(
+          TEMPLATE_THERMAL_RECORDING_RESPONSE,
+          "rfRecording19",
+          "rfCamera1",
+          "rfGroup",
+          null,
+          recording19
+        );
+        expectedRecording19.tracks[0].filtered = false;
+
         cy.apiRecordingCheck(
           "rfGroupAdmin",
           "rfRecording19",
-          expectedRecording,
+          expectedRecording19,
           EXCLUDE_IDS
         );
       });
-    }
+    });
   });
 
   //TODO enable after merge
