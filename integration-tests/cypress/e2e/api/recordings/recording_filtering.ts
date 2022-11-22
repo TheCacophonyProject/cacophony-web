@@ -809,21 +809,21 @@ describe("Recording filtering", () => {
   });
 
   it("Verify all un-filtered tags are not filtered", () => {
-    const recordings = unfiltered_tags.map(tag => {
+    const recordings = unfiltered_tags.map((tag) => {
       const recording: ApiRecordingSet = JSON.parse(
-          JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+        JSON.stringify(TEMPLATE_THERMAL_RECORDING)
       );
       recording.metadata.tracks[0].predictions[0].confident_tag = tag;
       return recording;
     });
-    const expectedRecordings = recordings.map(recording => {
+    const expectedRecordings = recordings.map((recording) => {
       const expected = TestCreateExpectedRecordingData(
-          TEMPLATE_THERMAL_RECORDING_RESPONSE,
-          "rfRecording19",
-          "rfCamera1",
-          "rfGroup",
-          null,
-          recording
+        TEMPLATE_THERMAL_RECORDING_RESPONSE,
+        "rfRecording19",
+        "rfCamera1",
+        "rfGroup",
+        null,
+        recording
       );
       expected.tracks[0].filtered = false;
       return expected;
@@ -832,18 +832,18 @@ describe("Recording filtering", () => {
       const recording = recordings[i];
       const expectedRecording = expectedRecordings[i];
       cy.apiRecordingAdd(
-          "rfCamera1",
-          recording,
-          undefined,
-          "rfRecording19"
+        "rfCamera1",
+        recording,
+        undefined,
+        "rfRecording19"
       ).then(() => {
         cy.apiRecordingCheck(
-            "rfGroupAdmin",
-            "rfRecording19",
-            expectedRecording,
-            EXCLUDE_IDS
-        )
-      })
+          "rfGroupAdmin",
+          "rfRecording19",
+          expectedRecording,
+          EXCLUDE_IDS
+        );
+      });
     }
   });
 

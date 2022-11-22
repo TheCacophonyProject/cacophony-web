@@ -442,7 +442,7 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/groups/users Add a user to a group.
    * @apiName AddUserToGroup
    * @apiGroup Group
-   * @apiDescription This call can add a user to a group. It must to be authenticated
+   * @apiDescription This call can add a user to a group. It must be authenticated
    * by an admin from the group or a user with global write permission. It can also be used to update the
    * admin status of a user for the group by setting admin to true or false.
    *
@@ -465,17 +465,71 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       anyOf(nameOf(body("group")), idOf(body("groupId"))),
       anyOf(body("email").isEmail(), idOf(body("userId"))),
-      booleanOf(body("admin")),
+      booleanOf(body("admin")).optional().default(false),
       booleanOf(body("owner")).optional().default(false),
     ]),
     // Extract required resources to validate permissions.
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
     // Extract secondary resource
-    fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
-    async (request, response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (request.body.userId) {
+        await fetchUnauthorizedRequiredUserByEmailOrId(body("userId"))(
+          request,
+          response,
+          next
+        );
+      } else if (request.body.email) {
+        // We're possibly trying to update an invited user.
+        await fetchUnauthorizedOptionalUserByEmailOrId(body("email"))(
+          request,
+          response,
+          next
+        );
+      }
+    },
+    async (request, response, next) => {
       const user = response.locals.user;
-      const requestUser = response.locals.requestUser;
       const group = response.locals.group;
+
+      if (!user) {
+        // We can update permissions on invited users, so check for any invited users
+        // matching the email address.
+        const invitation = await models.GroupInvites.findOne({
+          where: {
+            GroupId: response.locals.group.id,
+            email: request.body.email,
+          },
+        });
+        if (invitation) {
+          const changed =
+            invitation.admin !== request.body.admin ||
+            invitation.owner !== request.body.owner;
+          if (changed) {
+            await invitation.update({
+              admin: request.body.admin,
+              owner: request.body.owner,
+            });
+            // NOTE: No need to send transactional email for invited user to let them know their permissions have changed.
+            return successResponse(
+              response,
+              "Updated, user group permissions changed."
+            );
+          } else {
+            return successResponse(
+              response,
+              "No change, user already added with identical permissions."
+            );
+          }
+        } else {
+          return next(
+            new AuthorizationError(
+              `Could not find a user with an email of '${request.body.email}'`
+            )
+          );
+        }
+      }
+      const requestUser = response.locals.requestUser;
+
       const asAdmin = request.body.admin;
       const asOwner = request.body.owner;
       const { action, permissionChanges, added } =
@@ -507,7 +561,6 @@ export default function (app: Application, baseUrl: string) {
 
         if (added) {
           // User was added.
-          // NOTE: Going forward, this would really happen via a user accepting a group invite
           await sendAddedToGroupNotificationEmail(
             request.headers.host,
             user.email,
@@ -571,7 +624,6 @@ export default function (app: Application, baseUrl: string) {
         );
       }
     },
-
     async (request: Request, response: Response, next: NextFunction) => {
       let removed = false;
       let wasPending = false;

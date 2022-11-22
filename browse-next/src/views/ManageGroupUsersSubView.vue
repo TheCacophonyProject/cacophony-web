@@ -6,8 +6,12 @@ import {
 } from "@models/LoggedInUser";
 import type { LoggedInUser, SelectedGroup } from "@models/LoggedInUser";
 import { computed, onBeforeMount, ref } from "vue";
-import { getUsersForGroup, removeGroupUser } from "@api/Group";
-import type { GroupId } from "@typedefs/api/common";
+import {
+  addOrUpdateGroupUser,
+  getUsersForGroup,
+  removeGroupUser,
+} from "@api/Group";
+import type { GroupId, UserId } from "@typedefs/api/common";
 import type { ApiGroupUserResponse } from "@typedefs/api/group";
 import SimpleTable from "@/components/SimpleTable.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
@@ -45,8 +49,44 @@ onBeforeMount(async () => {
   await loadGroupUsers();
 });
 
+const showEditPermissions = ref<boolean>(false);
+const editPermissionsForUser = ref<ApiGroupUserResponse | null>(null);
 const editUserAdmin = async (user: ApiGroupUserResponse) => {
-  console.log("Edit user admin state");
+  editPermissionsForUser.value = user;
+  showEditPermissions.value = true;
+  if (user.admin && user.owner) {
+    permissions.value = ["admin", "owner"];
+  } else if (user.admin) {
+    permissions.value = ["admin"];
+  } else if (user.owner) {
+    permissions.value = ["owner"];
+  } else {
+    permissions.value = [];
+  }
+};
+const updateUserPermissions = async () => {
+  let updateUserResponse;
+  const user = editPermissionsForUser.value as ApiGroupUserResponse;
+  if (user.id) {
+    updateUserResponse = await addOrUpdateGroupUser(
+      (currentSelectedGroup.value as SelectedGroup).groupName,
+      permissions.value.includes("admin"),
+      permissions.value.includes("owner"),
+      user.id
+    );
+  } else {
+    // The user is invited, and the userName field is actually the email
+    updateUserResponse = await addOrUpdateGroupUser(
+      (currentSelectedGroup.value as SelectedGroup).groupName,
+      permissions.value.includes("admin"),
+      permissions.value.includes("owner"),
+      undefined,
+      user.userName
+    );
+  }
+  if (updateUserResponse.success) {
+    await loadGroupUsers();
+  }
 };
 
 const acceptPendingUser = async (user: ApiGroupUserResponse) => {
@@ -78,11 +118,25 @@ const removeUser = async (user: ApiGroupUserResponse) => {
   }
 };
 
-const isLastAdminUser = (user: ApiGroupUserResponse): boolean => {
+const isLastAdminUser = (user?: ApiGroupUserResponse): boolean => {
+  if (!user) {
+    return true;
+  }
   return (
     user.admin &&
     !user.pending &&
     groupUsers.value.filter((user) => user.admin && !user.pending).length === 1
+  );
+};
+
+const isLastOwnerUser = (user?: ApiGroupUserResponse): boolean => {
+  if (!user) {
+    return true;
+  }
+  return (
+    user.owner &&
+    !user.pending &&
+    groupUsers.value.filter((user) => user.owner && !user.pending).length === 1
   );
 };
 
@@ -95,7 +149,9 @@ const userIsCurrentUser = (user: ApiGroupUserResponse) =>
   user.id === CurrentUser.value.id;
 
 const anyPendingJoinRequests = computed<boolean>(() => {
-  return groupUsers.value.some((groupUser) => !!groupUser.pending);
+  return groupUsers.value.some(
+    (groupUser) => groupUser.pending === "requested"
+  );
 });
 
 const tableItems = computed<CardTableItems<ApiGroupUserResponse | boolean>>(
@@ -155,10 +211,21 @@ const tableItems = computed<CardTableItems<ApiGroupUserResponse | boolean>>(
 );
 const showInviteUserModal = ref<boolean>(false);
 
-// TODO: Billing users - there must be at least one owner/billing user at all times.  For a billing user to be removed
-//  from the group, billing/ownership must be transferred to another user first.
-
-//
+// NOTE: Billing users - there must be at least one owner/billing user at all times.  For a billing user to be removed
+//  from the group, billing/ownership must be transferred to another user first.  Same goes for admin users.
+const permissions = ref<string[]>([]);
+const permissionsOptions = computed(() => [
+  {
+    value: "admin",
+    text: "Group admin",
+    disabled: isLastAdminUser(editPermissionsForUser.value || undefined),
+  },
+  {
+    value: "owner",
+    text: "Group owner",
+    disabled: isLastOwnerUser(editPermissionsForUser.value || undefined),
+  },
+]);
 </script>
 <template>
   <h1 class="d-none d-md-block h5">Users</h1>
@@ -262,6 +329,7 @@ const showInviteUserModal = ref<boolean>(false);
       <button
         class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
         @click.prevent="() => editUserAdmin(item.value)"
+        :disabled="isLastOwnerUser(item.value) && isLastAdminUser(item.value)"
       >
         <font-awesome-icon icon="pencil-alt" />
         <span class="ps-2">Permissions</span>
@@ -270,6 +338,33 @@ const showInviteUserModal = ref<boolean>(false);
   </simple-table>
   <group-invite-modal v-model="showInviteUserModal" />
   <leave-group-modal v-model="selectedLeaveGroup" />
+  <b-modal
+    v-model="showEditPermissions"
+    centered
+    :title="`Edit permissions for ${editPermissionsForUser?.userName}`"
+    ok-title="Update permissions"
+    @hidden="permissions = []"
+    @ok="updateUserPermissions"
+  >
+    <p>You can update a users' group permissions.</p>
+    <p>
+      Making a user into a group admin means they can do destructive actions
+      like delete recordings, and can add and remove group users.
+    </p>
+    <p>
+      Making a user into a group owner designates them as a point-of-contact for
+      the group, and means that they are ultimately responsible for the group.
+    </p>
+    <hr />
+    <b-form>
+      <div class="input-group mt-2">
+        <b-form-checkbox-group
+          v-model="permissions"
+          :options="permissionsOptions"
+        />
+      </div>
+    </b-form>
+  </b-modal>
 </template>
 <style lang="less" scoped>
 .thead {

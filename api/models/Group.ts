@@ -287,7 +287,7 @@ export default function (sequelize, DataTypes): GroupStatic {
       if (wasOwner !== owner || wasAdmin !== admin) {
         await groupUser.save();
         return {
-          action: "Updated, user was made admin for group.",
+          action: "Updated, user group permissions changed.",
           permissionChanges,
           added: false,
         };

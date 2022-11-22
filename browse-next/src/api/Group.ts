@@ -32,16 +32,27 @@ export const getGroups = (abortable: boolean) =>
     abortable
   ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>;
 
-export const addGroupUser = (
-  groupName: string,
-  userName: string,
-  isAdmin: boolean
-) =>
-  CacophonyApi.post("/api/v1/groups/users", {
-    group: groupName,
-    userName,
+export const addOrUpdateGroupUser = (
+  groupNameOrId: string | GroupId,
+  isAdmin: boolean,
+  isOwner: boolean,
+  userId?: UserId,
+  email?: string
+) => {
+  const payload = {
+    group: groupNameOrId,
     admin: isAdmin,
-  }) as Promise<FetchResult<void>>;
+    owner: isOwner,
+  };
+  if (userId) {
+    (payload as any).userId = userId;
+  } else {
+    (payload as any).email = email;
+  }
+  return CacophonyApi.post("/api/v1/groups/users", payload) as Promise<
+    FetchResult<void>
+  >;
+};
 
 export const removeGroupUser = (
   groupName: string,

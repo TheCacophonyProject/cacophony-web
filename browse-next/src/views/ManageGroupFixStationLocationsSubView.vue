@@ -1,8 +1,7 @@
 <template>
-  <h1>Fix group station locations</h1>
+  <h1 class="h5">Fix group station locations</h1>
   <p>
-    - Options for incorrectly located recordings are (and supported by future
-    UI):
+    Options for incorrectly located recordings are (and supported by future UI):
   </p>
   <ul>
     <li>
