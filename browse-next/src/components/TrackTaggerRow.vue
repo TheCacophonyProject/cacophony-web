@@ -21,14 +21,11 @@ import {
   flatClassifications,
   getClassifications,
 } from "@api/Classifications";
-import type {
-  CardTableItems,
-  TableCellValue,
-} from "@/components/CardTableTypes";
+import type { CardTableRows, CardTableItem } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import SimpleTable from "@/components/SimpleTable.vue";
+import CardTable from "@/components/CardTable.vue";
 import { DEFAULT_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
 const { track, index, color, selected } = defineProps<{
@@ -65,7 +62,7 @@ const userIsGroupAdmin = computed<boolean>(() => {
   );
 });
 
-const taggerDetails = computed<CardTableItems<ApiTrackTagResponse | string>>(
+const taggerDetails = computed<CardTableRows<ApiTrackTagResponse | string>>(
   () => {
     const tags: ApiTrackTagResponse[] = [...humanTags.value];
     if (masterTag.value) {
@@ -74,44 +71,23 @@ const taggerDetails = computed<CardTableItems<ApiTrackTagResponse | string>>(
 
     // NOTE: Delete button gives admins the ability to remove track tags created by other users,
     //  but not AI tags
-    return tags
-      .map((tag: ApiTrackTagResponse) => {
-        const item: Record<
-          string,
-          TableCellValue<ApiTrackTagResponse | string>
-        > = {
-          tag: {
-            value: capitalize(displayLabelForClassificationLabel(tag.what)),
-          },
-          tagger: {
-            value: (tag.automatic
-              ? "Cacophony AI"
-              : tag.userName || ""
-            ).replace(" ", "&nbsp;"),
-          },
-          __sort: { value: new Date(tag.createdAt || "").getTime().toString() },
-        };
-        if (!tag.automatic && userIsGroupAdmin.value) {
-          item._deleteAction = { value: tag };
-        }
-        return item;
-      })
-      .reduce(
-        (
-          acc: CardTableItems<ApiTrackTagResponse | string>,
-          item: Record<string, TableCellValue<ApiTrackTagResponse | string>>
-        ) => {
-          if (acc.headings.length === 0) {
-            acc.headings = Object.keys(item);
-          }
-          acc.values.push(Object.values(item));
-          return acc;
-        },
-        {
-          headings: [],
-          values: [],
-        }
-      );
+    return tags.map((tag: ApiTrackTagResponse) => {
+      const item: Record<
+        string,
+        CardTableItem<ApiTrackTagResponse | string> | string
+      > = {
+        tag: capitalize(displayLabelForClassificationLabel(tag.what)),
+        tagger: (tag.automatic ? "Cacophony AI" : tag.userName || "").replace(
+          " ",
+          "&nbsp;"
+        ),
+        __sort: { value: new Date(tag.createdAt || "").getTime().toString() },
+      };
+      if (!tag.automatic && userIsGroupAdmin.value) {
+        item._deleteAction = { value: tag };
+      }
+      return item;
+    });
   }
 );
 
@@ -539,28 +515,28 @@ const handleImageError = (e: ErrorEvent) => {
           class="ms-2"
         />
       </button>
-      <simple-table
+      <card-table
         v-if="showTaggerDetails"
         :items="taggerDetails"
         class="mb-2"
         compact
       >
-        <template #_deleteAction="{ item }">
+        <template #_deleteAction="{ cell }">
           <button
-            v-if="userIsGroupAdmin && !item.value.automatic"
+            v-if="userIsGroupAdmin && !cell.value.automatic"
             class="btn text-secondary"
             @click.prevent="
               () =>
                 emit('remove-tag', {
                   trackId: track.id,
-                  trackTagId: item.value.id,
+                  trackTagId: cell.value.id,
                 })
             "
           >
             <font-awesome-icon icon="trash-can" />
           </button>
         </template>
-      </simple-table>
+      </card-table>
     </div>
   </div>
 </template>

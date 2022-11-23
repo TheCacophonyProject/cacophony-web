@@ -10,7 +10,6 @@ import {
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
-import TwoActionDeleteButton from "@/components/TwoStepActionButton.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const { recording } = defineProps<{

@@ -4,9 +4,8 @@ import {
   UserGroups,
   currentSelectedGroup,
   showSwitchGroup,
-  creatingNewGroup,
 } from "@models/LoggedInUser";
-import { computed, onBeforeMount, onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { urlNormaliseGroupName } from "@/utils";
 

@@ -2,10 +2,9 @@
 import { joiningNewGroup, UserGroups } from "@models/LoggedInUser";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
-import { computed, onBeforeMount, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { getGroupsForGroupAdminByEmail } from "@api/User";
 import type { ApiGroupResponse } from "@typedefs/api/group";
-import { BFormCheckboxGroup } from "bootstrap-vue-3";
 import { requestToJoinGroup } from "@api/User";
 
 const groupAdminEmailAddress = formFieldInputText();

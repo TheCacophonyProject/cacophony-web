@@ -7,6 +7,9 @@ import { computed, ref } from "vue";
 import { BFormCheckboxGroup } from "bootstrap-vue-3";
 import { inviteSomeoneToGroup } from "@api/Group";
 
+const emit = defineEmits<{
+  (e: "invited"): void;
+}>();
 const inviteeEmailAddress = formFieldInputText();
 const submittingInvite = ref<boolean>(false);
 const inviteSent = ref<boolean>(false);
@@ -38,6 +41,7 @@ const invitePendingUser = async () => {
   );
   if (inviteResponse.success) {
     inviteSent.value = true;
+    emit("invited");
   } else {
     // TODO: Display error.
   }

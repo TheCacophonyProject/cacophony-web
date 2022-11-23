@@ -7,11 +7,8 @@ import { currentSelectedGroup } from "@models/LoggedInUser";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import type { NamedPoint } from "@models/mapUtils";
-import SimpleTable from "@/components/SimpleTable.vue";
-import type {
-  CardTableItems,
-  TableCellValue,
-} from "@/components/CardTableTypes";
+import CardTable from "@/components/CardTable.vue";
+import type { CardTableRows } from "@/components/CardTableTypes";
 
 const stations = ref<ApiStationResponse[]>([]);
 const loadingStations = ref(false);
@@ -64,27 +61,10 @@ const highlightPoint = (p: NamedPoint | null) => {
   highlightedPoint.value = p;
 };
 
-const tableItems = computed<CardTableItems<string>>(() => {
-  return stations.value
-    .map((station: ApiStationResponse) => ({
-      name: { value: station.name }, // Use device name with icon like we do currently?
-    }))
-    .reduce(
-      (
-        acc: CardTableItems<string>,
-        item: Record<string, TableCellValue<string>>
-      ) => {
-        if (acc.headings.length === 0) {
-          acc.headings = Object.keys(item);
-        }
-        acc.values.push(Object.values(item));
-        return acc;
-      },
-      {
-        headings: [],
-        values: [],
-      }
-    );
+const tableItems = computed<CardTableRows<string>>(() => {
+  return stations.value.map((station: ApiStationResponse) => ({
+    name: station.name, // Use device name with icon like we do currently?
+  }));
 });
 </script>
 <template>
@@ -122,7 +102,7 @@ const tableItems = computed<CardTableItems<string>>(() => {
         <!--          {{ p.name }}-->
         <!--        </div>-->
         <!--      </div>-->
-        <simple-table compact :items="tableItems" />
+        <card-table compact :items="tableItems" />
       </div>
       <map-with-points
         :points="stationsForMap"

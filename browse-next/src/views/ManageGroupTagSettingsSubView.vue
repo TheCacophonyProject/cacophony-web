@@ -4,11 +4,8 @@ import {
   persistGroupSettings,
 } from "@models/LoggedInUser";
 import { computed, onMounted, ref } from "vue";
-import SimpleTable from "@/components/SimpleTable.vue";
-import type {
-  CardTableItems,
-  TableCellValue,
-} from "@/components/CardTableTypes";
+import CardTable from "@/components/CardTable.vue";
+import type { CardTableRows } from "@/components/CardTableTypes";
 import { DEFAULT_TAGS } from "@/consts";
 import {
   displayLabelForClassificationLabel,
@@ -89,39 +86,22 @@ const isLastTagInList = (tag: string) => {
   return customTags.value.indexOf(tag) === customTags.value.length - 1;
 };
 
-const tableItems = computed<CardTableItems<string>>(() => {
-  return customTags.value
-    .map((tag: string, index: number) => ({
-      tag: {
-        value: capitalize(displayLabelForClassificationLabel(tag)),
-        cellClasses: ["w-100"],
-      },
-      _moveUp: {
-        value: tag,
-      },
-      _moveDown: {
-        value: tag,
-      },
-      _deleteAction: {
-        value: tag,
-      },
-    }))
-    .reduce(
-      (
-        acc: CardTableItems<string>,
-        item: Record<string, TableCellValue<string>>
-      ) => {
-        if (acc.headings.length === 0) {
-          acc.headings = Object.keys(item);
-        }
-        acc.values.push(Object.values(item));
-        return acc;
-      },
-      {
-        headings: [],
-        values: [],
-      }
-    );
+const tableItems = computed<CardTableRows<string>>(() => {
+  return customTags.value.map((tag: string) => ({
+    tag: {
+      value: capitalize(displayLabelForClassificationLabel(tag)),
+      cellClasses: ["w-100"],
+    },
+    _moveUp: {
+      value: tag,
+    },
+    _moveDown: {
+      value: tag,
+    },
+    _deleteAction: {
+      value: tag,
+    },
+  }));
 });
 
 const resetTags = async () => {
@@ -166,31 +146,31 @@ const addPendingTag = async () => {
       </button>
     </div>
   </div>
-  <simple-table :items="tableItems" compact>
-    <template #_moveUp="{ item }">
+  <card-table :items="tableItems" compact :break-point="0">
+    <template #_moveUp="{ cell }">
       <button
         class="btn"
-        @click.prevent="() => moveTagUp(item.value)"
-        :disabled="isFirstTagInList(item.value)"
+        @click.prevent="() => moveTagUp(cell.value)"
+        :disabled="isFirstTagInList(cell.value)"
       >
         <font-awesome-icon icon="arrow-up" />
       </button>
     </template>
-    <template #_moveDown="{ item }">
+    <template #_moveDown="{ cell }">
       <button
         class="btn"
-        @click.prevent="() => moveTagDown(item.value)"
-        :disabled="isLastTagInList(item.value)"
+        @click.prevent="() => moveTagDown(cell.value)"
+        :disabled="isLastTagInList(cell.value)"
       >
         <font-awesome-icon icon="arrow-up" rotation="180" />
       </button>
     </template>
-    <template #_deleteAction="{ item }">
-      <button class="btn" @click.prevent="() => removeTag(item.value)">
+    <template #_deleteAction="{ cell }">
+      <button class="btn" @click.prevent="() => removeTag(cell.value)">
         <font-awesome-icon icon="trash-can" />
       </button>
     </template>
-  </simple-table>
+  </card-table>
   <b-modal
     v-model="showAddTagModal"
     title="Add group tag"

@@ -281,15 +281,19 @@ export default function (sequelize, DataTypes): GroupStatic {
       if (wasOwner !== owner) {
         groupUser.owner = owner;
       }
+      let addedPendingUser = false;
       if (prevPending !== null && prevPending !== pending) {
         groupUser.pending = pending;
+        if (pending === null) {
+          addedPendingUser = true;
+        }
       }
-      if (wasOwner !== owner || wasAdmin !== admin) {
+      if (wasOwner !== owner || wasAdmin !== admin || prevPending !== pending) {
         await groupUser.save();
         return {
           action: "Updated, user group permissions changed.",
           permissionChanges,
-          added: false,
+          added: addedPendingUser,
         };
       }
       return {

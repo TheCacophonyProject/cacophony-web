@@ -39,15 +39,21 @@ export const addOrUpdateGroupUser = (
   userId?: UserId,
   email?: string
 ) => {
-  const payload = {
+  const payload: {
+    group: string | GroupId;
+    admin: boolean;
+    owner: boolean;
+    userId?: UserId;
+    email?: string;
+  } = {
     group: groupNameOrId,
     admin: isAdmin,
     owner: isOwner,
   };
   if (userId) {
-    (payload as any).userId = userId;
+    payload.userId = userId;
   } else {
-    (payload as any).email = email;
+    payload.email = email;
   }
   return CacophonyApi.post("/api/v1/groups/users", payload) as Promise<
     FetchResult<void>
@@ -59,13 +65,14 @@ export const removeGroupUser = (
   userId?: UserId,
   email?: string
 ) => {
-  const payload = {
-    group: groupName,
-  };
+  const payload: { group: string | GroupId; userId?: UserId; email?: string } =
+    {
+      group: groupName,
+    };
   if (userId) {
-    (payload as any).userId = userId;
+    payload.userId = userId;
   } else {
-    (payload as any).email = email;
+    payload.email = email;
   }
   return CacophonyApi.delete("/api/v1/groups/users", payload) as Promise<
     FetchResult<void>

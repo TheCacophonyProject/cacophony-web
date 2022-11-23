@@ -561,20 +561,24 @@ export default function (app: Application, baseUrl: string) {
 
         if (added) {
           // User was added.
-          await sendAddedToGroupNotificationEmail(
-            request.headers.host,
-            user.email,
-            group.groupName,
-            permissions
-          );
+          if (user.emailConfirmed) {
+            await sendAddedToGroupNotificationEmail(
+              request.headers.host,
+              user.email,
+              group.groupName,
+              permissions
+            );
+          }
         } else {
           // User was updated.
-          await sendUpdatedGroupPermissionsNotificationEmail(
-            request.headers.host,
-            user.email,
-            group.groupName,
-            permissions
-          );
+          if (user.emailConfirmed) {
+            await sendUpdatedGroupPermissionsNotificationEmail(
+              request.headers.host,
+              user.email,
+              group.groupName,
+              permissions
+            );
+          }
         }
       }
       return successResponse(response, action);
@@ -672,11 +676,13 @@ export default function (app: Application, baseUrl: string) {
           response.locals.user.emailConfirmed &&
           response.locals.user.id !== response.locals.requestUser.id
         ) {
-          await sendRemovedFromGroupNotificationEmail(
-            request.headers.host,
-            response.locals.user.email,
-            response.locals.group.groupName
-          );
+          if (response.locals.user.emailConfirmed) {
+            await sendRemovedFromGroupNotificationEmail(
+              request.headers.host,
+              response.locals.user.email,
+              response.locals.group.groupName
+            );
+          }
         }
         return successResponse(response, "Removed user from the group.");
       } else if (removed && wasPending) {

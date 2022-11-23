@@ -19,7 +19,6 @@ import {
   showSwitchGroup,
   creatingNewGroup,
   joiningNewGroup,
-  showEUAOutOfDate,
   urlNormalisedCurrentGroupName,
   rafFps,
   pinSideNav,

@@ -5,16 +5,12 @@ import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { getDevicesForGroup } from "@api/Group";
 import { currentSelectedGroup } from "@models/LoggedInUser";
 import type { SelectedGroup } from "@models/LoggedInUser";
-import CardTable from "@/components/CardTable.vue";
-import type {
-  CardTableItems,
-  TableCellValue,
-} from "@/components/CardTableTypes";
+import type { CardTableRows } from "@/components/CardTableTypes";
 import { DateTime } from "luxon";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@models/mapUtils";
 import type { LatLng } from "@typedefs/api/common";
-import SimpleTable from "@/components/SimpleTable.vue";
+import CardTable from "@/components/CardTable.vue";
 
 const devices = ref<ApiDeviceResponse[]>([]);
 const loadingDevices = ref<boolean>(false);
@@ -32,37 +28,18 @@ onBeforeMount(async () => {
   loadingDevices.value = false;
 });
 
-const tableItems = computed<CardTableItems<string>>(() => {
-  return devices.value
-    .map((device: ApiDeviceResponse) => ({
-      deviceName: { value: device.deviceName }, // Use device name with icon like we do currently?
-      type: { value: device.type },
-      lastSeen: {
-        value: noWrap(
-          device.lastConnectionTime
-            ? (DateTime.fromJSDate(
-                new Date(device.lastConnectionTime)
-              ).toRelative() as string)
-            : "never (offline device)"
-        ),
-      },
-    }))
-    .reduce(
-      (
-        acc: CardTableItems<string>,
-        item: Record<string, TableCellValue<string>>
-      ) => {
-        if (acc.headings.length === 0) {
-          acc.headings = Object.keys(item);
-        }
-        acc.values.push(Object.values(item));
-        return acc;
-      },
-      {
-        headings: [],
-        values: [],
-      }
-    );
+const tableItems = computed<CardTableRows<string>>(() => {
+  return devices.value.map((device: ApiDeviceResponse) => ({
+    deviceName: device.deviceName, // Use device name with icon like we do currently?
+    type: device.type,
+    lastSeen: noWrap(
+      device.lastConnectionTime
+        ? (DateTime.fromJSDate(
+            new Date(device.lastConnectionTime)
+          ).toRelative() as string)
+        : "never (offline device)"
+    ),
+  }));
 });
 
 const deviceLocations = computed<NamedPoint[]>(() => {
@@ -100,7 +77,16 @@ const deviceLocations = computed<NamedPoint[]>(() => {
       :zoom="false"
       :can-change-base-map="false"
     />
-    <simple-table :items="tableItems" v-if="devices.length" compact />
+    <card-table
+      :items="tableItems"
+      v-if="devices.length"
+      compact
+      :break-point="0"
+    >
+      <template #card="{ card }">
+        <div>{{ card }}</div>
+      </template>
+    </card-table>
     <p v-else>
       There are currently no devices registered with this group.
       <a href="#TODO">Find out how to add some</a>

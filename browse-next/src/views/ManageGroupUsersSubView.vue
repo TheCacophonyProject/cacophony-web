@@ -2,7 +2,6 @@
 import {
   currentSelectedGroup as fallibleCurrentSelectedGroup,
   CurrentUser as fallibleCurrentUser,
-  userDisplayName,
 } from "@models/LoggedInUser";
 import type { LoggedInUser, SelectedGroup } from "@models/LoggedInUser";
 import { computed, onBeforeMount, ref } from "vue";
@@ -11,14 +10,11 @@ import {
   getUsersForGroup,
   removeGroupUser,
 } from "@api/Group";
-import type { GroupId, UserId } from "@typedefs/api/common";
+import type { GroupId } from "@typedefs/api/common";
 import type { ApiGroupUserResponse } from "@typedefs/api/group";
-import SimpleTable from "@/components/SimpleTable.vue";
+import CardTable from "@/components/CardTable.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import type {
-  CardTableItems,
-  TableCellValue,
-} from "@/components/CardTableTypes";
+import type { CardTableRows, CardTableItem } from "@/components/CardTableTypes";
 import LeaveGroupModal from "@/components/LeaveGroupModal.vue";
 import GroupInviteModal from "@/components/GroupInviteModal.vue";
 const groupUsers = ref<ApiGroupUserResponse[]>([]);
@@ -90,7 +86,16 @@ const updateUserPermissions = async () => {
 };
 
 const acceptPendingUser = async (user: ApiGroupUserResponse) => {
-  console.log("Accept pending user");
+  // TODO: Loading state
+  const acceptPendingUserResponse = await addOrUpdateGroupUser(
+    (currentSelectedGroup.value as SelectedGroup).groupName,
+    user.admin,
+    user.owner,
+    user.id
+  );
+  if (acceptPendingUserResponse) {
+    await loadGroupUsers();
+  }
 };
 const selectedLeaveGroup = ref(false);
 const removeUser = async (user: ApiGroupUserResponse) => {
@@ -148,67 +153,36 @@ const isLastOwnerUser = (user?: ApiGroupUserResponse): boolean => {
 const userIsCurrentUser = (user: ApiGroupUserResponse) =>
   user.id === CurrentUser.value.id;
 
-const anyPendingJoinRequests = computed<boolean>(() => {
-  return groupUsers.value.some(
-    (groupUser) => groupUser.pending === "requested"
-  );
-});
-
-const tableItems = computed<CardTableItems<ApiGroupUserResponse | boolean>>(
-  () => {
-    return groupUsers.value
-      .map((value: ApiGroupUserResponse) => {
-        let item: Record<
-          string,
-          TableCellValue<ApiGroupUserResponse | boolean>
-        > = {
-          user: {
-            value,
-            cellClasses: ["w-100"],
-          },
-          permissions: {
-            value: value.admin,
-          },
-          _groupOwner: {
-            value: value.owner,
-          },
-          _editPermissions: {
-            value,
-          },
-          _deleteAction: {
-            value,
-          },
-        };
-        if (anyPendingJoinRequests.value) {
-          item = {
-            user: item.user,
-            joinRequests: {
-              value: value.pending === "requested" ? value : false,
-              cellClasses: ["w-100"],
-            },
-            ...item,
-          };
-        }
-        return item;
-      })
-      .reduce(
-        (
-          acc: CardTableItems<ApiGroupUserResponse | boolean>,
-          item: Record<string, TableCellValue<ApiGroupUserResponse | boolean>>
-        ) => {
-          if (acc.headings.length === 0) {
-            acc.headings = Object.keys(item);
-          }
-          acc.values.push(Object.values(item));
-          return acc;
+const tableItems = computed<CardTableRows<ApiGroupUserResponse>>(() => {
+  return groupUsers.value
+    .map((value: ApiGroupUserResponse) => {
+      const item: Record<string, CardTableItem<ApiGroupUserResponse>> = {
+        user: {
+          value,
+          cellClasses: ["w-100"],
         },
-        {
-          headings: [],
-          values: [],
-        }
-      );
-  }
-);
+        permissions: {
+          value,
+          cellClasses: ["d-flex", "justify-content-end"],
+        },
+        _deleteAction: {
+          value,
+        },
+      };
+      return item;
+    })
+    .sort(({ user: { value: a } }, { user: { value: b } }) => {
+      if (a.id && b.id) {
+        return b.id - a.id;
+      } else if (a.id && !b.id) {
+        return 1;
+      } else if (!a.id && b.id) {
+        return -1;
+      } else {
+        return a.userName > b.userName ? 1 : -1;
+      }
+    });
+});
 const showInviteUserModal = ref<boolean>(false);
 
 // NOTE: Billing users - there must be at least one owner/billing user at all times.  For a billing user to be removed
@@ -252,91 +226,174 @@ const permissionsOptions = computed(() => [
   >
     <b-spinner variant="secondary" />
   </div>
-  <simple-table :items="tableItems" compact v-else>
-    <template #user="{ item }">
-      <div class="d-flex align-items-center">
-        <span>{{ item.value.userName }}</span>
-        <b-badge
-          v-if="userIsCurrentUser(item.value)"
-          variant="secondary"
-          class="ms-2 fs-8"
-          >You</b-badge
+  <card-table :items="tableItems" compact v-else :break-point="730">
+    <template #card="{ card }">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <span>{{ card.user.value.userName }}</span>
+          <b-badge
+            v-if="userIsCurrentUser(card.user.value)"
+            variant="secondary"
+            class="ms-2 fs-8"
+            >You</b-badge
+          >
+          <b-badge
+            v-else-if="card.user.value.pending === 'requested'"
+            variant="primary"
+            class="ms-2 fs-8"
+            >Wants to join</b-badge
+          >
+          <b-badge
+            v-else-if="card.user.value.pending === 'invited'"
+            class="ms-2 fs-8"
+            variant="warning"
+            >Invited</b-badge
+          >
+        </div>
+        <two-step-action-button
+          v-if="card.user.value.pending === 'requested'"
+          class="text-end"
+          :action="() => acceptPendingUser(card.user.value)"
+          icon="check"
+          :confirmation-label="`Accept <strong><em>${card.user.value.userName}</em></strong> into group`"
+          label="Approve request"
+          classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap w-100"
+          alignment="right"
+        />
+      </div>
+      <div
+        class="d-flex justify-content-between align-items-center mt-2 flex-row-reverse"
+      >
+        <button
+          class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+          @click.prevent="() => editUserAdmin(card.permissions.value)"
+          :disabled="
+            isLastOwnerUser(card.permissions.value) &&
+            isLastAdminUser(card.permissions.value)
+          "
         >
-        <b-badge
-          v-else-if="item.value.pending === 'requested'"
-          variant="primary"
-          class="ms-2 fs-8"
-          >Wants to join</b-badge
-        >
-        <b-badge
-          v-else-if="item.value.pending === 'invited'"
-          class="ms-2 fs-8"
-          variant="warning"
-          >Invited</b-badge
-        >
+          <font-awesome-icon icon="pencil-alt" />
+          <span class="ps-2">Change permissions</span>
+        </button>
+        <div class="d-flex">
+          <div
+            class="fs-7 text-secondary d-flex align-items-center me-2"
+            v-if="card.permissions.value.admin"
+          >
+            <font-awesome-icon icon="check-circle" class="fs-6" />
+            <span class="ps-2">admin</span>
+          </div>
+          <div
+            class="fs-7 text-secondary d-flex align-items-center"
+            v-if="card.permissions.value.owner"
+          >
+            <font-awesome-icon icon="check-circle" class="fs-6" />
+            <span class="ps-2">owner</span>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex justify-content-end mt-2">
+        <two-step-action-button
+          class="text-end"
+          classes="btn-outline-secondary fs-7"
+          :action="() => removeUser(card._deleteAction.value)"
+          icon="trash-can"
+          :disabled="isLastAdminUser(card._deleteAction.value)"
+          label="Remove user"
+          :confirmation-label="
+            userIsCurrentUser(card._deleteAction.value)
+              ? 'Leave group'
+              : card._deleteAction.value.pending === 'requested'
+              ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join group`
+              : card._deleteAction.value.pending === 'invited'
+              ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
+              : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from group`
+          "
+          alignment="right"
+        />
       </div>
     </template>
-    <template #permissions="{ item }">
+    <template #user="{ cell }">
+      <div class="d-flex align-items-center">
+        <div>
+          <span class="text-nowrap">{{ cell.value.userName }}</span>
+          <b-badge
+            v-if="userIsCurrentUser(cell.value)"
+            variant="secondary"
+            class="ms-2 fs-8"
+            >You</b-badge
+          >
+          <b-badge
+            v-else-if="cell.value.pending === 'requested'"
+            variant="primary"
+            class="ms-2 fs-8"
+            >Wants to join</b-badge
+          >
+          <b-badge
+            v-else-if="cell.value.pending === 'invited'"
+            class="ms-2 fs-8"
+            variant="warning"
+            >Invited</b-badge
+          >
+        </div>
+        <two-step-action-button
+          v-if="cell.value.pending === 'requested'"
+          class="text-end"
+          :action="() => acceptPendingUser(cell.value)"
+          icon="check"
+          :confirmation-label="`Accept <strong><em>${cell.value.userName}</em></strong> into group`"
+          label="Approve request"
+          classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-2"
+          alignment="centered"
+        />
+      </div>
+    </template>
+    <template #permissions="{ cell }">
       <div
         class="fs-7 text-secondary d-flex align-items-center"
-        v-if="item.value"
+        v-if="cell.value.admin"
       >
         <font-awesome-icon icon="check-circle" class="fs-6" />
         <span class="ps-2">admin</span>
       </div>
-    </template>
-    <template #_groupOwner="{ item }">
+
       <div
-        class="fs-7 text-secondary d-flex align-items-center"
-        v-if="item.value"
+        class="fs-7 text-secondary d-flex align-items-center ms-3"
+        v-if="cell.value.owner"
       >
         <font-awesome-icon icon="check-circle" class="fs-6" />
         <span class="ps-2">owner</span>
       </div>
+      <button
+        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-3"
+        @click.prevent="() => editUserAdmin(cell.value)"
+        :disabled="isLastOwnerUser(cell.value) && isLastAdminUser(cell.value)"
+      >
+        <font-awesome-icon icon="pencil-alt" />
+        <span class="ps-2 change-permissions-btn-text">Change permissions</span>
+      </button>
     </template>
-    <template #joinRequests="{ item }">
-      <two-step-action-button
-        v-if="item.value.pending"
-        class="text-end"
-        :action="() => acceptPendingUser(item.value)"
-        icon="check"
-        :confirmation-label="`Accept <strong><em>${item.value.userName}</em></strong> into group`"
-        label="Approve request"
-        classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap w-100"
-        alignment="centered"
-      />
-    </template>
-    <template #_deleteAction="{ item }">
+    <template #_deleteAction="{ cell }">
       <two-step-action-button
         class="text-end"
         classes="btn-outline-secondary fs-7"
-        :action="() => removeUser(item.value)"
+        :action="() => removeUser(cell.value)"
         icon="trash-can"
-        :disabled="isLastAdminUser(item.value)"
+        :disabled="isLastAdminUser(cell.value)"
         :confirmation-label="
-          userIsCurrentUser(item.value)
+          userIsCurrentUser(cell.value)
             ? 'Leave group'
-            : item.value.pending === 'requested'
-            ? `Deny request from <strong><em>${item.value.userName}</em></strong> to join group`
-            : item.value.pending === 'invited'
-            ? `Revoke invitation to <strong><em>${item.value.userName}</em></strong>`
-            : `Remove <strong><em>${item.value.userName}</em></strong> from group`
+            : cell.value.pending === 'requested'
+            ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join group`
+            : cell.value.pending === 'invited'
+            ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
+            : `Remove <strong><em>${cell.value.userName}</em></strong> from group`
         "
         alignment="right"
       />
     </template>
-    <template #_editPermissions="{ item }">
-      <button
-        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
-        @click.prevent="() => editUserAdmin(item.value)"
-        :disabled="isLastOwnerUser(item.value) && isLastAdminUser(item.value)"
-      >
-        <font-awesome-icon icon="pencil-alt" />
-        <span class="ps-2">Change permissions</span>
-      </button>
-    </template>
-  </simple-table>
-  <group-invite-modal v-model="showInviteUserModal" />
+  </card-table>
+  <group-invite-modal v-model="showInviteUserModal" @invited="loadGroupUsers" />
   <leave-group-modal v-model="selectedLeaveGroup" />
   <b-modal
     v-model="showEditPermissions"
@@ -376,5 +433,13 @@ const permissionsOptions = computed(() => [
   box-sizing: border-box;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
   padding: 0.75rem;
+}
+.change-permissions-btn-text {
+  display: inline;
+}
+@media screen and (max-width: 900px) {
+  .change-permissions-btn-text {
+    display: none;
+  }
 }
 </style>

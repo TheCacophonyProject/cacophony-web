@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import CardTable from "./CardTable.vue";
 import { computed, ref } from "vue";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import type {
-  CardTableItems,
-  TableCellValue,
-} from "@/components/CardTableTypes";
+import type { CardTableRows } from "@/components/CardTableTypes";
 import { BModal } from "bootstrap-vue-3";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
 import { CurrentUser } from "@models/LoggedInUser";
 import type { TagId } from "@typedefs/api/common";
-import SimpleTable from "@/components/SimpleTable.vue";
+import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
 
 const { recording } = defineProps<{
@@ -23,40 +19,18 @@ const emit = defineEmits<{
   (e: "removed-recording-label", label: TagId): void;
 }>();
 
-const tableItems = computed<CardTableItems<ApiRecordingTagResponse | string>>(
+const tableItems = computed<CardTableRows<ApiRecordingTagResponse | string>>(
   () => {
-    return (recording?.tags || [])
-      .map((tag: ApiRecordingTagResponse) => ({
-        label: {
-          value:
-            labels.find((label) => label.value === tag.detail)?.text ||
-            tag.detail,
-        },
-        by: { value: tag.taggerName || (tag.automatic ? "Cacophony AI" : "-") },
-        when: {
-          value: DateTime.fromJSDate(new Date(tag.createdAt)).toRelative({
-            style: "short",
-          }) as string,
-        },
-        _deleteAction: { value: tag },
-        __sort: { value: new Date(tag.createdAt).getTime().toString() },
-      }))
-      .reduce(
-        (
-          acc: CardTableItems<ApiRecordingTagResponse | string>,
-          item: Record<string, TableCellValue<ApiRecordingTagResponse | string>>
-        ) => {
-          if (acc.headings.length === 0) {
-            acc.headings = Object.keys(item);
-          }
-          acc.values.push(Object.values(item));
-          return acc;
-        },
-        {
-          headings: [],
-          values: [],
-        }
-      );
+    return (recording?.tags || []).map((tag: ApiRecordingTagResponse) => ({
+      label:
+        labels.find((label) => label.value === tag.detail)?.text || tag.detail,
+      by: tag.taggerName || (tag.automatic ? "Cacophony AI" : "-"),
+      when: DateTime.fromJSDate(new Date(tag.createdAt)).toRelative({
+        style: "short",
+      }) as string,
+      _deleteAction: { value: tag, cellClasses: ["text-end"] },
+      __sort: { value: new Date(tag.createdAt).getTime().toString() },
+    }));
   }
 );
 
@@ -165,34 +139,33 @@ const doAddLabel = async () => {
 <template>
   <div v-if="recording" class="recording-labels d-flex flex-column">
     <h2 class="recording-labels-title fs-6">Recording labels</h2>
-    <!--    <card-table :items="tableItems">-->
-    <!--      <template #item="{ label, by, dateTime, _deleteAction: deleteAction }">-->
-    <!--        <div class="d-flex flex-row justify-content-between">-->
-    <!--          <div>-->
-    <!--            <div>{{ label }}</div>-->
-    <!--            <div>{{ by }}</div>-->
-    <!--            <div>{{ dateTime }}</div>-->
-    <!--          </div>-->
-    <!--          <component-->
-    <!--            v-if="isComponent(deleteAction)"-->
-    <!--            :is="extractComponent(deleteAction)"-->
-    <!--            :action="extractAction(deleteAction)"-->
-    <!--            :disabled="componentIsDisabled(deleteAction)"-->
-    <!--            :label="extractLabel(deleteAction)"-->
-    <!--          />-->
-    <!--        </div>-->
-    <!--      </template>-->
-    <!--    </card-table>-->
-    <simple-table :items="tableItems" compact>
-      <template #_deleteAction="{ item }">
+    <card-table :items="tableItems" compact>
+      <template #_deleteAction="{ cell }">
         <button
           class="btn text-secondary"
-          @click.prevent="() => removeLabel(item.value.id)"
+          @click.prevent="() => removeLabel(cell.value.id)"
         >
           <font-awesome-icon icon="trash-can" />
         </button>
       </template>
-    </simple-table>
+      <template #card="{ card }">
+        <div class="d-flex flex-row justify-content-between">
+          <div>
+            <div>
+              <strong>{{ card.label }}</strong>
+            </div>
+            <div>{{ card.by }}</div>
+            <div>{{ card.when }}</div>
+          </div>
+          <button
+            class="btn text-secondary"
+            @click.prevent="() => removeLabel(card._deleteAction.value.id)"
+          >
+            <font-awesome-icon icon="trash-can" />
+          </button>
+        </div>
+      </template>
+    </card-table>
     <div class="d-flex justify-content-end flex-grow-1">
       <button
         type="button"

@@ -6,7 +6,7 @@ import {
   creatingNewGroup,
   urlNormalisedCurrentGroupName,
 } from "@models/LoggedInUser";
-import { computed, onBeforeMount, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import type { ErrorResult } from "@api/types";
 import { BModal } from "bootstrap-vue-3";
 import { formFieldInputText } from "@/utils";
