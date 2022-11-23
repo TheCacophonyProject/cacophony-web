@@ -344,10 +344,11 @@ export function checkTreeStructuresAreEqualExcept(
         }
       }
     } else {
-      expect(
-        typeof containingStruct,
-        `Expect result includes parameter ${prettyTreeSoFar} :::`
-      ).equal(typeof containedStruct);
+      // NOTE: Disabled to speed up tests, seems to be redundant info
+      // expect(
+      //   typeof containingStruct,
+      //   `Expect result includes parameter ${prettyTreeSoFar} :::`
+      // ).equal(typeof containedStruct);
 
       const keyDiff = (a, b) => {
         return {
@@ -359,18 +360,23 @@ export function checkTreeStructuresAreEqualExcept(
       };
 
       if (containedStruct && containingStruct) {
+        const keys = Object.keys(containingStruct);
+        const expectedKeys = Object.keys(containedStruct);
         expect(
-          Object.keys(containingStruct).length,
-          `Check ${prettyTreeSoFar} number of elements in [${Object.keys(
-            containingStruct
-          ).toString()}] - Diff: ${JSON.stringify(
-            keyDiff(containedStruct, containingStruct)
-          )}`
-        ).to.equal(Object.keys(containedStruct).length);
+          keys.length,
+          `Check ${prettyTreeSoFar} number of elements in [${keys.toString()}]}`
+        ).to.equal(expectedKeys.length);
+        if (keys.length !== expectedKeys.length) {
+          cy.log(
+            `Diff: ${JSON.stringify(
+              keyDiff(containedStruct, containingStruct)
+            )}`
+          );
+        }
 
         //push two hashes in same order
-        const containedKeys: string[] = Object.keys(containedStruct).sort();
-        const containingKeys: string[] = Object.keys(containingStruct).sort();
+        const containedKeys: string[] = keys.sort();
+        const containingKeys: string[] = expectedKeys.sort();
 
         //iterate over hash
         for (let count = 0; count < containedKeys.length; count++) {
@@ -379,10 +385,12 @@ export function checkTreeStructuresAreEqualExcept(
             prettyTreeSoFar + "." + containedKeys[count];
           //check if we asked to ignore this parameter
           if (!excludeKeys.includes(elementName)) {
-            expect(
-              containingKeys,
-              `Expect result includes parameter ${prettyElementName} :::`
-            ).includes(containedKeys[count]);
+            // NOTE: Disabled to speed up tests, seems to be redundant info
+            // expect(
+            //   containingKeys,
+            //   `Expect result includes parameter ${prettyElementName} :::`
+            // ).includes(containedKeys[count]);
+
             //if element is a nested object, recursively call this function again over the nested onject
             if (isArrayOrHash(containingStruct[containedKeys[count]])) {
               checkTreeStructuresAreEqualExcept(
@@ -457,7 +465,7 @@ export function checkTreeStructuresAreEqualExcept(
 
 function isArrayOrHash(theObject: any) {
   return (
-    typeof theObject == "object" &&
+    typeof theObject === "object" &&
     theObject !== undefined &&
     theObject !== null
   );

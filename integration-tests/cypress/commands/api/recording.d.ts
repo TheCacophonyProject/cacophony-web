@@ -132,7 +132,7 @@ declare namespace Cypress {
       recordingName?: string,
       statusCode?: number,
       additionalChecks?: any
-    ): any;
+    ): Cypress.Chainable<RecordingId>;
 
     /** Get a single recording response using api/v1/recordings/{id}
      */

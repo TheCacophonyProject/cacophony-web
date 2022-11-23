@@ -1143,12 +1143,6 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       const recordingItem = response.locals.recording;
       const recording = mapRecordingResponse(response.locals.recording);
-      if (!config.productionEnv) {
-        const JsonSchema = new Validator();
-        console.assert(
-          JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
-        );
-      }
       if (request.query["requires-signed-url"]) {
         let rawJWT;
         let cookedJWT;

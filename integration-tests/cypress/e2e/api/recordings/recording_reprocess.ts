@@ -680,8 +680,7 @@ describe("Recordings - reprocessing tests", () => {
           "rrpAlert1b",
           0,
           POSSUM_ALERT,
-          true,
-          "rrpGroupAdmin"
+          true
         );
         const expectedEvent20 = createExpectedEvent(
           "rrpCamera1b",

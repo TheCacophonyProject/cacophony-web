@@ -256,18 +256,18 @@ Cypress.Commands.add(
       data,
       "@addRecording",
       statusCode
-    ).then((x) => {
-      cy.wrap(x.response.body.recordingId);
-      if (
-        recordingName !== null &&
-        x.response.statusCode === HttpStatusCode.Ok
-      ) {
-        saveIdOnly(recordingName, x.response.body.recordingId);
+    ).then((p) => {
+      const x = p as unknown as {
+        recordingId: RecordingId;
+        statusCode: HttpStatusCode;
+        messages: string[];
+      };
+      cy.wrap(x.recordingId);
+      if (recordingName !== null && statusCode === HttpStatusCode.Ok) {
+        saveIdOnly(recordingName, x.recordingId);
       }
       if (additionalChecks["message"] !== undefined) {
-        expect(x.response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
-        );
+        expect(x.messages.join("|")).to.include(additionalChecks["message"]);
       }
     });
   }
@@ -712,10 +712,11 @@ Cypress.Commands.add(
       data,
       "@addRecording",
       statusCode
-    ).then((x) => {
-      cy.wrap(x.response.body.recordingId);
+    ).then((p) => {
+      const x = p as unknown as { recordingId: RecordingId };
+      cy.wrap(x.recordingId);
       if (recordingName !== null) {
-        saveIdOnly(recordingName, x.response.body.recordingId);
+        saveIdOnly(recordingName, x.recordingId);
       }
     });
   }
@@ -758,10 +759,11 @@ Cypress.Commands.add(
       data,
       "@addRecording",
       statusCode
-    ).then((x) => {
-      cy.wrap(x.response.body.recordingId);
+    ).then((p) => {
+      const x = p as unknown as { recordingId: RecordingId };
+      cy.wrap(x.recordingId);
       if (recordingName !== null) {
-        saveIdOnly(recordingName, x.response.body.recordingId);
+        saveIdOnly(recordingName, x.recordingId);
       }
     });
   }

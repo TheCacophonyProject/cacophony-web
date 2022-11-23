@@ -21,8 +21,8 @@ import "../commands/browsegui/general";
 
 beforeEach(function () {
   // This runs before each test file, eg once per file.
-  cy.intercept("POST", "recordings").as("addRecording");
-  cy.intercept("POST", "api/v1/recordings/device/*").as("addRecording");
+  //cy.intercept("POST", "recordings").as("addRecording");
+  //cy.intercept("POST", "api/v1/recordings/device/*").as("addRecording");
   cy.intercept("POST", "api/v1/events/thumbnail").as("addEventThumbnail");
-  cy.intercept("POST", "api/v1/recordings/device/*/group/*").as("addRecording");
+  //cy.intercept("POST", "api/v1/recordings/device/*/group/*").as("addRecording");
 });

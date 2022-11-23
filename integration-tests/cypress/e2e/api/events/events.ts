@@ -9,6 +9,7 @@ import {
 } from "@commands/server";
 import { HttpStatusCode } from "@typedefs/api/consts";
 import { uploadFile } from "@commands/fileUpload";
+import { EventId } from "@typedefs/api/common";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; //do not check eventId or createdAt time
 
@@ -301,9 +302,10 @@ describe("Events - add event as a device", () => {
       data,
       "@addEventThumbnail",
       HttpStatusCode.Ok
-    ).then((x) => {
+    ).then((p) => {
+      const x = p as unknown as { id: EventId };
       // Now make sure we can access the event thumbnail:
-      const eventId = x.response.body.id;
+      const eventId = x.id;
       makeAuthorizedRequestWithStatus(
         {
           method: "GET",
