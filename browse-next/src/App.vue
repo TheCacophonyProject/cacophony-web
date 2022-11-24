@@ -437,6 +437,7 @@ onMounted(() => {
         </router-link>
         <router-link
           :to="{ name: 'sign-out' }"
+          data-cy="sign out link"
           class="d-block py-3 text-decoration-none border-start"
         >
           <span class="nav-icon-wrapper">

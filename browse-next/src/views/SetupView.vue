@@ -152,6 +152,7 @@ const needsValidationAndIsValidEmailAddress =
         <button
           class="btn btn-secondary"
           type="button"
+          data-cy="resend confirmation email"
           @click="resendAccountActivationEmail"
           :disabled="resendRequestSent"
         >
@@ -279,6 +280,7 @@ const needsValidationAndIsValidEmailAddress =
             <button
               class="btn btn-primary"
               type="button"
+              data-cy="create new group button"
               @click="creatingNewGroup.enabled = true"
             >
               <font-awesome-icon icon="plus" /> Create a new group
@@ -288,6 +290,14 @@ const needsValidationAndIsValidEmailAddress =
         <div class="card mb-3 option-item">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Join a group</h5>
+
+            <p>TODO: Api to say how many pending group requests we have?</p>
+            <p>
+              TODO: Maybe an api that tells us how many pending group invites we
+              have, and lets us accept them either on the setup screen, or on
+              our user preferences screen?
+            </p>
+
             <p class="flex-fill">
               Alternately, you can ask to become a member of an existing group.
               Once granted permission by a group administrator, you'll be able
@@ -296,6 +306,7 @@ const needsValidationAndIsValidEmailAddress =
             <button
               class="btn btn-secondary"
               type="button"
+              data-cy="join existing group button"
               @click="joiningNewGroup.enabled = true"
             >
               <font-awesome-icon icon="question" /> Ask to join an existing
@@ -305,7 +316,10 @@ const needsValidationAndIsValidEmailAddress =
         </div>
       </div>
     </div>
-    <router-link to="sign-out" class="text-center d-block my-3"
+    <router-link
+      to="sign-out"
+      class="text-center d-block my-3"
+      data-cy="sign out link"
       >Sign out</router-link
     >
   </div>

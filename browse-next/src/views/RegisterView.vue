@@ -232,6 +232,7 @@ const register = async () => {
           :state="needsValidationAndIsValidUserName"
           aria-label="username"
           placeholder="username"
+          data-cy="username"
           :disabled="registrationInProgress"
           required
         />
@@ -257,6 +258,7 @@ const register = async () => {
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="email address"
           placeholder="email address"
+          data-cy="email address"
           :disabled="registrationInProgress"
           required
         />
@@ -274,6 +276,7 @@ const register = async () => {
             :state="needsValidationAndIsValidPassword"
             aria-label="password"
             placeholder="password"
+            data-cy="password"
             :disabled="registrationInProgress"
             required
           />
@@ -303,6 +306,7 @@ const register = async () => {
           :state="needsValidationAndIsValidPasswordConfirmation"
           aria-label="re-enter password"
           placeholder="re-enter password"
+          data-cy="password confirmation"
           :disabled="registrationInProgress"
           required
         />
@@ -318,6 +322,7 @@ const register = async () => {
           @blur="acceptedEUA.touched = true"
           :state="needsValidationAndAcceptedEUA"
           :disabled="registrationInProgress"
+          data-cy="accept eua"
           required
         >
           <span class="small">
@@ -340,6 +345,7 @@ const register = async () => {
       <button
         type="submit"
         class="btn btn-primary mb-3"
+        data-cy="register button"
         :disabled="!registrationFormIsFilledAndValid || registrationInProgress"
       >
         <span v-if="registrationInProgress">

@@ -278,6 +278,12 @@ router.beforeEach(async (to, from, next) => {
     // If we're not logged in, we need to
   }
 
+  if (userIsLoggedIn.value && to.query.nextUrl) {
+    // Make sure we follow any nextUrl on login
+    return next({
+      path: to.query.nextUrl as string,
+    });
+  }
   // TODO: Match groupName, and set currentSelectedGroup.
   // NOTE: Check for a logged in user here.
   if (!userIsLoggedIn.value) {
@@ -335,7 +341,7 @@ router.beforeEach(async (to, from, next) => {
   }
   if (to.path === "/") {
     if (!userIsLoggedIn.value && to.name !== "sign-in") {
-      return next({ name: "sign-in" });
+      return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
     } else {
       if (
         (to.name !== "setup" &&

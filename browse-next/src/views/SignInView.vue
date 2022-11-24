@@ -4,7 +4,8 @@ import { BAlert } from "bootstrap-vue-3";
 import { login } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import type { RouteLocationRaw } from "vue-router";
 
 // TODO Can we parse e.g body.password in the messages into contextual error messages?
 
@@ -34,11 +35,19 @@ const hasError = computed({
 });
 
 const router = useRouter();
+const route = useRoute();
 const submitLogin = async () => {
   await login(userEmailAddress.value, userPassword.value, signInInProgress);
-  await router.push({
+  const nextUrl = route.query.nextUrl;
+  const to: RouteLocationRaw = {
     path: "/",
-  });
+  };
+  if (nextUrl) {
+    to.query = {
+      nextUrl,
+    };
+  }
+  await router.push(to);
 };
 
 const isValidEmailAddress = computed<boolean>(() => {
@@ -95,6 +104,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="email address"
           placeholder="email address"
+          data-cy="email address"
           :disabled="signInInProgress.requestPending"
           required
         />
@@ -111,6 +121,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
             :state="needsValidationAndIsValidPassword"
             aria-label="password"
             placeholder="password"
+            data-cy="password"
             :disabled="signInInProgress.requestPending"
             required
           />
@@ -135,6 +146,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
       <button
         type="submit"
         class="btn btn-primary mb-3"
+        data-cy="sign in button"
         :disabled="
           !signInFormIsFilledAndValid || signInInProgress.requestPending
         "

@@ -105,7 +105,7 @@ const getGroupsForAdmin = async () => {
     centered
     @hidden="resetFormValues"
   >
-    <b-form>
+    <b-form data-cy="join existing group form">
       <p>
         To join an existing group, you need to know the email address of the
         group administrator.
@@ -118,6 +118,7 @@ const getGroupsForAdmin = async () => {
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="group admin email address"
           placeholder="group admin email address"
+          data-cy="group admin email address"
           :disabled="submittingJoinRequest"
           @input="joinableGroups = null"
           required
@@ -132,6 +133,7 @@ const getGroupsForAdmin = async () => {
       >
         <button
           class="btn btn-primary"
+          data-cy="list joinable groups button"
           :disabled="!isValidEmailAddress || submittingJoinRequest"
           @click.stop.prevent="getGroupsForAdmin"
         >

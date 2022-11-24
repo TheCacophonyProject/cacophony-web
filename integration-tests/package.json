@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node ./node_modules/.bin/cypress open",
     "performance": "node ./node_modules/.bin/cypress open --config-file cypress-performance.json",
-    "browse": "node ./node_modules/.bin/cypress open --config-file cypress-browse.json",
+    "browse": "node ./node_modules/.bin/cypress open --config-file cypress-browse.config.ts",
     "release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD",
     "performance:release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD --config-file cypress-performance.json",
     "lint": "eslint ./cypress --ext .ts && (npx prettier --check './**/*.ts' || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",

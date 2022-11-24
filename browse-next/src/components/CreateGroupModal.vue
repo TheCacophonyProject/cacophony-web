@@ -74,6 +74,7 @@ const createNewGroup = async () => {
       <b-form-input
         type="text"
         placeholder="group name"
+        data-cy="new group name"
         v-model="newGroupName.value"
         @blur="newGroupName.touched = true"
         @input="newGroupName.touched = true"
@@ -94,6 +95,7 @@ const createNewGroup = async () => {
       <button
         class="btn btn-primary"
         type="submit"
+        data-cy="create group button"
         @click.stop.prevent="createNewGroup"
         :disabled="
           !needsValidationAndIsValidGroupName || submittingCreateRequest

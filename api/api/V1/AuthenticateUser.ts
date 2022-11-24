@@ -525,15 +525,19 @@ export default function (app: Application, baseUrl: string) {
   );
 
   if (config.server.loggerLevel === "debug") {
+    // NOTE: This exists only for cypress e2e browser tests, and is unauthenticated.
     app.post(
       `${apiUrl}/get-email-confirmation-token`,
-      extractJwtAuthorizedUser,
       validateFields([body("email")]),
-      async (request: Request, response: Response) => {
-        const token = getEmailConfirmationToken(
-          response.locals.requestUser.id,
-          request.body.email
-        );
+      async (request: Request, response: Response, next: NextFunction) => {
+        const email = request.body.email.toLowerCase();
+        const user = await models.User.findOne({
+          where: { email },
+        });
+        if (!user) {
+          return next(new AuthenticationError("No such user"));
+        }
+        const token = getEmailConfirmationToken(user.id, email);
         return successResponse(response, "Got email confirmation token", {
           token,
         });
