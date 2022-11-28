@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { joiningNewGroup, UserGroups } from "@models/LoggedInUser";
+import {
+  joiningNewGroup,
+  refreshUserGroups,
+  UserGroups,
+} from "@models/LoggedInUser";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { computed, onMounted, ref } from "vue";
@@ -48,18 +52,15 @@ const resetFormValues = () => {
 };
 
 const joinExistingGroup = async () => {
-  // TODO:
-  // Once an email address has been added, we should be able to get a list of the groups that
-  // that user is an admin for, and list them so that the user can select which groups they want
-  // to request permission to join.
-
-  // FIXME - Now only allowing one group at a time to be requested.
   submittingJoinRequest.value = true;
   const joinRequestResponse = await requestToJoinGroup(
     groupAdminEmailAddress.value.trim(),
     Number(groupChosen.value)
   );
   if (joinRequestResponse.success) {
+    // Groups changed, reload groups.
+    await refreshUserGroups();
+
     // TODO Yay
   } else {
     // TODO Boo

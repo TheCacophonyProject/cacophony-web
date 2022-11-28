@@ -4,10 +4,12 @@ import { useRoute, useRouter } from "vue-router";
 import { validateEmailConfirmationToken } from "@api/User";
 import {
   CurrentUser,
+  nonPendingUserGroups,
   setLoggedInUserCreds,
   setLoggedInUserData,
   urlNormalisedCurrentGroupName,
   UserGroups,
+  userHasGroups,
   userIsLoggedIn,
 } from "@models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
@@ -74,9 +76,9 @@ onBeforeMount(async () => {
         refreshingToken: false,
       });
 
-      console.warn("Redirecting to dashboard");
       // NOTE: Should redirect to "setup" if user has no groups
-      if (UserGroups.value?.length) {
+      if (userHasGroups.value) {
+        console.warn("Redirecting to dashboard");
         await router.push({
           name: "dashboard",
           params: {
@@ -92,7 +94,7 @@ onBeforeMount(async () => {
     checkingValidateEmailToken.value = false;
   } else {
     if (userIsLoggedIn.value) {
-      if (UserGroups.value?.length) {
+      if (userHasGroups.value) {
         await router.push({
           name: "dashboard",
           params: {

@@ -9,14 +9,14 @@ import {
   setLoggedInUserData,
 } from "@models/LoggedInUser";
 import type { LoggedInUser } from "@models/LoggedInUser";
-import { updateFields } from "@api/User";
+import { updateUserFields } from "@api/User";
 
 const acceptedEUA = ref(false);
 const submitting = ref(false);
 
 const acceptEndUserAgreement = async () => {
   submitting.value = true;
-  await updateFields({
+  await updateUserFields({
     endUserAgreement: currentEUAVersion.value,
   });
   submitting.value = false;

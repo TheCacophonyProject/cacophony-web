@@ -228,10 +228,10 @@ const register = async () => {
         <b-form-input
           type="text"
           v-model="userName.value"
-          @blur="userName.touched = true"
+          @blur="() => (userName.touched = true)"
           :state="needsValidationAndIsValidUserName"
-          aria-label="username"
-          placeholder="username"
+          aria-label="Display name"
+          placeholder="display name"
           data-cy="username"
           :disabled="registrationInProgress"
           required
@@ -242,7 +242,7 @@ const register = async () => {
           </span>
           <span v-else-if="!isValidName(userName.value.trim())">
             Username must contain at least one letter (either case). It can also
-            contain numbers, underscores and hyphens, but must
+            contain numbers, underscores and hyphens and spaces, but must
             <em>begin</em> with a letter or number.
           </span>
           <span v-else-if="userNameInUse">
@@ -254,7 +254,7 @@ const register = async () => {
         <b-form-input
           type="email"
           v-model="userEmailAddress.value"
-          @blur="userEmailAddress.touched = true"
+          @blur="() => (userEmailAddress.touched = true)"
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="email address"
           placeholder="email address"
@@ -272,7 +272,7 @@ const register = async () => {
           <b-form-input
             :type="showPassword ? 'text' : 'password'"
             v-model="userPassword.value"
-            @blur="userPassword.touched = true"
+            @blur="() => (userPassword.touched = true)"
             :state="needsValidationAndIsValidPassword"
             aria-label="password"
             placeholder="password"
@@ -302,7 +302,7 @@ const register = async () => {
         <b-form-input
           :type="showPassword ? 'text' : 'password'"
           v-model="userPasswordConfirmation.value"
-          @blur="userPasswordConfirmation.touched = true"
+          @blur="() => (userPasswordConfirmation.touched = true)"
           :state="needsValidationAndIsValidPasswordConfirmation"
           aria-label="re-enter password"
           placeholder="re-enter password"
@@ -319,7 +319,7 @@ const register = async () => {
       <div class="input-group mb-3">
         <b-form-checkbox
           v-model="acceptedEUA.value"
-          @blur="acceptedEUA.touched = true"
+          @blur="() => (acceptedEUA.touched = true)"
           :state="needsValidationAndAcceptedEUA"
           :disabled="registrationInProgress"
           data-cy="accept eua"

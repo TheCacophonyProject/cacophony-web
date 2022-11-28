@@ -84,7 +84,7 @@ export const resendAccountActivationEmail = () =>
 export const changeAccountEmail = async (
   newEmailAddress: string
 ): Promise<FetchResult<void>> => {
-  const response = await updateFields({ email: newEmailAddress });
+  const response = await updateUserFields({ email: newEmailAddress });
   if (response.success) {
     const currentUser = CurrentUser.value as LoggedInUser;
     currentUser.email = newEmailAddress;
@@ -124,8 +124,7 @@ export const register = (
 
 interface ApiLoggedInUserUpdates {
   email?: string;
-  firstName?: string;
-  lastName?: string;
+  userName?: string;
   globalPermission?: UserGlobalPermission;
   endUserAgreement?: EndUserAgreementVersion;
   emailConfirmed?: boolean;
@@ -133,9 +132,9 @@ interface ApiLoggedInUserUpdates {
 }
 
 export const saveUserSettings = (settings: ApiUserSettings) =>
-  updateFields({ settings }, false);
+  updateUserFields({ settings }, false);
 
-export const updateFields = (
+export const updateUserFields = (
   fields: ApiLoggedInUserUpdates,
   abortable?: boolean
 ) =>
@@ -170,5 +169,12 @@ export const requestToJoinGroup = (
       groupAdminEmail,
       groupId,
     },
+    abortable
+  ) as Promise<FetchResult<void>>;
+
+export const acceptGroupInvitation = (groupId: GroupId, abortable = false) =>
+  CacophonyApi.post(
+    `/api/v1/groups/${groupId}/accept-invitation`,
+    {},
     abortable
   ) as Promise<FetchResult<void>>;

@@ -16,7 +16,11 @@ import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
-import { saveGroupSettings, saveGroupUserSettings } from "@api/Group";
+import {
+  getGroups,
+  saveGroupSettings,
+  saveGroupUserSettings,
+} from "@api/Group";
 
 export interface LoggedInUserAuth {
   apiToken: string;
@@ -34,6 +38,24 @@ export interface PendingRequest {
 export const CurrentUserCreds: Ref<LoggedInUserAuth | null> = ref(null);
 export const CurrentUser: Ref<LoggedInUser | null> = ref(null);
 export const UserGroups: Ref<ApiGroupResponse[] | null> = ref(null);
+
+export const nonPendingUserGroups = computed<ApiGroupResponse[]>(() => {
+  if (UserGroups.value === null) {
+    return [];
+  }
+  return UserGroups.value.filter((group) => group.pending === undefined);
+});
+
+export const pendingUserGroups = computed<ApiGroupResponse[]>(() => {
+  if (UserGroups.value === null) {
+    return [];
+  }
+  return UserGroups.value.filter((group) => group.pending !== undefined);
+});
+export const userHasPendingGroups = computed<boolean>(() => {
+  return pendingUserGroups.value.length !== 0;
+});
+
 // TODO - Test opening a whole lot of tabs, print who wins the tokenRefresh race in the page title
 
 export const userIsLoggedIn = computed<boolean>({
@@ -46,7 +68,11 @@ export const userIsLoggedIn = computed<boolean>({
 });
 
 export const userHasGroups = computed<boolean>(() => {
-  return UserGroups.value !== null && UserGroups.value.length !== 0;
+  return nonPendingUserGroups.value.length !== 0;
+});
+
+export const userHasGroupsIncludingPending = computed<boolean>(() => {
+  return UserGroups.value !== null && UserGroups.value?.length !== 0;
 });
 
 export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
@@ -58,7 +84,7 @@ export const persistUserGroupSettings = async (
   userSettings: ApiGroupUserSettings
 ) => {
   if (currentSelectedGroup.value) {
-    const localGroupToUpdate = (UserGroups.value || []).find(
+    const localGroupToUpdate = nonPendingUserGroups.value.find(
       ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
     );
     if (localGroupToUpdate) {
@@ -70,7 +96,7 @@ export const persistUserGroupSettings = async (
 
 export const persistGroupSettings = async (settings: ApiGroupSettings) => {
   if (currentSelectedGroup.value) {
-    const localGroupToUpdate = (UserGroups.value || []).find(
+    const localGroupToUpdate = nonPendingUserGroups.value.find(
       ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
     );
     if (localGroupToUpdate) {
@@ -112,7 +138,7 @@ export const login = async (
   userPassword: string,
   signInInProgress: PendingRequest
 ) => {
-  const emailAddress = userEmailAddress.trim();
+  const emailAddress = userEmailAddress.trim().toLowerCase();
   const password = userPassword.trim();
   signInInProgress.requestPending = true;
   const loggedInUserResponse = await userLogin(emailAddress, password);
@@ -296,58 +322,44 @@ export type SelectedGroup = {
 };
 export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
-    if (UserGroups.value && UserGroups.value?.length === 0) {
+    if (nonPendingUserGroups.value.length === 0) {
       return false;
-    }
-    if (
-      UserGroups.value &&
-      UserGroups.value?.length !== 0 &&
-      currentUserSettings.value.currentSelectedGroup
-    ) {
-      const potentialGroupId =
-        currentUserSettings.value.currentSelectedGroup.id;
-      const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
-        ({ id }) => id === potentialGroupId
-      );
-      if (!matchedGroup) {
-        return false;
-      }
     }
     if (
       currentUserSettings.value &&
       currentUserSettings.value.currentSelectedGroup
     ) {
-      const group =
-        UserGroups.value &&
-        UserGroups.value?.find(
-          (g) =>
-            g.id ===
-            (currentUserSettings.value as ApiUserSettings).currentSelectedGroup
-              ?.id
-        );
-      return (
-        (group && {
-          id: group.id,
-          groupName: group.groupName,
-          settings: group.settings,
-          userSettings: group.userSettings,
-          admin: group.admin,
-        }) ||
-        false
+      const potentialGroupId =
+        currentUserSettings.value.currentSelectedGroup.id;
+      const matchedGroup = nonPendingUserGroups.value.find(
+        ({ id }) => id === potentialGroupId
       );
+      if (!matchedGroup) {
+        return false;
+      }
+      return {
+        id: matchedGroup.id,
+        groupName: matchedGroup.groupName,
+        settings: matchedGroup.settings,
+        userSettings: matchedGroup.userSettings,
+        admin: matchedGroup.admin,
+        owner: matchedGroup.owner,
+      };
     }
   }
-  return (
-    (UserGroups.value &&
-      UserGroups.value?.length !== 0 && {
-        id: UserGroups.value[0].id,
-        groupName: UserGroups.value[0].groupName,
-        settings: UserGroups.value[0].settings,
-        userSettings: UserGroups.value[0].userSettings,
-        admin: UserGroups.value[0].admin,
-      }) ||
-    false
-  );
+  if (nonPendingUserGroups.value.length !== 0) {
+    const { id, groupName, settings, userSettings, admin, owner } =
+      nonPendingUserGroups.value[0];
+    return {
+      id,
+      groupName,
+      settings,
+      userSettings,
+      admin,
+      owner,
+    };
+  }
+  return false;
 });
 
 export const userIsAdminForCurrentSelectedGroup = computed<boolean>(() => {
@@ -399,6 +411,20 @@ export const isResumingSession = ref(false);
 
 export const isLoggingInAutomatically = ref(false);
 export const isFetchingGroups = ref(false);
+
+export const refreshUserGroups = async () => {
+  // Grab the users' groups, and select the first one.
+  isFetchingGroups.value = true;
+  console.warn("Fetching user groups");
+  const NO_ABORT = false;
+  const groupsResponse = await getGroups(NO_ABORT);
+  if (groupsResponse.success) {
+    UserGroups.value = reactive(groupsResponse.result.groups);
+    // console.warn("Fetched user groups", currentSelectedGroup.value);
+  }
+  isFetchingGroups.value = false;
+  return groupsResponse;
+};
 
 // Global modal control
 export const creatingNewGroup = reactive({ enabled: false, visible: false });

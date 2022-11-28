@@ -8,6 +8,7 @@ import {
   isLoggingInAutomatically,
   isResumingSession,
   pinSideNav,
+  refreshUserGroups,
   switchCurrentGroup,
   tryLoggingInRememberedUser,
   urlNormalisedCurrentGroupName,
@@ -48,7 +49,12 @@ const router = createRouter({
     {
       path: "/setup",
       name: "setup",
-      meta: { title: "Group setup", requiresLogin: true, nonMainView: true },
+      meta: {
+        title: "Group setup",
+        requiresLogin: true,
+        nonMainView: true,
+        justChangedEmailAddress: false,
+      },
       component: () => import("@/views/SetupView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -304,16 +310,7 @@ router.beforeEach(async (to, from, next) => {
       !currentSelectedGroup.value &&
       !isFetchingGroups.value
     ) {
-      // Grab the users' groups, and select the first one.
-      isFetchingGroups.value = true;
-      console.warn("Fetching user groups");
-      const NO_ABORT = false;
-      const groupsResponse = await getGroups(NO_ABORT);
-      if (groupsResponse.success) {
-        UserGroups.value = reactive(groupsResponse.result.groups);
-        // console.warn("Fetched user groups", currentSelectedGroup.value);
-      }
-      isFetchingGroups.value = false;
+      const groupsResponse = await refreshUserGroups();
       if (groupsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else if (UserGroups.value?.length === 0) {

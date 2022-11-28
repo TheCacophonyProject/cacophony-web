@@ -63,6 +63,7 @@ const permissions = ref<string[]>([]);
 <template>
   <b-modal
     centered
+    id="invite-someone-modal"
     @ok="invitePendingUser"
     ok-title="Send invitation"
     title="Invite someone"
@@ -84,6 +85,7 @@ const permissions = ref<string[]>([]);
           aria-label="email address"
           placeholder="email address"
           :disabled="submittingInvite"
+          data-cy="invitee email address"
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">

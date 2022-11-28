@@ -190,9 +190,8 @@ const getGroupInclude = (
         where: {
           ...useAdminAccess,
           removedAt: { [Op.eq]: null },
-          pending: { [Op.eq]: null },
         },
-        attributes: ["admin", "settings", "owner"],
+        attributes: ["admin", "settings", "owner", "pending"],
       },
       where: { id: requestUserId },
     },

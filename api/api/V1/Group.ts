@@ -92,6 +92,7 @@ import {
 import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
 import { GroupInvites } from "@models/GroupInvites";
 import config from "@config";
+import logger from "@log";
 
 const mapGroup = (
   group: Group,
@@ -120,6 +121,16 @@ const mapGroup = (
   if (group.lastAudioRecordingTime) {
     groupData.lastAudioRecordingTime =
       group.lastAudioRecordingTime.toISOString();
+  }
+  const pending =
+    !viewAsSuperAdmin && (group as any).Users[0].GroupUsers.pending;
+  if (pending) {
+    groupData.pending = pending;
+    // If the user is only pending, they shouldn't see these fields.
+    delete groupData.lastAudioRecordingTime;
+    delete groupData.lastThermalRecordingTime;
+    delete groupData.userSettings;
+    delete groupData.settings;
   }
   return groupData;
 };
@@ -272,6 +283,36 @@ export default function (app: Application, baseUrl: string) {
       if (request.headers["user-agent"].includes("okhttp")) {
         // Sidekick UA
         groups = mapLegacyGroupsResponse(groups);
+      } else {
+        const oneWeekAgo = new Date(
+          new Date().setDate(new Date().getDate() - 7)
+        );
+        const actualUser = await models.User.findByPk(
+          response.locals.requestUser.id
+        );
+        if (actualUser.createdAt > oneWeekAgo) {
+          // Check invites that haven't expired
+          const invites = await models.GroupInvites.findAll({
+            where: { email: actualUser.email },
+            include: {
+              model: models.Group,
+              attributes: ["groupName"],
+            },
+          });
+          if (invites.length) {
+            const invitesMapped = invites.map(
+              (invite) =>
+                ({
+                  groupName: invite.Group.groupName,
+                  admin: invite.admin,
+                  owner: invite.owner,
+                  id: invite.GroupId,
+                  pending: "invited",
+                } as ApiGroupResponse)
+            );
+            groups = [...groups, ...invitesMapped];
+          }
+        }
       }
       // FIXME - handle deprecated field.
       return successResponse(response, { groups });
@@ -976,73 +1017,120 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  /**
+   * Called by a new or existing user, optionally with a token from an email, or while logged in,
+   * matching an invitation (created before the user became a member), or a pending invite row in
+   * the GroupUsers table, if the user was invited after they created a user account.
+   */
   app.post(
     `${apiUrl}/:groupIdOrName/accept-invitation`,
     extractJwtAuthorizedUser,
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
-      body("acceptGroupInviteJWT").exists(),
+      body("acceptGroupInviteJWT").optional(),
       query("existing-member").optional().default(false),
     ]),
-    // Decode the JWT token, get the email, userId for the token.
-    extractJWTInfo(body("acceptGroupInviteJWT")),
-    fetchUnauthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request, response, next) => {
-      if (
-        (response.locals.tokenInfo._type &&
-          response.locals.tokenInfo._type === "invite-new-user") ||
-        response.locals.tokenInfo._type === "invite-existing-user"
-      ) {
-        // Make sure url group matches token group.
-        if (response.locals.group.id !== response.locals.tokenInfo.group) {
-          return next(new AuthorizationError("Token does not match group"));
-        }
-        next();
-      } else {
-        return next(new AuthorizationError("Invalid token type"));
-      }
-    },
-    async (request, response, next) => {
-      if (response.locals.tokenInfo._type === "invite-new-user") {
-        await fetchUnauthorizedRequiredInvitationById(
-          response.locals.tokenInfo.id
-        )(request, response, next);
-      } else if (response.locals.tokenInfo._type === "invite-existing-user") {
-        if (response.locals.requestUser.id !== response.locals.tokenInfo.id) {
-          return next(
-            new AuthorizationError("Token does not match redeeming user")
-          );
-        }
-        await fetchUnauthorizedRequiredUserById(response.locals.tokenInfo.id)(
+      if (request.body.acceptGroupInviteJWT) {
+        // Decode the JWT token, get the email, userId for the token.
+        await extractJWTInfo(body("acceptGroupInviteJWT"))(
           request,
           response,
           next
         );
+      } else {
+        next();
+      }
+    },
+    fetchUnauthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (request, response, next) => {
+      if (response.locals.tokenInfo) {
+        if (
+          (response.locals.tokenInfo._type &&
+            response.locals.tokenInfo._type === "invite-new-user") ||
+          response.locals.tokenInfo._type === "invite-existing-user"
+        ) {
+          // Make sure url group matches token group.
+          if (response.locals.group.id !== response.locals.tokenInfo.group) {
+            return next(new AuthorizationError("Token does not match group"));
+          }
+          next();
+        } else {
+          return next(new AuthorizationError("Invalid token type"));
+        }
+      } else {
+        next();
+      }
+    },
+    async (request, response, next) => {
+      if (response.locals.tokenInfo) {
+        if (response.locals.tokenInfo._type === "invite-new-user") {
+          await fetchUnauthorizedRequiredInvitationById(
+            response.locals.tokenInfo.id
+          )(request, response, next);
+        } else if (response.locals.tokenInfo._type === "invite-existing-user") {
+          if (response.locals.requestUser.id !== response.locals.tokenInfo.id) {
+            return next(
+              new AuthorizationError("Token does not match redeeming user")
+            );
+          }
+          await fetchUnauthorizedRequiredUserById(response.locals.tokenInfo.id)(
+            request,
+            response,
+            next
+          );
+        }
+      } else {
+        next();
       }
     },
     async (request: Request, response: Response, next: NextFunction) => {
+      // FIXME: Failure cases:
+      // if (!inviter) {
+      //   return next(new UnprocessableError("Inviting user no longer exists"));
+      // }
+      // if (!user) {
+      //   return next(new UnprocessableError("User no longer exists"));
+      // }
+      // if (!group) {
+      //   return next(new UnprocessableError("Group no longer exists"));
+      // }
+
       const actualUser = await models.User.findByPk(
         response.locals.requestUser.id
       );
+
       const tokenInfo = response.locals.tokenInfo as {
         _type: "invite-new-user" | "invite-existing-user";
         id: UserId | GroupInvitationId;
         group: GroupId;
       };
 
-      if (tokenInfo._type === "invite-new-user") {
-        const invitation = response.locals.groupinvite as GroupInvites;
-        if (!request.query["existing-member"]) {
-          if (invitation.email !== actualUser.email) {
-            await invitation.destroy();
-            return next(
-              new AuthorizationError(
-                "Invitation was sent to a different email address"
-              )
-            );
+      // Check if we're calling this as a user without token
+      let invitation;
+      if (!tokenInfo) {
+        invitation = await models.GroupInvites.findOne({
+          where: {
+            GroupId: response.locals.group.id,
+            email: actualUser.email,
+          },
+        });
+      } else {
+        if (tokenInfo._type === "invite-new-user") {
+          const invitation = response.locals.groupinvite as GroupInvites;
+          if (!request.query["existing-member"]) {
+            if (invitation.email !== actualUser.email) {
+              await invitation.destroy();
+              return next(
+                new AuthorizationError(
+                  "Invitation was sent to a different email address"
+                )
+              );
+            }
           }
         }
-        // TODO: Can this fail?
+      }
+      if (invitation) {
         const { added } = await models.Group.addOrUpdateGroupUser(
           response.locals.group,
           actualUser,
@@ -1067,7 +1155,6 @@ export default function (app: Application, baseUrl: string) {
         }
         await invitation.destroy();
       } else {
-        // Existing user
         const pendingUser = await models.GroupUsers.findOne({
           where: {
             UserId: response.locals.requestUser.id,
@@ -1096,6 +1183,7 @@ export default function (app: Application, baseUrl: string) {
           );
         }
       }
+      // TODO: Should the inviting user receive an email to let them know that the user has accepted their invitation?
       return successResponse(response, "Joined group");
     }
   );

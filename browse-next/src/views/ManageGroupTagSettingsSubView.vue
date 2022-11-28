@@ -146,7 +146,7 @@ const addPendingTag = async () => {
       </button>
     </div>
   </div>
-  <card-table :items="tableItems" compact :break-point="0">
+  <card-table :items="tableItems" compact :max-card-width="0">
     <template #_moveUp="{ cell }">
       <button
         class="btn"

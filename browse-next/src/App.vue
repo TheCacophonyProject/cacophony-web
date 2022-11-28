@@ -39,6 +39,7 @@ import {
 } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
+import router from "@/router";
 
 const globalSideNav = ref<HTMLDivElement>();
 
@@ -414,7 +415,8 @@ onMounted(() => {
       <div class="border-top d-flex">
         <router-link
           :to="{ name: 'user-settings' }"
-          class="d-flex py-3 text-decoration-none flex-fill"
+          class="d-flex py-3 text-decoration-none flex-fill align-items-center flex-row"
+          data-cy="user settings nav button"
         >
           <span class="nav-icon-wrapper">
             <span class="icon-alert-wrapper">
@@ -433,7 +435,7 @@ onMounted(() => {
               </svg>
             </span>
           </span>
-          <span v-html="currentUserName"></span>
+          <span v-html="currentUserName" class="text-nowrap"></span>
         </router-link>
         <router-link
           :to="{ name: 'sign-out' }"

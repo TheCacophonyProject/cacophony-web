@@ -597,9 +597,9 @@ export default function (app: Application, baseUrl: string) {
     },
     fetchAdminAuthorizedRequiredGroups,
     async (request: Request, response: Response) => {
-      const groups: ApiGroupResponse[] = response.locals.groups.map(
-        ({ id, groupName }) => ({ id, groupName, admin: false })
-      );
+      const groups: ApiGroupResponse[] = response.locals.groups
+        .map(({ id, groupName }) => ({ id, groupName, admin: false }))
+        .filter(({ pending }) => pending === undefined);
       return successResponse(response, "Got groups for admin user", {
         groups,
       });

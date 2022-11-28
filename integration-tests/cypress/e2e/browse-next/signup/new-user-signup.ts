@@ -5,9 +5,14 @@ const cyEl = (str: string) => {
   return cy.get(`[data-cy='${str}']`);
 };
 const getEmailConfirmationToken = `${apiRoot}/users/get-email-confirmation-token`;
-const getEmail = (userName: string) => `${userName}@api.created.com`;
+const getEmail = (userName: string) =>
+  `${userName.replace(/ /g, "-")}@api.created.com`;
 export const urlNormaliseGroupName = (name: string): string => {
   return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();
+};
+
+const modalOkayButton = (modalId: string) => {
+  return cy.get(`#${modalId} .modal-footer > .btn-primary`);
 };
 
 const registerNewUser = (userName: string, password: string) => {
@@ -128,7 +133,7 @@ describe("New users can sign up and confirm their email address", () => {
   });
 
   it("Existing new user is able to request to join an existing group from setup view", () => {
-    // User 1 creates a group
+    cy.log("User 1 creates a group");
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
     const group = uniqueName("group");
@@ -137,7 +142,7 @@ describe("New users can sign up and confirm their email address", () => {
     createGroupFromInitialSetup(group);
     signOut();
 
-    // User 2 requests permission to join the group
+    cy.log("User 2 requests permission to join the group");
     const user2 = uniqueName("Bob");
     registerNewUser(user2, password);
     confirmNewUserEmailAddress(user2);
@@ -147,9 +152,49 @@ describe("New users can sign up and confirm their email address", () => {
 
     cyEl("list joinable groups button").click();
     // Since there is only one group, it won't show a list of options to choose from.
-    cy.get("#join-group-modal .modal-footer > .btn-primary").click();
+    modalOkayButton("join-group-modal").click();
 
-    // At this point, nothing happens, we stay on the setup screen.  Would be good to show some status update.
+    cy.log(
+      "User should we should see our requested group listed with a pending status"
+    );
+    expect(cyEl("pending group memberships")).to.exist;
+    expect(cyEl("pending group memberships").contains(group)).to.exist;
+    expect(
+      cyEl("pending group memberships").contains(
+        "Waiting for approval from group admin"
+      )
+    ).to.exist;
+  });
+
+  it("New user with a pending invitation is able to see and accept that invitation from their setup screen", () => {
+    cy.log("User 1 creates a group");
+    const user1 = uniqueName("Bob");
+    const password = uniqueName("pass");
+    const group = uniqueName("group");
+    registerNewUser(user1, password);
+    confirmNewUserEmailAddress(user1);
+    createGroupFromInitialSetup(group);
+    cy.log("They invite a non-member to join their group via email address.");
+
+    const user2 = uniqueName("Bob");
+
+    cy.visit(`/${urlNormaliseGroupName(group)}/settings/users`);
+    cyEl("invite someone to group button").click();
+    cyEl("invitee email address").type(getEmail(user2));
+    modalOkayButton("invite-someone-modal").click();
+    signOut();
+
+    cy.log("User 2 signs up with their email address.");
+    registerNewUser(user2, password);
+    confirmNewUserEmailAddress(user2);
+    cy.url().should("contain", "/setup");
+    cy.log("Should see our invited group listed with a pending status");
+    expect(cyEl("pending group memberships")).to.exist;
+    expect(cyEl("pending group memberships").contains(group)).to.exist;
+    cyEl("accept group invitation button").click();
+    cy.log("User is redirected to dashboard for joined group");
+    cy.url().should("contain", `/${urlNormaliseGroupName(group)}`);
+    signOut();
   });
 
   it("Existing user (with groups) is able to request to join an existing group from main view", () => {});
@@ -159,4 +204,54 @@ describe("New users can sign up and confirm their email address", () => {
   it("Logged in user with a group invite link is able to accept the invitation", () => {});
 
   it("Logged out user with a group invite link is able to accept the invitation after login", () => {});
+
+  it.only("Legacy browse users can sign in and have the option of confirming their current email address or choosing a new one", () => {
+    cy.log(
+      "Create an existing user with groups but without confirming email address"
+    );
+    const user1 = uniqueName("Bob");
+    const password = uniqueName("pass");
+    const group = uniqueName("group");
+    registerNewUser(user1, password);
+    confirmNewUserEmailAddress(user1);
+    createGroupFromInitialSetup(group);
+
+    cy.visit("/my-settings");
+
+    // TODO - various things filling the fields incorrectly for changing username and email and
+    //  making sure we get good validation error messages.
+
+    cy.log("Check that user can change their display name");
+    cyEl("change display name button").click();
+    const newDisplayName = uniqueName("Bob updated");
+    cyEl("display name").type(newDisplayName);
+    modalOkayButton("change-display-name").click();
+    expect(cyEl("user display name").contains(newDisplayName)).to.exist;
+
+    cy.log("Un-confirm user email address by changing email");
+    cyEl("change email address button").click();
+    const newEmailAddress = getEmail(newDisplayName);
+    cyEl("email address").type(newEmailAddress);
+    modalOkayButton("change-email-address").click();
+
+    cy.url().should("contain", "/setup");
+
+    cyEl("send account confirmation email").should("not.exist");
+    cyEl("new email address").should("not.exist");
+    //sign out
+    signOut();
+
+    //sign in
+    signInExistingUser(newDisplayName, password);
+    cy.url().should("contain", "/setup");
+    expect(cyEl("send account confirmation email")).to.exist;
+    expect(cyEl("new email address")).to.exist;
+
+    cy.log(
+      "Check that we can correctly choose another email address from here"
+    );
+    const evenNewerEmailAddress = getEmail(uniqueName("Bob3"));
+    cyEl("new email address").type(evenNewerEmailAddress);
+    cyEl("update email address button").click();
+  });
 });

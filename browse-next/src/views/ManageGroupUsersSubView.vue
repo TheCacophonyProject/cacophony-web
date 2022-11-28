@@ -214,6 +214,7 @@ const permissionsOptions = computed(() => [
         type="button"
         class="btn btn-outline-secondary ms-2"
         @click.stop.prevent="() => (showInviteUserModal = true)"
+        data-cy="invite someone to group button"
       >
         <font-awesome-icon icon="envelope" />
         <span class="ps-2">Invite someone</span>
@@ -226,7 +227,7 @@ const permissionsOptions = computed(() => [
   >
     <b-spinner variant="secondary" />
   </div>
-  <card-table :items="tableItems" compact v-else :break-point="730">
+  <card-table :items="tableItems" compact v-else :max-card-width="730">
     <template #card="{ card }">
       <div class="d-flex align-items-center justify-content-between">
         <div>
@@ -265,6 +266,7 @@ const permissionsOptions = computed(() => [
         class="d-flex justify-content-between align-items-center mt-2 flex-row-reverse"
       >
         <button
+          type="button"
           class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
           @click.prevent="() => editUserAdmin(card.permissions.value)"
           :disabled="
@@ -365,6 +367,7 @@ const permissionsOptions = computed(() => [
         <span class="ps-2">owner</span>
       </div>
       <button
+        type="button"
         class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-3"
         @click.prevent="() => editUserAdmin(cell.value)"
         :disabled="isLastOwnerUser(cell.value) && isLastAdminUser(cell.value)"

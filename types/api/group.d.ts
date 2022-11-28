@@ -16,6 +16,7 @@ export interface ApiGroupResponse {
   lastAudioRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of last audio recording seen for group
   admin: boolean; // Is the calling user an admin of this group?
   owner: boolean; // Is the calling user an owner of this group?
+  pending?: "invited" | "requested"; // Has the calling user been invited to the group, but not accepted yet?  Has the calling user requested to join the group?
   settings?: ApiGroupSettings;
   userSettings?: ApiGroupUserSettings;
 }

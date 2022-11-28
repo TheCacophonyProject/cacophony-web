@@ -1,82 +1,93 @@
 <template>
-  <table
-    v-if="shouldRenderAsRows && hasItems"
-    class="card-table bg-white my-2"
-    :class="{ compact }"
-  >
-    <thead>
-      <tr>
-        <th
-          class="py-2 px-3 text-nowrap"
-          v-for="(heading, index) in displayedItems.headings"
-          :key="`${heading}_${index}`"
-        >
-          {{ heading }}
-        </th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="(row, rowIndex) in displayedItems.values" :key="rowIndex">
-        <td
-          :class="[
-            compact ? 'py-2 ps-3' : 'py-3 ps-3',
-            { 'pe-3': index === row.length - 1 },
-            ...(cell.cellClasses || []),
-          ]"
-          v-for="(cell, index) in row"
-          :key="index"
-        >
-          <slot :name="headings[index]" v-bind="{ cell }">
-            <span v-if="cell.value" class="text-nowrap" v-html="cell.value" />
-            <span v-else-if="cell" class="text-nowrap" v-html="cell" />
-          </slot>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-  <div v-else-if="hasItems">
-    <div
-      v-for="(card, cardIndex) in items"
-      :key="cardIndex"
-      class="card-table bg-white py-2 ps-3 pe-2 my-2"
+  <div ref="cardTableContainer">
+    <table
+      v-if="shouldRenderAsRows && hasItems"
+      class="card-table bg-white my-2"
+      :class="{ compact }"
     >
-      <slot name="card" v-bind="{ card }">
-        <div v-for="(value, index) in Object.values(card)" :key="index">
-          <div
-            v-if="displayedItems.headings[index]"
-            class="d-flex justify-content-between"
+      <thead>
+        <tr>
+          <th
+            class="py-2 px-3 text-nowrap"
+            v-for="(heading, index) in displayedItems.headings"
+            :key="`${heading}_${index}`"
           >
-            <span class="text-capitalize"
-              ><strong>{{ displayedItems.headings[index] }}:</strong></span
+            {{ heading }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(row, rowIndex) in displayedItems.values" :key="rowIndex">
+          <td
+            :class="[
+              compact ? 'py-2 ps-3' : 'py-3 ps-3',
+              { 'pe-3': index === row.length - 1 },
+              ...(cell.cellClasses || []),
+            ]"
+            v-for="(cell, index) in row"
+            :key="index"
+          >
+            <slot :name="headings[index]" v-bind="{ cell }">
+              <span v-if="cell.value" class="text-nowrap" v-html="cell.value" />
+              <span v-else-if="cell" class="text-nowrap" v-html="cell" />
+            </slot>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div v-else-if="hasItems">
+      <div
+        v-for="(card, cardIndex) in items"
+        :key="cardIndex"
+        class="card-table bg-white py-2 ps-3 pe-2 my-2"
+      >
+        <slot name="card" v-bind="{ card }">
+          <div v-for="(value, index) in Object.values(card)" :key="index">
+            <div
+              v-if="displayedItems.headings[index]"
+              class="d-flex justify-content-between"
             >
-            <span v-if="value.value" class="text-nowrap" v-html="value.value" />
-            <span v-else-if="value" class="text-nowrap" v-html="value" />
+              <span class="text-capitalize"
+                ><strong>{{ displayedItems.headings[index] }}:</strong></span
+              >
+              <span
+                v-if="value.value"
+                class="text-nowrap"
+                v-html="value.value"
+              />
+              <span v-else-if="value" class="text-nowrap" v-html="value" />
+            </div>
           </div>
-        </div>
-      </slot>
+        </slot>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import type {
   CardTableRows,
   GenericCardTableValue,
 } from "@/components/CardTableTypes";
-import { useMediaQuery } from "@vueuse/core";
+import { useElementSize } from "@vueuse/core";
 
 const {
   items = [],
   compact = false,
-  breakPoint = 576,
+  maxCardWidth = 575,
 } = defineProps<{
-  breakPoint?: number;
+  maxCardWidth?: number;
   items: CardTableRows<any>;
   compact?: boolean;
 }>();
+
+const cardTableContainer = ref<HTMLDivElement>();
+
+const { width } = useElementSize(cardTableContainer);
+const shouldRenderAsRows = computed(() => width.value >= maxCardWidth);
+
 const hasItems = computed(() => items.length !== 0);
-const shouldRenderAsRows = useMediaQuery(`(min-width: ${breakPoint}px)`);
 const headings = computed<string[]>(() => {
   if (items.length) {
     return Object.keys(items[0]);
