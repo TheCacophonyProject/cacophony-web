@@ -6,7 +6,7 @@ const cyEl = (str: string) => {
 };
 const getEmailConfirmationToken = `${apiRoot}/users/get-email-confirmation-token`;
 const getEmail = (userName: string) =>
-  `${userName.replace(/ /g, "-")}@api.created.com`;
+  `${userName.replace(/ /g, "-")}@api.created.com`.toLowerCase();
 export const urlNormaliseGroupName = (name: string): string => {
   return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();
 };

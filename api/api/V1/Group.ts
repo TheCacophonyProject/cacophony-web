@@ -1117,7 +1117,7 @@ export default function (app: Application, baseUrl: string) {
         });
       } else {
         if (tokenInfo._type === "invite-new-user") {
-          const invitation = response.locals.groupinvite as GroupInvites;
+          invitation = response.locals.groupinvite as GroupInvites;
           if (!request.query["existing-member"]) {
             if (invitation.email !== actualUser.email) {
               await invitation.destroy();
