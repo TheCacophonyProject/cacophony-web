@@ -520,7 +520,7 @@ const handleImageError = (e: ErrorEvent) => {
         :items="taggerDetails"
         class="mb-2"
         compact
-        max-card-width="0"
+        :max-card-width="0"
       >
         <template #_deleteAction="{ cell }">
           <button
