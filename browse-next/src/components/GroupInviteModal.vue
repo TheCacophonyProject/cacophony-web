@@ -19,7 +19,7 @@ const emailIsTooShort = computed<boolean>(
 const isValidEmailAddress = computed<boolean>(() => {
   const { value } = inviteeEmailAddress;
   const email = value.trim();
-  return !emailIsTooShort.value && email.includes("@");
+  return !emailIsTooShort.value && email.includes("@") && !email.includes(" ");
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>

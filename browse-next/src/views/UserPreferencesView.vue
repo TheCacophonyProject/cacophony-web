@@ -107,7 +107,7 @@ const isValidEmailAddress = computed<boolean>(() => {
   }
   const { value } = userEmailAddress;
   const email = value.trim();
-  return !emailIsTooShort.value && email.includes("@");
+  return !emailIsTooShort.value && email.includes("@") && !email.includes(" ");
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
@@ -289,9 +289,7 @@ const updateUserEmailAddress = async () => {
 
   <h6>Things that could appear here:</h6>
   <ul>
-    <li>Change my email address</li>
     <li>Reset/change my password</li>
-    <li>Edit my user name, real name?</li>
     <li>Review the End User Agreement?</li>
     <li>Show release info/changelog?</li>
     <li>Global transactional email settings</li>

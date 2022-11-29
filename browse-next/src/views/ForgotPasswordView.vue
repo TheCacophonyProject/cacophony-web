@@ -24,7 +24,7 @@ const hasError = computed({
 const isValidEmailAddress = computed<boolean>(() => {
   const { value } = userEmailAddress;
   const email = value.trim();
-  return email.length > 3 && email.includes("@");
+  return email.length > 3 && email.includes("@") && !email.includes(" ");
 });
 
 const needsValidationAndIsValidEmailAddress =

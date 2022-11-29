@@ -35,7 +35,11 @@ import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import { CurrentUser, CurrentUserCreds } from "@models/LoggedInUser";
+import {
+  CurrentUser,
+  CurrentUserCreds,
+  showUnimplementedModal,
+} from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import type { VisitRecordingTag } from "@typedefs/api/monitoring";
 import { API_ROOT } from "@api/root";
@@ -668,19 +672,19 @@ const deleteRecording = async () => {
     //const deleteResponse = await apiDeleteRecording(recording.value.id);
 
     // TODO: Change the current context to remove the recording, recalc visit etc.
-
-    if (
-      hasNextRecording.value ||
-      hasNextVisit.value ||
-      hasPreviousRecording.value ||
-      hasPreviousVisit.value
-    ) {
-      if (hasNextRecording.value || hasNextVisit.value) {
-        await gotoNextRecordingOrVisit();
-      } else {
-        await gotoPreviousRecordingOrVisit();
-      }
-    }
+    showUnimplementedModal.value = true;
+    // if (
+    //   hasNextRecording.value ||
+    //   hasNextVisit.value ||
+    //   hasPreviousRecording.value ||
+    //   hasPreviousVisit.value
+    // ) {
+    //   if (hasNextRecording.value || hasNextVisit.value) {
+    //     await gotoNextRecordingOrVisit();
+    //   } else {
+    //     await gotoPreviousRecordingOrVisit();
+    //   }
+    // }
     console.log("Delete recording");
   }
 };

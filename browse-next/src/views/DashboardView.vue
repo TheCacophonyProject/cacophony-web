@@ -2,7 +2,11 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { getAllVisitsForGroup } from "@api/Monitoring";
-import { currentSelectedGroup, UserGroups } from "@models/LoggedInUser";
+import {
+  currentSelectedGroup,
+  showUnimplementedModal,
+  UserGroups,
+} from "@models/LoggedInUser";
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
@@ -103,6 +107,18 @@ const speciesSummary = computed<Record<string, number>>(() => {
     },
     {}
   );
+});
+
+watch(speciesOrStations, (next) => {
+  if (next === "station") {
+    showUnimplementedModal.value = true;
+  }
+});
+
+watch(visitsOrRecordings, (next) => {
+  if (next === "recordings") {
+    showUnimplementedModal.value = true;
+  }
 });
 
 const earliestDate = computed<Date>(() => {

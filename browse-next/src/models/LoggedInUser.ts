@@ -193,7 +193,15 @@ export const refreshLocallyStoredUserActivation = (): boolean => {
   return false;
 };
 
-export const refreshLocallyStoredUser = (): boolean => {
+export const refreshLocallyStoredUser = (
+  refreshedUserData?: ApiLoggedInUserResponse
+): boolean => {
+  if (refreshedUserData) {
+    setLoggedInUserData({
+      ...refreshedUserData,
+    });
+    return true;
+  }
   const rememberedCredentials = window.localStorage.getItem(
     "saved-login-user-data"
   );
@@ -218,13 +226,12 @@ export const refreshLocallyStoredUser = (): boolean => {
 };
 
 const refreshCredentials = async () => {
-  // FIXME - Should also load current user here.
-
   // NOTE: Because this can be shared between browser windows/tabs,
   //  always pull out the localStorage version before refreshing
   const rememberedCredentials = window.localStorage.getItem(
     "saved-login-credentials"
   );
+
   if (rememberedCredentials) {
     console.warn("-- Resuming from saved credentials");
     let currentUserCreds;

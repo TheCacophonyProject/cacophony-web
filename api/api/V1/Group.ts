@@ -92,7 +92,6 @@ import {
 import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
 import { GroupInvites } from "@models/GroupInvites";
 import config from "@config";
-import logger from "@log";
 
 const mapGroup = (
   group: Group,
@@ -188,6 +187,22 @@ interface ApiScheduleConfigs {
   schedules: ScheduleConfig[];
 }
 
+// NOTE: In theory someone could choose one of these as their group name,
+//  and break a bunch of url resolving on browse - so let's make them reserved.
+const RESERVED_GROUP_NAMES = [
+  "my-settings",
+  "sign-in",
+  "sign-out",
+  "register",
+  "end-user-agreement",
+  "forgot-password",
+  "reset-password",
+  "confirm-group-membership-request",
+  "accept-invite",
+  "confirm-account-email",
+  "setup",
+];
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
 
@@ -220,9 +235,23 @@ export default function (app: Application, baseUrl: string) {
           request,
           body(["groupname", "groupName"])
         );
-        await fetchUnauthorizedOptionalGroupByNameOrId(
-          urlNormaliseName(groupName)
-        )(request, response, next);
+
+        const urlNormalisedGroupName = urlNormaliseName(groupName);
+
+        if (RESERVED_GROUP_NAMES.includes(urlNormalisedGroupName)) {
+          return next(
+            new ClientError(
+              "Group name is reserved",
+              HttpStatusCode.Unprocessable
+            )
+          );
+        }
+
+        await fetchUnauthorizedOptionalGroupByNameOrId(urlNormalisedGroupName)(
+          request,
+          response,
+          next
+        );
       } else {
         next();
       }

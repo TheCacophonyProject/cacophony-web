@@ -4,11 +4,9 @@ import { useRoute, useRouter } from "vue-router";
 import { validateEmailConfirmationToken } from "@api/User";
 import {
   CurrentUser,
-  nonPendingUserGroups,
   setLoggedInUserCreds,
   setLoggedInUserData,
   urlNormalisedCurrentGroupName,
-  UserGroups,
   userHasGroups,
   userIsLoggedIn,
 } from "@models/LoggedInUser";

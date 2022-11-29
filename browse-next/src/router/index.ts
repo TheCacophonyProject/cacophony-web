@@ -20,7 +20,7 @@ import {
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
 import { getGroups } from "@api/Group";
-import { reactive } from "vue";
+import { nextTick, reactive } from "vue";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 
@@ -95,7 +95,7 @@ const router = createRouter({
     {
       path: "/:groupName",
       name: "dashboard",
-      meta: { title: "Group :stationName :tabName", requiresLogin: true },
+      meta: { title: ":groupName Dashboard", requiresLogin: true },
       component: () => import("@/views/DashboardView.vue"),
       beforeEnter: cancelPendingRequests,
       children: [
@@ -105,6 +105,7 @@ const router = createRouter({
           path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
           name: "dashboard-visit",
           redirect: { name: "dashboard-visit-tracks" }, // Make tracks the default tab
+          meta: { title: ":visitLabel visit, #:currentRecordingId" },
           component: () => import("@/views/RecordingView.vue"),
           children: [
             {
@@ -123,6 +124,7 @@ const router = createRouter({
           // RecordingView will be rendered inside Dashboards' <router-view>
           // when /:groupName/recordings/:recordingIds is matched
           path: "recording/:currentRecordingId/:recordingIds?",
+          meta: { title: "Recording #:currentRecordingId" },
           name: "dashboard-recording",
           component: () => import("@/views/RecordingView.vue"),
         },
@@ -134,42 +136,46 @@ const router = createRouter({
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, title: "Stations for :groupName" },
       component: () => import("@/views/StationsView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/activity",
       name: "activity",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, title: "Activity in :groupName" },
       component: () => import("@/views/ActivitySearchView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/devices",
       name: "devices",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, title: "Devices belonging to :groupName" },
       component: () => import("@/views/DevicesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/report",
       name: "report",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, title: "Reporting: :groupName" },
       component: () => import("@/views/ReportingView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/my-settings",
       name: "user-group-settings",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, title: "My settings for :groupName" },
       component: () => import("@/views/UserGroupPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/:groupName/settings",
       name: "group-settings",
-      meta: { requiresLogin: true, requiresGroupAdmin: true },
+      meta: {
+        requiresLogin: true,
+        requiresGroupAdmin: true,
+        title: "Settings for :groupName",
+      },
       redirect: { name: "group-users" },
       component: () => import("@/views/ManageGroupView.vue"),
       beforeEnter: cancelPendingRequests,
@@ -179,33 +185,35 @@ const router = createRouter({
           // when /:groupName/settings/users is matched
           name: "group-users",
           path: "users",
+          meta: { title: "Users for :groupName" },
           component: () => import("@/views/ManageGroupUsersSubView.vue"),
         },
         {
           name: "group-tag-settings",
           path: "tag-settings",
+          meta: { title: "Tag preferences for :groupName" },
           component: () => import("@/views/ManageGroupTagSettingsSubView.vue"),
         },
         {
           name: "fix-station-locations",
           path: "fix-station-locations",
+          meta: { title: "Fixup station locations for :groupName" },
           component: () =>
             import("@/views/ManageGroupFixStationLocationsSubView.vue"),
         },
       ],
     },
-    // FIXME - add "user-settings", "sign-in" etc to list of forbidden group names.
     {
       path: "/my-settings",
       name: "user-settings",
-      meta: { requiresLogin: true },
+      meta: { requiresLogin: true, title: "My settings" },
       component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/sign-out",
       name: "sign-out",
-      meta: { requiresLogin: true, nonMainView: true },
+      meta: { requiresLogin: true, nonMainView: true, title: "Signing out" },
       component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
@@ -213,53 +221,128 @@ const router = createRouter({
     {
       path: "/sign-in",
       name: "sign-in",
-      meta: { requiresLogin: false, nonMainView: true },
+      meta: { requiresLogin: false, nonMainView: true, title: "Sign in" },
       component: () => import("@/views/SignInView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register",
       name: "register",
-      meta: { requiresLogin: false, nonMainView: true },
+      meta: {
+        requiresLogin: false,
+        nonMainView: true,
+        title: "Create account",
+      },
       component: () => import("@/views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/register/accept-invite/:token",
       name: "register-with-token",
-      meta: { requiresLogin: false, nonMainView: true },
+      meta: {
+        requiresLogin: false,
+        nonMainView: true,
+        title: "Accepting invitation",
+      },
       component: () => import("@/views/RegisterView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/end-user-agreement",
       name: "end-user-agreement",
-      meta: { requiresLogin: true, nonMainView: true },
+      meta: {
+        requiresLogin: true,
+        nonMainView: true,
+        title: "End user agreement",
+      },
       component: () => import("@/views/UserPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/forgot-password",
       name: "forgot-password",
-      meta: { requiresLogin: false, nonMainView: true },
+      meta: {
+        requiresLogin: false,
+        nonMainView: true,
+        title: "Forgot password",
+      },
       component: () => import("@/views/ForgotPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password/:token",
       name: "validate-reset-password",
-      meta: { requiresLogin: false, nonMainView: true },
+      meta: {
+        requiresLogin: false,
+        nonMainView: true,
+        title: "Resetting password",
+      },
       component: () => import("@/views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
       path: "/reset-password",
       name: "reset-password",
-      meta: { requiresLogin: false, nonMainView: true },
+      meta: {
+        requiresLogin: false,
+        nonMainView: true,
+        title: "Reset password",
+      },
       component: () => import("@/views/ResetPasswordView.vue"),
       beforeEnter: cancelPendingRequests,
     },
   ],
+});
+
+const DEFAULT_TITLE = "Cacophony Browse";
+
+const interpolateTitle = (
+  str: string,
+  route: RouteLocationNormalized
+): string => {
+  const params = route.params;
+  let foundMatch = true;
+  let output = str;
+  while (foundMatch) {
+    foundMatch = false;
+    const pieces = output.split(" ");
+    for (let piece of pieces) {
+      const startsWithHash = piece.startsWith("#");
+      const endsWithComma = piece.endsWith(",");
+      if (startsWithHash) {
+        piece = piece.slice(1);
+      }
+      if (endsWithComma) {
+        piece = piece.slice(0, piece.length - 1);
+      }
+      if (piece.startsWith(":") && params[piece.slice(1)]) {
+        const replaceWith = params[piece.slice(1)];
+        output = output.replace(
+          piece,
+          replaceWith[0].toUpperCase() + replaceWith.slice(1)
+        );
+        foundMatch = true;
+        if (startsWithHash) {
+          piece = `#${piece}`;
+        }
+        if (endsWithComma) {
+          piece = `${piece},`;
+        }
+        break;
+      }
+    }
+  }
+  return output;
+};
+
+router.afterEach(async (to) => {
+  // Use next tick to handle router history correctly
+  // see: https://github.com/vuejs/vue-router/issues/914#issuecomment-384477609
+  await nextTick(() => {
+    document.title = ((to.meta?.title &&
+      `${interpolateTitle(to.meta.title as string, to)} | ${DEFAULT_TITLE}`) ||
+      DEFAULT_TITLE) as string;
+  });
 });
 
 router.beforeEach(async (to, from, next) => {

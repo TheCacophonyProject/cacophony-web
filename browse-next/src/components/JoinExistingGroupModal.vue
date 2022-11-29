@@ -34,7 +34,7 @@ const joinableGroupsCheckboxOptions = computed<
 const isValidEmailAddress = computed<boolean>(() => {
   const { value } = groupAdminEmailAddress;
   const email = value.trim();
-  return !emailIsTooShort.value && email.includes("@");
+  return !emailIsTooShort.value && email.includes("@") && !email.includes(" ");
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>

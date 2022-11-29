@@ -39,7 +39,6 @@ import {
 } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
-import router from "@/router";
 
 const globalSideNav = ref<HTMLDivElement>();
 
@@ -138,7 +137,14 @@ onMounted(() => {
   <div class="debug">Logged in? {{ userIsLoggedIn }}</div>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal id="network-issue-modal" />
-  <b-modal id="unimplemented-modal" v-model="showUnimplementedModal" centered>
+  <b-modal
+    id="unimplemented-modal"
+    v-model="showUnimplementedModal"
+    centered
+    ok-only
+    title="Unimplemented feature"
+    hide-backdrop
+  >
     <div>Sorry, this feature is not yet implemented.</div>
   </b-modal>
   <switch-groups-modal
@@ -511,7 +517,9 @@ onMounted(() => {
   --bs-btn-focus-border-color: transparent;
   --bs-btn-active-border-color: transparent;
 }
-
+#unimplemented-modal {
+  z-index: 20000;
+}
 @import "./assets/font-sizes.less";
 </style>
 

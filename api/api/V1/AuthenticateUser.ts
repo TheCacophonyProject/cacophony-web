@@ -176,6 +176,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {String} refreshToken One-time use token to refresh JWT session token
    * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    */
   app.post(
     `${apiUrl}/refresh-session-token`,
@@ -250,6 +251,7 @@ export default function (app: Application, baseUrl: string) {
           token: `JWT ${token}`,
           expiry,
           refreshToken: refreshTokenSigned,
+          userData: mapUser(user),
         });
       } else {
         return next(new AuthorizationError("Invalid refresh token."));

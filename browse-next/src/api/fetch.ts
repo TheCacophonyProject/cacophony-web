@@ -84,7 +84,7 @@ export const maybeRefreshStaleCredentials = async () => {
               refreshToken: refreshedUser.refreshToken,
               refreshingToken: false,
             });
-            refreshLocallyStoredUser();
+            refreshLocallyStoredUser(refreshedUser.userData);
           } else {
             // Refresh token wasn't found, so prompt login again
             forgetUserOnCurrentDevice();

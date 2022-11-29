@@ -223,7 +223,9 @@ const pendingGroupTableItems = computed(() => {
     </div>
     <div v-else-if="!userHasConfirmedEmailAddress">
       <p class="mt-3">Welcome to your Cacophony account.</p>
-      <p>Before you can continue, we need to confirm your email address.</p>
+      <p v-if="CurrentUser?.email && !emailAddressUpdated">
+        Before you can continue, we need to confirm your email address.
+      </p>
       <div v-if="CurrentUser?.email && !emailAddressUpdated">
         <hr />
         <p v-if="!emailAddressUpdated && CurrentUser?.email" class="mt-3">
@@ -308,8 +310,8 @@ const pendingGroupTableItems = computed(() => {
       <p v-else>
         Your email address has been changed to
         <strong>{{ CurrentUser?.email }}</strong
-        >. You should receive a confirmation email to this address. You'll need
-        to confirm your new email address before your can continue.
+        >.<br />You should receive a confirmation email to this address. You'll
+        need to confirm your new email address before your can continue.
       </p>
       <p class="alert alert-secondary mt-3">
         NOTE: If you can't find the email we send, make sure to check your spam
