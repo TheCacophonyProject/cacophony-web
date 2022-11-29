@@ -114,6 +114,14 @@ const needsValidationAndIsValidEmailAddress =
     userEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
+const resetFormFields = () => {
+  userEmailAddress.value = "";
+  userEmailAddress.touched = false;
+  userName.value = "";
+  userName.touched = false;
+  submittedDetails.value = null;
+};
+
 const updateUserDisplayName = async () => {
   const name = userName.value.trim();
   // Clear any errors
@@ -208,6 +216,7 @@ const updateUserEmailAddress = async () => {
     title="Change your display name"
     id="change-display-name"
     @ok="updateUserDisplayName"
+    @hidden="resetFormFields"
   >
     <b-form
       class="d-flex flex-column"
@@ -251,9 +260,10 @@ const updateUserEmailAddress = async () => {
   </b-modal>
   <b-modal
     v-model="changeEmailModal"
-    title="Change your display name"
+    title="Change your account email address"
     @ok="updateUserEmailAddress"
     id="change-email-address"
+    @hidden="resetFormFields"
   >
     <b-form
       class="d-flex flex-column"
