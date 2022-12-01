@@ -217,6 +217,7 @@ const updateUserEmailAddress = async () => {
     id="change-display-name"
     @ok="updateUserDisplayName"
     @hidden="resetFormFields"
+    ok-title="Save"
   >
     <b-form
       class="d-flex flex-column"
@@ -264,6 +265,7 @@ const updateUserEmailAddress = async () => {
     @ok="updateUserEmailAddress"
     id="change-email-address"
     @hidden="resetFormFields"
+    ok-title="Save"
   >
     <b-form
       class="d-flex flex-column"

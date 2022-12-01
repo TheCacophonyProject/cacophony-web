@@ -277,6 +277,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   );
 });
 
+const handleImageError = (e: ErrorEvent) => {
+  (e.target as HTMLImageElement).classList.add("image-not-found");
+};
+
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
@@ -349,7 +353,14 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         class="card d-flex flex-row species-summary-item align-items-center"
         @click="showVisitsForTag(key)"
       >
-        <img width="24" height="auto" class="species-icon ms-sm-3 ms-1" />
+        <img
+            :src="`/tag-icons/${key}.svg`"
+            width="24"
+            height="24"
+            :alt="val"
+            class="species-icon ms-sm-3 ms-1"
+            :onerror="handleImageError"
+        />
         <div
           class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
         >
@@ -504,9 +515,25 @@ h2 {
     }
   }
   .species-icon {
-    width: 24px;
-    background: #aaa;
-    min-height: 24px;
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+    &::after {
+      border-radius: 4px;
+      position: absolute;
+      content: "";
+      background: #666;
+      width: 100%;
+      height: 100%;
+      left: 0;
+      top: 0;
+      display: inline-block;
+    }
+    &.image-not-found {
+      &::after {
+        border-radius: 0;
+      }
+    }
   }
   .species-summary-item {
     &:nth-child(even) {

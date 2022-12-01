@@ -335,6 +335,23 @@ onMounted(async () => {
 const handleImageError = (e: ErrorEvent) => {
   (e.target as HTMLImageElement).classList.add("image-not-found");
 };
+
+const icons = [
+  "mustelid.svg",
+  "cat.svg",
+  "hedgehog.svg",
+  "wallaby.svg",
+  "rodent.svg",
+  "human.svg",
+  "leporidae.svg",
+  "false-positive.svg",
+  // kiwi
+  // bird
+  // wader
+  // insect
+  // possum
+  // vehicle
+];
 </script>
 <template>
   <div
@@ -472,7 +489,7 @@ const handleImageError = (e: ErrorEvent) => {
           ><font-awesome-icon icon="thumbtack" />
         </span>
         <img
-          src=""
+          :src="`/tag-icons/${tag.label}.svg`"
           width="24"
           height="24"
           :alt="tag.display"
@@ -609,6 +626,9 @@ const handleImageError = (e: ErrorEvent) => {
     text-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.7);
     font-weight: 500;
     box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    > img {
+      filter: invert(1) drop-shadow(0 0.5px 2px rgba(0, 0, 0, 0.7));
+    }
   }
   &.selected-by-other-user {
     background: #eee;
