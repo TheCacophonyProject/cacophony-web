@@ -12,6 +12,7 @@ import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/root";
 import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
+import ImageLoader from "@/components/ImageLoader.vue";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
@@ -324,7 +325,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
           class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden"
         >
           <div class="visit-thumb">
-            <img
+            <image-loader
               :src="thumbnailSrcForVisit(visit.data)"
               alt="Thumbnail for first recording of this visit"
               width="45"
@@ -530,5 +531,8 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   .station-icon {
     color: rgba(0, 0, 0, 0.5);
   }
+}
+img.image-loading {
+  background: red;
 }
 </style>

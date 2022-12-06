@@ -48,6 +48,7 @@ export type Classification = {
   label: string;
   display?: string;
   children?: Classification[];
+  path?: string | string[];
 };
 export interface ApiClassificationResponse {
   label: "root";

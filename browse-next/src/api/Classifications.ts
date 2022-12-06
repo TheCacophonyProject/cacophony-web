@@ -13,13 +13,14 @@ const loadedClassificationsThisSession = ref(false);
 export const classifications = ref<Classification | null>(null);
 
 const flattenNodes = (
-  acc: Record<string, { label: string; display: string }>,
+  acc: Record<string, { label: string; display: string; path: string }>,
   node: Classification
 ) => {
   for (const child of node.children || []) {
     acc[child.label] = {
       label: child.label,
       display: child.display || child.label,
+      path: `${node.path || node.label}.${child.label}`,
     };
     flattenNodes(acc, child);
   }
@@ -27,7 +28,7 @@ const flattenNodes = (
 };
 
 export const flatClassifications = computed<
-  Record<string, { label: string; display: string }>
+  Record<string, { label: string; display: string; path: string }>
 >(() => {
   if (classifications.value) {
     const nodes = flattenNodes({}, classifications.value);

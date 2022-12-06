@@ -28,6 +28,7 @@ import { displayLabelForClassificationLabel } from "@api/Classifications";
 import CardTable from "@/components/CardTable.vue";
 import { DEFAULT_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
+import TagImage from "@/components/TagImage.vue";
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
   index: number;
@@ -331,27 +332,6 @@ onMounted(async () => {
   }
   handleExpansion(expanded.value);
 });
-
-const handleImageError = (e: ErrorEvent) => {
-  (e.target as HTMLImageElement).classList.add("image-not-found");
-};
-
-const icons = [
-  "mustelid.svg",
-  "cat.svg",
-  "hedgehog.svg",
-  "wallaby.svg",
-  "rodent.svg",
-  "human.svg",
-  "leporidae.svg",
-  "false-positive.svg",
-  // kiwi
-  // bird
-  // wader
-  // insect
-  // possum
-  // vehicle
-];
 </script>
 <template>
   <div
@@ -476,7 +456,6 @@ const icons = [
           {
             'selected-by-other-user':
               !(thisUserTag && tag.label === thisUserTag.what) &&
-              otherUserTags.length &&
               otherUserTags.includes(tag.label),
           },
           { pinned: !!userDefinedTags[tag.label] },
@@ -488,12 +467,11 @@ const icons = [
         <span v-if="!!userDefinedTags[tag.label]" class="pinned-tag"
           ><font-awesome-icon icon="thumbtack" />
         </span>
-        <img
-          :src="`/tag-icons/${tag.label}.svg`"
+        <tag-image
+          :tag="tag.label"
           width="24"
           height="24"
-          :alt="tag.display"
-          :onerror="handleImageError"
+          :class="{ selected: thisUserTag && tag.label === thisUserTag.what }"
         />
         <span>{{ tag.display }}</span>
       </button>
@@ -626,35 +604,11 @@ const icons = [
     text-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.7);
     font-weight: 500;
     box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    > img {
-      filter: invert(1) drop-shadow(0 0.5px 2px rgba(0, 0, 0, 0.7));
-    }
   }
   &.selected-by-other-user {
     background: #eee;
     box-shadow: inset 0 1px 10px 3px rgba(144, 238, 144, 0.4),
       inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
-  }
-  > img {
-    background: transparent;
-    position: relative;
-    overflow: hidden;
-    &::after {
-      border-radius: 4px;
-      position: absolute;
-      content: "";
-      background: #666;
-      width: 100%;
-      height: 100%;
-      left: 0;
-      top: 0;
-      display: inline-block;
-    }
-    &.image-not-found {
-      &::after {
-        border-radius: 0;
-      }
-    }
   }
   &.pinned {
     position: relative;
