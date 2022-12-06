@@ -18,7 +18,7 @@ export const waitForEmail = (type: string = "") => {
   return cy
     .exec(
       `cd ../api && docker-compose exec -T server bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`,
-      { log: false, timeout: 1500 }
+      { log: false, timeout: 3500 }
     )
     .then((response) => {
       email = response.stdout;
