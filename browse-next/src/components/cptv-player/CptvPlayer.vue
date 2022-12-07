@@ -1011,7 +1011,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         canSelectTracks,
         currentTrack,
         motionPathMode.value ? motionPaths.value : [],
-        pixelRatio.value,
+        1,
         tracksByFrame.value,
         framesByTrack.value,
         useExportOptions
