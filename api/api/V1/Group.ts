@@ -793,6 +793,7 @@ export default function (app: Application, baseUrl: string) {
       const groupUsers = await models.GroupUsers.findAll({
         where: {
           GroupId: group.id,
+          removedAt: { [Op.eq]: null },
         },
       });
       const otherAdmins = groupUsers.filter(
@@ -1012,6 +1013,7 @@ export default function (app: Application, baseUrl: string) {
         where: {
           GroupId: response.locals.group.id,
           UserId: response.locals.requestUser.id,
+          removedAt: { [Op.eq]: null },
         },
       });
       await groupUser.update(
@@ -1255,6 +1257,7 @@ export default function (app: Application, baseUrl: string) {
               UserId: user.id,
               GroupId: group.id,
               pending: "invited",
+              removedAt: { [Op.eq]: null },
             },
           });
           if (existingGroupUser) {
@@ -1320,6 +1323,7 @@ export default function (app: Application, baseUrl: string) {
           where: {
             UserId: user.id,
             GroupId: group.id,
+            removedAt: { [Op.eq]: null },
           },
         });
         if (existingGroupUser && existingGroupUser.pending === null) {

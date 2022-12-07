@@ -25,6 +25,7 @@ import { Application, Request, Response } from "express";
 import { GroupId, UserId } from "@typedefs/api/common";
 import models from "@models";
 import { SuperUsers } from "@/Globals";
+import { Op } from "sequelize/types";
 
 export const streamS3Object = async (
   request: Request,
@@ -56,7 +57,11 @@ export const streamS3Object = async (
     stream.on("close", async () => {
       // Log out to the DB how much we streamed for this user.
       const groupUser = await models.GroupUsers.findOne({
-        where: { UserId: userId, GroupId: groupId },
+        where: {
+          UserId: userId,
+          GroupId: groupId,
+          removedAt: { [Op.eq]: null },
+        },
       });
       if (!groupUser && SuperUsers.has(userId)) {
         // NOTE: If the user is a super-user, just attribute it to their user.

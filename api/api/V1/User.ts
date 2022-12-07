@@ -689,6 +689,7 @@ export default function (app: Application, baseUrl: string) {
         where: {
           UserId: id,
           GroupId: response.locals.group.id,
+          removedAt: { [Op.eq]: null },
           pending: { [Op.eq]: null },
         },
       });

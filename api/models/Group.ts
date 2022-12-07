@@ -345,6 +345,7 @@ export default function (sequelize, DataTypes): GroupStatic {
       where: {
         GroupId: group.id,
         UserId: userToRemove.id,
+        removedAt: { [Op.eq]: null },
       },
     });
 
