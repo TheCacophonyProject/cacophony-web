@@ -163,7 +163,7 @@ const notImplemented = () => {
     <two-step-action-button
       :action="() => emit('delete-recording')"
       icon="trash-can"
-      label="Delete Recording"
+      confirmation-label="Delete Recording"
       v-if="userIsGroupAdmin"
     >
       <template #button-content>
