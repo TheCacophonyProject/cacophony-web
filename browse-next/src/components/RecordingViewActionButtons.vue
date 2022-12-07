@@ -165,7 +165,11 @@ const notImplemented = () => {
       icon="trash-can"
       label="Delete Recording"
       v-if="userIsGroupAdmin"
-    />
+    >
+      <template #button-content>
+        <font-awesome-icon icon="trash-can" color="#666" />
+      </template>
+    </two-step-action-button>
     <button
       type="button"
       class="btn"
