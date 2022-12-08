@@ -69,7 +69,6 @@ const router = createRouter({
       component: () => import("@/views/ConfirmEmailView.vue"),
       beforeEnter: cancelPendingRequests,
     },
-
     {
       path: "/accept-invite/:token",
       name: "accept-group-invite",
@@ -467,7 +466,7 @@ router.beforeEach(async (to, from, next) => {
         // console.warn(
         //   "Fetched user groups",
         //   currentSelectedGroup.value,
-        //   UserGroups.value?.length
+        //   JSON.stringify(UserGroups.value)
         // );
       }
       isFetchingGroups.value = false;
@@ -554,6 +553,7 @@ router.beforeEach(async (to, from, next) => {
     });
   } else {
     pinSideNav.value = false;
+    console.warn("Navigating to ", to.fullPath, to.name);
     return next();
   }
 });

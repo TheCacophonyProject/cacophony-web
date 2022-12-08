@@ -427,7 +427,7 @@ export const refreshUserGroups = async () => {
   const groupsResponse = await getGroups(NO_ABORT);
   if (groupsResponse.success) {
     UserGroups.value = reactive(groupsResponse.result.groups);
-    // console.warn("Fetched user groups", currentSelectedGroup.value);
+    //console.warn("Fetched user groups", currentSelectedGroup.value, JSON.stringify(UserGroups.value));
   }
   isFetchingGroups.value = false;
   return groupsResponse;

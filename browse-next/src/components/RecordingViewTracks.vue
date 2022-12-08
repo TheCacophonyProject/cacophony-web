@@ -70,15 +70,23 @@ onMounted(() => {
   }
 });
 
-const expandedItemChanged = (trackId: TrackId, expanded: boolean) => {
+const expandedItemChanged = async (trackId: TrackId, expanded: boolean) => {
   const params = { ...route.params, trackId, detail: "detail" };
   if (!expanded) {
     delete (params as Record<string, string | number>).detail;
   }
-  router.replace({
+  await router.replace({
     ...route,
     params,
   });
+  if (expanded) {
+    // Select and play the track?
+    const track = getTrackById(trackId);
+    if (track) {
+      // Change track.
+      emit("track-selected", { trackId, automatically: false });
+    }
+  }
 };
 
 const selectedTrack = (trackId: TrackId) => {

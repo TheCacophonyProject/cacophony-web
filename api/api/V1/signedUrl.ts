@@ -25,7 +25,7 @@ import { Application, Request, Response } from "express";
 import { GroupId, UserId } from "@typedefs/api/common";
 import models from "@models";
 import { SuperUsers } from "@/Globals";
-import { Op } from "sequelize/types";
+import { Op } from "sequelize";
 
 export const streamS3Object = async (
   request: Request,

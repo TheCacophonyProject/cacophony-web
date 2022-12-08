@@ -163,7 +163,7 @@ watch(
           (nextTrack as ApiTrackResponse).id !==
             (prevTrack as ApiTrackResponse).id)
       ) {
-        await selectTrack(nextTrack, true, playing.value, true);
+        await selectTrack(nextTrack, true, true, true);
       }
     }
     updateOverlayCanvas(frameNum.value);

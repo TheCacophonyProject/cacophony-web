@@ -142,9 +142,7 @@ export const sendGroupInviteExistingMemberEmail = async (
   const common = commonInterpolants(origin);
   const existingAccountJoinGroupUrl = `${
     common.cacophonyBrowseUrl
-  }/${urlNormaliseName(
-    requestGroupName
-  )}/accept-invite/${existingAccountJoinGroupToken.replace(
+  }/accept-invite/${existingAccountJoinGroupToken.replace(
     /\./g,
     ":"
   )}?existing-member=1`;
@@ -178,12 +176,13 @@ export const sendGroupInviteNewMemberEmail = async (
   const common = commonInterpolants(origin);
   const signupAndJoinGroupUrl = `${
     common.cacophonyBrowseUrl
-  }/register/accept-invite/${newMemberJoinGroupToken.replace(/\./g, ":")}`;
+  }/register?nextUrl=/accept-invite/${newMemberJoinGroupToken.replace(
+    /\./g,
+    ":"
+  )}`;
   const existingAccountJoinGroupUrl = `${
     common.cacophonyBrowseUrl
-  }/${urlNormaliseName(
-    requestGroupName
-  )}/accept-invite/${newMemberJoinGroupToken.replace(
+  }/accept-invite/${newMemberJoinGroupToken.replace(
     /\./g,
     ":"
   )}?existing-member=1`;

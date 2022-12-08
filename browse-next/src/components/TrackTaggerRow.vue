@@ -82,10 +82,12 @@ const taggerDetails = computed<CardTableRows<ApiTrackTagResponse | string>>(
           " ",
           "&nbsp;"
         ),
-        __sort: { value: new Date(tag.createdAt || "").getTime().toString() },
       };
-      if (!tag.automatic && userIsGroupAdmin.value) {
-        item._deleteAction = { value: tag };
+      if (userIsGroupAdmin.value) {
+        item._deleteAction = {
+          value: tag,
+          cellClasses: ["d-flex", "justify-content-end"],
+        };
       }
       return item;
     });
@@ -137,12 +139,8 @@ watch(showTaggerDetails, resizeDetails);
 watch(showClassificationSearch, resizeDetails);
 
 const selectAndMaybeToggleExpanded = () => {
-  if (hasUserTag.value || expandedInternal.value) {
-    expandedInternal.value = !expandedInternal.value;
-    emit("expanded-changed", track.id, expandedInternal.value);
-  } else {
-    emit("selected-track", track.id);
-  }
+  expandedInternal.value = !expandedInternal.value;
+  emit("expanded-changed", track.id, expandedInternal.value);
 };
 
 const hasUserTag = computed<boolean>(() => {
@@ -531,6 +529,7 @@ onMounted(async () => {
           >
             <font-awesome-icon icon="trash-can" />
           </button>
+          <span v-else></span>
         </template>
       </card-table>
     </div>

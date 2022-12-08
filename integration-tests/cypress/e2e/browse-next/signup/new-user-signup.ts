@@ -1,5 +1,11 @@
 import { uniqueName } from "@commands/testUtils";
-import { startMailServerStub } from "@commands/emailUtils";
+import {
+  ACCEPT_INVITE_PREFIX,
+  extractTokenStartingWith,
+  startMailServerStub,
+  waitForEmail,
+} from "@commands/emailUtils";
+import { getCreds } from "@commands/server";
 const apiRoot = `${Cypress.env("cacophony-api-server")}/api/v1`;
 const cyEl = (str: string) => {
   return cy.get(`[data-cy='${str}']`);
@@ -197,15 +203,58 @@ describe("New users can sign up and confirm their email address", () => {
     signOut();
   });
 
-  it("Existing user (with groups) is able to request to join an existing group from main view", () => {});
+  it("Existing user (with groups) is able to request to join an existing group from main view", () => {
+    // TODO:
+  });
 
-  it("Existing user (with groups) is able to invite an existing user to their group", () => {});
+  it("Existing user (with groups) is able to invite an existing user to their group", () => {
+    const password = uniqueName("pass");
 
-  it("Logged in user with a group invite link is able to accept the invitation", () => {});
+    cy.log("User 1 creates a group");
+    const user1 = uniqueName("Bob");
+    const group1 = uniqueName("group");
+    registerNewUser(user1, password);
+    confirmNewUserEmailAddress(user1);
+    createGroupFromInitialSetup(group1);
+    signOut();
 
-  it("Logged out user with a group invite link is able to accept the invitation after login", () => {});
+    cy.log("User 1 creates a group");
+    const user2 = uniqueName("Alice");
+    const group2 = uniqueName("Alice group");
+    registerNewUser(user2, password);
+    confirmNewUserEmailAddress(user2);
+    createGroupFromInitialSetup(group2);
 
-  it.only("Legacy browse users can sign in and have the option of confirming their current email address or choosing a new one", () => {
+    cy.log("Alice invites Bob to her group Alice-group");
+    cy.visit(`/${urlNormaliseGroupName(group2)}/settings/users`);
+    cyEl("invite someone to group button").click();
+    cyEl("invitee email address").type(getEmail(user1));
+    modalOkayButton("invite-someone-modal").click();
+    signOut();
+
+    waitForEmail("invite").then((email) => {
+      const { payload, token } = extractTokenStartingWith(
+        email,
+        ACCEPT_INVITE_PREFIX
+      );
+      cy.log("Bob signs in and accepts the email link");
+      signInExistingUser(user1, password);
+      cy.url().should("contain", urlNormaliseGroupName(group1));
+      cy.visit(`/accept-invite/${token}`);
+
+      cy.url().should("contain", urlNormaliseGroupName(group2));
+    });
+  });
+
+  it("Logged in user with a group invite link is able to accept the invitation", () => {
+    // TODO:
+  });
+
+  it("Logged out user with a group invite link is able to accept the invitation after login", () => {
+    // TODO:
+  });
+
+  it("Legacy browse users can sign in and have the option of confirming their current email address or choosing a new one", () => {
     cy.log(
       "Create an existing user with groups but without confirming email address"
     );

@@ -479,10 +479,11 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
     await nextTick(() => {
       userSelectedTrack.value = undefined;
     });
+  } else {
+    // TODO: Should this automatically get removed if the selectedTrack has changed due to
+    //  the recording playing onto a new track
+    delete (params as Record<string, string | number>).detail;
   }
-  // TODO: Should this automatically get removed if the selectedTrack has changed due to
-  //  the recording playing onto a new track
-  delete (params as Record<string, string | number>).detail;
   await router.replace({
     name: route.name as string,
     params,

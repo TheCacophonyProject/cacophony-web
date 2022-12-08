@@ -175,7 +175,12 @@ onMounted(() => {
       'logged-in',
       { 'has-git-info-bar': hasGitReleaseInfoBar },
     ]"
-    v-else-if="userIsLoggedIn && userHasGroups && userHasConfirmedEmailAddress"
+    v-else-if="
+      userIsLoggedIn &&
+      userHasConfirmedEmailAddress &&
+      userHasGroups &&
+      !route.meta.nonMainView
+    "
   >
     <nav
       id="global-side-nav"
@@ -463,13 +468,13 @@ onMounted(() => {
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
         <div class="d-flex flex-column router-view">
-          <router-view v-if="!route.meta.nonMainView" />
+          <router-view />
         </div>
       </div>
     </section>
   </main>
   <main
-    v-else
+    v-else-if="route.meta.nonMainView"
     :class="[
       userIsLoggedIn && (!userHasGroups || !userHasConfirmedEmailAddress)
         ? 'account-setup'
@@ -483,7 +488,7 @@ onMounted(() => {
     ]"
   >
     <!--  When logging out, the existing router view gets re-mounted in here, which we don't want.  -->
-    <router-view v-if="route.meta.nonMainView" />
+    <router-view />
   </main>
 </template>
 
