@@ -16,10 +16,24 @@ async function main() {
     endTime: endDate.toDate().toISOString(),
     startTime: startDate.toDate().toISOString(),
   };
-  const serviceErrors = await errors(
+  var serviceErrors = await errors(
     { query: query, res: { locals: { requestUser: {} } } },
     true
   );
+  const ignoredDevices = config.deviceErrorIgnoreList;
+  if (ignoredDevices) {
+    var prunedServiceErrors = {} as ServiceErrorMap;
+    for (const [key, serviceError] of Object.entries(serviceErrors)) {
+      for (const device of serviceError.devices) {
+        if (ignoredDevices.indexOf(device) == -1) {
+          prunedServiceErrors[key] = serviceError;
+          break;
+        }
+      }
+    }
+    serviceErrors = prunedServiceErrors;
+  }
+
   if (Object.keys(serviceErrors).length == 0) {
     log.info("No service errors in the last 24 hours");
     return;
